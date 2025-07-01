@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: home-gateway
+  namespace: argocd
+spec:
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+  project: default
+  source:
+    repoURL: https://github.com/Accurate0/home-gateway.git
+    path: kubernetes
+    kustomize:
+      images:
+        - home-gateway=ghcr.io/accurate0/home-gateway:${ARGOCD_APP_REVISION}
+        - unifi-proxy=ghcr.io/accurate0/unifi-proxy:${ARGOCD_APP_REVISION}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: home-gateway
+operation:
+  initiatedBy:
+    username: github-actions
+  sync:
+    prune: true
+    syncStrategy:
+      hook: {}

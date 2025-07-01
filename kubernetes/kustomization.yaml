@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - home-gateway.secret.yaml
+  - home-gateway/home-gateway.deployment.yaml
+  - home-gateway/home-gateway.service.yaml
+  - ingress.yaml
+  - namespace.yaml
+  - unifi-proxy.secret.yaml
+  - unifi-proxy/unifi-proxy.deployment.yaml
+  - unifi-proxy/unifi-proxy.service.yaml

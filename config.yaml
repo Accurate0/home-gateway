@@ -1,0 +1,5 @@
+doors:
+  "0x54ef441000d2b1ba":
+    name: Garage
+    state: armed
+    timeout: 5s

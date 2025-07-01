@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO events (raw_data, event_type)\n                    VALUES ((REPLACE($1::text, '\\u0000', ''))::jsonb, $2)\n                    RETURNING id ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        {
+          "Custom": {
+            "name": "event_type",
+            "kind": {
+              "Enum": [
+                "mqtt",
+                "unifi"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fa471377a8ca7167b083ff209de68a9b276d36dcbc83cd286134b7d250132e5f"
+}

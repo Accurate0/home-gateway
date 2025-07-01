@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        INSERT INTO unifi_clients (event_id, name, id, state) VALUES ($1, $2, $3, $4)\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "unifi_state",
+            "kind": {
+              "Enum": [
+                "connected",
+                "disconnected"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9f458cba4252d3de3c907ca2eb77f1e0c04e0dfcded8c74c8d380c8cf78105d9"
+}
