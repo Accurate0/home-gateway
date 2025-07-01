@@ -27,19 +27,18 @@ pub enum MqttError {
 
 impl Mqtt {
     pub async fn new(host: String, port: u16) -> Result<Self, MqttError> {
-        let mut mqttoptions = MqttOptions::new("home-gateway", host, port);
+        let client_id = if cfg!(debug_assertions) {
+            "home-gateway-dev"
+        } else {
+            "home-gateway"
+        };
+
+        let mut mqttoptions = MqttOptions::new(client_id, host, port);
         mqttoptions.set_keep_alive(Duration::from_secs(5));
         // for devices packet
         mqttoptions.set_max_packet_size(46438, 10240);
 
         let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 10);
-        client
-            .subscribe("zigbee2mqtt/+", rumqttc::QoS::AtLeastOnce)
-            .await?;
-
-        client
-            .subscribe("zigbee2mqtt/bridge/devices", rumqttc::QoS::AtLeastOnce)
-            .await?;
 
         Ok(Self { client, connection })
     }
@@ -54,6 +53,15 @@ impl Mqtt {
                 event = self.connection.poll() => {
                     match event {
                         Ok(event) => match event {
+                            rumqttc::Event::Incoming(packet) if matches!(packet, rumqttc::Packet::ConnAck(_)) => {
+                                self.client
+                                    .subscribe("zigbee2mqtt/+", rumqttc::QoS::ExactlyOnce)
+                                    .await?;
+
+                                self.client
+                                    .subscribe("zigbee2mqtt/bridge/devices", rumqttc::QoS::ExactlyOnce)
+                                    .await?;
+                            },
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {
                                 if let Err(e) = actor.send_message(FactoryMessage::Dispatch(Job {
                                     key: (),
