@@ -3,6 +3,7 @@ use crate::{
         devices::unifi::{self, UnifiConnectedClientHandler},
         door_sensor, light, smart_switch, temperature_sensor,
     },
+    maccas::MaccasOfferIngest,
     types::SharedActorState,
     unifi::types::UnifiConnectedClients,
     zigbee2mqtt::devices::BridgeDevices,
@@ -25,6 +26,9 @@ pub enum Message {
     },
     UnifiClients {
         payload: UnifiConnectedClients,
+    },
+    MaccasOfferIngest {
+        payload: MaccasOfferIngest,
     },
 }
 
@@ -168,12 +172,12 @@ impl EventHandler {
                 let mut devices_map = self.shared_actor_state.known_devices_map.write().await;
                 for device in devices_payload {
                     sqlx::query!(
-                    "INSERT INTO known_devices (ieee_addr, name) VALUES ($1, $2) ON CONFLICT (ieee_addr) DO UPDATE SET name = $2",
-                        &device.ieee_address,
-                        device.friendly_name
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                            "INSERT INTO known_devices (ieee_addr, name) VALUES ($1, $2) ON CONFLICT (ieee_addr) DO UPDATE SET name = $2",
+                                &device.ieee_address,
+                                device.friendly_name
+                            )
+                            .execute(&self.shared_actor_state.db)
+                            .await?;
                     devices_map.insert(device.ieee_address);
                 }
                 drop(devices_map)
@@ -249,6 +253,12 @@ impl EventHandler {
                 }
 
                 tracing::info!("received message for unifi");
+            }
+            Message::MaccasOfferIngest { payload } => {
+                tracing::info!(
+                    "received maccas offer event for {}",
+                    payload.details.short_name
+                )
             }
         };
 

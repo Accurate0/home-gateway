@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO appliances (event_id, name, ieee_addr, id, state) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "appliance_state",
+            "kind": {
+              "Enum": [
+                "on",
+                "off"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c5df00d26101c8ed822ce24d498387edeced405823980a182de0baca4469914"
+}

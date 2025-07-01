@@ -26,6 +26,7 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod graphql;
+mod maccas;
 mod mqtt;
 mod routes;
 mod settings;
