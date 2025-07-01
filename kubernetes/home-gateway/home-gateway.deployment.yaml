@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: home-gateway
-  replicas: 3
+  replicas: 1
   template:
     metadata:
       labels:
@@ -36,6 +36,6 @@ spec:
             - secretRef:
                 name: home-gateway-managed-secrets
             - secretRef:
-                name: home-gateway-managed-secrets
+                name: home-gateway-database-secret
           ports:
             - containerPort: 8000

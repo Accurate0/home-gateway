@@ -6,6 +6,7 @@ resources:
   - home-gateway/home-gateway.service.yaml
   - ingress.yaml
   - namespace.yaml
+  - database.yaml
   - unifi-proxy.secret.yaml
   - unifi-proxy/unifi-proxy.deployment.yaml
   - unifi-proxy/unifi-proxy.service.yaml
