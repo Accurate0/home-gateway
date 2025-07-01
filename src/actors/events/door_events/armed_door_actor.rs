@@ -1,6 +1,5 @@
-use crate::settings::{ArmedDoorStates, DoorSettings, IEEEAddress};
-
 use super::DoorEvents;
+use crate::settings::{ArmedDoorStates, DoorSettings, IEEEAddress};
 use chrono::{DateTime, Utc};
 use ractor::Actor;
 use std::collections::HashMap;

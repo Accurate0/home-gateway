@@ -26,6 +26,20 @@ pub struct DoorSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct ApplianceSettings {
+    pub name: String,
+    pub id: String,
+    pub power: AppliancePowerThresholds,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AppliancePowerThresholds {
+    pub off_threshold: i64,
+    pub on_threshold: i64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub database_url: String,
     pub mqtt_url: String,
@@ -33,6 +47,7 @@ pub struct Settings {
     pub unifi_site_id: String,
     pub unifi_api_base: String,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
+    pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
 }
 
 impl Settings {

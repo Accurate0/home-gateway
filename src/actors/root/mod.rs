@@ -2,8 +2,10 @@ use crate::{settings::Settings, types::SharedActorState};
 use ractor::Actor;
 
 use super::{
-    devices::unifi::UnifiConnectedClientHandler, door_sensor,
-    events::door_events::DoorEventsSupervisor, light, smart_switch, temperature_sensor,
+    devices::unifi::UnifiConnectedClientHandler,
+    door_sensor,
+    events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
+    light, smart_switch, temperature_sensor,
 };
 
 pub struct RootSupervisor {
@@ -60,6 +62,17 @@ impl Actor for RootSupervisor {
                 Some(DoorEventsSupervisor::NAME.to_string()),
                 DoorEventsSupervisor {
                     door_settings: settings.doors.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        myself
+            .spawn_linked(
+                Some(ApplianceEventsSupervisor::NAME.to_string()),
+                ApplianceEventsSupervisor {
+                    shared_actor_state: shared_actor_state.clone(),
+                    appliance_settings: settings.appliances.clone(),
                 },
                 (),
             )

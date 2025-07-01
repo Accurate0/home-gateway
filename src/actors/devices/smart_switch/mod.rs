@@ -1,4 +1,8 @@
-use crate::{types::SharedActorState, zigbee2mqtt::TS011F_plug_1};
+use crate::{
+    actors::events::appliances::{ApplianceEvents, ApplianceEventsSupervisor},
+    types::SharedActorState,
+    zigbee2mqtt::TS011F_plug_1,
+};
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -27,20 +31,78 @@ pub struct SmartSwitchHandler {
 impl SmartSwitchHandler {
     pub const NAME: &str = "smart-switch";
 
+    async fn save_values_to_db(
+        &self,
+        event_id: Uuid,
+        friendly_name: &String,
+        ieee_addr: &String,
+        voltage: i64,
+        power: i64,
+        current: i64,
+        energy: f64,
+    ) -> Result<(), anyhow::Error> {
+        sqlx::query!(
+            "INSERT INTO smart_switch (event_id, name, ieee_addr, voltage, power, current, energy) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            event_id,
+            friendly_name,
+            ieee_addr,
+            voltage,
+            power,
+            current,
+            energy
+        ).execute(&self.shared_actor_state.db).await?;
+
+        Ok(())
+    }
+
+    fn send_to_all_listeners(
+        event_id: Uuid,
+        ieee_addr: String,
+        voltage: i64,
+        power: i64,
+        current: i64,
+        energy: f64,
+    ) -> Result<(), anyhow::Error> {
+        let members = ractor::pg::get_members(&ApplianceEventsSupervisor::GROUP_NAME.to_owned());
+        for member in members {
+            let event = ApplianceEvents::PowerUsage {
+                event_id,
+                ieee_addr: ieee_addr.clone(),
+                power,
+                energy,
+                voltage,
+                current,
+            };
+
+            member.send_message(event)?;
+        }
+
+        Ok(())
+    }
+
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::TS011FSmartSwitch(ts011f_plug1) => {
-                    sqlx::query!(
-                            "INSERT INTO smart_switch (event_id, name, ieee_addr, voltage, power, current, energy) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-                            event.event_id,
-                            ts011f_plug1.device.friendly_name,
-                            ts011f_plug1.device.ieee_addr,
-                            ts011f_plug1.voltage,
-                            ts011f_plug1.power,
-                            ts011f_plug1.current,
-                            ts011f_plug1.energy
-                        ).execute(&self.shared_actor_state.db).await?;
+                    self.save_values_to_db(
+                        event.event_id,
+                        &ts011f_plug1.device.friendly_name,
+                        &ts011f_plug1.device.ieee_addr,
+                        ts011f_plug1.voltage,
+                        ts011f_plug1.power,
+                        ts011f_plug1.current,
+                        ts011f_plug1.energy,
+                    )
+                    .await?;
+
+                    Self::send_to_all_listeners(
+                        event.event_id,
+                        ts011f_plug1.device.ieee_addr,
+                        ts011f_plug1.voltage,
+                        ts011f_plug1.power,
+                        ts011f_plug1.current,
+                        ts011f_plug1.energy,
+                    )?;
                 }
             },
         }
