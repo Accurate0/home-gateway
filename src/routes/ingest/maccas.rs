@@ -8,6 +8,8 @@ pub async fn maccas(
         ref event_handler,
         ..
     }): State<ApiState>,
+    body: String,
 ) -> StatusCode {
+    tracing::info!("{body}");
     StatusCode::OK
 }
