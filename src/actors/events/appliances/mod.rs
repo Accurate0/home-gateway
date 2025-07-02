@@ -17,7 +17,7 @@ pub enum ApplianceEvents {
         power: i64,
         energy: f64,
         voltage: i64,
-        current: i64,
+        current: f64,
     },
 }
 

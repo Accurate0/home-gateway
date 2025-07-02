@@ -17,10 +17,12 @@ pub struct ArmedDoorState {
 pub struct ArmedDoor {
     pub door_settings: HashMap<IEEEAddress, DoorSettings>,
 }
+
 impl ArmedDoor {
     pub const NAME: &str = "armed-door";
 }
 
+// TODO: audit log
 impl Actor for ArmedDoor {
     type Msg = DoorEvents;
     type State = ArmedDoorState;

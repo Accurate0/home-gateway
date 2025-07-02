@@ -38,11 +38,11 @@ impl SmartSwitchHandler {
         ieee_addr: &String,
         voltage: i64,
         power: i64,
-        current: i64,
+        current: f64,
         energy: f64,
     ) -> Result<(), anyhow::Error> {
         sqlx::query!(
-            "INSERT INTO smart_switch (event_id, name, ieee_addr, voltage, power, current, energy) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            "INSERT INTO smart_switch (event_id, name, ieee_addr, voltage, power, current_f64, energy) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             event_id,
             friendly_name,
             ieee_addr,
@@ -60,7 +60,7 @@ impl SmartSwitchHandler {
         ieee_addr: String,
         voltage: i64,
         power: i64,
-        current: i64,
+        current: f64,
         energy: f64,
     ) -> Result<(), anyhow::Error> {
         let members = ractor::pg::get_members(&ApplianceEventsSupervisor::GROUP_NAME.to_owned());

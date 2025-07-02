@@ -1,0 +1,2 @@
+ALTER TABLE smart_switch
+ALTER COLUMN current DROP NOT NULL;

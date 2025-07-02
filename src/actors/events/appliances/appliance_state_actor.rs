@@ -78,7 +78,7 @@ impl Actor for ApplianceState {
                             ApplianceStateType::On => {
                                 if power <= appliance_settings.power.off_threshold {
                                     tracing::info!(
-                                        "threshold reached for {ieee_addr} - {}, turning on",
+                                        "threshold reached for {ieee_addr} - {}, turning off",
                                         appliance_settings.id
                                     );
                                     sqlx::query!(
@@ -95,7 +95,7 @@ impl Actor for ApplianceState {
                             ApplianceStateType::Off => {
                                 if power > appliance_settings.power.on_threshold {
                                     tracing::info!(
-                                        "threshold reached for {ieee_addr} - {}, turning off",
+                                        "threshold reached for {ieee_addr} - {}, turning on",
                                         appliance_settings.id
                                     );
                                     sqlx::query!(

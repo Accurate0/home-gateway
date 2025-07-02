@@ -28,6 +28,7 @@ pub struct DoorSensorHandler {
     shared_actor_state: SharedActorState,
 }
 
+// TODO: write the name from config too
 impl DoorSensorHandler {
     pub const NAME: &str = "door-sensor";
 

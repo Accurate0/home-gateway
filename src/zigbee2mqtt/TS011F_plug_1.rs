@@ -7,7 +7,7 @@ pub struct Ts011fPlug1 {
     #[serde(rename = "child_lock")]
     pub child_lock: String,
     pub countdown: i64,
-    pub current: i64,
+    pub current: f64,
     pub device: Device,
     pub energy: f64,
     #[serde(rename = "indicator_mode")]
