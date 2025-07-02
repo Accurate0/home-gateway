@@ -9,11 +9,11 @@ appliances:
     name: Dryer
     id: DRYER
     power:
-      offThreshold: 10
-      onThreshold: 200
+      offThreshold: 0
+      onThreshold: 5
   "0xa4c1389fe5cea26e":
     name: Washing Machine
     id: WASHING_MACHINE
     power:
-      offThreshold: 10
-      onThreshold: 200
+      offThreshold: 0
+      onThreshold: 5
