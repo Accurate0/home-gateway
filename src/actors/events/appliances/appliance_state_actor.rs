@@ -1,10 +1,11 @@
 use crate::{
     settings::{ApplianceSettings, IEEEAddress},
+    timed_average::TimedAverage,
     types::SharedActorState,
 };
 use ractor::Actor;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use super::ApplianceEvents;
 
@@ -16,6 +17,7 @@ pub enum ApplianceStateType {
 }
 
 pub struct ApplianceStateState {
+    pub average_running: HashMap<IEEEAddress, TimedAverage>,
     pub map: HashMap<IEEEAddress, ApplianceStateType>,
 }
 
@@ -55,7 +57,10 @@ impl Actor for ApplianceState {
             map.insert(client.ieee_addr.clone(), client.state);
         }
 
-        Ok(ApplianceStateState { map })
+        Ok(ApplianceStateState {
+            map,
+            average_running: Default::default(),
+        })
     }
 
     async fn handle(
@@ -67,18 +72,32 @@ impl Actor for ApplianceState {
         match message {
             ApplianceEvents::PowerUsage {
                 ieee_addr,
-                power,
                 event_id,
+                current,
                 ..
             } => {
                 if let Some(appliance_settings) = self.appliance_settings.get(&ieee_addr) {
+                    let avg = state
+                        .average_running
+                        .entry(ieee_addr.clone())
+                        .and_modify(|v| {
+                            v.push(current);
+                        })
+                        .or_insert_with(|| {
+                            let mut avg = TimedAverage::new(Duration::from_secs(60 * 5));
+                            avg.push(current);
+                            avg
+                        });
+
+                    let average_current = avg.value();
+
                     let last_state = state.map.get(&ieee_addr);
                     if let Some(last_state) = last_state {
                         match last_state {
                             ApplianceStateType::On => {
-                                if power <= appliance_settings.power.off_threshold {
+                                if average_current >= appliance_settings.current.threshold {
                                     tracing::info!(
-                                        "threshold reached for {ieee_addr} - {}, turning off",
+                                        "threshold reached for {ieee_addr} - {}, turning on",
                                         appliance_settings.id
                                     );
                                     sqlx::query!(
@@ -93,9 +112,9 @@ impl Actor for ApplianceState {
                                 }
                             }
                             ApplianceStateType::Off => {
-                                if power > appliance_settings.power.on_threshold {
+                                if average_current < appliance_settings.current.threshold {
                                     tracing::info!(
-                                        "threshold reached for {ieee_addr} - {}, turning on",
+                                        "threshold reached for {ieee_addr} - {}, turning off",
                                         appliance_settings.id
                                     );
                                     sqlx::query!(
@@ -111,9 +130,9 @@ impl Actor for ApplianceState {
                             }
                         }
                     } else {
-                        let on_or_off = if power > appliance_settings.power.on_threshold {
+                        let on_or_off = if average_current >= appliance_settings.current.threshold {
                             ApplianceStateType::On
-                        } else if power <= appliance_settings.power.off_threshold {
+                        } else if average_current <= appliance_settings.current.threshold {
                             ApplianceStateType::Off
                         } else {
                             // shouldn't happen

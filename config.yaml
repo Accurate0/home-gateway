@@ -3,17 +3,14 @@ doors:
     name: Garage
     state: armed
     timeout: 5s
+  "0x54ef441000d2b0b0":
+    name: Front Door
+    state: armed
+    timeout: 5s
 
 appliances:
-  "0xa4c1385fab7c9365":
-    name: Dryer
-    id: DRYER
-    power:
-      offThreshold: 0
-      onThreshold: 5
   "0xa4c1389fe5cea26e":
     name: Washing Machine
     id: WASHING_MACHINE
-    power:
-      offThreshold: 0
-      onThreshold: 5
+    current:
+      threshold: 1.0

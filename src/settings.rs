@@ -29,14 +29,13 @@ pub struct DoorSettings {
 pub struct ApplianceSettings {
     pub name: String,
     pub id: String,
-    pub power: AppliancePowerThresholds,
+    pub current: ApplianceCurrentThreshold,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct AppliancePowerThresholds {
-    pub off_threshold: i64,
-    pub on_threshold: i64,
+pub struct ApplianceCurrentThreshold {
+    pub threshold: f64,
 }
 
 #[derive(Debug, Deserialize, Clone)]

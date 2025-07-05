@@ -184,7 +184,14 @@ impl EventHandler {
             }
             Message::MqttPacket { payload, .. } => {
                 let generic_message =
-                    serde_json::from_slice::<GenericZigbee2MqttMessage>(&payload)?;
+                    match serde_json::from_slice::<GenericZigbee2MqttMessage>(&payload) {
+                        Ok(payload) => payload,
+                        Err(e) => {
+                            tracing::warn!("unrecoginised payload: {payload:?}");
+                            return Err(e.into());
+                        }
+                    };
+
                 let actor_type = generic_message.to_actor_name();
                 let actor_name = actor_type.to_string();
                 let maybe_actor = ractor::registry::where_is(actor_name);

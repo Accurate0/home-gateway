@@ -30,6 +30,7 @@ mod maccas;
 mod mqtt;
 mod routes;
 mod settings;
+mod timed_average;
 mod timedelta_format;
 mod types;
 mod unifi;
