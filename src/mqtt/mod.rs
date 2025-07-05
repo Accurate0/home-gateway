@@ -36,7 +36,7 @@ impl Mqtt {
         let mut mqttoptions = MqttOptions::new(client_id, host, port);
         mqttoptions.set_keep_alive(Duration::from_secs(5));
         // for devices packet
-        mqttoptions.set_max_packet_size(46438, 10240);
+        mqttoptions.set_max_packet_size(100_000, 100_000);
 
         let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 10);
 
