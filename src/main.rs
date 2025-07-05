@@ -99,7 +99,9 @@ async fn main() -> anyhow::Result<()> {
     let event_handler_actor =
         init_actors(settings.clone(), pool.clone(), known_devices_map).await?;
 
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription).finish();
+    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+        .data(pool.clone())
+        .finish();
 
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])

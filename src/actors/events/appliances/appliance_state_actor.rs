@@ -1,20 +1,12 @@
 use crate::{
     settings::{ApplianceSettings, IEEEAddress},
     timed_average::TimedAverage,
-    types::SharedActorState,
+    types::{SharedActorState, db::ApplianceStateType},
 };
 use ractor::Actor;
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::Duration};
 
 use super::ApplianceEvents;
-
-#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "appliance_state", rename_all = "lowercase")]
-pub enum ApplianceStateType {
-    On,
-    Off,
-}
 
 pub struct ApplianceStateState {
     pub average_running: HashMap<IEEEAddress, TimedAverage>,

@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, id, time, state as \"state: ApplianceStateType\" FROM appliances WHERE time >= $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "state: ApplianceStateType",
+        "type_info": {
+          "Custom": {
+            "name": "appliance_state",
+            "kind": {
+              "Enum": [
+                "on",
+                "off"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "10919a6630fa614d89a7273ec9d233ab05260a4fa70bd57d4fea6b7e423c82ce"
+}

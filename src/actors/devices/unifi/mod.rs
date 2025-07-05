@@ -1,15 +1,10 @@
-use crate::{types::SharedActorState, unifi::types::UnifiConnectedClients};
+use crate::{
+    types::{SharedActorState, db::UnifiState},
+    unifi::types::UnifiConnectedClients,
+};
 use ractor::Actor;
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
-
-#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "unifi_state", rename_all = "lowercase")]
-pub enum UnifiState {
-    Connected,
-    Disconnected,
-}
 
 pub enum Message {
     NewEvent {

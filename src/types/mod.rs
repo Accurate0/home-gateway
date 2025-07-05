@@ -9,6 +9,8 @@ use sqlx::{Pool, Postgres};
 use std::{collections::HashSet, sync::Arc};
 use tokio::sync::RwLock;
 
+pub mod db;
+
 #[derive(Clone)]
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
