@@ -187,7 +187,7 @@ impl EventHandler {
                     match serde_json::from_slice::<GenericZigbee2MqttMessage>(&payload) {
                         Ok(payload) => payload,
                         Err(e) => {
-                            tracing::warn!("unrecoginised payload: {payload:?}");
+                            tracing::warn!("unrecognised payload: {payload:?}");
                             return Err(e.into());
                         }
                     };
