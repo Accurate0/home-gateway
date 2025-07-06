@@ -1,0 +1,146 @@
+type ApplianceEvent {
+	time: DateTime!
+	id: UUID!
+	entityId: String!
+	state: ApplianceStateType!
+	name: String!
+}
+
+enum ApplianceStateType {
+	ON
+	OFF
+}
+
+"""
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
+
+type DoorEvent {
+	time: DateTime!
+	state: DoorState!
+	name: String!
+	id: UUID!
+	entityId: String!
+}
+
+enum DoorState {
+	OPEN
+	CLOSED
+}
+
+type EnvironmentDetails {
+	temperature: Float!
+	humidity: Float!
+	pressure: Float!
+	time: DateTime!
+	name: String!
+}
+
+type EnvironmentObject {
+	outdoor: EnvironmentDetails!
+	laundry: EnvironmentDetails!
+	livingRoom: EnvironmentDetails!
+	bedroom: EnvironmentDetails!
+}
+
+input EventsInput {
+	since: DateTime!
+}
+
+type EventsObject {
+	doors: [DoorEvent!]!
+	wifi: [WifiEvent!]!
+	appliances: [ApplianceEvent!]!
+}
+
+type GenerationHistory {
+	wh: Float!
+	at: NaiveDateTime!
+	uvLevel: Float
+	temperature: Float
+	timestamp: Int!
+}
+
+"""
+ISO 8601 combined date and time without timezone.
+
+# Examples
+
+* `2015-07-01T08:59:60.123`,
+"""
+scalar NaiveDateTime
+
+type QueryRoot {
+	events(input: EventsInput!): EventsObject!
+	environment: EnvironmentObject!
+	solar: SolarObject!
+}
+
+type SolarCurrentResponse {
+	currentProductionWh: Float!
+	todayProductionKwh: Float!
+	yesterdayProductionKwh: Float!
+	monthProductionKwh: Float!
+	allTimeProductionKwh: Float!
+	statistics: SolarCurrentStatistics!
+	uvLevel: Float
+	temperature: Float
+}
+
+type SolarCurrentStatistics {
+	averages: SolarCurrentStatisticsAverages!
+}
+
+type SolarCurrentStatisticsAverages {
+	last15Mins: Float
+	last1Hour: Float
+	last3Hours: Float
+}
+
+type SolarObject {
+	current: SolarCurrentResponse!
+	history: [GenerationHistory!]!
+}
+
+"""
+A UUID is a unique 128-bit number, stored as 16 octets. UUIDs are parsed as
+Strings within GraphQL. UUIDs are used to assign unique identifiers to
+entities without requiring a central allocating authority.
+
+# References
+
+* [Wikipedia: Universally Unique Identifier](http://en.wikipedia.org/wiki/Universally_unique_identifier)
+* [RFC4122: A Universally Unique Identifier (UUID) URN Namespace](http://tools.ietf.org/html/rfc4122)
+"""
+scalar UUID
+
+enum UnifiState {
+	CONNECTED
+	DISCONNECTED
+}
+
+type WifiEvent {
+	name: String!
+	id: UUID!
+	time: DateTime!
+	state: UnifiState!
+}
+
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
+directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
+directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Provides a scalar specification URL for specifying the behavior of custom scalar types.
+"""
+directive @specifiedBy(url: String!) on SCALAR
+schema {
+	query: QueryRoot
+}

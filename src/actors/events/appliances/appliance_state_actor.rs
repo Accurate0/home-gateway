@@ -87,9 +87,9 @@ impl Actor for ApplianceState {
                     if let Some(last_state) = last_state {
                         match last_state {
                             ApplianceStateType::On => {
-                                if average_current >= appliance_settings.current.threshold {
+                                if average_current < appliance_settings.current.threshold {
                                     tracing::info!(
-                                        "threshold reached for {ieee_addr} - {}, turning on, avg current {average_current}",
+                                        "threshold reached for {ieee_addr} - {}, turning off, avg current {average_current}",
                                         appliance_settings.id
                                     );
                                     sqlx::query!(
@@ -104,9 +104,9 @@ impl Actor for ApplianceState {
                                 }
                             }
                             ApplianceStateType::Off => {
-                                if average_current < appliance_settings.current.threshold {
+                                if average_current >= appliance_settings.current.threshold {
                                     tracing::info!(
-                                        "threshold reached for {ieee_addr} - {}, turning off, avg current {average_current}",
+                                        "threshold reached for {ieee_addr} - {}, turning on, avg current {average_current}",
                                         appliance_settings.id
                                     );
                                     sqlx::query!(

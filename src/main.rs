@@ -12,13 +12,13 @@ use graphql::{
 use http::Method;
 use mqtt::Mqtt;
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
-use routes::{health::health, ingest::maccas::maccas};
+use routes::{health::health, ingest::maccas::maccas, schema::schema as schema_route};
 use settings::Settings;
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use std::{collections::HashSet, net::SocketAddr, sync::Arc};
 use tokio::{sync::RwLock, task::JoinSet};
 use tokio_util::sync::CancellationToken;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 use types::{ApiState, MainError, SharedActorState};
@@ -111,12 +111,17 @@ async fn main() -> anyhow::Result<()> {
         .finish();
 
     let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST])
-        .allow_origin(tower_http::cors::Any);
+        .allow_origin(AllowOrigin::list([
+            "http://localhost:5173".parse()?,
+            "https://home.anurag.sh".parse()?,
+        ]))
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(AllowHeaders::any());
 
     let api_routes = axum::Router::new()
         .route("/health", get(health))
         .route("/graphql", get(graphiql).post(graphql_handler))
+        .route("/schema", get(schema_route))
         .route("/ingest/maccas", post(maccas))
         .layer(cors)
         .with_state(ApiState {

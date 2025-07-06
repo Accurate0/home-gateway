@@ -22,7 +22,6 @@ impl EventsQuery {
 
     async fn environment(
         &self,
-
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnvironmentObject> {
         Ok(EnvironmentObject {})

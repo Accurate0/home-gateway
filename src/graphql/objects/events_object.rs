@@ -18,14 +18,15 @@ impl EventsObject {
         let db = ctx.data::<Pool<Postgres>>()?;
 
         Ok(sqlx::query!(
-            r#"SELECT id, name, time, state AS "state: DoorState" FROM derived_door_events WHERE time >= $1"#,
+            r#"SELECT event_id, id, name, time, state AS "state: DoorState" FROM derived_door_events WHERE time >= $1"#,
             self.since
         )
         .fetch_all(db)
         .await?
         .into_iter()
         .map(|r| DoorEvent {
-            id: r.id,
+            id: r.event_id,
+            entity_id: r.id,
             time: r.time,
             state: r.state,
             name: r.name,
@@ -40,7 +41,7 @@ impl EventsObject {
         let db = ctx.data::<Pool<Postgres>>()?;
 
         Ok(sqlx::query!(
-            r#"SELECT name, id, time, state as "state: UnifiState" FROM unifi_clients WHERE time >= $1"#, self.since
+            r#"SELECT name, relay_id as id, time, state as "state: UnifiState" FROM unifi_clients WHERE time >= $1"#, self.since
         )
         .fetch_all(db)
         .await?
@@ -61,14 +62,15 @@ impl EventsObject {
         let db = ctx.data::<Pool<Postgres>>()?;
 
         Ok(sqlx::query!(
-            r#"SELECT name, id, time, state as "state: ApplianceStateType" FROM appliances WHERE time >= $1"#, self.since
+            r#"SELECT event_id, name, id, time, state as "state: ApplianceStateType" FROM appliances WHERE time >= $1"#, self.since
         )
         .fetch_all(db)
         .await?
         .into_iter()
         .map(|r| ApplianceEvent {
+            id: r.event_id,
             time: r.time,
-            id: r.id,
+            entity_id: r.id,
             state: r.state,
             name: r.name,
         })

@@ -18,7 +18,7 @@ tower-http = { workspace = true }
 async-graphql = { version = "7.0.17", features = ["uuid", "chrono", "dataloader"] }
 async-graphql-axum = "7.0.17"
 bytes = "1.10.1"
-chrono = "0.4.41"
+chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.15.11", features = ["yaml"] }
 dataloader = "0.18.0"
 itertools = "0.14.0"
