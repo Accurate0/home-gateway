@@ -16,7 +16,7 @@ pub struct AqaraWSDCGQ12LM {
     pub power_outage_count: i64,
     pub pressure: f64,
     pub temperature: f64,
-    pub update: Update,
+    pub update: Option<Update>,
     pub voltage: i64,
 }
 

@@ -1,17 +1,30 @@
-use crate::settings::{DoorSettings, IEEEAddress};
+use crate::{
+    settings::{DoorSettings, IEEEAddress},
+    types::SharedActorState,
+};
 use armed_door_actor::ArmedDoor;
-use ractor::Actor;
+use derived_door_events_actor::DerivedDoorEvents;
+use ractor::{Actor, ActorCell};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 mod armed_door_actor;
+mod derived_door_events_actor;
 
-pub enum DoorEvents {
-    Opened { ieee_addr: String },
-    Closed { ieee_addr: String },
-    Trigger { ieee_addr: String },
+pub enum DoorEventsType {
+    Opened,
+    Closed,
+    Trigger,
+}
+
+pub struct DoorEvents {
+    pub event_id: Uuid,
+    pub ieee_addr: IEEEAddress,
+    pub event: DoorEventsType,
 }
 
 pub struct DoorEventsSupervisor {
+    pub shared_actor_state: SharedActorState,
     pub door_settings: HashMap<IEEEAddress, DoorSettings>,
 }
 
@@ -19,13 +32,39 @@ impl DoorEventsSupervisor {
     pub const NAME: &str = "door-events-supervisor";
     pub const GROUP_NAME: &str = "door-events";
 
-    async fn start_armed_door_actor(
+    async fn start_derived_door_events_actor(
+        myself: ActorCell,
+        shared_actor_state: SharedActorState,
         door_settings: HashMap<IEEEAddress, DoorSettings>,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        let (armed_door_actor, _) = Actor::spawn(
+        let (derived_door_events_actor, _) = Actor::spawn_linked(
+            Some(DerivedDoorEvents::NAME.to_owned()),
+            DerivedDoorEvents {
+                door_settings,
+                shared_actor_state,
+            },
+            (),
+            myself,
+        )
+        .await?;
+
+        ractor::pg::join(
+            Self::GROUP_NAME.to_string(),
+            vec![derived_door_events_actor.get_cell()],
+        );
+
+        Ok(())
+    }
+
+    async fn start_armed_door_actor(
+        myself: ActorCell,
+        door_settings: HashMap<IEEEAddress, DoorSettings>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let (armed_door_actor, _) = Actor::spawn_linked(
             Some(ArmedDoor::NAME.to_string()),
             ArmedDoor { door_settings },
             (),
+            myself,
         )
         .await?;
 
@@ -45,15 +84,21 @@ impl Actor for DoorEventsSupervisor {
 
     async fn pre_start(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        Self::start_armed_door_actor(self.door_settings.clone()).await
+        Self::start_armed_door_actor(myself.get_cell(), self.door_settings.clone()).await?;
+        Self::start_derived_door_events_actor(
+            myself.get_cell(),
+            self.shared_actor_state.clone(),
+            self.door_settings.clone(),
+        )
+        .await
     }
 
     async fn handle_supervisor_evt(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         message: ractor::SupervisionEvent,
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
@@ -63,8 +108,20 @@ impl Actor for DoorEventsSupervisor {
                 tracing::error!("actor: {who:?} failed, restarting");
                 if let Some(e) = who.get_name() {
                     match e.as_str() {
+                        DerivedDoorEvents::NAME => {
+                            Self::start_derived_door_events_actor(
+                                myself.get_cell(),
+                                self.shared_actor_state.clone(),
+                                self.door_settings.clone(),
+                            )
+                            .await?;
+                        }
                         ArmedDoor::NAME => {
-                            Self::start_armed_door_actor(self.door_settings.clone()).await?
+                            Self::start_armed_door_actor(
+                                myself.get_cell(),
+                                self.door_settings.clone(),
+                            )
+                            .await?
                         }
                         actor => tracing::warn!("unknown: {actor}, cannot restart"),
                     }

@@ -61,6 +61,7 @@ impl Actor for RootSupervisor {
             .spawn_linked(
                 Some(DoorEventsSupervisor::NAME.to_string()),
                 DoorEventsSupervisor {
+                    shared_actor_state: shared_actor_state.clone(),
                     door_settings: settings.doors.clone(),
                 },
                 (),

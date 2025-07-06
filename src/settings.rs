@@ -19,8 +19,8 @@ pub enum ArmedDoorStates {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DoorSettings {
-    #[allow(unused)]
     pub name: String,
+    pub id: String,
     #[serde(flatten)]
     pub armed: ArmedDoorStates,
 }

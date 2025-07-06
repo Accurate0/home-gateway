@@ -18,3 +18,12 @@ pub enum UnifiState {
     Connected,
     Disconnected,
 }
+
+#[derive(
+    Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Serialize, Deserialize, Enum, Eq, Copy,
+)]
+#[sqlx(type_name = "door_state", rename_all = "lowercase")]
+pub enum DoorState {
+    Open,
+    Closed,
+}

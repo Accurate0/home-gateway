@@ -1,5 +1,5 @@
 use crate::{
-    actors::events::door_events::{DoorEvents, DoorEventsSupervisor},
+    actors::events::door_events::{DoorEvents, DoorEventsSupervisor, DoorEventsType},
     types::SharedActorState,
     zigbee2mqtt::Aqara_MCCGQ12LM,
 };
@@ -29,6 +29,7 @@ pub struct DoorSensorHandler {
 }
 
 // TODO: write the name from config too
+// TODO: turn into derived events instead of raw (the door sensor pings)
 impl DoorSensorHandler {
     pub const NAME: &str = "door-sensor";
 
@@ -52,17 +53,21 @@ impl DoorSensorHandler {
         Ok(())
     }
 
-    fn send_to_all_listeners(ieee_addr: String, contact: bool) -> Result<(), anyhow::Error> {
+    fn send_to_all_listeners(
+        event_id: Uuid,
+        ieee_addr: String,
+        contact: bool,
+    ) -> Result<(), anyhow::Error> {
         let members = ractor::pg::get_members(&DoorEventsSupervisor::GROUP_NAME.to_owned());
         for member in members {
-            let event = if contact {
-                DoorEvents::Closed {
-                    ieee_addr: ieee_addr.clone(),
-                }
-            } else {
-                DoorEvents::Opened {
-                    ieee_addr: ieee_addr.clone(),
-                }
+            let event = DoorEvents {
+                ieee_addr: ieee_addr.clone(),
+                event_id,
+                event: if contact {
+                    DoorEventsType::Closed
+                } else {
+                    DoorEventsType::Opened
+                },
             };
 
             member.send_message(event)?;
@@ -85,6 +90,7 @@ impl DoorSensorHandler {
                     .await?;
 
                     Self::send_to_all_listeners(
+                        event.event_id,
                         aqara_mccgq12_lm.device.ieee_addr.clone(),
                         aqara_mccgq12_lm.contact,
                     )?

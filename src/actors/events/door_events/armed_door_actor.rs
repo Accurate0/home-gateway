@@ -1,4 +1,4 @@
-use super::DoorEvents;
+use super::{DoorEvents, DoorEventsType};
 use crate::settings::{ArmedDoorStates, DoorSettings, IEEEAddress};
 use chrono::{DateTime, Utc};
 use ractor::Actor;
@@ -45,20 +45,30 @@ impl Actor for ArmedDoor {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        match message {
-            DoorEvents::Opened { ieee_addr } => {
+        let DoorEvents {
+            event_id,
+            ieee_addr,
+            ref event,
+        } = message;
+
+        match event {
+            DoorEventsType::Opened => {
                 state.map.insert(ieee_addr.clone(), DoorState::Open);
                 if let Some(value) = self.door_settings.get(&ieee_addr) {
                     if let ArmedDoorStates::Armed { timeout } = value.armed {
                         let duration = timeout.to_std()?;
-                        myself.send_after(duration, || DoorEvents::Trigger { ieee_addr });
+                        myself.send_after(duration, move || DoorEvents {
+                            ieee_addr,
+                            event_id,
+                            event: DoorEventsType::Trigger,
+                        });
                     }
                 }
             }
-            DoorEvents::Closed { ieee_addr } => {
+            DoorEventsType::Closed => {
                 state.map.insert(ieee_addr, DoorState::Closed);
             }
-            DoorEvents::Trigger { ieee_addr } => {
+            DoorEventsType::Trigger => {
                 let door_state = state.map.get(&ieee_addr);
                 match door_state {
                     Some(door_state) => match door_state {
