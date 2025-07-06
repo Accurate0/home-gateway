@@ -3,7 +3,11 @@ use actors::{
     root::RootSupervisor,
 };
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
-use axum::routing::{get, post};
+use auth::RequireAuth;
+use axum::{
+    middleware::from_extractor,
+    routing::{get, post},
+};
 use graphql::{
     QueryRoot,
     dataloader::temperature::LatestTemperatureDataLoader,
@@ -26,6 +30,7 @@ use unifi::Unifi;
 use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
+mod auth;
 mod graphql;
 mod maccas;
 mod mqtt;
@@ -122,6 +127,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health))
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
+        .route_layer(from_extractor::<RequireAuth>())
         .route("/ingest/maccas", post(maccas))
         .layer(cors)
         .with_state(ApiState {
