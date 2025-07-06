@@ -15,7 +15,7 @@ appliances:
     name: Washing Machine
     id: WASHING_MACHINE
     current:
-      threshold: 1.0
+      threshold: 0.25
 
 temperatureSensors:
   "0x00158d008b8797bc":
