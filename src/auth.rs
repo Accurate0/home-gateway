@@ -4,16 +4,19 @@ use itertools::Itertools;
 use std::{net::IpAddr, str::FromStr};
 use tokio::net::lookup_host;
 
-// An extractor that performs authorization.
-pub struct RequireAuth;
+pub struct RequireIpAuth;
 
-impl<S> FromRequestParts<S> for RequireAuth
+impl<S> FromRequestParts<S> for RequireIpAuth
 where
     S: Send + Sync,
 {
     type Rejection = StatusCode;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        if cfg!(debug_assertions) {
+            return Ok(Self);
+        }
+
         let ip_header = parts
             .headers
             .get("CF-Connecting-IP")
@@ -28,10 +31,6 @@ where
 }
 
 async fn is_ip_valid(ip: IpAddr) -> bool {
-    if cfg!(debug_assertions) {
-        return true;
-    }
-
     match lookup_host("home-ip.anurag.sh:80").await {
         Ok(it) => it.map(|s| s.ip()).contains(&ip),
         Err(e) => {
