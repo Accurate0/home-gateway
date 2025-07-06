@@ -115,7 +115,7 @@ impl Actor for DerivedDoorEvents {
                                 state,
                                 now,
                                 door_settings,
-                                DoorState::Closed,
+                                DoorState::Open,
                             )
                             .await?;
                         }
@@ -139,7 +139,7 @@ impl Actor for DerivedDoorEvents {
                                 state,
                                 now,
                                 door_settings,
-                                DoorState::Open,
+                                DoorState::Closed,
                             )
                             .await?;
                         }

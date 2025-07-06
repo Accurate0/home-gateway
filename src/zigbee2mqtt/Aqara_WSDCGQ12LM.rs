@@ -7,7 +7,7 @@ pub struct AqaraWSDCGQ12LM {
     pub battery: i64,
     pub device: Device,
     #[serde(rename = "device_temperature")]
-    pub device_temperature: i64,
+    pub device_temperature: Option<i64>,
     pub humidity: f64,
     #[serde(rename = "last_seen")]
     pub last_seen: String,

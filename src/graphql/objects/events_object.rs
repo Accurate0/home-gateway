@@ -1,5 +1,5 @@
 use super::{appliances_object::ApplianceEvent, doors_object::DoorEvent, wifi_object::WifiEvent};
-use crate::types::db::{ApplianceStateType, UnifiState};
+use crate::types::db::{ApplianceStateType, DoorState, UnifiState};
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
@@ -18,15 +18,16 @@ impl EventsObject {
         let db = ctx.data::<Pool<Postgres>>()?;
 
         Ok(sqlx::query!(
-            "SELECT name, time, contact FROM door_sensor WHERE time >= $1",
+            r#"SELECT id, name, time, state AS "state: DoorState" FROM derived_door_events WHERE time >= $1"#,
             self.since
         )
         .fetch_all(db)
         .await?
         .into_iter()
         .map(|r| DoorEvent {
+            id: r.id,
             time: r.time,
-            contact: r.contact,
+            state: r.state,
             name: r.name,
         })
         .collect_vec())
