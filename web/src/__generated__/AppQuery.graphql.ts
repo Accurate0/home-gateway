@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d33f77d126b189c86e29fd067c1d4a78>>
+ * @generated SignedSource<<aa454f938d3c1a180d1cf42f5086e823>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -61,6 +61,7 @@ export type AppQuery$data = {
   readonly solar: {
     readonly current: {
       readonly todayProductionKwh: number;
+      readonly yesterdayProductionKwh: number;
     };
     readonly history: ReadonlyArray<{
       readonly at: any;
@@ -162,6 +163,13 @@ v7 = [
             "args": null,
             "kind": "ScalarField",
             "name": "todayProductionKwh",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "yesterdayProductionKwh",
             "storageKey": null
           }
         ],
@@ -337,16 +345,16 @@ return {
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "21ce2320b62e438db8ea20d6f3a59b69",
+    "cacheID": "edad913d2c262547b212aebd52a6165a",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $since: DateTime!\n) {\n  solar {\n    current {\n      todayProductionKwh\n    }\n    history {\n      at\n      uvLevel\n      wh\n      timestamp\n    }\n  }\n  events(input: {since: $since}) {\n    doors {\n      name\n      time\n      state\n      id\n    }\n    appliances {\n      name\n      time\n      id\n      state\n    }\n    wifi {\n      name\n      time\n      id\n      state\n    }\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n      pressure\n    }\n    laundry {\n      temperature\n      humidity\n      pressure\n    }\n    livingRoom {\n      temperature\n      humidity\n      pressure\n    }\n    bedroom {\n      temperature\n      humidity\n      pressure\n    }\n  }\n}\n"
+    "text": "query AppQuery(\n  $since: DateTime!\n) {\n  solar {\n    current {\n      todayProductionKwh\n      yesterdayProductionKwh\n    }\n    history {\n      at\n      uvLevel\n      wh\n      timestamp\n    }\n  }\n  events(input: {since: $since}) {\n    doors {\n      name\n      time\n      state\n      id\n    }\n    appliances {\n      name\n      time\n      id\n      state\n    }\n    wifi {\n      name\n      time\n      id\n      state\n    }\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n      pressure\n    }\n    laundry {\n      temperature\n      humidity\n      pressure\n    }\n    livingRoom {\n      temperature\n      humidity\n      pressure\n    }\n    bedroom {\n      temperature\n      humidity\n      pressure\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4a5f1d3f2052ea06e6351224eb0a6c9e";
+(node as any).hash = "a8f0f11214df63dfadbe15e5046fee57";
 
 export default node;
