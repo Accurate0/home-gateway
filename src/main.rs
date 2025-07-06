@@ -3,7 +3,7 @@ use actors::{
     root::RootSupervisor,
 };
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
-use auth::RequireAuth;
+use auth::RequireIpAuth;
 use axum::{
     middleware::from_extractor,
     routing::{get, post},
@@ -127,7 +127,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health))
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
-        .route_layer(from_extractor::<RequireAuth>())
+        .route_layer(from_extractor::<RequireIpAuth>())
         .route("/ingest/maccas", post(maccas))
         .layer(cors)
         .with_state(ApiState {

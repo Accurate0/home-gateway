@@ -19,8 +19,10 @@ where
 
         let ip_header = parts
             .headers
-            .get("CF-Connecting-IP")
+            .get("X-Forwarded-For")
             .and_then(|value| value.to_str().ok())
+            .and_then(|s| s.split(",").next())
+            .map(|s| s.trim())
             .and_then(|v| IpAddr::from_str(v).ok());
 
         match ip_header {
