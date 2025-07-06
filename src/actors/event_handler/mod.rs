@@ -92,6 +92,18 @@ impl EventHandler {
                     accepted: None,
                 }))?;
             }
+
+            GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_temperature_sensor) => {
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
+                        event_id,
+                        entity: temperature_sensor::Entity::LumiWSDCGQ11LM(lumi_temperature_sensor),
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
             _ => {
                 tracing::warn!(
                     "actor name ({actor_type}) does not match message for temperature sensor"

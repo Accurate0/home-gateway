@@ -4,7 +4,8 @@ use crate::{
         temperature_sensor::TemperatureSensorHandler,
     },
     zigbee2mqtt::{
-        Aqara_MCCGQ12LM, Aqara_WSDCGQ12LM, IKEA_LED2201G8, Phillips_9290012573A, TS011F_plug_1,
+        Aqara_MCCGQ12LM, Aqara_WSDCGQ12LM, IKEA_LED2201G8, Lumi_WSDCGQ11LM, Phillips_9290012573A,
+        TS011F_plug_1,
     },
 };
 
@@ -13,6 +14,7 @@ use crate::{
 pub enum GenericZigbee2MqttMessage {
     TS011FSmartSwitch(TS011F_plug_1::Ts011fPlug1),
     AqaraTemperatureSensor(Aqara_WSDCGQ12LM::AqaraWSDCGQ12LM),
+    LumiTemperatureSensor(Lumi_WSDCGQ11LM::LumiWSDCGQ11LM),
     AquaraDoorSensor(Aqara_MCCGQ12LM::AqaraMCCGQ12LM),
     PhillipsLight(Phillips_9290012573A::Phillips9290012573A),
     IKEALight(IKEA_LED2201G8::IKEALED2201G8),
@@ -35,6 +37,9 @@ impl std::fmt::Display for GenericZigbee2MqttMessage {
             }
             GenericZigbee2MqttMessage::IKEALight(msg) => {
                 write!(f, "IKEA Light: {}", msg.device.friendly_name)
+            }
+            GenericZigbee2MqttMessage::LumiTemperatureSensor(msg) => {
+                write!(f, "Lumi Temperature Sensor: {}", msg.device.friendly_name)
             }
         }
     }
@@ -59,6 +64,9 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::IKEALight(ikealed2201_g8) => {
                 &ikealed2201_g8.device.ieee_addr
             }
+            GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_wsdcgq11_lm) => {
+                &lumi_wsdcgq11_lm.device.ieee_addr
+            }
         }
     }
 
@@ -80,8 +88,12 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::IKEALight(ikealed2201_g8) => {
                 &ikealed2201_g8.device.friendly_name
             }
+            GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_wsdcgq11_lm) => {
+                &lumi_wsdcgq11_lm.device.friendly_name
+            }
         }
     }
+
     pub fn to_actor_name(&self) -> TypedActorName {
         match self {
             GenericZigbee2MqttMessage::TS011FSmartSwitch(_) => TypedActorName::SmartSwitch,
@@ -91,6 +103,9 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::AquaraDoorSensor(_) => TypedActorName::DoorSensor,
             GenericZigbee2MqttMessage::PhillipsLight(_) => TypedActorName::Light,
             GenericZigbee2MqttMessage::IKEALight(_) => TypedActorName::Light,
+            GenericZigbee2MqttMessage::LumiTemperatureSensor(_) => {
+                TypedActorName::TemperatureSensor
+            }
         }
     }
 }

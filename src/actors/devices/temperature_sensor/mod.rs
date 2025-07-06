@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     settings::{IEEEAddress, TemperatureSensorSettings},
     types::SharedActorState,
-    zigbee2mqtt::Aqara_WSDCGQ12LM,
+    zigbee2mqtt::{Aqara_WSDCGQ12LM, Lumi_WSDCGQ11LM},
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -15,6 +15,7 @@ pub mod spawn;
 
 pub enum Entity {
     AqaraWSDCGQ12LM(Aqara_WSDCGQ12LM::AqaraWSDCGQ12LM),
+    LumiWSDCGQ11LM(Lumi_WSDCGQ11LM::LumiWSDCGQ11LM),
 }
 
 pub struct NewEvent {
@@ -44,16 +45,34 @@ impl TemperatureSensorHandler {
                         .map(|s| &s.id);
 
                     sqlx::query!(
-                            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-                            event.event_id,
-                            id,
-                            aqara_wsdcgq12_lm.device.friendly_name,
-                            aqara_wsdcgq12_lm.device.ieee_addr,
-                            aqara_wsdcgq12_lm.temperature,
-                            aqara_wsdcgq12_lm.battery,
-                            aqara_wsdcgq12_lm.humidity,
-                            aqara_wsdcgq12_lm.pressure,
-                        ).execute(&self.shared_actor_state.db).await?;
+                        "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                        event.event_id,
+                        id,
+                        aqara_wsdcgq12_lm.device.friendly_name,
+                        aqara_wsdcgq12_lm.device.ieee_addr,
+                        aqara_wsdcgq12_lm.temperature,
+                        aqara_wsdcgq12_lm.battery,
+                        aqara_wsdcgq12_lm.humidity,
+                        aqara_wsdcgq12_lm.pressure,
+                    ).execute(&self.shared_actor_state.db).await?;
+                }
+                Entity::LumiWSDCGQ11LM(lumi_wsdcgq11_lm) => {
+                    let id = self
+                        .temperature_sensor_settings
+                        .get(&lumi_wsdcgq11_lm.device.ieee_addr)
+                        .map(|s| &s.id);
+
+                    sqlx::query!(
+                        "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                        event.event_id,
+                        id,
+                        lumi_wsdcgq11_lm.device.friendly_name,
+                        lumi_wsdcgq11_lm.device.ieee_addr,
+                        lumi_wsdcgq11_lm.temperature,
+                        lumi_wsdcgq11_lm.battery,
+                        lumi_wsdcgq11_lm.humidity,
+                        lumi_wsdcgq11_lm.pressure,
+                    ).execute(&self.shared_actor_state.db).await?;
                 }
             },
         }
