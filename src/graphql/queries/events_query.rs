@@ -1,4 +1,4 @@
-use crate::graphql::objects::events_object::EventsObject;
+use crate::graphql::objects::{environment_object::EnvironmentObject, events_object::EventsObject};
 use async_graphql::{InputObject, Object};
 use chrono::{DateTime, Utc};
 
@@ -18,5 +18,13 @@ impl EventsQuery {
         input: EventsInput,
     ) -> async_graphql::Result<EventsObject> {
         Ok(EventsObject { since: input.since })
+    }
+
+    async fn environment(
+        &self,
+
+        _ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<EnvironmentObject> {
+        Ok(EnvironmentObject {})
     }
 }

@@ -16,3 +16,13 @@ appliances:
     id: WASHING_MACHINE
     current:
       threshold: 1.0
+
+temperatureSensors:
+  "0x00158d008b8797bc":
+    id: LAUNDRY
+  "0x00158d008b8798a7":
+    id: LIVING_ROOM
+  "0x00158d008b879b53":
+    id: BEDROOM
+  "0x54ef441000ee2ca3":
+    id: OUTDOOR

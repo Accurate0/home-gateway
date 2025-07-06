@@ -26,7 +26,7 @@ pub struct Device {
     pub application_version: i64,
     pub date_code: String,
     pub friendly_name: String,
-    pub hardware_version: i64,
+    pub hardware_version: Option<i64>,
     pub ieee_addr: String,
     #[serde(rename = "manufacturerID")]
     pub manufacturer_id: i64,

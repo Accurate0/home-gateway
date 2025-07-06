@@ -39,6 +39,11 @@ pub struct ApplianceCurrentThreshold {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct TemperatureSensorSettings {
+    pub id: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub database_url: String,
     pub mqtt_url: String,
@@ -46,6 +51,8 @@ pub struct Settings {
     pub unifi_site_id: String,
     pub unifi_api_base: String,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
+    #[serde(rename = "temperatureSensors")]
+    pub temperature_sensors: HashMap<IEEEAddress, TemperatureSensorSettings>,
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
 }
 

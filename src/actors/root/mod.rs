@@ -54,6 +54,7 @@ impl Actor for RootSupervisor {
         temperature_sensor::spawn::spawn_temperature_sensor_handler(
             &myself,
             shared_actor_state.clone(),
+            settings.clone(),
         )
         .await?;
 

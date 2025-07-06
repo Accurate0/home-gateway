@@ -2,10 +2,11 @@ use actors::{
     event_handler::{self},
     root::RootSupervisor,
 };
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use axum::routing::{get, post};
 use graphql::{
     QueryRoot,
+    dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler},
 };
 use http::Method;
@@ -100,6 +101,12 @@ async fn main() -> anyhow::Result<()> {
         init_actors(settings.clone(), pool.clone(), known_devices_map).await?;
 
     let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+        .data(DataLoader::new(
+            LatestTemperatureDataLoader {
+                database: pool.clone(),
+            },
+            tokio::spawn,
+        ))
         .data(pool.clone())
         .finish();
 

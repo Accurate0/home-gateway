@@ -1,4 +1,10 @@
-use crate::{types::SharedActorState, zigbee2mqtt::Aqara_WSDCGQ12LM};
+use std::collections::HashMap;
+
+use crate::{
+    settings::{IEEEAddress, TemperatureSensorSettings},
+    types::SharedActorState,
+    zigbee2mqtt::Aqara_WSDCGQ12LM,
+};
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -22,6 +28,7 @@ pub enum Message {
 
 pub struct TemperatureSensorHandler {
     shared_actor_state: SharedActorState,
+    temperature_sensor_settings: HashMap<IEEEAddress, TemperatureSensorSettings>,
 }
 
 impl TemperatureSensorHandler {
@@ -31,9 +38,15 @@ impl TemperatureSensorHandler {
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
+                    let id = self
+                        .temperature_sensor_settings
+                        .get(&aqara_wsdcgq12_lm.device.ieee_addr)
+                        .map(|s| &s.id);
+
                     sqlx::query!(
-                            "INSERT INTO temperature_sensor (event_id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                             event.event_id,
+                            id,
                             aqara_wsdcgq12_lm.device.friendly_name,
                             aqara_wsdcgq12_lm.device.ieee_addr,
                             aqara_wsdcgq12_lm.temperature,
@@ -81,12 +94,14 @@ impl Worker for TemperatureSensorHandler {
 
 pub struct TemperatureSensorHandlerBuilder {
     pub shared_actor_state: SharedActorState,
+    pub temperature_sensor_settings: HashMap<IEEEAddress, TemperatureSensorSettings>,
 }
 impl WorkerBuilder<TemperatureSensorHandler, ()> for TemperatureSensorHandlerBuilder {
     fn build(&mut self, _wid: usize) -> (TemperatureSensorHandler, ()) {
         (
             TemperatureSensorHandler {
                 shared_actor_state: self.shared_actor_state.clone(),
+                temperature_sensor_settings: self.temperature_sensor_settings.clone(),
             },
             (),
         )
