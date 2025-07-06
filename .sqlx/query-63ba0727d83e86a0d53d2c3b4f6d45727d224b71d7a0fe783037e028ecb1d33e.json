@@ -1,25 +1,30 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, time, state AS \"state: DoorState\" FROM derived_door_events WHERE time >= $1",
+  "query": "SELECT event_id, id, name, time, state AS \"state: DoorState\" FROM derived_door_events WHERE time >= $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
+        "name": "event_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
         "name": "id",
         "type_info": "Text"
       },
       {
-        "ordinal": 1,
+        "ordinal": 2,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "time",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "state: DoorState",
         "type_info": {
           "Custom": {
@@ -43,8 +48,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "db87f6e8e40734fb93da2bb9baf8c9c6dadaf26a0458ba4f428e683213beb71d"
+  "hash": "63ba0727d83e86a0d53d2c3b4f6d45727d224b71d7a0fe783037e028ecb1d33e"
 }

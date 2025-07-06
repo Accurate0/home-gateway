@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, id, time, state as \"state: ApplianceStateType\" FROM appliances WHERE time >= $1",
+  "query": "SELECT name, relay_id as id, time, state as \"state: UnifiState\" FROM unifi_clients WHERE time >= $1",
   "describe": {
     "columns": [
       {
@@ -11,7 +11,7 @@
       {
         "ordinal": 1,
         "name": "id",
-        "type_info": "Text"
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
@@ -20,14 +20,14 @@
       },
       {
         "ordinal": 3,
-        "name": "state: ApplianceStateType",
+        "name": "state: UnifiState",
         "type_info": {
           "Custom": {
-            "name": "appliance_state",
+            "name": "unifi_state",
             "kind": {
               "Enum": [
-                "on",
-                "off"
+                "connected",
+                "disconnected"
               ]
             }
           }
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "10919a6630fa614d89a7273ec9d233ab05260a4fa70bd57d4fea6b7e423c82ce"
+  "hash": "68e111f03bf3685b9a9b4d48fe30b7bfd68a7ffa2319df49dc826fd03b86ef30"
 }
