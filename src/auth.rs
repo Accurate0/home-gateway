@@ -1,7 +1,7 @@
 use axum::extract::FromRequestParts;
 use http::{StatusCode, request::Parts};
 use itertools::Itertools;
-use std::net::{IpAddr, SocketAddr};
+use std::{net::IpAddr, str::FromStr};
 use tokio::net::lookup_host;
 
 pub struct RequireIpAuth;
@@ -17,13 +17,16 @@ where
             return Ok(Self);
         }
 
-        let remote_addr = parts
-            .extensions
-            .get::<axum::extract::ConnectInfo<SocketAddr>>()
-            .map(|ci| ci.0);
+        let ip_header = parts
+            .headers
+            .get("X-Forwarded-For")
+            .and_then(|value| value.to_str().ok())
+            .and_then(|s| s.split(",").next())
+            .map(|s| s.trim())
+            .and_then(|v| IpAddr::from_str(v).ok());
 
-        match remote_addr {
-            Some(ip_header) if is_ip_valid(ip_header.ip()).await => Ok(Self),
+        match ip_header {
+            Some(ip_header) if is_ip_valid(ip_header).await => Ok(Self),
             _ => Err(StatusCode::UNAUTHORIZED),
         }
     }

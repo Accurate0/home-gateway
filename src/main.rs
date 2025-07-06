@@ -144,12 +144,9 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("starting api server {addr}");
 
     tokio::spawn(
-        axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .with_graceful_shutdown(axum_shutdown_signal())
-        .into_future(),
+        axum::serve(listener, app)
+            .with_graceful_shutdown(axum_shutdown_signal())
+            .into_future(),
     );
 
     let mut task_set = JoinSet::new();
