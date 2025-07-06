@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO derived_door_events (event_id, name, id, ieee_addr, state) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "door_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "closed"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c8f0d6f4413cee0aaade36f19520348d05644b78480cc47ba02918da30393069"
+}

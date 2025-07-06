@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT derived_door_events.id, derived_door_events.name, derived_door_events.ieee_addr, state as \"state: DoorState\"\n        FROM\n            (SELECT id, max(time) FROM derived_door_events GROUP BY id) AS latest_state\n            INNER JOIN derived_door_events ON derived_door_events.id = latest_state.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "ieee_addr",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "state: DoorState",
+        "type_info": {
+          "Custom": {
+            "name": "door_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "closed"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c2a424c06d11b680ff6bebae31dfcb99a4b5968221b7aca6128cc5eef625a2b1"
+}
