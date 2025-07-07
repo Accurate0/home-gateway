@@ -5,7 +5,7 @@ use actors::{
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireIpAuth;
 use axum::{
-    middleware::{from_extractor, from_extractor_with_state},
+    middleware::from_extractor_with_state,
     routing::{get, post},
 };
 use feature_flag::FeatureFlagClient;
