@@ -4,40 +4,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-
-import {
-  ResponsiveContainer,
-  Scatter,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Cell,
-  ScatterChart,
-} from "recharts";
 import {
   DoorOpen,
   Thermometer,
   Activity,
-  Power,
   Zap,
   Wifi,
-  Monitor,
-  Wind,
   Filter,
   X,
-  Sun,
   CheckCircle,
+  RefreshCcw,
 } from "lucide-react";
 import { usePreloadedQuery } from "react-relay";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { AppQuery } from "../__generated__/AppQuery.graphql";
 import { APP_QUERY } from "../AppQuery";
 import type {
@@ -48,50 +33,18 @@ import type {
   DevicesByType,
   VisibleEventTypes,
   DashboardContentInnerProps,
-  EventTooltipProps,
 } from "../types";
-import { Badge } from "./ui/badge";
 import { DeviceFilterSection } from "./DeviceFilterSection";
-
-// Enhanced chart configuration with state-based colors
-const chartConfig = {
-  doors: {
-    label: "Doors",
-    open: "#22c55e", // green-500
-    closed: "#ef4444", // red-500
-  },
-  appliances: {
-    label: "Appliances",
-    on: "#3b82f6", // blue-500
-    off: "#6b7280", // gray-500
-  },
-  wifi: {
-    label: "WiFi",
-    connected: "#8b5cf6", // violet-500 (purple)
-    disconnected: "#06b6d4", // cyan-500 (teal - distinct from red and blue)
-  },
-};
-
-// Helper function to get room icon
-const getRoomIcon = (room: string) => {
-  const lowerRoom = room.toLowerCase();
-
-  if (lowerRoom.includes("outdoor")) {
-    return <Wind className="h-4 w-4 text-blue-500" />;
-  }
-  if (lowerRoom.includes("bedroom")) {
-    return <Monitor className="h-4 w-4 text-purple-500" />;
-  }
-  if (lowerRoom.includes("living")) {
-    return <Activity className="h-4 w-4 text-green-500" />;
-  }
-  if (lowerRoom.includes("laundry")) {
-    return <Power className="h-4 w-4 text-blue-600" />;
-  }
-
-  return <Thermometer className="h-4 w-4 text-muted-foreground" />;
-};
-
+import ReactECharts from "echarts-for-react";
+  // Restore helpers needed for event processing
+  const toMs = (iso: string | number) => new Date(iso).getTime();
+  const fmtTime = (iso: string | number) =>
+    new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    
 export const DashboardContentInner = ({ 
   queryRef, 
   selectedHours, 
@@ -139,6 +92,13 @@ export const DashboardContentInner = ({
     }
   }, [allDevices]); // Remove selectedDevices.length from dependencies
 
+  // Reset device filter when timescale changes
+  useEffect(() => {
+    if (allDevices.length > 0) {
+      setSelectedDevices(allDevices.map(d => d.name));
+    }
+  }, [selectedHours, allDevices]);
+
   // Group devices by type
   const devicesByType = useMemo(() => {
     const grouped: DevicesByType = {
@@ -148,17 +108,6 @@ export const DashboardContentInner = ({
     };
     return grouped;
   }, [allDevices]);
-
-  // ---------- helpers ----------
-  const toMs = (iso: string | number) => new Date(iso).getTime();
-  const fmtTime = (iso: string | number) =>
-    new Date(iso).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-
-
 
   // Process all events for scatterplot
   const allEvents = useMemo(() => {
@@ -176,7 +125,7 @@ export const DashboardContentInner = ({
             name: e.name,
             state: e.state,
             id: e.id,
-            color: e.state === "OPEN" ? chartConfig.doors.open : chartConfig.doors.closed,
+            color: e.state === "OPEN" ? '#cc6666' : '#22c55e',
             type: "door",
             shape: "circle",
           });
@@ -196,7 +145,7 @@ export const DashboardContentInner = ({
             name: e.name,
             state: e.state,
             id: e.id,
-            color: e.state === "ON" ? chartConfig.appliances.on : chartConfig.appliances.off,
+            color: e.state === "ON" ? '#3b82f6' : '#6b7280',
             type: "appliance",
             shape: "triangle",
           });
@@ -216,7 +165,7 @@ export const DashboardContentInner = ({
             name: e.name,
             state: e.state,
             id: e.id,
-            color: e.state === "CONNECTED" ? chartConfig.wifi.connected : chartConfig.wifi.disconnected,
+            color: e.state === "CONNECTED" ? '#8b5cf6' : '#06b6d4',
             type: "wifi",
             shape: "square",
           });
@@ -226,18 +175,6 @@ export const DashboardContentInner = ({
     
     return events.sort((a, b) => a.x - b.x);
   }, [data.events, visibleEventTypes, selectedDevices]);
-
-  // Calculate explicit domain for X-axis
-  const xDomain = useMemo(() => {
-    if (allEvents.length === 0) {
-      const now = Date.now();
-      return [now - selectedHours * 60 * 60 * 1000, now];
-    }
-    const minTime = Math.min(...allEvents.map(e => e.x));
-    const maxTime = Math.max(...allEvents.map(e => e.x));
-    const padding = Math.max((maxTime - minTime) * 0.1, 60 * 60 * 1000); // 10% or 1 hour
-    return [minTime - padding, maxTime + padding];
-  }, [allEvents, selectedHours]);
 
   // Environment data
   const env = useMemo(() => {
@@ -249,58 +186,20 @@ export const DashboardContentInner = ({
     }));
   }, [data.environment]);
 
-  // Custom tooltip for events
-  const EventTooltip = ({ active, payload }: EventTooltipProps) => {
-    if (!active || !payload?.length) return null;
+  // Ref for ECharts instance
+  const echartsRef = useRef<any>(null);
 
-    // Filter out duplicate entries (x and y coordinates for same event)
-    const uniqueEvents = payload
-      .filter((entry) => entry.payload && entry.payload.id)
-      .reduce((acc: ChartEvent[], entry) => {
-        const event = entry.payload;
-        const existing = acc.find(e => e.id === event.id);
-        if (!existing) {
-          acc.push(event);
-        }
-        return acc;
-      }, []);
-
-    // Use the first event's time for the tooltip header
-    const timeLabel = uniqueEvents.length > 0 
-      ? uniqueEvents[0].time 
-      : new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-
-    return (
-      <div className="rounded-md border bg-background p-3 shadow-lg">
-        <p className="text-sm text-muted-foreground mb-2">Time: {timeLabel}</p>
-        {uniqueEvents.map((event, idx) => (
-          <div key={`event-${event.id}-${idx}`} className="flex items-center gap-2 mb-1">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: event.color }}
-            />
-            <div>
-              <p className="font-medium">{event.name}</p>
-              <p
-                className={`text-sm font-medium ${
-                  event.state === "OPEN" ||
-                  event.state === "ON" ||
-                  event.state === "CONNECTED"
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                State: {event.state}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  // Handler to reset minimap/dataZoom
+  const handleResetMinimap = () => {
+    const echartsInstance = echartsRef.current?.getEchartsInstance?.();
+    if (echartsInstance) {
+      echartsInstance.dispatchAction({
+        type: 'dataZoom',
+        // Reset both dataZooms (slider and inside)
+        start: 0,
+        end: 100,
+      });
+    }
   };
 
   return (
@@ -337,12 +236,27 @@ export const DashboardContentInner = ({
 
         {/* Event Timeline Scatterplot - TOP */}
         <Card className="w-full">
-          <CardHeader className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Event Timeline
-            </CardTitle>
+          <CardHeader className="flex justify-between items-center pb-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                <span className="text-lg font-semibold">Event Timeline</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                All events from the last {selectedHours} hours ({allEvents.length} total events)
+              </div>
+            </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-2 flex items-center gap-1"
+                title="Reset zoom"
+                onClick={handleResetMinimap}
+              >
+                <RefreshCcw className="w-5 h-5" />
+                <span>Reset zoom</span>
+              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-[200px] justify-start">
@@ -410,232 +324,205 @@ export const DashboardContentInner = ({
               </Popover>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="mb-2 text-sm text-muted-foreground">
-              All events from the last {selectedHours} hours ({allEvents.length} total events)
-            </div>
-            
-            <ChartContainer
-              config={chartConfig}
-              className="w-full h-[500px]"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart
-                  width={100}
-                  height={100}
-                  margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="x"
-                    type="number"
-                    scale="time"
-                    domain={xDomain}
-                    tickFormatter={(t) =>
-                      new Date(t).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    }
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis yAxisId="left" domain={[0, 3.5]} hide={true} />
-                  <ChartTooltip content={<EventTooltip />} />
+          <CardContent className="pt-0">
+            {/* ECharts Timeline Scatterplot */}
+            <div className="w-full h-[500px] flex items-center justify-center px-0 md:px-2">
+              <ReactECharts
+                ref={echartsRef}
+                option={{
+                  tooltip: {
+                    trigger: 'item',
+                    backgroundColor: '#fff',
+                    borderColor: '#e5e7eb',
+                    textStyle: { color: '#111' },
+                    formatter: (params: any) => {
+                      const [time, y, name, state] = params.value;
+                      const color = params.color || (params.data && params.data.itemStyle && params.data.itemStyle.color) || '#888';
+                      let stateColor = color;
+                      if (state === 'OPEN') stateColor = '#cc6666';
+                      if (state === 'CLOSED') stateColor = '#22c55e';
+                      if (state === 'ON' || state === 'CONNECTED') stateColor = '#22c55e';
+                      if (state === 'OFF') stateColor = '#6b7280';
+                      if (state === 'DISCONNECTED') stateColor = '#06b6d4';
+                      if (state === 'CONNECTED') stateColor = '#8b5cf6';
 
-                  {/* All events */}
-                  <Scatter
-                    yAxisId="left"
-                    name="All Events"
-                    data={allEvents}
-                    shape="circle"
-                    dataKey="y"
-                  >
-                    {allEvents.map((event, i) => (
-                      <Cell key={i} fill={event.color} />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-            
+                      // Icon SVGs
+                      let iconSvg = '';
+                      if (y === 3) {
+                        // Provided SVG for Door Open icon (with color and -2px offset)
+                        iconSvg = `<span style='position:relative;top:-2px;display:inline-block;'><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20H2"/><path d="M11 4.562v16.157a1 1 0 0 0 1.242.97L19 20V5.562a2 2 0 0 0-1.515-1.94l-4-1A2 2 0 0 0 11 4.561z"/><path d="M11 4H8a2 2 0 0 0-2 2v14"/><path d="M14 12h.01"/><path d="M22 20h-3"/></svg></span>`;
+                      } else if (y === 2) {
+                        // Zap icon
+                        iconSvg = `<span style='position:relative;top:-2px;display:inline-block;'><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>`;
+                      } else if (y === 1) {
+                        // Wifi icon
+                        iconSvg = `<span style='position:relative;top:-2px;display:inline-block;'><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M12 20h.01"/></svg></span>`;
+                      }
+
+                      return `
+                        <div style="border-radius:8px;padding:8px;min-width:120px;">
+                          <div style="font-size:13px;color:#666;margin-bottom:4px;">Time: <span style="color:#222">${new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
+                          <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+                            ${iconSvg}
+                            <span style="font-weight:500; color:#222;">${name}</span>
+                          </div>
+                          <div style="font-size:13px;margin-top:2px;font-weight:500;color:${stateColor}">State: ${state}</div>
+                        </div>
+                      `;
+                    },
+                    extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 8px; padding: 8px;'
+                  },
+                  legend: { show: false },
+                  xAxis: {
+                    type: 'time',
+                    // name: 'Time', // Remove label
+                    axisLabel: {
+                      formatter: (value: number) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      color: '#222',
+                      interval: 'auto',
+                    },
+                    splitLine: {
+                      show: (params: any) => {
+                        // params: { dataIndex, axis }
+                        const ticks = params?.axis?.scale?.getTicks?.() || [];
+                        return params.dataIndex !== 0 && params.dataIndex !== ticks.length - 1;
+                      },
+                      lineStyle: { color: '#e5e7eb', type: 'dotted' }
+                    },
+                    axisLine: { show: true, lineStyle: { color: '#e5e7eb' } },
+                    axisTick: { show: false },
+                    min: allEvents.length > 0 ? Math.min(...allEvents.map(e => e.x)) : undefined,
+                    max: allEvents.length > 0 ? Math.max(...allEvents.map(e => e.x)) : undefined,
+                  },
+                  yAxis: {
+                    type: 'value',
+                    min: 0.5,
+                    max: 3.5,
+                    interval: 1,
+                    axisLabel: {
+                      formatter: (value: number) => {
+                        if (value === 3) return 'Doors';
+                        if (value === 2) return 'Appliances';
+                        if (value === 1) return 'WiFi';
+                        return '';
+                      },
+                      color: '#222',
+                    },
+                    splitLine: { show: false },
+                    axisLine: { show: false },
+                    axisTick: { show: false },
+                  },
+                  dataZoom: [
+                    {
+                      type: 'inside',
+                      xAxisIndex: 0,
+                    },
+                  ],
+                  series: [
+                    {
+                      name: 'Doors',
+                      type: 'scatter',
+                      data: allEvents.filter(e => e.type === 'door').map(e => ({
+                        value: [e.x, e.y, e.name, e.state],
+                        itemStyle: { color: e.color }
+                      })),
+                      symbolSize: 10,
+                    },
+                    {
+                      name: 'Appliances',
+                      type: 'scatter',
+                      data: allEvents.filter(e => e.type === 'appliance').map(e => ({
+                        value: [e.x, e.y, e.name, e.state],
+                        itemStyle: { color: e.color }
+                      })),
+                      symbolSize: 10,
+                    },
+                    {
+                      name: 'WiFi',
+                      type: 'scatter',
+                      data: allEvents.filter(e => e.type === 'wifi').map(e => ({
+                        value: [e.x, e.y, e.name, e.state],
+                        itemStyle: { color: e.color }
+                      })),
+                      symbolSize: 10,
+                    },
+                  ],
+                  grid: { left: 16, right: 16, top: 30, bottom: 32 },
+                }}
+                style={{ width: '100%', height: 480 }}
+                opts={{ renderer: 'svg' }}
+              />
+            </div>
             {/* Legend - Bottom Centered */}
-            <div className="flex justify-center mt-2">
+            <div className="flex justify-center mt-0">
               <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
                 {/* Doors */}
                 <Button
                   variant={visibleEventTypes.doorsOpen ? "default" : "outline"}
                   size="sm"
                   onClick={() => setVisibleEventTypes(prev => ({ ...prev, doorsOpen: !prev.doorsOpen }))}
-                  className="text-xs"
-                  style={{ backgroundColor: visibleEventTypes.doorsOpen ? '#22c55e' : undefined, borderColor: '#22c55e' }}
+                  className="text-xs flex items-center gap-1"
+                  style={{ backgroundColor: visibleEventTypes.doorsOpen ? '#cc6666' : undefined, borderColor: '#cc6666' }}
                 >
+                  <DoorOpen size={20} color={visibleEventTypes.doorsOpen ? '#fff' : '#cc6666'} />
                   Doors Open ({data.events.doors.filter(d => d.state === "OPEN").length})
                 </Button>
-                
                 <Button
                   variant={visibleEventTypes.doorsClosed ? "default" : "outline"}
                   size="sm"
                   onClick={() => setVisibleEventTypes(prev => ({ ...prev, doorsClosed: !prev.doorsClosed }))}
-                  className="text-xs"
-                  style={{ backgroundColor: visibleEventTypes.doorsClosed ? '#ef4444' : undefined, borderColor: '#ef4444' }}
+                  className="text-xs flex items-center gap-1"
+                  style={{ backgroundColor: visibleEventTypes.doorsClosed ? '#22c55e' : undefined, borderColor: '#22c55e' }}
                 >
+                  <DoorOpen size={20} color={visibleEventTypes.doorsClosed ? '#fff' : '#22c55e'} />
                   Doors Closed ({data.events.doors.filter(d => d.state === "CLOSED").length})
                 </Button>
-                
                 {/* Appliances */}
                 <Button
                   variant={visibleEventTypes.appliancesOn ? "default" : "outline"}
                   size="sm"
                   onClick={() => setVisibleEventTypes(prev => ({ ...prev, appliancesOn: !prev.appliancesOn }))}
-                  className="text-xs"
+                  className="text-xs flex items-center gap-1"
                   style={{ backgroundColor: visibleEventTypes.appliancesOn ? '#3b82f6' : undefined, borderColor: '#3b82f6' }}
                 >
+                  <Zap size={20} color={visibleEventTypes.appliancesOn ? '#fff' : '#3b82f6'} />
                   Appliances On ({data.events.appliances.filter(a => a.state === "ON").length})
                 </Button>
-                
                 <Button
                   variant={visibleEventTypes.appliancesOff ? "default" : "outline"}
                   size="sm"
                   onClick={() => setVisibleEventTypes(prev => ({ ...prev, appliancesOff: !prev.appliancesOff }))}
-                  className="text-xs"
+                  className="text-xs flex items-center gap-1"
                   style={{ backgroundColor: visibleEventTypes.appliancesOff ? '#6b7280' : undefined, borderColor: '#6b7280' }}
                 >
+                  <Zap size={20} color={visibleEventTypes.appliancesOff ? '#fff' : '#6b7280'} />
                   Appliances Off ({data.events.appliances.filter(a => a.state === "OFF").length})
                 </Button>
-                
                 {/* WiFi */}
                 <Button
                   variant={visibleEventTypes.wifiConnected ? "default" : "outline"}
                   size="sm"
                   onClick={() => setVisibleEventTypes(prev => ({ ...prev, wifiConnected: !prev.wifiConnected }))}
-                  className="text-xs"
+                  className="text-xs flex items-center gap-1"
                   style={{ backgroundColor: visibleEventTypes.wifiConnected ? '#8b5cf6' : undefined, borderColor: '#8b5cf6' }}
                 >
+                  <Wifi size={20} color={visibleEventTypes.wifiConnected ? '#fff' : '#8b5cf6'} />
                   WiFi Connected ({data.events.wifi.filter(w => w.state === "CONNECTED").length})
                 </Button>
-                
                 <Button
                   variant={visibleEventTypes.wifiDisconnected ? "default" : "outline"}
                   size="sm"
                   onClick={() => setVisibleEventTypes(prev => ({ ...prev, wifiDisconnected: !prev.wifiDisconnected }))}
-                  className="text-xs"
+                  className="text-xs flex items-center gap-1"
                   style={{ backgroundColor: visibleEventTypes.wifiDisconnected ? '#06b6d4' : undefined, borderColor: '#06b6d4' }}
                 >
+                  <Wifi size={20} color={visibleEventTypes.wifiDisconnected ? '#fff' : '#06b6d4'} />
                   WiFi Disconnected ({data.events.wifi.filter(w => w.state === "DISCONNECTED").length})
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Event Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Doors Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DoorOpen className="h-5 w-5 text-green-500" />
-                Doors
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Open</span>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
-                    {data.events.doors.filter(d => d.state === "OPEN").length}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Closed</span>
-                  <Badge variant="secondary" className="bg-red-100 text-red-800">
-                    {data.events.doors.filter(d => d.state === "CLOSED").length}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Appliances Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Zap className="h-5 w-5 text-blue-500" />
-                Appliances
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">On</span>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    {data.events.appliances.filter(a => a.state === "ON").length}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Off</span>
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-800">
-                    {data.events.appliances.filter(a => a.state === "OFF").length}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* WiFi Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Wifi className="h-5 w-5 text-violet-500" />
-                WiFi
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Connected</span>
-                  <Badge variant="secondary" className="bg-violet-100 text-violet-800">
-                    {data.events.wifi.filter(w => w.state === "CONNECTED").length}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Disconnected</span>
-                  <Badge variant="secondary" className="bg-cyan-100 text-cyan-800">
-                    {data.events.wifi.filter(w => w.state === "DISCONNECTED").length}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Solar Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Sun className="h-5 w-5 text-amber-500" />
-                Solar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Today</span>
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                    {data.solar?.current?.todayProductionKwh?.toFixed(1) ?? "0.0"} kWh
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Yesterday</span>
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                    {data.solar?.current?.yesterdayProductionKwh?.toFixed(1) ?? "0.0"} kWh
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Current Temperatures */}
         <Card>
@@ -648,10 +535,10 @@ export const DashboardContentInner = ({
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {env.map((room) => {
-                const tempColor = room.temperature < 20 ? 'text-blue-600' : room.temperature > 25 ? 'text-red-600' : 'text-green-600';
+                const tempColor = room.temperature < 20 ? 'text-blue-600' : room.temperature > 25 ? 'text-orange-600' : 'text-green-600';
                 return (
                   <div key={room.room} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    {getRoomIcon(room.room)}
+                    {/* Optionally add a static icon or leave blank for now */}
                     <div>
                       <p className="font-medium">{room.room}</p>
                       <p className={`text-2xl font-bold ${tempColor}`}>

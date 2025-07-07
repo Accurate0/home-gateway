@@ -6,7 +6,7 @@ import {
   type FetchFunction,
 } from "relay-runtime";
 
-const HTTP_ENDPOINT = import.meta.env.PROD
+const HTTP_ENDPOINT = import.meta.env.DEV
   ? "https://home.anurag.sh/v1/graphql"
   : "http://localhost:8000/v1/graphql";
 

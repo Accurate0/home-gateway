@@ -36,7 +36,7 @@ const DashboardContent = ({ queryRef, loadQuery }: DashboardContentProps) => {
     loadQuery({ since: newSince });
   }, [selectedHours, loadQuery]);
 
-  return (
+    return (
     queryRef != null ? (
       <DashboardContentInner
         queryRef={queryRef}
@@ -55,7 +55,7 @@ const LoadingDashboard = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <div className="text-center space-y-2">
+        <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold">Timeline</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ const LoadingDashboard = () => {
         {/* Event Timeline Card */}
         <Card className="w-full">
           <CardHeader className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-muted rounded animate-pulse"></div>
               <div className="w-32 h-6 bg-muted rounded animate-pulse"></div>
             </div>
@@ -76,42 +76,16 @@ const LoadingDashboard = () => {
             <div className="mb-2">
               <div className="w-64 h-4 bg-muted rounded animate-pulse"></div>
             </div>
-            <div className="w-full h-[500px] bg-muted rounded animate-pulse"></div>
+            <div className="w-full h-[480px] bg-muted rounded animate-pulse"></div>
             <div className="flex justify-center mt-2">
               <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="w-24 h-8 bg-muted rounded animate-pulse"></div>
+                  <div key={i} className="w-36 h-8 bg-muted rounded animate-pulse"></div>
                 ))}
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 bg-muted rounded animate-pulse"></div>
-                  <div className="w-16 h-6 bg-muted rounded animate-pulse"></div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="w-12 h-4 bg-muted rounded animate-pulse"></div>
-                    <div className="w-8 h-5 bg-muted rounded animate-pulse"></div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="w-16 h-4 bg-muted rounded animate-pulse"></div>
-                    <div className="w-8 h-5 bg-muted rounded animate-pulse"></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
 
         {/* Temperature Card */}
         <Card>
