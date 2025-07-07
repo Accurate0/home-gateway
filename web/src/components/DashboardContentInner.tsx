@@ -448,7 +448,7 @@ export const DashboardContentInner = ({
                       symbolSize: 10,
                     },
                   ],
-                  grid: { left: 16, right: 16, top: 30, bottom: 32 },
+                  grid: { left: 24, right: 24, top: 24, bottom: 32 },
                 }}
                 style={{ width: '100%', height: 480 }}
                 opts={{ renderer: 'svg' }}
