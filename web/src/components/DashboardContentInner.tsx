@@ -20,6 +20,7 @@ import {
   X,
   CheckCircle,
   RefreshCcw,
+  Sun,
 } from "lucide-react";
 import { usePreloadedQuery } from "react-relay";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -275,7 +276,7 @@ export const DashboardContentInner = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedDevices(allDevices.map(d => d.name))}
-                          title="Select All"
+                          title="Select all"
                         >
                           <CheckCircle className="h-4 w-4" />
                         </Button>
@@ -283,7 +284,7 @@ export const DashboardContentInner = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedDevices([])}
-                          title="Clear All"
+                          title="Clear all"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -528,8 +529,146 @@ export const DashboardContentInner = ({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Sun className="h-5 w-5 text-yellow-500" />
+              Solar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 h-full min-h-[180px]">
+              {/* Left: Info, styled with bg-muted/50 */}
+              <div className="flex flex-col justify-center p-4 rounded-lg bg-muted/50 h-full">
+                {data.solar?.history && data.solar.history.length > 0 ? (() => {
+                  const history = data.solar.history;
+                  const latest = history[history.length - 1];
+                  const todayKwh = data.solar.current?.todayProductionKwh ?? 0;
+                  const yesterdayKwh = data.solar.current?.yesterdayProductionKwh ?? 0;
+                  return (
+                    <div className="space-y-1">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Current</span>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {(latest.wh / 1000).toFixed(2)} kWh
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Today</span>
+                        <p className="text-lg font-semibold text-yellow-700">
+                          {todayKwh.toFixed(2)} kWh
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Yesterday</span>
+                        <p className="text-lg font-semibold text-yellow-700">
+                          {yesterdayKwh.toFixed(2)} kWh
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div className="text-muted-foreground">No data</div>
+                )}
+              </div>
+              {/* Right: Solar Chart (same as before) */}
+              <div className="flex items-center h-full min-h-[188px]">
+                <ReactECharts
+                  option={{
+                    tooltip: {
+                      trigger: 'axis',
+                      backgroundColor: '#fff',
+                      borderColor: '#e5e7eb',
+                      textStyle: { color: '#111' },
+                      formatter: (params: any) => {
+                        if (!params || params.length === 0) return '';
+                        let kwh: number | null = null, uv: number | null = null, time: number | null = null;
+                        params.forEach((p: any) => {
+                          if (p.seriesName === 'Solar') {
+                            kwh = p.value[1];
+                            time = p.value[0];
+                          }
+                          if (p.seriesName === 'UV Level') {
+                            uv = p.value[1];
+                            time = p.value[0];
+                          }
+                        });
+                        return `<div style='padding:6px 10px;'>${time ? `<span style="color:#888;">${new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><br/>` : ''}${kwh !== null ? `<b>${Number(kwh).toFixed(2)} kWh</b><br/>` : ''}${uv !== null ? `<span style='color:#a21caf;'>UV: ${Number(uv).toFixed(1)}</span>` : ''}</div>`;
+                      },
+                      extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 8px; padding: 8px;'
+                    },
+                    grid: { left: 16, right: 16, top: 4, bottom: 32 },
+                    xAxis: {
+                      type: 'time',
+                      axisLabel: {
+                        formatter: (value: number) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        color: '#222',
+                      },
+                      splitLine: { show: true, lineStyle: { color: '#e5e7eb', type: 'dotted' } },
+                      axisLine: { show: true, lineStyle: { color: '#e5e7eb' } },
+                      axisTick: { show: false },
+                    },
+                    yAxis: [
+                      {
+                        type: 'value',
+                        min: 0,
+                        axisLabel: { show: false },
+                        splitLine: { show: false },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                      },
+                      {
+                        type: 'value',
+                        min: 0,
+                        max: 12,
+                        position: 'right',
+                        axisLabel: { show: false },
+                        splitLine: { show: false },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                      },
+                    ],
+                    series: [
+                      {
+                        name: 'Solar',
+                        type: 'line',
+                        data: (data.solar?.history ?? [])
+                          .filter(h => new Date(h.timestamp).getTime() >= Date.now() - selectedHours * 60 * 60 * 1000)
+                          .map(h => [new Date(h.timestamp).getTime(), h.wh / 1000]),
+                        symbol: 'none',
+                        lineStyle: { color: '#f59e42', width: 2 },
+                        itemStyle: { color: '#f59e42' },
+                        areaStyle: { color: 'rgba(245,158,66,0.08)' },
+                        emphasis: { focus: 'series' },
+                        z: 1,
+                        yAxisIndex: 0,
+                      },
+                      {
+                        name: 'UV Level',
+                        type: 'line',
+                        data: (data.solar?.history ?? [])
+                          .filter(h => new Date(h.timestamp).getTime() >= Date.now() - selectedHours * 60 * 60 * 1000 && h.uvLevel != null)
+                          .map(h => [new Date(h.timestamp).getTime(), h.uvLevel]),
+                        symbol: 'none',
+                        lineStyle: { color: '#a21caf', width: 2, type: 'dashed' },
+                        itemStyle: { color: '#a21caf' },
+                        emphasis: { focus: 'series' },
+                        z: 2,
+                        yAxisIndex: 1,
+                      },
+                    ],
+                  }}
+                  style={{ width: '100%', height: '100%' }}
+                  opts={{ renderer: 'svg' }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Current Temperatures */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <Thermometer className="h-5 w-5 text-red-500" />
-              Current Temperatures
+              Current temperatures
             </CardTitle>
           </CardHeader>
           <CardContent>

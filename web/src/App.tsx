@@ -87,6 +87,31 @@ const LoadingDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Solar Card Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-muted rounded animate-pulse"></div>
+              <div className="w-24 h-6 bg-muted rounded animate-pulse"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 h-full min-h-[188px]">
+              {/* Left: Info skeleton */}
+              <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50 h-full gap-2 min-h-[100px]">
+                <div className="w-20 h-4 bg-muted rounded animate-pulse mb-2"></div>
+                <div className="w-24 h-8 bg-muted rounded animate-pulse mb-2"></div>
+                <div className="w-16 h-6 bg-muted rounded animate-pulse mb-2"></div>
+                <div className="w-16 h-6 bg-muted rounded animate-pulse"></div>
+              </div>
+              {/* Right: Chart skeleton */}
+              <div className="flex items-center h-full min-h-[188px]">
+                <div className="w-full h-[188px] bg-muted rounded animate-pulse"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Temperature Card */}
         <Card>
           <CardHeader>
