@@ -5,9 +5,10 @@ use actors::{
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireIpAuth;
 use axum::{
-    middleware::from_extractor,
+    middleware::{from_extractor, from_extractor_with_state},
     routing::{get, post},
 };
+use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
     dataloader::temperature::LatestTemperatureDataLoader,
@@ -31,6 +32,7 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod auth;
+mod feature_flag;
 mod graphql;
 mod maccas;
 mod mqtt;
@@ -91,6 +93,8 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
+    let feature_flag_client = FeatureFlagClient::new().await;
+
     let mut mqtt = Mqtt::new(settings.mqtt_url.clone(), 1883).await?;
     let unifi = Unifi::new(
         settings.unifi_api_key.clone(),
@@ -123,19 +127,24 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(AllowHeaders::any());
 
+    let api_state = ApiState {
+        feature_flag_client,
+        event_handler: event_handler_actor.clone(),
+        schema,
+        settings: settings.clone(),
+        db: pool.clone(),
+    };
+
     let api_routes = axum::Router::new()
         .route("/health", get(health))
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
-        .route_layer(from_extractor::<RequireIpAuth>())
+        .route_layer(from_extractor_with_state::<RequireIpAuth, ApiState>(
+            api_state.clone(),
+        ))
         .route("/ingest/maccas", post(maccas))
         .layer(cors)
-        .with_state(ApiState {
-            event_handler: event_handler_actor.clone(),
-            schema,
-            settings: settings.clone(),
-            db: pool.clone(),
-        });
+        .with_state(api_state);
     let app = axum::Router::new().nest("/v1", api_routes);
 
     let addr = "[::]:8000".parse::<SocketAddr>().unwrap();

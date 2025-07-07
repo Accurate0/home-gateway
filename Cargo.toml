@@ -33,6 +33,8 @@ thiserror = "2.0.12"
 tokio-util = "0.7.15"
 tower = { version = "0.5.2", features = ["load-shed"] }
 uuid = { version = "1.17.0", features = ["v4"] }
+open-feature = "0.2.5"
+open-feature-flipt = { git = "https://github.com/open-feature/rust-sdk-contrib.git" }
 
 [workspace.dependencies]
 axum = { version = "0.8.4", features = ["macros"] }

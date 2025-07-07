@@ -1,6 +1,6 @@
 use crate::{
-    actors::event_handler, graphql::FinalSchema, mqtt::MqttError, settings::Settings,
-    unifi::UnifiError,
+    actors::event_handler, feature_flag::FeatureFlagClient, graphql::FinalSchema, mqtt::MqttError,
+    settings::Settings, unifi::UnifiError,
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
@@ -19,6 +19,7 @@ pub struct SharedActorState {
 
 #[derive(Clone)]
 pub struct ApiState {
+    pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]
