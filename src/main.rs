@@ -136,12 +136,12 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let api_routes = axum::Router::new()
-        .route("/health", get(health))
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
         .route_layer(from_extractor_with_state::<RequireIpAuth, ApiState>(
             api_state.clone(),
         ))
+        .route("/health", get(health))
         .route("/ingest/maccas", post(maccas))
         .layer(cors)
         .with_state(api_state);
