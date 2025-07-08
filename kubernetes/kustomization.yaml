@@ -12,3 +12,6 @@ resources:
   - unifi-proxy/unifi-proxy.service.yaml
   - web/web.deployment.yaml
   - web/web.service.yaml
+  - selfbot.secret.yaml
+  - selfbot/selfbot.deployment.yaml
+  - selfbot/selfbot.service.yaml

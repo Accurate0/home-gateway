@@ -34,6 +34,8 @@ spec:
               value: http://flipt.flipt.svc.cluster.local:8080
             - name: UNIFI_API_BASE
               value: http://unifi-proxy.home-gateway.svc.cluster.local
+            - name: SELFBOT_API_BASE
+              value: http://selfbot.home-gateway.svc.cluster.local
           envFrom:
             - secretRef:
                 name: home-gateway-managed-secrets

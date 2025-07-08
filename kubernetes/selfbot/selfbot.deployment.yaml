@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selfbot
+  namespace: home-gateway
+  annotations:
+    secrets.infisical.com/auto-reload: "true"
+spec:
+  selector:
+    matchLabels:
+      app: selfbot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: selfbot
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: inf-k8s.net/location
+                    operator: In
+                    values:
+                      - perth
+      containers:
+        - name: selfbot
+          image: home-selfbot:latest
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8001
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
+          envFrom:
+            - secretRef:
+                name: selfbot-managed-secrets
+          ports:
+            - containerPort: 3000

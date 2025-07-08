@@ -6,6 +6,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-selfbot:
+    permissions:
+      packages: write
+
+    uses: Accurate0/workflows/.github/workflows/build-push-docker.yaml@main
+    with:
+      directory: selfbot
+      image-name: home-selfbot
+      docker-build-args: ""
+      use-rust-caching: false
+
   build-web:
     permissions:
       packages: write
@@ -38,6 +49,7 @@ jobs:
     needs:
       - build
       - build-web
+      - build-selfbot
     uses: Accurate0/workflows/.github/workflows/deploy-app-k8s.yaml@main
     with:
       application-name: home-gateway
