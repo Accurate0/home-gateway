@@ -32,7 +32,7 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /health
-              port: 8001
+              port: 8004
               scheme: HTTP
             initialDelaySeconds: 3
             periodSeconds: 30

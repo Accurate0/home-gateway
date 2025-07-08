@@ -38,3 +38,8 @@ app = FastAPI(lifespan=lifespan)
 async def message(body: MessageRequest):
     channel = client.get_channel(body.channel_id)
     await channel.send(body.message)  # type: ignore
+
+
+@app.get("/health", status_code=status.HTTP_204_NO_CONTENT)
+async def health():
+    return None
