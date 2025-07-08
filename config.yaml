@@ -4,11 +4,31 @@ doors:
     id: GARAGE
     state: armed
     timeout: 5s
+    notify:
+      - type: discord
+        channelId: 1392070912609751131
+        mentions: []
+      # - type: discord
+      #   channelId: 906076901406306355
+
   "0x54ef441000d2b0b0":
     name: Front Door
     id: FRONT_DOOR
     state: armed
     timeout: 5s
+    notify:
+      - type: discord
+        channelId: 1392070912609751131
+        mentions: []
+
+maccas:
+  offers:
+    - matchNames:
+        - "20pc McNuggets & McFlurry"
+      notify:
+        - type: discord
+          channelId: 1392070912609751131
+          mentions: [140819887323873280]
 
 appliances:
   "0xa4c1389fe5cea26e":
@@ -16,6 +36,10 @@ appliances:
     id: WASHING_MACHINE
     current:
       threshold: 0.25
+    notify:
+      - type: discord
+        channelId: 1392070912609751131
+        mentions: []
 
 temperatureSensors:
   "0x00158d008b8797bc":

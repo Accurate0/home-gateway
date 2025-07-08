@@ -8,6 +8,16 @@ use serde::Deserialize;
 pub type IEEEAddress = String;
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum NotifySource {
+    Discord {
+        #[serde(rename = "channelId")]
+        channel_id: i64,
+        mentions: Vec<i64>,
+    },
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "state", rename_all = "lowercase")]
 pub enum ArmedDoorStates {
     Armed {
@@ -23,6 +33,7 @@ pub struct DoorSettings {
     pub id: String,
     #[serde(flatten)]
     pub armed: ArmedDoorStates,
+    pub notify: Vec<NotifySource>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -30,6 +41,7 @@ pub struct ApplianceSettings {
     pub name: String,
     pub id: String,
     pub current: ApplianceCurrentThreshold,
+    pub notify: Vec<NotifySource>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -44,8 +56,21 @@ pub struct TemperatureSensorSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MaccasOfferSettings {
+    pub match_names: Vec<String>,
+    pub notify: Vec<NotifySource>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct MaccasSettings {
+    pub offers: Vec<MaccasOfferSettings>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub database_url: String,
+    pub selfbot_api_base: String,
     pub mqtt_url: String,
     pub unifi_api_key: String,
     pub unifi_site_id: String,
@@ -54,6 +79,7 @@ pub struct Settings {
     #[serde(rename = "temperatureSensors")]
     pub temperature_sensors: HashMap<IEEEAddress, TemperatureSensorSettings>,
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
+    pub maccas: MaccasSettings,
 }
 
 impl Settings {

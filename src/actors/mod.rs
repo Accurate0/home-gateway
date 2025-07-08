@@ -1,7 +1,9 @@
 pub mod devices;
 pub mod event_handler;
 pub mod events;
+pub mod maccas;
 pub mod root;
+pub mod selfbot;
 
 pub use devices::door_sensor;
 pub use devices::light;

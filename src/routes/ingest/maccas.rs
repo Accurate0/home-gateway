@@ -1,4 +1,7 @@
-use crate::{actors::event_handler, maccas::MaccasOfferIngest, types::ApiState};
+use crate::{
+    actors::{event_handler, maccas::types::MaccasOfferIngest},
+    types::ApiState,
+};
 use axum::{Json, extract::State};
 use http::StatusCode;
 use ractor::factory::JobOptions;

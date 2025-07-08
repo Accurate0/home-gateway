@@ -1,5 +1,8 @@
 use super::{DoorEvents, DoorEventsType};
-use crate::settings::{ArmedDoorStates, DoorSettings, IEEEAddress};
+use crate::{
+    notify::notify,
+    settings::{ArmedDoorStates, DoorSettings, IEEEAddress},
+};
 use chrono::{DateTime, Utc};
 use ractor::Actor;
 use std::collections::HashMap;
@@ -20,6 +23,15 @@ pub struct ArmedDoor {
 
 impl ArmedDoor {
     pub const NAME: &str = "armed-door";
+}
+
+impl ArmedDoor {
+    pub fn trigger_action(&self, ieee_addr: &IEEEAddress) {
+        if let Some(settings) = self.door_settings.get(ieee_addr) {
+            let message = format!("{} has been left open.", settings.name);
+            notify(&settings.notify, message);
+        }
+    }
 }
 
 // TODO: audit log
@@ -79,10 +91,10 @@ impl Actor for ArmedDoor {
                                 if difference.num_seconds() <= 60 {
                                     tracing::info!("de-duped event for door trigger: {ieee_addr}");
                                 } else {
-                                    tracing::warn!("DOOR OPEN, REPLACE WITH DISCORD ACTOR")
+                                    self.trigger_action(&ieee_addr);
                                 }
                             } else {
-                                tracing::warn!("DOOR OPEN, REPLACE WITH DISCORD ACTOR")
+                                self.trigger_action(&ieee_addr);
                             }
 
                             state.last_trigger.insert(ieee_addr, now);

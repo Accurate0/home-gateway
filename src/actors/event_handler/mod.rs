@@ -1,9 +1,11 @@
+use super::maccas::types::MaccasOfferIngest;
 use crate::{
     actors::{
         devices::unifi::{self, UnifiConnectedClientHandler},
-        door_sensor, light, smart_switch, temperature_sensor,
+        door_sensor, light,
+        maccas::{self, MaccasActor},
+        smart_switch, temperature_sensor,
     },
-    maccas::MaccasOfferIngest,
     types::SharedActorState,
     unifi::types::UnifiConnectedClients,
     zigbee2mqtt::devices::BridgeDevices,
@@ -277,7 +279,12 @@ impl EventHandler {
                 tracing::info!(
                     "received maccas offer event for {}",
                     payload.details.short_name
-                )
+                );
+
+                let maybe_actor = ractor::registry::where_is(MaccasActor::NAME.to_string());
+                if let Some(actor) = maybe_actor {
+                    actor.send_message(maccas::MaccasMessage::NewOffer(payload))?;
+                }
             }
         };
 

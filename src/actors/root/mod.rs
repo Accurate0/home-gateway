@@ -5,7 +5,9 @@ use super::{
     devices::unifi::UnifiConnectedClientHandler,
     door_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
-    light, smart_switch, temperature_sensor,
+    light,
+    maccas::MaccasActor,
+    selfbot, smart_switch, temperature_sensor,
 };
 
 pub struct RootSupervisor {
@@ -16,13 +18,30 @@ pub struct RootSupervisor {
 impl RootSupervisor {
     async fn start_unifi_connected_clients_handler(
         &self,
-        myself: ractor::ActorRef<()>,
+        myself: &ractor::ActorRef<()>,
     ) -> Result<(), ractor::ActorProcessingErr> {
         myself
             .spawn_linked(
                 Some(UnifiConnectedClientHandler::NAME.to_owned()),
                 UnifiConnectedClientHandler {
                     shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_maccas_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(MaccasActor::NAME.to_owned()),
+                MaccasActor {
+                    settings: self.settings.maccas.clone(),
                 },
                 (),
             )
@@ -49,6 +68,7 @@ impl Actor for RootSupervisor {
             .await?;
 
         door_sensor::spawn::spawn_door_handler(&myself, shared_actor_state.clone()).await?;
+        selfbot::spawn::spawn_selfbot(&myself, settings.clone()).await?;
 
         light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
         temperature_sensor::spawn::spawn_temperature_sensor_handler(
@@ -80,7 +100,8 @@ impl Actor for RootSupervisor {
             )
             .await?;
 
-        self.start_unifi_connected_clients_handler(myself).await?;
+        self.start_maccas_actor(&myself).await?;
+        self.start_unifi_connected_clients_handler(&myself).await?;
 
         Ok(())
     }
@@ -104,7 +125,12 @@ impl Actor for RootSupervisor {
                     .is_some_and(|n| n == UnifiConnectedClientHandler::NAME)
                 {
                     tracing::info!("restarting unifi handler");
-                    self.start_unifi_connected_clients_handler(myself).await?;
+                    self.start_unifi_connected_clients_handler(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == MaccasActor::NAME) {
+                    tracing::info!("restarting maccas actor");
+                    self.start_maccas_actor(&myself).await?;
                 };
             }
             _ => {}
