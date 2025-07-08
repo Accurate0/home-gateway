@@ -23,7 +23,7 @@ spec:
                   - key: inf-k8s.net/location
                     operator: In
                     values:
-                      - perth
+                      - australind
       containers:
         - name: selfbot
           image: home-selfbot:latest
