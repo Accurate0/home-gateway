@@ -26,13 +26,14 @@ jobs:
           app=$(docker manifest inspect ghcr.io/accurate0/home-gateway | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
           web=$(docker manifest inspect ghcr.io/accurate0/home-web | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
           proxy=$(docker manifest inspect ghcr.io/accurate0/unifi-proxy | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
-          echo "multi-arch-digests=$app,$proxy,$web" >> $GITHUB_OUTPUT
+          selfbot=$(docker manifest inspect ghcr.io/accurate0/home-selfbot | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
+          echo "multi-arch-digests=$app,$proxy,$web,$selfbot" >> $GITHUB_OUTPUT
 
       - uses: snok/container-retention-policy@v3.0.0
         with:
           account: user
           token: ${{ secrets.GITHUB_TOKEN }}
-          image-names: "home-gateway unifi-proxy home-web"
+          image-names: "home-gateway unifi-proxy home-web home-selfbot"
           image-tags: "!latest"
           keep-n-most-recent: 10
           cut-off: 3d
