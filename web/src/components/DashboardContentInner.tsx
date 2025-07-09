@@ -46,6 +46,24 @@ import ReactECharts from "echarts-for-react";
       second: "2-digit",
     });
     
+// Responsive x-axis label interval
+function useXAxisLabelDisplay() {
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth < 640) {
+        setShow(false); // Hide labels on phones
+      } else {
+        setShow(true);
+      }
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return show;
+}
+
 export const DashboardContentInner = ({ 
   queryRef, 
   selectedHours, 
@@ -203,6 +221,8 @@ export const DashboardContentInner = ({
     }
   };
 
+  const xAxisLabelShow = useXAxisLabelDisplay();
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -256,14 +276,14 @@ export const DashboardContentInner = ({
                 onClick={handleResetMinimap}
               >
                 <RefreshCcw className="w-5 h-5" />
-                <span>Reset zoom</span>
+                <span className="hidden sm:inline">Reset zoom</span>
               </Button>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[200px] justify-start">
+                  <Button variant="outline" className="w-[44px] sm:w-[200px] justify-center sm:justify-start px-0 sm:px-4">
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4" />
-                      {selectedDevices.length === allDevices.length ? "All Devices" : `${selectedDevices.length} devices`}
+                      <span className="hidden sm:inline">{selectedDevices.length === allDevices.length ? "All Devices" : `${selectedDevices.length} devices`}</span>
                     </div>
                   </Button>
                 </PopoverTrigger>
@@ -376,11 +396,12 @@ export const DashboardContentInner = ({
                   legend: { show: false },
                   xAxis: {
                     type: 'time',
-                    // name: 'Time', // Remove label
                     axisLabel: {
+                      show: xAxisLabelShow,
                       formatter: (value: number) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                       color: '#222',
-                      interval: 'auto',
+                      showMaxLabel: true,
+                      showMinLabel: true,
                     },
                     splitLine: {
                       show: (params: any) => {
@@ -598,8 +619,11 @@ export const DashboardContentInner = ({
                     xAxis: {
                       type: 'time',
                       axisLabel: {
+                        show: xAxisLabelShow,
                         formatter: (value: number) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         color: '#222',
+                        showMaxLabel: true,
+                        showMinLabel: true,
                       },
                       splitLine: { show: true, lineStyle: { color: '#e5e7eb', type: 'dotted' } },
                       axisLine: { show: true, lineStyle: { color: '#e5e7eb' } },

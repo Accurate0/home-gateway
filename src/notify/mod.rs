@@ -23,7 +23,11 @@ pub fn notify(notify_sources: &[NotifySource], message: String) {
                         msg: selfbot::SelfBotMessage::SendMessage(
                             selfbot::types::SelfBotMessageRequest {
                                 message: message_with_mentions,
-                                channel_id: *channel_id,
+                                channel_id: if cfg!(debug_assertions) {
+                                    1392070912609751131 // testing gc
+                                } else {
+                                    *channel_id
+                                },
                             },
                         ),
                         options: JobOptions::default(),
