@@ -15,15 +15,6 @@ spec:
       labels:
         app: selfbot
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: inf-k8s.net/location
-                    operator: In
-                    values:
-                      - australind
       containers:
         - name: selfbot
           image: home-selfbot:latest
