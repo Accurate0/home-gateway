@@ -34,7 +34,7 @@ appliances:
     name: Washing Machine
     id: WASHING_MACHINE
     current:
-      threshold: 0.25
+      threshold: 0.075
     notify:
       - type: discord
         channelId: 906076901406306355
