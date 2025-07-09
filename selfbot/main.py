@@ -4,6 +4,13 @@ from contextlib import asynccontextmanager
 import asyncio
 from pydantic import BaseModel
 from fastapi import FastAPI, status
+import random
+
+phrases = [
+    "i do lachlan's bidding",
+    "lachlan is my hero",
+    "why...",
+]
 
 
 class MessageRequest(BaseModel):
@@ -13,6 +20,11 @@ class MessageRequest(BaseModel):
 
 class DiscordClient(discord.Client):
     async def on_ready(self):
+        status = discord.Status.idle
+        activity_content = random.choice(phrases)
+        activity = discord.Activity(
+            type=discord.ActivityType.custom, name=activity_content)
+        await client.change_presence(activity=activity, status=status)
         print(f'Logged on as {self.user}!')
 
 
