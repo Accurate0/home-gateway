@@ -3,22 +3,20 @@ doors:
     name: Garage
     id: GARAGE
     state: armed
-    timeout: 5s
+    timeout: 5m
     notify:
       - type: discord
-        channelId: 1392070912609751131
+        channelId: 906076901406306355
         mentions: []
-      # - type: discord
-      #   channelId: 906076901406306355
 
   "0x54ef441000d2b0b0":
     name: Front Door
     id: FRONT_DOOR
     state: armed
-    timeout: 5s
+    timeout: 3m
     notify:
       - type: discord
-        channelId: 1392070912609751131
+        channelId: 906076901406306355
         mentions: []
 
 maccas:
@@ -27,8 +25,9 @@ maccas:
         - "20pc McNuggets & McFlurry"
       notify:
         - type: discord
-          channelId: 1392070912609751131
-          mentions: [140819887323873280]
+          channelId: 906076901406306355
+          mentions:
+            - 278461837983481857
 
 appliances:
   "0xa4c1389fe5cea26e":
@@ -38,7 +37,7 @@ appliances:
       threshold: 0.25
     notify:
       - type: discord
-        channelId: 1392070912609751131
+        channelId: 906076901406306355
         mentions: []
 
 temperatureSensors:
