@@ -25,7 +25,7 @@ maccas:
         - "20pc McNuggets & McFlurry"
       notify:
         - type: discord
-          channelId: 906076901406306355
+          channelId: 886501248319250444
           mentions:
             - 278461837983481857
 
