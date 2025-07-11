@@ -12,8 +12,8 @@ pub type IEEEAddress = String;
 pub enum NotifySource {
     Discord {
         #[serde(rename = "channelId")]
-        channel_id: i64,
-        mentions: Vec<i64>,
+        channel_id: u64,
+        mentions: Vec<u64>,
     },
 }
 
@@ -81,6 +81,7 @@ pub struct Settings {
     pub temperature_sensors: HashMap<IEEEAddress, TemperatureSensorSettings>,
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
     pub maccas: MaccasSettings,
+    pub discord_token: String,
 }
 
 impl Settings {

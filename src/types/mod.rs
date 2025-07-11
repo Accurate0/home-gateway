@@ -1,6 +1,6 @@
 use crate::{
-    actors::event_handler, feature_flag::FeatureFlagClient, graphql::FinalSchema, mqtt::MqttError,
-    settings::Settings, unifi::UnifiError,
+    actors::event_handler, delayqueue::DelayQueueError, feature_flag::FeatureFlagClient,
+    graphql::FinalSchema, mqtt::MqttError, settings::Settings, unifi::UnifiError,
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
@@ -64,4 +64,8 @@ pub enum MainError {
     Mqtt(#[from] MqttError),
     #[error(transparent)]
     Unifi(#[from] UnifiError),
+    #[error(transparent)]
+    DelayQueue(#[from] DelayQueueError),
+    #[error(transparent)]
+    Unknown(#[from] anyhow::Error),
 }

@@ -35,6 +35,13 @@ tower = { version = "0.5.2", features = ["load-shed"] }
 uuid = { version = "1.17.0", features = ["v4"] }
 open-feature = "0.2.5"
 open-feature-flipt = { git = "https://github.com/open-feature/rust-sdk-contrib.git" }
+twilight-cache-inmemory = "0.16.0"
+twilight-gateway = "0.16.0"
+twilight-http = "0.16.0"
+twilight-interactions = "0.16.2"
+twilight-model = "0.16.0"
+twilight-util = { version = "0.16.0", features = ["builder"] }
+pgmq = "0.30.1"
 
 [workspace.dependencies]
 axum = { version = "0.8.4", features = ["macros"] }

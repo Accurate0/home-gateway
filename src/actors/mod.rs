@@ -2,6 +2,7 @@ pub mod devices;
 pub mod event_handler;
 pub mod events;
 pub mod maccas;
+pub mod reminder;
 pub mod root;
 pub mod selfbot;
 

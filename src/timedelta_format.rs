@@ -9,7 +9,7 @@ const TIME_DELTA_FN_MAP: phf::Map<char, TimeDeltaFn> = phf_map! {
     's' => TimeDelta::try_seconds
 };
 
-fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
+pub fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
     let mut final_time_delta = TimeDelta::zero();
 
     let mut it = s.chars().peekable();

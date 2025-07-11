@@ -1,4 +1,4 @@
-use crate::{settings::Settings, types::SharedActorState};
+use crate::{delayqueue::DelayQueue, settings::Settings, types::SharedActorState};
 use ractor::Actor;
 
 use super::{
@@ -7,12 +7,14 @@ use super::{
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light,
     maccas::MaccasActor,
+    reminder::{ReminderActor, ReminderActorDelayQueueValue},
     selfbot, smart_switch, temperature_sensor,
 };
 
 pub struct RootSupervisor {
     pub shared_actor_state: SharedActorState,
     pub settings: Settings,
+    pub reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
 }
 
 impl RootSupervisor {
@@ -25,6 +27,23 @@ impl RootSupervisor {
                 Some(UnifiConnectedClientHandler::NAME.to_owned()),
                 UnifiConnectedClientHandler {
                     shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_reminder_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(ReminderActor::NAME.to_owned()),
+                ReminderActor {
+                    delay_queue: self.reminder_delayqueue.clone(),
                 },
                 (),
             )
@@ -102,6 +121,7 @@ impl Actor for RootSupervisor {
 
         self.start_maccas_actor(&myself).await?;
         self.start_unifi_connected_clients_handler(&myself).await?;
+        self.start_reminder_actor(&myself).await?;
 
         Ok(())
     }
@@ -131,6 +151,11 @@ impl Actor for RootSupervisor {
                 if who.get_name().is_some_and(|n| n == MaccasActor::NAME) {
                     tracing::info!("restarting maccas actor");
                     self.start_maccas_actor(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == ReminderActor::NAME) {
+                    tracing::info!("restarting reminder actor");
+                    self.start_reminder_actor(&myself).await?;
                 };
             }
             _ => {}

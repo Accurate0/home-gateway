@@ -1,5 +1,6 @@
 use actors::{
     event_handler::{self},
+    reminder::{ReminderActor, ReminderActorDelayQueueValue, background::reminder_background},
     root::RootSupervisor,
 };
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
@@ -8,6 +9,8 @@ use axum::{
     middleware::from_extractor_with_state,
     routing::{get, post},
 };
+use delayqueue::DelayQueue;
+use discord::start_discord;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
@@ -19,8 +22,11 @@ use mqtt::Mqtt;
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{health::health, ingest::maccas::maccas, schema::schema as schema_route};
 use settings::Settings;
-use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
-use std::{collections::HashSet, net::SocketAddr, sync::Arc};
+use sqlx::{
+    ConnectOptions, Pool, Postgres,
+    postgres::{PgConnectOptions, PgPoolOptions},
+};
+use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
@@ -32,6 +38,8 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod auth;
+mod delayqueue;
+mod discord;
 mod feature_flag;
 mod graphql;
 mod mqtt;
@@ -49,6 +57,7 @@ async fn init_actors(
     settings: Settings,
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashSet<String>>>,
+    reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
     let shared_actor_state = SharedActorState {
         db,
@@ -60,6 +69,7 @@ async fn init_actors(
         RootSupervisor {
             shared_actor_state: shared_actor_state.clone(),
             settings,
+            reminder_delayqueue,
         },
         (),
     )
@@ -85,10 +95,14 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let settings = Settings::new()?;
+
+    let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?
+        .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(6));
+
     let pool = PgPoolOptions::new()
         .min_connections(0)
         .max_connections(20)
-        .connect(&settings.database_url)
+        .connect_with(pg_connect_options)
         .await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
@@ -106,8 +120,17 @@ async fn main() -> anyhow::Result<()> {
     handle_cancellation(cancellation_token.clone());
 
     let known_devices_map = Arc::new(RwLock::new(HashSet::new()));
-    let event_handler_actor =
-        init_actors(settings.clone(), pool.clone(), known_devices_map).await?;
+
+    let reminder_delayqueue =
+        DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
+
+    let event_handler_actor = init_actors(
+        settings.clone(),
+        pool.clone(),
+        known_devices_map,
+        reminder_delayqueue.clone(),
+    )
+    .await?;
 
     let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
         .data(DataLoader::new(
@@ -175,6 +198,19 @@ async fn main() -> anyhow::Result<()> {
         unifi
             .process_events(unifi_cancellation_token, unifi_event_handler)
             .await?;
+        Ok::<(), MainError>(())
+    });
+
+    let discord_cancellation_token = cancellation_token.child_token();
+    task_set.spawn(async move {
+        start_discord(settings.discord_token.clone(), discord_cancellation_token).await?;
+
+        Ok::<(), MainError>(())
+    });
+
+    let reminder_cancellation_token = cancellation_token.child_token();
+    task_set.spawn(async move {
+        reminder_background(reminder_delayqueue, reminder_cancellation_token).await?;
         Ok::<(), MainError>(())
     });
 
