@@ -65,6 +65,7 @@ pub struct MaccasOfferSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct MaccasSettings {
     pub offers: Vec<MaccasOfferSettings>,
+    pub webhook_secret: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
