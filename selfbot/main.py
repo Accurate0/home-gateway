@@ -13,7 +13,7 @@ class MessageRequest(BaseModel):
 
 class DiscordClient(discord.Client):
     async def on_ready(self):
-        status = discord.Status.idle
+        status = discord.Status.online
         await client.change_presence(status=status)
         print(f'Logged on as {self.user}!')
 
