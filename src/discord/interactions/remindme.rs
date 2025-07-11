@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::{
     actors::reminder::{ReminderActor, ReminderActorMessage},
     timedelta_format::parse_datetime_str,
@@ -37,7 +35,7 @@ impl RemindMeCommand {
                 &InteractionResponse {
                     kind: InteractionResponseType::DeferredChannelMessageWithSource,
                     data: Some(InteractionResponseData {
-                        flags: Some(MessageFlags::LOADING),
+                        flags: Some(MessageFlags::EPHEMERAL),
                         ..Default::default()
                     }),
                 },
@@ -70,12 +68,6 @@ impl RemindMeCommand {
             interaction_client
                 .update_response(&interaction.token)
                 .content(Some("Reminder set"))
-                .await?;
-
-            tokio::time::sleep(Duration::from_secs(5)).await;
-
-            interaction_client
-                .delete_response(&interaction.token)
                 .await?;
 
             Ok(())
