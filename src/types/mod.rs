@@ -67,5 +67,7 @@ pub enum MainError {
     #[error(transparent)]
     DelayQueue(#[from] DelayQueueError),
     #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }

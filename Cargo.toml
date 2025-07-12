@@ -42,6 +42,7 @@ twilight-interactions = "0.16.2"
 twilight-model = "0.16.0"
 twilight-util = { version = "0.16.0", features = ["builder"] }
 pgmq = "0.30.1"
+tower-service = "0.3.3"
 
 [workspace.dependencies]
 axum = { version = "0.8.4", features = ["macros"] }

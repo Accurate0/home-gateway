@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
                 .with_default(Level::INFO),
         )
         .with(tracing_subscriber::fmt::layer())
-        .init();
+        .try_init()?;
 
     let settings = Settings::new()?;
 
@@ -175,20 +175,20 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("starting api server {addr}");
 
-    tokio::spawn(
+    let mut task_set = JoinSet::new();
+
+    task_set.spawn(async move {
         axum::serve(listener, app)
             .with_graceful_shutdown(axum_shutdown_signal())
-            .into_future(),
-    );
-
-    let mut task_set = JoinSet::new();
+            .await
+            .map_err(|e| MainError::from(e))
+    });
 
     let mqtt_cancellation_token = cancellation_token.child_token();
     let mqtt_event_handler = event_handler_actor.clone();
     task_set.spawn(async move {
         mqtt.process_events(mqtt_cancellation_token, mqtt_event_handler)
             .await?;
-
         Ok::<(), MainError>(())
     });
 
@@ -204,7 +204,6 @@ async fn main() -> anyhow::Result<()> {
     let discord_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
         start_discord(settings.discord_token.clone(), discord_cancellation_token).await?;
-
         Ok::<(), MainError>(())
     });
 
