@@ -9,6 +9,7 @@ use axum::{
     middleware::from_extractor_with_state,
     routing::{get, post},
 };
+use bucket::S3BucketAccessor;
 use delayqueue::DelayQueue;
 use discord::start_discord;
 use feature_flag::FeatureFlagClient;
@@ -20,7 +21,11 @@ use graphql::{
 use http::Method;
 use mqtt::Mqtt;
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
-use routes::{health::health, ingest::maccas::maccas, schema::schema as schema_route};
+use routes::{
+    health::health,
+    ingest::{maccas::maccas, synergy::synergy},
+    schema::schema as schema_route,
+};
 use settings::Settings;
 use sqlx::{
     ConnectOptions, Pool, Postgres,
@@ -38,6 +43,7 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod auth;
+mod bucket;
 mod delayqueue;
 mod discord;
 mod feature_flag;
@@ -55,12 +61,14 @@ mod zigbee2mqtt;
 
 async fn init_actors(
     settings: Settings,
+    bucket_accessor: S3BucketAccessor,
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashSet<String>>>,
     reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
     let shared_actor_state = SharedActorState {
         db,
+        bucket_accessor,
         known_devices_map,
     };
 
@@ -96,6 +104,26 @@ async fn main() -> anyhow::Result<()> {
 
     let settings = Settings::new()?;
 
+    let synergy_bucket_credentials = s3::creds::Credentials::new(
+        Some(&settings.synergy.bucket_access_key_id),
+        Some(&settings.synergy.bucket_access_secret),
+        None,
+        None,
+        None,
+    )?;
+
+    let synergy_bucket = s3::Bucket::new(
+        &settings.synergy.bucket_name,
+        s3::Region::Custom {
+            region: "".to_owned(),
+            endpoint: settings.synergy.bucket_endpoint.clone(),
+        },
+        synergy_bucket_credentials,
+    )?
+    .with_path_style();
+
+    let bucket_accessor = S3BucketAccessor::new(synergy_bucket);
+
     let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?
         .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(6));
 
@@ -126,6 +154,7 @@ async fn main() -> anyhow::Result<()> {
 
     let event_handler_actor = init_actors(
         settings.clone(),
+        bucket_accessor,
         pool.clone(),
         known_devices_map,
         reminder_delayqueue.clone(),
@@ -166,6 +195,7 @@ async fn main() -> anyhow::Result<()> {
         ))
         .route("/health", get(health))
         .route("/ingest/maccas", post(maccas))
+        .route("/ingest/synergy", post(synergy))
         .layer(cors)
         .with_state(api_state);
     let app = axum::Router::new().nest("/v1", api_routes);

@@ -8,7 +8,9 @@ use super::{
     light,
     maccas::MaccasActor,
     reminder::{ReminderActor, ReminderActorDelayQueueValue},
-    selfbot, smart_switch, temperature_sensor,
+    selfbot, smart_switch,
+    synergy::SynergyActor,
+    temperature_sensor,
 };
 
 pub struct RootSupervisor {
@@ -45,6 +47,22 @@ impl RootSupervisor {
                 ReminderActor {
                     delay_queue: self.reminder_delayqueue.clone(),
                     reminder_settings: self.settings.reminders.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+    async fn start_synergy_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(SynergyActor::NAME.to_owned()),
+                SynergyActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
                 },
                 (),
             )
@@ -123,6 +141,7 @@ impl Actor for RootSupervisor {
         self.start_maccas_actor(&myself).await?;
         self.start_unifi_connected_clients_handler(&myself).await?;
         self.start_reminder_actor(&myself).await?;
+        self.start_synergy_actor(&myself).await?;
 
         Ok(())
     }
@@ -157,6 +176,11 @@ impl Actor for RootSupervisor {
                 if who.get_name().is_some_and(|n| n == ReminderActor::NAME) {
                     tracing::info!("restarting reminder actor");
                     self.start_reminder_actor(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == SynergyActor::NAME) {
+                    tracing::info!("restarting synergy actor");
+                    self.start_synergy_actor(&myself).await?;
                 };
             }
             _ => {}

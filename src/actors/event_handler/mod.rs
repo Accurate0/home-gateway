@@ -1,10 +1,12 @@
-use super::maccas::types::MaccasOfferIngest;
+use super::{maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent};
 use crate::{
     actors::{
         devices::unifi::{self, UnifiConnectedClientHandler},
         door_sensor, light,
         maccas::{self, MaccasActor},
-        smart_switch, temperature_sensor,
+        smart_switch,
+        synergy::{self, SynergyActor},
+        temperature_sensor,
     },
     types::SharedActorState,
     unifi::types::UnifiConnectedClients,
@@ -31,6 +33,9 @@ pub enum Message {
     },
     MaccasOfferIngest {
         payload: MaccasOfferIngest,
+    },
+    SynergyDataIngest {
+        payload: S3BucketEvent,
     },
 }
 
@@ -186,12 +191,12 @@ impl EventHandler {
                 let mut devices_map = self.shared_actor_state.known_devices_map.write().await;
                 for device in devices_payload {
                     sqlx::query!(
-                    "INSERT INTO known_devices (ieee_addr, name) VALUES ($1, $2) ON CONFLICT (ieee_addr) DO UPDATE SET name = $2",
-                        &device.ieee_address,
-                        device.friendly_name
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                            "INSERT INTO known_devices (ieee_addr, name) VALUES ($1, $2) ON CONFLICT (ieee_addr) DO UPDATE SET name = $2",
+                                &device.ieee_address,
+                                device.friendly_name
+                            )
+                            .execute(&self.shared_actor_state.db)
+                            .await?;
                     devices_map.insert(device.ieee_address);
                 }
                 drop(devices_map)
@@ -284,6 +289,14 @@ impl EventHandler {
                 let maybe_actor = ractor::registry::where_is(MaccasActor::NAME.to_string());
                 if let Some(actor) = maybe_actor {
                     actor.send_message(maccas::MaccasMessage::NewOffer(payload))?;
+                }
+            }
+            Message::SynergyDataIngest { payload } => {
+                tracing::info!("received synergy event for {}", payload.key);
+
+                let maybe_actor = ractor::registry::where_is(SynergyActor::NAME.to_string());
+                if let Some(actor) = maybe_actor {
+                    actor.send_message(synergy::SynergyMessage::NewUpload(payload))?;
                 }
             }
         };

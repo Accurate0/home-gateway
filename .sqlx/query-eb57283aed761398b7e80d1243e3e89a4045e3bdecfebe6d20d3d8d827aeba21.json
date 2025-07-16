@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO energy_consumption(energy_used, solar_exported, time) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb57283aed761398b7e80d1243e3e89a4045e3bdecfebe6d20d3d8d827aeba21"
+}

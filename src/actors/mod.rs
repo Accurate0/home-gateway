@@ -5,6 +5,7 @@ pub mod maccas;
 pub mod reminder;
 pub mod root;
 pub mod selfbot;
+pub mod synergy;
 
 pub use devices::door_sensor;
 pub use devices::light;

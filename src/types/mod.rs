@@ -1,6 +1,7 @@
 use crate::{
-    actors::event_handler, delayqueue::DelayQueueError, feature_flag::FeatureFlagClient,
-    graphql::FinalSchema, mqtt::MqttError, settings::Settings, unifi::UnifiError,
+    actors::event_handler, bucket::S3BucketAccessor, delayqueue::DelayQueueError,
+    feature_flag::FeatureFlagClient, graphql::FinalSchema, mqtt::MqttError, settings::Settings,
+    unifi::UnifiError,
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
@@ -14,6 +15,7 @@ pub mod db;
 #[derive(Clone)]
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
+    pub bucket_accessor: S3BucketAccessor,
     pub known_devices_map: Arc<RwLock<HashSet<String>>>,
 }
 
