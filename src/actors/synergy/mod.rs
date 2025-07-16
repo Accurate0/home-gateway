@@ -89,6 +89,7 @@ impl Actor for SynergyActor {
                         }
                     }
 
+                    tracing::info!("processing of {object_key} complete, removing file");
                     bucket.delete_object(object_key).await?;
                 }
             }

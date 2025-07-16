@@ -15,8 +15,6 @@ pub async fn synergy(
     headers: HeaderMap,
     Json(s3_bucket_event): Json<S3BucketEvent>,
 ) -> Result<StatusCode, AppError> {
-    tracing::info!("{headers:?}");
-    tracing::info!("{s3_bucket_event:?}");
     let synergy_secret = headers.get("Authorization");
     match synergy_secret {
         Some(secret_value)
