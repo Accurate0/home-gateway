@@ -1,10 +1,7 @@
-use std::time::Duration;
-
-use tokio_util::sync::CancellationToken;
-
-use crate::delayqueue::{DelayQueue, DelayQueueError};
-
 use super::{ReminderActor, ReminderActorDelayQueueValue, ReminderActorMessage};
+use crate::delayqueue::{DelayQueue, DelayQueueError};
+use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 
 pub async fn reminder_background(
     reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
@@ -20,7 +17,7 @@ pub async fn reminder_background(
             msg = reminder_delayqueue.read(Duration::from_secs(30)) => {
                 let maybe_actor = ractor::registry::where_is(ReminderActor::NAME.to_string());
                 if let Err(e) = msg {
-                            tracing::info!("error in reading from queue: {e}");
+                    tracing::info!("error in reading from queue: {e}");
                     continue;
                 }
 
@@ -34,7 +31,7 @@ pub async fn reminder_background(
                     if let Err(e) = actor.send_message(ReminderActorMessage::TriggerReminder {
                         message: msg.message.message,
                         channel_id: msg.message.channel_id,
-                        user_id: msg.message.user_id,
+                        user_id: vec![msg.message.user_id],
                     }) {
                         tracing::error!("error sending actor message: {e}");
                     }

@@ -17,7 +17,7 @@ pub fn notify(notify_sources: &[NotifySource], message: String) {
                 } => {
                     tracing::info!("notifying: {channel_id} with \"{}\"", message);
                     let mentions = mentions.iter().map(|id| format!("<@{id}>")).join(" ");
-                    let message_with_mentions = format!("{mentions} {message}");
+                    let message_with_mentions = format!("> {mentions} **{message}**");
                     if let Err(e) = actor.send_message(FactoryMessage::Dispatch(Job {
                         key: (),
                         msg: selfbot::SelfBotMessage::SendMessage(

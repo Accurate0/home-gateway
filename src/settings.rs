@@ -1,9 +1,13 @@
-use std::{collections::HashMap, path::PathBuf};
-
-use crate::timedelta_format::time_delta_from_str;
-use chrono::TimeDelta;
+use crate::actors::reminder::cronlike_expression::cronlike_expression_from_str;
+use crate::{
+    actors::reminder::cronlike_expression::CronlikeExpression,
+    timedelta_format::time_delta_from_str,
+};
+use chrono::{DateTime, FixedOffset, TimeDelta};
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
+use std::fmt::Display;
+use std::{collections::HashMap, path::PathBuf};
 
 pub type IEEEAddress = String;
 
@@ -55,6 +59,36 @@ pub struct TemperatureSensorSettings {
     pub id: String,
 }
 
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ReminderState {
+    DryRun,
+    Active,
+}
+
+impl Display for ReminderState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReminderState::DryRun => write!(f, "dryrun"),
+            ReminderState::Active => write!(f, "active"),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ReminderSettings {
+    #[allow(unused)]
+    pub id: String,
+    pub name: String,
+    pub state: ReminderState,
+    #[serde(rename = "startsOn")]
+    pub starts_on: DateTime<FixedOffset>,
+    #[serde(with = "cronlike_expression_from_str")]
+    pub frequency: CronlikeExpression,
+    pub notify: Vec<NotifySource>,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct MaccasOfferSettings {
@@ -76,6 +110,7 @@ pub struct Settings {
     pub unifi_api_key: String,
     pub unifi_site_id: String,
     pub unifi_api_base: String,
+    pub reminders: Vec<ReminderSettings>,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
     #[serde(rename = "temperatureSensors")]
     pub temperature_sensors: HashMap<IEEEAddress, TemperatureSensorSettings>,

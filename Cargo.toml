@@ -19,7 +19,7 @@ async-graphql = { version = "7.0.17", features = ["uuid", "chrono", "dataloader"
 async-graphql-axum = "7.0.17"
 bytes = "1.10.1"
 chrono = { version = "0.4", features = ["serde"] }
-config = { version = "0.15.11", features = ["yaml"] }
+config = { version = "0.15.13", features = ["yaml"] }
 dataloader = "0.18.0"
 itertools = "0.14.0"
 log = "0.4.27"
@@ -43,11 +43,16 @@ twilight-model = "0.16.0"
 twilight-util = { version = "0.16.0", features = ["builder"] }
 pgmq = "0.30.1"
 tower-service = "0.3.3"
+chrono-tz = "0.10.4"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+rstest = "0.25.0"
 
 [workspace.dependencies]
 axum = { version = "0.8.4", features = ["macros"] }
-reqwest = { version = "0.12.20", features = ["json", "stream"] }
-tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
+reqwest = { version = "0.12.22", features = ["json", "stream"] }
+tokio = { version = "1.46.1", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
 anyhow = "1.0.98"
 http = "1.3.1"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }

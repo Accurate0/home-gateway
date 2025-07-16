@@ -1,3 +1,26 @@
+reminders:
+  - id: rent
+    name: Rent
+    startsOn: 2025-07-14T09:00:00.0+08:00
+    frequency: every 2 weeks
+    state: dryrun
+    notify:
+      - type: discord
+        channelId: 906076901406306355
+        mentions:
+          - 787759671742169098
+          - 278461837983481857
+
+  - id: bins
+    name: Bins
+    startsOn: 2025-07-17T20:00:00.0+08:00
+    frequency: every 1 week
+    state: active
+    notify:
+      - type: discord
+        channelId: 1392070912609751131
+        mentions: []
+
 doors:
   "0x54ef441000d2b1ba":
     name: Garage

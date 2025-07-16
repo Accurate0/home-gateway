@@ -44,6 +44,7 @@ impl RootSupervisor {
                 Some(ReminderActor::NAME.to_owned()),
                 ReminderActor {
                     delay_queue: self.reminder_delayqueue.clone(),
+                    reminder_settings: self.settings.reminders.clone(),
                 },
                 (),
             )

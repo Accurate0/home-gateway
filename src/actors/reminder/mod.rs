@@ -1,9 +1,14 @@
-use crate::{delayqueue::DelayQueue, notify::notify, settings::NotifySource};
+use crate::{
+    delayqueue::DelayQueue,
+    notify::notify,
+    settings::{NotifySource, ReminderSettings, ReminderState},
+};
 use ractor::Actor;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub mod background;
+pub mod cronlike_expression;
 
 pub enum ReminderActorMessage {
     SetReminder {
@@ -12,10 +17,16 @@ pub enum ReminderActorMessage {
         channel_id: u64,
         user_id: u64,
     },
+
+    TriggerScheduledReminder {
+        message: String,
+        notify: Vec<NotifySource>,
+        scheduled_reminder: ReminderSettings,
+    },
     TriggerReminder {
         message: String,
         channel_id: u64,
-        user_id: u64,
+        user_id: Vec<u64>,
     },
 }
 
@@ -29,6 +40,7 @@ pub struct ReminderActorDelayQueueValue {
 
 pub struct ReminderActor {
     pub delay_queue: DelayQueue<ReminderActorDelayQueueValue>,
+    pub reminder_settings: Vec<ReminderSettings>,
 }
 
 impl ReminderActor {
@@ -43,15 +55,28 @@ impl Actor for ReminderActor {
 
     async fn pre_start(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
+        for reminder in &self.reminder_settings {
+            let time = reminder.frequency.next_trigger(reminder.starts_on).await;
+            let reminder = reminder.clone();
+
+            myself.send_after(Duration::from_secs_f64(time.as_seconds_f64()), move || {
+                ReminderActorMessage::TriggerScheduledReminder {
+                    message: format!("Scheduled reminder about \"{}\"", reminder.name),
+                    notify: reminder.notify.clone(),
+                    scheduled_reminder: reminder,
+                }
+            });
+        }
+
         Ok(())
     }
 
     async fn handle(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         message: Self::Msg,
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
@@ -78,11 +103,39 @@ impl Actor for ReminderActor {
             } => {
                 let notify_source = NotifySource::Discord {
                     channel_id,
-                    mentions: vec![user_id],
+                    mentions: user_id,
                 };
 
                 let message = format!("Reminder about \"{}\"", message);
                 notify(&[notify_source], message);
+            }
+            ReminderActorMessage::TriggerScheduledReminder {
+                message,
+                notify: notify_sources,
+                scheduled_reminder,
+            } => {
+                tracing::info!(
+                    "run {} for {scheduled_reminder:?}",
+                    scheduled_reminder.state
+                );
+
+                if scheduled_reminder.state == ReminderState::Active {
+                    notify(&notify_sources, message);
+                }
+
+                let time = scheduled_reminder
+                    .frequency
+                    .next_trigger(scheduled_reminder.starts_on)
+                    .await;
+
+                let reminder = scheduled_reminder.clone();
+                myself.send_after(Duration::from_secs_f64(time.as_seconds_f64()), move || {
+                    ReminderActorMessage::TriggerScheduledReminder {
+                        message: format!("Scheduled reminder about \"{}\"", reminder.name),
+                        notify: reminder.notify.clone(),
+                        scheduled_reminder: reminder,
+                    }
+                });
             }
         }
 
