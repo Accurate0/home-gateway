@@ -66,6 +66,7 @@ impl RootSupervisor {
             .spawn_linked(
                 Some(WoolworthsActor::NAME.to_owned()),
                 WoolworthsActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
                     settings: self.settings.woolworths.clone(),
                 },
                 (),

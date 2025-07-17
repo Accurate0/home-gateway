@@ -23,14 +23,14 @@ reminders:
 
 woolworths:
   products:
-    - name: Red Bull Energy Drink 473ml
+    - name: RedBull 473ml
       productId: 327603
       notify:
         - type: discord
           channelId: 906076901406306355
           mentions: []
 
-    - name: Mother Energy Drink Original Can 500ml
+    - name: Mother Energy Original 500ml
       productId: 315125
       notify:
         - type: discord
