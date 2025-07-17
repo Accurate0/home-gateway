@@ -1,0 +1,60 @@
+use http::HeaderMap;
+
+use crate::{actors::woolworths::WoolworthsMessage, woolworths::types::WoolworthsProductResponse};
+
+pub mod background;
+pub mod types;
+
+pub struct Woolworths {
+    client: reqwest::Client,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum WoolworthsError {
+    #[error(transparent)]
+    Http(#[from] reqwest::Error),
+    #[error("a actor message error occurred: {0}")]
+    ActorMessage(#[from] ractor::MessagingErr<WoolworthsMessage>),
+}
+
+impl Woolworths {
+    const BASE_URL: &str = "https://www.woolworths.com.au";
+    const PRODUCT_SUFFIX: &str = "apis/ui/product/detail";
+
+    pub fn new() -> Self {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::USER_AGENT,
+            "Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0"
+                .parse()
+                .unwrap(),
+        );
+
+        Self {
+            client: reqwest::ClientBuilder::new()
+                .default_headers(headers)
+                .cookie_store(true)
+                .build()
+                .unwrap(),
+        }
+    }
+
+    pub async fn get_product(
+        &self,
+        product_id: i64,
+    ) -> Result<WoolworthsProductResponse, WoolworthsError> {
+        self.client.get(Self::BASE_URL).send().await?;
+
+        let product_url = format!("{}/{}/{}", Self::BASE_URL, Self::PRODUCT_SUFFIX, product_id);
+        let resp = self
+            .client
+            .get(product_url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<WoolworthsProductResponse>()
+            .await?;
+
+        Ok(resp)
+    }
+}

@@ -40,6 +40,9 @@ use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::Subscriber
 use types::{ApiState, MainError, SharedActorState};
 use unifi::Unifi;
 use utils::{axum_shutdown_signal, handle_cancellation};
+use woolworths::Woolworths;
+
+use crate::woolworths::background::woolworths_background;
 
 mod actors;
 mod auth;
@@ -57,6 +60,7 @@ mod timedelta_format;
 mod types;
 mod unifi;
 mod utils;
+mod woolworths;
 mod zigbee2mqtt;
 
 async fn init_actors(
@@ -134,6 +138,8 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
+
+    let woolworths = Woolworths::new();
 
     let feature_flag_client = FeatureFlagClient::new().await;
 
@@ -240,6 +246,17 @@ async fn main() -> anyhow::Result<()> {
     let reminder_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
         reminder_background(reminder_delayqueue, reminder_cancellation_token).await?;
+        Ok::<(), MainError>(())
+    });
+
+    let woolworths_cancellation_token = cancellation_token.child_token();
+    task_set.spawn(async move {
+        woolworths_background(
+            &woolworths,
+            &settings.woolworths,
+            woolworths_cancellation_token,
+        )
+        .await?;
         Ok::<(), MainError>(())
     });
 

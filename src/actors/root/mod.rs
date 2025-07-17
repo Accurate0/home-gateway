@@ -1,4 +1,7 @@
-use crate::{delayqueue::DelayQueue, settings::Settings, types::SharedActorState};
+use crate::{
+    actors::woolworths::WoolworthsActor, delayqueue::DelayQueue, settings::Settings,
+    types::SharedActorState,
+};
 use ractor::Actor;
 
 use super::{
@@ -54,6 +57,24 @@ impl RootSupervisor {
 
         Ok(())
     }
+
+    async fn start_woolworths_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(WoolworthsActor::NAME.to_owned()),
+                WoolworthsActor {
+                    settings: self.settings.woolworths.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
     async fn start_synergy_actor(
         &self,
         myself: &ractor::ActorRef<()>,
@@ -142,6 +163,7 @@ impl Actor for RootSupervisor {
         self.start_unifi_connected_clients_handler(&myself).await?;
         self.start_reminder_actor(&myself).await?;
         self.start_synergy_actor(&myself).await?;
+        self.start_woolworths_actor(&myself).await?;
 
         Ok(())
     }
@@ -181,6 +203,11 @@ impl Actor for RootSupervisor {
                 if who.get_name().is_some_and(|n| n == SynergyActor::NAME) {
                     tracing::info!("restarting synergy actor");
                     self.start_synergy_actor(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == WoolworthsActor::NAME) {
+                    tracing::info!("restarting woolworths actor");
+                    self.start_woolworths_actor(&myself).await?;
                 };
             }
             _ => {}
