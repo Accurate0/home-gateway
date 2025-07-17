@@ -3,7 +3,7 @@ reminders:
     name: Rent
     startsOn: 2025-07-14T09:00:00.0+08:00
     frequency: every 2 weeks
-    state: dryrun
+    state: active
     notify:
       - type: discord
         channelId: 906076901406306355
@@ -18,7 +18,7 @@ reminders:
     state: active
     notify:
       - type: discord
-        channelId: 1392070912609751131
+        channelId: 906076901406306355
         mentions: []
 
 woolworths:
