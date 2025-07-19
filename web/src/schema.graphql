@@ -39,8 +39,7 @@ type EnergyConsumption {
 }
 
 input EnergyHistoryInput {
-	from: DateTime!
-	to: DateTime!
+	since: DateTime!
 }
 
 type EnergyObject {
@@ -92,7 +91,7 @@ scalar NaiveDateTime
 type QueryRoot {
 	events(input: EventsInput!): EventsObject!
 	environment: EnvironmentObject!
-	solar: SolarObject!
+	solar(input: SolarInput!): SolarObject!
 	energy: EnergyObject!
 }
 
@@ -115,6 +114,10 @@ type SolarCurrentStatisticsAverages {
 	last15Mins: Float
 	last1Hour: Float
 	last3Hours: Float
+}
+
+input SolarInput {
+	since: DateTime!
 }
 
 type SolarObject {

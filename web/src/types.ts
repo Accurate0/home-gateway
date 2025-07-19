@@ -8,11 +8,7 @@ export interface Event {
   id: string;
 }
 
-export interface EnvironmentData {
-  temperature: number | null | undefined;
-  humidity: number | null | undefined;
-  pressure: number | null | undefined;
-}
+
 
 export interface ChartEvent {
   x: number;
@@ -55,15 +51,10 @@ export interface DashboardContentProps {
   loadQuery: (variables: { since: string }) => void;
 }
 
+export type TabType = 'overview' | 'solar';
+
 export interface DashboardContentInnerProps {
   queryRef: PreloadedQuery<AppQuery>;
   selectedHours: number;
   setSelectedHours: (hours: number) => void;
 }
-
-export interface EventTooltipProps {
-  active?: boolean;
-  payload?: Array<{
-    payload: ChartEvent;
-  }>;
-} 

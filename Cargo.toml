@@ -20,7 +20,6 @@ async-graphql-axum = "7.0.17"
 bytes = "1.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.15.13", features = ["yaml"] }
-dataloader = "0.18.0"
 itertools = "0.14.0"
 log = "0.4.27"
 phf = { version = "0.12", features = ["macros"] }

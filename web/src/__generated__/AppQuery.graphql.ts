@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<aa454f938d3c1a180d1cf42f5086e823>>
+ * @generated SignedSource<<cde074b6b6e672f9f56af2ac8fb55be9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,67 +9,12 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type ApplianceStateType = "OFF" | "ON" | "%future added value";
-export type DoorState = "CLOSED" | "OPEN" | "%future added value";
-export type UnifiState = "CONNECTED" | "DISCONNECTED" | "%future added value";
+import { FragmentRefs } from "relay-runtime";
 export type AppQuery$variables = {
   since: any;
 };
 export type AppQuery$data = {
-  readonly environment: {
-    readonly bedroom: {
-      readonly humidity: number;
-      readonly pressure: number;
-      readonly temperature: number;
-    };
-    readonly laundry: {
-      readonly humidity: number;
-      readonly pressure: number;
-      readonly temperature: number;
-    };
-    readonly livingRoom: {
-      readonly humidity: number;
-      readonly pressure: number;
-      readonly temperature: number;
-    };
-    readonly outdoor: {
-      readonly humidity: number;
-      readonly pressure: number;
-      readonly temperature: number;
-    };
-  };
-  readonly events: {
-    readonly appliances: ReadonlyArray<{
-      readonly id: any;
-      readonly name: string;
-      readonly state: ApplianceStateType;
-      readonly time: any;
-    }>;
-    readonly doors: ReadonlyArray<{
-      readonly id: any;
-      readonly name: string;
-      readonly state: DoorState;
-      readonly time: any;
-    }>;
-    readonly wifi: ReadonlyArray<{
-      readonly id: any;
-      readonly name: string;
-      readonly state: UnifiState;
-      readonly time: any;
-    }>;
-  };
-  readonly solar: {
-    readonly current: {
-      readonly todayProductionKwh: number;
-      readonly yesterdayProductionKwh: number;
-    };
-    readonly history: ReadonlyArray<{
-      readonly at: any;
-      readonly timestamp: number;
-      readonly uvLevel: number | null | undefined;
-      readonly wh: number;
-    }>;
-  };
+  readonly " $fragmentSpreads": FragmentRefs<"OverviewTabFragment" | "SolarEnergyTabFragment">;
 };
 export type AppQuery = {
   response: AppQuery$data;
@@ -84,41 +29,54 @@ var v0 = [
     "name": "since"
   }
 ],
-v1 = {
+v1 = [
+  {
+    "fields": [
+      {
+        "kind": "Variable",
+        "name": "since",
+        "variableName": "since"
+      }
+    ],
+    "kind": "ObjectValue",
+    "name": "input"
+  }
+],
+v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
 },
-v2 = {
+v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "time",
   "storageKey": null
 },
-v3 = {
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "state",
   "storageKey": null
 },
-v4 = {
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v5 = [
-  (v1/*: any*/),
-  (v2/*: any*/),
-  (v4/*: any*/),
-  (v3/*: any*/)
-],
 v6 = [
+  (v2/*: any*/),
+  (v3/*: any*/),
+  (v5/*: any*/),
+  (v4/*: any*/)
+],
+v7 = [
   {
     "alias": null,
     "args": null,
@@ -140,192 +98,6 @@ v6 = [
     "name": "pressure",
     "storageKey": null
   }
-],
-v7 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "SolarObject",
-    "kind": "LinkedField",
-    "name": "solar",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "SolarCurrentResponse",
-        "kind": "LinkedField",
-        "name": "current",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "todayProductionKwh",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "yesterdayProductionKwh",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "GenerationHistory",
-        "kind": "LinkedField",
-        "name": "history",
-        "plural": true,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "at",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "uvLevel",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "wh",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "timestamp",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": [
-      {
-        "fields": [
-          {
-            "kind": "Variable",
-            "name": "since",
-            "variableName": "since"
-          }
-        ],
-        "kind": "ObjectValue",
-        "name": "input"
-      }
-    ],
-    "concreteType": "EventsObject",
-    "kind": "LinkedField",
-    "name": "events",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "DoorEvent",
-        "kind": "LinkedField",
-        "name": "doors",
-        "plural": true,
-        "selections": [
-          (v1/*: any*/),
-          (v2/*: any*/),
-          (v3/*: any*/),
-          (v4/*: any*/)
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "ApplianceEvent",
-        "kind": "LinkedField",
-        "name": "appliances",
-        "plural": true,
-        "selections": (v5/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "WifiEvent",
-        "kind": "LinkedField",
-        "name": "wifi",
-        "plural": true,
-        "selections": (v5/*: any*/),
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "EnvironmentObject",
-    "kind": "LinkedField",
-    "name": "environment",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "EnvironmentDetails",
-        "kind": "LinkedField",
-        "name": "outdoor",
-        "plural": false,
-        "selections": (v6/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "EnvironmentDetails",
-        "kind": "LinkedField",
-        "name": "laundry",
-        "plural": false,
-        "selections": (v6/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "EnvironmentDetails",
-        "kind": "LinkedField",
-        "name": "livingRoom",
-        "plural": false,
-        "selections": (v6/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "EnvironmentDetails",
-        "kind": "LinkedField",
-        "name": "bedroom",
-        "plural": false,
-        "selections": (v6/*: any*/),
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  }
 ];
 return {
   "fragment": {
@@ -333,7 +105,18 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "AppQuery",
-    "selections": (v7/*: any*/),
+    "selections": [
+      {
+        "args": null,
+        "kind": "FragmentSpread",
+        "name": "OverviewTabFragment"
+      },
+      {
+        "args": null,
+        "kind": "FragmentSpread",
+        "name": "SolarEnergyTabFragment"
+      }
+    ],
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -342,19 +125,230 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "AppQuery",
-    "selections": (v7/*: any*/)
+    "selections": [
+      {
+        "alias": null,
+        "args": (v1/*: any*/),
+        "concreteType": "EventsObject",
+        "kind": "LinkedField",
+        "name": "events",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "DoorEvent",
+            "kind": "LinkedField",
+            "name": "doors",
+            "plural": true,
+            "selections": [
+              (v2/*: any*/),
+              (v3/*: any*/),
+              (v4/*: any*/),
+              (v5/*: any*/)
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "ApplianceEvent",
+            "kind": "LinkedField",
+            "name": "appliances",
+            "plural": true,
+            "selections": (v6/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "WifiEvent",
+            "kind": "LinkedField",
+            "name": "wifi",
+            "plural": true,
+            "selections": (v6/*: any*/),
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "EnvironmentObject",
+        "kind": "LinkedField",
+        "name": "environment",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "EnvironmentDetails",
+            "kind": "LinkedField",
+            "name": "outdoor",
+            "plural": false,
+            "selections": (v7/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "EnvironmentDetails",
+            "kind": "LinkedField",
+            "name": "laundry",
+            "plural": false,
+            "selections": (v7/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "EnvironmentDetails",
+            "kind": "LinkedField",
+            "name": "livingRoom",
+            "plural": false,
+            "selections": (v7/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "EnvironmentDetails",
+            "kind": "LinkedField",
+            "name": "bedroom",
+            "plural": false,
+            "selections": (v7/*: any*/),
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": (v1/*: any*/),
+        "concreteType": "SolarObject",
+        "kind": "LinkedField",
+        "name": "solar",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "SolarCurrentResponse",
+            "kind": "LinkedField",
+            "name": "current",
+            "plural": false,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "todayProductionKwh",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "yesterdayProductionKwh",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "GenerationHistory",
+            "kind": "LinkedField",
+            "name": "history",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "at",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "uvLevel",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "wh",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "timestamp",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "EnergyObject",
+        "kind": "LinkedField",
+        "name": "energy",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": (v1/*: any*/),
+            "concreteType": "EnergyConsumption",
+            "kind": "LinkedField",
+            "name": "history",
+            "plural": true,
+            "selections": [
+              (v5/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "used",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "solarExported",
+                "storageKey": null
+              },
+              (v3/*: any*/)
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ]
   },
   "params": {
-    "cacheID": "edad913d2c262547b212aebd52a6165a",
+    "cacheID": "77310b393d74701fd807c45bea660c1e",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $since: DateTime!\n) {\n  solar {\n    current {\n      todayProductionKwh\n      yesterdayProductionKwh\n    }\n    history {\n      at\n      uvLevel\n      wh\n      timestamp\n    }\n  }\n  events(input: {since: $since}) {\n    doors {\n      name\n      time\n      state\n      id\n    }\n    appliances {\n      name\n      time\n      id\n      state\n    }\n    wifi {\n      name\n      time\n      id\n      state\n    }\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n      pressure\n    }\n    laundry {\n      temperature\n      humidity\n      pressure\n    }\n    livingRoom {\n      temperature\n      humidity\n      pressure\n    }\n    bedroom {\n      temperature\n      humidity\n      pressure\n    }\n  }\n}\n"
+    "text": "query AppQuery(\n  $since: DateTime!\n) {\n  ...OverviewTabFragment\n  ...SolarEnergyTabFragment\n}\n\nfragment OverviewTabFragment on QueryRoot {\n  events(input: {since: $since}) {\n    doors {\n      name\n      time\n      state\n      id\n    }\n    appliances {\n      name\n      time\n      id\n      state\n    }\n    wifi {\n      name\n      time\n      id\n      state\n    }\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n      pressure\n    }\n    laundry {\n      temperature\n      humidity\n      pressure\n    }\n    livingRoom {\n      temperature\n      humidity\n      pressure\n    }\n    bedroom {\n      temperature\n      humidity\n      pressure\n    }\n  }\n}\n\nfragment SolarEnergyTabFragment on QueryRoot {\n  solar(input: {since: $since}) {\n    current {\n      todayProductionKwh\n      yesterdayProductionKwh\n    }\n    history {\n      at\n      uvLevel\n      wh\n      timestamp\n    }\n  }\n  energy {\n    history(input: {since: $since}) {\n      id\n      used\n      solarExported\n      time\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a8f0f11214df63dfadbe15e5046fee57";
+(node as any).hash = "c90adcf3462d58d7afc918f55399d2e3";
 
 export default node;
