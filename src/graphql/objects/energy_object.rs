@@ -6,8 +6,7 @@ use uuid::Uuid;
 
 #[derive(InputObject)]
 pub struct EnergyHistoryInput {
-    pub from: DateTime<Utc>,
-    pub to: DateTime<Utc>,
+    pub since: DateTime<Utc>,
 }
 
 pub struct EnergyObject {}
@@ -28,14 +27,11 @@ impl EnergyObject {
         ctx: &async_graphql::Context<'_>,
         input: EnergyHistoryInput,
     ) -> async_graphql::Result<Vec<EnergyConsumption>> {
-        let from = input.from;
-        let to = input.to;
         let db = ctx.data::<Pool<Postgres>>()?;
 
         Ok(sqlx::query!(
-            "SELECT * FROM energy_consumption WHERE time < $1 AND time >= $2 ORDER BY time ASC",
-            to,
-            from
+            "SELECT * FROM energy_consumption WHERE time >= $1 ORDER BY time ASC",
+            input.since
         )
         .fetch_all(db)
         .await?
