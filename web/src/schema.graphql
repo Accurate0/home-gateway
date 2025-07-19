@@ -31,6 +31,22 @@ enum DoorState {
 	CLOSED
 }
 
+type EnergyConsumption {
+	id: UUID!
+	used: Float!
+	solarExported: Float!
+	time: DateTime!
+}
+
+input EnergyHistoryInput {
+	from: DateTime!
+	to: DateTime!
+}
+
+type EnergyObject {
+	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
+}
+
 type EnvironmentDetails {
 	temperature: Float!
 	humidity: Float!
@@ -77,6 +93,7 @@ type QueryRoot {
 	events(input: EventsInput!): EventsObject!
 	environment: EnvironmentObject!
 	solar: SolarObject!
+	energy: EnergyObject!
 }
 
 type SolarCurrentResponse {
