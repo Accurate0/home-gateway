@@ -358,7 +358,7 @@ export const OverviewTab = ({ fragmentKey, selectedHours, setSelectedHours, acti
 
                     return `
                       <div style="border-radius:8px;padding:8px;min-width:120px;">
-                        <div style="font-size:13px;color:#666;margin-bottom:4px;">Time: <span style="color:#222">${new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
+                        <div style="font-size:13px;color:#666;margin-bottom:4px;">Time: <span style="color:#222">${new Date(time).toLocaleDateString() + ' ' + new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
                           ${iconSvg}
                           <span style="font-weight:500; color:#222;">${name}</span>

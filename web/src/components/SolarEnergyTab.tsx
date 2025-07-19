@@ -160,7 +160,7 @@ export const SolarEnergyTab = ({
                           time = p.value[0];
                         }
                       });
-                      return `<div style='padding:6px 10px;'>${time ? `<span style="color:#888;">${new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><br/>` : ''}${kwh !== null ? `<b>${Number(kwh).toFixed(2)} kWh</b><br/>` : ''}${uv !== null ? `<span style='color:#a21caf;'>UV: ${Number(uv).toFixed(1)}</span>` : ''}</div>`;
+                      return `<div style='padding:6px 10px;'>${time ? `<span style="color:#888;">${new Date(time).toLocaleDateString() + ' ' + new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><br/>` : ''}${kwh !== null ? `<b>${Number(kwh).toFixed(2)} kWh</b><br/>` : ''}${uv !== null ? `<span style='color:#a21caf;'>UV: ${Number(uv).toFixed(1)}</span>` : ''}</div>`;
                     },
                     extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 8px; padding: 8px;'
                   },
@@ -322,7 +322,7 @@ export const SolarEnergyTab = ({
                     },
                     extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 8px; padding: 8px;'
                   },
-                  grid: { left: 16, right: 16, top: 8, bottom: 8 },
+                  grid: { left: 16, right: 16, top: 8, bottom: 32 },
                   xAxis: {
                     type: energyChartType === 'bar' ? 'category' : 'time',
                     axisLabel: {
@@ -340,7 +340,7 @@ export const SolarEnergyTab = ({
                     type: 'value',
                     min: 0,
                     minInterval: 1,
-                    axisLabel: { show: true, color: '#222' },
+                    axisLabel: { show: false },
                     splitLine: { show: true, lineStyle: { color: '#e5e7eb', type: 'dotted' } },
                     axisLine: { show: false },
                     axisTick: { show: false },
