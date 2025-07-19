@@ -1,10 +1,12 @@
 use async_graphql::{Object, SimpleObject};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use http::Method;
 use reqwest::ClientBuilder;
 use std::time::Duration;
 
-pub struct SolarObject {}
+pub struct SolarObject {
+    pub since: DateTime<Utc>,
+}
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -46,8 +48,7 @@ pub struct GenerationHistory {
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SolarHistoryResponse {
-    pub today: Vec<GenerationHistory>,
-    pub yesterday: Vec<GenerationHistory>,
+    pub history: Vec<GenerationHistory>,
 }
 
 const SOLAR_API_URL: &str = "https://solar-panels.anurag.sh/api";
@@ -81,21 +82,16 @@ impl SolarObject {
             .timeout(Duration::from_secs(30))
             .build()?;
 
-        let url = format!("{SOLAR_API_URL}/history");
-        let mut response = client
+        let url = format!("{SOLAR_API_URL}/v2/history");
+        let response = client
             .request(Method::GET, url)
+            .query(&[("since", self.since.naive_utc())])
             .send()
             .await?
             .error_for_status()?
             .json::<SolarHistoryResponse>()
             .await?;
 
-        let mut total = Vec::with_capacity(response.yesterday.len() + response.today.len());
-        total.append(&mut response.yesterday);
-        total.append(&mut response.today);
-
-        total.sort_by_key(|r| r.timestamp);
-
-        Ok(total)
+        Ok(response.history)
     }
 }
