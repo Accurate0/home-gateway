@@ -1,4 +1,4 @@
-use crate::settings::Settings;
+use crate::{feature_flag::FeatureFlagClient, settings::Settings};
 use http::Method;
 use ractor::{
     ActorRef,
@@ -16,6 +16,7 @@ pub enum SelfBotMessage {
 pub struct SelfBotWorker {
     client: reqwest::Client,
     settings: Settings,
+    feature_flag_client: FeatureFlagClient,
 }
 
 impl SelfBotWorker {
@@ -46,6 +47,15 @@ impl Worker for SelfBotWorker {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
             SelfBotMessage::SendMessage(self_bot_message_request) => {
+                if self
+                    .feature_flag_client
+                    .is_feature_enabled("home-gateway-selfbot-killswitch", false)
+                    .await
+                {
+                    tracing::warn!("selfbot kill switch is enabled, not sending message");
+                    return Ok(());
+                }
+
                 let url = format!("{}/message", self.settings.selfbot_api_base);
                 let response = self
                     .client
@@ -53,6 +63,7 @@ impl Worker for SelfBotWorker {
                     .json(&self_bot_message_request)
                     .send()
                     .await;
+
                 if let Err(e) = response {
                     tracing::error!("error sending selfbot request: {e}");
                 }
@@ -66,11 +77,13 @@ impl Worker for SelfBotWorker {
 pub struct SelfBotWorkerBuilder {
     pub client: reqwest::Client,
     pub settings: Settings,
+    feature_flag_client: FeatureFlagClient,
 }
 impl WorkerBuilder<SelfBotWorker, ()> for SelfBotWorkerBuilder {
     fn build(&mut self, _wid: usize) -> (SelfBotWorker, ()) {
         (
             SelfBotWorker {
+                feature_flag_client: self.feature_flag_client.clone(),
                 settings: self.settings.clone(),
                 client: self.client.clone(),
             },

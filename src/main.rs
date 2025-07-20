@@ -66,6 +66,7 @@ mod zigbee2mqtt;
 async fn init_actors(
     settings: Settings,
     bucket_accessor: S3BucketAccessor,
+    feature_flag_client: FeatureFlagClient,
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashSet<String>>>,
     reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
@@ -73,6 +74,7 @@ async fn init_actors(
     let shared_actor_state = SharedActorState {
         db,
         bucket_accessor,
+        feature_flag_client,
         known_devices_map,
     };
 
@@ -161,6 +163,7 @@ async fn main() -> anyhow::Result<()> {
     let event_handler_actor = init_actors(
         settings.clone(),
         bucket_accessor,
+        feature_flag_client.clone(),
         pool.clone(),
         known_devices_map,
         reminder_delayqueue.clone(),
@@ -217,7 +220,7 @@ async fn main() -> anyhow::Result<()> {
         axum::serve(listener, app)
             .with_graceful_shutdown(axum_shutdown_signal())
             .await
-            .map_err(|e| MainError::from(e))
+            .map_err(MainError::from)
     });
 
     let mqtt_cancellation_token = cancellation_token.child_token();

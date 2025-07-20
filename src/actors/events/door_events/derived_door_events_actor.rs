@@ -42,7 +42,7 @@ impl DerivedDoorEvents {
 
         state
             .last_trigger
-            .insert(message.ieee_addr.clone(), now.clone());
+            .insert(message.ieee_addr.clone(), now);
 
         Ok(())
     }
@@ -158,7 +158,7 @@ impl Actor for DerivedDoorEvents {
                         .await?
                     }
                 },
-                DoorEventsType::Trigger { .. } => {}
+                DoorEventsType::Trigger => {}
             }
         };
 

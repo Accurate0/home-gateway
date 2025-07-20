@@ -128,7 +128,12 @@ impl Actor for RootSupervisor {
             .await?;
 
         door_sensor::spawn::spawn_door_handler(&myself, shared_actor_state.clone()).await?;
-        selfbot::spawn::spawn_selfbot(&myself, settings.clone()).await?;
+        selfbot::spawn::spawn_selfbot(
+            &myself,
+            self.shared_actor_state.feature_flag_client.clone(),
+            settings.clone(),
+        )
+        .await?;
 
         light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
         temperature_sensor::spawn::spawn_temperature_sensor_handler(
