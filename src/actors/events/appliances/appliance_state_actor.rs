@@ -47,7 +47,7 @@ impl ApplianceState {
         state.map.insert(ieee_addr.clone(), ApplianceStateType::Off);
 
         let message = format!("{} has turned off.", appliance_settings.name);
-        notify(&appliance_settings.notify, message);
+        notify(&appliance_settings.notify, message, true);
 
         Ok(())
     }

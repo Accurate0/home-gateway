@@ -15,10 +15,18 @@ pub async fn woolworths_background(
         let fut = async move {
             let actor = ractor::registry::where_is(WoolworthsActor::NAME.to_owned());
             if let Some(actor) = actor {
-                let products = woolworths_settings.products.iter().map(|p| p.product_id);
-                for product in products {
-                    let response = woolworths.get_product(product).await?;
-                    actor.send_message(woolworths::WoolworthsMessage::TrackedProduct(response))?;
+                for product_group in &woolworths_settings.products {
+                    let products = &product_group.product_ids;
+                    let mut product_group_responses = Vec::with_capacity(products.len());
+                    for product in products {
+                        let response = woolworths.get_product(*product).await?;
+                        product_group_responses.push(response);
+                    }
+
+                    actor.send_message(woolworths::WoolworthsMessage::TrackedProductGroup {
+                        id: product_group.id.to_owned(),
+                        product_responses: product_group_responses,
+                    })?;
                 }
             } else {
                 tracing::warn!("actor for woolworths not found");

@@ -29,7 +29,7 @@ impl ArmedDoor {
     pub fn trigger_action(&self, ieee_addr: &IEEEAddress) {
         if let Some(settings) = self.door_settings.get(ieee_addr) {
             let message = format!("{} has been left open.", settings.name);
-            notify(&settings.notify, message);
+            notify(&settings.notify, message, true);
         }
     }
 }

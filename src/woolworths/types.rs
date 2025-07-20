@@ -11,6 +11,8 @@ pub struct WoolworthsProductResponse {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Product {
+    #[serde(rename = "DisplayName")]
+    pub display_name: String,
     #[serde(rename = "TileID")]
     pub tile_id: i64,
     #[serde(rename = "Stockcode")]

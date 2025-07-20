@@ -112,9 +112,11 @@ pub struct SynergySettings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WoolworthsProductSetting {
+    pub id: String,
+    #[allow(unused)]
     pub name: String,
-    #[serde(rename = "productId")]
-    pub product_id: i64,
+    #[serde(rename = "productIds")]
+    pub product_ids: Vec<i64>,
     pub notify: Vec<NotifySource>,
 }
 

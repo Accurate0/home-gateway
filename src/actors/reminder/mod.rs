@@ -107,7 +107,7 @@ impl Actor for ReminderActor {
                 };
 
                 let message = format!("Reminder about \"{}\"", message);
-                notify(&[notify_source], message);
+                notify(&[notify_source], message, true);
             }
             ReminderActorMessage::TriggerScheduledReminder {
                 message,
@@ -120,7 +120,7 @@ impl Actor for ReminderActor {
                 );
 
                 if scheduled_reminder.state == ReminderState::Active {
-                    notify(&notify_sources, message);
+                    notify(&notify_sources, message, true);
                 }
 
                 let time = scheduled_reminder

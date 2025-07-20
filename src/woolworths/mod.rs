@@ -46,6 +46,7 @@ impl Woolworths {
         self.client.get(Self::BASE_URL).send().await?;
 
         let product_url = format!("{}/{}/{}", Self::BASE_URL, Self::PRODUCT_SUFFIX, product_id);
+        tracing::info!("fetching woolworths product: {product_id}");
         let resp = self
             .client
             .get(product_url)

@@ -23,15 +23,33 @@ reminders:
 
 woolworths:
   products:
-    - name: RedBull 473ml
-      productId: 327603
+    - name: RedBull
+      id: REDBULL
+      productIds:
+        - 327603
+        - 679135
       notify:
         - type: discord
           channelId: 906076901406306355
           mentions: []
 
-    - name: Mother Energy Original 500ml
-      productId: 315125
+    - name: Celsius
+      id: CELSIUS
+      productIds:
+        - 911076
+        - 909279
+        - 911019
+        - 911092
+      notify:
+        - type: discord
+          channelId: 906076901406306355
+          mentions: []
+
+    - name: Mother Energy
+      id: MOTHER_ENERGY
+      productIds:
+        - 315125
+        - 324461
       notify:
         - type: discord
           channelId: 906076901406306355
