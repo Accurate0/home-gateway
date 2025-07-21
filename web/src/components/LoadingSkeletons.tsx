@@ -16,7 +16,7 @@ export const LoadingDashboard = ({ selectedHours }: { selectedHours: number }) =
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header Skeleton - matches DashboardHeader */}
         <DashboardHeader 
-        title="Dashboard" 
+        title="Loading..." 
         activeTab={activeTab} 
         setActiveTab={() => {}} 
         selectedHours={selectedHours} 
