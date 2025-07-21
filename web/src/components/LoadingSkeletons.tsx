@@ -3,8 +3,9 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
+import { DashboardHeader } from "./DashboardHeader";
 
-export const LoadingDashboard = () => {
+export const LoadingDashboard = ({ selectedHours }: { selectedHours: number }) => {
   // Get tab state from URL query parameters
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
@@ -14,22 +15,12 @@ export const LoadingDashboard = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header Skeleton - matches DashboardHeader */}
-        <div className="flex justify-between items-center">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold">
-              {activeTab === 'overview' ? 'Timeline' : 'Solar & Energy'}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Tab Selector Skeleton */}
-            <div className="flex gap-2">
-              <div className={`w-20 h-9 rounded-md animate-pulse ${activeTab === 'overview' ? 'bg-primary' : 'bg-muted'}`}></div>
-              <div className={`w-32 h-9 rounded-md animate-pulse ${activeTab === 'solar' ? 'bg-primary' : 'bg-muted'}`}></div>
-            </div>
-            {/* Time Range Selector Skeleton */}
-            <div className="w-24 h-9 bg-muted rounded-md animate-pulse"></div>
-          </div>
-        </div>
+        <DashboardHeader 
+        title="Dashboard" 
+        activeTab={activeTab} 
+        setActiveTab={() => {}} 
+        selectedHours={selectedHours} 
+        setSelectedHours={() => {}} />
 
         {activeTab === 'overview' ? (
           <LoadingOverviewTab />

@@ -1,5 +1,5 @@
 import { useQueryLoader } from "react-relay";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { APP_QUERY } from "./AppQuery";
 import { DashboardContentInner } from "./components/DashboardContentInner";
 import { LoadingDashboard } from "./components/LoadingSkeletons";
@@ -34,15 +34,15 @@ const DashboardContent = ({ queryRef, loadQuery }: DashboardContentProps) => {
   }, [since, loadQuery]);
 
   return (
-    queryRef != null ? (
-      <DashboardContentInner
-        queryRef={queryRef}
-        selectedHours={selectedHours}
-        setSelectedHours={setSelectedHours}
-      />
-    ) : (
-      <LoadingDashboard />
-    )
+    <Suspense fallback={<LoadingDashboard selectedHours={selectedHours} />}>
+      {queryRef && (
+        <DashboardContentInner
+          queryRef={queryRef}
+          selectedHours={selectedHours}
+          setSelectedHours={setSelectedHours}
+        />
+      )}
+    </Suspense>
   );
 };
 
