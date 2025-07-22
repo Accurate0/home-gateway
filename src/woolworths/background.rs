@@ -33,7 +33,6 @@ pub async fn woolworths_background(
                 tracing::warn!("actor for woolworths not found");
             }
 
-            tokio::time::sleep(Duration::from_secs(900)).await;
             Ok::<(), WoolworthsError>(())
         }
         .instrument(tracing::span!(
@@ -53,6 +52,7 @@ pub async fn woolworths_background(
                     tracing::error!("error fetching from woolworths: {e}")
                 }
 
+                tokio::time::sleep(Duration::from_secs(900)).await;
             }
         }
     }
