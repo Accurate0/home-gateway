@@ -19,6 +19,7 @@ use ractor::{
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
 use serde::{Deserialize, Serialize};
+use tracing::{Instrument, Level};
 use types::{GenericZigbee2MqttMessage, TypedActorName};
 use uuid::Uuid;
 
@@ -190,7 +191,6 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "event-handler", skip(self, message))]
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::MqttPacket { payload, topic } if topic == "zigbee2mqtt/bridge/devices" => {
@@ -328,7 +328,15 @@ impl Worker for EventHandler {
         Job { msg, .. }: Job<(), Message>,
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
+        if let Err(e) = Self::handle(self, msg)
+            .instrument(tracing::span!(
+                parent: None,
+                Level::INFO,
+                "event-handler",
+                "otel.name" = "event-handler",
+            ))
+            .await
+        {
             tracing::error!("error while handling message: {e}")
         }
 
