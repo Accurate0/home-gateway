@@ -1,9 +1,8 @@
-use crate::{feature_flag::FeatureFlagClient, settings::Settings};
+use crate::{feature_flag::FeatureFlagClient, http::get_http_client, settings::Settings};
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, FactoryMessage, queues, routing},
 };
-use std::time::Duration;
 
 use super::{SelfBotMessage, SelfBotWorker, SelfBotWorkerBuilder};
 
@@ -21,9 +20,7 @@ pub async fn spawn_selfbot(
         queues::DefaultQueue<(), SelfBotMessage>,
     >::default();
 
-    let client = reqwest::ClientBuilder::new()
-        .timeout(Duration::from_secs(10))
-        .build()?;
+    let client = get_http_client()?;
 
     let door_handler_factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(SelfBotWorkerBuilder {

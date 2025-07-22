@@ -83,6 +83,7 @@ impl Worker for LightHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "light", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,

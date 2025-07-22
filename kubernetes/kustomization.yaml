@@ -7,9 +7,6 @@ resources:
   - ingress.yaml
   - namespace.yaml
   - database.yaml
-  - unifi-proxy.secret.yaml
-  - unifi-proxy/unifi-proxy.deployment.yaml
-  - unifi-proxy/unifi-proxy.service.yaml
   - web/web.deployment.yaml
   - web/web.service.yaml
   - selfbot.secret.yaml

@@ -14,7 +14,7 @@ pub enum SelfBotMessage {
 }
 
 pub struct SelfBotWorker {
-    client: reqwest::Client,
+    client: reqwest_middleware::ClientWithMiddleware,
     settings: Settings,
     feature_flag_client: FeatureFlagClient,
 }
@@ -38,6 +38,7 @@ impl Worker for SelfBotWorker {
         Ok(())
     }
 
+    #[tracing::instrument(name = "selfbot", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,
@@ -75,7 +76,7 @@ impl Worker for SelfBotWorker {
 }
 
 pub struct SelfBotWorkerBuilder {
-    pub client: reqwest::Client,
+    pub client: reqwest_middleware::ClientWithMiddleware,
     pub settings: Settings,
     feature_flag_client: FeatureFlagClient,
 }

@@ -29,6 +29,7 @@ impl Actor for MaccasActor {
         Ok(())
     }
 
+    #[tracing::instrument(name = "maccas-actor", skip(self, _myself, message, _state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

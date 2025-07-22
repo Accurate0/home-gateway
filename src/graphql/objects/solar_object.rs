@@ -1,8 +1,8 @@
 use async_graphql::{Object, SimpleObject};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use http::Method;
-use reqwest::ClientBuilder;
-use std::time::Duration;
+
+use crate::http::get_http_client;
 
 pub struct SolarObject {
     pub since: DateTime<Utc>,
@@ -59,9 +59,7 @@ impl SolarObject {
         &self,
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<SolarCurrentResponse> {
-        let client = ClientBuilder::new()
-            .timeout(Duration::from_secs(30))
-            .build()?;
+        let client = get_http_client()?;
 
         let url = format!("{SOLAR_API_URL}/current");
         let response = client
@@ -78,9 +76,7 @@ impl SolarObject {
         &self,
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<GenerationHistory>> {
-        let client = ClientBuilder::new()
-            .timeout(Duration::from_secs(30))
-            .build()?;
+        let client = get_http_client()?;
 
         let url = format!("{SOLAR_API_URL}/v2/history");
         let response = client

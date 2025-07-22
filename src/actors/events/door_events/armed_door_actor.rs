@@ -51,6 +51,7 @@ impl Actor for ArmedDoor {
         })
     }
 
+    #[tracing::instrument(name = "armed-door-actor", skip(self, myself, message, state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

@@ -1,11 +1,13 @@
 use itertools::Itertools;
 use ractor::factory::{FactoryMessage, Job, JobOptions};
+use tracing::instrument;
 
 use crate::{
     actors::selfbot::{self, SelfBotWorker},
     settings::NotifySource,
 };
 
+#[instrument]
 pub fn notify(notify_sources: &[NotifySource], message: String, formatting: bool) {
     let maybe_actor = ractor::registry::where_is(SelfBotWorker::NAME.to_string());
     if let Some(actor) = maybe_actor {

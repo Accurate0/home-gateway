@@ -51,6 +51,7 @@ impl Actor for WoolworthsActor {
         })
     }
 
+    #[tracing::instrument(name = "woolworths-actor", skip(self, _myself, message, state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

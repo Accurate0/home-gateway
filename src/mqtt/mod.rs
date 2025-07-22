@@ -63,7 +63,7 @@ impl Mqtt {
                                     .await?;
                             },
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {
-                                if let Err(e) = actor.send_message(FactoryMessage::Dispatch(Job {
+                                let response = actor.send_message(FactoryMessage::Dispatch(Job {
                                     key: (),
                                     msg: event_handler::Message::MqttPacket {
                                         payload: publish.payload,
@@ -72,7 +72,9 @@ impl Mqtt {
                                     options: JobOptions::default(),
                                     accepted: None
 
-                                })) {
+                                }));
+
+                                if let Err(e) = response {
                                     tracing::error!("error sending to event handler actor: {e}")
                                 };
                             }

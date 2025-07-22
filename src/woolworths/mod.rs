@@ -1,16 +1,22 @@
 use http::HeaderMap;
+use tracing::instrument;
 
-use crate::{actors::woolworths::WoolworthsMessage, woolworths::types::WoolworthsProductResponse};
+use crate::{
+    actors::woolworths::WoolworthsMessage, http::wrap_client_in_middleware,
+    woolworths::types::WoolworthsProductResponse,
+};
 
 pub mod background;
 pub mod types;
 
 pub struct Woolworths {
-    client: reqwest::Client,
+    client: reqwest_middleware::ClientWithMiddleware,
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum WoolworthsError {
+    #[error(transparent)]
+    HttpMiddleware(#[from] reqwest_middleware::Error),
     #[error(transparent)]
     Http(#[from] reqwest::Error),
     #[error("a actor message error occurred: {0}")]
@@ -31,14 +37,18 @@ impl Woolworths {
         );
 
         Self {
-            client: reqwest::ClientBuilder::new()
-                .default_headers(headers)
-                .cookie_store(true)
-                .build()
-                .unwrap(),
+            client: wrap_client_in_middleware(
+                reqwest::ClientBuilder::new()
+                    .default_headers(headers)
+                    .cookie_store(true)
+                    .build()
+                    .unwrap(),
+            )
+            .unwrap(),
         }
     }
 
+    #[instrument(skip(self))]
     pub async fn get_product(
         &self,
         product_id: i64,

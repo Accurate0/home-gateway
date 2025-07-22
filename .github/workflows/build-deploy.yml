@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        apps: [home-gateway, unifi-proxy]
+        apps: [home-gateway]
 
     permissions:
       packages: write

@@ -130,9 +130,6 @@ pub struct Settings {
     pub database_url: String,
     pub selfbot_api_base: String,
     pub mqtt_url: String,
-    pub unifi_api_key: String,
-    pub unifi_site_id: String,
-    pub unifi_api_base: String,
     pub reminders: Vec<ReminderSettings>,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
     #[serde(rename = "temperatureSensors")]
@@ -143,6 +140,7 @@ pub struct Settings {
     pub synergy: SynergySettings,
     pub woolworths: WoolworthsSettings,
     pub s3_webhook_secret: String,
+    pub unifi_webhook_secret: String,
 }
 
 impl Settings {

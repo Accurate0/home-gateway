@@ -1,3 +1,5 @@
+use crate::woolworths::background::woolworths_background;
+use ::http::Method;
 use actors::{
     event_handler::{self},
     reminder::{ReminderActor, ReminderActorDelayQueueValue, background::reminder_background},
@@ -18,12 +20,11 @@ use graphql::{
     dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler},
 };
-use http::Method;
 use mqtt::Mqtt;
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     health::health,
-    ingest::{maccas::maccas, synergy::synergy},
+    ingest::{self, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
 use settings::Settings;
@@ -34,15 +35,13 @@ use sqlx::{
 use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tokio_util::sync::CancellationToken;
-use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
-use tracing::Level;
-use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::{
+    cors::{AllowHeaders, AllowOrigin, CorsLayer},
+    trace::TraceLayer,
+};
 use types::{ApiState, MainError, SharedActorState};
-use unifi::Unifi;
 use utils::{axum_shutdown_signal, handle_cancellation};
 use woolworths::Woolworths;
-
-use crate::woolworths::background::woolworths_background;
 
 mod actors;
 mod auth;
@@ -51,14 +50,15 @@ mod delayqueue;
 mod discord;
 mod feature_flag;
 mod graphql;
+mod http;
 mod mqtt;
 mod notify;
 mod routes;
 mod settings;
 mod timed_average;
 mod timedelta_format;
+mod tracing_setup;
 mod types;
-mod unifi;
 mod utils;
 mod woolworths;
 mod zigbee2mqtt;
@@ -98,15 +98,7 @@ async fn init_actors(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::registry()
-        .with(
-            Targets::default()
-                .with_target("otel::tracing", Level::TRACE)
-                .with_target("sea_orm::database", Level::TRACE)
-                .with_default(Level::INFO),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .try_init()?;
+    tracing_setup::init()?;
 
     let settings = Settings::new()?;
 
@@ -146,11 +138,6 @@ async fn main() -> anyhow::Result<()> {
     let feature_flag_client = FeatureFlagClient::new().await;
 
     let mut mqtt = Mqtt::new(settings.mqtt_url.clone(), 1883).await?;
-    let unifi = Unifi::new(
-        settings.unifi_api_key.clone(),
-        settings.unifi_site_id.clone(),
-        settings.unifi_api_base.clone(),
-    )?;
 
     let cancellation_token = CancellationToken::new();
     handle_cancellation(cancellation_token.clone());
@@ -205,6 +192,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/synergy", post(synergy))
+        .route("/ingest/unifi", post(ingest::unifi::unifi))
+        .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(api_state);
     let app = axum::Router::new().nest("/v1", api_routes);
@@ -227,15 +216,6 @@ async fn main() -> anyhow::Result<()> {
     let mqtt_event_handler = event_handler_actor.clone();
     task_set.spawn(async move {
         mqtt.process_events(mqtt_cancellation_token, mqtt_event_handler)
-            .await?;
-        Ok::<(), MainError>(())
-    });
-
-    let unifi_cancellation_token = cancellation_token.child_token();
-    let unifi_event_handler = event_handler_actor.clone();
-    task_set.spawn(async move {
-        unifi
-            .process_events(unifi_cancellation_token, unifi_event_handler)
             .await?;
         Ok::<(), MainError>(())
     });

@@ -6,6 +6,7 @@ pub mod reminder;
 pub mod root;
 pub mod selfbot;
 pub mod synergy;
+pub mod unifi;
 pub mod woolworths;
 
 pub use devices::door_sensor;

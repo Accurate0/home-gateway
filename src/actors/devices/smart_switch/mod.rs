@@ -126,6 +126,7 @@ impl Worker for SmartSwitchHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "smart-switch", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,

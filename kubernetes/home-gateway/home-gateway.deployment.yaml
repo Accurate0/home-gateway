@@ -32,8 +32,8 @@ spec:
           env:
             - name: FLIPT_URL
               value: http://flipt.flipt.svc.cluster.local:8080
-            - name: UNIFI_API_BASE
-              value: http://unifi-proxy.home-gateway.svc.cluster.local
+            - name: INGEST_URL
+              value: http://signoz-otel-collector.signoz.svc.cluster.local:4317
             - name: SELFBOT_API_BASE
               value: http://selfbot.home-gateway.svc.cluster.local
           envFrom:

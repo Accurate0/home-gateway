@@ -1,7 +1,7 @@
 use crate::{
     actors::event_handler, bucket::S3BucketAccessor, delayqueue::DelayQueueError,
     feature_flag::FeatureFlagClient, graphql::FinalSchema, mqtt::MqttError, settings::Settings,
-    unifi::UnifiError, woolworths::WoolworthsError,
+    woolworths::WoolworthsError,
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
@@ -65,8 +65,6 @@ where
 pub enum MainError {
     #[error(transparent)]
     Mqtt(#[from] MqttError),
-    #[error(transparent)]
-    Unifi(#[from] UnifiError),
     #[error(transparent)]
     DelayQueue(#[from] DelayQueueError),
     #[error(transparent)]

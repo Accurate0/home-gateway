@@ -117,6 +117,7 @@ impl Worker for DoorSensorHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "door-sensor", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,

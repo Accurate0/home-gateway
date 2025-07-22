@@ -5,6 +5,7 @@ use crate::{
 };
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
+use tracing::{Instrument, Level};
 
 pub async fn woolworths_background(
     woolworths: &Woolworths,
@@ -34,7 +35,13 @@ pub async fn woolworths_background(
 
             tokio::time::sleep(Duration::from_secs(900)).await;
             Ok::<(), WoolworthsError>(())
-        };
+        }
+        .instrument(tracing::span!(
+            Level::INFO,
+            "woolworths_background",
+            "otel.name" = "woolworths_background"
+        ));
+
         tokio::select! {
             _ = cancellation_token.cancelled() => {
                 tracing::info!("cancellation requested");

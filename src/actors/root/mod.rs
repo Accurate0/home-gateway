@@ -5,7 +5,6 @@ use crate::{
 use ractor::Actor;
 
 use super::{
-    devices::unifi::UnifiConnectedClientHandler,
     door_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light,
@@ -14,6 +13,7 @@ use super::{
     selfbot, smart_switch,
     synergy::SynergyActor,
     temperature_sensor,
+    unifi::UnifiConnectedClientHandler,
 };
 
 pub struct RootSupervisor {

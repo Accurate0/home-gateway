@@ -96,6 +96,7 @@ impl Worker for TemperatureSensorHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "temperature-sensor", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,

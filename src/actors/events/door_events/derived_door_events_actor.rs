@@ -40,9 +40,7 @@ impl DerivedDoorEvents {
 
         state.map.insert(message.ieee_addr.clone(), door_state);
 
-        state
-            .last_trigger
-            .insert(message.ieee_addr.clone(), now);
+        state.last_trigger.insert(message.ieee_addr.clone(), now);
 
         Ok(())
     }
@@ -81,6 +79,10 @@ impl Actor for DerivedDoorEvents {
         })
     }
 
+    #[tracing::instrument(
+        name = "derived-door-events-actor",
+        skip(self, _myself, message, state)
+    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

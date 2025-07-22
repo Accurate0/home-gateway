@@ -1,15 +1,17 @@
-use super::{maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent};
+use super::{
+    maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent,
+    unifi::types::UnifiWebhookEvents,
+};
 use crate::{
     actors::{
-        devices::unifi::{self, UnifiConnectedClientHandler},
         door_sensor, light,
         maccas::{self, MaccasActor},
         smart_switch,
         synergy::{self, SynergyActor},
         temperature_sensor,
+        unifi::{UnifiConnectedClientHandler, UnifiMessage},
     },
     types::SharedActorState,
-    unifi::types::UnifiConnectedClients,
     zigbee2mqtt::devices::BridgeDevices,
 };
 use ractor::{
@@ -28,14 +30,14 @@ pub enum Message {
         payload: bytes::Bytes,
         topic: String,
     },
-    UnifiClients {
-        payload: UnifiConnectedClients,
-    },
     MaccasOfferIngest {
         payload: MaccasOfferIngest,
     },
     SynergyDataIngest {
         payload: S3BucketEvent,
+    },
+    UnifiWebhook {
+        payload: UnifiWebhookEvents,
     },
 }
 
@@ -53,6 +55,7 @@ pub struct EventHandler {
 impl EventHandler {
     pub const NAME: &str = "event-handler";
 
+    #[tracing::instrument(name = "handle_smart_switch", skip_all)]
     fn handle_smart_switch(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -79,6 +82,7 @@ impl EventHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "handle_temperature_sensor", skip_all)]
     fn handle_temperature_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -121,6 +125,7 @@ impl EventHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "handle_door_sensor", skip_all)]
     fn handle_door_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -147,6 +152,7 @@ impl EventHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "handle_light", skip_all)]
     fn handle_light(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -184,6 +190,7 @@ impl EventHandler {
         Ok(())
     }
 
+    #[tracing::instrument(name = "event-handler", skip(self, message))]
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::MqttPacket { payload, topic } if topic == "zigbee2mqtt/bridge/devices" => {
@@ -214,16 +221,7 @@ impl EventHandler {
                 let actor_type = generic_message.to_actor_name();
                 let actor_name = actor_type.to_string();
                 let maybe_actor = ractor::registry::where_is(actor_name);
-                let event_id: Uuid = sqlx::query_scalar!(
-                    r#"
-                    INSERT INTO events (raw_data, event_type)
-                    VALUES ((REPLACE($1::text, '\u0000', ''))::jsonb, $2)
-                    RETURNING id "#,
-                    serde_json::to_string(&generic_message)?,
-                    EventType::Mqtt as EventType
-                )
-                .fetch_one(&self.shared_actor_state.db)
-                .await?;
+                let event_id = uuid::Uuid::new_v4();
                 tracing::info!("received message for {actor_type}, {generic_message}");
 
                 match maybe_actor {
@@ -255,31 +253,6 @@ impl EventHandler {
                     None => tracing::error!("no actor found for {actor_type}"),
                 }
             }
-            Message::UnifiClients { payload } => {
-                let event_id: Uuid = sqlx::query_scalar!(
-                    r#"
-                    INSERT INTO events (raw_data, event_type)
-                    VALUES ($1, $2)
-                    RETURNING id
-                    "#,
-                    serde_json::to_value(&payload)?,
-                    EventType::Unifi as EventType
-                )
-                .fetch_one(&self.shared_actor_state.db)
-                .await?;
-
-                let maybe_actor =
-                    ractor::registry::where_is(UnifiConnectedClientHandler::NAME.to_string());
-
-                if let Some(actor) = maybe_actor {
-                    actor.send_message(unifi::Message::NewEvent {
-                        clients: payload,
-                        event_id,
-                    })?;
-                }
-
-                tracing::info!("received message for unifi");
-            }
             Message::MaccasOfferIngest { payload } => {
                 tracing::info!(
                     "received maccas offer event for {}",
@@ -297,6 +270,34 @@ impl EventHandler {
                 let maybe_actor = ractor::registry::where_is(SynergyActor::NAME.to_string());
                 if let Some(actor) = maybe_actor {
                     actor.send_message(synergy::SynergyMessage::NewUpload(payload))?;
+                }
+            }
+            Message::UnifiWebhook { payload } => {
+                tracing::info!("received unifi webhook event",);
+                let maybe_actor =
+                    ractor::registry::where_is(UnifiConnectedClientHandler::NAME.to_string());
+
+                if maybe_actor.is_none() {
+                    tracing::warn!("unifi actor not found");
+                    return Ok(());
+                }
+
+                let actor = maybe_actor.unwrap();
+
+                for event in payload.events {
+                    match event.id.as_str() {
+                        "event.client_connected" => {
+                            actor.send_message(UnifiMessage::ClientConnect {
+                                mac_address: event.scope.client_mac_address,
+                            })?;
+                        }
+                        "event.client_disconnected" => {
+                            actor.send_message(UnifiMessage::ClientDisconnect {
+                                mac_address: event.scope.client_mac_address,
+                            })?;
+                        }
+                        unknown => tracing::warn!("unknown webhook event: {unknown}"),
+                    }
                 }
             }
         };
