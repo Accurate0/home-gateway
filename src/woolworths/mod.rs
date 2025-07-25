@@ -1,5 +1,7 @@
 use http::HeaderMap;
+use sqlx::{Pool, Postgres};
 use tracing::instrument;
+use types::WoolworthsTrackedProduct;
 
 use crate::{
     actors::woolworths::WoolworthsMessage, http::wrap_client_in_middleware,
@@ -11,6 +13,7 @@ pub mod types;
 
 pub struct Woolworths {
     client: reqwest_middleware::ClientWithMiddleware,
+    db: Pool<Postgres>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -19,6 +22,8 @@ pub enum WoolworthsError {
     HttpMiddleware(#[from] reqwest_middleware::Error),
     #[error(transparent)]
     Http(#[from] reqwest::Error),
+    #[error(transparent)]
+    Db(#[from] sqlx::Error),
     #[error("a actor message error occurred: {0}")]
     ActorMessage(#[from] ractor::MessagingErr<WoolworthsMessage>),
 }
@@ -27,7 +32,7 @@ impl Woolworths {
     const BASE_URL: &str = "https://www.woolworths.com.au";
     const PRODUCT_SUFFIX: &str = "apis/ui/product/detail";
 
-    pub fn new() -> Self {
+    pub fn new(db: Pool<Postgres>) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(
             http::header::USER_AGENT,
@@ -37,6 +42,7 @@ impl Woolworths {
         );
 
         Self {
+            db,
             client: wrap_client_in_middleware(
                 reqwest::ClientBuilder::new()
                     .default_headers(headers)
@@ -46,6 +52,19 @@ impl Woolworths {
             )
             .unwrap(),
         }
+    }
+
+    #[instrument(skip(self))]
+    pub async fn get_all_tracked_products(
+        &self,
+    ) -> Result<Vec<WoolworthsTrackedProduct>, WoolworthsError> {
+        sqlx::query_as!(
+            WoolworthsTrackedProduct,
+            "SELECT * FROM woolworths_product_tracking"
+        )
+        .fetch_all(&self.db)
+        .await
+        .map_err(WoolworthsError::from)
     }
 
     #[instrument(skip(self))]

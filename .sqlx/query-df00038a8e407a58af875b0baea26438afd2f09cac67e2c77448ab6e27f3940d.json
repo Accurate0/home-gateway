@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM woolworths_product_tracking",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "product_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "notify_channel",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "mentions",
+        "type_info": "Int8Array"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "df00038a8e407a58af875b0baea26438afd2f09cac67e2c77448ab6e27f3940d"
+}

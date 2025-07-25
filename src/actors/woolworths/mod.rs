@@ -1,16 +1,15 @@
-use std::collections::HashMap;
-
 use crate::{
-    notify::notify, settings::WoolworthsSettings, types::SharedActorState,
-    woolworths::types::WoolworthsProductResponse,
+    notify::notify,
+    settings::NotifySource,
+    types::SharedActorState,
+    woolworths::types::{WoolworthsProductResponse, WoolworthsTrackedProduct},
 };
-use itertools::Itertools;
 use ractor::Actor;
+use std::collections::HashMap;
 
 pub enum WoolworthsMessage {
     TrackedProductGroup {
-        id: String,
-        product_responses: Vec<WoolworthsProductResponse>,
+        product_response_map: HashMap<WoolworthsTrackedProduct, WoolworthsProductResponse>,
     },
 }
 
@@ -19,7 +18,6 @@ pub struct WoolworthsActorState {
 }
 
 pub struct WoolworthsActor {
-    pub settings: WoolworthsSettings,
     pub shared_actor_state: SharedActorState,
 }
 
@@ -60,22 +58,30 @@ impl Actor for WoolworthsActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             WoolworthsMessage::TrackedProductGroup {
-                id,
-                product_responses,
+                product_response_map,
             } => {
-                let mut lower_price_products = Vec::new();
-
-                for woolworths_product_response in product_responses {
-                    let product_id = woolworths_product_response.product.stockcode;
+                for (tracked, response) in product_response_map {
+                    let product_id = response.product.stockcode;
                     let last_price = state
                         .woolworths_product_price
                         .entry(product_id)
-                        .or_insert(woolworths_product_response.product.price);
+                        .or_insert(response.product.price);
 
-                    let current_price = woolworths_product_response.product.price;
+                    let current_price = response.product.price;
                     let is_price_lower = current_price < *last_price;
                     if is_price_lower {
-                        lower_price_products.push(woolworths_product_response);
+                        let price_down_by = *last_price - current_price;
+                        let product_string = format!(
+                            "{} - ${} (-${:.2})",
+                            response.product.display_name, response.product.price, price_down_by
+                        );
+
+                        let notify_source = NotifySource::Discord {
+                            channel_id: tracked.notify_channel as u64,
+                            mentions: tracked.mentions.iter().map(|m| *m as u64).collect(),
+                        };
+
+                        notify(&[notify_source], product_string, true);
                     }
 
                     state
@@ -92,27 +98,6 @@ impl Actor for WoolworthsActor {
                     )
                     .execute(&self.shared_actor_state.db)
                     .await?;
-                }
-
-                tracing::info!("found {} lower price items", lower_price_products.len());
-                if !lower_price_products.is_empty() {
-                    if let Some(settings) = self
-                        .settings
-                        .products
-                        .iter()
-                        .find(|setting| setting.id == id)
-                    {
-                        let products = lower_price_products
-                            .iter()
-                            .map(|p| {
-                                format!("> - **{} - ${}**", p.product.display_name, p.product.price)
-                            })
-                            .join("\n");
-                        let message = format!(
-                            "> **The following products are on sale at Woolworths:**\n {products}"
-                        );
-                        notify(&settings.notify, message, false);
-                    }
                 }
             }
         }

@@ -1,6 +1,26 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+#[derive(Eq)]
+pub struct WoolworthsTrackedProduct {
+    pub id: uuid::Uuid,
+    pub product_id: i64,
+    pub notify_channel: i64,
+    pub mentions: Vec<i64>,
+}
+
+impl PartialEq for WoolworthsTrackedProduct {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl std::hash::Hash for WoolworthsTrackedProduct {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u128(self.id.as_u128());
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WoolworthsProductResponse {

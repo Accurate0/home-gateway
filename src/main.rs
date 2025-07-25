@@ -133,7 +133,7 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    let woolworths = Woolworths::new();
+    let woolworths = Woolworths::new(pool.clone());
 
     let feature_flag_client = FeatureFlagClient::new().await;
 
@@ -222,7 +222,12 @@ async fn main() -> anyhow::Result<()> {
 
     let discord_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
-        start_discord(settings.discord_token.clone(), discord_cancellation_token).await?;
+        start_discord(
+            settings.discord_token.clone(),
+            pool.clone(),
+            discord_cancellation_token,
+        )
+        .await?;
         Ok::<(), MainError>(())
     });
 
@@ -234,12 +239,7 @@ async fn main() -> anyhow::Result<()> {
 
     let woolworths_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
-        woolworths_background(
-            &woolworths,
-            &settings.woolworths,
-            woolworths_cancellation_token,
-        )
-        .await?;
+        woolworths_background(&woolworths, woolworths_cancellation_token).await?;
         Ok::<(), MainError>(())
     });
 

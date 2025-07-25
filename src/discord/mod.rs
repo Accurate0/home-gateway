@@ -1,5 +1,7 @@
 use anyhow::bail;
 use interactions::remindme::RemindMeCommand;
+use interactions::woolworths::WoolworthsCommand;
+use sqlx::{Pool, Postgres};
 use std::mem;
 use std::sync::{
     Arc,
@@ -30,6 +32,7 @@ static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 
 pub async fn start_discord(
     token: String,
+    pool: Pool<Postgres>,
     cancellation_token: CancellationToken,
 ) -> anyhow::Result<()> {
     let client = Arc::new(Client::new(token.clone()));
@@ -39,7 +42,10 @@ pub async fn start_discord(
 
     let application = client.current_user_application().await?.model().await?;
 
-    let commands = [RemindMeCommand::create_command().into()];
+    let commands = [
+        RemindMeCommand::create_command().into(),
+        WoolworthsCommand::create_command().into(),
+    ];
     let interaction_client = client.interaction(application.id);
 
     if let Err(error) = interaction_client.set_global_commands(&commands).await {
@@ -87,7 +93,7 @@ pub async fn start_discord(
 
     for shard in shards {
         senders.push(shard.sender());
-        tasks.push(tokio::spawn(runner(shard, client.clone())));
+        tasks.push(tokio::spawn(runner(shard, client.clone(), pool.clone())));
     }
 
     cancellation_token.cancelled().await;
@@ -104,7 +110,7 @@ pub async fn start_discord(
     Ok(())
 }
 
-async fn runner(mut shard: Shard, client: Arc<Client>) {
+async fn runner(mut shard: Shard, client: Arc<Client>, db: Pool<Postgres>) {
     while let Some(item) = shard.next_event(EventTypeFlags::all()).await {
         let event = match item {
             Ok(Event::GatewayClose(_)) if SHUTDOWN.load(Ordering::Relaxed) => break,
@@ -116,12 +122,12 @@ async fn runner(mut shard: Shard, client: Arc<Client>) {
         };
 
         tracing::info!(kind = ?event.kind(), shard = ?shard.id().number(), "received event");
-        tokio::spawn(process_interactions(event, client.clone()));
+        tokio::spawn(process_interactions(event, client.clone(), db.clone()));
     }
 }
 
 /// Process incoming interactions from Discord.
-pub async fn process_interactions(event: Event, client: Arc<Client>) {
+pub async fn process_interactions(event: Event, client: Arc<Client>, db: Pool<Postgres>) {
     // We only care about interaction events.
     let mut interaction = match event {
         Event::InteractionCreate(interaction) => interaction.0,
@@ -138,7 +144,7 @@ pub async fn process_interactions(event: Event, client: Arc<Client>) {
         }
     };
 
-    if let Err(error) = handle_command(interaction, data, &client).await {
+    if let Err(error) = handle_command(interaction, data, &client, db.clone()).await {
         tracing::error!(?error, "error while handling command");
     }
 }
@@ -148,9 +154,11 @@ async fn handle_command(
     interaction: Interaction,
     data: CommandData,
     client: &Client,
+    db: Pool<Postgres>,
 ) -> anyhow::Result<()> {
     match &*data.name {
         "remindme" => RemindMeCommand::handle(interaction, data, client).await,
+        "woolworths" => WoolworthsCommand::handle(interaction, data, client, db).await,
         name => bail!("unknown command: {}", name),
     }
 }

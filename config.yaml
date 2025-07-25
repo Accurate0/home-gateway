@@ -21,40 +21,6 @@ reminders:
         channelId: 906076901406306355
         mentions: []
 
-woolworths:
-  products:
-    - name: RedBull
-      id: REDBULL
-      productIds:
-        - 327603
-        - 679135
-      notify:
-        - type: discord
-          channelId: 906076901406306355
-          mentions: []
-
-    - name: Celsius
-      id: CELSIUS
-      productIds:
-        - 911076
-        - 909279
-        - 911019
-        - 911092
-      notify:
-        - type: discord
-          channelId: 906076901406306355
-          mentions: []
-
-    - name: Mother Energy
-      id: MOTHER_ENERGY
-      productIds:
-        - 315125
-        - 324461
-      notify:
-        - type: discord
-          channelId: 906076901406306355
-          mentions: []
-
 doors:
   "0x54ef441000d2b1ba":
     name: Garage

@@ -111,21 +111,6 @@ pub struct SynergySettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct WoolworthsProductSetting {
-    pub id: String,
-    #[allow(unused)]
-    pub name: String,
-    #[serde(rename = "productIds")]
-    pub product_ids: Vec<i64>,
-    pub notify: Vec<NotifySource>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct WoolworthsSettings {
-    pub products: Vec<WoolworthsProductSetting>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub database_url: String,
     pub selfbot_api_base: String,
@@ -138,7 +123,6 @@ pub struct Settings {
     pub maccas: MaccasSettings,
     pub discord_token: String,
     pub synergy: SynergySettings,
-    pub woolworths: WoolworthsSettings,
     pub s3_webhook_secret: String,
     pub unifi_webhook_secret: String,
 }
