@@ -27,7 +27,7 @@ struct CsvRecord {
     #[serde(rename = "Usage not yet billed")]
     unbilled_usage: f64,
     #[serde(rename = "Usage already billed")]
-    billed_usage: f64,
+    billed_usage: Option<f64>,
     #[serde(rename = "Generation")]
     solar_export: f64,
 }
@@ -70,7 +70,7 @@ impl Actor for SynergyActor {
                         let record: Result<CsvRecord, csv::Error> = result;
                         match record {
                             Ok(r) => {
-                                let energy_used = r.unbilled_usage + r.billed_usage;
+                                let energy_used = r.unbilled_usage + r.billed_usage.unwrap_or(0f64);
                                 let solar_exported = r.solar_export;
                                 let time_unparsed = format!("{} {} +0800", r.date, r.time);
                                 let time = DateTime::parse_from_str(&time_unparsed, dt_format)?;
