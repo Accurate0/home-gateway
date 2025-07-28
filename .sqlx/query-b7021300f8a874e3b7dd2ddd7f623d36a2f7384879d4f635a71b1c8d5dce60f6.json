@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, pm25, humidity, voc_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Float8",
+        "Int8",
+        "Float8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7021300f8a874e3b7dd2ddd7f623d36a2f7384879d4f635a71b1c8d5dce60f6"
+}
