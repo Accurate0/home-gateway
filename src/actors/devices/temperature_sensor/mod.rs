@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     settings::{IEEEAddress, TemperatureSensorSettings},
     types::SharedActorState,
-    zigbee2mqtt::{Aqara_WSDCGQ12LM, Lumi_WSDCGQ11LM},
+    zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -16,6 +16,7 @@ pub mod spawn;
 pub enum Entity {
     AqaraWSDCGQ12LM(Aqara_WSDCGQ12LM::AqaraWSDCGQ12LM),
     LumiWSDCGQ11LM(Lumi_WSDCGQ11LM::LumiWSDCGQ11LM),
+    IKEAE2112(IKEA_E2112::IKEAE2112),
 }
 
 pub struct NewEvent {
@@ -72,6 +73,24 @@ impl TemperatureSensorHandler {
                         lumi_wsdcgq11_lm.battery,
                         lumi_wsdcgq11_lm.humidity,
                         lumi_wsdcgq11_lm.pressure,
+                    ).execute(&self.shared_actor_state.db).await?;
+                }
+                Entity::IKEAE2112(ikea_e2112) => {
+                    let id = self
+                        .temperature_sensor_settings
+                        .get(&ikea_e2112.device.ieee_addr)
+                        .map(|s| &s.id);
+
+                    sqlx::query!(
+                        "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, pm25, humidity, voc_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                        event.event_id,
+                        id,
+                        ikea_e2112.device.friendly_name,
+                        ikea_e2112.device.ieee_addr,
+                        ikea_e2112.temperature as f64,
+                        ikea_e2112.pm25,
+                        ikea_e2112.humidity as f64,
+                        ikea_e2112.voc_index
                     ).execute(&self.shared_actor_state.db).await?;
                 }
             },

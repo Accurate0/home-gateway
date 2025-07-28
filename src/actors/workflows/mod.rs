@@ -1,6 +1,7 @@
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
     settings::workflow::{WorkflowEntityLightTypeState, WorkflowEntityType, WorkflowSettings},
+    timer::timed,
 };
 use ractor::{
     ActorRef,
@@ -89,7 +90,7 @@ impl Worker for WorkflowWorker {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
             WorkflowWorkerMessage::Execute { event_id, workflow } => {
-                Self::execute_workflow(event_id, workflow)?
+                timed(|| Self::execute_workflow(event_id, workflow))?;
             }
         }
 

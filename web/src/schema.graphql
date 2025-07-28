@@ -49,7 +49,7 @@ type EnergyObject {
 type EnvironmentDetails {
 	temperature: Float!
 	humidity: Float!
-	pressure: Float!
+	pressure: Float
 	time: DateTime!
 	name: String!
 }
@@ -58,6 +58,7 @@ type EnvironmentObject {
 	outdoor: EnvironmentDetails!
 	laundry: EnvironmentDetails!
 	livingRoom: EnvironmentDetails!
+	bathroom: EnvironmentDetails!
 	bedroom: EnvironmentDetails!
 }
 

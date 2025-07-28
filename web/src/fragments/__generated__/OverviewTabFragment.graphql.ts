@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<989f7a2be62db6d3300343f2c61c99f4>>
+ * @generated SignedSource<<aba79538c3ab6b5f7ea35fd4c887a76b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,22 +17,22 @@ export type OverviewTabFragment$data = {
   readonly environment: {
     readonly bedroom: {
       readonly humidity: number;
-      readonly pressure: number;
+      readonly pressure: number | null | undefined;
       readonly temperature: number;
     };
     readonly laundry: {
       readonly humidity: number;
-      readonly pressure: number;
+      readonly pressure: number | null | undefined;
       readonly temperature: number;
     };
     readonly livingRoom: {
       readonly humidity: number;
-      readonly pressure: number;
+      readonly pressure: number | null | undefined;
       readonly temperature: number;
     };
     readonly outdoor: {
       readonly humidity: number;
-      readonly pressure: number;
+      readonly pressure: number | null | undefined;
       readonly temperature: number;
     };
   };

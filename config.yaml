@@ -101,6 +101,8 @@ temperatureSensors:
   "0x00158d008b8798a7":
     id: LIVING_ROOM
   "0x00158d008b879b53":
+    id: BATHROOM
+  "0xb0c7defffef6a9be":
     id: BEDROOM
   "0x54ef441000ee2ca3":
     id: OUTDOOR

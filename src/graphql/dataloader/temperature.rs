@@ -18,9 +18,9 @@ pub struct TemperatureModel {
     pub ieee_addr: String,
     pub temperature: f64,
     #[allow(unused)]
-    pub battery: i64,
+    pub battery: Option<i64>,
     pub humidity: f64,
-    pub pressure: f64,
+    pub pressure: Option<f64>,
     pub time: DateTime<Utc>,
 }
 

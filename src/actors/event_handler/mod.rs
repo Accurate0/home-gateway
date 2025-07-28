@@ -120,6 +120,17 @@ impl EventHandler {
         generic_message: GenericZigbee2MqttMessage,
     ) -> Result<(), anyhow::Error> {
         match generic_message {
+            GenericZigbee2MqttMessage::IKEATemperatureSensor(ikea_temperature_sensor) => {
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
+                        event_id,
+                        entity: temperature_sensor::Entity::IKEAE2112(ikea_temperature_sensor),
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
             GenericZigbee2MqttMessage::AqaraTemperatureSensor(aqara_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),

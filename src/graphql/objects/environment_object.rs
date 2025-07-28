@@ -38,6 +38,15 @@ impl EnvironmentObject {
         })
     }
 
+    pub async fn bathroom(
+        &self,
+        _ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<EnvironmentDetails> {
+        Ok(EnvironmentDetails {
+            id: "BATHROOM".to_owned(),
+        })
+    }
+
     pub async fn bedroom(
         &self,
         _ctx: &async_graphql::Context<'_>,
@@ -76,7 +85,10 @@ impl EnvironmentDetails {
         self.load(ctx, |t| t.humidity).await
     }
 
-    async fn pressure(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<f64> {
+    async fn pressure(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
         self.load(ctx, |t| t.pressure).await
     }
 
