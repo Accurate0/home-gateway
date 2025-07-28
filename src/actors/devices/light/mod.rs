@@ -1,4 +1,6 @@
 use crate::{
+    mqtt::ZIGBEE2MQTT_BASE,
+    settings::IEEEAddress,
     types::SharedActorState,
     zigbee2mqtt::{
         IKEA_LED2201G8::{self},
@@ -23,8 +25,11 @@ pub struct NewEvent {
     pub entity: Entity,
 }
 
-pub enum Message {
+pub enum LightHandlerMessage {
     NewEvent(NewEvent),
+    TurnOn { ieee_addr: IEEEAddress },
+    TurnOff { ieee_addr: IEEEAddress },
+    Toggle { ieee_addr: IEEEAddress },
 }
 
 pub struct LightHandler {
@@ -34,35 +39,71 @@ pub struct LightHandler {
 impl LightHandler {
     pub const NAME: &str = "light";
 
-    async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
+    async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
         match message {
-            Message::NewEvent(event) => match event.entity {
+            LightHandlerMessage::NewEvent(event) => match event.entity {
                 Entity::Phillips9290012573A(phillips_9290012573_a) => {
                     sqlx::query!(
-                        "INSERT INTO light (event_id, name, ieee_addr, state, brightness) VALUES ($1, $2, $3, $4, $5)",
-                        event.event_id,
-                        phillips_9290012573_a.device.friendly_name,
-                        phillips_9290012573_a.device.ieee_addr,
-                        phillips_9290012573_a.state,
-                        phillips_9290012573_a.brightness,
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                                "INSERT INTO light (event_id, name, ieee_addr, state, brightness) VALUES ($1, $2, $3, $4, $5)",
+                                event.event_id,
+                                phillips_9290012573_a.device.friendly_name,
+                                phillips_9290012573_a.device.ieee_addr,
+                                phillips_9290012573_a.state,
+                                phillips_9290012573_a.brightness,
+                            )
+                            .execute(&self.shared_actor_state.db)
+                            .await?;
                 }
                 Entity::IKEALED2201G8(ikealed2201_g8) => {
                     sqlx::query!(
-                        "INSERT INTO light (event_id, name, ieee_addr, state, brightness) VALUES ($1, $2, $3, $4, $5)",
-                        event.event_id,
-                        ikealed2201_g8.device.friendly_name,
-                        ikealed2201_g8.device.ieee_addr,
-                        ikealed2201_g8.state,
-                        ikealed2201_g8.brightness,
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                                "INSERT INTO light (event_id, name, ieee_addr, state, brightness) VALUES ($1, $2, $3, $4, $5)",
+                                event.event_id,
+                                ikealed2201_g8.device.friendly_name,
+                                ikealed2201_g8.device.ieee_addr,
+                                ikealed2201_g8.state,
+                                ikealed2201_g8.brightness,
+                            )
+                            .execute(&self.shared_actor_state.db)
+                            .await?;
                 }
             },
+            LightHandlerMessage::TurnOn { ieee_addr } => {
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "ON"}))
+                    .await?;
+            }
+            LightHandlerMessage::TurnOff { ieee_addr } => {
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "OFF"}))
+                    .await?;
+            }
+            LightHandlerMessage::Toggle { ieee_addr } => {
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "TOGGLE"}))
+                    .await?;
+            }
         }
+
+        Ok(())
+    }
+
+    async fn send_mqtt_state(
+        &self,
+        ieee_addr: String,
+        state: serde_json::Value,
+    ) -> Result<(), anyhow::Error> {
+        let friendly_name = {
+            let devices_map = self.shared_actor_state.known_devices_map.read().await;
+            devices_map.get(&ieee_addr).cloned()
+        };
+
+        let Some(friendly_name) = friendly_name else {
+            tracing::warn!("could not find device for {ieee_addr}");
+            return Ok(());
+        };
+
+        let topic = format!("{ZIGBEE2MQTT_BASE}/{friendly_name}/set");
+        self.shared_actor_state
+            .mqtt
+            .send_event(topic, state)
+            .await?;
 
         Ok(())
     }
@@ -70,14 +111,14 @@ impl LightHandler {
 
 impl Worker for LightHandler {
     type Key = ();
-    type Message = Message;
+    type Message = LightHandlerMessage;
     type State = ();
     type Arguments = ();
 
     async fn pre_start(
         &self,
         _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
+        _factory: &ActorRef<FactoryMessage<(), LightHandlerMessage>>,
         _startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         Ok(())
@@ -87,8 +128,8 @@ impl Worker for LightHandler {
     async fn handle(
         &self,
         _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        Job { msg, .. }: Job<(), Message>,
+        _factory: &ActorRef<FactoryMessage<(), LightHandlerMessage>>,
+        Job { msg, .. }: Job<(), LightHandlerMessage>,
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         if let Err(e) = Self::handle(self, msg).await {

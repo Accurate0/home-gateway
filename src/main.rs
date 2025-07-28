@@ -20,19 +20,19 @@ use graphql::{
     dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler},
 };
-use mqtt::Mqtt;
+use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     health::health,
     ingest::{self, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
-use settings::Settings;
+use settings::{IEEEAddress, Settings};
 use sqlx::{
     ConnectOptions, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
-use std::{collections::HashSet, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 use tower_http::{
@@ -57,6 +57,7 @@ mod routes;
 mod settings;
 mod timed_average;
 mod timedelta_format;
+mod timer;
 mod tracing_setup;
 mod types;
 mod utils;
@@ -67,12 +68,14 @@ async fn init_actors(
     settings: Settings,
     bucket_accessor: S3BucketAccessor,
     feature_flag_client: FeatureFlagClient,
+    mqtt_client: MqttClient,
     db: Pool<Postgres>,
-    known_devices_map: Arc<RwLock<HashSet<String>>>,
+    known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
     reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
     let shared_actor_state = SharedActorState {
         db,
+        mqtt: mqtt_client,
         bucket_accessor,
         feature_flag_client,
         known_devices_map,
@@ -137,12 +140,12 @@ async fn main() -> anyhow::Result<()> {
 
     let feature_flag_client = FeatureFlagClient::new().await;
 
-    let mut mqtt = Mqtt::new(settings.mqtt_url.clone(), 1883).await?;
+    let (mqtt_client, mut mqtt) = Mqtt::new(settings.mqtt_url.clone(), 1883).await?;
 
     let cancellation_token = CancellationToken::new();
     handle_cancellation(cancellation_token.clone());
 
-    let known_devices_map = Arc::new(RwLock::new(HashSet::new()));
+    let known_devices_map = Arc::new(RwLock::new(HashMap::new()));
 
     let reminder_delayqueue =
         DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
@@ -151,6 +154,7 @@ async fn main() -> anyhow::Result<()> {
         settings.clone(),
         bucket_accessor,
         feature_flag_client.clone(),
+        mqtt_client,
         pool.clone(),
         known_devices_map,
         reminder_delayqueue.clone(),

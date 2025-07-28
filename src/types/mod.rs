@@ -1,13 +1,18 @@
 use crate::{
-    actors::event_handler, bucket::S3BucketAccessor, delayqueue::DelayQueueError,
-    feature_flag::FeatureFlagClient, graphql::FinalSchema, mqtt::MqttError, settings::Settings,
+    actors::event_handler,
+    bucket::S3BucketAccessor,
+    delayqueue::DelayQueueError,
+    feature_flag::FeatureFlagClient,
+    graphql::FinalSchema,
+    mqtt::{MqttClient, MqttError},
+    settings::{IEEEAddress, Settings},
     woolworths::WoolworthsError,
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 use ractor::{ActorRef, factory::FactoryMessage};
 use sqlx::{Pool, Postgres};
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
 pub mod db;
@@ -15,9 +20,10 @@ pub mod db;
 #[derive(Clone)]
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
+    pub mqtt: MqttClient,
     pub bucket_accessor: S3BucketAccessor,
     pub feature_flag_client: FeatureFlagClient,
-    pub known_devices_map: Arc<RwLock<HashSet<String>>>,
+    pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
 }
 
 #[derive(Clone)]

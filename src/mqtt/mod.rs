@@ -4,11 +4,13 @@ use ractor::{
     factory::{FactoryMessage, Job, JobOptions},
 };
 use rumqttc::MqttOptions;
+use serde::Serialize;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
+pub const ZIGBEE2MQTT_BASE: &str = "zigbee2mqtt";
+
 pub struct Mqtt {
-    #[allow(unused)]
     client: rumqttc::AsyncClient,
     connection: rumqttc::EventLoop,
 }
@@ -25,8 +27,39 @@ pub enum MqttError {
     ActorMessage(#[from] ractor::MessagingErr<FactoryMessage<(), event_handler::Message>>),
 }
 
+#[derive(Clone)]
+pub struct MqttClient {
+    client: rumqttc::AsyncClient,
+}
+
+impl MqttClient {
+    pub fn json_bytes<T>(structure: T) -> Vec<u8>
+    where
+        T: Serialize,
+    {
+        let mut bytes: Vec<u8> = Vec::new();
+        serde_json::to_writer(&mut bytes, &structure).unwrap();
+        bytes
+    }
+
+    pub async fn send_event<T>(&self, topic: String, payload: T) -> Result<(), MqttError>
+    where
+        T: Serialize,
+    {
+        self.client
+            .publish(
+                topic,
+                rumqttc::QoS::ExactlyOnce,
+                false,
+                MqttClient::json_bytes(payload),
+            )
+            .await
+            .map_err(MqttError::from)
+    }
+}
+
 impl Mqtt {
-    pub async fn new(host: String, port: u16) -> Result<Self, MqttError> {
+    pub async fn new(host: String, port: u16) -> Result<(MqttClient, Self), MqttError> {
         let client_id = if cfg!(debug_assertions) {
             "home-gateway-dev"
         } else {
@@ -40,7 +73,12 @@ impl Mqtt {
 
         let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 10);
 
-        Ok(Self { client, connection })
+        Ok((
+            MqttClient {
+                client: client.clone(),
+            },
+            Self { client, connection },
+        ))
     }
 
     pub async fn process_events(

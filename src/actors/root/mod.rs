@@ -5,6 +5,7 @@ use crate::{
 use ractor::Actor;
 
 use super::{
+    devices::control_switch,
     door_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light,
@@ -14,6 +15,7 @@ use super::{
     synergy::SynergyActor,
     temperature_sensor,
     unifi::UnifiConnectedClientHandler,
+    workflows,
 };
 
 pub struct RootSupervisor {
@@ -122,6 +124,15 @@ impl Actor for RootSupervisor {
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let shared_actor_state = &self.shared_actor_state;
         let settings = &self.settings;
+
+        workflows::spawn::spawn_workflows(&myself).await?;
+
+        control_switch::spawn::spawn_control_switch_handler(
+            &myself,
+            shared_actor_state.clone(),
+            settings.clone(),
+        )
+        .await?;
 
         smart_switch::spawn::spawn_smart_switch_handler(&myself, shared_actor_state.clone())
             .await?;

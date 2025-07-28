@@ -8,6 +8,7 @@ pub mod selfbot;
 pub mod synergy;
 pub mod unifi;
 pub mod woolworths;
+pub mod workflows;
 
 pub use devices::door_sensor;
 pub use devices::light;

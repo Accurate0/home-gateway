@@ -1,11 +1,12 @@
 use crate::{
     actors::{
-        door_sensor::DoorSensorHandler, light::LightHandler, smart_switch::SmartSwitchHandler,
+        devices::control_switch::ControlSwitchHandler, door_sensor::DoorSensorHandler,
+        light::LightHandler, smart_switch::SmartSwitchHandler,
         temperature_sensor::TemperatureSensorHandler,
     },
     zigbee2mqtt::{
-        Aqara_MCCGQ12LM, Aqara_WSDCGQ12LM, IKEA_LED2201G8, Lumi_WSDCGQ11LM, Phillips_9290012573A,
-        TS011F_plug_1,
+        Aqara_MCCGQ12LM, Aqara_WSDCGQ12LM, IKEA_E2001, IKEA_LED2201G8, Lumi_WSDCGQ11LM,
+        Phillips_9290012573A, TS011F_plug_1,
     },
 };
 
@@ -18,6 +19,7 @@ pub enum GenericZigbee2MqttMessage {
     AquaraDoorSensor(Aqara_MCCGQ12LM::AqaraMCCGQ12LM),
     PhillipsLight(Phillips_9290012573A::Phillips9290012573A),
     IKEALight(IKEA_LED2201G8::IKEALED2201G8),
+    IKEASwitch(IKEA_E2001::IKEAE2001),
 }
 
 impl std::fmt::Display for GenericZigbee2MqttMessage {
@@ -40,6 +42,9 @@ impl std::fmt::Display for GenericZigbee2MqttMessage {
             }
             GenericZigbee2MqttMessage::LumiTemperatureSensor(msg) => {
                 write!(f, "Lumi Temperature Sensor: {}", msg.device.friendly_name)
+            }
+            GenericZigbee2MqttMessage::IKEASwitch(msg) => {
+                write!(f, "IKEA Switch: {}", msg.device.friendly_name)
             }
         }
     }
@@ -67,6 +72,7 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_wsdcgq11_lm) => {
                 &lumi_wsdcgq11_lm.device.ieee_addr
             }
+            GenericZigbee2MqttMessage::IKEASwitch(ikeae2001) => &ikeae2001.device.ieee_addr,
         }
     }
 
@@ -91,6 +97,7 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_wsdcgq11_lm) => {
                 &lumi_wsdcgq11_lm.device.friendly_name
             }
+            GenericZigbee2MqttMessage::IKEASwitch(ikeae2001) => &ikeae2001.device.friendly_name,
         }
     }
 
@@ -106,6 +113,7 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::LumiTemperatureSensor(_) => {
                 TypedActorName::TemperatureSensor
             }
+            GenericZigbee2MqttMessage::IKEASwitch(_) => TypedActorName::ControlSwitch,
         }
     }
 }
@@ -115,6 +123,7 @@ pub enum TypedActorName {
     TemperatureSensor,
     DoorSensor,
     Light,
+    ControlSwitch,
 }
 
 impl std::fmt::Display for TypedActorName {
@@ -124,6 +133,7 @@ impl std::fmt::Display for TypedActorName {
             TypedActorName::TemperatureSensor => write!(f, "{}", TemperatureSensorHandler::NAME),
             TypedActorName::DoorSensor => write!(f, "{}", DoorSensorHandler::NAME),
             TypedActorName::Light => write!(f, "{}", LightHandler::NAME),
+            TypedActorName::ControlSwitch => write!(f, "{}", ControlSwitchHandler::NAME),
         }
     }
 }

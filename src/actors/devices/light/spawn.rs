@@ -1,11 +1,9 @@
+use super::{LightHandler, LightHandlerBuilder, LightHandlerMessage};
+use crate::types::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, queues, routing},
 };
-
-use crate::types::SharedActorState;
-
-use super::{LightHandler, LightHandlerBuilder, Message};
 
 pub async fn spawn_light_handler(
     root_supervisor_ref: &ActorRef<()>,
@@ -13,11 +11,11 @@ pub async fn spawn_light_handler(
 ) -> anyhow::Result<()> {
     let door_handler_factory_def = Factory::<
         (),
-        Message,
+        LightHandlerMessage,
         (),
         LightHandler,
-        routing::QueuerRouting<(), Message>,
-        queues::DefaultQueue<(), Message>,
+        routing::QueuerRouting<(), LightHandlerMessage>,
+        queues::DefaultQueue<(), LightHandlerMessage>,
     >::default();
 
     let door_handler_factory_args = FactoryArguments::builder()

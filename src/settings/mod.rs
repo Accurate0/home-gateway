@@ -8,8 +8,12 @@ use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use std::fmt::Display;
 use std::{collections::HashMap, path::PathBuf};
+use workflow::ActionSettings;
+
+pub mod workflow;
 
 pub type IEEEAddress = String;
+pub type SwitchActionId = String;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -111,6 +115,13 @@ pub struct SynergySettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct SwitchSettings {
+    #[allow(unused)]
+    pub name: String,
+    pub actions: HashMap<SwitchActionId, ActionSettings>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub database_url: String,
     pub selfbot_api_base: String,
@@ -125,6 +136,7 @@ pub struct Settings {
     pub synergy: SynergySettings,
     pub s3_webhook_secret: String,
     pub unifi_webhook_secret: String,
+    pub switches: HashMap<IEEEAddress, SwitchSettings>,
 }
 
 impl Settings {

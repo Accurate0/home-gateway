@@ -1,5 +1,5 @@
 use super::{
-    maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent,
+    devices::control_switch, maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent,
     unifi::types::UnifiWebhookEvents,
 };
 use crate::{
@@ -55,6 +55,35 @@ pub struct EventHandler {
 
 impl EventHandler {
     pub const NAME: &str = "event-handler";
+
+    #[tracing::instrument(name = "handle_control_switch", skip_all)]
+    fn handle_control_switch(
+        event_id: Uuid,
+        actor_type: TypedActorName,
+        actor_cell: ActorCell,
+        generic_message: GenericZigbee2MqttMessage,
+    ) -> Result<(), anyhow::Error> {
+        match generic_message {
+            GenericZigbee2MqttMessage::IKEASwitch(ikea_e2001) => {
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
+                        event_id,
+                        entity: control_switch::Entity::IKEAE2001(ikea_e2001),
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
+            _ => {
+                tracing::warn!(
+                    "actor name ({actor_type}) does not match message for control switch"
+                );
+            }
+        }
+
+        Ok(())
+    }
 
     #[tracing::instrument(name = "handle_smart_switch", skip_all)]
     fn handle_smart_switch(
@@ -164,7 +193,7 @@ impl EventHandler {
             GenericZigbee2MqttMessage::PhillipsLight(phillips_light) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: light::Message::NewEvent(light::NewEvent {
+                    msg: light::LightHandlerMessage::NewEvent(light::NewEvent {
                         event_id,
                         entity: light::Entity::Phillips9290012573A(phillips_light),
                     }),
@@ -175,7 +204,7 @@ impl EventHandler {
             GenericZigbee2MqttMessage::IKEALight(ikea_light) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: light::Message::NewEvent(light::NewEvent {
+                    msg: light::LightHandlerMessage::NewEvent(light::NewEvent {
                         event_id,
                         entity: light::Entity::IKEALED2201G8(ikea_light),
                     }),
@@ -204,7 +233,7 @@ impl EventHandler {
                             )
                             .execute(&self.shared_actor_state.db)
                             .await?;
-                    devices_map.insert(device.ieee_address);
+                    devices_map.insert(device.ieee_address, device.friendly_name);
                 }
                 drop(devices_map)
             }
@@ -249,6 +278,12 @@ impl EventHandler {
                         types::TypedActorName::Light => {
                             Self::handle_light(event_id, actor_type, actor_cell, generic_message)?
                         }
+                        types::TypedActorName::ControlSwitch => Self::handle_control_switch(
+                            event_id,
+                            actor_type,
+                            actor_cell,
+                            generic_message,
+                        )?,
                     },
                     None => tracing::error!("no actor found for {actor_type}"),
                 }
