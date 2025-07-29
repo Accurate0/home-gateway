@@ -24,7 +24,7 @@ use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     health::health,
-    ingest::{self, maccas::maccas, synergy::synergy},
+    ingest::{self, home::alarm::alarm, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
 use settings::{IEEEAddress, Settings};
@@ -194,6 +194,7 @@ async fn main() -> anyhow::Result<()> {
             api_state.clone(),
         ))
         .route("/health", get(health))
+        .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/synergy", post(synergy))
         .route("/ingest/unifi", post(ingest::unifi::unifi))

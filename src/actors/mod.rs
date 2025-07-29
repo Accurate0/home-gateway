@@ -1,3 +1,4 @@
+pub mod alarm;
 pub mod devices;
 pub mod event_handler;
 pub mod events;

@@ -136,6 +136,7 @@ pub struct Settings {
     pub synergy: SynergySettings,
     pub s3_webhook_secret: String,
     pub unifi_webhook_secret: String,
+    pub android_app_webhook_secret: String,
     pub switches: HashMap<IEEEAddress, SwitchSettings>,
 }
 

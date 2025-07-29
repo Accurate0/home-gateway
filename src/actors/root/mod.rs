@@ -5,6 +5,7 @@ use crate::{
 use ractor::Actor;
 
 use super::{
+    alarm::AlarmActor,
     devices::control_switch,
     door_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
@@ -25,6 +26,23 @@ pub struct RootSupervisor {
 }
 
 impl RootSupervisor {
+    async fn start_alarm_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(AlarmActor::NAME.to_owned()),
+                AlarmActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
     async fn start_unifi_connected_clients_handler(
         &self,
         myself: &ractor::ActorRef<()>,
@@ -180,6 +198,7 @@ impl Actor for RootSupervisor {
         self.start_reminder_actor(&myself).await?;
         self.start_synergy_actor(&myself).await?;
         self.start_woolworths_actor(&myself).await?;
+        self.start_alarm_actor(&myself).await?;
 
         Ok(())
     }
@@ -224,6 +243,11 @@ impl Actor for RootSupervisor {
                 if who.get_name().is_some_and(|n| n == WoolworthsActor::NAME) {
                     tracing::info!("restarting woolworths actor");
                     self.start_woolworths_actor(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == AlarmActor::NAME) {
+                    tracing::info!("restarting alarm actor");
+                    self.start_alarm_actor(&myself).await?;
                 };
             }
             _ => {}

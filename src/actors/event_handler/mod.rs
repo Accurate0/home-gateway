@@ -1,9 +1,11 @@
 use super::{
-    devices::control_switch, maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent,
+    alarm::types::AndroidAppAlarmPayload, devices::control_switch,
+    maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent,
     unifi::types::UnifiWebhookEvents,
 };
 use crate::{
     actors::{
+        alarm::{AlarmActor, AlarmMessage},
         door_sensor, light,
         maccas::{self, MaccasActor},
         smart_switch,
@@ -30,6 +32,9 @@ pub enum Message {
     MqttPacket {
         payload: bytes::Bytes,
         topic: String,
+    },
+    AlarmChangeIngest {
+        payload: AndroidAppAlarmPayload,
     },
     MaccasOfferIngest {
         payload: MaccasOfferIngest,
@@ -345,6 +350,15 @@ impl EventHandler {
                         unknown => tracing::warn!("unknown webhook event: {unknown}"),
                     }
                 }
+            }
+            Message::AlarmChangeIngest { payload } => {
+                tracing::info!("received alarm webhook event");
+                let Some(actor) = ractor::registry::where_is(AlarmActor::NAME.to_string()) else {
+                    tracing::warn!("alarm actor not found");
+                    return Ok(());
+                };
+
+                actor.send_message(AlarmMessage::NextAlarm(payload))?;
             }
         };
 
