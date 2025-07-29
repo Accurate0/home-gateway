@@ -14,6 +14,7 @@ pub struct AlarmActor {
 
 impl AlarmActor {
     pub const NAME: &str = "alarm";
+    const ALARM_STATE_KEY: &str = "next_alarm";
 }
 
 impl Actor for AlarmActor {
@@ -39,6 +40,13 @@ impl Actor for AlarmActor {
         match message {
             AlarmMessage::NextAlarm(android_app_alarm_payload) => {
                 tracing::info!("alarm local: {}", android_app_alarm_payload.local_time);
+                sqlx::query!(
+                    "INSERT INTO state (key, value) VALUES ($1, $2)",
+                    Self::ALARM_STATE_KEY,
+                    android_app_alarm_payload.local_time
+                )
+                .execute(&self.shared_actor_state.db)
+                .await?;
             }
         }
 
