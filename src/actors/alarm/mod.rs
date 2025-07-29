@@ -41,7 +41,7 @@ impl Actor for AlarmActor {
             AlarmMessage::NextAlarm(android_app_alarm_payload) => {
                 tracing::info!("alarm local: {}", android_app_alarm_payload.local_time);
                 sqlx::query!(
-                    "INSERT INTO state (key, value) VALUES ($1, $2)",
+                    "INSERT INTO state (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
                     Self::ALARM_STATE_KEY,
                     android_app_alarm_payload.local_time
                 )
