@@ -1,14 +1,18 @@
-#![allow(unused)]
-
 use super::IEEEAddress;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
+#[serde(tag = "state", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WorkflowEntityLightTypeState {
     On,
     Off,
     Toggle,
+    IncreaseBrightness { value: u64 },
+    DecreaseBrightness { value: u64 },
+    IncreaseColourTemperature { value: u64 },
+    DecreaseColourTemperature { value: u64 },
+    StopColourTemperature,
+    StopBrightness,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -17,6 +21,7 @@ pub enum WorkflowEntityType {
     Light {
         #[serde(rename = "ieeeAddr")]
         ieee_addr: IEEEAddress,
+        #[serde(flatten)]
         state: WorkflowEntityLightTypeState,
     },
 }

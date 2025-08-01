@@ -145,8 +145,12 @@ impl Settings {
         let file_path = PathBuf::from("./config.yaml");
         let file = File::from(file_path).required(false);
 
+        let switches_path = PathBuf::from("./switch-config.yaml");
+        let switch_file = File::from(switches_path).required(false);
+
         let s = Config::builder()
             .add_source(file)
+            .add_source(switch_file)
             .add_source(Environment::default().separator("__"))
             .build()?;
 

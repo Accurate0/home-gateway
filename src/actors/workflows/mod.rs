@@ -23,6 +23,66 @@ pub struct WorkflowWorker {}
 impl WorkflowWorker {
     pub const NAME: &str = "workflow";
 
+    fn handle_light_operation(
+        ieee_addr: String,
+        state: WorkflowEntityLightTypeState,
+    ) -> Result<(), anyhow::Error> {
+        let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
+            tracing::warn!("could not find light actor");
+            return Ok(());
+        };
+
+        let light_actor_message = match state {
+            WorkflowEntityLightTypeState::On => LightHandlerMessage::TurnOn { ieee_addr },
+            WorkflowEntityLightTypeState::Off => LightHandlerMessage::TurnOff { ieee_addr },
+            WorkflowEntityLightTypeState::Toggle => LightHandlerMessage::Toggle { ieee_addr },
+            WorkflowEntityLightTypeState::IncreaseBrightness { value } => {
+                LightHandlerMessage::BrightnessMove {
+                    ieee_addr,
+                    value: value.try_into()?,
+                }
+            }
+            WorkflowEntityLightTypeState::DecreaseBrightness { value } => {
+                LightHandlerMessage::BrightnessMove {
+                    ieee_addr,
+                    value: -value.try_into()?,
+                }
+            }
+            WorkflowEntityLightTypeState::StopBrightness => LightHandlerMessage::BrightnessMove {
+                ieee_addr,
+                value: 0,
+            },
+            WorkflowEntityLightTypeState::IncreaseColourTemperature { value } => {
+                LightHandlerMessage::ColourTemperatureMove {
+                    ieee_addr,
+                    value: value.try_into()?,
+                }
+            }
+            WorkflowEntityLightTypeState::DecreaseColourTemperature { value } => {
+                LightHandlerMessage::ColourTemperatureMove {
+                    ieee_addr,
+                    value: -value.try_into()?,
+                }
+            }
+            WorkflowEntityLightTypeState::StopColourTemperature => {
+                LightHandlerMessage::ColourTemperatureMove {
+                    ieee_addr,
+                    value: 0,
+                }
+            }
+        };
+
+        let message = FactoryMessage::Dispatch(Job {
+            key: (),
+            msg: light_actor_message,
+            options: JobOptions::default(),
+            accepted: None,
+        });
+        actor.send_message(message)?;
+
+        Ok(())
+    }
+
     pub fn execute_workflow(
         event_id: Uuid,
         workflow: WorkflowSettings,
@@ -31,32 +91,7 @@ impl WorkflowWorker {
         for step in workflow.run {
             match step {
                 WorkflowEntityType::Light { ieee_addr, state } => {
-                    let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string())
-                    else {
-                        tracing::warn!("could not find light actor");
-                        return Ok(());
-                    };
-
-                    let light_actor_message = match state {
-                        WorkflowEntityLightTypeState::On => {
-                            LightHandlerMessage::TurnOn { ieee_addr }
-                        }
-                        WorkflowEntityLightTypeState::Off => {
-                            LightHandlerMessage::TurnOff { ieee_addr }
-                        }
-                        WorkflowEntityLightTypeState::Toggle => {
-                            LightHandlerMessage::Toggle { ieee_addr }
-                        }
-                    };
-
-                    let message = FactoryMessage::Dispatch(Job {
-                        key: (),
-                        msg: light_actor_message,
-                        options: JobOptions::default(),
-                        accepted: None,
-                    });
-
-                    actor.send_message(message)?;
+                    Self::handle_light_operation(ieee_addr, state)?;
                 }
             }
         }
@@ -94,6 +129,25 @@ impl Worker for WorkflowWorker {
             }
         }
 
+        Ok(())
+    }
+
+    async fn handle_supervisor_evt(
+        &self,
+        _myself: ractor::ActorCell,
+        message: ractor::SupervisionEvent,
+        _state: &mut Self::State,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        match &message {
+            ractor::SupervisionEvent::ActorTerminated(who, _, _)
+            | ractor::SupervisionEvent::ActorFailed(who, _) => {
+                tracing::error!("actor {who:?} failed");
+                if let ractor::SupervisionEvent::ActorFailed(_, panic) = &message {
+                    tracing::error!("panic: {panic}");
+                }
+            }
+            _ => {}
+        }
         Ok(())
     }
 }

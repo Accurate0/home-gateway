@@ -1,6 +1,6 @@
 use crate::{
     actors::reminder::{ReminderActor, ReminderActorMessage},
-    timedelta_format::parse_datetime_str,
+    timedelta_format::parse_datetime_str_with_ms,
 };
 use anyhow::Context;
 use twilight_http::Client;
@@ -48,7 +48,7 @@ impl RemindMeCommand {
         let actor = ractor::registry::where_is(ReminderActor::NAME.to_owned());
 
         if let Some(actor) = actor {
-            let time = parse_datetime_str(&command.time);
+            let time = parse_datetime_str_with_ms(&command.time);
             if let Err(_) = time {
                 interaction_client
                     .update_response(&interaction.token)

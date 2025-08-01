@@ -3,52 +3,62 @@ use chrono::TimeDelta;
 use phf::phf_map;
 
 type TimeDeltaFn = fn(i64) -> Option<TimeDelta>;
-const TIME_DELTA_FN_MAP: phf::Map<char, TimeDeltaFn> = phf_map! {
-    'h' => TimeDelta::try_hours,
-    'm' => TimeDelta::try_minutes,
-    's' => TimeDelta::try_seconds
+const TIME_DELTA_FN_MAP: phf::Map<&'static str, TimeDeltaFn> = phf_map! {
+    "h" => TimeDelta::try_hours,
+    "m" => TimeDelta::try_minutes,
+    "s" => TimeDelta::try_seconds,
+    "ms" => TimeDelta::try_milliseconds
 };
 
-pub fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
+pub fn parse_datetime_str_with_ms(s: &str) -> anyhow::Result<TimeDelta> {
     let mut final_time_delta = TimeDelta::zero();
 
     let mut it = s.chars().peekable();
     let mut number = vec![];
 
     loop {
-        if it.peek().is_none() {
+        let Some(c) = it.next() else {
             break;
+        };
+
+        if c.is_ascii_alphabetic() {
+            let is_milliseconds = c == 'm' && it.peek().is_some_and(|c| *c == 's');
+            match c {
+                'h' | 'm' | 's' => {
+                    if number.is_empty() {
+                        anyhow::bail!("missing number before h, m, s or ms")
+                    }
+
+                    let time_value = String::from_utf8(number.clone())?.parse()?;
+                    let time_delta_fn = if is_milliseconds {
+                        TIME_DELTA_FN_MAP.get("ms").expect("must find ms")
+                    } else {
+                        TIME_DELTA_FN_MAP
+                            .get(&String::from(c))
+                            .context("invalid time operator")?
+                    };
+
+                    final_time_delta = final_time_delta
+                        .checked_add(&time_delta_fn(time_value).context("invalid time")?)
+                        .context("time too large...")?;
+
+                    number.clear();
+                    if is_milliseconds {
+                        it.next();
+                    }
+
+                    continue;
+                }
+                _ => {}
+            }
         }
 
-        let c = *it.peek().unwrap();
         match c {
-            '0'..='9' => loop {
-                let c = it.peek();
-                if c.is_some_and(|c| c.is_ascii_digit()) {
-                    number.push(*c.unwrap() as u8);
-                    it.next();
-                } else {
-                    break;
-                }
-            },
-            'm' | 'h' | 's' => {
-                if number.is_empty() {
-                    anyhow::bail!("missing number before h, m, or s")
-                }
-
-                let time_value = String::from_utf8(number.clone())?.parse()?;
-                let time_delta_fn = TIME_DELTA_FN_MAP.get(&c).context("invalid time operator")?;
-
-                final_time_delta = final_time_delta
-                    .checked_add(&time_delta_fn(time_value).context("invalid time")?)
-                    .context("time too large...")?;
-
-                it.next();
-                number.clear();
+            '0'..='9' => {
+                number.push(c as u8);
             }
-            c if c.is_whitespace() => {
-                it.next();
-            }
+
+            c if c.is_whitespace() => continue,
             c => anyhow::bail!("unexpected char: {}, example: 1h 32m 2s", c),
         }
     }
@@ -61,7 +71,7 @@ pub fn parse_datetime_str(s: &str) -> anyhow::Result<TimeDelta> {
 }
 
 pub mod time_delta_from_str {
-    use super::parse_datetime_str;
+    use super::parse_datetime_str_with_ms;
     use chrono::{DateTime, TimeDelta, Utc};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
@@ -85,7 +95,40 @@ pub mod time_delta_from_str {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let time_delta = parse_datetime_str(&s).map_err(serde::de::Error::custom)?;
+        let time_delta = parse_datetime_str_with_ms(&s).map_err(serde::de::Error::custom)?;
         Ok(time_delta)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("3h", TimeDelta::hours(3))]
+    #[case("2h 2s", TimeDelta::hours(2) + TimeDelta::seconds(2))]
+    #[case("20m 2h 2s", TimeDelta::minutes(20) + TimeDelta::hours(2) + TimeDelta::seconds(2))]
+    #[case("20m 2s", TimeDelta::minutes(20) + TimeDelta::seconds(2))]
+    #[case("21243s", TimeDelta::seconds(21243))]
+    #[case("2332m 2h 2s", TimeDelta::minutes(2332) + TimeDelta::hours(2) + TimeDelta::seconds(2))]
+    #[case("20m", TimeDelta::minutes(20))]
+    #[case("20ms", TimeDelta::milliseconds(20))]
+    #[case("1s 200ms", TimeDelta::seconds(1) + TimeDelta::milliseconds(200))]
+    fn test_parse_datetime_str_with_ms(#[case] s: &str, #[case] expected: TimeDelta) {
+        let result = parse_datetime_str_with_ms(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[rstest]
+    #[case("3x")]
+    #[case("0")]
+    #[case("h")]
+    #[case("h3")]
+    #[case("2hr")]
+    fn test_parse_datetime_str_fail(#[case] s: &str) {
+        let result = parse_datetime_str_with_ms(s);
+        assert!(result.is_err())
     }
 }

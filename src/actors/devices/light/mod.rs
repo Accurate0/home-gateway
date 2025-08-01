@@ -27,9 +27,28 @@ pub struct NewEvent {
 
 pub enum LightHandlerMessage {
     NewEvent(NewEvent),
-    TurnOn { ieee_addr: IEEEAddress },
-    TurnOff { ieee_addr: IEEEAddress },
-    Toggle { ieee_addr: IEEEAddress },
+    TurnOn {
+        ieee_addr: IEEEAddress,
+    },
+    TurnOff {
+        ieee_addr: IEEEAddress,
+    },
+    Toggle {
+        ieee_addr: IEEEAddress,
+    },
+    BrightnessMove {
+        ieee_addr: IEEEAddress,
+        value: i64,
+    },
+    ColourTemperatureMove {
+        ieee_addr: IEEEAddress,
+        value: i64,
+    },
+    #[allow(unused)]
+    SetBrightness {
+        ieee_addr: IEEEAddress,
+        value: u64,
+    },
 }
 
 pub struct LightHandler {
@@ -78,6 +97,31 @@ impl LightHandler {
             LightHandlerMessage::Toggle { ieee_addr } => {
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "TOGGLE"}))
                     .await?;
+            }
+            LightHandlerMessage::SetBrightness { ieee_addr, value } => {
+                let value = if value >= 254 {
+                    254
+                } else if value <= 0 {
+                    0
+                } else {
+                    value
+                };
+
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
+                    .await?;
+            }
+            LightHandlerMessage::BrightnessMove { ieee_addr, value } => {
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness_move": value}))
+                    .await?;
+            }
+            LightHandlerMessage::ColourTemperatureMove { ieee_addr, value } => {
+                let state = if value == 0 {
+                    serde_json::json!({"color_temp_move": "stop"})
+                } else {
+                    serde_json::json!({"color_temp_move": value})
+                };
+
+                self.send_mqtt_state(ieee_addr, state).await?;
             }
         }
 
