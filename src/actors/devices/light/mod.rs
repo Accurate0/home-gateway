@@ -21,6 +21,7 @@ pub enum Entity {
 }
 
 pub struct NewEvent {
+    #[allow(unused)]
     pub event_id: Uuid,
     pub entity: Entity,
 }
@@ -61,30 +62,8 @@ impl LightHandler {
     async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
         match message {
             LightHandlerMessage::NewEvent(event) => match event.entity {
-                Entity::Phillips9290012573A(phillips_9290012573_a) => {
-                    sqlx::query!(
-                                "INSERT INTO light (event_id, name, ieee_addr, state, brightness) VALUES ($1, $2, $3, $4, $5)",
-                                event.event_id,
-                                phillips_9290012573_a.device.friendly_name,
-                                phillips_9290012573_a.device.ieee_addr,
-                                phillips_9290012573_a.state,
-                                phillips_9290012573_a.brightness,
-                            )
-                            .execute(&self.shared_actor_state.db)
-                            .await?;
-                }
-                Entity::IKEALED2201G8(ikealed2201_g8) => {
-                    sqlx::query!(
-                                "INSERT INTO light (event_id, name, ieee_addr, state, brightness) VALUES ($1, $2, $3, $4, $5)",
-                                event.event_id,
-                                ikealed2201_g8.device.friendly_name,
-                                ikealed2201_g8.device.ieee_addr,
-                                ikealed2201_g8.state,
-                                ikealed2201_g8.brightness,
-                            )
-                            .execute(&self.shared_actor_state.db)
-                            .await?;
-                }
+                Entity::Phillips9290012573A(_phillips_9290012573_a) => {}
+                Entity::IKEALED2201G8(_ikealed2201_g8) => {}
             },
             LightHandlerMessage::TurnOn { ieee_addr } => {
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "ON"}))
