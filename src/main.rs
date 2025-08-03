@@ -23,6 +23,7 @@ use graphql::{
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
+    control::light::light_control,
     health::health,
     ingest::{self, home::alarm::alarm, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
@@ -190,6 +191,7 @@ async fn main() -> anyhow::Result<()> {
     let api_routes = axum::Router::new()
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
+        .route("/control/light", post(light_control))
         .route_layer(from_extractor_with_state::<RequireIpAuth, ApiState>(
             api_state.clone(),
         ))
