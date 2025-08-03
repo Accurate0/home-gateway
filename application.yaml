@@ -15,7 +15,6 @@ spec:
       images:
         - home-gateway=ghcr.io/accurate0/home-gateway:${ARGOCD_APP_REVISION}
         - home-web=ghcr.io/accurate0/home-web:${ARGOCD_APP_REVISION}
-        - unifi-proxy=ghcr.io/accurate0/unifi-proxy:${ARGOCD_APP_REVISION}
         - home-selfbot=ghcr.io/accurate0/home-selfbot:${ARGOCD_APP_REVISION}
 
   destination:

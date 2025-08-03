@@ -1,7 +1,7 @@
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
     settings::workflow::{WorkflowEntityLightTypeState, WorkflowEntityType, WorkflowSettings},
-    timer::timed,
+    timer::timed_async,
 };
 use ractor::{
     ActorRef,
@@ -83,7 +83,7 @@ impl WorkflowWorker {
         Ok(())
     }
 
-    pub fn execute_workflow(
+    pub async fn execute_workflow(
         event_id: Uuid,
         workflow: WorkflowSettings,
     ) -> Result<(), anyhow::Error> {
@@ -91,7 +91,12 @@ impl WorkflowWorker {
         for step in workflow.run {
             match step {
                 WorkflowEntityType::Light { ieee_addr, state } => {
-                    Self::handle_light_operation(ieee_addr, state)?;
+                    tokio::runtime::Handle::current()
+                        .spawn_blocking(|| {
+                            Self::handle_light_operation(ieee_addr, state)?;
+                            Ok::<(), anyhow::Error>(())
+                        })
+                        .await??;
                 }
             }
         }
@@ -125,7 +130,7 @@ impl Worker for WorkflowWorker {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
             WorkflowWorkerMessage::Execute { event_id, workflow } => {
-                timed(|| Self::execute_workflow(event_id, workflow))?;
+                timed_async(|| Self::execute_workflow(event_id, workflow)).await?;
             }
         }
 

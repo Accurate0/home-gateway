@@ -1,5 +1,7 @@
 use std::time::Instant;
+use tokio::time::Instant as AsyncInstant;
 
+#[allow(unused)]
 pub fn timed<T, F>(func: F) -> Result<T, anyhow::Error>
 where
     F: FnOnce() -> Result<T, anyhow::Error>,
@@ -22,14 +24,13 @@ where
     result
 }
 
-#[allow(unused)]
 pub async fn timed_async<T, F>(func: F) -> Result<T, anyhow::Error>
 where
     F: AsyncFnOnce() -> Result<T, anyhow::Error>,
 {
-    let start = Instant::now();
+    let start = AsyncInstant::now();
     let result = func().await;
-    let finish = Instant::now();
+    let finish = AsyncInstant::now();
 
     let duration = finish.duration_since(start);
     tracing::info!(
