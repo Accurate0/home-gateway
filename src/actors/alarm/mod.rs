@@ -1,11 +1,22 @@
-use crate::types::SharedActorState;
-use ractor::Actor;
+use crate::{
+    actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
+    settings::workflow::{WorkflowEntityLightTypeState, WorkflowEntityType, WorkflowSettings},
+    types::SharedActorState,
+};
+use chrono::{DateTime, TimeDelta, Utc};
+use ractor::{
+    Actor,
+    factory::{FactoryMessage, Job, JobOptions},
+};
+use std::time::Duration;
 use types::AndroidAppAlarmPayload;
+use uuid::Uuid;
 
 pub mod types;
 
 pub enum AlarmMessage {
     NextAlarm(AndroidAppAlarmPayload),
+    CheckIfAlarmWillTrigger { offset: TimeDelta },
 }
 
 pub struct AlarmActor {
@@ -15,6 +26,7 @@ pub struct AlarmActor {
 impl AlarmActor {
     pub const NAME: &str = "alarm";
     const ALARM_STATE_KEY: &str = "next_alarm";
+    const LAMP_IEEE_ADDR: &str = "0x001788010381ef5d";
 }
 
 impl Actor for AlarmActor {
@@ -24,9 +36,15 @@ impl Actor for AlarmActor {
 
     async fn pre_start(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
+        let _join_handle = myself.send_interval(Duration::from_secs(60), || {
+            AlarmMessage::CheckIfAlarmWillTrigger {
+                offset: TimeDelta::minutes(5),
+            }
+        });
+
         Ok(())
     }
 
@@ -47,6 +65,61 @@ impl Actor for AlarmActor {
                 )
                 .execute(&self.shared_actor_state.db)
                 .await?;
+            }
+            AlarmMessage::CheckIfAlarmWillTrigger { offset } => {
+                let maybe_alarm_time = sqlx::query!(
+                    "SELECT value FROM state WHERE key = $1",
+                    Self::ALARM_STATE_KEY
+                )
+                .fetch_optional(&self.shared_actor_state.db)
+                .await?;
+
+                if let Some(alarm_time) = maybe_alarm_time {
+                    let now = Utc::now();
+                    let alarm_time = DateTime::parse_from_rfc3339(&alarm_time.value)?;
+
+                    let should_trigger =
+                        now.timestamp_millis() >= (alarm_time - offset).timestamp_millis();
+
+                    if should_trigger {
+                        tracing::info!("triggering workflow to turn on lamp");
+                        let Some(workflow_actor) =
+                            ractor::registry::where_is(WorkflowWorker::NAME.to_owned())
+                        else {
+                            tracing::warn!("could not find workflow actor");
+                            return Ok(());
+                        };
+
+                        let workflow = WorkflowSettings {
+                            run: vec![
+                                WorkflowEntityType::Light {
+                                    ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
+                                    state: WorkflowEntityLightTypeState::SetBrightness { value: 1 },
+                                },
+                                WorkflowEntityType::Light {
+                                    ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
+                                    state: WorkflowEntityLightTypeState::IncreaseBrightness {
+                                        value: 1,
+                                        on_off: false,
+                                    },
+                                },
+                            ],
+                        };
+
+                        let event_id = Uuid::new_v4();
+                        let message = FactoryMessage::Dispatch(Job {
+                            key: (),
+                            msg: WorkflowWorkerMessage::Execute { event_id, workflow },
+                            options: JobOptions::default(),
+                            accepted: None,
+                        });
+
+                        workflow_actor.send_message(message)?;
+                        sqlx::query!("DELETE FROM state WHERE key = $1", Self::ALARM_STATE_KEY)
+                            .execute(&self.shared_actor_state.db)
+                            .await?;
+                    }
+                }
             }
         }
 

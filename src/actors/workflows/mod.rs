@@ -36,21 +36,27 @@ impl WorkflowWorker {
             WorkflowEntityLightTypeState::On => LightHandlerMessage::TurnOn { ieee_addr },
             WorkflowEntityLightTypeState::Off => LightHandlerMessage::TurnOff { ieee_addr },
             WorkflowEntityLightTypeState::Toggle => LightHandlerMessage::Toggle { ieee_addr },
-            WorkflowEntityLightTypeState::IncreaseBrightness { value } => {
+            WorkflowEntityLightTypeState::SetBrightness { value } => {
+                LightHandlerMessage::SetBrightness { ieee_addr, value }
+            }
+            WorkflowEntityLightTypeState::IncreaseBrightness { value, on_off } => {
                 LightHandlerMessage::BrightnessMove {
                     ieee_addr,
                     value: value.try_into()?,
+                    on_off,
                 }
             }
-            WorkflowEntityLightTypeState::DecreaseBrightness { value } => {
+            WorkflowEntityLightTypeState::DecreaseBrightness { value, on_off } => {
                 LightHandlerMessage::BrightnessMove {
                     ieee_addr,
                     value: -value.try_into()?,
+                    on_off,
                 }
             }
             WorkflowEntityLightTypeState::StopBrightness => LightHandlerMessage::BrightnessMove {
                 ieee_addr,
                 value: 0,
+                on_off: false,
             },
             WorkflowEntityLightTypeState::IncreaseColourTemperature { value } => {
                 LightHandlerMessage::ColourTemperatureMove {

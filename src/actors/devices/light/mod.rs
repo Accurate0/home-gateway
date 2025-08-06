@@ -40,6 +40,7 @@ pub enum LightHandlerMessage {
     BrightnessMove {
         ieee_addr: IEEEAddress,
         value: i64,
+        on_off: bool,
     },
     ColourTemperatureMove {
         ieee_addr: IEEEAddress,
@@ -89,9 +90,21 @@ impl LightHandler {
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
                     .await?;
             }
-            LightHandlerMessage::BrightnessMove { ieee_addr, value } => {
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness_move": value}))
+            LightHandlerMessage::BrightnessMove {
+                ieee_addr,
+                value,
+                on_off,
+            } => {
+                if on_off {
+                    self.send_mqtt_state(
+                        ieee_addr,
+                        serde_json::json!({"brightness_move_onoff": value}),
+                    )
                     .await?;
+                } else {
+                    self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness_move": value}))
+                        .await?;
+                }
             }
             LightHandlerMessage::ColourTemperatureMove { ieee_addr, value } => {
                 let state = if value == 0 {

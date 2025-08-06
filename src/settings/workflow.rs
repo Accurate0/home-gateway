@@ -7,10 +7,25 @@ pub enum WorkflowEntityLightTypeState {
     On,
     Off,
     Toggle,
-    IncreaseBrightness { value: u64 },
-    DecreaseBrightness { value: u64 },
-    IncreaseColourTemperature { value: u64 },
-    DecreaseColourTemperature { value: u64 },
+    SetBrightness {
+        value: u64,
+    },
+    IncreaseBrightness {
+        value: u64,
+        #[serde(default)]
+        on_off: bool,
+    },
+    DecreaseBrightness {
+        value: u64,
+        #[serde(default)]
+        on_off: bool,
+    },
+    IncreaseColourTemperature {
+        value: u64,
+    },
+    DecreaseColourTemperature {
+        value: u64,
+    },
     StopColourTemperature,
     StopBrightness,
 }
