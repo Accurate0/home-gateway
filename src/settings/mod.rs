@@ -16,7 +16,7 @@ pub type IEEEAddress = String;
 pub type SwitchActionId = String;
 
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum PresenceActionId {
     PresenceDetected,
     NoPresenceDetected,

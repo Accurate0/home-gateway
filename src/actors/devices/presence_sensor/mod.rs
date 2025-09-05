@@ -73,6 +73,8 @@ impl PresenceSensorHandler {
                         return Ok(());
                     };
 
+                    // TODO: ignore recent events where the presence has not changed
+                    // the presence sensor is quite loud
                     let action_settings = if aqara_fp1_e.presence {
                         presence_settings
                             .actions
