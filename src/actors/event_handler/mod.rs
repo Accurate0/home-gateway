@@ -1,6 +1,8 @@
 use super::{
-    alarm::types::AndroidAppAlarmPayload, devices::control_switch,
-    maccas::types::MaccasOfferIngest, synergy::types::S3BucketEvent,
+    alarm::types::AndroidAppAlarmPayload,
+    devices::{control_switch, presence_sensor},
+    maccas::types::MaccasOfferIngest,
+    synergy::types::S3BucketEvent,
     unifi::types::UnifiWebhookEvents,
 };
 use crate::{
@@ -84,6 +86,33 @@ impl EventHandler {
                 tracing::warn!(
                     "actor name ({actor_type}) does not match message for control switch"
                 );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[tracing::instrument(name = "handle_presence_sensor", skip_all)]
+    fn handle_presence_sensor(
+        event_id: Uuid,
+        actor_type: TypedActorName,
+        actor_cell: ActorCell,
+        generic_message: GenericZigbee2MqttMessage,
+    ) -> Result<(), anyhow::Error> {
+        match generic_message {
+            GenericZigbee2MqttMessage::AqaraPresenceSensor(aqara_presence) => {
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
+                        event_id,
+                        entity: presence_sensor::Entity::AqaraFP1E(aqara_presence),
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
+            _ => {
+                tracing::warn!("actor name ({actor_type}) does not match message for smart switch");
             }
         }
 
@@ -271,6 +300,12 @@ impl EventHandler {
 
                 match maybe_actor {
                     Some(actor_cell) => match actor_type {
+                        types::TypedActorName::PresenceSensor => Self::handle_presence_sensor(
+                            event_id,
+                            actor_type,
+                            actor_cell,
+                            generic_message,
+                        )?,
                         types::TypedActorName::SmartSwitch => Self::handle_smart_switch(
                             event_id,
                             actor_type,

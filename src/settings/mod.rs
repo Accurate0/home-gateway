@@ -15,6 +15,13 @@ pub mod workflow;
 pub type IEEEAddress = String;
 pub type SwitchActionId = String;
 
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[serde(rename_all = "camelCase")]
+pub enum PresenceActionId {
+    PresenceDetected,
+    NoPresenceDetected,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum NotifySource {
@@ -122,6 +129,13 @@ pub struct SwitchSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct PresenceSettings {
+    #[allow(unused)]
+    pub name: String,
+    pub actions: HashMap<PresenceActionId, ActionSettings>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub database_url: String,
     pub selfbot_api_base: String,
@@ -138,6 +152,8 @@ pub struct Settings {
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
     pub switches: HashMap<IEEEAddress, SwitchSettings>,
+    #[serde(rename = "presenceSensors")]
+    pub presence_sensors: HashMap<IEEEAddress, PresenceSettings>,
 }
 
 impl Settings {
@@ -148,9 +164,13 @@ impl Settings {
         let switches_path = PathBuf::from("./switch-config.yaml");
         let switch_file = File::from(switches_path).required(false);
 
+        let presence_path = PathBuf::from("./presence-config.yaml");
+        let presence_file = File::from(presence_path).required(false);
+
         let s = Config::builder()
             .add_source(file)
             .add_source(switch_file)
+            .add_source(presence_file)
             .add_source(Environment::default().separator("__"))
             .build()?;
 

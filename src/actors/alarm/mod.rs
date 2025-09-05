@@ -91,6 +91,7 @@ impl Actor for AlarmActor {
                         };
 
                         let workflow = WorkflowSettings {
+                            enabled: true,
                             run: vec![
                                 WorkflowEntityType::Light {
                                     ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),

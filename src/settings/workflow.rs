@@ -41,8 +41,14 @@ pub enum WorkflowEntityType {
     },
 }
 
+fn yes() -> bool {
+    true
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct WorkflowSettings {
+    #[serde(default = "yes")]
+    pub enabled: bool,
     pub run: Vec<WorkflowEntityType>,
 }
 

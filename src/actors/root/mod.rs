@@ -6,7 +6,7 @@ use ractor::Actor;
 
 use super::{
     alarm::AlarmActor,
-    devices::control_switch,
+    devices::{control_switch, presence_sensor},
     door_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light,
@@ -165,6 +165,13 @@ impl Actor for RootSupervisor {
 
         light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
         temperature_sensor::spawn::spawn_temperature_sensor_handler(
+            &myself,
+            shared_actor_state.clone(),
+            settings.clone(),
+        )
+        .await?;
+
+        presence_sensor::spawn::spawn_presence_handler(
             &myself,
             shared_actor_state.clone(),
             settings.clone(),

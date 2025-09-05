@@ -93,6 +93,11 @@ impl WorkflowWorker {
         event_id: Uuid,
         workflow: WorkflowSettings,
     ) -> Result<(), anyhow::Error> {
+        if !workflow.enabled {
+            tracing::warn!("[{event_id}] workflow not executed as it's disabled in config");
+            return Ok(());
+        }
+
         tracing::info!("executing workflow for: {event_id}");
         for step in workflow.run {
             match step {
