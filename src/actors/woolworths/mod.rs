@@ -2,15 +2,19 @@ use crate::{
     notify::notify,
     settings::NotifySource,
     types::SharedActorState,
-    woolworths::types::{WoolworthsProductResponse, WoolworthsTrackedProduct},
+    woolworths::{
+        Woolworths,
+        types::{WoolworthsProductResponse, WoolworthsTrackedProduct},
+    },
 };
 use ractor::Actor;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 pub enum WoolworthsMessage {
     TrackedProductGroup {
         product_response_map: HashMap<WoolworthsTrackedProduct, WoolworthsProductResponse>,
     },
+    CheckProductPrices,
 }
 
 pub struct WoolworthsActorState {
@@ -19,6 +23,7 @@ pub struct WoolworthsActorState {
 
 pub struct WoolworthsActor {
     pub shared_actor_state: SharedActorState,
+    pub woolworths: Woolworths,
 }
 
 impl WoolworthsActor {
@@ -32,7 +37,7 @@ impl Actor for WoolworthsActor {
 
     async fn pre_start(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let results = sqlx::query!("SELECT product_id, price FROM woolworths_product_price")
@@ -44,19 +49,43 @@ impl Actor for WoolworthsActor {
             price_map.insert(result.product_id, result.price);
         }
 
+        myself.send_interval(Duration::from_secs(3600), || {
+            WoolworthsMessage::CheckProductPrices
+        });
+
         Ok(WoolworthsActorState {
             woolworths_product_price: price_map,
         })
     }
 
-    #[tracing::instrument(name = "woolworths-actor", skip(self, _myself, message, state))]
+    #[tracing::instrument(name = "woolworths-actor", skip(self, myself, message, state))]
     async fn handle(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
+            WoolworthsMessage::CheckProductPrices => {
+                tracing::info!("checking woolworths prices");
+                let tracked_products = self.woolworths.get_all_tracked_products().await?;
+                let mut tracked_map = HashMap::new();
+                for product_group in tracked_products {
+                    let response = self.woolworths.get_product(product_group.product_id).await;
+                    match response {
+                        Ok(resp) => {
+                            tracked_map.insert(product_group, resp);
+                        }
+                        Err(e) => {
+                            tracing::error!("error fetching: {e}")
+                        }
+                    }
+                }
+
+                myself.send_message(WoolworthsMessage::TrackedProductGroup {
+                    product_response_map: tracked_map,
+                })?;
+            }
             WoolworthsMessage::TrackedProductGroup {
                 product_response_map,
             } => {

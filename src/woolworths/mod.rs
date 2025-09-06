@@ -8,7 +8,6 @@ use crate::{
     woolworths::types::WoolworthsProductResponse,
 };
 
-pub mod background;
 pub mod types;
 
 pub struct Woolworths {

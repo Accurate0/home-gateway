@@ -1,4 +1,3 @@
-use crate::woolworths::background::woolworths_background;
 use ::http::Method;
 use actors::{
     event_handler::{self},
@@ -42,7 +41,6 @@ use tower_http::{
 };
 use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
-use woolworths::Woolworths;
 
 mod actors;
 mod auth;
@@ -136,8 +134,6 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
-
-    let woolworths = Woolworths::new(pool.clone());
 
     let feature_flag_client = FeatureFlagClient::new().await;
 
@@ -245,14 +241,6 @@ async fn main() -> anyhow::Result<()> {
         reminder_background(reminder_delayqueue, reminder_cancellation_token).await?;
         Ok::<(), MainError>(())
     });
-
-    if !cfg!(debug_assertions) {
-        let woolworths_cancellation_token = cancellation_token.child_token();
-        task_set.spawn(async move {
-            woolworths_background(&woolworths, woolworths_cancellation_token).await?;
-            Ok::<(), MainError>(())
-        });
-    }
 
     if let Some(r) = task_set.join_next().await {
         match r {

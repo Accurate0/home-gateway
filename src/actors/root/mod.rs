@@ -1,6 +1,6 @@
 use crate::{
     actors::woolworths::WoolworthsActor, delayqueue::DelayQueue, settings::Settings,
-    types::SharedActorState,
+    types::SharedActorState, woolworths::Woolworths,
 };
 use ractor::Actor;
 
@@ -87,6 +87,7 @@ impl RootSupervisor {
                 Some(WoolworthsActor::NAME.to_owned()),
                 WoolworthsActor {
                     shared_actor_state: self.shared_actor_state.clone(),
+                    woolworths: Woolworths::new(self.shared_actor_state.db.clone()),
                 },
                 (),
             )
