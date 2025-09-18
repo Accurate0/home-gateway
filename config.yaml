@@ -26,7 +26,7 @@ doors:
     name: Garage
     id: GARAGE
     state: armed
-    timeout: 5m
+    timeout: 10m
     notify:
       - type: discord
         channelId: 906076901406306355
