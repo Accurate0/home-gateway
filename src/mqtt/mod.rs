@@ -42,6 +42,13 @@ impl MqttClient {
         bytes
     }
 
+    pub async fn send_event_raw(&self, topic: String, payload: &str) -> Result<(), MqttError> {
+        self.client
+            .publish(topic, rumqttc::QoS::ExactlyOnce, false, payload)
+            .await
+            .map_err(MqttError::from)
+    }
+
     pub async fn send_event<T>(&self, topic: String, payload: T) -> Result<(), MqttError>
     where
         T: Serialize,

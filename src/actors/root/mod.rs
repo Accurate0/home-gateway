@@ -1,6 +1,9 @@
 use crate::{
-    actors::woolworths::WoolworthsActor, delayqueue::DelayQueue, settings::Settings,
-    types::SharedActorState, woolworths::Woolworths,
+    actors::{vacuum::VacuumActor, woolworths::WoolworthsActor},
+    delayqueue::DelayQueue,
+    settings::Settings,
+    types::SharedActorState,
+    woolworths::Woolworths,
 };
 use ractor::Actor;
 
@@ -26,6 +29,23 @@ pub struct RootSupervisor {
 }
 
 impl RootSupervisor {
+    async fn start_vacuum_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(VacuumActor::NAME.to_owned()),
+                VacuumActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
     async fn start_alarm_actor(
         &self,
         myself: &ractor::ActorRef<()>,
@@ -207,6 +227,7 @@ impl Actor for RootSupervisor {
         self.start_synergy_actor(&myself).await?;
         self.start_woolworths_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
+        self.start_vacuum_actor(&myself).await?;
 
         Ok(())
     }
@@ -236,6 +257,11 @@ impl Actor for RootSupervisor {
                 if who.get_name().is_some_and(|n| n == MaccasActor::NAME) {
                     tracing::info!("restarting maccas actor");
                     self.start_maccas_actor(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == VacuumActor::NAME) {
+                    tracing::info!("restarting vacuum actor");
+                    self.start_vacuum_actor(&myself).await?;
                 };
 
                 if who.get_name().is_some_and(|n| n == ReminderActor::NAME) {

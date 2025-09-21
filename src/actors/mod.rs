@@ -8,6 +8,7 @@ pub mod root;
 pub mod selfbot;
 pub mod synergy;
 pub mod unifi;
+pub mod vacuum;
 pub mod woolworths;
 pub mod workflows;
 

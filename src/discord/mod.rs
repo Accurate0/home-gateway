@@ -26,6 +26,8 @@ use twilight_model::{
 };
 use twilight_util::builder::command::CommandBuilder;
 
+use crate::discord::interactions::vacuum::VacuumCommand;
+
 mod interactions;
 
 static SHUTDOWN: AtomicBool = AtomicBool::new(false);
@@ -45,6 +47,7 @@ pub async fn start_discord(
     let commands = [
         RemindMeCommand::create_command().into(),
         WoolworthsCommand::create_command().into(),
+        VacuumCommand::create_command().into(),
     ];
     let interaction_client = client.interaction(application.id);
 
@@ -159,6 +162,7 @@ async fn handle_command(
     match &*data.name {
         "remindme" => RemindMeCommand::handle(interaction, data, client).await,
         "woolworths" => WoolworthsCommand::handle(interaction, data, client, db).await,
+        "vacuum" => VacuumCommand::handle(interaction, data, client).await,
         name => bail!("unknown command: {}", name),
     }
 }
