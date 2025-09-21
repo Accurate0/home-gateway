@@ -1,10 +1,15 @@
+use std::time::Duration;
+
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
-    settings::workflow::{WorkflowEntityLightTypeState, WorkflowEntityType, WorkflowSettings},
+    settings::workflow::{
+        WorkflowEntityLightQueryState, WorkflowEntityLightTypeState, WorkflowEntityType,
+        WorkflowQueryType, WorkflowSettings,
+    },
     timer::timed_async,
 };
 use ractor::{
-    ActorRef,
+    ActorCell, ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
 use uuid::Uuid;
@@ -23,13 +28,52 @@ pub struct WorkflowWorker {}
 impl WorkflowWorker {
     pub const NAME: &str = "workflow";
 
-    fn handle_light_operation(
+    async fn handle_light_query(
+        actor: &ActorCell,
+        when: &WorkflowQueryType,
+    ) -> Result<bool, anyhow::Error> {
+        match when {
+            WorkflowQueryType::Light { ieee_addr, state } => {
+                let (tx, rx) = ractor::concurrency::oneshot();
+                let port: RpcReplyPort<bool> = (tx, Duration::from_secs(10)).into();
+                let message = FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: LightHandlerMessage::QueryPowerState {
+                        ieee_addr: ieee_addr.to_owned(),
+                        reply: port,
+                    },
+                    options: JobOptions::default(),
+                    accepted: None,
+                });
+
+                actor.send_message(message)?;
+
+                let is_on = rx.await?;
+                let does_match_query = match state {
+                    WorkflowEntityLightQueryState::On => is_on,
+                    WorkflowEntityLightQueryState::Off => !is_on,
+                };
+
+                Ok(does_match_query)
+            }
+        }
+    }
+
+    async fn handle_light_operation(
         ieee_addr: String,
         state: WorkflowEntityLightTypeState,
+        when: Option<WorkflowQueryType>,
     ) -> Result<(), anyhow::Error> {
         let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
             tracing::warn!("could not find light actor");
             return Ok(());
+        };
+
+        if let Some(ref when) = when {
+            if !Self::handle_light_query(&actor, when).await? {
+                tracing::info!("failed when condition for {:?}", when);
+                return Ok(());
+            }
         };
 
         let light_actor_message = match state {
@@ -101,13 +145,12 @@ impl WorkflowWorker {
         tracing::info!("executing workflow for: {event_id}");
         for step in workflow.run {
             match step {
-                WorkflowEntityType::Light { ieee_addr, state } => {
-                    tokio::runtime::Handle::current()
-                        .spawn_blocking(|| {
-                            Self::handle_light_operation(ieee_addr, state)?;
-                            Ok::<(), anyhow::Error>(())
-                        })
-                        .await??;
+                WorkflowEntityType::Light {
+                    ieee_addr,
+                    state,
+                    when,
+                } => {
+                    Self::handle_light_operation(ieee_addr, state, when).await?;
                 }
             }
         }

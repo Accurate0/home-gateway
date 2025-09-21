@@ -31,6 +31,13 @@ pub enum WorkflowEntityLightTypeState {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "state", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum WorkflowEntityLightQueryState {
+    On,
+    Off,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum WorkflowEntityType {
     Light {
@@ -38,6 +45,19 @@ pub enum WorkflowEntityType {
         ieee_addr: IEEEAddress,
         #[serde(flatten)]
         state: WorkflowEntityLightTypeState,
+        #[serde(default)]
+        when: Option<WorkflowQueryType>,
+    },
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum WorkflowQueryType {
+    Light {
+        #[serde(rename = "ieeeAddr")]
+        ieee_addr: IEEEAddress,
+        #[serde(flatten)]
+        state: WorkflowEntityLightQueryState,
     },
 }
 

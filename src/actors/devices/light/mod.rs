@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use ractor::{
-    ActorProcessingErr, ActorRef,
+    ActorProcessingErr, ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use uuid::Uuid;
@@ -27,6 +27,10 @@ pub struct NewEvent {
 }
 
 pub enum LightHandlerMessage {
+    QueryPowerState {
+        ieee_addr: IEEEAddress,
+        reply: RpcReplyPort<bool>,
+    },
     NewEvent(NewEvent),
     TurnOn {
         ieee_addr: IEEEAddress,
@@ -60,11 +64,34 @@ pub struct LightHandler {
 impl LightHandler {
     pub const NAME: &str = "light";
 
+    async fn update_light_state(
+        &self,
+        ieee_addr: IEEEAddress,
+        state: String,
+    ) -> Result<(), anyhow::Error> {
+        sqlx::query!(
+            "INSERT INTO light_state (ieee_address, state) VALUES ($1, $2) ON CONFLICT (ieee_address) DO UPDATE SET state = EXCLUDED.state",
+            ieee_addr,
+            state,
+        ).execute(&self.shared_actor_state.db).await?;
+
+        Ok(())
+    }
+
     async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
         match message {
             LightHandlerMessage::NewEvent(event) => match event.entity {
-                Entity::Phillips9290012573A(_phillips_9290012573_a) => {}
-                Entity::IKEALED2201G8(_ikealed2201_g8) => {}
+                Entity::Phillips9290012573A(phillips_9290012573_a) => {
+                    self.update_light_state(
+                        phillips_9290012573_a.device.ieee_addr,
+                        phillips_9290012573_a.state,
+                    )
+                    .await?
+                }
+                Entity::IKEALED2201G8(ikealed2201_g8) => {
+                    self.update_light_state(ikealed2201_g8.device.ieee_addr, ikealed2201_g8.state)
+                        .await?
+                }
             },
             LightHandlerMessage::TurnOn { ieee_addr } => {
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "ON"}))
@@ -114,6 +141,18 @@ impl LightHandler {
                 };
 
                 self.send_mqtt_state(ieee_addr, state).await?;
+            }
+            LightHandlerMessage::QueryPowerState { ieee_addr, reply } => {
+                let light_state = sqlx::query!(
+                    "SELECT state FROM light_state WHERE ieee_address = $1",
+                    ieee_addr
+                )
+                .fetch_one(&self.shared_actor_state.db)
+                .await?;
+
+                let is_on = light_state.state == "ON";
+
+                reply.send(is_on)?;
             }
         }
 

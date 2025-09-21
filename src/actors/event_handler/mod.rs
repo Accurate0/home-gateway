@@ -22,7 +22,6 @@ use ractor::{
     ActorCell, ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
-use serde::{Deserialize, Serialize};
 use tracing::{Instrument, Level};
 use types::{GenericZigbee2MqttMessage, TypedActorName};
 use uuid::Uuid;
@@ -47,13 +46,6 @@ pub enum Message {
     UnifiWebhook {
         payload: UnifiWebhookEvents,
     },
-}
-
-#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "event_type", rename_all = "lowercase")]
-pub enum EventType {
-    Mqtt,
-    Unifi,
 }
 
 pub struct EventHandler {

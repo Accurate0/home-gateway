@@ -1,6 +1,9 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::{WorkflowEntityLightTypeState, WorkflowEntityType, WorkflowSettings},
+    settings::workflow::{
+        WorkflowEntityLightQueryState, WorkflowEntityLightTypeState, WorkflowEntityType,
+        WorkflowQueryType, WorkflowSettings,
+    },
     types::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -96,6 +99,10 @@ impl Actor for AlarmActor {
                                 WorkflowEntityType::Light {
                                     ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
                                     state: WorkflowEntityLightTypeState::SetBrightness { value: 1 },
+                                    when: Some(WorkflowQueryType::Light {
+                                        ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
+                                        state: WorkflowEntityLightQueryState::Off,
+                                    }),
                                 },
                                 WorkflowEntityType::Light {
                                     ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
@@ -103,6 +110,10 @@ impl Actor for AlarmActor {
                                         value: 1,
                                         on_off: false,
                                     },
+                                    when: Some(WorkflowQueryType::Light {
+                                        ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
+                                        state: WorkflowEntityLightQueryState::Off,
+                                    }),
                                 },
                             ],
                         };
