@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO light_state (ieee_address, state) VALUES ($1, $2) ON CONFLICT (ieee_address) DO UPDATE SET state = EXCLUDED.state",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d04f6c55cfbc76779d730fecadaa82475673a8110593bbc1585aff2a5e632218"
+}
