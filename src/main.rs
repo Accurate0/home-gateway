@@ -42,6 +42,8 @@ use tower_http::{
 use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
 
+use crate::routes::workflow::execute::workflow_execute;
+
 mod actors;
 mod auth;
 mod bucket;
@@ -188,6 +190,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
         .route("/control/light", post(light_control))
+        .route("/workflow/execute", post(workflow_execute))
         .route_layer(from_extractor_with_state::<RequireIpAuth, ApiState>(
             api_state.clone(),
         ))
