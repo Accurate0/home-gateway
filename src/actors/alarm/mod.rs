@@ -110,10 +110,7 @@ impl Actor for AlarmActor {
                                         value: 1,
                                         on_off: false,
                                     },
-                                    when: Some(WorkflowQueryType::Light {
-                                        ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                        state: WorkflowEntityLightQueryState::Off,
-                                    }),
+                                    when: None,
                                 },
                             ],
                         };
