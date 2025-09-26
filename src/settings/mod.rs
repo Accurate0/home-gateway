@@ -137,6 +137,7 @@ pub struct PresenceSettings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
+    pub api_key: String,
     pub database_url: String,
     pub selfbot_api_base: String,
     pub mqtt_url: String,

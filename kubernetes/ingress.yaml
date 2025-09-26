@@ -16,16 +16,6 @@ spec:
     - host: home.anurag.sh
       http:
         paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: home-web
-                port:
-                  name: web
-    - host: home.anurag.sh
-      http:
-        paths:
           - path: /v1
             pathType: Prefix
             backend:

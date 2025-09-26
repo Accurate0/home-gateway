@@ -6,7 +6,7 @@ use actors::{
     root::RootSupervisor,
 };
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
-use auth::RequireIpAuth;
+use auth::RequireApiKey;
 use axum::{
     middleware::from_extractor_with_state,
     routing::{get, post},
@@ -190,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/schema", get(schema_route))
         .route("/control/light", post(light_control))
         .route("/workflow/execute", post(workflow_execute))
-        .route_layer(from_extractor_with_state::<RequireIpAuth, ApiState>(
+        .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
         .route("/health", get(health))

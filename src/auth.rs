@@ -1,13 +1,10 @@
 use crate::types::ApiState;
 use axum::extract::FromRequestParts;
 use http::{StatusCode, request::Parts};
-use itertools::Itertools;
-use std::{net::IpAddr, str::FromStr};
-use tokio::net::lookup_host;
 
-pub struct RequireIpAuth;
+pub struct RequireApiKey;
 
-impl FromRequestParts<ApiState> for RequireIpAuth {
+impl FromRequestParts<ApiState> for RequireApiKey {
     type Rejection = StatusCode;
 
     async fn from_request_parts(
@@ -18,36 +15,15 @@ impl FromRequestParts<ApiState> for RequireIpAuth {
             return Ok(Self);
         }
 
-        let feature_flag_client = &state.feature_flag_client;
-        let is_access_restricted = feature_flag_client
-            .is_feature_enabled("home-gateway-restrict-access-to-home-ip", true)
-            .await;
-
-        if !is_access_restricted {
-            return Ok(Self);
-        }
-
-        let ip_header = parts
+        let api_key = parts
             .headers
-            .get("X-Forwarded-For")
+            .get("X-Api-Key")
             .and_then(|value| value.to_str().ok())
-            .and_then(|s| s.split(",").next())
-            .map(|s| s.trim())
-            .and_then(|v| IpAddr::from_str(v).ok());
+            .map(|s| s.trim());
 
-        match ip_header {
-            Some(ip_header) if is_ip_valid(ip_header).await => Ok(Self),
+        match api_key {
+            Some(api_key) if api_key == state.settings.api_key => Ok(Self),
             _ => Err(StatusCode::UNAUTHORIZED),
-        }
-    }
-}
-
-async fn is_ip_valid(ip: IpAddr) -> bool {
-    match lookup_host("home-ip.anurag.sh:80").await {
-        Ok(it) => it.map(|s| s.ip()).contains(&ip),
-        Err(e) => {
-            tracing::error!("error looking up host: {e}");
-            false
         }
     }
 }
