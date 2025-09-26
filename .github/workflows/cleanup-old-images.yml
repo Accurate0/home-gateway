@@ -24,15 +24,14 @@ jobs:
         id: multi-arch-digests
         run: |
           app=$(docker manifest inspect ghcr.io/accurate0/home-gateway | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
-          web=$(docker manifest inspect ghcr.io/accurate0/home-web | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
           selfbot=$(docker manifest inspect ghcr.io/accurate0/home-selfbot | jq -r '.manifests.[] | .digest' | paste -s -d ' ' -)
-          echo "multi-arch-digests=$app,$web,$selfbot" >> $GITHUB_OUTPUT
+          echo "multi-arch-digests=$app,$selfbot" >> $GITHUB_OUTPUT
 
       - uses: snok/container-retention-policy@v3.0.0
         with:
           account: user
           token: ${{ secrets.GITHUB_TOKEN }}
-          image-names: "home-gateway home-web home-selfbot"
+          image-names: "home-gateway home-selfbot"
           image-tags: "!latest"
           keep-n-most-recent: 10
           cut-off: 3d
