@@ -17,17 +17,6 @@ jobs:
       docker-build-args: ""
       use-rust-caching: false
 
-  build-web:
-    permissions:
-      packages: write
-
-    uses: Accurate0/workflows/.github/workflows/build-push-docker.yaml@main
-    with:
-      directory: web
-      image-name: home-web
-      docker-build-args: ""
-      use-rust-caching: false
-
   build:
     strategy:
       fail-fast: false
@@ -48,7 +37,6 @@ jobs:
   deploy:
     needs:
       - build
-      - build-web
       - build-selfbot
     uses: Accurate0/workflows/.github/workflows/deploy-app-k8s.yaml@main
     with:
