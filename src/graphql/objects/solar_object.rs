@@ -59,9 +59,10 @@ impl SolarObject {
         &self,
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<SolarCurrentResponse> {
+        let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
         let client = get_http_client()?;
 
-        let url = format!("{SOLAR_API_URL}/current");
+        let url = format!("{api_base}/current");
         let response = client
             .request(Method::GET, url)
             .send()
@@ -76,9 +77,10 @@ impl SolarObject {
         &self,
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<GenerationHistory>> {
+        let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
         let client = get_http_client()?;
 
-        let url = format!("{SOLAR_API_URL}/v2/history");
+        let url = format!("{api_base}/v2/history");
         let response = client
             .request(Method::GET, url)
             .query(&[("since", self.since.naive_utc())])
