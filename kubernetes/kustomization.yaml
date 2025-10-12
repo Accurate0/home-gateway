@@ -4,7 +4,6 @@ resources:
   - home-gateway.secret.yaml
   - home-gateway/home-gateway.deployment.yaml
   - home-gateway/home-gateway.service.yaml
-  - ingress.yaml
   - namespace.yaml
   - database.yaml
   - selfbot.secret.yaml
