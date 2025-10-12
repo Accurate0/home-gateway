@@ -1,0 +1,18 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: home-gateway-api
+  namespace: home-gateway
+spec:
+  hostnames:
+    - home.anurag.sh
+  parentRefs:
+    - name: home-gateway-gateway
+  rules:
+    - backendRefs:
+        - name: home-gateway
+          port: 8000
+      matches:
+        - path:
+            type: PathPrefix
+            value: /v1
