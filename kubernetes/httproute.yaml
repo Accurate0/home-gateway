@@ -7,7 +7,8 @@ spec:
   hostnames:
     - home.anurag.sh
   parentRefs:
-    - name: home-gateway-gateway
+    - name: shared-gateway
+      namespace: envoy-gateway-system
   rules:
     - backendRefs:
         - name: home-gateway
