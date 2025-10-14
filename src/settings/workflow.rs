@@ -40,6 +40,10 @@ pub enum WorkflowEntityLightQueryState {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum WorkflowEntityType {
+    Conditional {
+        run: Vec<WorkflowEntityType>,
+        when: WorkflowQueryType,
+    },
     Light {
         #[serde(rename = "ieeeAddr")]
         ieee_addr: IEEEAddress,

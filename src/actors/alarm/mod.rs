@@ -95,24 +95,29 @@ impl Actor for AlarmActor {
 
                         let workflow = WorkflowSettings {
                             enabled: true,
-                            run: vec![
-                                WorkflowEntityType::Light {
-                                    ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                    state: WorkflowEntityLightTypeState::SetBrightness { value: 1 },
-                                    when: Some(WorkflowQueryType::Light {
+                            run: vec![WorkflowEntityType::Conditional {
+                                run: vec![
+                                    WorkflowEntityType::Light {
                                         ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                        state: WorkflowEntityLightQueryState::Off,
-                                    }),
-                                },
-                                WorkflowEntityType::Light {
-                                    ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                    state: WorkflowEntityLightTypeState::IncreaseBrightness {
-                                        value: 1,
-                                        on_off: false,
+                                        state: WorkflowEntityLightTypeState::SetBrightness {
+                                            value: 1,
+                                        },
+                                        when: None,
                                     },
-                                    when: None,
+                                    WorkflowEntityType::Light {
+                                        ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
+                                        state: WorkflowEntityLightTypeState::IncreaseBrightness {
+                                            value: 1,
+                                            on_off: false,
+                                        },
+                                        when: None,
+                                    },
+                                ],
+                                when: WorkflowQueryType::Light {
+                                    ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
+                                    state: WorkflowEntityLightQueryState::Off,
                                 },
-                            ],
+                            }],
                         };
 
                         let event_id = Uuid::new_v4();

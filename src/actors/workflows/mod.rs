@@ -9,7 +9,7 @@ use crate::{
     timer::timed_async,
 };
 use ractor::{
-    ActorCell, ActorRef, RpcReplyPort,
+    ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
 use uuid::Uuid;
@@ -28,12 +28,14 @@ pub struct WorkflowWorker {}
 impl WorkflowWorker {
     pub const NAME: &str = "workflow";
 
-    async fn handle_light_query(
-        actor: &ActorCell,
-        when: &WorkflowQueryType,
-    ) -> Result<bool, anyhow::Error> {
+    async fn handle_query(when: &WorkflowQueryType) -> Result<bool, anyhow::Error> {
         match when {
             WorkflowQueryType::Light { ieee_addr, state } => {
+                let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
+                    tracing::warn!("could not find light actor");
+                    return Ok(false);
+                };
+
                 let (tx, rx) = ractor::concurrency::oneshot();
                 let port: RpcReplyPort<bool> = (tx, Duration::from_secs(10)).into();
                 let message = FactoryMessage::Dispatch(Job {
@@ -70,7 +72,7 @@ impl WorkflowWorker {
         };
 
         if let Some(ref when) = when {
-            if !Self::handle_light_query(&actor, when).await? {
+            if !Self::handle_query(when).await? {
                 tracing::info!("failed when condition for {:?}", when);
                 return Ok(());
             }
@@ -151,6 +153,25 @@ impl WorkflowWorker {
                     when,
                 } => {
                     Self::handle_light_operation(ieee_addr, state, when).await?;
+                }
+                WorkflowEntityType::Conditional { run: inner, when } => {
+                    if !Self::handle_query(&when).await? {
+                        tracing::info!("failed when condition for {:?}", when);
+                        return Ok(());
+                    }
+
+                    for step in inner {
+                        match step {
+                            WorkflowEntityType::Conditional { .. } => {
+                                unreachable!("nested condition not allowed")
+                            }
+                            WorkflowEntityType::Light {
+                                ieee_addr,
+                                state,
+                                when,
+                            } => Self::handle_light_operation(ieee_addr, state, when).await?,
+                        };
+                    }
                 }
             }
         }

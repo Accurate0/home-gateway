@@ -28,6 +28,7 @@ pub struct SharedActorState {
 
 #[derive(Clone)]
 pub struct ApiState {
+    #[allow(unused)]
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
