@@ -40,6 +40,7 @@ spec:
                         type: PathPrefix
                         value: /v1
     - repoURL: https://github.com/Accurate0/home-gateway.git
+      name: application
       path: kubernetes
       kustomize:
         images:
