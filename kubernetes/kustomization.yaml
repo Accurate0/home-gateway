@@ -9,4 +9,3 @@ resources:
   - selfbot.secret.yaml
   - selfbot/selfbot.deployment.yaml
   - selfbot/selfbot.service.yaml
-  - httproute.yaml
