@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 import asyncio
 from pydantic import BaseModel
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Response
 
 
 class MessageRequest(BaseModel):
@@ -43,5 +43,8 @@ async def message(body: MessageRequest):
 
 
 @app.get("/health", status_code=status.HTTP_204_NO_CONTENT)
-async def health():
+async def health(response: Response):
+    if client.user is None:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+
     return None
