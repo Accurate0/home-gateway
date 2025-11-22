@@ -51,10 +51,17 @@ impl FeatureFlagClient {
         }
     }
 
-    pub async fn is_feature_enabled(&self, feature_flag: &'static str, default: bool) -> bool {
+    pub async fn is_feature_enabled(
+        &self,
+        feature_flag: &'static str,
+        default: bool,
+        mut evaluation_context: EvaluationContext,
+    ) -> bool {
+        evaluation_context.merge_missing(&self.evaluation_context);
+
         let ff_eval_result = self
             .client
-            .get_bool_value(feature_flag, Some(&self.evaluation_context), None)
+            .get_bool_value(feature_flag, Some(&evaluation_context), None)
             .await;
 
         match ff_eval_result {

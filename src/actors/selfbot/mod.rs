@@ -1,5 +1,6 @@
 use crate::{feature_flag::FeatureFlagClient, settings::Settings};
 use http::Method;
+use open_feature::EvaluationContext;
 use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -48,9 +49,15 @@ impl Worker for SelfBotWorker {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
             SelfBotMessage::SendMessage(self_bot_message_request) => {
+                let evaluation_context = EvaluationContext::default()
+                    .with_custom_field("message", self_bot_message_request.message.clone());
                 if self
                     .feature_flag_client
-                    .is_feature_enabled("home-gateway-selfbot-killswitch", false)
+                    .is_feature_enabled(
+                        "home-gateway-selfbot-killswitch",
+                        false,
+                        evaluation_context,
+                    )
                     .await
                 {
                     tracing::warn!("selfbot kill switch is enabled, not sending message");
