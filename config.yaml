@@ -35,7 +35,8 @@ doors:
 maccas:
   offers:
     - matchNames:
-        - "20pc McNuggets & McFlurry"
+        - "20pc McNuggets"
+        - "24pc McNuggets"
       notify:
         - type: discord
           channelId: 886501248319250444
