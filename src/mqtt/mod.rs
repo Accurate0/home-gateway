@@ -66,7 +66,12 @@ impl MqttClient {
 }
 
 impl Mqtt {
-    pub async fn new(host: String, port: u16) -> Result<(MqttClient, Self), MqttError> {
+    pub async fn new(
+        host: String,
+        port: u16,
+        username: String,
+        password: String,
+    ) -> Result<(MqttClient, Self), MqttError> {
         let client_id = if cfg!(debug_assertions) {
             "home-gateway-dev"
         } else {
@@ -77,6 +82,7 @@ impl Mqtt {
         mqttoptions.set_keep_alive(Duration::from_secs(5));
         // for devices packet
         mqttoptions.set_max_packet_size(100_000, 100_000);
+        mqttoptions.set_credentials(username, password);
 
         let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 10);
 

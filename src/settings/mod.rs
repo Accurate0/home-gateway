@@ -141,6 +141,8 @@ pub struct Settings {
     pub database_url: String,
     pub selfbot_api_base: String,
     pub mqtt_url: String,
+    pub mqtt_username: String,
+    pub mqtt_password: String,
     pub reminders: Vec<ReminderSettings>,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
     #[serde(rename = "temperatureSensors")]

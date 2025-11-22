@@ -138,7 +138,13 @@ async fn main() -> anyhow::Result<()> {
 
     let feature_flag_client = FeatureFlagClient::new().await;
 
-    let (mqtt_client, mut mqtt) = Mqtt::new(settings.mqtt_url.clone(), 1883).await?;
+    let (mqtt_client, mut mqtt) = Mqtt::new(
+        settings.mqtt_url.clone(),
+        1883,
+        settings.mqtt_username.clone(),
+        settings.mqtt_password.clone(),
+    )
+    .await?;
 
     let cancellation_token = CancellationToken::new();
     handle_cancellation(cancellation_token.clone());
