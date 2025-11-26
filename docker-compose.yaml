@@ -1,13 +1,4 @@
 services:
-  unifi-proxy:
-    build:
-      dockerfile: Dockerfile
-      args:
-        - BINARY_NAME=unifi-proxy
-    ports:
-      - "8001:8001"
-    env_file:
-      - .env.local
   home-gateway:
     build:
       dockerfile: Dockerfile
@@ -17,13 +8,10 @@ services:
       - "8000:8000"
     links:
       - "db:database"
-      - "unifi-proxy:unifi-proxy"
     depends_on:
       - db
-      - unifi-proxy
     environment:
       - DATABASE_URL=postgres://postgres:test@database/home
-      - UNIFI_API_BASE=http://unifi-proxy:8001
     env_file:
       - .env.local
     # healthcheck:
@@ -39,7 +27,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata2:/var/lib/postgresql/data
     command: >
       postgres
       -c shared_preload_libraries='timescaledb'
@@ -53,4 +41,4 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
+  pgdata2:

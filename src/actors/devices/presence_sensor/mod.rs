@@ -27,6 +27,10 @@ pub enum Message {
     NewEvent(NewEvent),
 }
 
+pub struct PresenceSensorState {
+    pub last_presence: HashMap<String, bool>,
+}
+
 pub struct PresenceSensorHandler {
     _shared_actor_state: SharedActorState,
     presence_settings: HashMap<IEEEAddress, PresenceSettings>,
@@ -59,7 +63,11 @@ impl PresenceSensorHandler {
         Ok(())
     }
 
-    async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
+    async fn handle(
+        &self,
+        message: Message,
+        state: &mut PresenceSensorState,
+    ) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraFP1E(aqara_fp1_e) => {
@@ -73,24 +81,37 @@ impl PresenceSensorHandler {
                         return Ok(());
                     };
 
-                    // TODO: ignore recent events where the presence has not changed
-                    // the presence sensor is quite loud
-                    let action_settings = if aqara_fp1_e.presence {
-                        presence_settings
-                            .actions
-                            .get(&PresenceActionId::PresenceDetected)
-                    } else {
-                        presence_settings
-                            .actions
-                            .get(&PresenceActionId::NoPresenceDetected)
-                    };
+                    let mut was_state_changed = true;
+                    state
+                        .last_presence
+                        .entry(aqara_fp1_e.device.ieee_addr)
+                        .and_modify(|prev| {
+                            if *prev != aqara_fp1_e.presence {
+                                *prev = aqara_fp1_e.presence;
+                            } else {
+                                was_state_changed = false;
+                            }
+                        })
+                        .or_insert(aqara_fp1_e.presence);
 
-                    let Some(action_settings) = action_settings else {
-                        tracing::warn!("no set action for event");
-                        return Ok(());
-                    };
+                    if was_state_changed {
+                        let action_settings = if aqara_fp1_e.presence {
+                            presence_settings
+                                .actions
+                                .get(&PresenceActionId::PresenceDetected)
+                        } else {
+                            presence_settings
+                                .actions
+                                .get(&PresenceActionId::NoPresenceDetected)
+                        };
 
-                    Self::execute_workflow(event.event_id, &action_settings.workflow)?;
+                        let Some(action_settings) = action_settings else {
+                            tracing::warn!("no set action for event");
+                            return Ok(());
+                        };
+
+                        Self::execute_workflow(event.event_id, &action_settings.workflow)?;
+                    }
                 }
             },
         }
@@ -102,7 +123,7 @@ impl PresenceSensorHandler {
 impl Worker for PresenceSensorHandler {
     type Key = ();
     type Message = Message;
-    type State = ();
+    type State = PresenceSensorState;
     type Arguments = ();
 
     async fn pre_start(
@@ -111,18 +132,20 @@ impl Worker for PresenceSensorHandler {
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         _startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+        Ok(PresenceSensorState {
+            last_presence: Default::default(),
+        })
     }
 
-    #[tracing::instrument(name = "presence-sensor", skip(self, _wid, _factory, msg, _state))]
+    #[tracing::instrument(name = "presence-sensor", skip(self, _wid, _factory, msg, state))]
     async fn handle(
         &self,
         _wid: WorkerId,
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         Job { msg, .. }: Job<(), Message>,
-        _state: &mut Self::State,
+        state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
+        if let Err(e) = Self::handle(self, msg, state).await {
             tracing::error!("error while handling message: {e}")
         }
 

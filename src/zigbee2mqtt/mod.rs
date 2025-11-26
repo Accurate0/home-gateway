@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 pub mod Aqara_FP1E;
 pub mod Aqara_MCCGQ12LM;
+pub mod Aqara_T1;
 pub mod Aqara_WSDCGQ12LM;
 pub mod IKEA_E2001;
 pub mod IKEA_E2112;

@@ -249,6 +249,17 @@ impl EventHandler {
                     accepted: None,
                 }))?;
             }
+            GenericZigbee2MqttMessage::AqaraWhiteLight(aqara_light) => {
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: light::LightHandlerMessage::NewEvent(light::NewEvent {
+                        event_id,
+                        entity: light::Entity::AqaraT1(aqara_light),
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
             _ => {
                 tracing::warn!("actor name ({actor_type}) does not match message for light");
             }

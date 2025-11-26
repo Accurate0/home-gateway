@@ -7,8 +7,8 @@ use crate::{
         temperature_sensor::TemperatureSensorHandler,
     },
     zigbee2mqtt::{
-        Aqara_FP1E, Aqara_MCCGQ12LM, Aqara_WSDCGQ12LM, IKEA_E2001, IKEA_E2112, IKEA_LED2201G8,
-        Lumi_WSDCGQ11LM, Phillips_9290012573A, TS011F_plug_1,
+        Aqara_FP1E, Aqara_MCCGQ12LM, Aqara_T1, Aqara_WSDCGQ12LM, IKEA_E2001, IKEA_E2112,
+        IKEA_LED2201G8, Lumi_WSDCGQ11LM, Phillips_9290012573A, TS011F_plug_1,
     },
 };
 
@@ -18,6 +18,7 @@ pub enum GenericZigbee2MqttMessage {
     TS011FSmartSwitch(TS011F_plug_1::Ts011fPlug1),
     AqaraPresenceSensor(Aqara_FP1E::AqaraFP1E),
     AqaraTemperatureSensor(Aqara_WSDCGQ12LM::AqaraWSDCGQ12LM),
+    AqaraWhiteLight(Aqara_T1::AqaraT1),
     LumiTemperatureSensor(Lumi_WSDCGQ11LM::LumiWSDCGQ11LM),
     AquaraDoorSensor(Aqara_MCCGQ12LM::AqaraMCCGQ12LM),
     PhillipsLight(Phillips_9290012573A::Phillips9290012573A),
@@ -56,6 +57,9 @@ impl std::fmt::Display for GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::AqaraPresenceSensor(msg) => {
                 write!(f, "Aqara Presence Sensor: {}", msg.device.friendly_name)
             }
+            GenericZigbee2MqttMessage::AqaraWhiteLight(msg) => {
+                write!(f, "Aqara T1 Light: {}", msg.device.friendly_name)
+            }
         }
     }
 }
@@ -89,6 +93,7 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::AqaraPresenceSensor(aqara_fp1_e) => {
                 &aqara_fp1_e.device.ieee_addr
             }
+            GenericZigbee2MqttMessage::AqaraWhiteLight(aqara_t1) => &aqara_t1.device.ieee_addr,
         }
     }
 
@@ -120,6 +125,7 @@ impl GenericZigbee2MqttMessage {
             GenericZigbee2MqttMessage::AqaraPresenceSensor(aqara_fp1_e) => {
                 &aqara_fp1_e.device.friendly_name
             }
+            GenericZigbee2MqttMessage::AqaraWhiteLight(aqara_t1) => &aqara_t1.device.friendly_name,
         }
     }
 
@@ -140,6 +146,7 @@ impl GenericZigbee2MqttMessage {
                 TypedActorName::TemperatureSensor
             }
             GenericZigbee2MqttMessage::AqaraPresenceSensor(_) => TypedActorName::PresenceSensor,
+            GenericZigbee2MqttMessage::AqaraWhiteLight(_) => TypedActorName::Light,
         }
     }
 }

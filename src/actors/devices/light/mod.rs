@@ -3,6 +3,7 @@ use crate::{
     settings::IEEEAddress,
     types::SharedActorState,
     zigbee2mqtt::{
+        Aqara_T1,
         IKEA_LED2201G8::{self},
         Phillips_9290012573A,
     },
@@ -18,6 +19,7 @@ pub mod spawn;
 pub enum Entity {
     Phillips9290012573A(Phillips_9290012573A::Phillips9290012573A),
     IKEALED2201G8(IKEA_LED2201G8::IKEALED2201G8),
+    AqaraT1(Aqara_T1::AqaraT1),
 }
 
 pub struct NewEvent {
@@ -90,6 +92,10 @@ impl LightHandler {
                 }
                 Entity::IKEALED2201G8(ikealed2201_g8) => {
                     self.update_light_state(ikealed2201_g8.device.ieee_addr, ikealed2201_g8.state)
+                        .await?
+                }
+                Entity::AqaraT1(aqara_t1) => {
+                    self.update_light_state(aqara_t1.device.ieee_addr, aqara_t1.state)
                         .await?
                 }
             },
