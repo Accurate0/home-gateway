@@ -190,10 +190,7 @@ async fn main() -> anyhow::Result<()> {
         .finish();
 
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list([
-            "http://localhost:5173".parse()?,
-            "https://home.anurag.sh".parse()?,
-        ]))
+        .allow_origin(AllowOrigin::any())
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(AllowHeaders::any());
 
