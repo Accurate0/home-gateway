@@ -54,7 +54,7 @@ jobs:
           push: true
           tags: ghcr.io/accurate0/home-gateway:latest,ghcr.io/accurate0/home-gateway:${{ github.sha }}
           build-args: |
-            BINARY_NAME=${{ matrix.apps }}
+            BINARY_NAME=home-gateway
             HOME_GATEWAY_API_SECRET=${{ secrets.HOME_GATEWAY_API_SECRET }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-new
