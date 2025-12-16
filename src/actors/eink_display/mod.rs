@@ -59,6 +59,9 @@ impl Actor for EInkDisplayActor {
                         .headless_mode(HeadlessMode::New)
                         .arg("--disable-crash-reporter")
                         .arg("--no-crashpad")
+                        .arg("--no-sandbox")
+                        .env("XDG_CONFIG_HOME", "/tmp/chromium")
+                        .env("XDG_CACHE_HOME", "/tmp/chromium")
                         .viewport(Some(Viewport {
                             width: 1600,
                             height: 1200,

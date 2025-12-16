@@ -12,6 +12,8 @@ services:
       - db
     environment:
       - DATABASE_URL=postgres://postgres:test@database/home
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
     env_file:
       - .env.local
     # healthcheck:
