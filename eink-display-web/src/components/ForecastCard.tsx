@@ -1,39 +1,35 @@
-import { graphql, useLazyLoadQuery } from "react-relay";
-import type { ForecastCardQuery } from "./__generated__/ForecastCardQuery.graphql";
+import { graphql, useFragment } from "react-relay";
+import type { ForecastCard_weather$key } from "./__generated__/ForecastCard_weather.graphql";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-const ForecastQuery = graphql`
-  query ForecastCardQuery($location: String!) {
-    weather(input: { location: $location }) {
-      forecast {
-        days {
-          dateTime
-          code
-          description
-          emoji
-          min
-          max
-          uv
-        }
+const ForecastFragment = graphql`
+  fragment ForecastCard_weather on WeatherObject {
+    forecast {
+      days {
+        dateTime
+        code
+        description
+        emoji
+        min
+        max
+        uv
       }
     }
   }
 `;
 
 export default function ForecastCard({
-  location = "14576",
+  weatherRef,
 }: {
-  location?: string;
+  weatherRef: ForecastCard_weather$key;
 }) {
-  const data = useLazyLoadQuery<ForecastCardQuery>(ForecastQuery, { location });
+  const data = useFragment(ForecastFragment, weatherRef);
 
-  // Strongly-typed day element derived from generated types
-  type Response = ForecastCardQuery["response"];
-  type WeatherObj = NonNullable<Response["weather"]>;
-  type ForecastObj = NonNullable<WeatherObj["forecast"]>;
+  type ForecastObj = NonNullable<(typeof data)["forecast"]>;
   type DayType = NonNullable<ForecastObj["days"]>[number];
 
-  const days = (data?.weather?.forecast?.days ?? []) as DayType[];
+  const days = (data?.forecast?.days ?? []) as DayType[];
+  const upcoming = days.slice(0, 4);
 
   return (
     <Card style={{ width: 600 }}>
@@ -50,7 +46,7 @@ export default function ForecastCard({
             gap: 12,
           }}
         >
-          {days.map((d) => (
+          {upcoming.map((d) => (
             <div
               key={d.dateTime}
               style={{
@@ -65,7 +61,7 @@ export default function ForecastCard({
               <div style={{ fontSize: 20 }}>{d.emoji ?? "☀️"}</div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <div style={{ fontWeight: 600 }}>
-                  {new Date(d.dateTime).toLocaleDateString()}
+                  {formatForecastDate(d.dateTime)}
                 </div>
                 <div style={{ color: "#6b7280" }}>{d.description}</div>
                 <div style={{ marginTop: 6, fontSize: 13 }}>
@@ -82,4 +78,21 @@ export default function ForecastCard({
       </CardContent>
     </Card>
   );
+}
+
+function formatForecastDate(dateTime: string) {
+  try {
+    const d = new Date(dateTime);
+    const today = new Date();
+    if (
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    ) {
+      return "Today";
+    }
+    return d.toLocaleDateString();
+  } catch {
+    return dateTime;
+  }
 }

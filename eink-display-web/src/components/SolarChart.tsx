@@ -1,48 +1,48 @@
-import { graphql, useLazyLoadQuery } from "react-relay";
-import type { SolarChartQuery } from "./__generated__/SolarChartQuery.graphql";
+import { graphql, useFragment } from "react-relay";
+import type { SolarChart_solar$key } from "./__generated__/SolarChart_solar.graphql";
 import * as Recharts from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-type GenerationHistory = {
-  wh: number;
-  at: string;
-  timestamp: number;
-};
-
-const SolarQuery = graphql`
-  query SolarChartQuery($since: DateTime!) {
-    solar(input: { since: $since }) {
-      history {
-        wh
-        at
-        timestamp
-      }
+const SolarFragment = graphql`
+  fragment SolarChart_solar on SolarObject {
+    history {
+      wh
+      at
+      timestamp
     }
   }
 `;
 
-export default function SolarChart() {
-  // start of today in RFC3339
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const since = today.toISOString();
+export default function SolarChart({
+  solarRef,
+}: {
+  solarRef: SolarChart_solar$key;
+}) {
+  const data = useFragment(SolarFragment, solarRef);
+  if (!data) {
+    return (
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Solar</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div>
+            No fragment data received for solar. Check parent query/relay
+            artifacts.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const data = useLazyLoadQuery<SolarChartQuery>(
-    SolarQuery,
-    { since },
-    { fetchPolicy: "store-or-network" }
-  );
-
-  const historyRaw = data?.solar?.history ?? [];
-  type Gen = { wh: number; at: string; timestamp: number };
-  const history: GenerationHistory[] = (historyRaw as unknown as Gen[]).map(
-    (h) => ({
-      wh: h.wh,
-      at: h.at,
-      timestamp: h.timestamp,
-    })
-  );
+  const history = (data.history ?? []).map((h) => ({
+    wh: h.wh,
+    at: h.at,
+    timestamp: h.timestamp,
+  }));
 
   // sort by timestamp
   history.sort((a, b) => a.timestamp - b.timestamp);
@@ -51,7 +51,7 @@ export default function SolarChart() {
   const chartData = history.map((h) => ({ ...h, atLabel: formatTime(h.at) }));
 
   return (
-    <div style={{}}>
+    <div>
       <div
         style={{
           width: "100%",
@@ -62,7 +62,7 @@ export default function SolarChart() {
           justifyContent: "center",
         }}
       >
-        <Card style={{ width: "100%", height: "100%" }}>
+        <Card style={{ width: "100%", height: "100%", flex: "none" }}>
           <CardHeader>
             <div>
               <CardTitle>Solar</CardTitle>

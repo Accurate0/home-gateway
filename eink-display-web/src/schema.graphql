@@ -109,6 +109,7 @@ type QueryRoot {
 	solar(input: SolarInput!): SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
+	woolworths: WoolworthsObject!
 }
 
 type SolarCurrentResponse {
@@ -171,6 +172,15 @@ type WifiEvent {
 	id: UUID!
 	time: DateTime!
 	state: UnifiState!
+}
+
+type WoolworthsObject {
+	products: [WoolworthsProducts!]!
+}
+
+type WoolworthsProducts {
+	name: String!
+	price: Float!
 }
 
 """

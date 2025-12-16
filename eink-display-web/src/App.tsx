@@ -1,8 +1,31 @@
 import "./App.css";
 import SolarChart from "./components/SolarChart";
 import ForecastCard from "./components/ForecastCard";
+import { graphql, useLazyLoadQuery } from "react-relay";
+import type { AppQuery } from "./__generated__/AppQuery.graphql";
 
-function App() {
+const AppQuery = graphql`
+  query AppQuery($location: String!, $since: DateTime!) {
+    weather(input: { location: $location }) {
+      ...ForecastCard_weather
+    }
+    solar(input: { since: $since }) {
+      ...SolarChart_solar
+    }
+  }
+`;
+
+export default function App() {
+  // start of today in RFC3339
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const since = today.toISOString();
+
+  const data = useLazyLoadQuery<AppQuery>(AppQuery, {
+    location: "14576",
+    since,
+  });
+
   return (
     <>
       <div
@@ -14,11 +37,9 @@ function App() {
           paddingTop: 16,
         }}
       >
-        <SolarChart />
-        <ForecastCard />
+        {data?.solar && <SolarChart solarRef={data.solar} />}
+        {data?.weather && <ForecastCard weatherRef={data.weather} />}
       </div>
     </>
   );
 }
-
-export default App;

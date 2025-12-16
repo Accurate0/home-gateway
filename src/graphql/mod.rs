@@ -4,6 +4,8 @@ use queries::{
     solar_query::SolarQuery, weather_query::WeatherQuery,
 };
 
+use crate::graphql::queries::woolworths_query::WoolworthsQuery;
+
 pub mod dataloader;
 pub mod handler;
 mod objects;
@@ -16,6 +18,7 @@ pub struct QueryRoot(
     SolarQuery,
     EnergyQuery,
     WeatherQuery,
+    WoolworthsQuery,
 );
 
 pub type FinalSchema = Schema<QueryRoot, EmptyMutation, EmptySubscription>;

@@ -91,6 +91,7 @@ impl Actor for WoolworthsActor {
             } => {
                 for (tracked, response) in product_response_map {
                     let product_id = response.product.stockcode;
+                    let product_name = response.product.display_name;
                     let last_price = state
                         .woolworths_product_price
                         .entry(product_id)
@@ -102,7 +103,7 @@ impl Actor for WoolworthsActor {
                         let price_down_by = *last_price - current_price;
                         let product_string = format!(
                             "{} - ${} (-${:.2})",
-                            response.product.display_name, response.product.price, price_down_by
+                            product_name, response.product.price, price_down_by
                         );
 
                         let notify_source = NotifySource::Discord {
@@ -119,11 +120,12 @@ impl Actor for WoolworthsActor {
                         .and_modify(|price| *price = current_price);
 
                     sqlx::query!(
-                        r#"INSERT INTO woolworths_product_price(product_id, price) VALUES ($1, $2)
+                        r#"INSERT INTO woolworths_product_price(product_id, price, display_name) VALUES ($1, $2, $3)
                         ON CONFLICT(product_id)
-                        DO UPDATE SET price = EXCLUDED.price"#,
+                        DO UPDATE SET price = EXCLUDED.price, display_name = EXCLUDED.display_name"#,
                         product_id,
-                        current_price
+                        current_price,
+                        product_name
                     )
                     .execute(&self.shared_actor_state.db)
                     .await?;
