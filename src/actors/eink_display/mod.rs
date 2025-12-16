@@ -57,6 +57,8 @@ impl Actor for EInkDisplayActor {
                 let (mut browser, mut handler) = Browser::launch(
                     BrowserConfig::builder()
                         .headless_mode(HeadlessMode::New)
+                        .arg("--disable-crash-reporter")
+                        .arg("--no-crashpad")
                         .viewport(Some(Viewport {
                             width: 1600,
                             height: 1200,
