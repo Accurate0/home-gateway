@@ -62,7 +62,7 @@ export default function SolarChart({
           justifyContent: "center",
         }}
       >
-        <Card style={{ width: "100%", height: "100%", flex: "none" }}>
+        <Card style={{ width: 900, height: 650 }}>
           <CardHeader>
             <div>
               <CardTitle>Solar</CardTitle>
@@ -95,7 +95,7 @@ export default function SolarChart({
                       data={chartData}
                       margin={{ top: 6, right: 16, left: 6, bottom: 20 }}
                     >
-                      <Recharts.YAxis tick={{ fontSize: 12 }} />
+                      <Recharts.YAxis tick={{ fontSize: 16 }} />
                       <Recharts.Line
                         type="monotone"
                         dataKey="wh"

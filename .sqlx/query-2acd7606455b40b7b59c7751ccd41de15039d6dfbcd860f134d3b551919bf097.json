@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO woolworths_product_price(product_id, price, display_name) VALUES ($1, $2, $3)\n                        ON CONFLICT(product_id)\n                        DO UPDATE SET price = EXCLUDED.price, display_name = EXCLUDED.display_name",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Float8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2acd7606455b40b7b59c7751ccd41de15039d6dfbcd860f134d3b551919bf097"
+}

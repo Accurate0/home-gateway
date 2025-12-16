@@ -1,6 +1,6 @@
-import "./App.css";
 import SolarChart from "./components/SolarChart";
 import ForecastCard from "./components/ForecastCard";
+import WoolworthsCard from "./components/WoolworthsCard";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import type { AppQuery } from "./__generated__/AppQuery.graphql";
 
@@ -11,6 +11,9 @@ const AppQuery = graphql`
     }
     solar(input: { since: $since }) {
       ...SolarChart_solar
+    }
+    woolworths {
+      ...WoolworthsCard_woolworths
     }
   }
 `;
@@ -39,6 +42,7 @@ export default function App() {
       >
         {data?.solar && <SolarChart solarRef={data.solar} />}
         {data?.weather && <ForecastCard weatherRef={data.weather} />}
+        {data?.woolworths && <WoolworthsCard woolworthsRef={data.woolworths} />}
       </div>
     </>
   );

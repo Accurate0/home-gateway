@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b1d1454175debb3663134c14b8f153a>>
+ * @generated SignedSource<<e887a399712803cc6a9ae112a033c7fe>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,9 @@ export type AppQuery$data = {
   };
   readonly weather: {
     readonly " $fragmentSpreads": FragmentRefs<"ForecastCard_weather">;
+  };
+  readonly woolworths: {
+    readonly " $fragmentSpreads": FragmentRefs<"WoolworthsCard_woolworths">;
   };
 };
 export type AppQuery = {
@@ -101,6 +104,22 @@ return {
             "args": null,
             "kind": "FragmentSpread",
             "name": "SolarChart_solar"
+          }
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "WoolworthsObject",
+        "kind": "LinkedField",
+        "name": "woolworths",
+        "plural": false,
+        "selections": [
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "WoolworthsCard_woolworths"
           }
         ],
         "storageKey": null
@@ -239,20 +258,56 @@ return {
           }
         ],
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "WoolworthsObject",
+        "kind": "LinkedField",
+        "name": "woolworths",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "WoolworthsProducts",
+            "kind": "LinkedField",
+            "name": "products",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "name",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "price",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "7b0aab7f65cc717deefe812bc4f4b236",
+    "cacheID": "7c1a63b37b2161e8ea7ac143ae7395dc",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar(input: {since: $since}) {\n    ...SolarChart_solar\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar on SolarObject {\n  history {\n    wh\n    at\n    timestamp\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar(input: {since: $since}) {\n    ...SolarChart_solar\n  }\n  woolworths {\n    ...WoolworthsCard_woolworths\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar on SolarObject {\n  history {\n    wh\n    at\n    timestamp\n  }\n}\n\nfragment WoolworthsCard_woolworths on WoolworthsObject {\n  products {\n    name\n    price\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "39527255eba72de4203c2958ec3f784c";
+(node as any).hash = "0538c070c4d9390a157316c0df652b01";
 
 export default node;
