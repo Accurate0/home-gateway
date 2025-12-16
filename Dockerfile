@@ -51,6 +51,9 @@ COPY --from=builder /app/${BINARY_NAME} /usr/local/bin/${BINARY_NAME}
 COPY --from=einkweb-builder /app/dist /app/einkweb
 RUN chown appuser /usr/local/bin/${BINARY_NAME}
 RUN apt-get update && apt-get install -y curl chromium
+RUN CHROME_DIRS="/var/www/.local /var/www/.config /var/www/.cache /var/www/.pki" && \
+    mkdir -p ${CHROME_DIRS} && \
+    chown www-data ${CHROME_DIRS}
 
 USER appuser
 
