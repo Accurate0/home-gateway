@@ -1,5 +1,5 @@
 use crate::{
-    actors::{vacuum::VacuumActor, woolworths::WoolworthsActor},
+    actors::{eink_display::EInkDisplayActor, vacuum::VacuumActor, woolworths::WoolworthsActor},
     delayqueue::DelayQueue,
     settings::Settings,
     types::SharedActorState,
@@ -37,6 +37,23 @@ impl RootSupervisor {
             .spawn_linked(
                 Some(VacuumActor::NAME.to_owned()),
                 VacuumActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_eink_display_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(EInkDisplayActor::NAME.to_owned()),
+                EInkDisplayActor {
                     shared_actor_state: self.shared_actor_state.clone(),
                 },
                 (),
@@ -228,6 +245,7 @@ impl Actor for RootSupervisor {
         self.start_woolworths_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
         self.start_vacuum_actor(&myself).await?;
+        self.start_eink_display_actor(&myself).await?;
 
         Ok(())
     }
@@ -282,6 +300,11 @@ impl Actor for RootSupervisor {
                 if who.get_name().is_some_and(|n| n == AlarmActor::NAME) {
                     tracing::info!("restarting alarm actor");
                     self.start_alarm_actor(&myself).await?;
+                };
+
+                if who.get_name().is_some_and(|n| n == EInkDisplayActor::NAME) {
+                    tracing::info!("restarting eink display actor");
+                    self.start_eink_display_actor(&myself).await?;
                 };
             }
             _ => {}

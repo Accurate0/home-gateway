@@ -1,4 +1,5 @@
 ARG BINARY_NAME
+ARG HOME_GATEWAY_API_SECRET
 
 FROM rust:1.90.0-slim-bookworm AS builder
 ARG BINARY_NAME
@@ -18,6 +19,7 @@ RUN \
 
 
 FROM node:23.3.0-alpine3.19 AS einkweb-builder
+ARG HOME_GATEWAY_API_SECRET
 
 WORKDIR /app
 ENV PNPM_HOME="/pnpm"
@@ -28,6 +30,7 @@ COPY eink-display-web /app
 RUN CI=true pnpm install
 
 ENV PATH=/app/node_modules/.bin:$PATH
+ENV VITE_GRAPHQL_API_KEY=${HOME_GATEWAY_API_SECRET}}
 RUN pnpm run build
 
 FROM debian:bookworm-slim AS final

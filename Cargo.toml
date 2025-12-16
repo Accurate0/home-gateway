@@ -58,6 +58,8 @@ reqwest-middleware = { version = "0.4.2", features = ["json"] }
 reqwest-tracing = "0.5.8"
 regex = "1.11.3"
 lazy_static = "1.5.0"
+chromiumoxide = "0.8.0"
+futures.workspace = true
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

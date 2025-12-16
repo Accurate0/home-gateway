@@ -40,9 +40,7 @@ export default function WoolworthsCard({
               }}
             >
               <div style={{ fontWeight: 600 }}>{p.name}</div>
-              <div style={{ color: "#374151" }}>
-                {typeof p.price === "number" ? p.price.toFixed(2) : p.price}
-              </div>
+              <div style={{ color: "#374151" }}>${p.price.toFixed(2)}</div>
             </div>
           ))}
         </div>

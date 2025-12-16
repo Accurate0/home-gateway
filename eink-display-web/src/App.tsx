@@ -40,9 +40,16 @@ export default function App() {
           paddingTop: 16,
         }}
       >
-        {data?.solar && <SolarChart solarRef={data.solar} />}
-        {data?.weather && <ForecastCard weatherRef={data.weather} />}
-        {data?.woolworths && <WoolworthsCard woolworthsRef={data.woolworths} />}
+        <div>{data?.solar && <SolarChart solarRef={data.solar} />}</div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {data?.weather && <ForecastCard weatherRef={data.weather} />}
+          {data?.woolworths && (
+            <div style={{ alignSelf: "flex-start" }}>
+              <WoolworthsCard woolworthsRef={data.woolworths} />
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

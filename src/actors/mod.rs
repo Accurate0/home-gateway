@@ -1,5 +1,6 @@
 pub mod alarm;
 pub mod devices;
+pub mod eink_display;
 pub mod event_handler;
 pub mod events;
 pub mod maccas;
