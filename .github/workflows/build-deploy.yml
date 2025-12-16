@@ -27,6 +27,7 @@ jobs:
       packages: write
 
     uses: Accurate0/workflows/.github/workflows/build-push-docker.yaml@main
+    secrets: inherit
     with:
       directory: .
       image-name: ${{ matrix.apps }}
