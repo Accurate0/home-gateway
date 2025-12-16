@@ -86,7 +86,7 @@ impl Actor for EInkDisplayActor {
                 let page = browser.new_page(Self::INDEX_PATH).await?;
                 tracing::info!("navigating to page");
 
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
 
                 tracing::info!("screenshot taken");
                 let image = page
