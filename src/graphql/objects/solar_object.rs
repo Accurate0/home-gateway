@@ -1,8 +1,7 @@
+use crate::http::get_http_client;
 use async_graphql::{Object, SimpleObject};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use http::Method;
-
-use crate::http::get_http_client;
 
 pub struct SolarObject {
     pub since: DateTime<Utc>,

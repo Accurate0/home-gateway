@@ -36,6 +36,8 @@ spec:
               value: http://selfbot.home-gateway.svc.cluster.local
             - name: SOLAR_API_BASE
               value: http://solar-panel-api.solar-panels.svc.cluster.local:8000/api
+            - name: BOM_API_BASE
+              value: http://bom-api.bom.svc.cluster.local:8000
           envFrom:
             - secretRef:
                 name: home-gateway-managed-secrets

@@ -16,6 +16,20 @@ RUN \
     cargo build --locked --release --bin ${BINARY_NAME} -p ${BINARY_NAME} && \
     cp ./target/release/${BINARY_NAME} /app
 
+
+FROM node:23.3.0-alpine3.19 AS einkweb-builder
+
+WORKDIR /app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && npm install -g corepack@latest
+
+COPY eink-display-web /app
+RUN CI=true pnpm install
+
+ENV PATH=/app/node_modules/.bin:$PATH
+RUN pnpm run build
+
 FROM debian:bookworm-slim AS final
 ARG BINARY_NAME
 
@@ -31,8 +45,9 @@ RUN adduser \
     appuser
 
 COPY --from=builder /app/${BINARY_NAME} /usr/local/bin/${BINARY_NAME}
+COPY --from=einkweb-builder /app/dist /app/einkweb
 RUN chown appuser /usr/local/bin/${BINARY_NAME}
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl chromium
 
 USER appuser
 

@@ -4,4 +4,5 @@ pub mod energy_object;
 pub mod environment_object;
 pub mod events_object;
 pub mod solar_object;
+pub mod weather_object;
 pub mod wifi_object;

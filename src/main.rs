@@ -123,7 +123,21 @@ async fn main() -> anyhow::Result<()> {
     )?
     .with_path_style();
 
-    let bucket_accessor = S3BucketAccessor::new(synergy_bucket);
+    let eink_display_bucket_credentials = s3::creds::Credentials::new(
+        Some(&settings.aws_access_key_id),
+        Some(&settings.aws_secret_access_key),
+        None,
+        None,
+        None,
+    )?;
+
+    let eink_display_bucket = s3::Bucket::new(
+        "home-gateway-image-bucket",
+        s3::Region::ApSoutheast2,
+        eink_display_bucket_credentials,
+    )?;
+
+    let bucket_accessor = S3BucketAccessor::new(synergy_bucket, eink_display_bucket);
 
     let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?
         .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(6));
@@ -207,6 +221,7 @@ async fn main() -> anyhow::Result<()> {
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(api_state);
+
     let app = axum::Router::new().nest("/v1", api_routes);
 
     let addr = "[::]:8000".parse::<SocketAddr>().unwrap();

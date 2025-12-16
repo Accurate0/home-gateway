@@ -157,6 +157,8 @@ pub struct Settings {
     pub switches: HashMap<IEEEAddress, SwitchSettings>,
     #[serde(rename = "presenceSensors")]
     pub presence_sensors: HashMap<IEEEAddress, PresenceSettings>,
+    pub aws_access_key_id: String,
+    pub aws_secret_access_key: String,
 }
 
 impl Settings {
