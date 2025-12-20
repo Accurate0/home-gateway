@@ -8,6 +8,7 @@ use actors::{
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireApiKey;
 use axum::{
+    body::Body,
     middleware::from_extractor_with_state,
     routing::{get, post},
 };
@@ -37,9 +38,11 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 use tower_http::{
+    LatencyUnit,
     cors::{AllowHeaders, AllowOrigin, CorsLayer},
-    trace::TraceLayer,
+    trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
+use tracing::Level;
 use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
 
@@ -215,7 +218,18 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/synergy", post(synergy))
         .route("/ingest/unifi", post(ingest::unifi::unifi))
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &::http::Request<Body>| {
+                    tracing::info_span!("api", uri = request.uri().to_string())
+                })
+                .on_request(DefaultOnRequest::new().level(Level::INFO))
+                .on_response(
+                    DefaultOnResponse::new()
+                        .level(Level::INFO)
+                        .latency_unit(LatencyUnit::Millis),
+                ),
+        )
         .layer(cors)
         .with_state(api_state);
 

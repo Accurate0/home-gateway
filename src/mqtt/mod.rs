@@ -75,7 +75,7 @@ impl Mqtt {
         let client_id = if cfg!(debug_assertions) {
             "home-gateway-dev"
         } else {
-            "home-gateway-2"
+            "home-gateway"
         };
 
         let mut mqttoptions = MqttOptions::new(client_id, host, port);
