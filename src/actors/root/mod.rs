@@ -264,48 +264,56 @@ impl Actor for RootSupervisor {
                     tracing::error!("panic: {panic}");
                 }
 
-                if who
-                    .get_name()
-                    .is_some_and(|n| n == UnifiConnectedClientHandler::NAME)
-                {
-                    tracing::info!("restarting unifi handler");
-                    self.start_unifi_connected_clients_handler(&myself).await?;
+                let Some(name) = who.get_name() else {
+                    tracing::error!("actor without name failed, cannot restart");
+                    return Ok(());
                 };
 
-                if who.get_name().is_some_and(|n| n == MaccasActor::NAME) {
-                    tracing::info!("restarting maccas actor");
-                    self.start_maccas_actor(&myself).await?;
-                };
+                match name.as_str() {
+                    UnifiConnectedClientHandler::NAME => {
+                        tracing::info!("restarting unifi handler");
+                        self.start_unifi_connected_clients_handler(&myself).await?;
+                    }
 
-                if who.get_name().is_some_and(|n| n == VacuumActor::NAME) {
-                    tracing::info!("restarting vacuum actor");
-                    self.start_vacuum_actor(&myself).await?;
-                };
+                    MaccasActor::NAME => {
+                        tracing::info!("restarting maccas actor");
+                        self.start_maccas_actor(&myself).await?;
+                    }
 
-                if who.get_name().is_some_and(|n| n == ReminderActor::NAME) {
-                    tracing::info!("restarting reminder actor");
-                    self.start_reminder_actor(&myself).await?;
-                };
+                    VacuumActor::NAME => {
+                        tracing::info!("restarting vacuum actor");
+                        self.start_vacuum_actor(&myself).await?;
+                    }
 
-                if who.get_name().is_some_and(|n| n == SynergyActor::NAME) {
-                    tracing::info!("restarting synergy actor");
-                    self.start_synergy_actor(&myself).await?;
-                };
+                    ReminderActor::NAME => {
+                        tracing::info!("restarting reminder actor");
+                        self.start_reminder_actor(&myself).await?;
+                    }
 
-                if who.get_name().is_some_and(|n| n == WoolworthsActor::NAME) {
-                    tracing::info!("restarting woolworths actor");
-                    self.start_woolworths_actor(&myself).await?;
-                };
+                    SynergyActor::NAME => {
+                        tracing::info!("restarting synergy actor");
+                        self.start_synergy_actor(&myself).await?;
+                    }
 
-                if who.get_name().is_some_and(|n| n == AlarmActor::NAME) {
-                    tracing::info!("restarting alarm actor");
-                    self.start_alarm_actor(&myself).await?;
-                };
+                    WoolworthsActor::NAME => {
+                        tracing::info!("restarting woolworths actor");
+                        self.start_woolworths_actor(&myself).await?;
+                    }
 
-                if who.get_name().is_some_and(|n| n == EInkDisplayActor::NAME) {
-                    tracing::info!("restarting eink display actor");
-                    self.start_eink_display_actor(&myself).await?;
-                };
+                    AlarmActor::NAME => {
+                        tracing::info!("restarting alarm actor");
+                        self.start_alarm_actor(&myself).await?;
+                    }
+
+                    EInkDisplayActor::NAME => {
+                        tracing::info!("restarting eink display actor");
+                        self.start_eink_display_actor(&myself).await?;
+                    }
+
+                    name => {
+                        tracing::warn!("unknown actor: {name}, no restart hook");
+                    }
+                }
             }
             _ => {}
         }
