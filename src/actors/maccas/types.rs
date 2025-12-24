@@ -13,7 +13,7 @@ pub struct MaccasOfferIngest {
 pub struct MaccasOfferDetails {
     pub name: String,
     pub description: String,
-    pub price: f64,
+    pub price: Option<f64>,
     #[serde(rename = "short_name")]
     pub short_name: String,
     #[serde(rename = "image_base_name")]
