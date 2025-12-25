@@ -1,9 +1,12 @@
 use crate::http::get_http_client;
-use async_graphql::{Object, SimpleObject};
+use async_graphql::{InputObject, Object, SimpleObject};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use http::Method;
 
-pub struct SolarObject {
+pub struct SolarObject {}
+
+#[derive(InputObject)]
+pub struct SolarHistoryInput {
     pub since: DateTime<Utc>,
 }
 
@@ -75,6 +78,7 @@ impl SolarObject {
     pub async fn history(
         &self,
         _ctx: &async_graphql::Context<'_>,
+        input: SolarHistoryInput,
     ) -> async_graphql::Result<Vec<GenerationHistory>> {
         let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
         let client = get_http_client()?;
@@ -82,7 +86,7 @@ impl SolarObject {
         let url = format!("{api_base}/v2/history");
         let response = client
             .request(Method::GET, url)
-            .query(&[("since", self.since.naive_utc())])
+            .query(&[("since", input.since.naive_utc())])
             .send()
             .await?
             .error_for_status()?
