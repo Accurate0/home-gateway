@@ -108,24 +108,6 @@ async fn main() -> anyhow::Result<()> {
 
     let settings = Settings::new()?;
 
-    let synergy_bucket_credentials = s3::creds::Credentials::new(
-        Some(&settings.synergy.bucket_access_key_id),
-        Some(&settings.synergy.bucket_access_secret),
-        None,
-        None,
-        None,
-    )?;
-
-    let synergy_bucket = s3::Bucket::new(
-        &settings.synergy.bucket_name,
-        s3::Region::Custom {
-            region: "".to_owned(),
-            endpoint: settings.synergy.bucket_endpoint.clone(),
-        },
-        synergy_bucket_credentials,
-    )?
-    .with_path_style();
-
     let eink_display_bucket_credentials = s3::creds::Credentials::new(
         Some(&settings.aws_access_key_id),
         Some(&settings.aws_secret_access_key),
@@ -140,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
         eink_display_bucket_credentials,
     )?;
 
-    let bucket_accessor = S3BucketAccessor::new(synergy_bucket, eink_display_bucket);
+    let bucket_accessor = S3BucketAccessor::new(eink_display_bucket);
 
     let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?
         .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(6));
@@ -210,13 +192,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/schema", get(schema_route))
         .route("/control/light", post(light_control))
         .route("/workflow/execute", post(workflow_execute))
+        .route("/ingest/synergy", post(synergy))
         .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
         .route("/health", get(health))
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
-        .route("/ingest/synergy", post(synergy))
         .route("/ingest/unifi", post(ingest::unifi::unifi))
         .layer(
             TraceLayer::new_for_http()

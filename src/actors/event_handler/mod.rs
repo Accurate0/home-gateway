@@ -2,7 +2,6 @@ use super::{
     alarm::types::AndroidAppAlarmPayload,
     devices::{control_switch, presence_sensor},
     maccas::types::MaccasOfferIngest,
-    synergy::types::S3BucketEvent,
     unifi::types::UnifiWebhookEvents,
 };
 use crate::{
@@ -18,6 +17,7 @@ use crate::{
     types::SharedActorState,
     zigbee2mqtt::devices::BridgeDevices,
 };
+use bytes::Bytes;
 use ractor::{
     ActorCell, ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
@@ -41,7 +41,7 @@ pub enum Message {
         payload: MaccasOfferIngest,
     },
     SynergyDataIngest {
-        payload: S3BucketEvent,
+        payload: Bytes,
     },
     UnifiWebhook {
         payload: UnifiWebhookEvents,
@@ -354,8 +354,7 @@ impl EventHandler {
                 }
             }
             Message::SynergyDataIngest { payload } => {
-                tracing::info!("received synergy event for {}", payload.key);
-
+                tracing::info!("received synergy event");
                 let maybe_actor = ractor::registry::where_is(SynergyActor::NAME.to_string());
                 if let Some(actor) = maybe_actor {
                     actor.send_message(synergy::SynergyMessage::NewUpload(payload))?;

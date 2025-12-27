@@ -114,14 +114,6 @@ pub struct MaccasSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct SynergySettings {
-    pub bucket_name: String,
-    pub bucket_endpoint: String,
-    pub bucket_access_key_id: String,
-    pub bucket_access_secret: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
 pub struct SwitchSettings {
     #[allow(unused)]
     pub name: String,
@@ -150,8 +142,6 @@ pub struct Settings {
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
     pub maccas: MaccasSettings,
     pub discord_token: String,
-    pub synergy: SynergySettings,
-    pub s3_webhook_secret: String,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
     pub switches: HashMap<IEEEAddress, SwitchSettings>,
