@@ -239,18 +239,18 @@ async fn main() -> anyhow::Result<()> {
         Ok::<(), MainError>(())
     });
 
-    // if !cfg!(debug_assertions) {
-    let discord_cancellation_token = cancellation_token.child_token();
-    task_set.spawn(async move {
-        start_discord(
-            settings.discord_token.clone(),
-            pool.clone(),
-            discord_cancellation_token,
-        )
-        .await?;
-        Ok::<(), MainError>(())
-    });
-    // }
+    if !cfg!(debug_assertions) {
+        let discord_cancellation_token = cancellation_token.child_token();
+        task_set.spawn(async move {
+            start_discord(
+                settings.discord_token.clone(),
+                pool.clone(),
+                discord_cancellation_token,
+            )
+            .await?;
+            Ok::<(), MainError>(())
+        });
+    }
 
     let reminder_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
