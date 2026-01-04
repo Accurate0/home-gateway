@@ -60,7 +60,10 @@ impl Worker for SelfBotWorker {
                     )
                     .await
                 {
-                    tracing::warn!("selfbot kill switch is enabled, not sending message");
+                    tracing::warn!(
+                        "selfbot kill switch is enabled, not sending message: {}",
+                        self_bot_message_request.message
+                    );
                     return Ok(());
                 }
 
