@@ -63,12 +63,23 @@ impl EventHandler {
         generic_message: GenericZigbee2MqttMessage,
     ) -> Result<(), anyhow::Error> {
         match generic_message {
+            GenericZigbee2MqttMessage::AqaraSingleButtonSwitch(aqara) => {
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
+                        event_id,
+                        entity: control_switch::Entity::AqaraSingleButton(aqara),
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
             GenericZigbee2MqttMessage::IKEASwitch(ikea_e2001) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
                     msg: control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
                         event_id,
-                        entity: control_switch::Entity::IKEAE2001(ikea_e2001),
+                        entity: control_switch::Entity::IKEASwitch(ikea_e2001),
                     }),
                     options: JobOptions::default(),
                     accepted: None,

@@ -2,7 +2,7 @@ use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     settings::{IEEEAddress, SwitchSettings, workflow::WorkflowSettings},
     types::SharedActorState,
-    zigbee2mqtt::IKEA_E2001,
+    zigbee2mqtt::{Aqara_WXKG11LM, IKEA_E2001},
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -15,7 +15,8 @@ pub mod spawn;
 
 #[derive(Debug)]
 pub enum Entity {
-    IKEAE2001(IKEA_E2001::IKEAE2001),
+    IKEASwitch(IKEA_E2001::IKEAE2001),
+    AqaraSingleButton(Aqara_WXKG11LM::AqaraWXKG11LM),
 }
 
 #[derive(Debug)]
@@ -64,11 +65,28 @@ impl ControlSwitchHandler {
     async fn handle(&self, message: ControlSwitchMessage) -> Result<(), anyhow::Error> {
         match message {
             ControlSwitchMessage::NewEvent(event) => match &event.entity {
-                Entity::IKEAE2001(ikea_e20001) => {
+                Entity::IKEASwitch(ikea_e20001) => {
                     let Some(action_settings) = self
                         .switch_settings
                         .get(&ikea_e20001.device.ieee_addr)
                         .and_then(|s| s.actions.get(&ikea_e20001.action))
+                    else {
+                        tracing::warn!("no valid action found for: {:?}", &event);
+                        return Ok(());
+                    };
+
+                    Self::execute_workflow(event.event_id, &action_settings.workflow)?;
+                }
+                Entity::AqaraSingleButton(aqara_wxkg11_lm) => {
+                    // ignore empty action
+                    if aqara_wxkg11_lm.action == "" {
+                        return Ok(());
+                    }
+
+                    let Some(action_settings) = self
+                        .switch_settings
+                        .get(&aqara_wxkg11_lm.device.ieee_addr)
+                        .and_then(|s| s.actions.get(&aqara_wxkg11_lm.action))
                     else {
                         tracing::warn!("no valid action found for: {:?}", &event);
                         return Ok(());

@@ -1,4 +1,14 @@
 switches:
+  "0x00158d008bbe0316":
+    name: Small Switch
+    actions:
+      single:
+        workflow:
+          run:
+            - type: light
+              ieeeAddr: "0x94a081fffe2eedc0"
+              state: TOGGLE
+
   "0x64028ffffe638218":
     name: Control Switch
     actions:
