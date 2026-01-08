@@ -21,6 +21,7 @@ pub mod db;
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
     pub mqtt: MqttClient,
+    pub settings: Settings,
     pub bucket_accessor: S3BucketAccessor,
     pub feature_flag_client: FeatureFlagClient,
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,

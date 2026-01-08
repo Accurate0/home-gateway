@@ -77,6 +77,7 @@ async fn init_actors(
     reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
     let shared_actor_state = SharedActorState {
+        settings,
         db,
         mqtt: mqtt_client,
         bucket_accessor,
@@ -88,7 +89,6 @@ async fn init_actors(
         None,
         RootSupervisor {
             shared_actor_state: shared_actor_state.clone(),
-            settings,
             reminder_delayqueue,
         },
         (),

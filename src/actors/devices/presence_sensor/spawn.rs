@@ -1,5 +1,5 @@
 use super::{Message, PresenceSensorHandler, PresenceSensorHandlerBuilder};
-use crate::{settings::Settings, types::SharedActorState};
+use crate::types::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, queues, routing},
@@ -8,7 +8,6 @@ use ractor::{
 pub async fn spawn_presence_handler(
     root_supervisor_ref: &ActorRef<()>,
     shared_actor_state: SharedActorState,
-    settings: Settings,
 ) -> anyhow::Result<()> {
     let door_handler_factory_def = Factory::<
         (),
@@ -22,7 +21,6 @@ pub async fn spawn_presence_handler(
     let door_handler_factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(PresenceSensorHandlerBuilder {
             shared_actor_state,
-            presence_settings: settings.presence_sensors,
         }))
         .queue(Default::default())
         .router(Default::default())

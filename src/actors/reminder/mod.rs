@@ -2,6 +2,7 @@ use crate::{
     delayqueue::DelayQueue,
     notify::notify,
     settings::{NotifySource, ReminderSettings, ReminderState},
+    types::SharedActorState,
 };
 use ractor::Actor;
 use serde::{Deserialize, Serialize};
@@ -40,7 +41,7 @@ pub struct ReminderActorDelayQueueValue {
 
 pub struct ReminderActor {
     pub delay_queue: DelayQueue<ReminderActorDelayQueueValue>,
-    pub reminder_settings: Vec<ReminderSettings>,
+    pub shared_actor_state: SharedActorState,
 }
 
 impl ReminderActor {
@@ -58,7 +59,7 @@ impl Actor for ReminderActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        for reminder in &self.reminder_settings {
+        for reminder in &self.shared_actor_state.settings.reminders {
             let time = reminder.frequency.next_trigger(reminder.starts_on).await;
             let reminder = reminder.clone();
 

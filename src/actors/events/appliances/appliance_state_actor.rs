@@ -16,7 +16,6 @@ pub struct ApplianceStateState {
 
 pub struct ApplianceState {
     pub shared_actor_state: SharedActorState,
-    pub appliance_settings: HashMap<IEEEAddress, ApplianceSettings>,
 }
 
 impl ApplianceState {
@@ -158,7 +157,9 @@ impl Actor for ApplianceState {
                 current,
                 ..
             } => {
-                if let Some(appliance_settings) = self.appliance_settings.get(&ieee_addr) {
+                if let Some(appliance_settings) =
+                    self.shared_actor_state.settings.appliances.get(&ieee_addr)
+                {
                     let avg = state
                         .average_running
                         .entry(ieee_addr.clone())

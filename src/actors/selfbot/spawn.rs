@@ -1,4 +1,7 @@
-use crate::{feature_flag::FeatureFlagClient, http::get_http_client, settings::Settings};
+use crate::{
+    http::get_http_client,
+    types::SharedActorState,
+};
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, FactoryMessage, queues, routing},
@@ -8,8 +11,7 @@ use super::{SelfBotMessage, SelfBotWorker, SelfBotWorkerBuilder};
 
 pub async fn spawn_selfbot(
     root_supervisor_ref: &ActorRef<()>,
-    feature_flag_client: FeatureFlagClient,
-    settings: Settings,
+    shared_actor_state: SharedActorState,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), SelfBotMessage>>> {
     let door_handler_factory_def = Factory::<
         (),
@@ -25,8 +27,7 @@ pub async fn spawn_selfbot(
     let door_handler_factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(SelfBotWorkerBuilder {
             client,
-            settings,
-            feature_flag_client,
+            shared_actor_state,
         }))
         .queue(Default::default())
         .router(Default::default())

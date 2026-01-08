@@ -1,4 +1,4 @@
-use crate::{feature_flag::FeatureFlagClient, settings::Settings};
+use crate::types::SharedActorState;
 use http::Method;
 use open_feature::EvaluationContext;
 use ractor::{
@@ -16,8 +16,7 @@ pub enum SelfBotMessage {
 
 pub struct SelfBotWorker {
     client: reqwest_middleware::ClientWithMiddleware,
-    settings: Settings,
-    feature_flag_client: FeatureFlagClient,
+    shared_actor_state: SharedActorState,
 }
 
 impl SelfBotWorker {
@@ -52,6 +51,7 @@ impl Worker for SelfBotWorker {
                 let evaluation_context = EvaluationContext::default()
                     .with_custom_field("message", self_bot_message_request.message.clone());
                 if self
+                    .shared_actor_state
                     .feature_flag_client
                     .is_feature_enabled(
                         "home-gateway-selfbot-killswitch",
@@ -67,7 +67,10 @@ impl Worker for SelfBotWorker {
                     return Ok(());
                 }
 
-                let url = format!("{}/message", self.settings.selfbot_api_base);
+                let url = format!(
+                    "{}/message",
+                    self.shared_actor_state.settings.selfbot_api_base
+                );
                 let response = self
                     .client
                     .request(Method::POST, url)
@@ -87,16 +90,14 @@ impl Worker for SelfBotWorker {
 
 pub struct SelfBotWorkerBuilder {
     pub client: reqwest_middleware::ClientWithMiddleware,
-    pub settings: Settings,
-    feature_flag_client: FeatureFlagClient,
+    pub shared_actor_state: SharedActorState,
 }
 impl WorkerBuilder<SelfBotWorker, ()> for SelfBotWorkerBuilder {
     fn build(&mut self, _wid: usize) -> (SelfBotWorker, ()) {
         (
             SelfBotWorker {
-                feature_flag_client: self.feature_flag_client.clone(),
-                settings: self.settings.clone(),
                 client: self.client.clone(),
+                shared_actor_state: self.shared_actor_state.clone(),
             },
             (),
         )

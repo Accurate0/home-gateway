@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::{IEEEAddress, PresenceActionId, PresenceSettings, workflow::WorkflowSettings},
+    settings::{PresenceActionId, workflow::WorkflowSettings},
     types::SharedActorState,
     zigbee2mqtt::Aqara_FP1E,
 };
@@ -32,8 +32,7 @@ pub struct PresenceSensorState {
 }
 
 pub struct PresenceSensorHandler {
-    _shared_actor_state: SharedActorState,
-    presence_settings: HashMap<IEEEAddress, PresenceSettings>,
+    shared_actor_state: SharedActorState,
 }
 
 impl PresenceSensorHandler {
@@ -71,8 +70,11 @@ impl PresenceSensorHandler {
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraFP1E(aqara_fp1_e) => {
-                    let Some(presence_settings) =
-                        self.presence_settings.get(&aqara_fp1_e.device.ieee_addr)
+                    let Some(presence_settings) = self
+                        .shared_actor_state
+                        .settings
+                        .presence_sensors
+                        .get(&aqara_fp1_e.device.ieee_addr)
                     else {
                         tracing::warn!(
                             "no valid setting found for: {}",
@@ -155,15 +157,13 @@ impl Worker for PresenceSensorHandler {
 
 pub struct PresenceSensorHandlerBuilder {
     pub shared_actor_state: SharedActorState,
-    pub presence_settings: HashMap<IEEEAddress, PresenceSettings>,
 }
 
 impl WorkerBuilder<PresenceSensorHandler, ()> for PresenceSensorHandlerBuilder {
     fn build(&mut self, _wid: usize) -> (PresenceSensorHandler, ()) {
         (
             PresenceSensorHandler {
-                _shared_actor_state: self.shared_actor_state.clone(),
-                presence_settings: self.presence_settings.clone(),
+                shared_actor_state: self.shared_actor_state.clone(),
             },
             (),
         )

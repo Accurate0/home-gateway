@@ -1,5 +1,5 @@
 use super::{ControlSwitchHandler, ControlSwitchHandlerBuilder, ControlSwitchMessage};
-use crate::{settings::Settings, types::SharedActorState};
+use crate::types::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, queues, routing},
@@ -8,7 +8,6 @@ use ractor::{
 pub async fn spawn_control_switch_handler(
     root_supervisor_ref: &ActorRef<()>,
     shared_actor_state: SharedActorState,
-    settings: Settings,
 ) -> anyhow::Result<()> {
     let door_handler_factory_def = Factory::<
         (),
@@ -20,10 +19,7 @@ pub async fn spawn_control_switch_handler(
     >::default();
 
     let door_handler_factory_args = FactoryArguments::builder()
-        .worker_builder(Box::new(ControlSwitchHandlerBuilder {
-            shared_actor_state,
-            switch_settings: settings.switches.clone(),
-        }))
+        .worker_builder(Box::new(ControlSwitchHandlerBuilder { shared_actor_state }))
         .queue(Default::default())
         .router(Default::default())
         .num_initial_workers(3)

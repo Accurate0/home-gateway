@@ -1,10 +1,6 @@
-use crate::{
-    settings::{ApplianceSettings, IEEEAddress},
-    types::SharedActorState,
-};
+use crate::types::SharedActorState;
 use appliance_state_actor::ApplianceState;
 use ractor::Actor;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 mod appliance_state_actor;
@@ -23,7 +19,6 @@ pub enum ApplianceEvents {
 
 pub struct ApplianceEventsSupervisor {
     pub shared_actor_state: SharedActorState,
-    pub appliance_settings: HashMap<IEEEAddress, ApplianceSettings>,
 }
 
 impl ApplianceEventsSupervisor {
@@ -31,15 +26,11 @@ impl ApplianceEventsSupervisor {
     pub const GROUP_NAME: &str = "appliance-events";
 
     async fn start_appliance_state_actor(
-        appliance_settings: HashMap<IEEEAddress, ApplianceSettings>,
         shared_actor_state: SharedActorState,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let (armed_door_actor, _) = Actor::spawn(
             Some(ApplianceState::NAME.to_string()),
-            ApplianceState {
-                appliance_settings,
-                shared_actor_state,
-            },
+            ApplianceState { shared_actor_state },
             (),
         )
         .await?;
@@ -63,11 +54,7 @@ impl Actor for ApplianceEventsSupervisor {
         _myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        Self::start_appliance_state_actor(
-            self.appliance_settings.clone(),
-            self.shared_actor_state.clone(),
-        )
-        .await
+        Self::start_appliance_state_actor(self.shared_actor_state.clone()).await
     }
 
     async fn handle_supervisor_evt(
@@ -83,11 +70,8 @@ impl Actor for ApplianceEventsSupervisor {
                 if let Some(e) = who.get_name() {
                     match e.as_str() {
                         ApplianceState::NAME => {
-                            Self::start_appliance_state_actor(
-                                self.appliance_settings.clone(),
-                                self.shared_actor_state.clone(),
-                            )
-                            .await?
+                            Self::start_appliance_state_actor(self.shared_actor_state.clone())
+                                .await?
                         }
                         actor => tracing::warn!("unknown: {actor}, cannot restart"),
                     }

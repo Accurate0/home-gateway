@@ -1,7 +1,8 @@
 use super::{DoorEvents, DoorEventsType};
 use crate::{
     notify::notify,
-    settings::{ArmedDoorStates, DoorSettings, IEEEAddress},
+    settings::{ArmedDoorStates, IEEEAddress},
+    types::SharedActorState,
 };
 use chrono::{DateTime, Utc};
 use ractor::Actor;
@@ -18,7 +19,7 @@ pub struct ArmedDoorState {
 }
 
 pub struct ArmedDoor {
-    pub door_settings: HashMap<IEEEAddress, DoorSettings>,
+    pub shared_actor_state: SharedActorState,
 }
 
 impl ArmedDoor {
@@ -27,7 +28,7 @@ impl ArmedDoor {
 
 impl ArmedDoor {
     pub fn trigger_action(&self, ieee_addr: &IEEEAddress) {
-        if let Some(settings) = self.door_settings.get(ieee_addr) {
+        if let Some(settings) = self.shared_actor_state.settings.doors.get(ieee_addr) {
             let message = format!("{} has been left open.", settings.name);
             notify(&settings.notify, message, true);
         }
@@ -67,7 +68,7 @@ impl Actor for ArmedDoor {
         match event {
             DoorEventsType::Opened => {
                 state.map.insert(ieee_addr.clone(), DoorState::Open);
-                if let Some(value) = self.door_settings.get(&ieee_addr) {
+                if let Some(value) = self.shared_actor_state.settings.doors.get(&ieee_addr) {
                     if let ArmedDoorStates::Armed { timeout } = value.armed {
                         let duration = timeout.to_std()?;
                         myself.send_after(duration, move || DoorEvents {

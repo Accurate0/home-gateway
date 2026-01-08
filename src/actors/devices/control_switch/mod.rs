@@ -1,6 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::{IEEEAddress, SwitchSettings, workflow::WorkflowSettings},
+    settings::workflow::WorkflowSettings,
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WXKG11LM, IKEA_E2001},
 };
@@ -8,7 +8,6 @@ use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
-use std::collections::HashMap;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -32,7 +31,6 @@ pub enum ControlSwitchMessage {
 pub struct ControlSwitchHandler {
     #[allow(unused)]
     shared_actor_state: SharedActorState,
-    switch_settings: HashMap<IEEEAddress, SwitchSettings>,
 }
 
 impl ControlSwitchHandler {
@@ -67,7 +65,9 @@ impl ControlSwitchHandler {
             ControlSwitchMessage::NewEvent(event) => match &event.entity {
                 Entity::IKEASwitch(ikea_e20001) => {
                     let Some(action_settings) = self
-                        .switch_settings
+                        .shared_actor_state
+                        .settings
+                        .switches
                         .get(&ikea_e20001.device.ieee_addr)
                         .and_then(|s| s.actions.get(&ikea_e20001.action))
                     else {
@@ -84,7 +84,9 @@ impl ControlSwitchHandler {
                     }
 
                     let Some(action_settings) = self
-                        .switch_settings
+                        .shared_actor_state
+                        .settings
+                        .switches
                         .get(&aqara_wxkg11_lm.device.ieee_addr)
                         .and_then(|s| s.actions.get(&aqara_wxkg11_lm.action))
                     else {
@@ -134,14 +136,12 @@ impl Worker for ControlSwitchHandler {
 
 pub struct ControlSwitchHandlerBuilder {
     pub shared_actor_state: SharedActorState,
-    pub switch_settings: HashMap<IEEEAddress, SwitchSettings>,
 }
 impl WorkerBuilder<ControlSwitchHandler, ()> for ControlSwitchHandlerBuilder {
     fn build(&mut self, _wid: usize) -> (ControlSwitchHandler, ()) {
         (
             ControlSwitchHandler {
                 shared_actor_state: self.shared_actor_state.clone(),
-                switch_settings: self.switch_settings.clone(),
             },
             (),
         )

@@ -1,4 +1,4 @@
-use crate::{notify::notify, settings::MaccasSettings};
+use crate::{notify::notify, types::SharedActorState};
 use ractor::Actor;
 use types::MaccasOfferIngest;
 
@@ -9,7 +9,7 @@ pub enum MaccasMessage {
 }
 
 pub struct MaccasActor {
-    pub settings: MaccasSettings,
+    pub shared_actor_state: SharedActorState,
 }
 
 impl MaccasActor {
@@ -39,7 +39,7 @@ impl Actor for MaccasActor {
         match message {
             MaccasMessage::NewOffer(maccas_offer_ingest) => {
                 let name_to_match_on = maccas_offer_ingest.details.short_name;
-                for offer_to_try_match in &self.settings.offers {
+                for offer_to_try_match in &self.shared_actor_state.settings.maccas.offers {
                     let try_match = &offer_to_try_match.match_names;
                     let matched = try_match.iter().any(|m| name_to_match_on.contains(m));
                     if matched {

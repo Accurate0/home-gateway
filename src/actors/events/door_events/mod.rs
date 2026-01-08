@@ -1,11 +1,10 @@
 use crate::{
-    settings::{DoorSettings, IEEEAddress},
+    settings::IEEEAddress,
     types::SharedActorState,
 };
 use armed_door_actor::ArmedDoor;
 use derived_door_events_actor::DerivedDoorEvents;
 use ractor::{Actor, ActorCell};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 mod armed_door_actor;
@@ -25,7 +24,6 @@ pub struct DoorEvents {
 
 pub struct DoorEventsSupervisor {
     pub shared_actor_state: SharedActorState,
-    pub door_settings: HashMap<IEEEAddress, DoorSettings>,
 }
 
 impl DoorEventsSupervisor {
@@ -35,14 +33,10 @@ impl DoorEventsSupervisor {
     async fn start_derived_door_events_actor(
         myself: ActorCell,
         shared_actor_state: SharedActorState,
-        door_settings: HashMap<IEEEAddress, DoorSettings>,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let (derived_door_events_actor, _) = Actor::spawn_linked(
             Some(DerivedDoorEvents::NAME.to_owned()),
-            DerivedDoorEvents {
-                door_settings,
-                shared_actor_state,
-            },
+            DerivedDoorEvents { shared_actor_state },
             (),
             myself,
         )
@@ -58,11 +52,11 @@ impl DoorEventsSupervisor {
 
     async fn start_armed_door_actor(
         myself: ActorCell,
-        door_settings: HashMap<IEEEAddress, DoorSettings>,
+        shared_actor_state: SharedActorState,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let (armed_door_actor, _) = Actor::spawn_linked(
             Some(ArmedDoor::NAME.to_string()),
-            ArmedDoor { door_settings },
+            ArmedDoor { shared_actor_state },
             (),
             myself,
         )
@@ -87,13 +81,9 @@ impl Actor for DoorEventsSupervisor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        Self::start_armed_door_actor(myself.get_cell(), self.door_settings.clone()).await?;
-        Self::start_derived_door_events_actor(
-            myself.get_cell(),
-            self.shared_actor_state.clone(),
-            self.door_settings.clone(),
-        )
-        .await
+        Self::start_armed_door_actor(myself.get_cell(), self.shared_actor_state.clone()).await?;
+        Self::start_derived_door_events_actor(myself.get_cell(), self.shared_actor_state.clone())
+            .await
     }
 
     async fn handle_supervisor_evt(
@@ -112,14 +102,13 @@ impl Actor for DoorEventsSupervisor {
                             Self::start_derived_door_events_actor(
                                 myself.get_cell(),
                                 self.shared_actor_state.clone(),
-                                self.door_settings.clone(),
                             )
                             .await?;
                         }
                         ArmedDoor::NAME => {
                             Self::start_armed_door_actor(
                                 myself.get_cell(),
-                                self.door_settings.clone(),
+                                self.shared_actor_state.clone(),
                             )
                             .await?
                         }

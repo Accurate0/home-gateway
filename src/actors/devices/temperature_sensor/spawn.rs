@@ -1,5 +1,5 @@
 use super::{Message, TemperatureSensorHandler, TemperatureSensorHandlerBuilder};
-use crate::{settings::Settings, types::SharedActorState};
+use crate::types::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, queues, routing},
@@ -8,7 +8,6 @@ use ractor::{
 pub async fn spawn_temperature_sensor_handler(
     root_supervisor_ref: &ActorRef<()>,
     shared_actor_state: SharedActorState,
-    settings: Settings,
 ) -> anyhow::Result<()> {
     let door_handler_factory_def = Factory::<
         (),
@@ -22,7 +21,6 @@ pub async fn spawn_temperature_sensor_handler(
     let door_handler_factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(TemperatureSensorHandlerBuilder {
             shared_actor_state,
-            temperature_sensor_settings: settings.temperature_sensors,
         }))
         .queue(Default::default())
         .router(Default::default())

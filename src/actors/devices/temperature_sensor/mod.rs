@@ -1,7 +1,5 @@
-use std::collections::HashMap;
 
 use crate::{
-    settings::{IEEEAddress, TemperatureSensorSettings},
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
@@ -30,7 +28,6 @@ pub enum Message {
 
 pub struct TemperatureSensorHandler {
     shared_actor_state: SharedActorState,
-    temperature_sensor_settings: HashMap<IEEEAddress, TemperatureSensorSettings>,
 }
 
 impl TemperatureSensorHandler {
@@ -41,7 +38,9 @@ impl TemperatureSensorHandler {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
                     let id = self
-                        .temperature_sensor_settings
+                        .shared_actor_state
+                        .settings
+                        .temperature_sensors
                         .get(&aqara_wsdcgq12_lm.device.ieee_addr)
                         .map(|s| &s.id);
 
@@ -59,7 +58,9 @@ impl TemperatureSensorHandler {
                 }
                 Entity::LumiWSDCGQ11LM(lumi_wsdcgq11_lm) => {
                     let id = self
-                        .temperature_sensor_settings
+                        .shared_actor_state
+                        .settings
+                        .temperature_sensors
                         .get(&lumi_wsdcgq11_lm.device.ieee_addr)
                         .map(|s| &s.id);
 
@@ -77,7 +78,9 @@ impl TemperatureSensorHandler {
                 }
                 Entity::IKEAE2112(ikea_e2112) => {
                     let id = self
-                        .temperature_sensor_settings
+                        .shared_actor_state
+                        .settings
+                        .temperature_sensors
                         .get(&ikea_e2112.device.ieee_addr)
                         .map(|s| &s.id);
 
@@ -133,14 +136,12 @@ impl Worker for TemperatureSensorHandler {
 
 pub struct TemperatureSensorHandlerBuilder {
     pub shared_actor_state: SharedActorState,
-    pub temperature_sensor_settings: HashMap<IEEEAddress, TemperatureSensorSettings>,
 }
 impl WorkerBuilder<TemperatureSensorHandler, ()> for TemperatureSensorHandlerBuilder {
     fn build(&mut self, _wid: usize) -> (TemperatureSensorHandler, ()) {
         (
             TemperatureSensorHandler {
                 shared_actor_state: self.shared_actor_state.clone(),
-                temperature_sensor_settings: self.temperature_sensor_settings.clone(),
             },
             (),
         )
