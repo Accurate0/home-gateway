@@ -19,4 +19,4 @@ jobs:
       object-name: config.yaml
       config-file: config.yaml
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GHA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
