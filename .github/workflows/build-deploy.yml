@@ -5,6 +5,7 @@ on:
       - main
     paths-ignore:
       - config.yaml
+      - .github/workflows/upload-config.yml
   workflow_dispatch:
 
 jobs:

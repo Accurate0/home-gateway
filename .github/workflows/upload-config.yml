@@ -18,5 +18,3 @@ jobs:
       namespace: home-gateway
       object-name: config.yaml
       config-file: config.yaml
-    secrets:
-      GHA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
