@@ -5,10 +5,11 @@ on:
       - main
     paths:
       - config.yaml
+      - .github/workflows/upload-config.yml
   workflow_dispatch:
 
 jobs:
-  build-selfbot:
+  upload:
     permissions:
       id-token: write
 
@@ -17,3 +18,5 @@ jobs:
       namespace: home-gateway
       object-name: config.yaml
       config-file: config.yaml
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
