@@ -154,18 +154,10 @@ pub struct Settings {
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
         let file_path = PathBuf::from("./config.yaml");
-        let file = File::from(file_path).required(false);
-
-        let switches_path = PathBuf::from("./switch-config.yaml");
-        let switch_file = File::from(switches_path).required(false);
-
-        let presence_path = PathBuf::from("./presence-config.yaml");
-        let presence_file = File::from(presence_path).required(false);
+        let file = File::from(file_path).required(true);
 
         let s = Config::builder()
             .add_source(file)
-            .add_source(switch_file)
-            .add_source(presence_file)
             .add_source(Environment::default().separator("__"))
             .build()?;
 

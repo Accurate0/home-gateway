@@ -59,8 +59,6 @@ USER appuser
 
 WORKDIR /opt/${BINARY_NAME}
 COPY config.yaml /opt/${BINARY_NAME}/config.yaml
-COPY switch-config.yaml /opt/${BINARY_NAME}/switch-config.yaml
-COPY presence-config.yaml /opt/${BINARY_NAME}/presence-config.yaml
 
 RUN ln -s /usr/local/bin/${BINARY_NAME} executable
 ENTRYPOINT ["./executable"]

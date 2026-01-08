@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - config.yaml
   workflow_dispatch:
 
 jobs:
