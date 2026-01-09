@@ -1,20 +1,16 @@
-use crate::{
-    settings::Settings,
-    types::{ApiState, AppError},
-};
+use crate::types::{ApiState, AppError};
 use anyhow::Context;
 use axum::extract::State;
 use bytes::Bytes;
 use config_catalog_jwt::verify_jwt;
 use http::{HeaderMap, StatusCode, header::AUTHORIZATION};
 use serde::Deserialize;
-use std::sync::Arc;
 
 #[derive(Deserialize, Debug)]
 pub struct ConfigCatalogRefreshEvent {
     #[allow(unused)]
     key: String,
-    payload: Settings,
+    payload: serde_yaml::Value,
 }
 
 pub async fn refresh(
@@ -36,7 +32,7 @@ pub async fn refresh(
     let refresh_event = serde_yaml::from_slice::<ConfigCatalogRefreshEvent>(&body)?;
 
     tracing::info!("new config: {refresh_event:?}");
-    settings.reload(Arc::new(refresh_event.payload));
+    settings.reload(serde_yaml::to_string(&refresh_event)?);
 
     Ok(StatusCode::OK)
 }

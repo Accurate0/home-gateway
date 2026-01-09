@@ -5,7 +5,7 @@ use crate::{
 };
 use arc_swap::{ArcSwap, Guard};
 use chrono::{DateTime, FixedOffset, TimeDelta};
-use config::{Config, ConfigError, Environment, File};
+use config::{Config, ConfigError, Environment, File, FileFormat};
 use serde::Deserialize;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -181,7 +181,14 @@ impl SettingsContainer {
         self.inner.load()
     }
 
-    pub fn reload(&self, new_settings: Arc<Settings>) {
-        self.inner.store(new_settings);
+    pub fn reload(&self, new_settings: String) -> Result<(), ConfigError> {
+        let new_config = Config::builder()
+            .add_source(File::from_str(&new_settings, FileFormat::Yaml))
+            .add_source(Environment::default().separator("__"))
+            .build()?;
+
+        self.inner.store(Arc::new(new_config.try_deserialize()?));
+
+        Ok(())
     }
 }
