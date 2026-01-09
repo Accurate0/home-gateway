@@ -3,10 +3,12 @@ use crate::{
     actors::reminder::cronlike_expression::CronlikeExpression,
     timedelta_format::time_delta_from_str,
 };
+use arc_swap::{ArcSwap, Guard};
 use chrono::{DateTime, FixedOffset, TimeDelta};
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use std::fmt::Display;
+use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
 use workflow::ActionSettings;
 
@@ -151,7 +153,12 @@ pub struct Settings {
     pub aws_secret_access_key: String,
 }
 
-impl Settings {
+#[derive(Clone)]
+pub struct SettingsContainer {
+    inner: Arc<ArcSwap<Settings>>,
+}
+
+impl SettingsContainer {
     pub fn new() -> Result<Self, ConfigError> {
         let file_path = PathBuf::from("./config.yaml");
         let file = File::from(file_path).required(true);
@@ -161,6 +168,20 @@ impl Settings {
             .add_source(Environment::default().separator("__"))
             .build()?;
 
-        s.try_deserialize()
+        Ok(Self {
+            inner: Arc::new(ArcSwap::new(s.try_deserialize()?)),
+        })
+    }
+
+    pub fn load_full(&self) -> Arc<Settings> {
+        self.inner.load_full()
+    }
+
+    pub fn load(&self) -> Guard<Arc<Settings>> {
+        self.inner.load()
+    }
+
+    pub fn reload(&self, new_settings: Arc<Settings>) {
+        self.inner.store(new_settings);
     }
 }

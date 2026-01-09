@@ -157,9 +157,8 @@ impl Actor for ApplianceState {
                 current,
                 ..
             } => {
-                if let Some(appliance_settings) =
-                    self.shared_actor_state.settings.appliances.get(&ieee_addr)
-                {
+                let settings = self.shared_actor_state.settings.load();
+                if let Some(appliance_settings) = settings.appliances.get(&ieee_addr) {
                     let avg = state
                         .average_running
                         .entry(ieee_addr.clone())

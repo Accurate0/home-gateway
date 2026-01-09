@@ -16,6 +16,7 @@ pub async fn maccas(
     Json(maccas_offer): Json<MaccasOfferIngest>,
 ) -> StatusCode {
     let maccas_secret_header = headers.get("X-Maccas-External-Secret");
+    let settings = settings.load();
     match maccas_secret_header {
         Some(secret_value) if *secret_value == settings.maccas.webhook_secret => {
             if let Err(e) = event_handler.send_message(ractor::factory::FactoryMessage::Dispatch(

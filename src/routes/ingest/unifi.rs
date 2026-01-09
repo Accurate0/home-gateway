@@ -16,6 +16,7 @@ pub async fn unifi(
     Json(unifi_event): Json<UnifiWebhookEvents>,
 ) -> StatusCode {
     let unifi_secret_header = headers.get("X-Webhook-Secret");
+    let settings = settings.load();
     match unifi_secret_header {
         Some(secret_value) if *secret_value == settings.unifi_webhook_secret => {
             if let Err(e) = event_handler.send_message(ractor::factory::FactoryMessage::Dispatch(

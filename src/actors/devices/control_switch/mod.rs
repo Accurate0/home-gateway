@@ -61,12 +61,11 @@ impl ControlSwitchHandler {
     }
 
     async fn handle(&self, message: ControlSwitchMessage) -> Result<(), anyhow::Error> {
+        let settings = self.shared_actor_state.settings.load();
         match message {
             ControlSwitchMessage::NewEvent(event) => match &event.entity {
                 Entity::IKEASwitch(ikea_e20001) => {
-                    let Some(action_settings) = self
-                        .shared_actor_state
-                        .settings
+                    let Some(action_settings) = settings
                         .switches
                         .get(&ikea_e20001.device.ieee_addr)
                         .and_then(|s| s.actions.get(&ikea_e20001.action))
@@ -83,9 +82,7 @@ impl ControlSwitchHandler {
                         return Ok(());
                     }
 
-                    let Some(action_settings) = self
-                        .shared_actor_state
-                        .settings
+                    let Some(action_settings) = settings
                         .switches
                         .get(&aqara_wxkg11_lm.device.ieee_addr)
                         .and_then(|s| s.actions.get(&aqara_wxkg11_lm.action))

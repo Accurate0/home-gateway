@@ -39,7 +39,8 @@ impl Actor for MaccasActor {
         match message {
             MaccasMessage::NewOffer(maccas_offer_ingest) => {
                 let name_to_match_on = maccas_offer_ingest.details.short_name;
-                for offer_to_try_match in &self.shared_actor_state.settings.maccas.offers {
+                let settings = self.shared_actor_state.settings.load();
+                for offer_to_try_match in &settings.maccas.offers {
                     let try_match = &offer_to_try_match.match_names;
                     let matched = try_match.iter().any(|m| name_to_match_on.contains(m));
                     if matched {

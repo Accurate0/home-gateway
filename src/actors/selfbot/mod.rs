@@ -67,10 +67,8 @@ impl Worker for SelfBotWorker {
                     return Ok(());
                 }
 
-                let url = format!(
-                    "{}/message",
-                    self.shared_actor_state.settings.selfbot_api_base
-                );
+                let settings = self.shared_actor_state.settings.load();
+                let url = format!("{}/message", settings.selfbot_api_base);
                 let response = self
                     .client
                     .request(Method::POST, url)

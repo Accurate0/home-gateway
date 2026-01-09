@@ -88,12 +88,8 @@ impl Actor for DerivedDoorEvents {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        if let Some(door_settings) = self
-            .shared_actor_state
-            .settings
-            .doors
-            .get(&message.ieee_addr)
-        {
+        let settings = self.shared_actor_state.settings.load();
+        if let Some(door_settings) = settings.doors.get(&message.ieee_addr) {
             let last_state = state.map.get(&message.ieee_addr);
             let now = chrono::offset::Utc::now();
             let last_event_is_too_soon = state

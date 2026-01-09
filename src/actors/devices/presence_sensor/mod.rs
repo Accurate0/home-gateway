@@ -67,14 +67,12 @@ impl PresenceSensorHandler {
         message: Message,
         state: &mut PresenceSensorState,
     ) -> Result<(), anyhow::Error> {
+        let settings = self.shared_actor_state.settings.load();
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraFP1E(aqara_fp1_e) => {
-                    let Some(presence_settings) = self
-                        .shared_actor_state
-                        .settings
-                        .presence_sensors
-                        .get(&aqara_fp1_e.device.ieee_addr)
+                    let Some(presence_settings) =
+                        settings.presence_sensors.get(&aqara_fp1_e.device.ieee_addr)
                     else {
                         tracing::warn!(
                             "no valid setting found for: {}",

@@ -22,7 +22,7 @@ impl FromRequestParts<ApiState> for RequireApiKey {
             .map(|s| s.trim());
 
         match api_key {
-            Some(api_key) if api_key == state.settings.api_key => Ok(Self),
+            Some(api_key) if api_key == state.settings.load().api_key => Ok(Self),
             _ => Err(StatusCode::UNAUTHORIZED),
         }
     }

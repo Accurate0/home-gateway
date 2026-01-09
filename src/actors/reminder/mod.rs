@@ -59,7 +59,8 @@ impl Actor for ReminderActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        for reminder in &self.shared_actor_state.settings.reminders {
+        let settings = self.shared_actor_state.settings.load();
+        for reminder in &settings.reminders {
             let time = reminder.frequency.next_trigger(reminder.starts_on).await;
             let reminder = reminder.clone();
 

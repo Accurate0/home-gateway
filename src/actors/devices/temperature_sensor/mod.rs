@@ -1,4 +1,3 @@
-
 use crate::{
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
@@ -34,12 +33,11 @@ impl TemperatureSensorHandler {
     pub const NAME: &str = "temperature-sensor";
 
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
+        let settings = self.shared_actor_state.settings.load();
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
-                    let id = self
-                        .shared_actor_state
-                        .settings
+                    let id = settings
                         .temperature_sensors
                         .get(&aqara_wsdcgq12_lm.device.ieee_addr)
                         .map(|s| &s.id);
@@ -57,9 +55,7 @@ impl TemperatureSensorHandler {
                     ).execute(&self.shared_actor_state.db).await?;
                 }
                 Entity::LumiWSDCGQ11LM(lumi_wsdcgq11_lm) => {
-                    let id = self
-                        .shared_actor_state
-                        .settings
+                    let id = settings
                         .temperature_sensors
                         .get(&lumi_wsdcgq11_lm.device.ieee_addr)
                         .map(|s| &s.id);
@@ -77,9 +73,7 @@ impl TemperatureSensorHandler {
                     ).execute(&self.shared_actor_state.db).await?;
                 }
                 Entity::IKEAE2112(ikea_e2112) => {
-                    let id = self
-                        .shared_actor_state
-                        .settings
+                    let id = settings
                         .temperature_sensors
                         .get(&ikea_e2112.device.ieee_addr)
                         .map(|s| &s.id);

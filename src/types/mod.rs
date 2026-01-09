@@ -5,7 +5,7 @@ use crate::{
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
     mqtt::{MqttClient, MqttError},
-    settings::{IEEEAddress, Settings},
+    settings::{IEEEAddress, SettingsContainer},
     woolworths::WoolworthsError,
 };
 use axum::response::{IntoResponse, Response};
@@ -21,7 +21,7 @@ pub mod db;
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
     pub mqtt: MqttClient,
-    pub settings: Settings,
+    pub settings: SettingsContainer,
     pub bucket_accessor: S3BucketAccessor,
     pub feature_flag_client: FeatureFlagClient,
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
@@ -34,7 +34,7 @@ pub struct ApiState {
     pub schema: FinalSchema,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]
-    pub settings: Settings,
+    pub settings: SettingsContainer,
     #[allow(unused)]
     pub db: Pool<Postgres>,
 }

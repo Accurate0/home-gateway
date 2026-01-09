@@ -1,4 +1,4 @@
-use crate::routes::workflow::execute::workflow_execute;
+use crate::routes::{config::refresh, workflow::execute::workflow_execute};
 use ::http::Method;
 use actors::{
     event_handler::{self},
@@ -29,7 +29,7 @@ use routes::{
     ingest::{self, home::alarm::alarm, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
-use settings::{IEEEAddress, Settings};
+use settings::{IEEEAddress, SettingsContainer};
 use sqlx::{
     ConnectOptions, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
@@ -68,7 +68,7 @@ mod woolworths;
 mod zigbee2mqtt;
 
 async fn init_actors(
-    settings: Settings,
+    settings: SettingsContainer,
     bucket_accessor: S3BucketAccessor,
     feature_flag_client: FeatureFlagClient,
     mqtt_client: MqttClient,
@@ -106,7 +106,8 @@ async fn init_actors(
 async fn main() -> anyhow::Result<()> {
     tracing_setup::init()?;
 
-    let settings = Settings::new()?;
+    let settings_container = SettingsContainer::new()?;
+    let settings = settings_container.load_full();
 
     let eink_display_bucket_credentials = s3::creds::Credentials::new(
         Some(&settings.aws_access_key_id),
@@ -154,7 +155,7 @@ async fn main() -> anyhow::Result<()> {
         DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
 
     let event_handler_actor = init_actors(
-        settings.clone(),
+        settings_container.clone(),
         bucket_accessor,
         feature_flag_client.clone(),
         mqtt_client,
@@ -183,7 +184,7 @@ async fn main() -> anyhow::Result<()> {
         feature_flag_client,
         event_handler: event_handler_actor.clone(),
         schema,
-        settings: settings.clone(),
+        settings: settings_container.clone(),
         db: pool.clone(),
     };
 
@@ -200,6 +201,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(ingest::unifi::unifi))
+        .route("/config/refresh", post(refresh))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &::http::Request<Body>| {
