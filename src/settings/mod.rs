@@ -160,6 +160,7 @@ pub struct SettingsContainer {
 
 impl SettingsContainer {
     pub fn new() -> Result<Self, ConfigError> {
+        // TODO: fetch config from catalog, falling back to file if not found or other error
         let file_path = PathBuf::from("./config.yaml");
         let file = File::from(file_path).required(true);
 
@@ -181,6 +182,7 @@ impl SettingsContainer {
         self.inner.load()
     }
 
+    #[allow(unused)]
     pub fn reload(&self, new_settings: String) -> Result<(), ConfigError> {
         let new_config = Config::builder()
             .add_source(File::from_str(&new_settings, FileFormat::Yaml))

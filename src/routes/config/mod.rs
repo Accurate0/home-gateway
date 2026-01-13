@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::types::{ApiState, AppError};
 use anyhow::Context;
 use axum::extract::State;
@@ -32,7 +33,7 @@ pub async fn refresh(
     let refresh_event = serde_yaml::from_slice::<ConfigCatalogRefreshEvent>(&body)?;
 
     tracing::info!("new config: {refresh_event:?}");
-    settings.reload(serde_yaml::to_string(&refresh_event.payload)?)?;
+    // settings.reload(serde_yaml::to_string(&refresh_event.payload)?)?;
 
     Ok(StatusCode::OK)
 }

@@ -1,3 +1,5 @@
+use crate::settings::NotifySource;
+
 use super::IEEEAddress;
 use serde::Deserialize;
 
@@ -50,6 +52,12 @@ pub enum WorkflowEntityType {
         #[serde(flatten)]
         state: WorkflowEntityLightTypeState,
         #[serde(default)]
+        when: Option<WorkflowQueryType>,
+    },
+    Notify {
+        #[serde(flatten)]
+        notify: NotifySource,
+        message: String,
         when: Option<WorkflowQueryType>,
     },
 }

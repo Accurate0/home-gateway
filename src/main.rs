@@ -1,4 +1,8 @@
-use crate::routes::{config::refresh, workflow::execute::workflow_execute};
+use crate::routes::{
+    config::refresh,
+    ingest::{solar::solar, unifi::unifi},
+    workflow::execute::workflow_execute,
+};
 use ::http::Method;
 use actors::{
     event_handler::{self},
@@ -26,7 +30,7 @@ use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     control::light::light_control,
     health::health,
-    ingest::{self, home::alarm::alarm, maccas::maccas, synergy::synergy},
+    ingest::{home::alarm::alarm, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
 use settings::{IEEEAddress, SettingsContainer};
@@ -62,6 +66,7 @@ mod timed_average;
 mod timedelta_format;
 mod timer;
 mod tracing_setup;
+mod tracker;
 mod types;
 mod utils;
 mod woolworths;
@@ -194,13 +199,14 @@ async fn main() -> anyhow::Result<()> {
         .route("/control/light", post(light_control))
         .route("/workflow/execute", post(workflow_execute))
         .route("/ingest/synergy", post(synergy))
+        .route("/ingest/solar", post(solar))
         .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
         .route("/health", get(health))
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
-        .route("/ingest/unifi", post(ingest::unifi::unifi))
+        .route("/ingest/unifi", post(unifi))
         .route("/config/refresh", post(refresh))
         .layer(
             TraceLayer::new_for_http()

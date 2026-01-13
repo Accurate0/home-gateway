@@ -7,6 +7,7 @@ pub mod maccas;
 pub mod reminder;
 pub mod root;
 pub mod selfbot;
+pub mod solar;
 pub mod synergy;
 pub mod unifi;
 pub mod vacuum;

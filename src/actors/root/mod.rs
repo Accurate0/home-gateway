@@ -1,5 +1,8 @@
 use crate::{
-    actors::{eink_display::EInkDisplayActor, vacuum::VacuumActor, woolworths::WoolworthsActor},
+    actors::{
+        eink_display::EInkDisplayActor, solar::SolarIngestActor, vacuum::VacuumActor,
+        woolworths::WoolworthsActor,
+    },
     delayqueue::DelayQueue,
     types::SharedActorState,
     woolworths::Woolworths,
@@ -164,6 +167,23 @@ impl RootSupervisor {
 
         Ok(())
     }
+
+    async fn start_solar_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(SolarIngestActor::NAME.to_owned()),
+                SolarIngestActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
 }
 
 impl Actor for RootSupervisor {
@@ -226,6 +246,7 @@ impl Actor for RootSupervisor {
         self.start_alarm_actor(&myself).await?;
         self.start_vacuum_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
+        self.start_solar_actor(&myself).await?;
 
         Ok(())
     }
@@ -288,6 +309,11 @@ impl Actor for RootSupervisor {
                     EInkDisplayActor::NAME => {
                         tracing::info!("restarting eink display actor");
                         self.start_eink_display_actor(&myself).await?;
+                    }
+
+                    SolarIngestActor::NAME => {
+                        tracing::info!("restarting solar ingest actor");
+                        self.start_solar_actor(&myself).await?;
                     }
 
                     name => {

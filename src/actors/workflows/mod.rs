@@ -1,10 +1,12 @@
-use std::time::Duration;
-
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
-    settings::workflow::{
-        WorkflowEntityLightQueryState, WorkflowEntityLightTypeState, WorkflowEntityType,
-        WorkflowQueryType, WorkflowSettings,
+    notify::notify,
+    settings::{
+        NotifySource,
+        workflow::{
+            WorkflowEntityLightQueryState, WorkflowEntityLightTypeState, WorkflowEntityType,
+            WorkflowQueryType, WorkflowSettings,
+        },
     },
     timer::timed_async,
 };
@@ -12,6 +14,7 @@ use ractor::{
     ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
+use std::time::Duration;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -59,6 +62,23 @@ impl WorkflowWorker {
                 Ok(does_match_query)
             }
         }
+    }
+
+    async fn handle_notify_operation(
+        notify_source: NotifySource,
+        message: String,
+        when: Option<WorkflowQueryType>,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(ref when) = when {
+            if !Self::handle_query(when).await? {
+                tracing::info!("failed when condition for {:?}", when);
+                return Ok(());
+            }
+        };
+
+        notify(&[notify_source], message, true);
+
+        Ok(())
     }
 
     async fn handle_light_operation(
@@ -170,9 +190,19 @@ impl WorkflowWorker {
                                 state,
                                 when,
                             } => Self::handle_light_operation(ieee_addr, state, when).await?,
+                            WorkflowEntityType::Notify {
+                                notify,
+                                when,
+                                message,
+                            } => Self::handle_notify_operation(notify, message, when).await?,
                         };
                     }
                 }
+                WorkflowEntityType::Notify {
+                    notify,
+                    when,
+                    message,
+                } => Self::handle_notify_operation(notify, message, when).await?,
             }
         }
 

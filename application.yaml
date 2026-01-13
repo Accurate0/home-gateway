@@ -34,7 +34,7 @@ spec:
               rules:
                 - backendRefs:
                     - name: home-gateway
-                      port: 8000
+                      port: 80
                   matches:
                     - path:
                         type: PathPrefix
