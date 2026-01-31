@@ -2,7 +2,7 @@ use super::{
     alarm::types::AndroidAppAlarmPayload,
     devices::{control_switch, presence_sensor},
     maccas::types::MaccasOfferIngest,
-    unifi::types::UnifiWebhookEvents,
+    unifi::types::UnifiWebhookEvent,
 };
 use crate::{
     actors::{
@@ -12,7 +12,7 @@ use crate::{
         smart_switch,
         synergy::{self, SynergyActor},
         temperature_sensor,
-        unifi::{UnifiConnectedClientHandler, UnifiMessage},
+        unifi::{UnifiConnectedClientHandler, UnifiMessage, types::Parameters},
     },
     types::SharedActorState,
     zigbee2mqtt::devices::BridgeDevices,
@@ -44,7 +44,7 @@ pub enum Message {
         payload: Bytes,
     },
     UnifiWebhook {
-        payload: UnifiWebhookEvents,
+        payload: UnifiWebhookEvent,
     },
 }
 
@@ -383,20 +383,25 @@ impl EventHandler {
 
                 let actor = maybe_actor.unwrap();
 
-                for event in payload.events {
-                    match event.id.as_str() {
-                        "event.client_connected" => {
-                            actor.send_message(UnifiMessage::ClientConnect {
-                                mac_address: event.scope.client_mac_address,
-                            })?;
-                        }
-                        "event.client_disconnected" => {
-                            actor.send_message(UnifiMessage::ClientDisconnect {
-                                mac_address: event.scope.client_mac_address,
-                            })?;
-                        }
-                        unknown => tracing::warn!("unknown webhook event: {unknown}"),
+                let mac_address = match payload.parameters {
+                    Parameters::Connect(connect_parameters) => connect_parameters.unificlient_mac,
+                    Parameters::Disconnect(disconnect_parameters) => {
+                        disconnect_parameters.unificlient_mac
                     }
+                };
+
+                match payload.name.as_str() {
+                    "WiFi Client Connected" => {
+                        actor.send_message(UnifiMessage::ClientConnect {
+                            mac_address: mac_address,
+                        })?;
+                    }
+                    "WiFi Client Disconnected" => {
+                        actor.send_message(UnifiMessage::ClientDisconnect {
+                            mac_address: mac_address,
+                        })?;
+                    }
+                    unknown => tracing::warn!("unknown webhook event: {unknown}"),
                 }
             }
             Message::AlarmChangeIngest { payload } => {

@@ -1,5 +1,5 @@
 use crate::{
-    actors::{event_handler, unifi::types::UnifiWebhookEvents},
+    actors::{event_handler, unifi::types::UnifiWebhookEvent},
     types::ApiState,
 };
 use axum::{Json, extract::State};
@@ -13,7 +13,7 @@ pub async fn unifi(
         ..
     }): State<ApiState>,
     headers: HeaderMap,
-    Json(unifi_event): Json<UnifiWebhookEvents>,
+    Json(unifi_event): Json<UnifiWebhookEvent>,
 ) -> StatusCode {
     let unifi_secret_header = headers.get("X-Webhook-Secret");
     let settings = settings.load();
