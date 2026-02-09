@@ -1,238 +1,262 @@
-
-#define __GDEP133C02_C__
-
 #include "GDEP133C02.h"
 #include "comms.h"
 #include "pindefine.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-const unsigned char spiCsPin[2] = {SPI_CS0, SPI_CS1};
-const unsigned char PSR_V[2] = {0xDF, 0x69};
-const unsigned char PWR_V[6] = {0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38};
-const unsigned char POF_V[1] = {0x00};
-const unsigned char DRF_V[1] = {0x01};
-const unsigned char CDI_V[1] = {0xF7};
-const unsigned char TCON_V[2] = {0x03, 0x03};
-const unsigned char TRES_V[4] = {0x04, 0xB0, 0x03, 0x20};
-const unsigned char CMD66_V[6] = {0x49, 0x55, 0x13, 0x5D, 0x05, 0x10};
-const unsigned char EN_BUF_V[1] = {0x07};
-const unsigned char CCSET_V[1] = {0x01};
-const unsigned char PWS_V[1] = {0x22};
-const unsigned char AN_TM_V[9] = {0xC0, 0x1C, 0x1C, 0xCC, 0xCC,
+const unsigned char spi_cs_pin[2] = {SPI_CS0, SPI_CS1};
+const unsigned char psr_v[2] = {0xDF, 0x69};
+const unsigned char pwr_v[6] = {0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38};
+const unsigned char pof_v[1] = {0x00};
+const unsigned char drf_v[1] = {0x01};
+const unsigned char cdi_v[1] = {0xF7};
+const unsigned char tcon_v[2] = {0x03, 0x03};
+const unsigned char tres_v[4] = {0x04, 0xB0, 0x03, 0x20};
+const unsigned char cmd66_v[6] = {0x49, 0x55, 0x13, 0x5D, 0x05, 0x10};
+const unsigned char en_buf_v[1] = {0x07};
+const unsigned char ccset_v[1] = {0x01};
+const unsigned char pws_v[1] = {0x22};
+const unsigned char an_tm_v[9] = {0xC0, 0x1C, 0x1C, 0xCC, 0xCC,
                                   0xCC, 0x15, 0x15, 0x55};
 
-const unsigned char AGID_V[1] = {0x10};
+const unsigned char agid_v[1] = {0x10};
 
-const unsigned char BTST_P_V[2] = {0xE8, 0x28};
-const unsigned char BOOST_VDDP_EN_V[1] = {0x01};
-const unsigned char BTST_N_V[2] = {0xE8, 0x28};
-const unsigned char BUCK_BOOST_VDDN_V[1] = {0x01};
-const unsigned char TFT_VCOM_POWER_V[1] = {0x02};
+const unsigned char btst_p_v[2] = {0xE8, 0x28};
+const unsigned char boost_vddp_en_v[1] = {0x01};
+const unsigned char btst_n_v[2] = {0xE8, 0x28};
+const unsigned char buck_boost_vddn_v[1] = {0x01};
+const unsigned char tft_vcom_power_v[1] = {0x02};
 
-char partialWindowUpdateStatus = DONE;
+void gdep133c02_init(gdep133c02_t *self, comms_t *comms,
+                     unsigned char *buffer) {
+  self->comms = comms;
+  self->buffer = buffer;
+  self->partial_window_update_status = COMMS_DONE;
+}
 
 //================== GPIO Setting ====================================
-void resetPin(unsigned int pinStatus) { setGpioLevel(EPD_RST, pinStatus); }
+static void reset_pin(gdep133c02_t *self, unsigned int pin_status) {
+  comms_set_gpio_level(self->comms, EPD_RST, pin_status);
+}
 
-void setPinCsAll(unsigned int setLevel) {
+void gdep133c02_set_pin_cs_all(gdep133c02_t *self, unsigned int set_level) {
   unsigned char i;
   for (i = 0; i < 2; i++) {
-    setGpioLevel(spiCsPin[i], setLevel);
+    comms_set_gpio_level(self->comms, spi_cs_pin[i], set_level);
   }
 }
 
-void setPinCs(unsigned char csNumber, unsigned int setLevel) {
-  setGpioLevel(spiCsPin[csNumber], setLevel);
+void gdep133c02_set_pin_cs(gdep133c02_t *self, unsigned char cs_number,
+                           unsigned int set_level) {
+  comms_set_gpio_level(self->comms, spi_cs_pin[cs_number], set_level);
 }
-void checkBusyHigh(void) // If BUSYN=0 then waiting
+
+void gdep133c02_check_busy_high(gdep133c02_t *self) // If BUSYN=0 then waiting
 {
-  while (!(getGpioLevel(EPD_BUSY)))
+  while (!(comms_get_gpio_level(self->comms, EPD_BUSY)))
     ;
 }
 
-void checkBusyLow(void) // If BUSYN=1 then waiting
+void gdep133c02_check_busy_low(gdep133c02_t *self) // If BUSYN=1 then waiting
 {
-  while (getGpioLevel(EPD_BUSY))
+  while (comms_get_gpio_level(self->comms, EPD_BUSY))
     ;
 }
 //====================================================================
 
-void epdHardwareReset(void) {
-  resetPin(GPIO_LOW);
-  delayms(20);
-  resetPin(GPIO_HIGH);
-  delayms(20);
+void gdep133c02_hardware_reset(gdep133c02_t *self) {
+  reset_pin(self, GPIO_LOW);
+  comms_delay_ms(self->comms, 20);
+  reset_pin(self, GPIO_HIGH);
+  comms_delay_ms(self->comms, 20);
 }
 
-void writeEpd(unsigned char epdCommand, unsigned char *epdData,
-              unsigned int epdDataLength) {
-  spiTransmit(epdCommand, epdData, epdDataLength);
+void gdep133c02_write_epd(gdep133c02_t *self, unsigned char epd_command,
+                          unsigned char *epd_data,
+                          unsigned int epd_data_length) {
+  comms_spi_transmit(self->comms, epd_command, epd_data, epd_data_length);
 }
 
-void readEpd(unsigned char epdCommand, unsigned char *epdData,
-             unsigned int epdDataLength) {
-  spiReceive(epdCommand, epdData, epdDataLength);
+void gdep133c02_read_epd(gdep133c02_t *self, unsigned char epd_command,
+                         unsigned char *epd_data,
+                         unsigned int epd_data_length) {
+  comms_spi_receive(self->comms, epd_command, epd_data, epd_data_length);
 }
 
-void writeEpdCommand(unsigned char epdCommand) {
-  spiTransmitCommand(epdCommand);
+void gdep133c02_write_epd_command(gdep133c02_t *self,
+                                  unsigned char epd_command) {
+  comms_spi_transmit_command(self->comms, epd_command);
 }
 
-void writeEpdData(unsigned char *epdData, unsigned int epdDataLength) {
-  spiTransmitData(epdData, epdDataLength);
+void gdep133c02_write_epd_data(gdep133c02_t *self, unsigned char *epd_data,
+                               unsigned int epd_data_length) {
+  comms_spi_transmit_data(self->comms, epd_data, epd_data_length);
 }
 
-void initEPD(void) {
-  epdHardwareReset();
-  checkBusyHigh();
+void gdep133c02_init_epd(gdep133c02_t *self) {
+  gdep133c02_hardware_reset(self);
+  gdep133c02_check_busy_high(self);
   // checkBusyLow();
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(AN_TM, AN_TM_V, sizeof(AN_TM_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_AN_TM, (unsigned char *)an_tm_v,
+                       sizeof(an_tm_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(CMD66, CMD66_V, sizeof(CMD66_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_CMD66, (unsigned char *)cmd66_v,
+                       sizeof(cmd66_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(PSR, PSR_V, sizeof(PSR_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_PSR, (unsigned char *)psr_v, sizeof(psr_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(CDI, CDI_V, sizeof(CDI_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_CDI, (unsigned char *)cdi_v, sizeof(cdi_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(TCON, TCON_V, sizeof(TCON_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_TCON, (unsigned char *)tcon_v, sizeof(tcon_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(AGID, AGID_V, sizeof(AGID_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_AGID, (unsigned char *)agid_v, sizeof(agid_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(PWS, PWS_V, sizeof(PWS_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_PWS, (unsigned char *)pws_v, sizeof(pws_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(CCSET, CCSET_V, sizeof(CCSET_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_CCSET, (unsigned char *)ccset_v,
+                       sizeof(ccset_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpd(TRES, TRES_V, sizeof(TRES_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_TRES, (unsigned char *)tres_v, sizeof(tres_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(PWR, PWR_V, sizeof(PWR_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_PWR, (unsigned char *)pwr_v, sizeof(pwr_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(EN_BUF, EN_BUF_V, sizeof(EN_BUF_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_EN_BUF, (unsigned char *)en_buf_v,
+                       sizeof(en_buf_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(BTST_P, BTST_P_V, sizeof(BTST_P_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_BTST_P, (unsigned char *)btst_p_v,
+                       sizeof(btst_p_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(BOOST_VDDP_EN, BOOST_VDDP_EN_V, sizeof(BOOST_VDDP_EN_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_BOOST_VDDP_EN,
+                       (unsigned char *)boost_vddp_en_v,
+                       sizeof(boost_vddp_en_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(BTST_N, BTST_N_V, sizeof(BTST_N_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_BTST_N, (unsigned char *)btst_n_v,
+                       sizeof(btst_n_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(BUCK_BOOST_VDDN, BUCK_BOOST_VDDN_V, sizeof(BUCK_BOOST_VDDN_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_BUCK_BOOST_VDDN,
+                       (unsigned char *)buck_boost_vddn_v,
+                       sizeof(buck_boost_vddn_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  setPinCs(0, GPIO_LOW);
-  writeEpd(TFT_VCOM_POWER, TFT_VCOM_POWER_V, sizeof(TFT_VCOM_POWER_V));
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, 0, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_TFT_VCOM_POWER,
+                       (unsigned char *)tft_vcom_power_v,
+                       sizeof(tft_vcom_power_v));
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("initEPD() has been executed. \r\n");
 #endif
 }
 
-unsigned char checkDriverICStatus(void) {
-  unsigned char csx, status = DONE;
-  unsigned char dataBuf[3];
+unsigned char gdep133c02_check_driver_ic_status(gdep133c02_t *self) {
+  unsigned char csx, status = COMMS_DONE;
+  unsigned char data_buf[3];
 
   for (csx = 0; csx < 2; csx++) {
-    memset(dataBuf, 0, sizeof(dataBuf));
-    setPinCs(csx, GPIO_LOW);
-    readEpd(0xF2, dataBuf, sizeof(dataBuf));
-    setPinCs(csx, GPIO_HIGH);
-#if SHOW_LOG
-    printf("Driver IC [%d] = 0x%02X 0x%02X 0x%02X \r\n", csx, dataBuf[0],
-           dataBuf[1], dataBuf[2]);
+    memset(data_buf, 0, sizeof(data_buf));
+    gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+    gdep133c02_read_epd(self, 0xF2, data_buf, sizeof(data_buf));
+    gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
+#if COMMS_SHOW_LOG
+    printf("Driver IC [%d] = 0x%02X 0x%02X 0x%02X \r\n", csx, data_buf[0],
+           data_buf[1], data_buf[2]);
 #endif
-    if ((dataBuf[0] & 0x01) == 0x01) {
-#if SHOW_LOG
+    if ((data_buf[0] & 0x01) == 0x01) {
+#if COMMS_SHOW_LOG
       printf("Driver IC [%d] is ready. \r\n", csx);
 #endif
     } else {
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
       printf("Driver IC [%d] did not reply. \r\n", csx);
 #endif
-      status = ERROR;
+      status = COMMS_ERROR;
     }
   }
 
   return status;
 }
 
-void epdDisplay(void) {
+void gdep133c02_display(gdep133c02_t *self) {
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("Write PON \r\n");
 #endif
-  setPinCsAll(GPIO_LOW);
-  writeEpdCommand(PON);
-  checkBusyHigh();
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd_command(self, EPD_PON);
+  gdep133c02_check_busy_high(self);
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("Write DRF \r\n");
 #endif
-  setPinCsAll(GPIO_LOW);
-  delayms(30);
-  writeEpd(DRF, DRF_V, sizeof(DRF_V));
-  checkBusyHigh();
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  comms_delay_ms(self->comms, 30);
+  gdep133c02_write_epd(self, EPD_DRF, (unsigned char *)drf_v, sizeof(drf_v));
+  gdep133c02_check_busy_high(self);
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("Write POF \r\n");
 #endif
-  setPinCsAll(GPIO_LOW);
-  writeEpd(POF, POF_V, sizeof(POF_V));
-  checkBusyHigh();
-  setPinCsAll(GPIO_HIGH);
-#if SHOW_LOG
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd(self, EPD_POF, (unsigned char *)pof_v, sizeof(pof_v));
+  gdep133c02_check_busy_high(self);
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
+#if COMMS_SHOW_LOG
   printf("Display Done!! \r\n");
 #endif
 }
 
-void epdDisplayColor(unsigned char colorSelect) {
+void gdep133c02_display_color(gdep133c02_t *self, unsigned char color_select) {
 
   unsigned long i;
 
-  memset(epdImageDataBuffer, colorSelect, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, color_select, EPD_IMAGE_DATA_BUFFER_SIZE);
 
-  setPinCsAll(GPIO_LOW);
-  writeEpdCommand(DTM);
-  for (i = 0; i < 480000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd_command(self, EPD_DTM);
+  for (i = 0; i < 480000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 480000 % EPD_IMAGE_DATA_BUFFER);
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            480000 % EPD_IMAGE_DATA_BUFFER_SIZE);
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  epdDisplay();
+  gdep133c02_display(self);
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("Display color complete. \r\n");
 #endif
 }
@@ -243,59 +267,63 @@ void epdDisplayColor(unsigned char colorSelect) {
 #define FIRST_PACK_SIZE 480000  // First data packet size (bytes)
 #define TOTAL_IMAGE_SIZE 960000 // Total image data size (bytes)
 
-void pic_display_test(const unsigned char *num) {
-  unsigned int Width, Width1, Height;
+void gdep133c02_pic_display_test(gdep133c02_t *self, const unsigned char *num) {
+  unsigned int width, width1, height;
   // Calculate width and height using the same method as the second code
-  Width = (EPD_WIDTH % 2 == 0)
+  width = (EPD_WIDTH % 2 == 0)
               ? (EPD_WIDTH / 2)
               : (EPD_WIDTH / 2 + 1); // Width per section (pixels)
-  Width1 = (Width % 2 == 0)
-               ? (Width / 2)
-               : (Width / 2 +
+  width1 = (width % 2 == 0)
+               ? (width / 2)
+               : (width / 2 +
                   1);  // Width per section (bytes, assuming 8 bits per pixel)
-  Height = EPD_HEIGHT; // Height (pixels)
+  height = EPD_HEIGHT; // Height (pixels)
 
   // Transfer data to the first section (main display)
-  setPinCsAll(GPIO_HIGH); // Deselect all
-  setPinCs(0, 0);         // Select the first section (main display)
-  writeEpdCommand(DTM);   // Send data transfer mode command
-  for (unsigned int i = 0; i < Height; i++) {
-    writeEpdData(num + i * Width,
-                 Width1);         // Send the first half of each row's data
-    vTaskDelay(pdMS_TO_TICKS(1)); // Delay 1ms to avoid hardware overload
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH); // Deselect all
+  gdep133c02_set_pin_cs(self, 0, 0); // Select the first section (main display)
+  gdep133c02_write_epd_command(self,
+                               EPD_DTM); // Send data transfer mode command
+  for (unsigned int i = 0; i < height; i++) {
+    gdep133c02_write_epd_data(self, (unsigned char *)(num + i * width),
+                              width1); // Send the first half of each row's data
+    vTaskDelay(pdMS_TO_TICKS(1));      // Delay 1ms to avoid hardware overload
   }
-  setPinCsAll(GPIO_HIGH); // Deselect
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH); // Deselect
 
   // Transfer data to the second section (secondary display)
-  setPinCs(1, 0);       // Select the second section (secondary display)
-  writeEpdCommand(DTM); // Send data transfer mode command
-  for (unsigned int i = 0; i < Height; i++) {
-    writeEpdData(num + i * Width + Width1,
-                 Width1);         // Send the second half of each row's data
+  gdep133c02_set_pin_cs(self, 1,
+                        0); // Select the second section (secondary display)
+  gdep133c02_write_epd_command(self,
+                               EPD_DTM); // Send data transfer mode command
+  for (unsigned int i = 0; i < height; i++) {
+    gdep133c02_write_epd_data(
+        self, (unsigned char *)(num + i * width + width1),
+        width1);                  // Send the second half of each row's data
     vTaskDelay(pdMS_TO_TICKS(1)); // Delay 1ms
   }
-  setPinCsAll(GPIO_HIGH); // Deselect
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH); // Deselect
 
   // Refresh the display
-  epdDisplay();                      // Trigger display
+  gdep133c02_display(self);          // Trigger display
   vTaskDelay(pdMS_TO_TICKS(10));     // Delay 10ms to ensure refresh completion
   printf("Rendering completed\r\n"); // Print completion message
 }
 
-void draw_checkerboard() {
+void gdep133c02_draw_checkerboard(gdep133c02_t *self) {
   // Calculate the display's width and height
-  unsigned int Width = (EPD_WIDTH % 2 == 0)
+  unsigned int width = (EPD_WIDTH % 2 == 0)
                            ? (EPD_WIDTH / 2)
                            : (EPD_WIDTH / 2 + 1); // Width per section (pixels)
-  unsigned int Width1 = (Width % 2 == 0)
-                            ? (Width / 2)
-                            : (Width / 2 + 1); // Width per section (bytes)
-  unsigned int Height = EPD_HEIGHT;            // Height (pixels)
+  unsigned int width1 = (width % 2 == 0)
+                            ? (width / 2)
+                            : (width / 2 + 1); // Width per section (bytes)
+  unsigned int height = EPD_HEIGHT;            // Height (pixels)
 
   // Verify the calculation results
-  if (Width != 600 || Width1 != 300 || Height != 1600) {
-    printf("Calculation error: Width=%u, Width1=%u, Height=%u\r\n", Width,
-           Width1, Height);
+  if (width != 600 || width1 != 300 || height != 1600) {
+    printf("Calculation error: Width=%u, Width1=%u, Height=%u\r\n", width,
+           width1, height);
     return;
   }
 
@@ -313,12 +341,12 @@ void draw_checkerboard() {
 
   // Define checkerboard colors (6 colors)
   const unsigned char colors[6] = {
-      BLACK,  // Black
-      WHITE,  // White
-      YELLOW, // Yellow
-      RED,    // Red
-      BLUE,   // Blue
-      GREEN   // Green
+      EPD_BLACK,  // Black
+      EPD_WHITE,  // White
+      EPD_YELLOW, // Yellow
+      EPD_RED,    // Red
+      EPD_BLUE,   // Blue
+      EPD_GREEN   // Green
   };
 
   // Calculate the size of each checkerboard cell
@@ -330,7 +358,7 @@ void draw_checkerboard() {
       EPD_HEIGHT / grid_rows; // Height of each cell: 1600 / 8 = 200 pixels
 
   // Fill pixel data (horizontal scan, from right to left, top to bottom)
-  for (unsigned int y = 0; y < Height; y++) {
+  for (unsigned int y = 0; y < height; y++) {
     for (unsigned int x = 0; x < EPD_WIDTH;
          x += 2) { // Process two pixels at a time
       // Calculate the cell position of the current pixel
@@ -349,7 +377,7 @@ void draw_checkerboard() {
 
       // Calculate buffer index (horizontal scan, from right to left)
       int new_x = (EPD_WIDTH - 2 - x); // From right to left
-      int new_index = (y * Width) + (new_x / 2);
+      int new_index = (y * width) + (new_x / 2);
 
       // Combine two pixels into one byte
       num[new_index] = (color1 << 4) | color2;
@@ -357,310 +385,323 @@ void draw_checkerboard() {
   }
 
   // Call pic_display_test to display
-  pic_display_test(num);
+  gdep133c02_pic_display_test(self, num);
 
   // Free the buffer
   free(num);
 }
 
-void epdDisplayColorBar(void) {
+void gdep133c02_display_color_bar(gdep133c02_t *self) {
   unsigned long i;
 
-  setPinCsAll(GPIO_LOW);
-  writeEpdCommand(DTM);
+  gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+  gdep133c02_write_epd_command(self, EPD_DTM);
 
   // BLACK
-  memset(epdImageDataBuffer, BLACK, EPD_IMAGE_DATA_BUFFER);
-  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, EPD_BLACK, EPD_IMAGE_DATA_BUFFER_SIZE);
+  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 80000 % EPD_IMAGE_DATA_BUFFER);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            80000 % EPD_IMAGE_DATA_BUFFER_SIZE);
   // WHITE
-  memset(epdImageDataBuffer, WHITE, EPD_IMAGE_DATA_BUFFER);
-  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, EPD_WHITE, EPD_IMAGE_DATA_BUFFER_SIZE);
+  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 80000 % EPD_IMAGE_DATA_BUFFER);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            80000 % EPD_IMAGE_DATA_BUFFER_SIZE);
   // YELLOW
-  memset(epdImageDataBuffer, YELLOW, EPD_IMAGE_DATA_BUFFER);
-  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, EPD_YELLOW, EPD_IMAGE_DATA_BUFFER_SIZE);
+  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 80000 % EPD_IMAGE_DATA_BUFFER);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            80000 % EPD_IMAGE_DATA_BUFFER_SIZE);
   // RED
-  memset(epdImageDataBuffer, RED, EPD_IMAGE_DATA_BUFFER);
-  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, EPD_RED, EPD_IMAGE_DATA_BUFFER_SIZE);
+  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 80000 % EPD_IMAGE_DATA_BUFFER);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            80000 % EPD_IMAGE_DATA_BUFFER_SIZE);
   // BLUE
-  memset(epdImageDataBuffer, BLUE, EPD_IMAGE_DATA_BUFFER);
-  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, EPD_BLUE, EPD_IMAGE_DATA_BUFFER_SIZE);
+  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 80000 % EPD_IMAGE_DATA_BUFFER);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            80000 % EPD_IMAGE_DATA_BUFFER_SIZE);
   // GREEN
-  memset(epdImageDataBuffer, GREEN, EPD_IMAGE_DATA_BUFFER);
-  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER; i++) {
-    writeEpdData(epdImageDataBuffer, EPD_IMAGE_DATA_BUFFER);
+  memset(self->buffer, EPD_GREEN, EPD_IMAGE_DATA_BUFFER_SIZE);
+  for (i = 0; i < 80000 / EPD_IMAGE_DATA_BUFFER_SIZE; i++) {
+    gdep133c02_write_epd_data(self, self->buffer, EPD_IMAGE_DATA_BUFFER_SIZE);
   }
-  writeEpdData(epdImageDataBuffer, 80000 % EPD_IMAGE_DATA_BUFFER);
-  setPinCsAll(GPIO_HIGH);
+  gdep133c02_write_epd_data(self, self->buffer,
+                            80000 % EPD_IMAGE_DATA_BUFFER_SIZE);
+  gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
 
-  epdDisplay();
+  gdep133c02_display(self);
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("Display color bar complete. \r\n");
 #endif
 }
 
-void writeEpdImage(unsigned char csx, unsigned char const *imageData,
-                   unsigned long imageDataLength) {
+void gdep133c02_write_epd_image(gdep133c02_t *self, unsigned char csx,
+                                unsigned char const *image_data,
+                                unsigned long image_data_length) {
 
-  setPinCs(csx, GPIO_LOW);
-  spiTransmitLargeData(DTM, imageData, imageDataLength);
-  setPinCs(csx, GPIO_HIGH);
+  gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+  comms_spi_transmit_large_data(self->comms, EPD_DTM,
+                                (unsigned char *)image_data, image_data_length);
+  gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
 
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
   printf("Writing data is completed. \r\n");
 #endif
 }
 
-char partialWindowUpdateWithImageData(unsigned char csx,
-                                      unsigned char const *imageData,
-                                      unsigned long imageDataLength,
-                                      unsigned int xStart, unsigned int yStart,
-                                      unsigned int xPixel, unsigned int yLine,
-                                      unsigned char epdDisplayEnable) {
-  unsigned char status = DONE;
-  unsigned int HRST, HRED, VRST, VRED;
-  unsigned char partialWindowData[9];
+char gdep133c02_partial_window_update_with_image_data(
+    gdep133c02_t *self, unsigned char csx, unsigned char const *image_data,
+    unsigned long image_data_length, unsigned int x_start, unsigned int y_start,
+    unsigned int x_pixel, unsigned int y_line,
+    unsigned char epd_display_enable) {
+  unsigned char status = COMMS_DONE;
+  unsigned int hrst, hred, vrst, vred;
+  unsigned char partial_window_data[9];
 
-  HRST = xStart * 2;
-  HRED = (xStart + xPixel) * 2 - 1; // The range is 0 ~ 1199
-  VRST = yStart / 2;
-  VRED = (yStart + yLine) / 2 - 1; // The range is 0 ~ 799
+  hrst = x_start * 2;
+  hred = (x_start + x_pixel) * 2 - 1; // The range is 0 ~ 1199
+  vrst = y_start / 2;
+  vred = (y_start + y_line) / 2 - 1; // The range is 0 ~ 799
 
-#if SHOW_LOG
-  printf("csx = %d ; HRST = %d ; HRED = %d ; VRST = %d ; VRED = %d \r\n", csx,
-         HRST, HRED, VRST, VRED);
+#if COMMS_SHOW_LOG
+  printf("csx = %d ; hrst = %d ; hred = %d ; vrst = %d ; vred = %d \r\n", csx,
+         hrst, hred, vrst, vred);
 #endif
 
-  // HRST[10:0] = 8n (n = 0,1,2…)
-  if (HRST % 8 != 0) {
+  // hrst[10:0] = 8n (n = 0,1,2…)
+  if (hrst % 8 != 0) {
     status = -1;
-#if SHOW_LOG
-    printf("status = -1 ; There is a problem with xStart. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -1 ; There is a problem with x_start. \r\n");
 #endif
   }
-  // HRED[10:0] = 8m+3 (m = 4,5,6…)
-  else if ((HRED - 7) % 8 != 0) {
+  // hred[10:0] = 8m+3 (m = 4,5,6…)
+  else if ((hred - 7) % 8 != 0) {
     status = -2;
-#if SHOW_LOG
-    printf("status = -2 ; There is a problem with xPixel. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -2 ; There is a problem with x_pixel. \r\n");
 #endif
   }
-  //  xStart <= 584 ; xPixel <= 600
-  else if ((xStart > 584) | (xPixel > 600)) {
+  //  x_start <= 584 ; x_pixel <= 600
+  else if ((x_start > 584) | (x_pixel > 600)) {
     status = -3;
-#if SHOW_LOG
-    printf("status = -3 ; xStart or xPixel is over range. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -3 ; x_start or x_pixel is over range. \r\n");
 #endif
   }
-  // HRED - HRST + 1 >= 32 & HRED + 1 <= 1200
-  else if ((HRED - HRST + 1 < 32) | (HRED + 1 > 1200)) {
+  // hred - hrst + 1 >= 32 & hred + 1 <= 1200
+  else if ((hred - hrst + 1 < 32) | (hred + 1 > 1200)) {
     status = -4;
-#if SHOW_LOG
-    printf("status = -4 ; There is a problem with xStart & xPixel. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -4 ; There is a problem with x_start & x_pixel. \r\n");
 #endif
-  } else if ((yStart + yLine) % 2 != 0) {
+  } else if ((y_start + y_line) % 2 != 0) {
     status = -5;
-#if SHOW_LOG
-    printf("status = -5 ; yStart + yLine must be an even number. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -5 ; y_start + y_line must be an even number. \r\n");
 #endif
   }
-  // yStart <= 1596 ; yLine <= 1600
-  else if ((yStart > 1596) | (yLine > 1600)) {
+  // y_start <= 1596 ; y_line <= 1600
+  else if ((y_start > 1596) | (y_line > 1600)) {
     status = -6;
-#if SHOW_LOG
-    printf("status = -6 ; yStart or yLine is over range. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -6 ; y_start or y_line is over range. \r\n");
 #endif
   }
-  // VRST - VRED + 1 > 0 & VRED + 1 <= 800
-  else if (((int)(VRED - VRST) + 1 <= 0) | (VRED + 1 > 800)) {
+  // vrst - vred + 1 > 0 & vred + 1 <= 800
+  else if (((int)(vred - vrst) + 1 <= 0) | (vred + 1 > 800)) {
     status = -7;
-#if SHOW_LOG
-    printf("status = -7 ; There is a problem with yStart & yLine. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -7 ; There is a problem with y_start & y_line. \r\n");
 #endif
   } else if (csx > 1) {
     status = -8;
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
     printf("status = -8 ; There is a problem with cxs. \r\n");
 #endif
   } else {
-    memset(partialWindowData, 0, sizeof(partialWindowData));
-    partialWindowData[0] = (unsigned char)(HRST >> 8);
-    partialWindowData[1] = (unsigned char)(HRST);
-    partialWindowData[2] = (unsigned char)(HRED >> 8);
-    partialWindowData[3] = (unsigned char)(HRED);
-    partialWindowData[4] = (unsigned char)(VRST >> 8);
-    partialWindowData[5] = (unsigned char)(VRST);
-    partialWindowData[6] = (unsigned char)(VRED >> 8);
-    partialWindowData[7] = (unsigned char)(VRED);
-    partialWindowData[8] = PTLW_ENABLE;
+    memset(partial_window_data, 0, sizeof(partial_window_data));
+    partial_window_data[0] = (unsigned char)(hrst >> 8);
+    partial_window_data[1] = (unsigned char)(hrst);
+    partial_window_data[2] = (unsigned char)(hred >> 8);
+    partial_window_data[3] = (unsigned char)(hred);
+    partial_window_data[4] = (unsigned char)(vrst >> 8);
+    partial_window_data[5] = (unsigned char)(vrst);
+    partial_window_data[6] = (unsigned char)(vred >> 8);
+    partial_window_data[7] = (unsigned char)(vred);
+    partial_window_data[8] = EPD_PTLW_ENABLE;
 
-    setPinCs(csx, GPIO_LOW);
-    writeEpd(CMD66, CMD66_V, sizeof(CMD66_V));
-    setPinCs(csx, GPIO_HIGH);
+    gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+    gdep133c02_write_epd(self, EPD_CMD66, (unsigned char *)cmd66_v,
+                         sizeof(cmd66_v));
+    gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
 
-    setPinCs(csx, GPIO_LOW);
-    writeEpd(PTLW, partialWindowData, sizeof(partialWindowData));
-    setPinCs(csx, GPIO_HIGH);
+    gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+    gdep133c02_write_epd(self, EPD_PTLW, partial_window_data,
+                         sizeof(partial_window_data));
+    gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
 
-    setPinCs(csx, GPIO_LOW);
-    spiTransmitLargeData(DTM, imageData, imageDataLength);
-    setPinCs(csx, GPIO_HIGH);
+    gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+    comms_spi_transmit_large_data(
+        self->comms, EPD_DTM, (unsigned char *)image_data, image_data_length);
+    gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
   }
 
-  if (status != DONE) {
-    partialWindowUpdateStatus = ERROR;
-#if SHOW_LOG
-    printf("partialWindowUpdateStatus = ERROR \r\n");
+  if (status != COMMS_DONE) {
+    self->partial_window_update_status = COMMS_ERROR;
+#if COMMS_SHOW_LOG
+    printf("partial_window_update_status = ERROR \r\n");
 #endif
   }
 
-  if (epdDisplayEnable) {
-    if (partialWindowUpdateStatus == DONE)
-      epdDisplay();
+  if (epd_display_enable) {
+    if (self->partial_window_update_status == COMMS_DONE)
+      gdep133c02_display(self);
 
-    delayms(300);
+    comms_delay_ms(self->comms, 300);
 
     //========================= Turn off PTLW =========================
-    memset(partialWindowData, 0, sizeof(partialWindowData));
-    partialWindowData[8] = PTLW_DISABLE;
-    partialWindowUpdateStatus = DONE;
+    memset(partial_window_data, 0, sizeof(partial_window_data));
+    partial_window_data[8] = EPD_PTLW_DISABLE;
+    self->partial_window_update_status = COMMS_DONE;
 
-    setPinCsAll(GPIO_LOW);
-    writeEpd(PTLW, partialWindowData, sizeof(partialWindowData));
-    setPinCsAll(GPIO_HIGH);
+    gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+    gdep133c02_write_epd(self, EPD_PTLW, partial_window_data,
+                         sizeof(partial_window_data));
+    gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
     //=================================================================
   }
 
   return status;
 }
 
-char partialWindowUpdateWithoutImageData(unsigned char csx, unsigned int xStart,
-                                         unsigned int yStart,
-                                         unsigned int xPixel,
-                                         unsigned int yLine,
-                                         unsigned char epdDisplayEnable) {
-  unsigned char status = DONE;
-  unsigned int HRST, HRED, VRST, VRED;
-  unsigned char partialWindowData[9];
+char gdep133c02_partial_window_update_without_image_data(
+    gdep133c02_t *self, unsigned char csx, unsigned int x_start,
+    unsigned int y_start, unsigned int x_pixel, unsigned int y_line,
+    unsigned char epd_display_enable) {
+  unsigned char status = COMMS_DONE;
+  unsigned int hrst, hred, vrst, vred;
+  unsigned char partial_window_data[9];
 
-  HRST = xStart * 2;
-  HRED = (xStart + xPixel) * 2 - 1; // The range is 0 ~ 1199
-  VRST = yStart / 2;
-  VRED = (yStart + yLine) / 2 - 1; // The range is 0 ~ 799
+  hrst = x_start * 2;
+  hred = (x_start + x_pixel) * 2 - 1; // The range is 0 ~ 1199
+  vrst = y_start / 2;
+  vred = (y_start + y_line) / 2 - 1; // The range is 0 ~ 799
 
-#if SHOW_LOG
-  printf("csx = %d ; HRST = %d ; HRED = %d ; VRST = %d ; VRED = %d \r\n", csx,
-         HRST, HRED, VRST, VRED);
+#if COMMS_SHOW_LOG
+  printf("csx = %d ; hrst = %d ; hred = %d ; vrst = %d ; vred = %d \r\n", csx,
+         hrst, hred, vrst, vred);
 #endif
 
-  // HRST[10:0] = 8n (n = 0,1,2…)
-  if (HRST % 8 != 0) {
+  // hrst[10:0] = 8n (n = 0,1,2…)
+  if (hrst % 8 != 0) {
     status = -1;
-#if SHOW_LOG
-    printf("status = -1 ; There is a problem with xStart. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -1 ; There is a problem with x_start. \r\n");
 #endif
   }
-  // HRED[10:0] = 8m+3 (m = 4,5,6…)
-  else if ((HRED - 7) % 8 != 0) {
+  // hred[10:0] = 8m+3 (m = 4,5,6…)
+  else if ((hred - 7) % 8 != 0) {
     status = -2;
-#if SHOW_LOG
-    printf("status = -2 ; There is a problem with xPixel. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -2 ; There is a problem with x_pixel. \r\n");
 #endif
   }
-  //  xStart <= 584 ; xPixel <= 600
-  else if ((xStart > 584) | (xPixel > 600)) {
+  //  x_start <= 584 ; x_pixel <= 600
+  else if ((x_start > 584) | (x_pixel > 600)) {
     status = -3;
-#if SHOW_LOG
-    printf("status = -3 ; xStart or xPixel is over range. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -3 ; x_start or x_pixel is over range. \r\n");
 #endif
   }
-  // HRED - HRST + 1 >= 32 & HRED + 1 <= 1200
-  else if ((HRED - HRST + 1 < 32) | (HRED + 1 > 1200)) {
+  // hred - hrst + 1 >= 32 & hred + 1 <= 1200
+  else if ((hred - hrst + 1 < 32) | (hred + 1 > 1200)) {
     status = -4;
-#if SHOW_LOG
-    printf("status = -4 ; There is a problem with xStart & xPixel. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -4 ; There is a problem with x_start & x_pixel. \r\n");
 #endif
-  } else if ((yStart + yLine) % 2 != 0) {
+  } else if ((y_start + y_line) % 2 != 0) {
     status = -5;
-#if SHOW_LOG
-    printf("status = -5 ; yStart + yLine must be an even number. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -5 ; y_start + y_line must be an even number. \r\n");
 #endif
   }
-  // yStart <= 1596 ; yLine <= 1600
-  else if ((yStart > 1596) | (yLine > 1600)) {
+  // y_start <= 1596 ; y_line <= 1600
+  else if ((y_start > 1596) | (y_line > 1600)) {
     status = -6;
-#if SHOW_LOG
-    printf("status = -6 ; yStart or yLine is over range. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -6 ; y_start or y_line is over range. \r\n");
 #endif
   }
-  // VRST - VRED + 1 > 0 & VRED + 1 <= 800
-  else if (((int)(VRED - VRST) + 1 <= 0) | (VRED + 1 > 800)) {
+  // vrst - vred + 1 > 0 & vred + 1 <= 800
+  else if (((int)(vred - vrst) + 1 <= 0) | (vred + 1 > 800)) {
     status = -7;
-#if SHOW_LOG
-    printf("status = -7 ; There is a problem with yStart & yLine. \r\n");
+#if COMMS_SHOW_LOG
+    printf("status = -7 ; There is a problem with y_start & y_line. \r\n");
 #endif
   } else if (csx > 1) {
     status = -8;
-#if SHOW_LOG
+#if COMMS_SHOW_LOG
     printf("status = -8 ; There is a problem with cxs. \r\n");
 #endif
   } else {
-    memset(partialWindowData, 0, sizeof(partialWindowData));
-    partialWindowData[0] = (unsigned char)(HRST >> 8);
-    partialWindowData[1] = (unsigned char)(HRST);
-    partialWindowData[2] = (unsigned char)(HRED >> 8);
-    partialWindowData[3] = (unsigned char)(HRED);
-    partialWindowData[4] = (unsigned char)(VRST >> 8);
-    partialWindowData[5] = (unsigned char)(VRST);
-    partialWindowData[6] = (unsigned char)(VRED >> 8);
-    partialWindowData[7] = (unsigned char)(VRED);
-    partialWindowData[8] = PTLW_ENABLE;
+    memset(partial_window_data, 0, sizeof(partial_window_data));
+    partial_window_data[0] = (unsigned char)(hrst >> 8);
+    partial_window_data[1] = (unsigned char)(hrst);
+    partial_window_data[2] = (unsigned char)(hred >> 8);
+    partial_window_data[3] = (unsigned char)(hred);
+    partial_window_data[4] = (unsigned char)(vrst >> 8);
+    partial_window_data[5] = (unsigned char)(vrst);
+    partial_window_data[6] = (unsigned char)(vred >> 8);
+    partial_window_data[7] = (unsigned char)(vred);
+    partial_window_data[8] = EPD_PTLW_ENABLE;
 
-    setPinCs(csx, GPIO_LOW);
-    writeEpd(CMD66, CMD66_V, sizeof(CMD66_V));
-    setPinCs(csx, GPIO_HIGH);
+    gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+    gdep133c02_write_epd(self, EPD_CMD66, (unsigned char *)cmd66_v,
+                         sizeof(cmd66_v));
+    gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
 
-    setPinCs(csx, GPIO_LOW);
-    writeEpd(PTLW, partialWindowData, sizeof(partialWindowData));
-    setPinCs(csx, GPIO_HIGH);
+    gdep133c02_set_pin_cs(self, csx, GPIO_LOW);
+    gdep133c02_write_epd(self, EPD_PTLW, partial_window_data,
+                         sizeof(partial_window_data));
+    gdep133c02_set_pin_cs(self, csx, GPIO_HIGH);
   }
 
-  if (status != DONE) {
-    partialWindowUpdateStatus = ERROR;
-#if SHOW_LOG
-    printf("partialWindowUpdateStatus = ERROR \r\n");
+  if (status != COMMS_DONE) {
+    self->partial_window_update_status = COMMS_ERROR;
+#if COMMS_SHOW_LOG
+    printf("partial_window_update_status = ERROR \r\n");
 #endif
   }
 
-  if (epdDisplayEnable) {
-    if (partialWindowUpdateStatus == DONE)
-      epdDisplay();
+  if (epd_display_enable) {
+    if (self->partial_window_update_status == COMMS_DONE)
+      gdep133c02_display(self);
 
-    delayms(300);
+    comms_delay_ms(self->comms, 300);
 
     //========================= Turn off PTLW =========================
-    memset(partialWindowData, 0, sizeof(partialWindowData));
-    partialWindowData[8] = PTLW_DISABLE;
-    partialWindowUpdateStatus = DONE;
+    memset(partial_window_data, 0, sizeof(partial_window_data));
+    partial_window_data[8] = EPD_PTLW_DISABLE;
+    self->partial_window_update_status = COMMS_DONE;
 
-    setPinCsAll(GPIO_LOW);
-    writeEpd(PTLW, partialWindowData, sizeof(partialWindowData));
-    setPinCsAll(GPIO_HIGH);
+    gdep133c02_set_pin_cs_all(self, GPIO_LOW);
+    gdep133c02_write_epd(self, EPD_PTLW, partial_window_data,
+                         sizeof(partial_window_data));
+    gdep133c02_set_pin_cs_all(self, GPIO_HIGH);
     //=================================================================
   }
 
