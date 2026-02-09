@@ -3,6 +3,8 @@
 .AppleDouble
 .LSOverride
 
+.embuild
+target
 .cache
 
 # Directory metadata
