@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6380c17ce781237365cd7b25d28b0acf>>
+ * @generated SignedSource<<91a26f0e0b930f689b3e03700682ffd5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,14 +24,32 @@ export type SolarChart_solar$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [],
+  "argumentDefinitions": [
+    {
+      "defaultValue": null,
+      "kind": "LocalArgument",
+      "name": "since"
+    }
+  ],
   "kind": "Fragment",
   "metadata": null,
   "name": "SolarChart_solar",
   "selections": [
     {
       "alias": null,
-      "args": null,
+      "args": [
+        {
+          "fields": [
+            {
+              "kind": "Variable",
+              "name": "since",
+              "variableName": "since"
+            }
+          ],
+          "kind": "ObjectValue",
+          "name": "input"
+        }
+      ],
       "concreteType": "GenerationHistory",
       "kind": "LinkedField",
       "name": "history",
@@ -66,6 +84,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "5de7d6fc04496efcc7e6b23b86620bb7";
+(node as any).hash = "5e69cf357892362271ae752fc29556fd";
 
 export default node;

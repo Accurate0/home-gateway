@@ -9,8 +9,8 @@ const AppQuery = graphql`
     weather(input: { location: $location }) {
       ...ForecastCard_weather
     }
-    solar(input: { since: $since }) {
-      ...SolarChart_solar
+    solar {
+      ...SolarChart_solar @arguments(since: $since)
     }
     woolworths {
       ...WoolworthsCard_woolworths

@@ -5,8 +5,9 @@ import { ChartContainer } from "@/components/ui/chart";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const SolarFragment = graphql`
-  fragment SolarChart_solar on SolarObject {
-    history {
+  fragment SolarChart_solar on SolarObject
+  @argumentDefinitions(since: { type: "DateTime!" }) {
+    history(input: { since: $since }) {
       wh
       at
       timestamp

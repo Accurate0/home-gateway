@@ -106,7 +106,7 @@ scalar NaiveDateTime
 type QueryRoot {
 	events(input: EventsInput!): EventsObject!
 	environment: EnvironmentObject!
-	solar(input: SolarInput!): SolarObject!
+	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
@@ -133,13 +133,13 @@ type SolarCurrentStatisticsAverages {
 	last3Hours: Float
 }
 
-input SolarInput {
+input SolarHistoryInput {
 	since: DateTime!
 }
 
 type SolarObject {
 	current: SolarCurrentResponse!
-	history: [GenerationHistory!]!
+	history(input: SolarHistoryInput!): [GenerationHistory!]!
 }
 
 """

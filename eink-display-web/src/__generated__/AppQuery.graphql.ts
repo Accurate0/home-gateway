@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e887a399712803cc6a9ae112a033c7fe>>
+ * @generated SignedSource<<6a221b903eb24e3746db2141763442cd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -58,15 +58,9 @@ v1 = [
 ],
 v2 = [
   {
-    "fields": [
-      {
-        "kind": "Variable",
-        "name": "since",
-        "variableName": "since"
-      }
-    ],
-    "kind": "ObjectValue",
-    "name": "input"
+    "kind": "Variable",
+    "name": "since",
+    "variableName": "since"
   }
 ];
 return {
@@ -94,14 +88,14 @@ return {
       },
       {
         "alias": null,
-        "args": (v2/*: any*/),
+        "args": null,
         "concreteType": "SolarObject",
         "kind": "LinkedField",
         "name": "solar",
         "plural": false,
         "selections": [
           {
-            "args": null,
+            "args": (v2/*: any*/),
             "kind": "FragmentSpread",
             "name": "SolarChart_solar"
           }
@@ -218,7 +212,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v2/*: any*/),
+        "args": null,
         "concreteType": "SolarObject",
         "kind": "LinkedField",
         "name": "solar",
@@ -226,7 +220,13 @@ return {
         "selections": [
           {
             "alias": null,
-            "args": null,
+            "args": [
+              {
+                "fields": (v2/*: any*/),
+                "kind": "ObjectValue",
+                "name": "input"
+              }
+            ],
             "concreteType": "GenerationHistory",
             "kind": "LinkedField",
             "name": "history",
@@ -298,16 +298,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "7c1a63b37b2161e8ea7ac143ae7395dc",
+    "cacheID": "22389fa0a6c3aa9ed77e9b586557e70c",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar(input: {since: $since}) {\n    ...SolarChart_solar\n  }\n  woolworths {\n    ...WoolworthsCard_woolworths\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar on SolarObject {\n  history {\n    wh\n    at\n    timestamp\n  }\n}\n\nfragment WoolworthsCard_woolworths on WoolworthsObject {\n  products {\n    name\n    price\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar {\n    ...SolarChart_solar_2xCj2c\n  }\n  woolworths {\n    ...WoolworthsCard_woolworths\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n  }\n}\n\nfragment WoolworthsCard_woolworths on WoolworthsObject {\n  products {\n    name\n    price\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0538c070c4d9390a157316c0df652b01";
+(node as any).hash = "fe6bbc13f94feffa0eb6b4f637e4b1dc";
 
 export default node;
