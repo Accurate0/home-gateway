@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         }
     }
 
-    run_epd_test(epd_buffer, display)?;
+    // run_epd_test(epd_buffer, display)?;
 
     log::info!("sleeping for 15 mins");
     unsafe {

@@ -30,7 +30,7 @@ COPY eink-display-web /app
 RUN CI=true pnpm install
 
 ENV PATH=/app/node_modules/.bin:$PATH
-ENV VITE_GRAPHQL_API_KEY=${HOME_GATEWAY_API_SECRET}}
+ENV VITE_GRAPHQL_API_KEY=${HOME_GATEWAY_API_SECRET}
 RUN pnpm run build
 
 FROM debian:bookworm-slim AS final
