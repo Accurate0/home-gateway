@@ -3,6 +3,8 @@
 .AppleDouble
 .LSOverride
 
+.env.local
+
 .embuild
 target
 .cache

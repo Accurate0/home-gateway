@@ -1,9 +1,10 @@
 use anyhow::Result;
-use embedded_hal::spi::SpiDevice;
 use esp_idf_hal::delay::Delay;
-use esp_idf_hal::gpio::{AnyIOPin, Input, Level, Output, PinDriver};
+use esp_idf_hal::gpio::{AnyIOPin, Input, Level, Output, PinDriver, Pull};
+use esp_idf_hal::peripheral::Peripheral;
+use esp_idf_hal::prelude::*;
+use esp_idf_hal::spi::{config::Config as SpiConfig, config::DriverConfig, Dma, SpiDeviceDriver, SpiDriver};
 
-// Constants from GDEP133C02.h
 pub const EPD_BLACK: u8 = 0x00;
 pub const EPD_WHITE: u8 = 0x11;
 pub const EPD_YELLOW: u8 = 0x22;
@@ -38,7 +39,6 @@ pub const EPD_IMAGE_DATA_BUFFER_SIZE: usize = 8192;
 pub const EPD_WIDTH: u32 = 1200;
 pub const EPD_HEIGHT: u32 = 1600;
 
-// Initialization data
 const PSR_V: [u8; 2] = [0xDF, 0x69];
 const PWR_V: [u8; 6] = [0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38];
 const POF_V: [u8; 1] = [0x00];
@@ -58,8 +58,8 @@ const BTST_N_V: [u8; 2] = [0xE8, 0x28];
 const BUCK_BOOST_VDDN_V: [u8; 1] = [0x01];
 const TFT_VCOM_POWER_V: [u8; 1] = [0x02];
 
-pub struct Gdep133c02<'a, SPI> {
-    spi: SPI,
+pub struct Gdep133c02<'a> {
+    spi: SpiDeviceDriver<'a, SpiDriver<'a>>,
     cs0: PinDriver<'a, AnyIOPin, Output>,
     cs1: PinDriver<'a, AnyIOPin, Output>,
     rst: PinDriver<'a, AnyIOPin, Output>,
@@ -67,28 +67,48 @@ pub struct Gdep133c02<'a, SPI> {
     delay: Delay,
 }
 
-impl<'a, SPI> Gdep133c02<'a, SPI>
-where
-    SPI: SpiDevice,
-{
+impl<'a> Gdep133c02<'a> {
     pub fn new(
-        spi: SPI,
-        cs0: PinDriver<'a, AnyIOPin, Output>,
-        cs1: PinDriver<'a, AnyIOPin, Output>,
-        rst: PinDriver<'a, AnyIOPin, Output>,
-        busy: PinDriver<'a, AnyIOPin, Input>,
-    ) -> Self {
-        Self {
+        spi: impl Peripheral<P = impl esp_idf_hal::spi::SpiAnyPins> + 'a,
+        sclk: impl Peripheral<P = impl esp_idf_hal::gpio::OutputPin> + 'a,
+        mosi: impl Peripheral<P = impl esp_idf_hal::gpio::OutputPin> + 'a,
+        miso: Option<impl Peripheral<P = impl esp_idf_hal::gpio::InputPin + esp_idf_hal::gpio::OutputPin> + 'a>,
+        cs0: AnyIOPin,
+        cs1: AnyIOPin,
+        rst: AnyIOPin,
+        busy: AnyIOPin,
+    ) -> Result<Self> {
+        let driver_config = DriverConfig::default().dma(Dma::Auto(4096));
+        let spi_config = SpiConfig::new().baudrate(10.MHz().into());
+
+        let spi_driver = SpiDeviceDriver::new_single(
             spi,
+            sclk,
+            mosi,
+            miso,
+            Option::<AnyIOPin>::None,
+            &driver_config,
+            &spi_config,
+        )?;
+
+        let mut cs0 = PinDriver::output(cs0)?;
+        let mut cs1 = PinDriver::output(cs1)?;
+        cs0.set_high()?;
+        cs1.set_high()?;
+
+        let rst = PinDriver::output(rst)?;
+        let mut busy = PinDriver::input(busy)?;
+        busy.set_pull(Pull::Floating)?;
+
+        Ok(Self {
+            spi: spi_driver,
             cs0,
             cs1,
             rst,
             busy,
             delay: Delay::new_default(),
-        }
+        })
     }
-
-    // --- Low Level Helpers ---
 
     fn delay_ms(&self, ms: u32) {
         self.delay.delay_ms(ms);
@@ -107,7 +127,6 @@ where
             0 => self.cs0.set_level(l)?,
             1 => self.cs1.set_level(l)?,
             _ => {
-                // Both
                 self.cs0.set_level(l)?;
                 self.cs1.set_level(l)?;
             }
@@ -129,7 +148,6 @@ where
     }
 
     fn write_data(&mut self, data: &[u8]) -> Result<()> {
-        // Handle chunking if needed.
         const CHUNK_SIZE: usize = 32768;
         for chunk in data.chunks(CHUNK_SIZE) {
             self.spi
@@ -313,8 +331,6 @@ where
     }
 
     pub fn display_color_bar(&mut self, buffer: &mut [u8]) -> Result<()> {
-        // Yellow, Red, Blue, Green, Black, White ?
-        // C code order: Black, White, Yellow, Red, Blue, Green.
         let colors = [
             EPD_BLACK, EPD_WHITE, EPD_YELLOW, EPD_RED, EPD_BLUE, EPD_GREEN,
         ];
@@ -344,10 +360,9 @@ where
     }
 
     pub fn pic_display_test(&mut self, image: &[u8]) -> Result<()> {
-        // Ensure image size is correct. 960000 bytes.
         if image.len() != 960000 {
             log::error!("Image size mismatch: expected 960000, got {}", image.len());
-            return Ok(()); // Or error
+            return Ok(());
         }
 
         let width_px = EPD_WIDTH;
@@ -363,7 +378,6 @@ where
         } as usize;
         let height = EPD_HEIGHT as usize;
 
-        // Section 1 (Left)
         self.set_cs_all(true)?;
         self.set_cs(0, false)?;
         self.write_command(EPD_DTM)?;
@@ -375,7 +389,6 @@ where
         }
         self.set_cs_all(true)?;
 
-        // Section 2 (Right)
         self.set_cs(1, false)?;
         self.write_command(EPD_DTM)?;
 
@@ -421,7 +434,7 @@ where
                 let color_index2 = (grid_x2 + grid_y) % 6;
                 let color2 = colors[color_index2 as usize];
 
-                let new_x = EPD_WIDTH - 2 - x; // Flip horizontally
+                let new_x = EPD_WIDTH - 2 - x;
                 let new_index = (y * width_bytes) + (new_x / 2);
 
                 num[new_index as usize] = (color1 << 4) | color2;

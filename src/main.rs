@@ -1,5 +1,6 @@
 use crate::routes::{
     config::refresh,
+    epd,
     ingest::{solar::solar, unifi::unifi},
     workflow::execute::workflow_execute,
 };
@@ -207,6 +208,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
+        .route("/epd/config", get(epd::config))
         .route("/config/refresh", post(refresh))
         .layer(
             TraceLayer::new_for_http()

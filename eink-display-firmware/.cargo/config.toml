@@ -11,8 +11,4 @@ build-std = ["std", "panic_abort"]
 
 [env]
 MCU="esp32s3"
-ESP_IDF_SYS_PIO_CONF_0 = "board_build.partitions = partitions.csv"
-ESP_IDF_SYS_GLOB_BASE = { value = ".", relative = true }
-ESP_IDF_SYS_GLOB_0 = "sdkconfig"
-ESP_IDF_SYS_GLOB_1 = "partitions.csv"
-ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
+
