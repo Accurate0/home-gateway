@@ -32,6 +32,7 @@ pub struct ApiState {
     #[allow(unused)]
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
+    pub bucket_accessor: S3BucketAccessor,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]
     pub settings: SettingsContainer,

@@ -3,7 +3,9 @@ use esp_idf_hal::delay::Delay;
 use esp_idf_hal::gpio::{AnyIOPin, Input, Level, Output, PinDriver, Pull};
 use esp_idf_hal::peripheral::Peripheral;
 use esp_idf_hal::prelude::*;
-use esp_idf_hal::spi::{config::Config as SpiConfig, config::DriverConfig, Dma, SpiDeviceDriver, SpiDriver};
+use esp_idf_hal::spi::{
+    config::Config as SpiConfig, config::DriverConfig, Dma, SpiDeviceDriver, SpiDriver,
+};
 
 pub const EPD_BLACK: u8 = 0x00;
 pub const EPD_WHITE: u8 = 0x11;
@@ -35,7 +37,7 @@ const EPD_CCSET: u8 = 0xE0;
 const EPD_PWS: u8 = 0xE3;
 const EPD_CMD66: u8 = 0xF0;
 
-pub const EPD_IMAGE_DATA_BUFFER_SIZE: usize = 8192;
+pub const EPD_IMAGE_FULL_BUFFER_SIZE: usize = 960000;
 pub const EPD_WIDTH: u32 = 1200;
 pub const EPD_HEIGHT: u32 = 1600;
 
@@ -72,7 +74,9 @@ impl<'a> Gdep133c02<'a> {
         spi: impl Peripheral<P = impl esp_idf_hal::spi::SpiAnyPins> + 'a,
         sclk: impl Peripheral<P = impl esp_idf_hal::gpio::OutputPin> + 'a,
         mosi: impl Peripheral<P = impl esp_idf_hal::gpio::OutputPin> + 'a,
-        miso: Option<impl Peripheral<P = impl esp_idf_hal::gpio::InputPin + esp_idf_hal::gpio::OutputPin> + 'a>,
+        miso: Option<
+            impl Peripheral<P = impl esp_idf_hal::gpio::InputPin + esp_idf_hal::gpio::OutputPin> + 'a,
+        >,
         cs0: AnyIOPin,
         cs1: AnyIOPin,
         rst: AnyIOPin,
@@ -359,7 +363,7 @@ impl<'a> Gdep133c02<'a> {
         Ok(())
     }
 
-    pub fn pic_display_test(&mut self, image: &[u8]) -> Result<()> {
+    pub fn display_buffer(&mut self, image: &[u8]) -> Result<()> {
         if image.len() != 960000 {
             log::error!("Image size mismatch: expected 960000, got {}", image.len());
             return Ok(());
@@ -441,7 +445,7 @@ impl<'a> Gdep133c02<'a> {
             }
         }
 
-        self.pic_display_test(&num)?;
+        self.display_buffer(&num)?;
         Ok(())
     }
 }

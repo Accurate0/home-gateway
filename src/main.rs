@@ -162,7 +162,7 @@ async fn main() -> anyhow::Result<()> {
 
     let event_handler_actor = init_actors(
         settings_container.clone(),
-        bucket_accessor,
+        bucket_accessor.clone(),
         feature_flag_client.clone(),
         mqtt_client,
         pool.clone(),
@@ -189,6 +189,7 @@ async fn main() -> anyhow::Result<()> {
     let api_state = ApiState {
         feature_flag_client,
         event_handler: event_handler_actor.clone(),
+        bucket_accessor,
         schema,
         settings: settings_container.clone(),
         db: pool.clone(),
@@ -201,6 +202,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/workflow/execute", post(workflow_execute))
         .route("/ingest/synergy", post(synergy))
         .route("/ingest/solar", post(solar))
+        .route("/epd/config", get(epd::config))
+        .route("/epd/latest", get(epd::latest))
         .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
@@ -208,7 +211,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
-        .route("/epd/config", get(epd::config))
         .route("/config/refresh", post(refresh))
         .layer(
             TraceLayer::new_for_http()
