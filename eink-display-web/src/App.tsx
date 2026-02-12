@@ -161,9 +161,7 @@ export default function App() {
         <div
           style={{
             textAlign: "right",
-            backgroundColor: "#fefce8", // Restored light yellow background
             padding: "16px 32px",
-            border: "6px solid black",
             display: "flex",
             alignItems: "center",
             gap: 40,
