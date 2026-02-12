@@ -4,9 +4,7 @@ on:
   push:
     paths:
       - "eink-display-web/**"
-  pull_request:
-    paths:
-      - "eink-display-web/**"
+      - ".github/workflows/eink-display-web-build.yml"
 
 jobs:
   build:
