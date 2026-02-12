@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ON CONFLICT (entity_id)\n            DO UPDATE SET\n                name = EXCLUDED.name,\n                ieee_addr = EXCLUDED.ieee_addr,\n                temperature = EXCLUDED.temperature,\n                battery = EXCLUDED.battery,\n                humidity = EXCLUDED.humidity,\n                pressure = EXCLUDED.pressure,\n                pm25 = EXCLUDED.pm25,\n                voc_index = EXCLUDED.voc_index,\n                updated_at = EXCLUDED.updated_at\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Float8",
+        "Int8",
+        "Float8",
+        "Float8",
+        "Int8",
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef83c9b0514eca16acaa1a60fd501e7b5cd4d03a87cc5a992b4c74a8db4a611b"
+}
