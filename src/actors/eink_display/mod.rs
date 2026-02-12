@@ -1,7 +1,9 @@
 use crate::types::SharedActorState;
 use chromiumoxide::{
-    Browser, BrowserConfig, browser::HeadlessMode,
-    cdp::browser_protocol::page::CaptureScreenshotFormat, handler::viewport::Viewport,
+    Browser, BrowserConfig,
+    browser::HeadlessMode,
+    cdp::browser_protocol::{emulation::SetLocaleOverrideParams, page::CaptureScreenshotFormat},
+    handler::viewport::Viewport,
     page::ScreenshotParams,
 };
 use futures::StreamExt;
@@ -104,6 +106,13 @@ impl Actor for EInkDisplayActor {
 
                 let page = browser.new_page(Self::INDEX_PATH).await?;
                 tracing::info!("navigating to page");
+
+                tracing::info!("setting locale and timezone");
+                let page = page.emulate_timezone("Australia/Perth").await?;
+                let page = page
+                    .emulate_locale(SetLocaleOverrideParams::builder().locale("en-AU").build())
+                    .await?;
+                page.reload().await?;
 
                 tokio::time::sleep(Duration::from_secs(10)).await;
 
