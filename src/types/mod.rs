@@ -31,6 +31,8 @@ pub struct SharedActorState {
 pub struct ApiState {
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
+    #[allow(unused)]
+    pub object_registry: object_registry::ApiClient,
     pub bucket_accessor: S3BucketAccessor,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]

@@ -1,5 +1,4 @@
 use crate::routes::{
-    config::refresh,
     epd,
     ingest::{solar::solar, unifi::unifi},
     workflow::execute::workflow_execute,
@@ -186,8 +185,15 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(AllowHeaders::any());
 
+    let object_registry_api_client = object_registry::ApiClient::new(
+        settings.object_registry_private_key.clone(),
+        settings.object_registry_key_id.clone(),
+        "home-gateway/api",
+    );
+
     let api_state = ApiState {
         feature_flag_client,
+        object_registry: object_registry_api_client,
         event_handler: event_handler_actor.clone(),
         bucket_accessor,
         schema,
@@ -211,7 +217,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
-        .route("/config/refresh", post(refresh))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &::http::Request<Body>| {

@@ -35,7 +35,7 @@ impl Actor for SolarIngestActor {
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
-            SolarMessage::NewData(solar_ingest_payload) => {}
+            SolarMessage::NewData(_solar_ingest_payload) => {}
         }
 
         Ok(())

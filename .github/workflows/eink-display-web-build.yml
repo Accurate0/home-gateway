@@ -1,0 +1,46 @@
+name: Eink Display Web Build
+
+on:
+  push:
+    paths:
+      - "eink-display-web/**"
+  pull_request:
+    paths:
+      - "eink-display-web/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "23"
+          cache: "pnpm"
+          cache-dependency-path: eink-display-web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: eink-display-web
+
+      - name: Build
+        run: pnpm run build
+        working-directory: eink-display-web
+
+      - name: Update Config
+        uses: Accurate0/workflows/.github/workflows/upload-object.yaml@main
+        with:
+          key-id: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
+          private-key: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
+          namespace: "home-gateway"
+          object-name: "index.html"
+          object-path: "./dist/index.html"

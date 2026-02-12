@@ -160,8 +160,7 @@ export default function App() {
         </div>
         <div
           style={{
-            textAlign: "right",
-            padding: "16px 32px",
+            justifySelf: "end",
             display: "flex",
             alignItems: "center",
             gap: 40,

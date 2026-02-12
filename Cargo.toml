@@ -15,68 +15,68 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tower-http = { workspace = true }
-async-graphql = { version = "7.0.17", features = ["uuid", "chrono", "dataloader"] }
-async-graphql-axum = "7.0.17"
-bytes = "1.10.1"
+async-graphql = { version = "7.2.1", features = ["uuid", "chrono", "dataloader"] }
+async-graphql-axum = "7.2.1"
+bytes = "1.11.1"
 chrono = { version = "0.4", features = ["serde"] }
-config = { version = "0.15.17", features = ["yaml"] }
+config = { version = "0.15.19", features = ["yaml"] }
 itertools = "0.14.0"
-log = "0.4.28"
+log = "0.4.29"
 phf = { version = "0.13", features = ["macros"] }
-ractor = "0.15.8"
-rumqttc = "0.25.0"
+ractor = "0.15.10"
+rumqttc = "0.25.1"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
+serde_json = "1.0.149"
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres", "tls-rustls", "macros", "chrono", "uuid"] }
-thiserror = "2.0.16"
-tokio-util = "0.7.16"
-tower = { version = "0.5.2", features = ["load-shed"] }
-uuid = { version = "1.18.1", features = ["v4"] }
+thiserror = "2.0.18"
+tokio-util = "0.7.18"
+tower = { version = "0.5.3", features = ["load-shed"] }
+uuid = { version = "1.20.0", features = ["v4"] }
 open-feature = "0.2.7"
 open-feature-flipt = { git = "https://github.com/open-feature/rust-sdk-contrib.git" }
-twilight-cache-inmemory = "0.16.0"
-twilight-gateway = "0.16.0"
-twilight-http = "0.16.0"
-twilight-interactions = "0.16.2"
-twilight-model = "0.16.0"
-twilight-util = { version = "0.16.0", features = ["builder"] }
-pgmq = "0.31.0"
+twilight-cache-inmemory = "0.17.1"
+twilight-gateway = "0.17.1"
+twilight-http = "0.17.1"
+twilight-interactions = "0.17.0"
+twilight-model = "0.17.1"
+twilight-util = { version = "0.17.0", features = ["builder"] }
+pgmq = "0.31.2"
 tower-service = "0.3.3"
 chrono-tz = "0.10.4"
-rust-s3 = "0.37.0"
-csv = "1.3.1"
+rust-s3 = "0.37.1"
+csv = "1.4.0"
 opentelemetry = { version = "0.31.0", features = ["metrics", "trace"] }
 opentelemetry-otlp = { version = "0.31.0", features = ["trace", "metrics", "grpc-tonic"] }
 opentelemetry-semantic-conventions = { version = "0.31.0", features = ["semconv_experimental"] }
-opentelemetry-resource-detectors = { version = "0.9" }
+opentelemetry-resource-detectors = { version = "0.10" }
 opentelemetry-proto = { version = "0.31.0"}
-tonic = { version = "0.14.2", features = ["tls-native-roots"] }
+tonic = { version = "0.14.3", features = ["tls-native-roots"] }
 opentelemetry_sdk = "0.31.0"
-tracing-opentelemetry = "0.31.0"
-opentelemetry-appender-tracing = "0.31.0"
-reqwest-middleware = { version = "0.4.2", features = ["json"] }
-reqwest-tracing = "0.5.8"
-regex = "1.11.3"
+tracing-opentelemetry = "0.32.1"
+opentelemetry-appender-tracing = "0.31.1"
+reqwest-middleware = { version = "0.5.1", features = ["json", "query"] }
+reqwest-tracing = "0.7.0"
+regex = "1.12.3"
 lazy_static = "1.5.0"
 chromiumoxide = "0.8.0"
-image = "0.25.5"
+image = "0.25.9"
 futures.workspace = true
-arc-swap = { version = "1.8.0", features = ["serde"] }
+arc-swap = { version = "1.8.1", features = ["serde"] }
 serde_yaml = "0.9.34"
-config-catalog-jwt = { git = "https://github.com/Accurate0/inf-k8s" }
+object-registry = { git = "https://github.com/Accurate0/inf-k8s" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 rstest = "0.26.1"
 
 [workspace.dependencies]
-axum = { version = "0.8.4", features = ["macros"] }
-reqwest = { version = "0.12.23", features = ["json", "stream", "cookies"] }
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
-anyhow = "1.0.100"
-http = "1.3.1"
-tower-http = { version = "0.6.6", features = ["cors", "trace"] }
-tracing = "0.1.41"
-tracing-subscriber = "0.3.20"
+axum = { version = "0.8.8", features = ["macros"] }
+reqwest = { version = "0.13.2", features = ["json", "stream", "cookies", "query"] }
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
+anyhow = "1.0.101"
+http = "1.4.0"
+tower-http = { version = "0.6.8", features = ["cors", "trace"] }
+tracing = "0.1.44"
+tracing-subscriber = "0.3.22"
 http-body = "1.0.1"
 futures = "0.3.31"
