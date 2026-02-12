@@ -287,3 +287,9 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// TODO:
+// - store the built file to object registry via CI
+// - use events to create a new screenshot if the file in object registry has changed
+// - read the file from object registry instead of bucket
+// - store the screenshot in object registry too i guess

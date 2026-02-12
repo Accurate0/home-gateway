@@ -29,7 +29,6 @@ pub struct SharedActorState {
 
 #[derive(Clone)]
 pub struct ApiState {
-    #[allow(unused)]
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
     pub bucket_accessor: S3BucketAccessor,

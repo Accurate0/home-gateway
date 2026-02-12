@@ -71,6 +71,32 @@ fn run_task() -> Result<u64, anyhow::Error> {
             refresh_time_in_mins = refresh_time;
         }
 
+        if let Some(clear_screen) = config.clear_screen {
+            if clear_screen {
+                log::info!("Initializing Display...");
+
+                display.init_epd()?;
+
+                if let Ok(status) = display.check_driver_ic_status() {
+                    if status {
+                        log::info!("Driver IC check passed.");
+                    } else {
+                        log::error!("Driver IC check failed!");
+                    }
+                } else {
+                    log::error!("Driver IC check error!");
+                }
+
+                display.hardware_reset()?;
+                display.set_cs_all(true)?;
+
+                log::info!("Display White");
+                display.init_epd()?;
+                display.display_color(driver::EPD_WHITE, &mut epd_buffer)?;
+                return Ok(refresh_time_in_mins);
+            }
+        }
+
         if let Some(url) = config.image_url {
             match http_client::fetch_image(&url, &mut epd_buffer) {
                 Ok(_) => {

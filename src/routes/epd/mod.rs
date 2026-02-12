@@ -1,20 +1,36 @@
 use crate::types::{ApiState, AppError};
 use axum::{Json, extract::State};
+use open_feature::EvaluationContext;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u32>,
     pub image_url: Option<String>,
+    pub clear_screen: Option<bool>,
 }
 
-pub async fn config(State(ApiState { .. }): State<ApiState>) -> Json<EpdConfig> {
+pub async fn config(
+    State(ApiState {
+        feature_flag_client,
+        ..
+    }): State<ApiState>,
+) -> Json<EpdConfig> {
     Json(EpdConfig {
         refresh_interval_mins: Some(15),
         #[cfg(debug_assertions)]
         image_url: Some("http://192.168.0.104:8000/v1/epd/latest".to_string()),
         #[cfg(not(debug_assertions))]
         image_url: Some("https://home.anurag.sh/v1/epd/latest".to_string()),
+        clear_screen: Some(
+            feature_flag_client
+                .is_feature_enabled(
+                    "home-gateway-epd-clear-screen",
+                    false,
+                    EvaluationContext::default(),
+                )
+                .await,
+        ),
     })
 }
 

@@ -12,6 +12,7 @@ const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u64>,
     pub image_url: Option<String>,
+    pub clear_screen: Option<bool>,
 }
 
 pub fn fetch_config() -> Result<EpdConfig> {
