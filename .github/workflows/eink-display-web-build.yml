@@ -39,14 +39,14 @@ jobs:
         env:
           VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_SECRET }}
 
-      - name: Output html
-        id: html
-        run: |
-          INDEX=$(cat ./dist/index.html)
-          echo "epd_index<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$INDEX" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> $GITHUB_OUTPUT
-        working-directory: eink-display-web
+      - name: upload html
+        uses: Accurate0/workflows/actions/upload-object
+        with:
+          key-id: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
+          private-key: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
+          namespace: "home-gateway"
+          object-name: "index.html"
+          object-path: "./eink-display-web/dist/index.html"
 
   upload-object:
     needs: [build]
@@ -54,7 +54,7 @@ jobs:
     with:
       namespace: "home-gateway"
       object-name: "index.html"
-      object-content: ${{ needs.build.outputs.epd-index }}
+      object-path: "./eink-display-web/dist/index.html"
     secrets:
       KEY_ID: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
       PRIVATE_KEY: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
