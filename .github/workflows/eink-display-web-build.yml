@@ -5,6 +5,7 @@ on:
     paths:
       - "eink-display-web/**"
       - ".github/workflows/eink-display-web-build.yml"
+  workflow_dispatch:
 
 jobs:
   build:
