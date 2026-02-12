@@ -52,18 +52,18 @@ export default function App() {
   return (
     <div
       style={{
-        width: 1600,
-        height: 1200,
+        minHeight: "100vh",
         backgroundColor: "white",
         color: "black",
         fontFamily: "Inter, system-ui, sans-serif",
-        padding: 40,
+        padding: "40px 60px",
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gridTemplateRows: "auto 1fr",
-        gap: 40,
+        gap: 60,
         boxSizing: "border-box",
-        overflow: "hidden",
+        maxWidth: 1600,
+        margin: "0 auto",
       }}
     >
       {/* Header */}
