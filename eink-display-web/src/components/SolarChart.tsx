@@ -66,7 +66,6 @@ export default function SolarChart({
             interval={Math.floor(chartData.length / 6)}
             tickFormatter={(value: Date) => {
               const newDate = new Date(value);
-              newDate.setUTCHours(value.getUTCHours() + 8);
               return new Intl.DateTimeFormat("en-AU", {
                 timeZone: "Australia/Perth",
                 hour: "2-digit",
