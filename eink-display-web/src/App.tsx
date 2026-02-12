@@ -37,13 +37,26 @@ const AppQuery = graphql`
   }
 `;
 
-function ProductChip({
-  name,
-  price,
-}: {
-  name: string;
-  price: number;
-}) {
+function getLocalMidnightISO() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Perth",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const getPart = (type: string) => parts.find((p) => p.type === type)?.value;
+  const year = getPart("year");
+  const month = getPart("month");
+  const day = getPart("day");
+
+  const midnightPerth = `${year}-${month}-${day}T00:00:00+08:00`;
+  const d = new Date(midnightPerth);
+  return d.toISOString();
+}
+
+function ProductChip({ name, price }: { name: string; price: number }) {
   return (
     <div
       style={{
@@ -62,7 +75,7 @@ function ProductChip({
           fontWeight: 900,
           textTransform: "uppercase",
           letterSpacing: 1,
-          color: "black"
+          color: "black",
         }}
       >
         {name}
@@ -75,14 +88,9 @@ function ProductChip({
 }
 
 export default function App() {
-  // start of today in RFC3339
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const since = today.toISOString();
-
   const data = useLazyLoadQuery<AppQuery>(AppQuery, {
     location: "14576",
-    since,
+    since: getLocalMidnightISO(),
   });
 
   const uvLevel = data?.solar?.current?.uvLevel ?? 0;
@@ -300,11 +308,7 @@ export default function App() {
                     !p.name.toLowerCase().includes("4 pack"),
                 )
                 .map((p) => (
-                  <ProductChip
-                    key={p.name}
-                    name={p.name}
-                    price={p.price}
-                  />
+                  <ProductChip key={p.name} name={p.name} price={p.price} />
                 ))}
             </div>
           </section>

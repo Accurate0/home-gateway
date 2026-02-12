@@ -44,9 +44,9 @@ export default function SolarChart({
     <div style={{ width: width ?? 740, height: height ?? 600 }}>
       <ChartContainer
         id="solar"
-        config={{ 
+        config={{
           wh: { label: "Wh", color: "#0000ff" },
-          uv: { label: "UV", color: "#dc2626" }
+          uv: { label: "UV", color: "#dc2626" },
         }}
       >
         <Recharts.LineChart
@@ -55,13 +55,28 @@ export default function SolarChart({
           data={chartData}
           margin={{ top: 10, right: 40, left: 10, bottom: 40 }}
         >
-          <Recharts.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ccc" />
+          <Recharts.CartesianGrid
+            strokeDasharray="3 3"
+            vertical={false}
+            stroke="#ccc"
+          />
           <Recharts.XAxis
             dataKey="atLabel"
             tick={{ fontSize: 20, fill: "black" }}
             interval={Math.floor(chartData.length / 6)}
+            tickFormatter={(value: Date) => {
+              const newDate = new Date(value);
+              newDate.setUTCHours(value.getUTCHours() + 8);
+              return new Intl.DateTimeFormat("en-AU", {
+                timeZone: "Australia/Perth",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              }).format(newDate);
+            }}
             dy={15}
           />
+
           <Recharts.YAxis
             yAxisId="left"
             tick={{ fontSize: 20, fill: "black" }}
@@ -73,7 +88,7 @@ export default function SolarChart({
             orientation="right"
             tick={{ fontSize: 20, fill: "#dc2626" }}
             width={50}
-            domain={[0, 'auto']}
+            domain={[0, "auto"]}
             tickFormatter={(value) => `${value}`}
           />
           <Recharts.Line
@@ -104,7 +119,7 @@ export default function SolarChart({
 function formatTime(at: string) {
   try {
     const d = new Date(at);
-    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return d;
   } catch {
     return at;
   }
