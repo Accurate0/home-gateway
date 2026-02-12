@@ -2381,7 +2381,6 @@ dependencies = [
  "async-graphql",
  "async-graphql-axum",
  "axum",
- "base64",
  "bytes",
  "chromiumoxide",
  "chrono",
@@ -3379,7 +3378,7 @@ dependencies = [
 [[package]]
 name = "object-registry"
 version = "0.1.0"
-source = "git+https://github.com/Accurate0/inf-k8s#17562e4a30dd72da8729603d3dafde2555456913"
+source = "git+https://github.com/Accurate0/inf-k8s#db534447c49517ce577e109664bf1f603e764539"
 dependencies = [
  "aws-config",
  "aws-sdk-dynamodb",

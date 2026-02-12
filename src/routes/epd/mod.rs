@@ -1,6 +1,5 @@
 use crate::types::{ApiState, AppError};
 use axum::{Json, extract::State};
-use base64::{Engine, prelude::BASE64_STANDARD};
 use open_feature::EvaluationContext;
 use serde::{Deserialize, Serialize};
 
@@ -41,12 +40,11 @@ pub async fn latest(
     }): State<ApiState>,
 ) -> Result<Vec<u8>, AppError> {
     let image_response = object_registry
-        .get_object::<String>("home-gateway", "image.png", None, false)
+        .get_object::<Vec<u8>>("home-gateway", "image.png", None, false)
         .await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
-        let mut img =
-            image::load_from_memory(&BASE64_STANDARD.decode(image_response.payload)?)?.to_rgb8();
+        let mut img = image::load_from_memory(&image_response.payload)?.to_rgb8();
         let (width, height) = img.dimensions();
 
         if width == 1600 && height == 1200 {

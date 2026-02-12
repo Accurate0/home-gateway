@@ -1,5 +1,4 @@
 use crate::types::SharedActorState;
-use base64::{Engine, prelude::BASE64_STANDARD};
 use chromiumoxide::{
     Browser, BrowserConfig, browser::HeadlessMode,
     cdp::browser_protocol::page::CaptureScreenshotFormat, handler::viewport::Viewport,
@@ -65,13 +64,12 @@ impl Actor for EInkDisplayActor {
                     let index_html_file = self
                         .shared_actor_state
                         .object_registry
-                        .get_object::<String>("home-gateway", "index.html", None, false)
+                        .get_object::<Vec<u8>>("home-gateway", "index.html", None, false)
                         .await?;
 
                     tracing::info!("index fetched: {:?}", index_html_file.metadata);
-                    let decoded_index = BASE64_STANDARD.decode(index_html_file.payload)?;
                     let mut index_file = File::create(Self::INDEX_FS_PATH).await?;
-                    index_file.write_all(&decoded_index).await?;
+                    index_file.write_all(&index_html_file.payload).await?;
                 }
 
                 tracing::info!("starting browser");
