@@ -50,7 +50,7 @@ jobs:
     with:
       namespace: "home-gateway"
       object-name: "index.html"
-      object-content: ${{ jobs.build.outputs.epd-index }}
+      object-content: ${{ needs.build.outputs.epd-index }}
     secrets:
       KEY_ID: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
       PRIVATE_KEY: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
