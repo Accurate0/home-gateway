@@ -37,7 +37,7 @@ impl Actor for EInkDisplayActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let _join_handle = myself.send_after(Duration::from_secs(1), || {
+        let _join_handle = myself.send_interval(Duration::from_mins(5), || {
             EInkDisplayMessage::TakeScreenshot
         });
 
@@ -86,7 +86,7 @@ impl Actor for EInkDisplayActor {
                 let page = browser.new_page(Self::INDEX_PATH).await?;
                 tracing::info!("navigating to page");
 
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(30)).await;
 
                 tracing::info!("screenshot taken");
                 let image = page
