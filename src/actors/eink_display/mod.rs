@@ -37,7 +37,12 @@ impl Actor for EInkDisplayActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let _join_handle = myself.send_interval(Duration::from_mins(5), || {
+        // send initial before schedule
+        let _join_handle = myself.send_after(Duration::from_secs(1), || {
+            EInkDisplayMessage::TakeScreenshot
+        });
+
+        let _join_handle = myself.send_interval(Duration::from_secs(300), || {
             EInkDisplayMessage::TakeScreenshot
         });
 
