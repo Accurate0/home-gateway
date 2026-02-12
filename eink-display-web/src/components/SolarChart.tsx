@@ -10,6 +10,7 @@ const SolarFragment = graphql`
       wh
       at
       timestamp
+      uvLevel
     }
   }
 `;
@@ -32,6 +33,7 @@ export default function SolarChart({
     wh: h.wh,
     at: h.at,
     timestamp: h.timestamp,
+    uv: h.uvLevel ?? 0,
   }));
 
   history.sort((a, b) => a.timestamp - b.timestamp);
@@ -42,12 +44,15 @@ export default function SolarChart({
     <div style={{ width: width ?? "100%", height: height ?? 400 }}>
       <ChartContainer
         id="solar"
-        config={{ wh: { label: "Wh", color: "#0000ff" } }}
+        config={{ 
+          wh: { label: "Wh", color: "#0000ff" },
+          uv: { label: "UV", color: "#dc2626" }
+        }}
       >
         <Recharts.ResponsiveContainer width="100%" height="100%">
           <Recharts.LineChart
             data={chartData}
-            margin={{ top: 10, right: 10, left: 10, bottom: 40 }}
+            margin={{ top: 10, right: 40, left: 10, bottom: 40 }}
           >
             <Recharts.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ccc" />
             <Recharts.XAxis
@@ -57,16 +62,36 @@ export default function SolarChart({
               dy={15}
             />
             <Recharts.YAxis
+              yAxisId="left"
               tick={{ fontSize: 20, fill: "black" }}
               width={80}
               tickFormatter={(value) => `${value}W`}
             />
+            <Recharts.YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 20, fill: "#dc2626" }}
+              width={50}
+              domain={[0, 'auto']}
+              tickFormatter={(value) => `${value}`}
+            />
             <Recharts.Line
+              yAxisId="left"
               type="monotone"
               dataKey="wh"
               stroke="#0000ff"
               dot={false}
               strokeWidth={6}
+              animationDuration={0}
+            />
+            <Recharts.Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="uv"
+              stroke="#dc2626"
+              dot={false}
+              strokeWidth={4}
+              strokeDasharray="5 5"
               animationDuration={0}
             />
           </Recharts.LineChart>

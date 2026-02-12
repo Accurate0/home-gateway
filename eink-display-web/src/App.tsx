@@ -12,6 +12,7 @@ const AppQuery = graphql`
       current {
         todayProductionKwh
         currentProductionWh
+        uvLevel
         statistics {
           averages {
             last15Mins
@@ -49,6 +50,17 @@ export default function App() {
     since,
   });
 
+  const uvLevel = data?.solar?.current?.uvLevel ?? 0;
+  const outdoorTemp = data?.environment?.outdoor?.temperature ?? 20;
+
+  const getUVColor = (uv: number) => {
+    if (uv <= 2) return "#16a34a"; // Green (Low)
+    if (uv <= 5) return "#facc15"; // Yellow (Moderate)
+    if (uv <= 7) return "#fb923c"; // Orange (High)
+    if (uv <= 10) return "#dc2626"; // Red (Very High)
+    return "#a855f7"; // Purple (Extreme)
+  };
+
   return (
     <div
       style={{
@@ -60,7 +72,7 @@ export default function App() {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gridTemplateRows: "auto 1fr",
-        gap: 60,
+        gap: "32px 60px", // Reduced vertical gap to 32px, kept horizontal at 60px
         boxSizing: "border-box",
         maxWidth: 1600,
         margin: "0 auto",
@@ -89,19 +101,37 @@ export default function App() {
             })}
           </div>
         </div>
-        <div style={{ textAlign: "right", backgroundColor: "#fefce8", padding: "8px 16px", border: "3px solid black" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 1, color: "#854d0e" }}>OUTDOOR</div>
-          <div style={{ fontSize: 64, fontWeight: 800, lineHeight: 1 }}>
-            {data?.environment?.outdoor?.temperature?.toFixed(1) ?? "--"}°
+        <div
+          style={{
+            textAlign: "right",
+            backgroundColor: "#fefce8", // Fixed light yellow background
+            padding: "16px 32px",
+            border: "6px solid black",
+            display: "flex",
+            alignItems: "center",
+            gap: 40,
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 80, fontWeight: 900, lineHeight: 1, color: getUVColor(uvLevel) }}>
+              {uvLevel.toFixed(1)}
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: getUVColor(uvLevel), textTransform: "uppercase", letterSpacing: 1, marginTop: 8 }}>UV INDEX</div>
           </div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: "#0369a1" }}>
-            {data?.environment?.outdoor?.humidity?.toFixed(0) ?? "--"}% Hum
+          <div style={{ width: 4, height: 100, backgroundColor: "black" }} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 80, fontWeight: 900, lineHeight: 1, color: "black" }}>
+              {outdoorTemp.toFixed(1)}°
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "black", marginTop: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+              {data?.environment?.outdoor?.humidity?.toFixed(0) ?? "--"}% HUM
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, gridColumn: "span 2" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, gridColumn: "span 2" }}>
         {/* Left: Solar */}
         <section style={{ display: "flex", flexDirection: "column" }}>
           <div
@@ -135,13 +165,13 @@ export default function App() {
           </div>
           <div style={{ height: 750 }}>
             {data?.solar && (
-              <SolarChart solarRef={data.solar} width={740} height={750} />
+              <SolarChart solarRef={data.solar} width={850} height={750} />
             )}
           </div>
         </section>
 
         {/* Right: Forecast */}
-        <section style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+        <section style={{ display: "flex", flexDirection: "column" }}>
           {data?.weather && <ForecastCard weatherRef={data.weather} />}
         </section>
       </div>

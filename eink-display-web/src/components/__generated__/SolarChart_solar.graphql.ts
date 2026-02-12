@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<91a26f0e0b930f689b3e03700682ffd5>>
+ * @generated SignedSource<<3381805e410ffb344c5f02ae3e311cbd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type SolarChart_solar$data = {
   readonly history: ReadonlyArray<{
     readonly at: any;
     readonly timestamp: number;
+    readonly uvLevel: number | null | undefined;
     readonly wh: number;
   }>;
   readonly " $fragmentType": "SolarChart_solar";
@@ -75,6 +76,13 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "timestamp",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "uvLevel",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -84,6 +92,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "5e69cf357892362271ae752fc29556fd";
+(node as any).hash = "b6a054d519af220261b92a7e2a386f0e";
 
 export default node;
