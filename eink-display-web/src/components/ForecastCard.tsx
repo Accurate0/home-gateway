@@ -1,6 +1,5 @@
 import { graphql, useFragment } from "react-relay";
 import type { ForecastCard_weather$key } from "./__generated__/ForecastCard_weather.graphql";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const ForecastFragment = graphql`
   fragment ForecastCard_weather on WeatherObject {
@@ -29,54 +28,53 @@ export default function ForecastCard({
   type DayType = NonNullable<ForecastObj["days"]>[number];
 
   const days = (data?.forecast?.days ?? []) as DayType[];
-  const upcoming = days.slice(0, 4);
+  const upcoming = days.slice(0, 4); // Show 4 days
 
   return (
-    <Card style={{ width: 600 }}>
-      <CardHeader>
-        <div>
-          <CardTitle>Forecast</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 24,
+      }}
+    >
+      {upcoming.map((d, i) => (
         <div
+          key={d.dateTime}
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px 0",
+            borderBottom: i === upcoming.length - 1 ? "none" : "2px solid #eee",
           }}
         >
-          {upcoming.map((d) => (
-            <div
-              key={d.dateTime}
-              style={{
-                borderRadius: 8,
-                padding: 8,
-                background: "transparent",
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-              }}
-            >
-              <div style={{ fontSize: 20 }}>{d.emoji ?? "☀️"}</div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ fontWeight: 600 }}>
-                  {formatForecastDate(d.dateTime)}
-                </div>
-                <div style={{ color: "#6b7280" }}>{d.description}</div>
-                <div style={{ marginTop: 6, fontSize: 13 }}>
-                  <span style={{ marginRight: 8 }}>Min: {d.min}°</span>
-                  <span>Max: {d.max}°</span>
-                  {d.uv != null && (
-                    <span style={{ marginLeft: 8 }}>UV: {d.uv}</span>
-                  )}
-                </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <div style={{ fontSize: 64, width: 80, textAlign: "center", display: "flex", justifyContent: "center" }}>
+              {d.emoji ?? "☀️"}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
+              <div style={{ fontSize: 32, fontWeight: 700 }}>
+                {formatForecastDate(d.dateTime)}
+              </div>
+              <div style={{ fontSize: 24, color: "#4b5563" }}>
+                {d.description}
               </div>
             </div>
-          ))}
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 32, fontWeight: 700 }}>
+              {d.max}° <span style={{ color: "#6b7280", fontWeight: 400 }}>{d.min}°</span>
+            </div>
+            {d.uv != null && (
+              <div style={{ fontSize: 20, color: "#ef4444", fontWeight: 600 }}>
+                UV {d.uv.toFixed(1)}
+              </div>
+            )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   );
 }
 

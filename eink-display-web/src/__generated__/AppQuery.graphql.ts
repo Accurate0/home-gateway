@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6a221b903eb24e3746db2141763442cd>>
+ * @generated SignedSource<<932644cf5ec17e1b149d5cbec543f063>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,14 +15,35 @@ export type AppQuery$variables = {
   since: any;
 };
 export type AppQuery$data = {
+  readonly environment: {
+    readonly bedroom: {
+      readonly humidity: number;
+      readonly temperature: number;
+    };
+    readonly livingRoom: {
+      readonly humidity: number;
+      readonly temperature: number;
+    };
+    readonly outdoor: {
+      readonly humidity: number;
+      readonly temperature: number;
+    };
+  };
   readonly solar: {
+    readonly current: {
+      readonly currentProductionWh: number;
+      readonly statistics: {
+        readonly averages: {
+          readonly last15Mins: number | null | undefined;
+          readonly last1Hour: number | null | undefined;
+        };
+      };
+      readonly todayProductionKwh: number;
+    };
     readonly " $fragmentSpreads": FragmentRefs<"SolarChart_solar">;
   };
   readonly weather: {
     readonly " $fragmentSpreads": FragmentRefs<"ForecastCard_weather">;
-  };
-  readonly woolworths: {
-    readonly " $fragmentSpreads": FragmentRefs<"WoolworthsCard_woolworths">;
   };
 };
 export type AppQuery = {
@@ -56,13 +77,131 @@ v1 = [
     "name": "input"
   }
 ],
-v2 = [
+v2 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "SolarCurrentResponse",
+  "kind": "LinkedField",
+  "name": "current",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "todayProductionKwh",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "currentProductionWh",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "SolarCurrentStatistics",
+      "kind": "LinkedField",
+      "name": "statistics",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "SolarCurrentStatisticsAverages",
+          "kind": "LinkedField",
+          "name": "averages",
+          "plural": false,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "last15Mins",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "last1Hour",
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v3 = [
   {
     "kind": "Variable",
     "name": "since",
     "variableName": "since"
   }
-];
+],
+v4 = [
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "temperature",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "humidity",
+    "storageKey": null
+  }
+],
+v5 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "EnvironmentObject",
+  "kind": "LinkedField",
+  "name": "environment",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "EnvironmentDetails",
+      "kind": "LinkedField",
+      "name": "outdoor",
+      "plural": false,
+      "selections": (v4/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "EnvironmentDetails",
+      "kind": "LinkedField",
+      "name": "livingRoom",
+      "plural": false,
+      "selections": (v4/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "EnvironmentDetails",
+      "kind": "LinkedField",
+      "name": "bedroom",
+      "plural": false,
+      "selections": (v4/*: any*/),
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+};
 return {
   "fragment": {
     "argumentDefinitions": (v0/*: any*/),
@@ -94,30 +233,16 @@ return {
         "name": "solar",
         "plural": false,
         "selections": [
+          (v2/*: any*/),
           {
-            "args": (v2/*: any*/),
+            "args": (v3/*: any*/),
             "kind": "FragmentSpread",
             "name": "SolarChart_solar"
           }
         ],
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "WoolworthsObject",
-        "kind": "LinkedField",
-        "name": "woolworths",
-        "plural": false,
-        "selections": [
-          {
-            "args": null,
-            "kind": "FragmentSpread",
-            "name": "WoolworthsCard_woolworths"
-          }
-        ],
-        "storageKey": null
-      }
+      (v5/*: any*/)
     ],
     "type": "QueryRoot",
     "abstractKey": null
@@ -218,11 +343,12 @@ return {
         "name": "solar",
         "plural": false,
         "selections": [
+          (v2/*: any*/),
           {
             "alias": null,
             "args": [
               {
-                "fields": (v2/*: any*/),
+                "fields": (v3/*: any*/),
                 "kind": "ObjectValue",
                 "name": "input"
               }
@@ -259,55 +385,20 @@ return {
         ],
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "WoolworthsObject",
-        "kind": "LinkedField",
-        "name": "woolworths",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "WoolworthsProducts",
-            "kind": "LinkedField",
-            "name": "products",
-            "plural": true,
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "name",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "price",
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      }
+      (v5/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "22389fa0a6c3aa9ed77e9b586557e70c",
+    "cacheID": "024e9667d317916d9ad36dc00ad0650b",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar {\n    ...SolarChart_solar_2xCj2c\n  }\n  woolworths {\n    ...WoolworthsCard_woolworths\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n  }\n}\n\nfragment WoolworthsCard_woolworths on WoolworthsObject {\n  products {\n    name\n    price\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n    }\n    livingRoom {\n      temperature\n      humidity\n    }\n    bedroom {\n      temperature\n      humidity\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fe6bbc13f94feffa0eb6b4f637e4b1dc";
+(node as any).hash = "ab0e3b630de05562d2b113bb983d5a60";
 
 export default node;
