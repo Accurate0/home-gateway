@@ -40,21 +40,10 @@ jobs:
           VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_SECRET }}
 
       - name: upload html
-        uses: Accurate0/workflows/actions/upload-object
+        uses: Accurate0/workflows/actions/upload-object@main
         with:
           key-id: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
           private-key: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
           namespace: "home-gateway"
           object-name: "index.html"
           object-path: "./eink-display-web/dist/index.html"
-
-  upload-object:
-    needs: [build]
-    uses: Accurate0/workflows/.github/workflows/upload-object.yaml@main
-    with:
-      namespace: "home-gateway"
-      object-name: "index.html"
-      object-path: "./eink-display-web/dist/index.html"
-    secrets:
-      KEY_ID: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
-      PRIVATE_KEY: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
