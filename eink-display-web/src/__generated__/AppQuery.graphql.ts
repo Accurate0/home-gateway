@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9655c015c0a538e487deafb90d8643f9>>
+ * @generated SignedSource<<637db8f3f6dd707a52668d26c5105300>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,14 +16,6 @@ export type AppQuery$variables = {
 };
 export type AppQuery$data = {
   readonly environment: {
-    readonly bedroom: {
-      readonly humidity: number;
-      readonly temperature: number;
-    };
-    readonly livingRoom: {
-      readonly humidity: number;
-      readonly temperature: number;
-    };
     readonly outdoor: {
       readonly humidity: number;
       readonly temperature: number;
@@ -45,6 +37,12 @@ export type AppQuery$data = {
   };
   readonly weather: {
     readonly " $fragmentSpreads": FragmentRefs<"ForecastCard_weather">;
+  };
+  readonly woolworths: {
+    readonly products: ReadonlyArray<{
+      readonly name: string;
+      readonly price: number;
+    }>;
   };
 };
 export type AppQuery = {
@@ -81,11 +79,47 @@ v1 = [
 v2 = {
   "alias": null,
   "args": null,
+  "concreteType": "WoolworthsObject",
+  "kind": "LinkedField",
+  "name": "woolworths",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "WoolworthsProducts",
+      "kind": "LinkedField",
+      "name": "products",
+      "plural": true,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "name",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "price",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
   "kind": "ScalarField",
   "name": "uvLevel",
   "storageKey": null
 },
-v3 = {
+v4 = {
   "alias": null,
   "args": null,
   "concreteType": "SolarCurrentResponse",
@@ -107,7 +141,7 @@ v3 = {
       "name": "currentProductionWh",
       "storageKey": null
     },
-    (v2/*: any*/),
+    (v3/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -147,27 +181,11 @@ v3 = {
   ],
   "storageKey": null
 },
-v4 = [
+v5 = [
   {
     "kind": "Variable",
     "name": "since",
     "variableName": "since"
-  }
-],
-v5 = [
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "temperature",
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "humidity",
-    "storageKey": null
   }
 ],
 v6 = {
@@ -185,27 +203,22 @@ v6 = {
       "kind": "LinkedField",
       "name": "outdoor",
       "plural": false,
-      "selections": (v5/*: any*/),
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "EnvironmentDetails",
-      "kind": "LinkedField",
-      "name": "livingRoom",
-      "plural": false,
-      "selections": (v5/*: any*/),
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "EnvironmentDetails",
-      "kind": "LinkedField",
-      "name": "bedroom",
-      "plural": false,
-      "selections": (v5/*: any*/),
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "temperature",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "humidity",
+          "storageKey": null
+        }
+      ],
       "storageKey": null
     }
   ],
@@ -234,6 +247,7 @@ return {
         ],
         "storageKey": null
       },
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -242,9 +256,9 @@ return {
         "name": "solar",
         "plural": false,
         "selections": [
-          (v3/*: any*/),
+          (v4/*: any*/),
           {
-            "args": (v4/*: any*/),
+            "args": (v5/*: any*/),
             "kind": "FragmentSpread",
             "name": "SolarChart_solar"
           }
@@ -344,6 +358,7 @@ return {
         ],
         "storageKey": null
       },
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -352,12 +367,12 @@ return {
         "name": "solar",
         "plural": false,
         "selections": [
-          (v3/*: any*/),
+          (v4/*: any*/),
           {
             "alias": null,
             "args": [
               {
-                "fields": (v4/*: any*/),
+                "fields": (v5/*: any*/),
                 "kind": "ObjectValue",
                 "name": "input"
               }
@@ -388,7 +403,7 @@ return {
                 "name": "timestamp",
                 "storageKey": null
               },
-              (v2/*: any*/)
+              (v3/*: any*/)
             ],
             "storageKey": null
           }
@@ -399,16 +414,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "9860440a9da84d5ecabeb5f02c3782de",
+    "cacheID": "a6898ca52a62084c44fe3cddbd650d41",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n    }\n    livingRoom {\n      temperature\n      humidity\n    }\n    bedroom {\n      temperature\n      humidity\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  woolworths {\n    products {\n      name\n      price\n    }\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7a97ecb5e8e1ec266890d86cd9ebfe90";
+(node as any).hash = "38ec654bdcd876350914127e92e32a96";
 
 export default node;

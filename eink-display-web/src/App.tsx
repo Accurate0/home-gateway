@@ -8,6 +8,12 @@ const AppQuery = graphql`
     weather(input: { location: $location }) {
       ...ForecastCard_weather
     }
+    woolworths {
+      products {
+        name
+        price
+      }
+    }
     solar {
       current {
         todayProductionKwh
@@ -27,17 +33,46 @@ const AppQuery = graphql`
         temperature
         humidity
       }
-      livingRoom {
-        temperature
-        humidity
-      }
-      bedroom {
-        temperature
-        humidity
-      }
     }
   }
 `;
+
+function ProductChip({
+  name,
+  price,
+}: {
+  name: string;
+  price: number;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        padding: "20px 28px",
+        border: "5px solid black",
+        backgroundColor: "white",
+        flex: 1,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 20,
+          fontWeight: 900,
+          textTransform: "uppercase",
+          letterSpacing: 1,
+          color: "black"
+        }}
+      >
+        {name}
+      </div>
+      <div style={{ fontSize: 48, fontWeight: 900, color: "#16a34a" }}>
+        ${price.toFixed(2)}
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   // start of today in RFC3339
@@ -54,11 +89,10 @@ export default function App() {
   const outdoorTemp = data?.environment?.outdoor?.temperature ?? 20;
 
   const getUVColor = (uv: number) => {
-    if (uv <= 2) return "#16a34a"; // Green (Low)
-    if (uv <= 5) return "#facc15"; // Yellow (Moderate)
-    if (uv <= 7) return "#fb923c"; // Orange (High)
-    if (uv <= 10) return "#dc2626"; // Red (Very High)
-    return "#a855f7"; // Purple (Extreme)
+    if (uv <= 2) return "#16a34a"; // Green (Low, safe)
+    if (uv <= 5) return "#f97316"; // Orange (Moderate)
+    if (uv <= 7) return "#dc2626"; // Red (High)
+    return "#991b1b"; // Deep Red (Very High and Extreme)
   };
 
   return (
@@ -90,21 +124,36 @@ export default function App() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 72, margin: 0, fontWeight: 900, lineHeight: 1, textTransform: "uppercase" }}>
+          <h1
+            style={{
+              fontSize: 72,
+              margin: 0,
+              fontWeight: 900,
+              lineHeight: 1,
+              textTransform: "uppercase",
+            }}
+          >
             {new Date().toLocaleDateString([], { weekday: "long" })}
           </h1>
-          <div style={{ fontSize: 40, fontWeight: 700, marginTop: 4, color: "black" }}>
+          <div
+            style={{
+              fontSize: 40,
+              fontWeight: 700,
+              marginTop: 4,
+              color: "black",
+            }}
+          >
             {new Date().toLocaleDateString([], {
               month: "long",
               day: "numeric",
-              year: "numeric"
+              year: "numeric",
             })}
           </div>
         </div>
         <div
           style={{
             textAlign: "right",
-            backgroundColor: "#fefce8", // Fixed light yellow background
+            backgroundColor: "#fefce8", // Restored light yellow background
             padding: "16px 32px",
             border: "6px solid black",
             display: "flex",
@@ -112,18 +161,64 @@ export default function App() {
             gap: 40,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontSize: 80, fontWeight: 900, lineHeight: 1, color: getUVColor(uvLevel) }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 80,
+                fontWeight: 900,
+                lineHeight: 1,
+                color: getUVColor(uvLevel),
+              }}
+            >
               {uvLevel.toFixed(1)}
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: getUVColor(uvLevel), textTransform: "uppercase", letterSpacing: 1, marginTop: 8 }}>UV INDEX</div>
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 800,
+                color: getUVColor(uvLevel),
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginTop: 8,
+              }}
+            >
+              UV INDEX
+            </div>
           </div>
           <div style={{ width: 4, height: 100, backgroundColor: "black" }} />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontSize: 80, fontWeight: 900, lineHeight: 1, color: "black" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 80,
+                fontWeight: 900,
+                lineHeight: 1,
+                color: "black",
+              }}
+            >
               {outdoorTemp.toFixed(1)}°
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "black", marginTop: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 800,
+                color: "black",
+                marginTop: 8,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
+            >
               {data?.environment?.outdoor?.humidity?.toFixed(0) ?? "--"}% HUM
             </div>
           </div>
@@ -131,49 +226,96 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, gridColumn: "span 2" }}>
-        {/* Left: Solar */}
-        <section style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              marginBottom: 24,
-            }}
-          >
-            <div style={{ display: "flex", gap: 32 }}>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#4b5563" }}>15M AVG</div>
-                <div style={{ fontSize: 40, fontWeight: 800 }}>
-                  {data?.solar?.current?.statistics?.averages?.last15Mins?.toFixed(0) ?? "--"}W
+      <div style={{ display: "flex", gap: 80, gridColumn: "span 2" }}>
+        {/* Left Column: Solar & Energy Drinks */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <section>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-end",
+                marginBottom: 24,
+              }}
+            >
+              <div style={{ display: "flex", gap: 32 }}>
+                <div style={{ textAlign: "left" }}>
+                  <div
+                    style={{ fontSize: 20, fontWeight: 700, color: "#4b5563" }}
+                  >
+                    15M AVG
+                  </div>
+                  <div style={{ fontSize: 40, fontWeight: 800 }}>
+                    {data?.solar?.current?.statistics?.averages?.last15Mins?.toFixed(
+                      0,
+                    ) ?? "--"}
+                    W
+                  </div>
+                </div>
+                <div style={{ textAlign: "left" }}>
+                  <div
+                    style={{ fontSize: 20, fontWeight: 700, color: "#4b5563" }}
+                  >
+                    1H AVG
+                  </div>
+                  <div style={{ fontSize: 40, fontWeight: 800 }}>
+                    {data?.solar?.current?.statistics?.averages?.last1Hour?.toFixed(
+                      0,
+                    ) ?? "--"}
+                    W
+                  </div>
                 </div>
               </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#4b5563" }}>1H AVG</div>
-                <div style={{ fontSize: 40, fontWeight: 800 }}>
-                  {data?.solar?.current?.statistics?.averages?.last1Hour?.toFixed(0) ?? "--"}W
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{ fontSize: 24, fontWeight: 700, color: "#4b5563" }}
+                >
+                  TODAY TOTAL
+                </div>
+                <div style={{ fontSize: 64, fontWeight: 800 }}>
+                  {data?.solar?.current?.todayProductionKwh?.toFixed(1) ?? "--"}{" "}
+                  kWh
                 </div>
               </div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: "#4b5563" }}>TODAY TOTAL</div>
-              <div style={{ fontSize: 64, fontWeight: 800 }}>
-                {data?.solar?.current?.todayProductionKwh?.toFixed(1) ?? "--"} kWh
-              </div>
+            <div style={{ height: 480 }}>
+              {data?.solar && (
+                <SolarChart solarRef={data.solar} width={820} height={750} />
+              )}
             </div>
-          </div>
-          <div style={{ height: 750 }}>
-            {data?.solar && (
-              <SolarChart solarRef={data.solar} width={850} height={750} />
-            )}
-          </div>
-        </section>
 
-        {/* Right: Forecast */}
-        <section style={{ display: "flex", flexDirection: "column" }}>
-          {data?.weather && <ForecastCard weatherRef={data.weather} />}
-        </section>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 20,
+                marginTop: 8,
+              }}
+            >
+              {data.woolworths.products
+                .filter(
+                  (p) =>
+                    (p.name.toLowerCase().includes("red bull") ||
+                      p.name.toLowerCase().includes("mother energy")) &&
+                    !p.name.toLowerCase().includes("4 pack"),
+                )
+                .map((p) => (
+                  <ProductChip
+                    key={p.name}
+                    name={p.name}
+                    price={p.price}
+                  />
+                ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Right Column: Forecast */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <section>
+            {data?.weather && <ForecastCard weatherRef={data.weather} />}
+          </section>
+        </div>
       </div>
     </div>
   );

@@ -20,14 +20,16 @@ const ForecastFragment = graphql`
 
 function WeatherIcon({ code, size = 80 }: { code: string; size?: number }) {
   const c = code.toLowerCase();
-  if (c.includes("sunny") || c.includes("clear")) return <Sun size={size} color="#f59e0b" strokeWidth={3} />;
-  if (c.includes("partly") || c.includes("mostly sunny")) return <CloudSun size={size} color="#f59e0b" strokeWidth={3} />;
-  if (c.includes("cloudy")) return <Cloud size={size} color="#6b7280" strokeWidth={3} />;
-  if (c.includes("rain") || c.includes("shower")) return <CloudRain size={size} color="#3b82f6" strokeWidth={3} />;
-  if (c.includes("storm") || c.includes("thunder")) return <CloudLightning size={size} color="#7c3aed" strokeWidth={3} />;
-  if (c.includes("snow")) return <CloudSnow size={size} color="#0ea5e9" strokeWidth={3} />;
-  if (c.includes("fog") || c.includes("mist")) return <CloudFog size={size} color="#94a3b8" strokeWidth={3} />;
-  return <Sun size={size} color="#f59e0b" strokeWidth={3} />;
+  const props = { size, strokeWidth: 2, fill: "currentColor" };
+  
+  if (c.includes("sunny") || c.includes("clear")) return <Sun {...props} color="#f59e0b" fill="#f59e0b" />;
+  if (c.includes("partly") || c.includes("mostly sunny")) return <CloudSun {...props} color="#f59e0b" fill="#f59e0b" />;
+  if (c.includes("cloudy")) return <Cloud {...props} color="#6b7280" fill="#6b7280" />;
+  if (c.includes("rain") || c.includes("shower")) return <CloudRain {...props} color="#3b82f6" fill="#3b82f6" />;
+  if (c.includes("storm") || c.includes("thunder")) return <CloudLightning {...props} color="#7c3aed" fill="#7c3aed" />;
+  if (c.includes("snow")) return <CloudSnow {...props} color="#0ea5e9" fill="#0ea5e9" />;
+  if (c.includes("fog") || c.includes("mist")) return <CloudFog {...props} color="#94a3b8" fill="#94a3b8" />;
+  return <Sun {...props} color="#f59e0b" fill="#f59e0b" />;
 }
 
 export default function ForecastCard({
@@ -41,7 +43,7 @@ export default function ForecastCard({
   type DayType = NonNullable<ForecastObj["days"]>[number];
 
   const days = (data?.forecast?.days ?? []) as DayType[];
-  const upcoming = days.slice(0, 4); // Show 4 days
+  const upcoming = days.slice(0, 6); // Show 6 days
 
   return (
     <div

@@ -41,7 +41,7 @@ export default function SolarChart({
   const chartData = history.map((h) => ({ ...h, atLabel: formatTime(h.at) }));
 
   return (
-    <div style={{ width: width ?? "100%", height: height ?? 400 }}>
+    <div style={{ width: width ?? 740, height: height ?? 600 }}>
       <ChartContainer
         id="solar"
         config={{ 
@@ -49,53 +49,53 @@ export default function SolarChart({
           uv: { label: "UV", color: "#dc2626" }
         }}
       >
-        <Recharts.ResponsiveContainer width="100%" height="100%">
-          <Recharts.LineChart
-            data={chartData}
-            margin={{ top: 10, right: 40, left: 10, bottom: 40 }}
-          >
-            <Recharts.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ccc" />
-            <Recharts.XAxis
-              dataKey="atLabel"
-              tick={{ fontSize: 20, fill: "black" }}
-              interval={Math.floor(chartData.length / 6)}
-              dy={15}
-            />
-            <Recharts.YAxis
-              yAxisId="left"
-              tick={{ fontSize: 20, fill: "black" }}
-              width={80}
-              tickFormatter={(value) => `${value}W`}
-            />
-            <Recharts.YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 20, fill: "#dc2626" }}
-              width={50}
-              domain={[0, 'auto']}
-              tickFormatter={(value) => `${value}`}
-            />
-            <Recharts.Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="wh"
-              stroke="#0000ff"
-              dot={false}
-              strokeWidth={6}
-              animationDuration={0}
-            />
-            <Recharts.Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="uv"
-              stroke="#dc2626"
-              dot={false}
-              strokeWidth={4}
-              strokeDasharray="5 5"
-              animationDuration={0}
-            />
-          </Recharts.LineChart>
-        </Recharts.ResponsiveContainer>
+        <Recharts.LineChart
+          width={width ?? 740}
+          height={height ?? 600}
+          data={chartData}
+          margin={{ top: 10, right: 40, left: 10, bottom: 40 }}
+        >
+          <Recharts.CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ccc" />
+          <Recharts.XAxis
+            dataKey="atLabel"
+            tick={{ fontSize: 20, fill: "black" }}
+            interval={Math.floor(chartData.length / 6)}
+            dy={15}
+          />
+          <Recharts.YAxis
+            yAxisId="left"
+            tick={{ fontSize: 20, fill: "black" }}
+            width={80}
+            tickFormatter={(value) => `${value}W`}
+          />
+          <Recharts.YAxis
+            yAxisId="right"
+            orientation="right"
+            tick={{ fontSize: 20, fill: "#dc2626" }}
+            width={50}
+            domain={[0, 'auto']}
+            tickFormatter={(value) => `${value}`}
+          />
+          <Recharts.Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="wh"
+            stroke="#0000ff"
+            dot={false}
+            strokeWidth={6}
+            animationDuration={0}
+          />
+          <Recharts.Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="uv"
+            stroke="#dc2626"
+            dot={false}
+            strokeWidth={4}
+            strokeDasharray="5 5"
+            animationDuration={0}
+          />
+        </Recharts.LineChart>
       </ChartContainer>
     </div>
   );
