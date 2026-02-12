@@ -1,5 +1,9 @@
-use crate::types::{ApiState, AppError};
+use crate::{
+    actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
+    types::{ApiState, AppError},
+};
 use axum::{Json, extract::State};
+use http::StatusCode;
 use open_feature::EvaluationContext;
 use serde::{Deserialize, Serialize};
 
@@ -32,6 +36,16 @@ pub async fn config(
                 .await,
         ),
     })
+}
+
+pub async fn take_screenshot() -> Result<StatusCode, AppError> {
+    let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME.to_string());
+    if let Some(actor) = maybe_actor {
+        actor.send_message(EInkDisplayMessage::TakeScreenshot)?;
+        Ok(StatusCode::CREATED)
+    } else {
+        Ok(StatusCode::INTERNAL_SERVER_ERROR)
+    }
 }
 
 pub async fn latest(

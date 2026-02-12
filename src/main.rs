@@ -193,6 +193,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/solar", post(solar))
         .route("/epd/config", get(epd::config))
         .route("/epd/latest", get(epd::latest))
+        .route("/epd/take-screenshot", post(epd::take_screenshot))
         .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
