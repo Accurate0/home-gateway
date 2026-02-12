@@ -42,6 +42,7 @@ jobs:
       - name: Output html
         id: html
         run: echo "epd_index=$(cat ./dist/index.html)" >> "$GITHUB_OUTPUT"
+        working-directory: eink-display-web
 
   upload-object:
     needs: [build]
