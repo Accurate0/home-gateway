@@ -1,7 +1,7 @@
 ARG BINARY_NAME
 ARG HOME_GATEWAY_API_SECRET
 
-FROM rust:1.90.0-slim-bookworm AS builder
+FROM rust:1.93.0-slim-bookworm AS builder
 ARG BINARY_NAME
 
 RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc nasm
