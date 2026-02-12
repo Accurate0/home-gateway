@@ -1,5 +1,6 @@
 import { graphql, useFragment } from "react-relay";
 import type { ForecastCard_weather$key } from "./__generated__/ForecastCard_weather.graphql";
+import { Sun, Cloud, CloudRain, CloudLightning, CloudSnow, CloudFog, CloudSun } from "lucide-react";
 
 const ForecastFragment = graphql`
   fragment ForecastCard_weather on WeatherObject {
@@ -16,6 +17,18 @@ const ForecastFragment = graphql`
     }
   }
 `;
+
+function WeatherIcon({ code, size = 64 }: { code: string; size?: number }) {
+  const c = code.toLowerCase();
+  if (c.includes("sunny") || c.includes("clear")) return <Sun size={size} color="#f59e0b" />;
+  if (c.includes("partly") || c.includes("mostly sunny")) return <CloudSun size={size} color="#f59e0b" />;
+  if (c.includes("cloudy")) return <Cloud size={size} color="#6b7280" />;
+  if (c.includes("rain") || c.includes("shower")) return <CloudRain size={size} color="#3b82f6" />;
+  if (c.includes("storm") || c.includes("thunder")) return <CloudLightning size={size} color="#7c3aed" />;
+  if (c.includes("snow")) return <CloudSnow size={size} color="#0ea5e9" />;
+  if (c.includes("fog") || c.includes("mist")) return <CloudFog size={size} color="#94a3b8" />;
+  return <Sun size={size} color="#f59e0b" />;
+}
 
 export default function ForecastCard({
   weatherRef,
@@ -50,8 +63,8 @@ export default function ForecastCard({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <div style={{ fontSize: 64, width: 80, textAlign: "center", display: "flex", justifyContent: "center" }}>
-              {d.emoji ?? "☀️"}
+            <div style={{ width: 80, display: "flex", justifyContent: "center" }}>
+              <WeatherIcon code={d.code} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
               <div style={{ fontSize: 32, fontWeight: 700 }}>

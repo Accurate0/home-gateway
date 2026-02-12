@@ -125,21 +125,8 @@
 /* Fixed-size app container: center the 1600x1200 UI in the viewport */
 html,
 body {
+  margin: 0;
+  padding: 0;
   height: 100%;
-}
-
-#root {
-  width: 1600px;
-  height: 1200px;
-  box-sizing: border-box;
-  overflow: hidden;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: white;
 }

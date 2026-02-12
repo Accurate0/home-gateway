@@ -11,8 +11,8 @@ pub struct LatestTemperatureDataLoader {
 #[derive(Clone)]
 pub struct TemperatureModel {
     #[allow(unused)]
-    pub event_id: Uuid,
-    pub id: String,
+    pub id: Uuid,
+    pub entity_id: String,
     pub name: String,
     #[allow(unused)]
     pub ieee_addr: String,
@@ -21,6 +21,10 @@ pub struct TemperatureModel {
     pub battery: Option<i64>,
     pub humidity: f64,
     pub pressure: Option<f64>,
+    #[allow(unused)]
+    pub pm25: Option<i64>,
+    #[allow(unused)]
+    pub voc_index: Option<i64>,
     pub time: DateTime<Utc>,
 }
 
@@ -33,10 +37,10 @@ impl Loader<String> for LatestTemperatureDataLoader {
 
         let results = sqlx::query_as!(
             TemperatureModel,
-            r#"SELECT event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, time
-            FROM (SELECT id as latest_id, max(time)
-                FROM temperature_sensor WHERE id = ANY($1) GROUP BY id) as latest_state
-            INNER JOIN temperature_sensor ON temperature_sensor.id = latest_state.latest_id
+            r#"
+            SELECT id, entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, updated_at as time
+            FROM latest_temperature_sensor
+            WHERE entity_id = ANY($1)
             "#,
             keys
         )
@@ -44,7 +48,7 @@ impl Loader<String> for LatestTemperatureDataLoader {
         .await?;
 
         for result in results {
-            map.insert(result.id.clone(), result);
+            map.insert(result.entity_id.clone(), result);
         }
 
         Ok(map)

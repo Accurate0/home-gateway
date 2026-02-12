@@ -2,6 +2,7 @@ use crate::{
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
+use chrono::Utc;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -33,65 +34,111 @@ impl TemperatureSensorHandler {
     pub const NAME: &str = "temperature-sensor";
 
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
-        let settings = self.shared_actor_state.settings.load();
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
-                    let id = settings
-                        .temperature_sensors
-                        .get(&aqara_wsdcgq12_lm.device.ieee_addr)
-                        .map(|s| &s.id);
-
-                    sqlx::query!(
-                        "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                    self.save_temperature_details(
                         event.event_id,
-                        id,
                         aqara_wsdcgq12_lm.device.friendly_name,
                         aqara_wsdcgq12_lm.device.ieee_addr,
                         aqara_wsdcgq12_lm.temperature,
-                        aqara_wsdcgq12_lm.battery,
+                        Some(aqara_wsdcgq12_lm.battery),
                         aqara_wsdcgq12_lm.humidity,
-                        aqara_wsdcgq12_lm.pressure,
-                    ).execute(&self.shared_actor_state.db).await?;
+                        Some(aqara_wsdcgq12_lm.pressure),
+                        None,
+                        None,
+                    )
+                    .await?;
                 }
                 Entity::LumiWSDCGQ11LM(lumi_wsdcgq11_lm) => {
-                    let id = settings
-                        .temperature_sensors
-                        .get(&lumi_wsdcgq11_lm.device.ieee_addr)
-                        .map(|s| &s.id);
-
-                    sqlx::query!(
-                        "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                    self.save_temperature_details(
                         event.event_id,
-                        id,
                         lumi_wsdcgq11_lm.device.friendly_name,
                         lumi_wsdcgq11_lm.device.ieee_addr,
                         lumi_wsdcgq11_lm.temperature,
-                        lumi_wsdcgq11_lm.battery,
+                        Some(lumi_wsdcgq11_lm.battery),
                         lumi_wsdcgq11_lm.humidity,
-                        lumi_wsdcgq11_lm.pressure,
-                    ).execute(&self.shared_actor_state.db).await?;
+                        Some(lumi_wsdcgq11_lm.pressure),
+                        None,
+                        None,
+                    )
+                    .await?;
                 }
                 Entity::IKEAE2112(ikea_e2112) => {
-                    let id = settings
-                        .temperature_sensors
-                        .get(&ikea_e2112.device.ieee_addr)
-                        .map(|s| &s.id);
-
-                    sqlx::query!(
-                        "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, pm25, humidity, voc_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                    self.save_temperature_details(
                         event.event_id,
-                        id,
                         ikea_e2112.device.friendly_name,
                         ikea_e2112.device.ieee_addr,
                         ikea_e2112.temperature as f64,
-                        ikea_e2112.pm25,
+                        None,
                         ikea_e2112.humidity as f64,
-                        ikea_e2112.voc_index
-                    ).execute(&self.shared_actor_state.db).await?;
+                        None,
+                        Some(ikea_e2112.pm25),
+                        Some(ikea_e2112.voc_index),
+                    )
+                    .await?;
                 }
             },
         }
+
+        Ok(())
+    }
+
+    async fn save_temperature_details(
+        &self,
+        event_id: Uuid,
+        friendly_name: String,
+        ieee_addr: String,
+        temperature: f64,
+        battery: Option<i64>,
+        humidity: f64,
+        pressure: Option<f64>,
+        pm25: Option<i64>,
+        voc_index: Option<i64>,
+    ) -> Result<(), anyhow::Error> {
+        let settings = self.shared_actor_state.settings.load();
+        let id = settings.temperature_sensors.get(&ieee_addr).map(|s| &s.id);
+        let now = Utc::now();
+
+        sqlx::query!(
+            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            event_id,
+            id,
+            friendly_name,
+            ieee_addr,
+            temperature,
+            battery,
+            humidity,
+            pressure,
+            pm25,
+            voc_index,
+        ).execute(&self.shared_actor_state.db).await?;
+
+        sqlx::query!(
+            r#"INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (entity_id)
+            DO UPDATE SET
+                name = EXCLUDED.name,
+                ieee_addr = EXCLUDED.ieee_addr,
+                temperature = EXCLUDED.temperature,
+                battery = EXCLUDED.battery,
+                humidity = EXCLUDED.humidity,
+                pressure = EXCLUDED.pressure,
+                pm25 = EXCLUDED.pm25,
+                voc_index = EXCLUDED.voc_index,
+                updated_at = EXCLUDED.updated_at
+            "#,
+            id,
+            friendly_name,
+            ieee_addr,
+            temperature,
+            battery,
+            humidity,
+            pressure,
+            pm25,
+            voc_index,
+            now,
+        ).execute(&self.shared_actor_state.db).await?;
 
         Ok(())
     }
