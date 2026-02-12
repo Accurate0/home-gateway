@@ -19,10 +19,10 @@ pub async fn config(
 ) -> Json<EpdConfig> {
     Json(EpdConfig {
         refresh_interval_mins: Some(15),
-        // #[cfg(debug_assertions)]
+        #[cfg(debug_assertions)]
         image_url: Some("http://192.168.0.104:8000/v1/epd/latest".to_string()),
-        // #[cfg(not(debug_assertions))]
-        // image_url: Some("https://home.anurag.sh/v1/epd/latest".to_string()),
+        #[cfg(not(debug_assertions))]
+        image_url: Some("https://home.anurag.sh/v1/epd/latest".to_string()),
         clear_screen: Some(
             feature_flag_client
                 .is_feature_enabled(
