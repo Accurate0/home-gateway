@@ -33,6 +33,7 @@ use routes::{
     ingest::{home::alarm::alarm, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
+use rustls::crypto::{CryptoProvider, aws_lc_rs};
 use settings::{IEEEAddress, SettingsContainer};
 use sqlx::{
     ConnectOptions, Pool, Postgres,
@@ -109,6 +110,7 @@ async fn init_actors(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    aws_lc_rs::default_provider().install_default().unwrap();
     tracing_setup::init()?;
 
     let settings_container = SettingsContainer::new()?;
