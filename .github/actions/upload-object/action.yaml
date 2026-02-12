@@ -1,0 +1,124 @@
+name: "upload-object"
+description: "Uploads an object to the registry"
+inputs:
+  key-id:
+    description: "The Key ID for JWT"
+    required: true
+  private-key:
+    description: "The Private Key for JWT"
+    required: true
+  namespace:
+    description: "The namespace"
+    required: true
+  object-name:
+    description: "The object name"
+    required: true
+  object-path:
+    description: "The path to the object file"
+    required: false
+  object-content:
+    description: "The content of the object as a string"
+    required: false
+  api-url:
+    description: "The API URL"
+    required: false
+    default: "https://object-registry.inf-k8s.net/v1"
+  public:
+    description: "Whether the object is public"
+    required: false
+    default: "false"
+  labels:
+    description: "Labels in key=value format, comma or newline separated"
+    required: false
+  content-type:
+    description: "The content type of the object"
+    required: false
+  issuer:
+    description: "The JWT issuer"
+    required: false
+    default: "github-action"
+
+runs:
+  using: "composite"
+  steps:
+    - name: upload object
+      shell: bash
+      env:
+        KEY_ID: ${{ inputs.key-id }}
+        PRIVATE_KEY: ${{ inputs.private-key }}
+        NAMESPACE: ${{ inputs.namespace }}
+        OBJECT_NAME: ${{ inputs.object-name }}
+        OBJECT_PATH: ${{ inputs.object-path }}
+        OBJECT_CONTENT: ${{ inputs.object-content }}
+        API_URL: ${{ inputs.api-url }}
+        PUBLIC: ${{ inputs.public }}
+        LABELS: ${{ inputs.labels }}
+        CONTENT_TYPE: ${{ inputs.content-type }}
+        ISSUER: ${{ inputs.issuer }}
+      run: |
+        set -e
+
+        # Write private key to a temporary file
+        PK_FILE=$(mktemp)
+        trap 'rm -f "$PK_FILE"' EXIT
+        echo "$PRIVATE_KEY" > "$PK_FILE"
+
+        # Handle object content vs path
+        if [ -n "$OBJECT_CONTENT" ]; then
+          TEMP_OBJECT_FILE=$(mktemp)
+          trap 'rm -f "$PK_FILE" "$TEMP_OBJECT_FILE"' EXIT
+          echo -n "$OBJECT_CONTENT" > "$TEMP_OBJECT_FILE"
+          OBJECT_PATH="$TEMP_OBJECT_FILE"
+        elif [ -z "$OBJECT_PATH" ]; then
+          echo "Error: Either object-path or object-content must be provided."
+          exit 1
+        fi
+
+        # Prepare JWT
+        iat=$(date +%s)
+        exp=$((iat + 900))
+
+        header_json=$(printf '{"alg":"RS256","typ":"JWT","kid":"%s"}' "$KEY_ID")
+        claims_json=$(printf '{"iat":%d,"exp":%d,"aud":"object-registry","iss":"%s","sub":"object-registry","role":["SERVICE"]}' "$iat" "$exp" "$ISSUER")
+
+        base64_url_encode() {
+          openssl enc -base64 -A | tr '+/' '-_' | tr -d '='
+        }
+
+        header_base64=$(echo -n "$header_json" | base64_url_encode)
+        claims_base64=$(echo -n "$claims_json" | base64_url_encode)
+
+        payload="${header_base64}.${claims_base64}"
+        signature=$(echo -n "$payload" | openssl dgst -sha256 -sign "$PK_FILE" | base64_url_encode)
+
+        JWT="${payload}.${signature}"
+
+        # Prepare curl command
+        URL="${API_URL%/}"
+        if [ "$PUBLIC" = "true" ]; then
+          URL="${URL}/${NAMESPACE}/public/${OBJECT_NAME}"
+        else
+          URL="${URL}/${NAMESPACE}/${OBJECT_NAME}"
+        fi
+
+        # Build curl arguments
+        CURL_OPTS=("-s" "-f" "-X" "PUT" "-H" "Authorization: Bearer $JWT")
+
+        if [ -n "$CONTENT_TYPE" ]; then
+          CURL_OPTS+=("-H" "Content-Type: $CONTENT_TYPE")
+        fi
+
+        # Re-implementing label accumulation to ensure it persists outside the loop
+        LABEL_HEADERS=()
+        if [ -n "$LABELS" ]; then
+          while IFS= read -r label; do
+            if [[ "$label" == *"="* ]]; then
+              key=$(echo "$label" | cut -d'=' -f1 | xargs)
+              val=$(echo "$label" | cut -d'=' -f2- | xargs)
+              LABEL_HEADERS+=("-H" "x-label-$key: $val")
+            fi
+          done <<< "$(echo "$LABELS" | tr ',' '')"
+        fi
+
+        # Execute curl
+        curl "${CURL_OPTS[@]}" "${LABEL_HEADERS[@]}" --data-binary @"$OBJECT_PATH" "$URL"

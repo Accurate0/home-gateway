@@ -33,7 +33,7 @@ use routes::{
     ingest::{home::alarm::alarm, maccas::maccas, synergy::synergy},
     schema::schema as schema_route,
 };
-use rustls::crypto::{CryptoProvider, aws_lc_rs};
+use rustls::crypto::aws_lc_rs;
 use settings::{IEEEAddress, SettingsContainer};
 use sqlx::{
     ConnectOptions, Pool, Postgres,
