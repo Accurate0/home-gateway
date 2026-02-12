@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      epd-index: ${{ steps.html.outputs.epd_index }}
 
     steps:
       - name: Checkout repository
@@ -35,12 +37,20 @@ jobs:
       - name: Build
         run: pnpm run build
         working-directory: eink-display-web
+        env:
+          VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_SECRET }}
 
-      - name: Update Config
-        uses: Accurate0/workflows/.github/workflows/upload-object.yaml@main
-        with:
-          key-id: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
-          private-key: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
-          namespace: "home-gateway"
-          object-name: "index.html"
-          object-path: "./dist/index.html"
+      - name: Output html
+        id: html
+        run: echo "epd_index=$(cat ./dist/index.html)" >> "$GITHUB_OUTPUT"
+
+  upload-object:
+    needs: [build]
+    uses: Accurate0/workflows/.github/workflows/upload-object.yaml@main
+    with:
+      namespace: "home-gateway"
+      object-name: "index.html"
+      object-content: ${{ jobs.build.outputs.epd-index }}
+    secrets:
+      KEY_ID: ${{ secrets.OBJECT_REGISTRY_GHA_KEY_ID }}
+      PRIVATE_KEY: ${{ secrets.OBJECT_REGISTRY_GHA_PRIVATE_KEY }}
