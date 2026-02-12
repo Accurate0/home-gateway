@@ -72,7 +72,7 @@ impl Mqtt {
         username: String,
         password: String,
     ) -> Result<(MqttClient, Self), MqttError> {
-        let client_id = if cfg!(debug_assertions) {
+        let client_id = if !cfg!(debug_assertions) {
             "home-gateway-dev"
         } else {
             "home-gateway"

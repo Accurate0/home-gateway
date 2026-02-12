@@ -1,5 +1,6 @@
 use crate::types::{ApiState, AppError};
 use axum::{Json, extract::State};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use open_feature::EvaluationContext;
 use serde::{Deserialize, Serialize};
 
@@ -18,10 +19,10 @@ pub async fn config(
 ) -> Json<EpdConfig> {
     Json(EpdConfig {
         refresh_interval_mins: Some(15),
-        #[cfg(debug_assertions)]
+        // #[cfg(debug_assertions)]
         image_url: Some("http://192.168.0.104:8000/v1/epd/latest".to_string()),
-        #[cfg(not(debug_assertions))]
-        image_url: Some("https://home.anurag.sh/v1/epd/latest".to_string()),
+        // #[cfg(not(debug_assertions))]
+        // image_url: Some("https://home.anurag.sh/v1/epd/latest".to_string()),
         clear_screen: Some(
             feature_flag_client
                 .is_feature_enabled(
@@ -36,17 +37,16 @@ pub async fn config(
 
 pub async fn latest(
     State(ApiState {
-        bucket_accessor, ..
+        object_registry, ..
     }): State<ApiState>,
 ) -> Result<Vec<u8>, AppError> {
-    let image_bytes = bucket_accessor
-        .eink_display()
-        .get_object("/image.png")
-        .await?
-        .into_bytes();
+    let image_response = object_registry
+        .get_object::<String>("home-gateway", "image.png", None, false)
+        .await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
-        let mut img = image::load_from_memory(&image_bytes)?.to_rgb8();
+        let mut img =
+            image::load_from_memory(&BASE64_STANDARD.decode(image_response.payload)?)?.to_rgb8();
         let (width, height) = img.dimensions();
 
         if width == 1600 && height == 1200 {

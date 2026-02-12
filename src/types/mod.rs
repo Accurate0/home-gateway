@@ -1,6 +1,5 @@
 use crate::{
     actors::event_handler,
-    bucket::S3BucketAccessor,
     delayqueue::DelayQueueError,
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
@@ -21,8 +20,9 @@ pub mod db;
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
     pub mqtt: MqttClient,
+    #[allow(unused)]
+    pub object_registry: object_registry::ApiClient,
     pub settings: SettingsContainer,
-    pub bucket_accessor: S3BucketAccessor,
     pub feature_flag_client: FeatureFlagClient,
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
 }
@@ -33,7 +33,6 @@ pub struct ApiState {
     pub schema: FinalSchema,
     #[allow(unused)]
     pub object_registry: object_registry::ApiClient,
-    pub bucket_accessor: S3BucketAccessor,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]
     pub settings: SettingsContainer,
@@ -50,11 +49,14 @@ pub enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
-            AppError::Error(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Something went wrong: {}", e),
-            )
-                .into_response(),
+            AppError::Error(e) => {
+                tracing::error!("Something went wrong: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Something went wrong: {}", e),
+                )
+                    .into_response()
+            }
             AppError::StatusCode(s) => {
                 (s, s.canonical_reason().unwrap_or("").to_owned()).into_response()
             }

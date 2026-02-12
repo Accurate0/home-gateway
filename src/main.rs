@@ -16,7 +16,6 @@ use axum::{
     middleware::from_extractor_with_state,
     routing::{get, post},
 };
-use bucket::S3BucketAccessor;
 use delayqueue::DelayQueue;
 use discord::start_discord;
 use feature_flag::FeatureFlagClient;
@@ -53,7 +52,6 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod auth;
-mod bucket;
 mod delayqueue;
 mod discord;
 mod feature_flag;
@@ -75,8 +73,8 @@ mod zigbee2mqtt;
 
 async fn init_actors(
     settings: SettingsContainer,
-    bucket_accessor: S3BucketAccessor,
     feature_flag_client: FeatureFlagClient,
+    object_registry: object_registry::ApiClient,
     mqtt_client: MqttClient,
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
@@ -86,7 +84,7 @@ async fn init_actors(
         settings,
         db,
         mqtt: mqtt_client,
-        bucket_accessor,
+        object_registry,
         feature_flag_client,
         known_devices_map,
     };
@@ -115,22 +113,6 @@ async fn main() -> anyhow::Result<()> {
 
     let settings_container = SettingsContainer::new()?;
     let settings = settings_container.load_full();
-
-    let eink_display_bucket_credentials = s3::creds::Credentials::new(
-        Some(&settings.aws_access_key_id),
-        Some(&settings.aws_secret_access_key),
-        None,
-        None,
-        None,
-    )?;
-
-    let eink_display_bucket = s3::Bucket::new(
-        "home-gateway-image-bucket",
-        s3::Region::ApSoutheast2,
-        eink_display_bucket_credentials,
-    )?;
-
-    let bucket_accessor = S3BucketAccessor::new(eink_display_bucket);
 
     let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?
         .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(6));
@@ -161,10 +143,16 @@ async fn main() -> anyhow::Result<()> {
     let reminder_delayqueue =
         DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
 
+    let object_registry_api_client = object_registry::ApiClient::new(
+        settings.object_registry_private_key.clone(),
+        settings.object_registry_key_id.clone(),
+        "home-gateway/api",
+    );
+
     let event_handler_actor = init_actors(
         settings_container.clone(),
-        bucket_accessor.clone(),
         feature_flag_client.clone(),
+        object_registry_api_client.clone(),
         mqtt_client,
         pool.clone(),
         known_devices_map,
@@ -187,17 +175,10 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(AllowHeaders::any());
 
-    let object_registry_api_client = object_registry::ApiClient::new(
-        settings.object_registry_private_key.clone(),
-        settings.object_registry_key_id.clone(),
-        "home-gateway/api",
-    );
-
     let api_state = ApiState {
         feature_flag_client,
         object_registry: object_registry_api_client,
         event_handler: event_handler_actor.clone(),
-        bucket_accessor,
         schema,
         settings: settings_container.clone(),
         db: pool.clone(),

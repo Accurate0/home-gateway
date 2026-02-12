@@ -65,6 +65,7 @@ arc-swap = { version = "1.8.1", features = ["serde"] }
 serde_yaml = "0.9.34"
 object-registry = { git = "https://github.com/Accurate0/inf-k8s" }
 rustls = { version = "0.23", features = ["aws-lc-rs"] }
+base64 = "0.22.1"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

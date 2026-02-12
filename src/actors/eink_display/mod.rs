@@ -1,4 +1,5 @@
 use crate::types::SharedActorState;
+use base64::{Engine, prelude::BASE64_STANDARD};
 use chromiumoxide::{
     Browser, BrowserConfig, browser::HeadlessMode,
     cdp::browser_protocol::page::CaptureScreenshotFormat, handler::viewport::Viewport,
@@ -7,6 +8,7 @@ use chromiumoxide::{
 use futures::StreamExt;
 use ractor::Actor;
 use std::time::Duration;
+use tokio::{fs::File, io::AsyncWriteExt};
 
 pub mod types;
 
@@ -21,7 +23,8 @@ pub struct EInkDisplayActor {
 impl EInkDisplayActor {
     pub const NAME: &str = "eink_display";
     #[cfg(not(debug_assertions))]
-    pub const INDEX_PATH: &str = "file:///app/einkweb/index.html";
+    pub const INDEX_PATH: &str = "file:///tmp/index.html";
+    pub const INDEX_FS_PATH: &str = "/tmp/index.html";
     #[cfg(debug_assertions)]
     pub const INDEX_PATH: &str =
         "file:///home/anurag/Projects/home-gateway/eink-display-web/dist/index.html";
@@ -58,6 +61,19 @@ impl Actor for EInkDisplayActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             EInkDisplayMessage::TakeScreenshot => {
+                if !cfg!(debug_assertions) {
+                    let index_html_file = self
+                        .shared_actor_state
+                        .object_registry
+                        .get_object::<String>("home-gateway", "index.html", None, false)
+                        .await?;
+
+                    tracing::info!("index fetched: {:?}", index_html_file.metadata);
+                    let decoded_index = BASE64_STANDARD.decode(index_html_file.payload)?;
+                    let mut index_file = File::create(Self::INDEX_FS_PATH).await?;
+                    index_file.write_all(&decoded_index).await?;
+                }
+
                 tracing::info!("starting browser");
                 let (mut browser, mut handler) = Browser::launch(
                     BrowserConfig::builder()
@@ -103,12 +119,11 @@ impl Actor for EInkDisplayActor {
                     )
                     .await?;
 
-                let eink_display_bucket = self.shared_actor_state.bucket_accessor.eink_display();
-                eink_display_bucket
-                    .put_object_builder("/image.png", &image)
-                    .with_content_type("image/png")
-                    .execute()
+                self.shared_actor_state
+                    .object_registry
+                    .put_object("home-gateway", "image.png", None, false, &image, None)
                     .await?;
+
                 tracing::info!("screenshot uploaded");
 
                 browser.close().await?;
