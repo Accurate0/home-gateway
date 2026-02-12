@@ -65,13 +65,12 @@ export default function SolarChart({
             tick={{ fontSize: 20, fill: "black" }}
             interval={Math.floor(chartData.length / 6)}
             tickFormatter={(value: Date) => {
-              const newDate = new Date(value);
               return new Intl.DateTimeFormat("en-AU", {
                 timeZone: "Australia/Perth",
                 hour: "2-digit",
                 minute: "2-digit",
                 hour12: false,
-              }).format(newDate);
+              }).format(value);
             }}
             dy={15}
           />
@@ -118,7 +117,7 @@ export default function SolarChart({
 function formatTime(at: string) {
   try {
     const d = new Date(at);
-    return d;
+    return d.setUTCHours(d.getUTCHours() + 8);
   } catch {
     return at;
   }
