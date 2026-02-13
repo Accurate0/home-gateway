@@ -27,104 +27,100 @@ pub enum Parameters {
 #[serde(rename_all = "camelCase")]
 pub struct DisconnectParameters {
     #[serde(rename = "UNIFIcategory")]
-    pub unificategory: String,
+    pub unificategory: Option<String>,
     #[serde(rename = "UNIFIclientAlias")]
-    pub unificlient_alias: String,
+    pub unificlient_alias: Option<String>,
     #[serde(rename = "UNIFIclientHostname")]
-    pub unificlient_hostname: String,
+    pub unificlient_hostname: Option<String>,
     #[serde(rename = "UNIFIclientIp")]
-    pub unificlient_ip: String,
+    pub unificlient_ip: Option<String>,
     #[serde(rename = "UNIFIclientMac")]
     pub unificlient_mac: String,
     #[serde(rename = "UNIFIduration")]
-    pub unifiduration: String,
+    pub unifiduration: Option<String>,
     #[serde(rename = "UNIFIhost")]
-    pub unifihost: String,
+    pub unifihost: Option<String>,
     #[serde(rename = "UNIFIlastConnectedToDeviceIp")]
-    pub unifilast_connected_to_device_ip: String,
+    pub unifilast_connected_to_device_ip: Option<String>,
     #[serde(rename = "UNIFIlastConnectedToDeviceMac")]
-    pub unifilast_connected_to_device_mac: String,
+    pub unifilast_connected_to_device_mac: Option<String>,
     #[serde(rename = "UNIFIlastConnectedToDeviceModel")]
-    pub unifilast_connected_to_device_model: String,
+    pub unifilast_connected_to_device_model: Option<String>,
     #[serde(rename = "UNIFIlastConnectedToDeviceName")]
-    pub unifilast_connected_to_device_name: String,
+    pub unifilast_connected_to_device_name: Option<String>,
     #[serde(rename = "UNIFIlastConnectedToDeviceVersion")]
-    pub unifilast_connected_to_device_version: String,
+    pub unifilast_connected_to_device_version: Option<String>,
     #[serde(rename = "UNIFIlastConnectedToWiFiRssi")]
-    pub unifilast_connected_to_wi_fi_rssi: String,
+    pub unifilast_connected_to_wi_fi_rssi: Option<String>,
     #[serde(rename = "UNIFInetworkName")]
-    pub unifinetwork_name: String,
+    pub unifinetwork_name: Option<String>,
     #[serde(rename = "UNIFInetworkSubnet")]
-    pub unifinetwork_subnet: String,
+    pub unifinetwork_subnet: Option<String>,
     #[serde(rename = "UNIFInetworkVlan")]
-    pub unifinetwork_vlan: String,
-    #[serde(rename = "UNIFIsubCategory")]
-    pub unifisub_category: String,
+    pub unifinetwork_vlan: Option<String>,
     #[serde(rename = "UNIFIusageDown")]
-    pub unifiusage_down: String,
+    pub unifiusage_down: Option<String>,
     #[serde(rename = "UNIFIusageUp")]
-    pub unifiusage_up: String,
+    pub unifiusage_up: Option<String>,
     #[serde(rename = "UNIFIutcTime")]
-    pub unifiutc_time: String,
+    pub unifiutc_time: Option<String>,
     #[serde(rename = "UNIFIwifiAirtimeUtilization")]
-    pub unifiwifi_airtime_utilization: String,
+    pub unifiwifi_airtime_utilization: Option<String>,
     #[serde(rename = "UNIFIwifiBand")]
-    pub unifiwifi_band: String,
+    pub unifiwifi_band: Option<String>,
     #[serde(rename = "UNIFIwifiChannel")]
-    pub unifiwifi_channel: String,
+    pub unifiwifi_channel: Option<String>,
     #[serde(rename = "UNIFIwifiChannelWidth")]
-    pub unifiwifi_channel_width: String,
+    pub unifiwifi_channel_width: Option<String>,
     #[serde(rename = "UNIFIwifiInterference")]
-    pub unifiwifi_interference: String,
+    pub unifiwifi_interference: Option<String>,
     #[serde(rename = "UNIFIwifiName")]
-    pub unifiwifi_name: String,
+    pub unifiwifi_name: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectParameters {
     #[serde(rename = "UNIFIWiFiRssi")]
-    pub unifiwi_fi_rssi: String,
+    pub unifiwi_fi_rssi: Option<String>,
     #[serde(rename = "UNIFIauthMethod")]
-    pub unifiauth_method: String,
+    pub unifiauth_method: Option<String>,
     #[serde(rename = "UNIFIcategory")]
-    pub unificategory: String,
+    pub unificategory: Option<String>,
     #[serde(rename = "UNIFIclientAlias")]
-    pub unificlient_alias: String,
+    pub unificlient_alias: Option<String>,
     #[serde(rename = "UNIFIclientHostname")]
-    pub unificlient_hostname: String,
+    pub unificlient_hostname: Option<String>,
     #[serde(rename = "UNIFIclientIp")]
-    pub unificlient_ip: String,
+    pub unificlient_ip: Option<String>,
     #[serde(rename = "UNIFIclientMac")]
     pub unificlient_mac: String,
     #[serde(rename = "UNIFIconnectedToDeviceIp")]
-    pub unificonnected_to_device_ip: String,
+    pub unificonnected_to_device_ip: Option<String>,
     #[serde(rename = "UNIFIconnectedToDeviceMac")]
-    pub unificonnected_to_device_mac: String,
+    pub unificonnected_to_device_mac: Option<String>,
     #[serde(rename = "UNIFIconnectedToDeviceModel")]
-    pub unificonnected_to_device_model: String,
+    pub unificonnected_to_device_model: Option<String>,
     #[serde(rename = "UNIFIconnectedToDeviceName")]
-    pub unificonnected_to_device_name: String,
+    pub unificonnected_to_device_name: Option<String>,
     #[serde(rename = "UNIFIconnectedToDeviceVersion")]
-    pub unificonnected_to_device_version: String,
+    pub unificonnected_to_device_version: Option<String>,
     #[serde(rename = "UNIFIhost")]
-    pub unifihost: String,
+    pub unifihost: Option<String>,
     #[serde(rename = "UNIFInetworkName")]
-    pub unifinetwork_name: String,
+    pub unifinetwork_name: Option<String>,
     #[serde(rename = "UNIFInetworkSubnet")]
-    pub unifinetwork_subnet: String,
+    pub unifinetwork_subnet: Option<String>,
     #[serde(rename = "UNIFInetworkVlan")]
-    pub unifinetwork_vlan: String,
-    #[serde(rename = "UNIFIsubCategory")]
-    pub unifisub_category: String,
+    pub unifinetwork_vlan: Option<String>,
     #[serde(rename = "UNIFIutcTime")]
-    pub unifiutc_time: String,
+    pub unifiutc_time: Option<String>,
     #[serde(rename = "UNIFIwifiBand")]
-    pub unifiwifi_band: String,
+    pub unifiwifi_band: Option<String>,
     #[serde(rename = "UNIFIwifiChannel")]
-    pub unifiwifi_channel: String,
+    pub unifiwifi_channel: Option<String>,
     #[serde(rename = "UNIFIwifiChannelWidth")]
-    pub unifiwifi_channel_width: String,
+    pub unifiwifi_channel_width: Option<String>,
     #[serde(rename = "UNIFIwifiName")]
-    pub unifiwifi_name: String,
+    pub unifiwifi_name: Option<String>,
 }
