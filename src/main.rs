@@ -1,6 +1,6 @@
 use crate::routes::{
     epd,
-    ingest::{solar::solar, unifi::unifi},
+    ingest::{object_registry::object_registry, solar::solar, unifi::unifi},
     workflow::execute::workflow_execute,
 };
 use ::http::Method;
@@ -201,6 +201,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
+        .route("/ingest/object-registry", post(object_registry))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &::http::Request<Body>| {
