@@ -47,3 +47,4 @@ jobs:
           namespace: "home-gateway"
           object-name: "index.html"
           object-path: "./eink-display-web/dist/index.html"
+          content-type: text/html
