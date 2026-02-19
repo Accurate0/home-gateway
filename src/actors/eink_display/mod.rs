@@ -66,7 +66,7 @@ impl Actor for EInkDisplayActor {
                     let index_html_file = self
                         .shared_actor_state
                         .object_registry
-                        .get_object::<Vec<u8>>("home-gateway", "index.html", None, false)
+                        .get_object::<Vec<u8>>("home-gateway", "index.html")
                         .await?;
 
                     tracing::info!("index fetched: {:?}", index_html_file.metadata);
@@ -128,7 +128,7 @@ impl Actor for EInkDisplayActor {
 
                 self.shared_actor_state
                     .object_registry
-                    .put_object("home-gateway", "image.png", None, false, &image, None)
+                    .put_object("home-gateway", "image.png", &image, None)
                     .await?;
 
                 tracing::info!("screenshot uploaded");

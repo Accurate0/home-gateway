@@ -54,7 +54,7 @@ pub async fn latest(
     }): State<ApiState>,
 ) -> Result<Vec<u8>, AppError> {
     let image_response = object_registry
-        .get_object::<Vec<u8>>("home-gateway", "image.png", None, false)
+        .get_object::<Vec<u8>>("home-gateway", "image.png")
         .await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
