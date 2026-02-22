@@ -7,6 +7,7 @@ use chromiumoxide::{
     page::ScreenshotParams,
 };
 use futures::StreamExt;
+use object_registry::OptionalObjectResponse;
 use ractor::Actor;
 use std::time::Duration;
 use tokio::{fs::File, io::AsyncWriteExt};
@@ -31,9 +32,41 @@ impl EInkDisplayActor {
         "file:///home/anurag/Projects/home-gateway/eink-display-web/dist/index.html";
 }
 
+pub struct EInkActorState {
+    index_html_etag: Option<String>,
+}
+
+impl EInkDisplayActor {
+    async fn save_index_if_new(
+        &self,
+        state: &mut EInkActorState,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let etag = state.index_html_etag.as_ref().map(|s| s.as_str());
+        let optional_index = self
+            .shared_actor_state
+            .object_registry
+            .get_object_optional::<Vec<u8>>("home-gateway", "index.html", etag)
+            .await?;
+
+        match optional_index {
+            OptionalObjectResponse::ExistingObjectIsValid => {
+                tracing::info!("304 from server, not replacing file");
+            }
+            OptionalObjectResponse::ObjectUpdated(object_response) => {
+                tracing::info!("index fetched: {:?}", object_response.metadata);
+                let mut index_file = File::create(Self::INDEX_FS_PATH).await?;
+                index_file.write_all(&object_response.payload).await?;
+                state.index_html_etag = Some(object_response.metadata.checksum);
+            }
+        };
+
+        Ok(())
+    }
+}
+
 impl Actor for EInkDisplayActor {
     type Msg = EInkDisplayMessage;
-    type State = ();
+    type State = EInkActorState;
     type Arguments = ();
 
     async fn pre_start(
@@ -50,28 +83,22 @@ impl Actor for EInkDisplayActor {
             EInkDisplayMessage::TakeScreenshot
         });
 
-        Ok(())
+        Ok(EInkActorState {
+            index_html_etag: None,
+        })
     }
 
-    #[tracing::instrument(name = "eink-display-actor", skip(self, _myself, message, _state))]
+    #[tracing::instrument(name = "eink-display-actor", skip(self, _myself, message, state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
         message: Self::Msg,
-        _state: &mut Self::State,
+        state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             EInkDisplayMessage::TakeScreenshot => {
                 if !cfg!(debug_assertions) {
-                    let index_html_file = self
-                        .shared_actor_state
-                        .object_registry
-                        .get_object::<Vec<u8>>("home-gateway", "index.html")
-                        .await?;
-
-                    tracing::info!("index fetched: {:?}", index_html_file.metadata);
-                    let mut index_file = File::create(Self::INDEX_FS_PATH).await?;
-                    index_file.write_all(&index_html_file.payload).await?;
+                    self.save_index_if_new(state).await?;
                 }
 
                 tracing::info!("starting browser");
