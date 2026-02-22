@@ -57,11 +57,6 @@ function getLocalMidnightISO() {
 }
 
 function ProductChip({ name, price }: { name: string; price: number }) {
-  const isRedBull = name.toLowerCase().includes("red bull");
-  const isMother = name.toLowerCase().includes("mother");
-
-  const bgColor = isRedBull ? "#dbeafe" : isMother ? "#fee2e2" : "white";
-
   return (
     <div
       style={{
@@ -69,9 +64,8 @@ function ProductChip({ name, price }: { name: string; price: number }) {
         flexDirection: "column",
         gap: 4,
         padding: "20px 28px",
-        backgroundColor: bgColor,
+        backgroundColor: "white",
         flex: 1,
-        borderRadius: 8,
       }}
     >
       <div
@@ -85,7 +79,7 @@ function ProductChip({ name, price }: { name: string; price: number }) {
       >
         {name}
       </div>
-      <div style={{ fontSize: 48, fontWeight: 900, color: "#16a34a" }}>
+      <div style={{ fontSize: 48, fontWeight: 900, color: "black" }}>
         ${price.toFixed(2)}
       </div>
     </div>
@@ -101,11 +95,11 @@ export default function App() {
   const uvLevel = data?.solar?.current?.uvLevel ?? 0;
   const outdoorTemp = data?.environment?.outdoor?.temperature ?? 20;
 
-  const getUVBackgroundColor = (uv: number) => {
-    if (uv <= 2) return "#dcfce7"; // Light Green
-    if (uv <= 5) return "#ffedd5"; // Light Orange
-    if (uv <= 7) return "#fee2e2"; // Light Red
-    return "#fecaca"; // Light Deep Red
+  const getUVColor = (uv: number) => {
+    if (uv <= 2) return "#16a34a"; // Green
+    if (uv <= 5) return "#f97316"; // Orange
+    if (uv <= 7) return "#dc2626"; // Red
+    return "#991b1b"; // Deep Red
   };
 
   const lastUpdated = new Intl.DateTimeFormat("en-AU", {
@@ -187,9 +181,6 @@ export default function App() {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              backgroundColor: getUVBackgroundColor(uvLevel),
-              padding: "12px 24px",
-              borderRadius: 12,
             }}
           >
             <div
@@ -197,7 +188,7 @@ export default function App() {
                 fontSize: 80,
                 fontWeight: 900,
                 lineHeight: 1,
-                color: "black",
+                color: getUVColor(uvLevel),
               }}
             >
               {uvLevel.toFixed(1)}
@@ -206,7 +197,7 @@ export default function App() {
               style={{
                 fontSize: 28,
                 fontWeight: 800,
-                color: "black",
+                color: getUVColor(uvLevel),
                 textTransform: "uppercase",
                 letterSpacing: 1,
                 marginTop: 8,
@@ -295,7 +286,7 @@ export default function App() {
                 <div
                   style={{ fontSize: 24, fontWeight: 700, color: "#4b5563" }}
                 >
-                  TODAY TOTAL
+                  TOTAL
                 </div>
                 <div style={{ fontSize: 64, fontWeight: 800 }}>
                   {data?.solar?.current?.todayProductionKwh?.toFixed(1) ?? "--"}{" "}
@@ -333,7 +324,7 @@ export default function App() {
             <div
               style={{
                 marginTop: 32,
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: 800,
                 color: "black",
                 textTransform: "uppercase",
