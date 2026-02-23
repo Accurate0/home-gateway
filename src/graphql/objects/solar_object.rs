@@ -1,4 +1,4 @@
-use crate::http::get_http_client;
+use crate::http::get_traced_http_client;
 use async_graphql::{InputObject, Object, SimpleObject};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use http::Method;
@@ -62,7 +62,7 @@ impl SolarObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<SolarCurrentResponse> {
         let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
-        let client = get_http_client()?;
+        let client = get_traced_http_client()?;
 
         let url = format!("{api_base}/current");
         let response = client
@@ -81,7 +81,7 @@ impl SolarObject {
         input: SolarHistoryInput,
     ) -> async_graphql::Result<Vec<GenerationHistory>> {
         let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
-        let client = get_http_client()?;
+        let client = get_traced_http_client()?;
 
         let url = format!("{api_base}/v2/history");
         let response = client

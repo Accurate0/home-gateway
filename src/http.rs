@@ -41,7 +41,7 @@ pub enum HttpCreationError {
     ReqwestBuilderError(#[from] reqwest::Error),
 }
 
-pub fn wrap_client_in_middleware(
+pub fn wrap_client_in_middleware_no_tracing(
     client: reqwest::Client,
 ) -> Result<ClientWithMiddleware, HttpCreationError> {
     Ok(ClientBuilder::new(client)
@@ -50,10 +50,12 @@ pub fn wrap_client_in_middleware(
         .build())
 }
 
-pub fn get_http_client() -> Result<ClientWithMiddleware, HttpCreationError> {
-    wrap_client_in_middleware(
+pub fn get_traced_http_client() -> Result<ClientWithMiddleware, HttpCreationError> {
+    Ok(ClientBuilder::new(
         reqwest::ClientBuilder::new()
             .timeout(Duration::from_secs(30))
             .build()?,
     )
+    .with(TracingMiddleware::<TimeTrace>::new())
+    .build())
 }

@@ -4,7 +4,7 @@ use tracing::instrument;
 use types::WoolworthsTrackedProduct;
 
 use crate::{
-    actors::woolworths::WoolworthsMessage, http::wrap_client_in_middleware,
+    actors::woolworths::WoolworthsMessage, http::wrap_client_in_middleware_no_tracing,
     woolworths::types::WoolworthsProductResponse,
 };
 
@@ -42,7 +42,7 @@ impl Woolworths {
 
         Self {
             db,
-            client: wrap_client_in_middleware(
+            client: wrap_client_in_middleware_no_tracing(
                 reqwest::ClientBuilder::new()
                     .default_headers(headers)
                     .cookie_store(true)

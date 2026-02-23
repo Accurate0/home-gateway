@@ -1,4 +1,4 @@
-use crate::http::get_http_client;
+use crate::http::get_traced_http_client;
 use async_graphql::{Object, SimpleObject};
 use http::Method;
 use serde::{Deserialize, Serialize};
@@ -30,7 +30,7 @@ impl WeatherObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Forecast> {
         let api_base = std::env::var("BOM_API_BASE").unwrap();
-        let client = get_http_client()?;
+        let client = get_traced_http_client()?;
 
         let url = format!("{api_base}/forecast");
         let response = client

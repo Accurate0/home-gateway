@@ -1,7 +1,4 @@
-use crate::{
-    http::get_http_client,
-    types::SharedActorState,
-};
+use crate::{http::get_traced_http_client, types::SharedActorState};
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, FactoryMessage, queues, routing},
@@ -22,7 +19,7 @@ pub async fn spawn_selfbot(
         queues::DefaultQueue<(), SelfBotMessage>,
     >::default();
 
-    let client = get_http_client()?;
+    let client = get_traced_http_client()?;
 
     let door_handler_factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(SelfBotWorkerBuilder {
