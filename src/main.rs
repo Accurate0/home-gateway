@@ -12,10 +12,10 @@ use actors::{
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireApiKey;
 use axum::{
-    body::Body,
     middleware::from_extractor_with_state,
     routing::{get, post},
 };
+use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use delayqueue::DelayQueue;
 use discord::start_discord;
 use feature_flag::FeatureFlagClient;
@@ -41,12 +41,7 @@ use sqlx::{
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tokio_util::sync::CancellationToken;
-use tower_http::{
-    LatencyUnit,
-    cors::{AllowHeaders, AllowOrigin, CorsLayer},
-    trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
-};
-use tracing::Level;
+use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
 
@@ -197,23 +192,12 @@ async fn main() -> anyhow::Result<()> {
         .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
-        .route("/health", get(health))
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
         .route("/ingest/object-registry", post(object_registry))
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &::http::Request<Body>| {
-                    tracing::info_span!("api", uri = request.uri().to_string())
-                })
-                .on_request(DefaultOnRequest::new().level(Level::INFO))
-                .on_response(
-                    DefaultOnResponse::new()
-                        .level(Level::INFO)
-                        .latency_unit(LatencyUnit::Millis),
-                ),
-        )
+        .layer(OtelAxumLayer::default())
+        .route("/health", get(health))
         .layer(cors)
         .with_state(api_state);
 

@@ -66,6 +66,7 @@ arc-swap = { version = "1.8.2", features = ["serde"] }
 serde_yaml = "0.9.34"
 object-registry = { git = "https://github.com/Accurate0/inf-k8s" }
 rustls = { version = "0.23", features = ["aws-lc-rs"] }
+axum-tracing-opentelemetry = "0.33.0"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
