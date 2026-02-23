@@ -114,7 +114,6 @@ async fn main() -> anyhow::Result<()> {
 
     let pool = PgPoolOptions::new()
         .min_connections(0)
-        .max_connections(20)
         .connect_with(pg_connect_options)
         .await?;
 
