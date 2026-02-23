@@ -2,6 +2,7 @@ use async_graphql::dataloader::Loader;
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, sync::Arc};
+use tracing::Instrument;
 use uuid::Uuid;
 
 pub struct LatestTemperatureDataLoader {
@@ -45,6 +46,7 @@ impl Loader<String> for LatestTemperatureDataLoader {
             keys
         )
         .fetch_all(&self.database)
+        .instrument(tracing::info_span!("bulk-get-temperature"))
         .await?;
 
         for result in results {
