@@ -51,6 +51,7 @@ mod delayqueue;
 mod discord;
 mod feature_flag;
 mod graphql;
+mod graphql_tracing;
 mod http;
 mod mqtt;
 mod notify;
@@ -162,6 +163,7 @@ async fn main() -> anyhow::Result<()> {
             tokio::spawn,
         ))
         .data(pool.clone())
+        .extension(crate::graphql_tracing::Tracing)
         .finish();
 
     let cors = CorsLayer::new()

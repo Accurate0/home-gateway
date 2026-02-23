@@ -72,6 +72,9 @@ serde_yaml = "0.9.34"
 object-registry = { git = "https://github.com/Accurate0/inf-k8s" }
 rustls = { version = "0.23", features = ["aws-lc-rs"] }
 axum-tracing-opentelemetry = "0.33.0"
+futures-util = "0.3.32"
+tracing-futures = "0.2.5"
+async-trait = "0.1.89"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
