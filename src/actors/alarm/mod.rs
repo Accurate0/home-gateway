@@ -12,6 +12,7 @@ use ractor::{
     factory::{FactoryMessage, Job, JobOptions},
 };
 use std::time::Duration;
+use tracing::Level;
 use types::AndroidAppAlarmPayload;
 use uuid::Uuid;
 
@@ -51,7 +52,7 @@ impl Actor for AlarmActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "alarm-actor", skip(self, _myself, message, _state))]
+    #[tracing::instrument(name = "alarm-actor", skip(self, _myself, message, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

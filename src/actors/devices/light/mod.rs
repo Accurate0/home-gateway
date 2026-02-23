@@ -12,6 +12,7 @@ use ractor::{
     ActorProcessingErr, ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
+use tracing::Level;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -205,7 +206,7 @@ impl Worker for LightHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "light", skip(self, _wid, _factory, msg, _state))]
+    #[tracing::instrument(name = "light", skip(self, _wid, _factory, msg, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _wid: WorkerId,

@@ -8,6 +8,7 @@ use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
+use tracing::Level;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -115,7 +116,7 @@ impl Worker for ControlSwitchHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "control-switch", skip(self, _wid, _factory, msg, _state))]
+    #[tracing::instrument(name = "control-switch", skip(self, _wid, _factory, msg, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _wid: WorkerId,

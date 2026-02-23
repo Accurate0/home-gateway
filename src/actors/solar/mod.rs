@@ -1,5 +1,6 @@
 use crate::{routes::ingest::solar::SolarIngestPayload, types::SharedActorState};
 use ractor::Actor;
+use tracing::Level;
 
 pub enum SolarMessage {
     NewData(SolarIngestPayload),
@@ -27,7 +28,7 @@ impl Actor for SolarIngestActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "solar-ingest", skip(self, _myself, message, _state))]
+    #[tracing::instrument(name = "solar-ingest", skip(self, _myself, message, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

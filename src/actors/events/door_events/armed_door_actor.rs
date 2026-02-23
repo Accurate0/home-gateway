@@ -7,6 +7,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use ractor::Actor;
 use std::collections::HashMap;
+use tracing::Level;
 
 pub enum DoorState {
     Open,
@@ -53,7 +54,7 @@ impl Actor for ArmedDoor {
         })
     }
 
-    #[tracing::instrument(name = "armed-door-actor", skip(self, myself, message, state))]
+    #[tracing::instrument(name = "armed-door-actor", skip(self, myself, message, state), level = Level::TRACE)]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

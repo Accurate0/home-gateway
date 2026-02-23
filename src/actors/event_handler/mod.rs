@@ -55,7 +55,7 @@ pub struct EventHandler {
 impl EventHandler {
     pub const NAME: &str = "event-handler";
 
-    #[tracing::instrument(name = "handle_control_switch", skip_all)]
+    #[tracing::instrument(name = "handle_control_switch", skip_all, level = Level::TRACE)]
     fn handle_control_switch(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -95,7 +95,7 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_presence_sensor", skip_all)]
+    #[tracing::instrument(name = "handle_presence_sensor", skip_all, level = Level::TRACE)]
     fn handle_presence_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -149,7 +149,7 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_temperature_sensor", skip_all)]
+    #[tracing::instrument(name = "handle_temperature_sensor", skip_all, level = Level::TRACE)]
     fn handle_temperature_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -203,7 +203,7 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_door_sensor", skip_all)]
+    #[tracing::instrument(name = "handle_door_sensor", skip_all, level = Level::TRACE)]
     fn handle_door_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -230,7 +230,7 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_light", skip_all)]
+    #[tracing::instrument(name = "handle_light", skip_all, level = Level::TRACE)]
     fn handle_light(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -444,7 +444,7 @@ impl Worker for EventHandler {
         if let Err(e) = Self::handle(self, msg)
             .instrument(tracing::span!(
                 parent: None,
-                Level::INFO,
+                Level::TRACE,
                 "event-handler",
                 "otel.name" = "event-handler",
             ))

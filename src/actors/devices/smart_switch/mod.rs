@@ -7,6 +7,7 @@ use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
+use tracing::Level;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -126,7 +127,7 @@ impl Worker for SmartSwitchHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "smart-switch", skip(self, _wid, _factory, msg, _state))]
+    #[tracing::instrument(name = "smart-switch", skip(self, _wid, _factory, msg, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _wid: WorkerId,

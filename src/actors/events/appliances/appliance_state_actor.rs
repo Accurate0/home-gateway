@@ -6,6 +6,7 @@ use crate::{
 };
 use ractor::Actor;
 use std::{collections::HashMap, time::Duration};
+use tracing::Level;
 
 use super::ApplianceEvents;
 
@@ -143,7 +144,7 @@ impl Actor for ApplianceState {
         })
     }
 
-    #[tracing::instrument(name = "appliance-state-actor", skip(self, _myself, message, state))]
+    #[tracing::instrument(name = "appliance-state-actor", skip(self, _myself, message, state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
