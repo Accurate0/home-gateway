@@ -109,7 +109,7 @@ async fn init_actors(
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     aws_lc_rs::default_provider().install_default().unwrap();
-    tracing_setup::init()?;
+    tracing_setup::init();
 
     let settings_container = SettingsContainer::new()?;
     let settings = settings_container.load_full();
