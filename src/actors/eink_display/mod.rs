@@ -11,6 +11,7 @@ use object_registry::OptionalObjectResponse;
 use ractor::Actor;
 use std::time::Duration;
 use tokio::{fs::File, io::AsyncWriteExt};
+use tracing::Level;
 
 pub mod types;
 
@@ -88,7 +89,7 @@ impl Actor for EInkDisplayActor {
         })
     }
 
-    #[tracing::instrument(name = "eink-display-actor", skip(self, _myself, message, state))]
+    #[tracing::instrument(name = "eink-display-actor", skip(self, _myself, message, state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
