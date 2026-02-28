@@ -89,7 +89,6 @@ impl Actor for EInkDisplayActor {
         })
     }
 
-    #[tracing::instrument(name = "eink-display-actor", skip(self, _myself, message, state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

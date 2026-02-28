@@ -4,8 +4,7 @@ use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry_sdk::{
     Resource,
     propagation::TraceContextPropagator,
-    trace::BatchConfigBuilder,
-    trace::{BatchSpanProcessor, Tracer},
+    trace::{BatchConfigBuilder, BatchSpanProcessor, Tracer},
 };
 use opentelemetry_semantic_conventions::resource::{
     DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_NAME, TELEMETRY_SDK_LANGUAGE, TELEMETRY_SDK_NAME,

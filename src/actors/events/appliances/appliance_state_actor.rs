@@ -144,7 +144,6 @@ impl Actor for ApplianceState {
         })
     }
 
-    #[tracing::instrument(name = "appliance-state-actor", skip(self, _myself, message, state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

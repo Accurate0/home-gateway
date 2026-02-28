@@ -38,7 +38,6 @@ impl Worker for SelfBotWorker {
         Ok(())
     }
 
-    #[tracing::instrument(name = "selfbot", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,

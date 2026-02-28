@@ -116,7 +116,6 @@ impl Worker for ControlSwitchHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "control-switch", skip(self, _wid, _factory, msg, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _wid: WorkerId,

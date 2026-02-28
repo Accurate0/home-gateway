@@ -22,7 +22,7 @@ use ractor::{
     ActorCell, ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
-use tracing::{Instrument, Level};
+use tracing::Level;
 use types::{GenericZigbee2MqttMessage, TypedActorName};
 use uuid::Uuid;
 
@@ -55,7 +55,6 @@ pub struct EventHandler {
 impl EventHandler {
     pub const NAME: &str = "event-handler";
 
-    #[tracing::instrument(name = "handle_control_switch", skip_all, level = Level::TRACE)]
     fn handle_control_switch(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -95,7 +94,6 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_presence_sensor", skip_all, level = Level::TRACE)]
     fn handle_presence_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -122,7 +120,6 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_smart_switch", skip_all)]
     fn handle_smart_switch(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -149,7 +146,6 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_temperature_sensor", skip_all, level = Level::TRACE)]
     fn handle_temperature_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -203,7 +199,6 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_door_sensor", skip_all, level = Level::TRACE)]
     fn handle_door_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -230,7 +225,6 @@ impl EventHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "handle_light", skip_all, level = Level::TRACE)]
     fn handle_light(
         event_id: Uuid,
         actor_type: TypedActorName,
@@ -441,15 +435,7 @@ impl Worker for EventHandler {
         Job { msg, .. }: Job<(), Message>,
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg)
-            .instrument(tracing::span!(
-                parent: None,
-                Level::TRACE,
-                "event-handler",
-                "otel.name" = "event-handler",
-            ))
-            .await
-        {
+        if let Err(e) = Self::handle(self, msg).await {
             tracing::error!("error while handling message: {e}")
         }
 

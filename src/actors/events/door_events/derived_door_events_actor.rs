@@ -78,10 +78,6 @@ impl Actor for DerivedDoorEvents {
         })
     }
 
-    #[tracing::instrument(
-        name = "derived-door-events-actor",
-        skip(self, _myself, message, state)
-    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

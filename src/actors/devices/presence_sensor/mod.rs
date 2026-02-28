@@ -137,7 +137,6 @@ impl Worker for PresenceSensorHandler {
         })
     }
 
-    #[tracing::instrument(name = "presence-sensor", skip(self, _wid, _factory, msg, state))]
     async fn handle(
         &self,
         _wid: WorkerId,
