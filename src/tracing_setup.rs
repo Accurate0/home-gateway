@@ -27,7 +27,7 @@ pub fn external_tracer() -> Tracer {
         KeyValue::new(TELEMETRY_SDK_NAME, "otel-tracing-rs".to_string()),
         KeyValue::new(TELEMETRY_SDK_VERSION, env!("CARGO_PKG_VERSION").to_string()),
         KeyValue::new(TELEMETRY_SDK_LANGUAGE, "rust".to_string()),
-        KeyValue::new(SERVICE_NAME, format!("home-gateway")),
+        KeyValue::new(SERVICE_NAME, "home-gateway".to_string()),
         KeyValue::new(
             DEPLOYMENT_ENVIRONMENT_NAME,
             if cfg!(debug_assertions) {

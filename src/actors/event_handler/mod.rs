@@ -22,7 +22,6 @@ use ractor::{
     ActorCell, ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
-use tracing::Level;
 use types::{GenericZigbee2MqttMessage, TypedActorName};
 use uuid::Uuid;
 
@@ -387,12 +386,12 @@ impl EventHandler {
                 match payload.name.as_str() {
                     "WiFi Client Connected" => {
                         actor.send_message(UnifiMessage::ClientConnect {
-                            mac_address: mac_address,
+                            mac_address,
                         })?;
                     }
                     "WiFi Client Disconnected" => {
                         actor.send_message(UnifiMessage::ClientDisconnect {
-                            mac_address: mac_address,
+                            mac_address,
                         })?;
                     }
                     unknown => tracing::warn!("unknown webhook event: {unknown}"),

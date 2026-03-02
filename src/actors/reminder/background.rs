@@ -27,15 +27,14 @@ pub async fn reminder_background(
                 }
 
                 let msg = msg.unwrap();
-                if let Some(actor) = maybe_actor {
-                    if let Err(e) = actor.send_message(ReminderActorMessage::TriggerReminder {
+                if let Some(actor) = maybe_actor
+                    && let Err(e) = actor.send_message(ReminderActorMessage::TriggerReminder {
                         message: msg.message.message,
                         channel_id: msg.message.channel_id,
                         user_id: vec![msg.message.user_id],
                     }) {
                         tracing::error!("error sending actor message: {e}");
                     }
-                }
 
                 reminder_delayqueue.archive(msg.msg_id).await?;
             }

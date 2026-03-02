@@ -64,7 +64,7 @@ reqwest-middleware = { version = "0.5.1", features = ["json", "query"] }
 reqwest-tracing = { version = "0.7.0", features = ["opentelemetry_0_31"] }
 regex = "1.12.3"
 lazy_static = "1.5.0"
-chromiumoxide = "0.8.0"
+chromiumoxide = "0.9.1"
 image = "0.25.9"
 futures.workspace = true
 arc-swap = { version = "1.8.2", features = ["serde"] }

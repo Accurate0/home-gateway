@@ -7,7 +7,6 @@ use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
-use tracing::Level;
 use uuid::Uuid;
 
 pub mod spawn;

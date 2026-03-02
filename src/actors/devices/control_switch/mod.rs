@@ -8,7 +8,6 @@ use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
-use tracing::Level;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -79,7 +78,7 @@ impl ControlSwitchHandler {
                 }
                 Entity::AqaraSingleButton(aqara_wxkg11_lm) => {
                     // ignore empty action
-                    if aqara_wxkg11_lm.action == "" {
+                    if aqara_wxkg11_lm.action.is_empty() {
                         return Ok(());
                     }
 

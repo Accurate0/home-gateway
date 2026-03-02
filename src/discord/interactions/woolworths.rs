@@ -60,8 +60,7 @@ impl WoolworthsCommand {
         tracing::error!("trying product id: {product_id:?}");
         let product_id = product_id
             .get(1)
-            .map(|p| p.as_str().parse::<i64>().ok())
-            .flatten();
+            .and_then(|p| p.as_str().parse::<i64>().ok());
 
         if product_id.is_none() {
             tracing::error!("failed to parse as integer");
@@ -72,7 +71,7 @@ impl WoolworthsCommand {
             return Ok(());
         }
 
-        let product_id = product_id.unwrap() as i64;
+        let product_id = product_id.unwrap();
         let interaction_author_vec = vec![interaction.author_id().unwrap().get() as i64];
         let interaction_author_id = interaction_author_vec.as_slice();
         let channel_id = interaction.channel.unwrap().id.get() as i64;

@@ -15,8 +15,7 @@ pub async fn object_registry(
 ) -> Result<StatusCode, AppError> {
     let bearer_token = headers
         .get(AUTHORIZATION)
-        .map(|t| t.to_str().ok())
-        .flatten()
+        .and_then(|t| t.to_str().ok())
         .map(|t| t.replace("Bearer ", ""))
         .unwrap_or("".to_owned());
 

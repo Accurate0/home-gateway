@@ -6,7 +6,6 @@ use crate::{
 };
 use ractor::Actor;
 use std::{collections::HashMap, time::Duration};
-use tracing::Level;
 
 use super::ApplianceEvents;
 

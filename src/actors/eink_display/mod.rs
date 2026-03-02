@@ -1,7 +1,6 @@
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
-    browser::HeadlessMode,
     cdp::browser_protocol::{emulation::SetLocaleOverrideParams, page::CaptureScreenshotFormat},
     handler::viewport::Viewport,
     page::ScreenshotParams,
@@ -11,7 +10,6 @@ use object_registry::OptionalObjectResponse;
 use ractor::Actor;
 use std::time::Duration;
 use tokio::{fs::File, io::AsyncWriteExt};
-use tracing::Level;
 
 pub mod types;
 
@@ -42,7 +40,7 @@ impl EInkDisplayActor {
         &self,
         state: &mut EInkActorState,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        let etag = state.index_html_etag.as_ref().map(|s| s.as_str());
+        let etag = state.index_html_etag.as_deref();
         let optional_index = self
             .shared_actor_state
             .object_registry
@@ -104,7 +102,7 @@ impl Actor for EInkDisplayActor {
                 tracing::info!("starting browser");
                 let (mut browser, mut handler) = Browser::launch(
                     BrowserConfig::builder()
-                        .headless_mode(HeadlessMode::New)
+                        .new_headless_mode()
                         .arg("--disable-crash-reporter")
                         .arg("--no-crashpad")
                         .arg("--no-sandbox")
