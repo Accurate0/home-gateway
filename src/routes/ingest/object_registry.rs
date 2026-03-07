@@ -1,5 +1,8 @@
 use crate::{
-    actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
+    actors::{
+        eink_display::{EInkDisplayActor, EInkDisplayMessage},
+        synergy::{SynergyActor, SynergyMessage},
+    },
     types::{ApiState, AppError},
 };
 use axum::{Json, extract::State};
@@ -27,17 +30,34 @@ pub async fn object_registry(
         return Ok(StatusCode::UNAUTHORIZED);
     }
 
-    if object_registry_payload.key == "index.html"
-        && object_registry_payload.metadata.namespace == "home-gateway"
-    {
-        let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME.to_string());
-        if let Some(actor) = maybe_actor {
-            actor.send_message(EInkDisplayMessage::TakeScreenshot)?;
-            Ok(StatusCode::CREATED)
-        } else {
-            Ok(StatusCode::INTERNAL_SERVER_ERROR)
+    if object_registry_payload.metadata.namespace != "home-gateway" {
+        return Ok(StatusCode::METHOD_NOT_ALLOWED);
+    };
+
+    match object_registry_payload.key.as_str() {
+        "index.html" => {
+            let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME.to_string());
+            if let Some(actor) = maybe_actor {
+                actor.send_message(EInkDisplayMessage::TakeScreenshot)?;
+                Ok(StatusCode::CREATED)
+            } else {
+                Ok(StatusCode::INTERNAL_SERVER_ERROR)
+            }
         }
-    } else {
-        Ok(StatusCode::NO_CONTENT)
+        "synergy.csv" => {
+            let maybe_actor = ractor::registry::where_is(SynergyActor::NAME.to_string());
+            if let Some(actor) = maybe_actor {
+                let object = object_registry
+                    .get_object::<Vec<u8>>("home-gateway", "synergy.csv")
+                    .await?;
+
+                actor.send_message(SynergyMessage::NewUpload(object.payload.into()))?;
+
+                Ok(StatusCode::CREATED)
+            } else {
+                Ok(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+        _ => Ok(StatusCode::NOT_FOUND),
     }
 }
