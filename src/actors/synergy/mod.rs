@@ -59,6 +59,7 @@ impl Actor for SynergyActor {
                     let _ = cursor.skip_until(b'\n');
                 }
 
+                let mut count = 0;
                 let mut rdr = csv::Reader::from_reader(cursor);
                 for result in rdr.deserialize() {
                     let record: Result<CsvRecord, csv::Error> = result;
@@ -77,12 +78,19 @@ impl Actor for SynergyActor {
                                 )
                                 .execute(&self.shared_actor_state.db)
                                 .await?;
+
+                            tracing::info!("record: {count} added");
+                            count += 1;
                         }
                         Err(e) => {
-                            tracing::warn!("skipping because of {e}")
+                            tracing::info!("record: {count} skipped");
+                            tracing::warn!("skipping because of {e}");
+                            count += 1;
                         }
                     }
                 }
+
+                tracing::info!("processing completed");
             }
         }
 
