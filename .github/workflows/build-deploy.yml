@@ -4,8 +4,9 @@ on:
     branches:
       - main
     paths-ignore:
-      - config.yaml
-      - .github/workflows/upload-config.yml
+      - eink-display-web/**
+      - eink-display-firmware/**
+      - HomeGateway/**
   workflow_dispatch:
 
 jobs:
