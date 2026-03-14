@@ -37,7 +37,7 @@ thiserror = "2.0.18"
 tokio-util = "0.7.18"
 tower = { version = "0.5.3", features = ["load-shed"] }
 uuid = { version = "1.21.0", features = ["v4"] }
-open-feature = "0.2.7"
+open-feature = "0.3.0"
 open-feature-flipt = { git = "https://github.com/open-feature/rust-sdk-contrib.git" }
 twilight-cache-inmemory = "0.17.1"
 twilight-gateway = "0.17.1"
