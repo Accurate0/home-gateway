@@ -144,6 +144,12 @@ async fn main() -> anyhow::Result<()> {
         "home-gateway/api",
     );
 
+    let object_registry_api_client = if let Some(ref base_url) = settings.object_registry_base_url {
+        object_registry_api_client.with_base_url(base_url)
+    } else {
+        object_registry_api_client
+    };
+
     let event_handler_actor = init_actors(
         settings_container.clone(),
         feature_flag_client.clone(),

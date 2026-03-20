@@ -151,6 +151,7 @@ pub struct Settings {
     pub presence_sensors: HashMap<IEEEAddress, PresenceSettings>,
     pub object_registry_key_id: String,
     pub object_registry_private_key: String,
+    pub object_registry_base_url: Option<String>,
 }
 
 #[derive(Clone)]
