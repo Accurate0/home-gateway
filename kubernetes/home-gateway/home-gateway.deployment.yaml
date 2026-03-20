@@ -40,8 +40,6 @@ spec:
               value: http://bom-api.bom.svc.cluster.local:8000
             - name: OTEL_TRACING_URL
               value: http://monitoring-tempo.monitoring.svc.cluster.local:4318/v1/traces
-            - name: OBJECT_REGISTRY_BASE_URL
-              value: https://api.object-registry.svc.cluster.local
           envFrom:
             - secretRef:
                 name: home-gateway-managed-secrets
