@@ -9,7 +9,7 @@ use futures::StreamExt;
 use object_registry::OptionalObjectResponse;
 use ractor::Actor;
 use std::time::Duration;
-use tokio::{fs::File, io::AsyncWriteExt};
+use tokio::{fs::File, io::AsyncWriteExt, task::JoinHandle};
 
 pub mod types;
 
@@ -33,6 +33,9 @@ impl EInkDisplayActor {
 
 pub struct EInkActorState {
     index_html_etag: Option<String>,
+    browser: Browser,
+    #[allow(unused)]
+    browser_handle: JoinHandle<()>,
 }
 
 impl EInkDisplayActor {
@@ -82,9 +85,48 @@ impl Actor for EInkDisplayActor {
             EInkDisplayMessage::TakeScreenshot
         });
 
+        let (browser, mut handler) = Browser::launch(
+            BrowserConfig::builder()
+                .new_headless_mode()
+                .arg("--disable-crash-reporter")
+                .arg("--no-crashpad")
+                .arg("--no-sandbox")
+                .env("XDG_CONFIG_HOME", "/tmp/chromium")
+                .env("XDG_CACHE_HOME", "/tmp/chromium")
+                .viewport(Some(Viewport {
+                    width: 1600,
+                    height: 1200,
+                    device_scale_factor: None,
+                    emulating_mobile: true,
+                    is_landscape: true,
+                    has_touch: false,
+                }))
+                .build()?,
+        )
+        .await?;
+
+        let handle = tokio::spawn(async move {
+            while let Some(h) = handler.next().await {
+                if h.is_err() {
+                    break;
+                }
+            }
+        });
+
         Ok(EInkActorState {
+            browser,
             index_html_etag: None,
+            browser_handle: handle,
         })
+    }
+
+    async fn post_stop(
+        &self,
+        _myself: ractor::ActorRef<Self::Msg>,
+        state: &mut Self::State,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        state.browser.close().await?;
+        Ok(())
     }
 
     async fn handle(
@@ -99,41 +141,12 @@ impl Actor for EInkDisplayActor {
                     self.save_index_if_new(state).await?;
                 }
 
-                tracing::info!("starting browser");
-                let (mut browser, mut handler) = Browser::launch(
-                    BrowserConfig::builder()
-                        .new_headless_mode()
-                        .arg("--disable-crash-reporter")
-                        .arg("--no-crashpad")
-                        .arg("--no-sandbox")
-                        .env("XDG_CONFIG_HOME", "/tmp/chromium")
-                        .env("XDG_CACHE_HOME", "/tmp/chromium")
-                        .viewport(Some(Viewport {
-                            width: 1600,
-                            height: 1200,
-                            device_scale_factor: None,
-                            emulating_mobile: true,
-                            is_landscape: true,
-                            has_touch: false,
-                        }))
-                        .build()?,
-                )
-                .await?;
-                tracing::info!("browser started");
-
-                let handle = tokio::spawn(async move {
-                    while let Some(h) = handler.next().await {
-                        if h.is_err() {
-                            break;
-                        }
-                    }
-                });
-
-                let page = browser.new_page(Self::INDEX_PATH).await?;
+                let browser = &state.browser;
+                let original_page = browser.new_page(Self::INDEX_PATH).await?;
                 tracing::info!("navigating to page");
 
                 tracing::info!("setting locale and timezone");
-                let page = page.emulate_timezone("Australia/Perth").await?;
+                let page = original_page.emulate_timezone("Australia/Perth").await?;
                 let page = page
                     .emulate_locale(SetLocaleOverrideParams::builder().locale("en-AU").build())
                     .await?;
@@ -158,8 +171,7 @@ impl Actor for EInkDisplayActor {
 
                 tracing::info!("screenshot uploaded");
 
-                browser.close().await?;
-                handle.await?;
+                original_page.close().await?;
             }
         }
 
