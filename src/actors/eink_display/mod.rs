@@ -81,7 +81,7 @@ impl Actor for EInkDisplayActor {
             EInkDisplayMessage::TakeScreenshot
         });
 
-        let _join_handle = myself.send_interval(Duration::from_secs(300), || {
+        let _join_handle = myself.send_interval(Duration::from_secs(3600), || {
             EInkDisplayMessage::TakeScreenshot
         });
 
