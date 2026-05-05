@@ -16,5 +16,5 @@ RUN set -xe ;\
     apt update;\
     apt-get install -y timescaledb-2-postgresql-17;
 
-RUN pgxn install pgmq==1.5.1;
+RUN pgxn install pgmq==1.7.0;
 

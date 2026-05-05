@@ -43,7 +43,7 @@ impl Actor for MaccasActor {
                 for offer_to_try_match in &settings.maccas.offers {
                     let try_match = &offer_to_try_match.match_names;
                     let matched = try_match.iter().any(|m| name_to_match_on.contains(m));
-                    if matched {
+                    if matched && offer_to_try_match.enabled {
                         let message = format!("{name_to_match_on} available now");
                         notify(&offer_to_try_match.notify, message, true);
                     }

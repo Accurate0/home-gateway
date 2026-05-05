@@ -37,6 +37,7 @@ maccas:
     - matchNames:
         - "20pc McNuggets"
         - "24pc McNuggets"
+      enabled: false
       notify:
         - type: discord
           channelId: 886501248319250444
@@ -165,5 +166,18 @@ switches:
               ieeeAddr: "0x001788010381ef5d"
               state: STOP_COLOUR_TEMPERATURE
 
-      # arrow_left_click
-      # arrow_right_click
+      arrow_left_click:
+        workflow:
+          run:
+            - type: light
+              ieeeAddr: "0x001788010381ef5d"
+              state: SET_BRIGHTNESS
+              value: 50
+
+      arrow_right_click:
+        workflow:
+          run:
+            - type: light
+              ieeeAddr: "0x001788010381ef5d"
+              state: SET_BRIGHTNESS
+              value: 254

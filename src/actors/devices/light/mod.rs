@@ -52,7 +52,6 @@ pub enum LightHandlerMessage {
         ieee_addr: IEEEAddress,
         value: i64,
     },
-    #[allow(unused)]
     SetBrightness {
         ieee_addr: IEEEAddress,
         value: u64,

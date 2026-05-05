@@ -107,6 +107,8 @@ pub struct ReminderSettings {
 pub struct MaccasOfferSettings {
     pub match_names: Vec<String>,
     pub notify: Vec<NotifySource>,
+    #[serde(default)]
+    pub enabled: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
