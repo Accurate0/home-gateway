@@ -48,17 +48,14 @@ pub async fn take_screenshot() -> Result<StatusCode, AppError> {
     }
 }
 
-pub async fn latest(
-    State(ApiState {
-        object_registry, ..
-    }): State<ApiState>,
-) -> Result<Vec<u8>, AppError> {
-    let image_response = object_registry
-        .get_object::<Vec<u8>>("home-gateway", "image.png")
-        .await?;
+pub async fn latest(State(ApiState { .. }): State<ApiState>) -> Result<Vec<u8>, AppError> {
+    // let image_response = object_registry
+    //     .get_object::<Vec<u8>>("home-gateway", "image.png")
+    //     .await?;
+    let image_response = vec![];
 
     let output_packed = tokio::task::spawn_blocking(move || {
-        let mut img = image::load_from_memory(&image_response.payload)?.to_rgb8();
+        let mut img = image::load_from_memory(&image_response)?.to_rgb8();
         let (width, height) = img.dimensions();
 
         if width == 1600 && height == 1200 {

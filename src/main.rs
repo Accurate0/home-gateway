@@ -1,6 +1,6 @@
 use crate::routes::{
     epd,
-    ingest::{object_registry::object_registry, solar::solar, unifi::unifi},
+    ingest::{solar::solar, unifi::unifi},
     workflow::execute::workflow_execute,
 };
 use ::http::Method;
@@ -70,7 +70,6 @@ mod zigbee2mqtt;
 async fn init_actors(
     settings: SettingsContainer,
     feature_flag_client: FeatureFlagClient,
-    object_registry: object_registry::ApiClient,
     mqtt_client: MqttClient,
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
@@ -80,7 +79,6 @@ async fn init_actors(
         settings,
         db,
         mqtt: mqtt_client,
-        object_registry,
         feature_flag_client,
         known_devices_map,
     };
@@ -138,22 +136,9 @@ async fn main() -> anyhow::Result<()> {
     let reminder_delayqueue =
         DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
 
-    let object_registry_api_client = object_registry::ApiClient::new(
-        settings.object_registry_private_key.clone(),
-        settings.object_registry_key_id.clone(),
-        "home-gateway/api",
-    );
-
-    let object_registry_api_client = if let Some(ref base_url) = settings.object_registry_base_url {
-        object_registry_api_client.with_base_url(base_url)
-    } else {
-        object_registry_api_client
-    };
-
     let event_handler_actor = init_actors(
         settings_container.clone(),
         feature_flag_client.clone(),
-        object_registry_api_client.clone(),
         mqtt_client,
         pool.clone(),
         known_devices_map,
@@ -179,7 +164,6 @@ async fn main() -> anyhow::Result<()> {
 
     let api_state = ApiState {
         feature_flag_client,
-        object_registry: object_registry_api_client,
         event_handler: event_handler_actor.clone(),
         schema,
         settings: settings_container.clone(),
@@ -202,7 +186,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
-        .route("/ingest/object-registry", post(object_registry))
         .layer(OtelAxumLayer::default())
         .route("/health", get(health))
         .layer(cors)

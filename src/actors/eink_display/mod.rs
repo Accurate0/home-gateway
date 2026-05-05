@@ -6,10 +6,9 @@ use chromiumoxide::{
     page::ScreenshotParams,
 };
 use futures::StreamExt;
-use object_registry::OptionalObjectResponse;
 use ractor::Actor;
 use std::time::Duration;
-use tokio::{fs::File, io::AsyncWriteExt, task::JoinHandle};
+use tokio::task::JoinHandle;
 
 pub mod types;
 
@@ -43,25 +42,25 @@ impl EInkDisplayActor {
         &self,
         state: &mut EInkActorState,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        let etag = state.index_html_etag.as_deref();
-        let optional_index = self
-            .shared_actor_state
-            .object_registry
-            .get_object_optional::<Vec<u8>>("home-gateway", "index.html", etag)
-            .await?;
-
-        match optional_index {
-            OptionalObjectResponse::ExistingObjectIsValid => {
-                tracing::info!("304 from server, not replacing file");
-            }
-            OptionalObjectResponse::ObjectUpdated(object_response) => {
-                tracing::info!("index fetched: {:?}", object_response.metadata);
-                let mut index_file = File::create(Self::INDEX_FS_PATH).await?;
-                index_file.write_all(&object_response.payload).await?;
-                state.index_html_etag = Some(object_response.metadata.checksum);
-            }
-        };
-
+        //     let etag = state.index_html_etag.as_deref();
+        //     let optional_index = self
+        //         .shared_actor_state
+        //         .object_registry
+        //         .get_object_optional::<Vec<u8>>("home-gateway", "index.html", etag)
+        //         .await?;
+        //
+        //     match optional_index {
+        //         OptionalObjectResponse::ExistingObjectIsValid => {
+        //             tracing::info!("304 from server, not replacing file");
+        //         }
+        //         OptionalObjectResponse::ObjectUpdated(object_response) => {
+        //             tracing::info!("index fetched: {:?}", object_response.metadata);
+        //             let mut index_file = File::create(Self::INDEX_FS_PATH).await?;
+        //             index_file.write_all(&object_response.payload).await?;
+        //             state.index_html_etag = Some(object_response.metadata.checksum);
+        //         }
+        //     };
+        //
         Ok(())
     }
 }
@@ -155,7 +154,7 @@ impl Actor for EInkDisplayActor {
                 tokio::time::sleep(Duration::from_secs(10)).await;
 
                 tracing::info!("screenshot taken");
-                let image = page
+                let _image = page
                     .screenshot(
                         ScreenshotParams::builder()
                             .format(CaptureScreenshotFormat::Png)
@@ -164,10 +163,10 @@ impl Actor for EInkDisplayActor {
                     )
                     .await?;
 
-                self.shared_actor_state
-                    .object_registry
-                    .put_object("home-gateway", "image.png", &image, None)
-                    .await?;
+                // self.shared_actor_state
+                //     .object_registry
+                //     .put_object("home-gateway", "image.png", &image, None)
+                //     .await?;
 
                 tracing::info!("screenshot uploaded");
 

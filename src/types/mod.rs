@@ -20,8 +20,6 @@ pub mod db;
 pub struct SharedActorState {
     pub db: Pool<Postgres>,
     pub mqtt: MqttClient,
-    #[allow(unused)]
-    pub object_registry: object_registry::ApiClient,
     pub settings: SettingsContainer,
     pub feature_flag_client: FeatureFlagClient,
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
@@ -31,8 +29,6 @@ pub struct SharedActorState {
 pub struct ApiState {
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
-    #[allow(unused)]
-    pub object_registry: object_registry::ApiClient,
     pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]
     pub settings: SettingsContainer,
