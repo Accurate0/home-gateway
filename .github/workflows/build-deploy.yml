@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - eink-display-web/**
       - eink-display-firmware/**
+      - eink-display-case/**
       - HomeGateway/**
   workflow_dispatch:
 
