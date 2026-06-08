@@ -57,7 +57,6 @@ pub enum WorkflowEntityType {
         when: Option<WorkflowQueryType>,
     },
     Notify {
-        #[serde(flatten)]
         notify: NotifySource,
         message: String,
         when: Option<WorkflowQueryType>,

@@ -30,7 +30,11 @@ use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     control::light::light_control,
     health::health,
-    ingest::{home::alarm::alarm, maccas::maccas, synergy::synergy},
+    ingest::{
+        home::{alarm::alarm, push_token::push_token},
+        maccas::maccas,
+        synergy::synergy,
+    },
     schema::schema as schema_route,
 };
 use rustls::crypto::aws_lc_rs;
@@ -197,6 +201,7 @@ async fn main() -> anyhow::Result<()> {
             api_state.clone(),
         ))
         .route("/ingest/home/alarm", post(alarm))
+        .route("/ingest/home/push-token", post(push_token))
         .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
         .layer(OtelAxumLayer::default())

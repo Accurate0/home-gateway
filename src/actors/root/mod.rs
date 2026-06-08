@@ -16,6 +16,7 @@ use super::{
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light,
     maccas::MaccasActor,
+    push,
     reminder::{ReminderActor, ReminderActorDelayQueueValue},
     selfbot, smart_switch,
     synergy::SynergyActor,
@@ -208,6 +209,7 @@ impl Actor for RootSupervisor {
 
         door_sensor::spawn::spawn_door_handler(&myself, shared_actor_state.clone()).await?;
         selfbot::spawn::spawn_selfbot(&myself, self.shared_actor_state.clone()).await?;
+        push::spawn::spawn_push(&myself, self.shared_actor_state.clone()).await?;
 
         light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
         temperature_sensor::spawn::spawn_temperature_sensor_handler(

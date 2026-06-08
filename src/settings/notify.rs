@@ -12,6 +12,8 @@ pub enum NotifySource {
         #[serde(default)]
         mentions: Vec<u64>,
     },
+    /// Push notification to all registered HomeGateway Android devices.
+    AndroidApp,
 }
 
 /// A reference to a notify destination: either the name of a target declared

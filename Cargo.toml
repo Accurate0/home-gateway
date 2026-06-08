@@ -26,6 +26,7 @@ bytes = "1.11.1"
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.15.23", features = ["yaml"] }
 itertools = "0.14.0"
+gcp_auth = "0.12"
 log = "0.4.32"
 phf = { version = "0.13", features = ["macros"] }
 ractor = "0.15.13"

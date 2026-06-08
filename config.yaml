@@ -1,11 +1,7 @@
-# Object storage for the eink web build (index.html) and rendered screenshots.
-# Credentials come from the standard AWS environment, never this file.
 s3:
   bucket: home-gateway-bucket
   region: ap-southeast-2
 
-# Named device aliases: write each address once, reference it by name from
-# workflows below. References that aren't a known alias must be a raw 0x address.
 devices:
   closet_light: "0x54ef441000d4f05c"
   non_existent_light: "0x000000000000000"
@@ -13,32 +9,13 @@ devices:
   desk_lamp: "0x94a081fffe2eedc0"
   closet_presence: "0x54ef441000dbc81c"
 
-# Reusable notify destinations referenced by name from reminders/doors/etc.
 notify_targets:
   home:
-    type: discord
-    channel_id: 906076901406306355
-  rent:
-    type: discord
-    channel_id: 906076901406306355
-    mentions:
-      - 787759671742169098
-      - 278461837983481857
-  maccas:
-    type: discord
-    channel_id: 886501248319250444
-    mentions:
-      - 278461837983481857
+    type: android_app
+
+fcm_project_id: home-gateway-22
 
 reminders:
-  - id: rent
-    name: Rent
-    starts_on: 2025-07-14T09:00:00.0+08:00
-    frequency: every 2 weeks
-    state: active
-    notify:
-      - rent
-
   - id: bins
     name: Bins
     starts_on: 2025-07-17T20:00:00.0+08:00
@@ -57,13 +34,7 @@ doors:
       - home
 
 maccas:
-  offers:
-    - match_names:
-        - "20pc McNuggets"
-        - "24pc McNuggets"
-      enabled: false
-      notify:
-        - maccas
+  offers: []
 
 appliances:
   "0xa4c1389fe5cea26e":
