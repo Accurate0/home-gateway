@@ -24,44 +24,44 @@ async-graphql = { version = "7.2.1", features = [
 async-graphql-axum = "7.2.1"
 bytes = "1.11.1"
 chrono = { version = "0.4", features = ["serde"] }
-config = { version = "0.15.22", features = ["yaml"] }
+config = { version = "0.15.23", features = ["yaml"] }
 itertools = "0.14.0"
-log = "0.4.29"
+log = "0.4.32"
 phf = { version = "0.13", features = ["macros"] }
-ractor = "0.15.12"
+ractor = "0.15.13"
 rumqttc = "0.25.1"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres", "tls-rustls", "macros", "chrono", "uuid"] }
+serde_json = "1.0.150"
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "tls-rustls", "macros", "chrono", "uuid"] }
 thiserror = "2.0.18"
 tokio-util = "0.7.18"
 tower = { version = "0.5.3", features = ["load-shed"] }
-uuid = { version = "1.23.1", features = ["v4"] }
-open-feature = "0.2"
+uuid = { version = "1.23.2", features = ["v4"] }
+open-feature = "=0.2"
 open-feature-flipt = { git = "https://github.com/open-feature/rust-sdk-contrib.git" }
 twilight-cache-inmemory = "0.17.1"
 twilight-gateway = "0.17.1"
 twilight-http = "0.17.1"
-twilight-interactions = "0.17.0"
+twilight-interactions = "0.17.1"
 twilight-model = "0.17.1"
 twilight-util = { version = "0.17.0", features = ["builder"] }
-pgmq = "0.33.4"
+pgmq = "0.33.7"
 tower-service = "0.3.3"
 chrono-tz = "0.10.4"
 rust-s3 = { version = "0.37.2", default-features = false, features = ["tokio-rustls-tls", "tags"] }
 csv = "1.4.0"
-opentelemetry = { version = "0.31.0", features = ["metrics", "trace"] }
-opentelemetry-otlp = { version = "0.31.1", features = ["trace", "metrics", "grpc-tonic", "reqwest-blocking-client", "logs", "reqwest-rustls"] }
-opentelemetry-semantic-conventions = { version = "0.31.0", features = ["semconv_experimental"] }
-opentelemetry-resource-detectors = { version = "0.10" }
-opentelemetry-proto = { version = "0.31.0"}
-tonic = { version = "0.14.5", features = ["tls-native-roots"] }
-opentelemetry_sdk = "0.31.0"
-tracing-opentelemetry = "0.32.1"
+opentelemetry = { version = "0.32.0", features = ["metrics", "trace"] }
+opentelemetry-otlp = { version = "0.32.0", features = ["trace", "metrics", "grpc-tonic", "reqwest-blocking-client", "logs", "reqwest-rustls", "http-json"] }
+opentelemetry-semantic-conventions = { version = "0.32.0", features = ["semconv_experimental"] }
+opentelemetry-resource-detectors = { version = "0.11" }
+opentelemetry-proto = { version = "0.32.0"}
+tonic = { version = "0.14.6", features = ["tls-native-roots"] }
+opentelemetry_sdk = "0.32.1"
+tracing-opentelemetry = "0.33.0"
 
-opentelemetry-appender-tracing = "0.31.1"
-reqwest-middleware = { version = "0.5.1", features = ["json", "query"] }
-reqwest-tracing = { version = "0.7.0", features = ["opentelemetry_0_31"] }
+opentelemetry-appender-tracing = "0.32.0"
+reqwest-middleware = { version = "0.5.2", features = ["json", "query"] }
+reqwest-tracing = { version = "0.7.1", features = ["opentelemetry_0_32"] }
 regex = "1.12.3"
 lazy_static = "1.5.0"
 chromiumoxide = "0.9.1"
@@ -70,7 +70,7 @@ futures.workspace = true
 arc-swap = { version = "1.9.1", features = ["serde"] }
 serde_yaml = "0.9.34"
 rustls = { version = "0.23", features = ["aws-lc-rs"] }
-axum-tracing-opentelemetry = "0.33.1"
+axum-tracing-opentelemetry = "0.38.0"
 futures-util = "0.3.32"
 tracing-futures = "0.2.5"
 async-trait = "0.1.89"
@@ -81,11 +81,11 @@ rstest = "0.26.1"
 
 [workspace.dependencies]
 axum = { version = "0.8.9", features = ["macros"] }
-reqwest = { version = "0.13.3", features = ["json", "stream", "cookies", "query", "rustls", "blocking"] }
-tokio = { version = "1.52.2", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
+reqwest = { version = "0.13.4", features = ["json", "stream", "cookies", "query", "rustls", "blocking"] }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
 anyhow = "1.0.102"
-http = "1.4.0"
-tower-http = { version = "0.6.8", features = ["cors", "trace"] }
+http = "1.4.1"
+tower-http = { version = "0.6.11", features = ["cors", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 http-body = "1.0.1"
