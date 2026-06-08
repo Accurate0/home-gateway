@@ -7,7 +7,7 @@ view_mode="print_horizontal"; // [print_vertical, print_horizontal, stacked, sta
 /* [Case depth] */
 panel_cover_depth = 1.6;
 panel_depth  = 1.2;
-case_depth = 10.0; // change this for your usecase
+case_depth = 14.0; // deepened to fit ESP32 board on standoffs (components facing back)
 back_depth = 1.2;
 fillet_radius = 2.5; // How round to make the case. Not used with thick borders.
 
@@ -48,7 +48,7 @@ screw_offset_bottom = 4.6;
 
 extra_screws_top    = [0.333, 0.667, 0, 0];
 extra_screws_bottom = [0.36, 0.64, 0, 0];
-extra_screws_left   = [0.333, 0.667, 0, 0, 0];
+extra_screws_left   = []; // freed for the battery slide-out slot on the left edge
 extra_screws_right  = [0.17, 0.83, 0, 0, 0];
 
 /* [Center support] */
@@ -97,10 +97,35 @@ rear_cooling_y_start_percentage = 73.6;
 rear_cooling_y_end_percentage = 81;
 
 /* [Raspberry Pi Zero Pinholes] */
-pi_pinholes = true;
+pi_pinholes = false; // replaced by ESP32 board mount below
 pi_pinholes_orientation = "horizontal"; // [horizontal, vertical]
 pi_pinholes_x_percentage = 50;
 pi_pinholes_y_percentage = 85;
+
+/* [ESP32 board mount] */
+esp32_mount = true;
+esp32_board_x = 188.5;      // 1.5mm further from the cable-side (right) border than before
+esp32_board_y = 135.58;     // shifted up so the board's (centred) FPC connector lands at the far
+                            // end of the cable gap, away from the top hang hole (~Y170)
+esp32_standoff_height = 9.8;
+esp32_flip_x = false;       // standoff holes given directly in the installed frame (no mirroring)
+// Offsets from the board's installed bottom-left corner [x, y]. The centre column
+// already fit; the edge (cable-side) column is set to a 92.46mm column spacing.
+esp32_holes = [
+    [94.70, 4.24],   // edge column, bottom (cable side)
+    [95.10, 66.41],  // edge column, top
+    [2.24,  2.48],   // centre column, bottom
+    [2.64,  66.70],  // centre column, top
+];
+
+/* [Battery pocket] */
+battery_pocket = true;
+battery_width  = 102.06;    // X = slide depth (out the left edge); long edge horizontal
+battery_height = 70.65;     // Y = vertical; short edge (USB-C centred here) faces the board
+battery_x = 22.0;           // flush left (leaves room to slide out the left edge)
+battery_y = 85.58;          // vertically centred
+battery_slide_edge = "left";
+battery_cable_notch = 16;   // clears the battery's USB-C plug on its short edge (board side)
 
 /* [Side buttons] */
  // array of values 0.0 to 1.0

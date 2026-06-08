@@ -211,6 +211,40 @@ pi_pinholes_spacer_height = 3;
 pi_pinholes_height = 23;
 pi_pinholes_width = 58;
 
+/* [ESP32 board mount] */
+// Standoffs for an ESP32 driver board mounted component-side toward the back.
+esp32_mount = false;
+esp32_board_width  = 102.09; // Board size along X (long edge)
+esp32_board_height = 69.38;  // Board size along Y (short edge)
+esp32_board_x = 0;           // Board bottom-left corner X in frame coords
+esp32_board_y = 0;           // Board bottom-left corner Y in frame coords
+esp32_flip_x = true;         // Board mounted component-side down: mirror hole X
+esp32_hole_diameter = 2.76;  // Mounting hole diameter (reference)
+esp32_standoff_diameter = 5.0;
+esp32_standoff_height = 9.8;  // Tall enough to clear back-facing components
+esp32_peg_diameter = 2.5;     // Peg that enters the board's mounting hole
+esp32_peg_height = 3.0;
+// Hole centers relative to the board's bottom-left corner, component-side view
+esp32_holes = [
+    [2.89,  4.24],  // bottom-left
+    [3.34,  66.41], // top-left
+    [99.85, 2.48],  // bottom-right
+    [99.45, 66.70], // top-right
+];
+
+/* [Battery pocket] */
+// Walled pocket with a slide-out slot through one case edge.
+battery_pocket = false;
+battery_width  = 70.65;  // Battery size along X in frame coords
+battery_height = 102.06; // Battery size along Y in frame coords
+battery_thickness = 9.05;
+battery_x = 0;           // Battery bottom-left corner X in frame coords
+battery_y = 0;           // Battery bottom-left corner Y in frame coords
+battery_clearance = 0.5;
+battery_wall = 2.0;
+battery_slide_edge = "left"; // [left, right, top, bottom]
+battery_cable_notch = 12;    // Cable pass-through width in the wall facing the board (0 = none)
+
 /* [Side buttons] */
 side_buttons_left = [];
 side_buttons_right = [];
@@ -701,6 +735,16 @@ module case() {
                 piPinholes();
             }
 
+            if (esp32_mount) {
+                color(case_color)
+                esp32Mount();
+            }
+
+            if (battery_pocket) {
+                color(case_color)
+                batteryPocket();
+            }
+
             // Cut out a piece of the cube
             color(case_color)
             caseBody();
@@ -898,6 +942,11 @@ module case() {
                     back_depth + 0.21
                 ]);
             }
+        }
+
+        if (battery_pocket) {
+            color(case_color)
+            batterySlideCutout();
         }
 
         if (rear_cooling) {
@@ -1415,6 +1464,67 @@ module piPinholes() {
 
 module piPinholesCooling() {
 
+}
+
+// Standoff pillars + pegs at the ESP32 board's mounting holes.
+// Pillars rise from the back floor (z = case_depth) toward the front so the
+// board sits on them with its tall components hanging into the gap underneath.
+module esp32Mount() {
+    for (h = esp32_holes) {
+        let (
+            hx = esp32_flip_x ? esp32_board_width - h[0] : h[0],
+            x = esp32_board_x + hx,
+            y = esp32_board_y + h[1]
+        ) {
+            translate([x, y, case_depth - esp32_standoff_height])
+            cylinder(d = esp32_standoff_diameter, h = esp32_standoff_height + 0.01);
+
+            translate([x, y, case_depth - esp32_standoff_height - esp32_peg_height])
+            cylinder(d = esp32_peg_diameter, h = esp32_peg_height + 0.01);
+        }
+    }
+}
+
+// Retaining walls around the battery on every side except the slide-out edge.
+module batteryPocket() {
+    c = battery_clearance;
+    w = battery_wall;
+    hwall = battery_thickness + c;
+    z0 = case_depth - hwall;
+    bx = battery_x; by = battery_y;
+    bw = battery_width; bh = battery_height;
+
+    if (battery_slide_edge != "left")
+        translate([bx - c - w, by - c - w, z0]) cube([w, bh + 2 * (c + w), hwall + 0.01]);
+    if (battery_slide_edge != "right")
+        translate([bx + bw + c, by - c - w, z0]) cube([w, bh + 2 * (c + w), hwall + 0.01]);
+    if (battery_slide_edge != "bottom")
+        translate([bx - c - w, by - c - w, z0]) cube([bw + 2 * (c + w), w, hwall + 0.01]);
+    if (battery_slide_edge != "top")
+        translate([bx - c - w, by + bh + c, z0]) cube([bw + 2 * (c + w), w, hwall + 0.01]);
+}
+
+// Slot through the case border so the battery can slide out, plus a cable notch.
+module batterySlideCutout() {
+    c = battery_clearance;
+    bx = battery_x; by = battery_y;
+    bw = battery_width; bh = battery_height;
+    z0 = case_depth - battery_thickness - c;
+    zh = battery_thickness + c;
+
+    if (battery_slide_edge == "left")
+        translate([-1, by - c, z0]) cube([bx + c + 1, bh + 2 * c, zh]);
+    else if (battery_slide_edge == "right")
+        translate([bx + bw - c, by - c, z0]) cube([frame_full_width - (bx + bw - c) + 1, bh + 2 * c, zh]);
+    else if (battery_slide_edge == "bottom")
+        translate([bx - c, -1, z0]) cube([bw + 2 * c, by + c + 1, zh]);
+    else if (battery_slide_edge == "top")
+        translate([bx - c, by + bh - c, z0]) cube([bw + 2 * c, frame_full_height - (by + bh - c) + 1, zh]);
+
+    // Cable pass-through notch in the wall facing the board (the +X side).
+    if (battery_cable_notch > 0)
+        translate([bx + bw - 0.01, by + bh / 2 - battery_cable_notch / 2, z0])
+        cube([battery_wall + c + 0.02, battery_cable_notch, zh + 0.01]);
 }
 
 module sideButtonHoles() {
