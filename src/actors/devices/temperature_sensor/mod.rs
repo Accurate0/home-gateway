@@ -1,4 +1,5 @@
 use crate::{
+    esphome,
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
@@ -7,6 +8,7 @@ use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
+use std::collections::HashMap;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -15,6 +17,22 @@ pub enum Entity {
     AqaraWSDCGQ12LM(Aqara_WSDCGQ12LM::AqaraWSDCGQ12LM),
     LumiWSDCGQ11LM(Lumi_WSDCGQ11LM::LumiWSDCGQ11LM),
     IKEAE2112(IKEA_E2112::IKEAE2112),
+    Esphome {
+        node: String,
+        object_id: String,
+        value: f64,
+    },
+}
+
+#[derive(Default)]
+struct EsphomeReadings {
+    temperature: Option<f64>,
+    pressure: Option<f64>,
+}
+
+#[derive(Default)]
+pub struct TemperatureSensorState {
+    esphome_readings: HashMap<String, EsphomeReadings>,
 }
 
 pub struct NewEvent {
@@ -33,7 +51,11 @@ pub struct TemperatureSensorHandler {
 impl TemperatureSensorHandler {
     pub const NAME: &str = "temperature-sensor";
 
-    async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
+    async fn handle(
+        &self,
+        message: Message,
+        state: &mut TemperatureSensorState,
+    ) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
@@ -43,7 +65,7 @@ impl TemperatureSensorHandler {
                         aqara_wsdcgq12_lm.device.ieee_addr,
                         aqara_wsdcgq12_lm.temperature,
                         Some(aqara_wsdcgq12_lm.battery),
-                        aqara_wsdcgq12_lm.humidity,
+                        Some(aqara_wsdcgq12_lm.humidity),
                         Some(aqara_wsdcgq12_lm.pressure),
                         None,
                         None,
@@ -57,7 +79,7 @@ impl TemperatureSensorHandler {
                         lumi_wsdcgq11_lm.device.ieee_addr,
                         lumi_wsdcgq11_lm.temperature,
                         Some(lumi_wsdcgq11_lm.battery),
-                        lumi_wsdcgq11_lm.humidity,
+                        Some(lumi_wsdcgq11_lm.humidity),
                         Some(lumi_wsdcgq11_lm.pressure),
                         None,
                         None,
@@ -71,10 +93,53 @@ impl TemperatureSensorHandler {
                         ikea_e2112.device.ieee_addr,
                         ikea_e2112.temperature as f64,
                         None,
-                        ikea_e2112.humidity as f64,
+                        Some(ikea_e2112.humidity as f64),
                         None,
                         Some(ikea_e2112.pm25),
                         Some(ikea_e2112.voc_index),
+                    )
+                    .await?;
+                }
+                Entity::Esphome {
+                    node,
+                    object_id,
+                    value,
+                } => {
+                    let readings = state.esphome_readings.entry(node.clone()).or_default();
+                    match object_id.as_str() {
+                        esphome::TEMPERATURE_OBJECT_ID => readings.temperature = Some(value),
+                        esphome::PRESSURE_OBJECT_ID => readings.pressure = Some(value),
+                        other => {
+                            tracing::warn!("unhandled esphome sensor entity: {other}");
+                            return Ok(());
+                        }
+                    }
+
+                    // temperature is the required column; without it there is nothing to store yet
+                    let Some(temperature) = readings.temperature else {
+                        return Ok(());
+                    };
+                    let pressure = readings.pressure;
+
+                    let friendly_name = self
+                        .shared_actor_state
+                        .known_devices_map
+                        .read()
+                        .await
+                        .get(&node)
+                        .cloned()
+                        .unwrap_or_else(|| node.clone());
+
+                    self.save_temperature_details(
+                        event.event_id,
+                        friendly_name,
+                        node,
+                        temperature,
+                        None,
+                        None,
+                        pressure,
+                        None,
+                        None,
                     )
                     .await?;
                 }
@@ -84,6 +149,7 @@ impl TemperatureSensorHandler {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn save_temperature_details(
         &self,
         event_id: Uuid,
@@ -91,7 +157,7 @@ impl TemperatureSensorHandler {
         ieee_addr: String,
         temperature: f64,
         battery: Option<i64>,
-        humidity: f64,
+        humidity: Option<f64>,
         pressure: Option<f64>,
         pm25: Option<i64>,
         voc_index: Option<i64>,
@@ -147,7 +213,7 @@ impl TemperatureSensorHandler {
 impl Worker for TemperatureSensorHandler {
     type Key = ();
     type Message = Message;
-    type State = ();
+    type State = TemperatureSensorState;
     type Arguments = ();
 
     async fn pre_start(
@@ -156,7 +222,7 @@ impl Worker for TemperatureSensorHandler {
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         _startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+        Ok(TemperatureSensorState::default())
     }
 
     async fn handle(
@@ -164,9 +230,9 @@ impl Worker for TemperatureSensorHandler {
         _wid: WorkerId,
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         Job { msg, .. }: Job<(), Message>,
-        _state: &mut Self::State,
+        state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
+        if let Err(e) = Self::handle(self, msg, state).await {
             tracing::error!("error while handling message: {e}")
         }
 

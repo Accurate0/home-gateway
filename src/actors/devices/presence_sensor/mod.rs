@@ -15,7 +15,8 @@ use uuid::Uuid;
 pub mod spawn;
 
 pub enum Entity {
-    AqaraFP1E(Aqara_FP1E::AqaraFP1E),
+    AqaraFP1E(Box<Aqara_FP1E::AqaraFP1E>),
+    Esphome { node: String, motion: bool },
 }
 
 pub struct NewEvent {
@@ -62,56 +63,69 @@ impl PresenceSensorHandler {
         Ok(())
     }
 
+    fn process_presence(
+        &self,
+        event_id: Uuid,
+        key: String,
+        presence: bool,
+        state: &mut PresenceSensorState,
+    ) -> Result<(), anyhow::Error> {
+        let settings = self.shared_actor_state.settings.load();
+        let Some(presence_settings) = settings.presence_sensors.get(&key) else {
+            tracing::warn!("no valid setting found for: {key}");
+            return Ok(());
+        };
+
+        let mut was_state_changed = true;
+        state
+            .last_presence
+            .entry(key)
+            .and_modify(|prev| {
+                if *prev != presence {
+                    *prev = presence;
+                } else {
+                    was_state_changed = false;
+                }
+            })
+            .or_insert(presence);
+
+        if was_state_changed {
+            let action_settings = if presence {
+                presence_settings
+                    .actions
+                    .get(&PresenceActionId::PresenceDetected)
+            } else {
+                presence_settings
+                    .actions
+                    .get(&PresenceActionId::NoPresenceDetected)
+            };
+
+            let Some(action_settings) = action_settings else {
+                tracing::warn!("no set action for event");
+                return Ok(());
+            };
+
+            Self::execute_workflow(event_id, &action_settings.workflow)?;
+        }
+
+        Ok(())
+    }
+
     async fn handle(
         &self,
         message: Message,
         state: &mut PresenceSensorState,
     ) -> Result<(), anyhow::Error> {
-        let settings = self.shared_actor_state.settings.load();
         match message {
             Message::NewEvent(event) => match event.entity {
-                Entity::AqaraFP1E(aqara_fp1_e) => {
-                    let Some(presence_settings) =
-                        settings.presence_sensors.get(&aqara_fp1_e.device.ieee_addr)
-                    else {
-                        tracing::warn!(
-                            "no valid setting found for: {}",
-                            aqara_fp1_e.device.ieee_addr
-                        );
-                        return Ok(());
-                    };
-
-                    let mut was_state_changed = true;
-                    state
-                        .last_presence
-                        .entry(aqara_fp1_e.device.ieee_addr)
-                        .and_modify(|prev| {
-                            if *prev != aqara_fp1_e.presence {
-                                *prev = aqara_fp1_e.presence;
-                            } else {
-                                was_state_changed = false;
-                            }
-                        })
-                        .or_insert(aqara_fp1_e.presence);
-
-                    if was_state_changed {
-                        let action_settings = if aqara_fp1_e.presence {
-                            presence_settings
-                                .actions
-                                .get(&PresenceActionId::PresenceDetected)
-                        } else {
-                            presence_settings
-                                .actions
-                                .get(&PresenceActionId::NoPresenceDetected)
-                        };
-
-                        let Some(action_settings) = action_settings else {
-                            tracing::warn!("no set action for event");
-                            return Ok(());
-                        };
-
-                        Self::execute_workflow(event.event_id, &action_settings.workflow)?;
-                    }
+                Entity::AqaraFP1E(aqara_fp1_e) => self.process_presence(
+                    event.event_id,
+                    aqara_fp1_e.device.ieee_addr,
+                    aqara_fp1_e.presence,
+                    state,
+                )?,
+                Entity::Esphome { node, motion } => {
+                    self.process_presence(event.event_id, node, motion, state)?
                 }
             },
         }

@@ -23,7 +23,7 @@ pub async fn unifi(
                 ractor::factory::Job {
                     key: (),
                     msg: event_handler::Message::UnifiWebhook {
-                        payload: unifi_event,
+                        payload: Box::new(unifi_event),
                     },
                     options: JobOptions::default(),
                     accepted: None,

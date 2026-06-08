@@ -24,7 +24,7 @@ pub enum MqttError {
     Mqtt(#[from] rumqttc::ClientError),
 
     #[error("a actor message error occurred: {0}")]
-    ActorMessage(#[from] ractor::MessagingErr<FactoryMessage<(), event_handler::Message>>),
+    ActorMessage(#[from] Box<ractor::MessagingErr<FactoryMessage<(), event_handler::Message>>>),
 }
 
 #[derive(Clone)]
@@ -40,6 +40,13 @@ impl MqttClient {
         let mut bytes: Vec<u8> = Vec::new();
         serde_json::to_writer(&mut bytes, &structure).unwrap();
         bytes
+    }
+
+    pub async fn subscribe(&self, topic: String) -> Result<(), MqttError> {
+        self.client
+            .subscribe(topic, rumqttc::QoS::ExactlyOnce)
+            .await
+            .map_err(MqttError::from)
     }
 
     pub async fn send_event_raw(&self, topic: String, payload: &str) -> Result<(), MqttError> {
@@ -104,13 +111,17 @@ impl Mqtt {
                 event = self.connection.poll() => {
                     match event {
                         Ok(event) => match event {
-                            rumqttc::Event::Incoming(packet) if matches!(packet, rumqttc::Packet::ConnAck(_)) => {
+                            rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_)) => {
                                 self.client
                                     .subscribe("zigbee2mqtt/+", rumqttc::QoS::ExactlyOnce)
                                     .await?;
 
                                 self.client
                                     .subscribe("zigbee2mqtt/bridge/devices", rumqttc::QoS::ExactlyOnce)
+                                    .await?;
+
+                                self.client
+                                    .subscribe("esphome/discover/+", rumqttc::QoS::ExactlyOnce)
                                     .await?;
                             },
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {

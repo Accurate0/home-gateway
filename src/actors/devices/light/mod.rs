@@ -33,7 +33,7 @@ pub enum LightHandlerMessage {
         ieee_addr: IEEEAddress,
         reply: RpcReplyPort<bool>,
     },
-    NewEvent(NewEvent),
+    NewEvent(Box<NewEvent>),
     TurnOn {
         ieee_addr: IEEEAddress,
     },
@@ -111,13 +111,7 @@ impl LightHandler {
                     .await?;
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
-                let value = if value >= 254 {
-                    254
-                } else if value <= 0 {
-                    0
-                } else {
-                    value
-                };
+                let value = value.clamp(0, 254);
 
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
                     .await?;

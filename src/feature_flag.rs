@@ -16,13 +16,10 @@ impl FeatureFlagClient {
 
         let mut client = OpenFeature::singleton_mut().await;
 
-        if url.is_err() || token.is_err() {
-            tracing::warn!("fallback to noop feature provider");
-            client.set_provider(NoOpProvider::default()).await;
-        } else {
+        if let (Ok(url), Ok(token)) = (url, token) {
             let config = flipt::Config {
-                url: url.unwrap(),
-                authentication_strategy: ClientTokenAuthentication::new(token.unwrap()),
+                url,
+                authentication_strategy: ClientTokenAuthentication::new(token),
                 timeout: 60,
             };
 
@@ -33,6 +30,9 @@ impl FeatureFlagClient {
                     client.set_provider(NoOpProvider::default()).await
                 }
             };
+        } else {
+            tracing::warn!("fallback to noop feature provider");
+            client.set_provider(NoOpProvider::default()).await;
         };
 
         let client = client.create_client();

@@ -48,7 +48,7 @@ twilight-util = { version = "0.17.0", features = ["builder"] }
 pgmq = "0.33.4"
 tower-service = "0.3.3"
 chrono-tz = "0.10.4"
-rust-s3 = "0.37.2"
+rust-s3 = { version = "0.37.2", default-features = false, features = ["tokio-rustls-tls", "tags"] }
 csv = "1.4.0"
 opentelemetry = { version = "0.31.0", features = ["metrics", "trace"] }
 opentelemetry-otlp = { version = "0.31.1", features = ["trace", "metrics", "grpc-tonic", "reqwest-blocking-client", "logs", "reqwest-rustls"] }

@@ -28,7 +28,7 @@ pub async fn reminder_background(
 
                 let msg = msg.unwrap();
                 if let Some(actor) = maybe_actor
-                    && let Err(e) = actor.send_message(ReminderActorMessage::TriggerReminder {
+                    && let Err(e) = actor.send_message(ReminderActorMessage::Trigger {
                         message: msg.message.message,
                         channel_id: msg.message.channel_id,
                         user_id: vec![msg.message.user_id],

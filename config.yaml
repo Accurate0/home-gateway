@@ -1,25 +1,51 @@
+# Object storage for the eink web build (index.html) and rendered screenshots.
+# Credentials come from the standard AWS environment, never this file.
+s3:
+  bucket: home-gateway-bucket
+  region: ap-southeast-2
+
+# Named device aliases: write each address once, reference it by name from
+# workflows below. References that aren't a known alias must be a raw 0x address.
+devices:
+  closet_light: "0x54ef441000d4f05c"
+  non_existent_light: "0x000000000000000"
+  ceiling_light: "0x001788010381ef5d"
+  desk_lamp: "0x94a081fffe2eedc0"
+  closet_presence: "0x54ef441000dbc81c"
+
+# Reusable notify destinations referenced by name from reminders/doors/etc.
+notify_targets:
+  home:
+    type: discord
+    channel_id: 906076901406306355
+  rent:
+    type: discord
+    channel_id: 906076901406306355
+    mentions:
+      - 787759671742169098
+      - 278461837983481857
+  maccas:
+    type: discord
+    channel_id: 886501248319250444
+    mentions:
+      - 278461837983481857
+
 reminders:
   - id: rent
     name: Rent
-    startsOn: 2025-07-14T09:00:00.0+08:00
+    starts_on: 2025-07-14T09:00:00.0+08:00
     frequency: every 2 weeks
     state: active
     notify:
-      - type: discord
-        channelId: 906076901406306355
-        mentions:
-          - 787759671742169098
-          - 278461837983481857
+      - rent
 
   - id: bins
     name: Bins
-    startsOn: 2025-07-17T20:00:00.0+08:00
+    starts_on: 2025-07-17T20:00:00.0+08:00
     frequency: every 1 week
     state: active
     notify:
-      - type: discord
-        channelId: 906076901406306355
-        mentions: []
+      - home
 
 doors:
   "0x54ef441000d2b0b0":
@@ -28,21 +54,16 @@ doors:
     state: armed
     timeout: 3m
     notify:
-      - type: discord
-        channelId: 906076901406306355
-        mentions: []
+      - home
 
 maccas:
   offers:
-    - matchNames:
+    - match_names:
         - "20pc McNuggets"
         - "24pc McNuggets"
       enabled: false
       notify:
-        - type: discord
-          channelId: 886501248319250444
-          mentions:
-            - 278461837983481857
+        - maccas
 
 appliances:
   "0xa4c1389fe5cea26e":
@@ -51,133 +72,119 @@ appliances:
     current:
       threshold: 0.05
     notify:
-      - type: discord
-        channelId: 906076901406306355
-        mentions: []
+      - home
 
-temperatureSensors:
-  "0x00158d008b8797bc":
-    id: LAUNDRY
-  "0x00158d008b8798a7":
-    id: LIVING_ROOM
-  "0x00158d008b879b53":
-    id: BATHROOM
-  "0xb0c7defffef6a9be":
-    id: BEDROOM
-  "0x54ef441000ee2ca3":
-    id: OUTDOOR
+temperature_sensors:
+  - id: LAUNDRY
+    source: { zigbee: "0x00158d008b8797bc" }
+  - id: LIVING_ROOM
+    source: { zigbee: "0x00158d008b8798a7" }
+  - id: BATHROOM
+    source: { zigbee: "0x00158d008b879b53" }
+  - id: BEDROOM
+    source: { zigbee: "0xb0c7defffef6a9be" }
+  - id: OUTDOOR
+    source: { zigbee: "0x54ef441000ee2ca3" }
+  - id: LIVING_ROOM_MTR
+    source: { esphome: { node: apollo-mtr-1-livingroom } }
 
-presenceSensors:
-  "0x54ef441000dbc81c":
-    name: Closet Presence Sensor
+presence_sensors:
+  - name: Closet Presence Sensor
+    source: { zigbee: closet_presence }
     actions:
       PresenceDetected:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x54ef441000d4f05c"
-              state: ON
-
+        - type: light
+          device: closet_light
+          state: ON
       NoPresenceDetected:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x54ef441000d4f05c"
-              state: OFF
+        - type: light
+          device: closet_light
+          state: OFF
+
+  - name: Living Room Motion
+    source:
+      esphome:
+        node: apollo-mtr-1-livingroom
+        motion_entity: ld2450_moving_target
+    actions:
+      PresenceDetected:
+        - type: light
+          device: non_existent_light
+          state: ON
+      NoPresenceDetected:
+        - type: light
+          device: non_existent_light
+          state: OFF
 
 switches:
   "0x00158d008bbe0316":
     name: Small Switch
     actions:
       single:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x94a081fffe2eedc0"
-              state: TOGGLE
+        - type: light
+          device: desk_lamp
+          state: TOGGLE
 
   "0x64028ffffe638218":
     name: Control Switch
     actions:
       on:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: ON
+        - type: light
+          device: ceiling_light
+          state: ON
 
       off:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: OFF
+        - type: light
+          device: ceiling_light
+          state: OFF
 
       brightness_move_up:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: INCREASE_BRIGHTNESS
-              value: 75
+        - type: light
+          device: ceiling_light
+          state: INCREASE_BRIGHTNESS
+          value: 75
 
       brightness_move_down:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: DECREASE_BRIGHTNESS
-              value: 75
+        - type: light
+          device: ceiling_light
+          state: DECREASE_BRIGHTNESS
+          value: 75
 
       brightness_stop:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: STOP_BRIGHTNESS
+        - type: light
+          device: ceiling_light
+          state: STOP_BRIGHTNESS
 
       arrow_right_hold:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: INCREASE_COLOUR_TEMPERATURE
-              value: 120
+        - type: light
+          device: ceiling_light
+          state: INCREASE_COLOUR_TEMPERATURE
+          value: 120
 
       arrow_left_hold:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: DECREASE_COLOUR_TEMPERATURE
-              value: 120
+        - type: light
+          device: ceiling_light
+          state: DECREASE_COLOUR_TEMPERATURE
+          value: 120
 
       arrow_left_release:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: STOP_COLOUR_TEMPERATURE
+        - type: light
+          device: ceiling_light
+          state: STOP_COLOUR_TEMPERATURE
 
       arrow_right_release:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: STOP_COLOUR_TEMPERATURE
+        - type: light
+          device: ceiling_light
+          state: STOP_COLOUR_TEMPERATURE
 
       arrow_left_click:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: SET_BRIGHTNESS
-              value: 50
+        - type: light
+          device: ceiling_light
+          state: SET_BRIGHTNESS
+          value: 50
 
       arrow_right_click:
-        workflow:
-          run:
-            - type: light
-              ieeeAddr: "0x001788010381ef5d"
-              state: SET_BRIGHTNESS
-              value: 254
+        - type: light
+          device: ceiling_light
+          state: SET_BRIGHTNESS
+          value: 254

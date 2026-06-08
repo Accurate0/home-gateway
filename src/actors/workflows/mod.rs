@@ -70,10 +70,11 @@ impl WorkflowWorker {
         when: Option<WorkflowQueryType>,
     ) -> Result<(), anyhow::Error> {
         if let Some(ref when) = when
-            && !Self::handle_query(when).await? {
-                tracing::info!("failed when condition for {:?}", when);
-                return Ok(());
-            };
+            && !Self::handle_query(when).await?
+        {
+            tracing::info!("failed when condition for {:?}", when);
+            return Ok(());
+        };
 
         notify(&[notify_source], message, true);
 
@@ -91,10 +92,11 @@ impl WorkflowWorker {
         };
 
         if let Some(ref when) = when
-            && !Self::handle_query(when).await? {
-                tracing::info!("failed when condition for {:?}", when);
-                return Ok(());
-            };
+            && !Self::handle_query(when).await?
+        {
+            tracing::info!("failed when condition for {:?}", when);
+            return Ok(());
+        };
 
         let light_actor_message = match state {
             WorkflowEntityLightTypeState::On => LightHandlerMessage::TurnOn { ieee_addr },

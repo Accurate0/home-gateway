@@ -12,19 +12,19 @@ pub mod background;
 pub mod cronlike_expression;
 
 pub enum ReminderActorMessage {
-    SetReminder {
+    Set {
         message: String,
         delay: Duration,
         channel_id: u64,
         user_id: u64,
     },
 
-    TriggerScheduledReminder {
+    TriggerScheduled {
         message: String,
         notify: Vec<NotifySource>,
         scheduled_reminder: ReminderSettings,
     },
-    TriggerReminder {
+    Trigger {
         message: String,
         channel_id: u64,
         user_id: Vec<u64>,
@@ -65,7 +65,7 @@ impl Actor for ReminderActor {
             let reminder = reminder.clone();
 
             myself.send_after(Duration::from_secs_f64(time.as_seconds_f64()), move || {
-                ReminderActorMessage::TriggerScheduledReminder {
+                ReminderActorMessage::TriggerScheduled {
                     message: format!("Scheduled reminder about \"{}\"", reminder.name),
                     notify: reminder.notify.clone(),
                     scheduled_reminder: reminder,
@@ -84,7 +84,7 @@ impl Actor for ReminderActor {
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
-            ReminderActorMessage::SetReminder {
+            ReminderActorMessage::Set {
                 message,
                 delay,
                 channel_id,
@@ -99,7 +99,7 @@ impl Actor for ReminderActor {
 
                 self.delay_queue.push(v, delay).await?;
             }
-            ReminderActorMessage::TriggerReminder {
+            ReminderActorMessage::Trigger {
                 message,
                 channel_id,
                 user_id,
@@ -112,7 +112,7 @@ impl Actor for ReminderActor {
                 let message = format!("Reminder about \"{}\"", message);
                 notify(&[notify_source], message, true);
             }
-            ReminderActorMessage::TriggerScheduledReminder {
+            ReminderActorMessage::TriggerScheduled {
                 message,
                 notify: notify_sources,
                 scheduled_reminder,
@@ -133,7 +133,7 @@ impl Actor for ReminderActor {
 
                 let reminder = scheduled_reminder.clone();
                 myself.send_after(Duration::from_secs_f64(time.as_seconds_f64()), move || {
-                    ReminderActorMessage::TriggerScheduledReminder {
+                    ReminderActorMessage::TriggerScheduled {
                         message: format!("Scheduled reminder about \"{}\"", reminder.name),
                         notify: reminder.notify.clone(),
                         scheduled_reminder: reminder,

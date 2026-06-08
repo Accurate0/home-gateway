@@ -73,14 +73,15 @@ impl Actor for ArmedDoor {
             DoorEventsType::Opened => {
                 state.map.insert(ieee_addr.clone(), DoorState::Open);
                 if let Some(value) = settings.doors.get(&ieee_addr)
-                    && let ArmedDoorStates::Armed { timeout } = value.armed {
-                        let duration = timeout.to_std()?;
-                        myself.send_after(duration, move || DoorEvents {
-                            ieee_addr,
-                            event_id,
-                            event: DoorEventsType::Trigger,
-                        });
-                    }
+                    && let ArmedDoorStates::Armed { timeout } = value.armed
+                {
+                    let duration = timeout.to_std()?;
+                    myself.send_after(duration, move || DoorEvents {
+                        ieee_addr,
+                        event_id,
+                        event: DoorEventsType::Trigger,
+                    });
+                }
             }
             DoorEventsType::Closed => {
                 state.map.insert(ieee_addr, DoorState::Closed);

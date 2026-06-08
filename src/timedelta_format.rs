@@ -16,11 +16,7 @@ pub fn parse_datetime_str_with_ms(s: &str) -> anyhow::Result<TimeDelta> {
     let mut it = s.chars().peekable();
     let mut number = vec![];
 
-    loop {
-        let Some(c) = it.next() else {
-            break;
-        };
-
+    while let Some(c) = it.next() {
         if c.is_ascii_alphabetic() {
             let is_milliseconds = c == 'm' && it.peek().is_some_and(|c| *c == 's');
             match c {

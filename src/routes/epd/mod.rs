@@ -48,11 +48,14 @@ pub async fn take_screenshot() -> Result<StatusCode, AppError> {
     }
 }
 
-pub async fn latest(State(ApiState { .. }): State<ApiState>) -> Result<Vec<u8>, AppError> {
-    // let image_response = object_registry
-    //     .get_object::<Vec<u8>>("home-gateway", "image.png")
-    //     .await?;
-    let image_response = vec![];
+pub async fn latest(
+    State(ApiState {
+        object_registry, ..
+    }): State<ApiState>,
+) -> Result<Vec<u8>, AppError> {
+    let image_response = object_registry
+        .get_object("eink-display-screenshot.png")
+        .await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();
@@ -164,6 +167,7 @@ fn process_pixel(
     closest_idx
 }
 
+#[allow(clippy::too_many_arguments)]
 fn add_error(
     buffer: &mut [f32],
     width: u32,

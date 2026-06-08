@@ -25,6 +25,7 @@ use graphql::{
     handler::{graphiql, graphql_handler},
 };
 use mqtt::{Mqtt, MqttClient};
+use object_registry::ObjectRegistry;
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     control::light::light_control,
@@ -49,12 +50,14 @@ mod actors;
 mod auth;
 mod delayqueue;
 mod discord;
+mod esphome;
 mod feature_flag;
 mod graphql;
 mod graphql_tracing;
 mod http;
 mod mqtt;
 mod notify;
+mod object_registry;
 mod routes;
 mod settings;
 mod timed_average;
@@ -74,6 +77,7 @@ async fn init_actors(
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
     reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
+    object_registry: ObjectRegistry,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
     let shared_actor_state = SharedActorState {
         settings,
@@ -81,6 +85,7 @@ async fn init_actors(
         mqtt: mqtt_client,
         feature_flag_client,
         known_devices_map,
+        object_registry,
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(
@@ -133,6 +138,12 @@ async fn main() -> anyhow::Result<()> {
 
     let known_devices_map = Arc::new(RwLock::new(HashMap::new()));
 
+    let object_registry = ObjectRegistry::new(
+        &settings.s3.bucket,
+        &settings.s3.region,
+        settings.s3.endpoint.clone(),
+    )?;
+
     let reminder_delayqueue =
         DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
 
@@ -143,6 +154,7 @@ async fn main() -> anyhow::Result<()> {
         pool.clone(),
         known_devices_map,
         reminder_delayqueue.clone(),
+        object_registry.clone(),
     )
     .await?;
 
@@ -168,6 +180,7 @@ async fn main() -> anyhow::Result<()> {
         schema,
         settings: settings_container.clone(),
         db: pool.clone(),
+        object_registry,
     };
 
     let api_routes = axum::Router::new()

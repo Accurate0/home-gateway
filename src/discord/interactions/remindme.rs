@@ -49,7 +49,7 @@ impl RemindMeCommand {
 
         if let Some(actor) = actor {
             let time = parse_datetime_str_with_ms(&command.time);
-            if let Err(_) = time {
+            if time.is_err() {
                 interaction_client
                     .update_response(&interaction.token)
                     .content(Some("invalid time format, e.g. 5m 1h"))
@@ -58,7 +58,7 @@ impl RemindMeCommand {
             }
 
             let time = time.unwrap().to_std()?;
-            actor.send_message(ReminderActorMessage::SetReminder {
+            actor.send_message(ReminderActorMessage::Set {
                 message: command.message,
                 delay: time,
                 channel_id: interaction.channel.as_ref().unwrap().id.get(),

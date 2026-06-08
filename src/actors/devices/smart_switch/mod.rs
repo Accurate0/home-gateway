@@ -31,6 +31,7 @@ pub struct SmartSwitchHandler {
 impl SmartSwitchHandler {
     pub const NAME: &str = "smart-switch";
 
+    #[allow(clippy::too_many_arguments)]
     async fn save_values_to_db(
         &self,
         event_id: Uuid,

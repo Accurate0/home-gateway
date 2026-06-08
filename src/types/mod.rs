@@ -4,6 +4,7 @@ use crate::{
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
     mqtt::{MqttClient, MqttError},
+    object_registry::ObjectRegistry,
     settings::{IEEEAddress, SettingsContainer},
     woolworths::WoolworthsError,
 };
@@ -23,6 +24,7 @@ pub struct SharedActorState {
     pub settings: SettingsContainer,
     pub feature_flag_client: FeatureFlagClient,
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
+    pub object_registry: ObjectRegistry,
 }
 
 #[derive(Clone)]
@@ -34,6 +36,7 @@ pub struct ApiState {
     pub settings: SettingsContainer,
     #[allow(unused)]
     pub db: Pool<Postgres>,
+    pub object_registry: ObjectRegistry,
 }
 
 pub enum AppError {

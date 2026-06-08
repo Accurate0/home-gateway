@@ -43,7 +43,7 @@ pub enum Message {
         payload: Bytes,
     },
     UnifiWebhook {
-        payload: UnifiWebhookEvent,
+        payload: Box<UnifiWebhookEvent>,
     },
 }
 
@@ -105,7 +105,7 @@ impl EventHandler {
                     key: (),
                     msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
                         event_id,
-                        entity: presence_sensor::Entity::AqaraFP1E(aqara_presence),
+                        entity: presence_sensor::Entity::AqaraFP1E(Box::new(aqara_presence)),
                     }),
                     options: JobOptions::default(),
                     accepted: None,
@@ -234,10 +234,10 @@ impl EventHandler {
             GenericZigbee2MqttMessage::PhillipsLight(phillips_light) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: light::LightHandlerMessage::NewEvent(light::NewEvent {
+                    msg: light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
                         event_id,
                         entity: light::Entity::Phillips9290012573A(phillips_light),
-                    }),
+                    })),
                     options: JobOptions::default(),
                     accepted: None,
                 }))?;
@@ -245,10 +245,10 @@ impl EventHandler {
             GenericZigbee2MqttMessage::IKEALight(ikea_light) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: light::LightHandlerMessage::NewEvent(light::NewEvent {
+                    msg: light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
                         event_id,
                         entity: light::Entity::IKEALED2201G8(ikea_light),
-                    }),
+                    })),
                     options: JobOptions::default(),
                     accepted: None,
                 }))?;
@@ -256,10 +256,10 @@ impl EventHandler {
             GenericZigbee2MqttMessage::AqaraWhiteLight(aqara_light) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: light::LightHandlerMessage::NewEvent(light::NewEvent {
+                    msg: light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
                         event_id,
                         entity: light::Entity::AqaraT1(aqara_light),
-                    }),
+                    })),
                     options: JobOptions::default(),
                     accepted: None,
                 }))?;
@@ -288,6 +288,123 @@ impl EventHandler {
                     devices_map.insert(device.ieee_address, device.friendly_name);
                 }
                 drop(devices_map)
+            }
+            Message::MqttPacket { payload, topic } if topic.starts_with("esphome/discover/") => {
+                let discovery =
+                    serde_json::from_slice::<crate::esphome::EsphomeDiscovery>(&payload)?;
+                tracing::info!(
+                    "discovered esphome device: {} ({})",
+                    discovery.friendly_name,
+                    discovery.name
+                );
+
+                self.shared_actor_state
+                    .known_devices_map
+                    .write()
+                    .await
+                    .insert(discovery.name.clone(), discovery.friendly_name.clone());
+
+                let settings = self.shared_actor_state.settings.load();
+                if let Some(presence_settings) = settings.presence_sensors.get(&discovery.name)
+                    && presence_settings.sensor_type == crate::settings::PresenceSensorType::Esphome
+                {
+                    if let Some(motion_entity) = &presence_settings.motion_entity {
+                        let topic =
+                            crate::esphome::motion_state_topic(&discovery.name, motion_entity);
+                        tracing::info!("subscribing to esphome motion topic: {topic}");
+                        self.shared_actor_state.mqtt.subscribe(topic).await?;
+                    } else {
+                        tracing::warn!(
+                            "esphome presence sensor {} has no motionEntity configured",
+                            discovery.name
+                        );
+                    }
+                }
+
+                if let Some(temperature_settings) =
+                    settings.temperature_sensors.get(&discovery.name)
+                    && temperature_settings.sensor_type
+                        == crate::settings::TemperatureSensorType::Esphome
+                {
+                    for object_id in [
+                        crate::esphome::TEMPERATURE_OBJECT_ID,
+                        crate::esphome::PRESSURE_OBJECT_ID,
+                    ] {
+                        let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
+                        tracing::info!("subscribing to esphome sensor topic: {topic}");
+                        self.shared_actor_state.mqtt.subscribe(topic).await?;
+                    }
+                }
+            }
+            Message::MqttPacket { payload, topic }
+                if topic.contains("/binary_sensor/") && topic.ends_with("/state") =>
+            {
+                let Some(node) = topic.split('/').next() else {
+                    tracing::warn!("malformed esphome state topic: {topic}");
+                    return Ok(());
+                };
+
+                let Some(motion) = crate::esphome::parse_binary_state(&payload) else {
+                    tracing::warn!("unrecognised esphome binary state payload on {topic}");
+                    return Ok(());
+                };
+
+                let event_id = uuid::Uuid::new_v4();
+                let actor_name = TypedActorName::PresenceSensor.to_string();
+                let Some(actor_cell) = ractor::registry::where_is(actor_name) else {
+                    tracing::error!("no presence sensor actor found for esphome motion");
+                    return Ok(());
+                };
+
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
+                        event_id,
+                        entity: presence_sensor::Entity::Esphome {
+                            node: node.to_string(),
+                            motion,
+                        },
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
+            Message::MqttPacket { payload, topic }
+                if topic.contains("/sensor/") && topic.ends_with("/state") =>
+            {
+                let mut segments = topic.split('/');
+                let (Some(node), Some(_), Some(object_id)) =
+                    (segments.next(), segments.next(), segments.next())
+                else {
+                    tracing::warn!("malformed esphome sensor topic: {topic}");
+                    return Ok(());
+                };
+
+                let Some(value) = crate::esphome::parse_sensor_state(&payload) else {
+                    tracing::warn!("unrecognised esphome sensor payload on {topic}");
+                    return Ok(());
+                };
+
+                let event_id = uuid::Uuid::new_v4();
+                let actor_name = TypedActorName::TemperatureSensor.to_string();
+                let Some(actor_cell) = ractor::registry::where_is(actor_name) else {
+                    tracing::error!("no temperature sensor actor found for esphome sensor");
+                    return Ok(());
+                };
+
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
+                        event_id,
+                        entity: temperature_sensor::Entity::Esphome {
+                            node: node.to_string(),
+                            object_id: object_id.to_string(),
+                            value,
+                        },
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
             }
             Message::MqttPacket { payload, .. } => {
                 let generic_message =
@@ -385,14 +502,10 @@ impl EventHandler {
 
                 match payload.name.as_str() {
                     "WiFi Client Connected" => {
-                        actor.send_message(UnifiMessage::ClientConnect {
-                            mac_address,
-                        })?;
+                        actor.send_message(UnifiMessage::ClientConnect { mac_address })?;
                     }
                     "WiFi Client Disconnected" => {
-                        actor.send_message(UnifiMessage::ClientDisconnect {
-                            mac_address,
-                        })?;
+                        actor.send_message(UnifiMessage::ClientDisconnect { mac_address })?;
                     }
                     unknown => tracing::warn!("unknown webhook event: {unknown}"),
                 }

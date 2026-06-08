@@ -1,7 +1,4 @@
-use crate::{
-    settings::IEEEAddress,
-    types::SharedActorState,
-};
+use crate::{settings::IEEEAddress, types::SharedActorState};
 use armed_door_actor::ArmedDoor;
 use derived_door_events_actor::DerivedDoorEvents;
 use ractor::{Actor, ActorCell};

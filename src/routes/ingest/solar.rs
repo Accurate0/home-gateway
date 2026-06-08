@@ -26,9 +26,10 @@ pub async fn solar(
     Json(solar_payload): Json<SolarIngestPayload>,
 ) -> StatusCode {
     if let Some(solar_actor) = ractor::registry::where_is(SolarIngestActor::NAME.to_string())
-        && let Err(e) = solar_actor.send_message(SolarMessage::NewData(solar_payload)) {
-            tracing::error!("error sending solar actor message: {e}");
-        };
+        && let Err(e) = solar_actor.send_message(SolarMessage::NewData(solar_payload))
+    {
+        tracing::error!("error sending solar actor message: {e}");
+    };
 
     StatusCode::NO_CONTENT
 }
