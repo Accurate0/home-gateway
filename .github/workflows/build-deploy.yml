@@ -3,11 +3,16 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - eink-display-web/**
-      - eink-display-firmware/**
-      - eink-display-case/**
-      - HomeGateway/**
+    paths:
+      - src/**
+      - migrations/**
+      - .sqlx/**
+      - Cargo.toml
+      - Cargo.lock
+      - config.yaml
+      - Dockerfile
+      - selfbot/**
+      - .github/workflows/build-deploy.yml
   workflow_dispatch:
 
 jobs:
