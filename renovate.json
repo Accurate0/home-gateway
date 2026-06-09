@@ -5,6 +5,11 @@
   ],
   "packageRules": [
     {
+      "matchPackageNames": ["open-feature"],
+      "matchManagers": ["cargo"],
+      "enabled": false
+    },
+    {
       "matchFileNames": ["eink-display-web/**"],
       "groupName": "eink-display-web"
     },
