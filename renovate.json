@@ -1,5 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "local>anurag/k8s//platform-services/renovate/presets/pin-github-actions"
+  ],
   "packageRules": [
     {
       "matchFileNames": ["eink-display-web/**"],
@@ -18,7 +21,14 @@
       "groupName": "HomeGateway"
     },
     {
-      "matchFileNames": ["Cargo.toml", "Cargo.lock", "src/**", "Dockerfile", "Dockerfile.postgres", "docker-compose.yaml"],
+      "matchFileNames": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "src/**",
+        "Dockerfile",
+        "Dockerfile.postgres",
+        "docker-compose.yaml"
+      ],
       "groupName": "home-gateway"
     }
   ]
