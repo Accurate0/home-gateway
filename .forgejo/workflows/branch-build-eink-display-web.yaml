@@ -1,0 +1,30 @@
+name: Branch build eink-display-web
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - eink-display-web/**
+      - .forgejo/workflows/branch-build-eink-display-web.yaml
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4
+        with:
+          version: 10.30.3
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: "23"
+          cache: "pnpm"
+          cache-dependency-path: eink-display-web/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: eink-display-web
+      - name: Build
+        run: pnpm run build
+        working-directory: eink-display-web
+        env:
+          VITE_GRAPHQL_API_KEY: "testing"
