@@ -11,12 +11,17 @@
       "enabled": false
     },
     {
+      "matchPackageNames": ["recharts"],
+      "matchManagers": ["npm"],
+      "enabled": false
+    },
+    {
       "matchFileNames": ["eink-display-web/**"],
       "groupName": "eink-display-web"
     },
     {
       "matchFileNames": ["eink-display-firmware/**"],
-      "groupName": "eink-display-firmware"
+      "enabled": false
     },
     {
       "matchFileNames": ["selfbot/**"],
