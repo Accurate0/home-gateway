@@ -16,6 +16,11 @@
       "enabled": false
     },
     {
+      "matchPackageNames": ["sqlx"],
+      "matchManagers": ["cargo"],
+      "enabled": false
+    },
+    {
       "matchFileNames": ["eink-display-web/**"],
       "groupName": "eink-display-web"
     },
