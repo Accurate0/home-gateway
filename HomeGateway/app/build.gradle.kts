@@ -12,7 +12,7 @@ secrets {
 
 android {
     namespace = "net.infk8s.homegateway"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "net.infk8s.homegateway"
