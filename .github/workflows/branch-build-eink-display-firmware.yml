@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-      - uses: esp-rs/xtensa-toolchain@b989c80ffd4be88d30c09606ee9b449bd0d41958 # v1.5
+      - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7
         with:
           buildtargets: esp32s3
           ldproxy: true
