@@ -1,10 +1,11 @@
 name: Branch build eink-display-firmware
+
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - eink-display-firmware/**
-      - .forgejo/workflows/branch-build-eink-display-firmware.yaml
+      - .github/workflows/branch-build-eink-display-firmware.yml
 
 jobs:
   build:
