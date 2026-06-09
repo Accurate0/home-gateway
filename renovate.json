@@ -1,3 +1,25 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "matchFileNames": ["eink-display-web/**"],
+      "groupName": "eink-display-web"
+    },
+    {
+      "matchFileNames": ["eink-display-firmware/**"],
+      "groupName": "eink-display-firmware"
+    },
+    {
+      "matchFileNames": ["selfbot/**"],
+      "groupName": "selfbot"
+    },
+    {
+      "matchFileNames": ["HomeGateway/**"],
+      "groupName": "HomeGateway"
+    },
+    {
+      "matchFileNames": ["Cargo.toml", "Cargo.lock", "src/**", "Dockerfile", "Dockerfile.postgres", "docker-compose.yaml"],
+      "groupName": "home-gateway"
+    }
+  ]
 }
