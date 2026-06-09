@@ -112,9 +112,9 @@ esp32_flip_x = false;       // standoff holes given directly in the installed fr
 // Offsets from the board's installed bottom-left corner [x, y]. The centre column
 // already fit; the edge (cable-side) column is set to a 92.46mm column spacing.
 esp32_holes = [
-    [94.70, 4.24],   // edge column, bottom (cable side)
+    [96.20, 4.24],   // edge column, bottom (cable side); moved 1.5mm right
     [95.10, 66.41],  // edge column, top
-    [2.24,  2.48],   // centre column, bottom
+    [3.74,  2.48],   // centre column, bottom; moved 1.5mm right
     [2.64,  66.70],  // centre column, top
 ];
 
