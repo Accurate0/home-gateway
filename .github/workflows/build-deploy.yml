@@ -11,22 +11,10 @@ on:
       - Cargo.lock
       - config.yaml
       - Dockerfile
-      - selfbot/**
       - .github/workflows/build-deploy.yml
   workflow_dispatch:
 
 jobs:
-  build-selfbot:
-    permissions:
-      packages: write
-
-    uses: Accurate0/workflows/.github/workflows/build-push-docker.yaml@95dcf6b102fdaecdc3befae3831b99b3f09ea177 # main
-    with:
-      directory: selfbot
-      image-name: home-selfbot
-      docker-build-args: ""
-      use-rust-caching: false
-
   build:
     permissions:
       packages: write
@@ -72,11 +60,10 @@ jobs:
   deploy:
     needs:
       - build
-      - build-selfbot
     uses: Accurate0/workflows/.github/workflows/deploy-app-k8s-v2.yaml@95dcf6b102fdaecdc3befae3831b99b3f09ea177 # main
     with:
       service-name: home-gateway
-      images: ghcr.io/accurate0/home-gateway,ghcr.io/accurate0/home-selfbot
+      images: ghcr.io/accurate0/home-gateway
       manifests-path: projects/home-gateway/manifests
       tag: ${{ github.sha }}
     secrets:

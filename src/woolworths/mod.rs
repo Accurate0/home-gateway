@@ -59,7 +59,7 @@ impl Woolworths {
     ) -> Result<Vec<WoolworthsTrackedProduct>, WoolworthsError> {
         sqlx::query_as!(
             WoolworthsTrackedProduct,
-            "SELECT * FROM woolworths_product_tracking"
+            "SELECT id, product_id FROM woolworths_product_tracking"
         )
         .fetch_all(&self.db)
         .await

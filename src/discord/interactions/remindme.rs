@@ -61,8 +61,6 @@ impl RemindMeCommand {
             actor.send_message(ReminderActorMessage::Set {
                 message: command.message,
                 delay: time,
-                channel_id: interaction.channel.as_ref().unwrap().id.get(),
-                user_id: interaction.author_id().unwrap().get(),
             })?;
 
             interaction_client

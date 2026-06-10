@@ -71,7 +71,6 @@ pub(crate) fn yes() -> bool {
 pub struct Settings {
     pub api_key: String,
     pub database_url: String,
-    pub selfbot_api_base: String,
     pub fcm_project_id: String,
     pub fcm_service_account_json: String,
     pub mqtt_url: String,
@@ -97,7 +96,6 @@ pub struct Settings {
 struct RawSettings {
     api_key: String,
     database_url: String,
-    selfbot_api_base: String,
     #[serde(default)]
     fcm_project_id: String,
     #[serde(default)]
@@ -133,7 +131,6 @@ impl RawSettings {
         let RawSettings {
             api_key,
             database_url,
-            selfbot_api_base,
             fcm_project_id,
             fcm_service_account_json,
             mqtt_url,
@@ -188,7 +185,6 @@ impl RawSettings {
         Ok(Settings {
             api_key,
             database_url,
-            selfbot_api_base,
             fcm_project_id,
             fcm_service_account_json,
             mqtt_url,
@@ -267,7 +263,6 @@ mod tests {
         let secrets = r#"
 api_key: x
 database_url: x
-selfbot_api_base: x
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
@@ -293,8 +288,8 @@ maccas:
         assert_eq!(ieee_addr, "0x94a081fffe2eedc0");
 
         // notify target resolved
-        let rent = settings.reminders.iter().find(|r| r.id == "rent").unwrap();
-        assert!(matches!(rent.notify[0], NotifySource::Discord { .. }));
+        let bins = settings.reminders.iter().find(|r| r.id == "bins").unwrap();
+        assert!(matches!(bins.notify[0], NotifySource::AndroidApp));
 
         // a zigbee source written as a device alias resolves to its address
         assert!(settings.presence_sensors.contains_key("0x54ef441000dbc81c"));

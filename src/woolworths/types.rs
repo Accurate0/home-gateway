@@ -5,8 +5,6 @@ use serde::Serialize;
 pub struct WoolworthsTrackedProduct {
     pub id: uuid::Uuid,
     pub product_id: i64,
-    pub notify_channel: i64,
-    pub mentions: Vec<i64>,
 }
 
 impl PartialEq for WoolworthsTrackedProduct {

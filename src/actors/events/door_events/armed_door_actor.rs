@@ -32,7 +32,7 @@ impl ArmedDoor {
         let settings = self.shared_actor_state.settings.load();
         if let Some(settings) = settings.doors.get(ieee_addr) {
             let message = format!("{} has been left open.", settings.name);
-            notify(&settings.notify, message, true);
+            notify(&settings.notify, message);
         }
     }
 }

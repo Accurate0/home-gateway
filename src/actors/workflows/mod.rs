@@ -76,7 +76,7 @@ impl WorkflowWorker {
             return Ok(());
         };
 
-        notify(&[notify_source], message, true);
+        notify(&[notify_source], message);
 
         Ok(())
     }

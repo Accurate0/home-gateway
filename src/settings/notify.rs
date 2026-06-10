@@ -7,11 +7,6 @@ pub type NotifyTargets = HashMap<String, NotifySource>;
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum NotifySource {
-    Discord {
-        channel_id: u64,
-        #[serde(default)]
-        mentions: Vec<u64>,
-    },
     /// Push notification to all registered HomeGateway Android devices.
     AndroidApp,
 }

@@ -88,7 +88,7 @@ impl Actor for WoolworthsActor {
             WoolworthsMessage::TrackedProductGroup {
                 product_response_map,
             } => {
-                for (tracked, response) in product_response_map {
+                for (_tracked, response) in product_response_map {
                     let product_id = response.product.stockcode;
                     let product_name = response.product.display_name;
                     let last_price = state
@@ -105,12 +105,7 @@ impl Actor for WoolworthsActor {
                             product_name, response.product.price, price_down_by
                         );
 
-                        let notify_source = NotifySource::Discord {
-                            channel_id: tracked.notify_channel as u64,
-                            mentions: tracked.mentions.iter().map(|m| *m as u64).collect(),
-                        };
-
-                        notify(&[notify_source], product_string, true);
+                        notify(&[NotifySource::AndroidApp], product_string);
                     }
 
                     state

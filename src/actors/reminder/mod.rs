@@ -15,8 +15,6 @@ pub enum ReminderActorMessage {
     Set {
         message: String,
         delay: Duration,
-        channel_id: u64,
-        user_id: u64,
     },
 
     TriggerScheduled {
@@ -26,8 +24,6 @@ pub enum ReminderActorMessage {
     },
     Trigger {
         message: String,
-        channel_id: u64,
-        user_id: Vec<u64>,
     },
 }
 
@@ -35,8 +31,6 @@ pub enum ReminderActorMessage {
 pub struct ReminderActorDelayQueueValue {
     message: String,
     delay: Duration,
-    channel_id: u64,
-    user_id: u64,
 }
 
 pub struct ReminderActor {
@@ -84,33 +78,14 @@ impl Actor for ReminderActor {
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
-            ReminderActorMessage::Set {
-                message,
-                delay,
-                channel_id,
-                user_id,
-            } => {
-                let v = ReminderActorDelayQueueValue {
-                    message,
-                    delay,
-                    channel_id,
-                    user_id,
-                };
+            ReminderActorMessage::Set { message, delay } => {
+                let v = ReminderActorDelayQueueValue { message, delay };
 
                 self.delay_queue.push(v, delay).await?;
             }
-            ReminderActorMessage::Trigger {
-                message,
-                channel_id,
-                user_id,
-            } => {
-                let notify_source = NotifySource::Discord {
-                    channel_id,
-                    mentions: user_id,
-                };
-
+            ReminderActorMessage::Trigger { message } => {
                 let message = format!("Reminder about \"{}\"", message);
-                notify(&[notify_source], message, true);
+                notify(&[NotifySource::AndroidApp], message);
             }
             ReminderActorMessage::TriggerScheduled {
                 message,
@@ -123,7 +98,7 @@ impl Actor for ReminderActor {
                 );
 
                 if scheduled_reminder.state == ReminderState::Active {
-                    notify(&notify_sources, message, true);
+                    notify(&notify_sources, message);
                 }
 
                 let time = scheduled_reminder

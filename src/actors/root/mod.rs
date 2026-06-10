@@ -18,7 +18,7 @@ use super::{
     maccas::MaccasActor,
     push,
     reminder::{ReminderActor, ReminderActorDelayQueueValue},
-    selfbot, smart_switch,
+    smart_switch,
     synergy::SynergyActor,
     temperature_sensor,
     unifi::UnifiConnectedClientHandler,
@@ -208,7 +208,6 @@ impl Actor for RootSupervisor {
             .await?;
 
         door_sensor::spawn::spawn_door_handler(&myself, shared_actor_state.clone()).await?;
-        selfbot::spawn::spawn_selfbot(&myself, self.shared_actor_state.clone()).await?;
         push::spawn::spawn_push(&myself, self.shared_actor_state.clone()).await?;
 
         light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
