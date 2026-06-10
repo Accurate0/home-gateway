@@ -21,7 +21,14 @@
     },
     {
       "matchFileNames": ["eink-display-web/**"],
-      "groupName": "eink-display-web"
+      "groupName": "eink-display-web",
+      "postUpgradeTasks": {
+        "commands": [
+          "cd eink-display-web && pnpm install --no-frozen-lockfile && pnpm relay"
+        ],
+        "fileFilters": ["eink-display-web/src/**/__generated__/*.graphql.ts"],
+        "executionMode": "branch"
+      }
     },
     {
       "matchFileNames": ["eink-display-firmware/**"],

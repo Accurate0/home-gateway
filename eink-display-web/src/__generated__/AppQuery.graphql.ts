@@ -1,7 +1,6 @@
 /**
- * @generated SignedSource<<637db8f3f6dd707a52668d26c5105300>>
+ * @generated SignedSource<<6d0c9683b68c112f2a3ae90a10693bc8>>
  * @lightSyntaxTransform
- * @nogrep
  */
 
 /* tslint:disable */
@@ -141,7 +140,7 @@ v4 = {
       "name": "currentProductionWh",
       "storageKey": null
     },
-    (v3/*: any*/),
+    (v3/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -226,14 +225,14 @@ v6 = {
 };
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "AppQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v1/*: any*/),
+        "args": (v1/*:: as any*/),
         "concreteType": "WeatherObject",
         "kind": "LinkedField",
         "name": "weather",
@@ -247,7 +246,7 @@ return {
         ],
         "storageKey": null
       },
-      (v2/*: any*/),
+      (v2/*:: as any*/),
       {
         "alias": null,
         "args": null,
@@ -256,29 +255,29 @@ return {
         "name": "solar",
         "plural": false,
         "selections": [
-          (v4/*: any*/),
+          (v4/*:: as any*/),
           {
-            "args": (v5/*: any*/),
+            "args": (v5/*:: as any*/),
             "kind": "FragmentSpread",
             "name": "SolarChart_solar"
           }
         ],
         "storageKey": null
       },
-      (v6/*: any*/)
+      (v6/*:: as any*/)
     ],
     "type": "QueryRoot",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "AppQuery",
     "selections": [
       {
         "alias": null,
-        "args": (v1/*: any*/),
+        "args": (v1/*:: as any*/),
         "concreteType": "WeatherObject",
         "kind": "LinkedField",
         "name": "weather",
@@ -358,7 +357,7 @@ return {
         ],
         "storageKey": null
       },
-      (v2/*: any*/),
+      (v2/*:: as any*/),
       {
         "alias": null,
         "args": null,
@@ -367,12 +366,12 @@ return {
         "name": "solar",
         "plural": false,
         "selections": [
-          (v4/*: any*/),
+          (v4/*:: as any*/),
           {
             "alias": null,
             "args": [
               {
-                "fields": (v5/*: any*/),
+                "fields": (v5/*:: as any*/),
                 "kind": "ObjectValue",
                 "name": "input"
               }
@@ -403,14 +402,14 @@ return {
                 "name": "timestamp",
                 "storageKey": null
               },
-              (v3/*: any*/)
+              (v3/*:: as any*/)
             ],
             "storageKey": null
           }
         ],
         "storageKey": null
       },
-      (v6/*: any*/)
+      (v6/*:: as any*/)
     ]
   },
   "params": {
