@@ -96,6 +96,9 @@ importers:
       vite:
         specifier: ^8.0.0
         version: 8.0.16(@types/node@25.9.2)(jiti@2.7.0)
+      vite-plugin-relay:
+        specifier: ^2.1.0
+        version: 2.1.0(babel-plugin-relay@21.0.1)(vite@8.0.16(@types/node@25.9.2)(jiti@2.7.0))
       vite-plugin-singlefile:
         specifier: ^2.3.0
         version: 2.3.3(vite@8.0.16(@types/node@25.9.2)(jiti@2.7.0))
@@ -1394,6 +1397,12 @@ packages:
 
   victory-vendor@36.9.2:
     resolution: {integrity: sha512-PnpQQMuxlwYdocC8fIJqVXvkeViHYzotI+NJrCuav0ZYFoq912ZHBk3mCeuj+5/VpodOjPe1z0Fk2ihgzlXqjQ==}
+
+  vite-plugin-relay@2.1.0:
+    resolution: {integrity: sha512-k7tQFeJQlJy0S6OrQxuk5WrauHouGfRgFFCos0PatYiUY2gnwPZPi30KPuUtvdrzTPPTgZVHj51xJAp/3oMRiQ==}
+    peerDependencies:
+      babel-plugin-relay: '>=14.1.0'
+      vite: '>=2.0.0'
 
   vite-plugin-singlefile@2.3.3:
     resolution: {integrity: sha512-XVnGH0QzbOa8fxRSsHdCarVN1BSBXNi7uLMQYlrGRN5apdHkk62XQWRJhVever0lnfuyBkwn+kvVChdm/OoOUg==}
@@ -2714,6 +2723,14 @@ snapshots:
       d3-shape: 3.2.0
       d3-time: 3.1.0
       d3-timer: 3.0.1
+
+  vite-plugin-relay@2.1.0(babel-plugin-relay@21.0.1)(vite@8.0.16(@types/node@25.9.2)(jiti@2.7.0)):
+    dependencies:
+      '@babel/core': 7.29.7
+      babel-plugin-relay: 21.0.1
+      vite: 8.0.16(@types/node@25.9.2)(jiti@2.7.0)
+    transitivePeerDependencies:
+      - supports-color
 
   vite-plugin-singlefile@2.3.3(vite@8.0.16(@types/node@25.9.2)(jiti@2.7.0)):
     dependencies:
