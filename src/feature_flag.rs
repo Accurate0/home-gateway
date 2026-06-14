@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use open_feature::{EvaluationContext, OpenFeature, provider::NoOpProvider};
-use open_feature_flipt::flipt::{self, ClientTokenAuthentication, FliptProvider};
+use openfeature_provider::{EvaluationMode, FeatureFlagProvider};
 
 #[derive(Clone)]
 pub struct FeatureFlagClient {
@@ -11,22 +11,17 @@ pub struct FeatureFlagClient {
 
 impl FeatureFlagClient {
     pub async fn new() -> Self {
-        let url = std::env::var("FLIPT_URL");
-        let token = std::env::var("FLIPT_TOKEN");
+        let url = std::env::var("FEATURE_FLAGS_URL").ok();
 
         let mut client = OpenFeature::singleton_mut().await;
 
-        if let (Ok(url), Ok(token)) = (url, token) {
-            let config = flipt::Config {
-                url,
-                authentication_strategy: ClientTokenAuthentication::new(token),
-                timeout: 60,
-            };
-
-            match FliptProvider::new("default".to_string(), config) {
+        if let Some(url) = url {
+            match FeatureFlagProvider::connect_with(url, "home-gateway", EvaluationMode::Local)
+                .await
+            {
                 Ok(provider) => client.set_provider(provider).await,
                 Err(e) => {
-                    tracing::error!("error when init flipt: {e}");
+                    tracing::error!("error when connecting to feature-flags: {e}");
                     client.set_provider(NoOpProvider::default()).await
                 }
             };

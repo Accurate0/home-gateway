@@ -116,10 +116,14 @@ impl Worker for PushWorker {
                 if self
                     .shared_actor_state
                     .feature_flag_client
-                    .is_feature_enabled("home-gateway-push-killswitch", false, evaluation_context)
+                    .is_feature_enabled(
+                        "home-gateway-notification-killswitch",
+                        false,
+                        evaluation_context,
+                    )
                     .await
                 {
-                    tracing::warn!("push kill switch is enabled, not sending: {title}");
+                    tracing::warn!("notification kill switch is enabled, not sending: {title}");
                     return Ok(());
                 }
 

@@ -5,11 +5,6 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["open-feature"],
-      "matchManagers": ["cargo"],
-      "enabled": false
-    },
-    {
       "matchPackageNames": ["recharts"],
       "matchManagers": ["npm"],
       "enabled": false
