@@ -4,7 +4,7 @@ ARG HOME_GATEWAY_API_SECRET
 FROM rust:1.96.0-slim-bookworm AS builder
 ARG BINARY_NAME
 
-RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc nasm
+RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc nasm protobuf-compiler libprotobuf-dev
 
 WORKDIR /app/${BINARY_NAME}-build
 
