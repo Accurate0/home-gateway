@@ -35,6 +35,7 @@ use routes::{
         maccas::maccas,
         synergy::synergy,
     },
+    push::notify as push_notify,
     schema::schema as schema_route,
 };
 use rustls::crypto::aws_lc_rs;
@@ -197,6 +198,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/epd/config", get(epd::config))
         .route("/epd/latest", get(epd::latest))
         .route("/epd/take-screenshot", post(epd::take_screenshot))
+        .route("/push/notify", post(push_notify))
         .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
             api_state.clone(),
         ))
