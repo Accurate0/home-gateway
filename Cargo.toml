@@ -28,7 +28,7 @@ config = { version = "0.15.23", features = ["yaml"] }
 itertools = "0.15.0"
 gcp_auth = "0.12"
 log = "0.4.32"
-phf = { version = "0.13", features = ["macros"] }
+phf = { version = "0.14", features = ["macros"] }
 ractor = "0.15.13"
 rumqttc = "0.25.1"
 serde = { version = "1.0.228", features = ["derive"] }
