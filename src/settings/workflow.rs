@@ -209,6 +209,19 @@ pub enum Step {
 }
 
 impl Step {
+    /// Static step kind, used as a label in logs, spans, and metrics.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Step::Light { .. } => "light",
+            Step::Switch { .. } => "switch",
+            Step::Vacuum { .. } => "vacuum",
+            Step::Scene { .. } => "scene",
+            Step::Notify { .. } => "notify",
+            Step::Delay { .. } => "delay",
+            Step::RunWorkflow { .. } => "run_workflow",
+        }
+    }
+
     /// The optional guard condition shared across every step variant.
     pub fn guard(&self) -> Option<&Condition> {
         match self {
@@ -262,42 +275,11 @@ pub struct WorkflowSettings {
     pub run: Vec<Step>,
 }
 
-/// On-disk form of an action: either a bare list of steps, or a struct with an
-/// explicit `enabled` flag alongside `run`. Both collapse to [`ActionSettings`].
-#[derive(Debug, Deserialize, Clone)]
-#[serde(untagged)]
-enum RawAction {
-    Steps(Vec<Step>),
-    Detailed {
-        #[serde(default = "yes")]
-        enabled: bool,
-        run: Vec<Step>,
-    },
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(from = "RawAction")]
-pub struct ActionSettings {
-    pub workflow: WorkflowSettings,
-}
-
-impl From<RawAction> for ActionSettings {
-    fn from(raw: RawAction) -> Self {
-        let workflow = match raw {
-            RawAction::Steps(run) => WorkflowSettings { enabled: true, run },
-            RawAction::Detailed { enabled, run } => WorkflowSettings { enabled, run },
-        };
-
-        ActionSettings { workflow }
-    }
-}
-
-impl ActionSettings {
+impl WorkflowSettings {
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
-        for step in &mut self.workflow.run {
+        for step in &mut self.run {
             step.resolve_devices(devices)?;
         }
-
         Ok(())
     }
 }

@@ -1,15 +1,6 @@
 use serde::Deserialize;
-use std::collections::HashMap;
 
-use super::workflow::ActionSettings;
 use super::{DeviceAliases, IEEEAddress, resolve_device};
-
-#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
-#[serde(rename_all = "PascalCase")]
-pub enum PresenceActionId {
-    PresenceDetected,
-    NoPresenceDetected,
-}
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum PresenceSensorType {
@@ -66,26 +57,23 @@ pub struct PresenceSettings {
     pub sensor_type: PresenceSensorType,
     /// Set when `source` is esphome: the binary_sensor object_id treated as motion.
     pub motion_entity: Option<String>,
-    pub actions: HashMap<PresenceActionId, ActionSettings>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub(super) struct RawPresenceSettings {
     name: String,
     source: PresenceSource,
-    actions: HashMap<PresenceActionId, ActionSettings>,
 }
 
 impl RawPresenceSettings {
-    /// Resolve into `(identifier, settings)` for the runtime sensor map.
+    /// Resolve into `(identifier, settings)` for the runtime sensor map. The
+    /// event→workflow mapping lives in `triggers:`; this just declares the
+    /// sensor so esphome topics can be subscribed and events routed.
     pub(super) fn resolve(
         mut self,
         devices: &DeviceAliases,
     ) -> Result<(String, PresenceSettings), String> {
         self.source.resolve_devices(devices)?;
-        for action in self.actions.values_mut() {
-            action.resolve_devices(devices)?;
-        }
 
         Ok((
             self.source.identifier(),
@@ -93,7 +81,6 @@ impl RawPresenceSettings {
                 name: self.name,
                 sensor_type: self.source.sensor_type(),
                 motion_entity: self.source.motion_entity(),
-                actions: self.actions,
             },
         ))
     }

@@ -6,11 +6,11 @@ use opentelemetry_sdk::{
     propagation::TraceContextPropagator,
     trace::{BatchConfigBuilder, BatchSpanProcessor, Tracer},
 };
-use prometheus::Registry;
 use opentelemetry_semantic_conventions::resource::{
     DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_NAME, TELEMETRY_SDK_LANGUAGE, TELEMETRY_SDK_NAME,
     TELEMETRY_SDK_VERSION,
 };
+use prometheus::Registry;
 use std::time::Duration;
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};

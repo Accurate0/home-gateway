@@ -1,0 +1,13 @@
+- name: Living room motion on
+  on: { type: presence, sensor: apollo-mtr-1-livingroom, present: true }
+  run:
+    - type: light
+      device: non_existent_light
+      state: ON
+
+- name: Living room motion off
+  on: { type: presence, sensor: apollo-mtr-1-livingroom, present: false }
+  run:
+    - type: light
+      device: non_existent_light
+      state: OFF

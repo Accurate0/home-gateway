@@ -56,10 +56,12 @@ mod auth;
 mod delayqueue;
 mod discord;
 mod esphome;
+mod event_bus;
 mod feature_flag;
 mod graphql;
 mod graphql_tracing;
 mod http;
+mod metrics;
 mod mqtt;
 mod notify;
 mod object_registry;
@@ -91,6 +93,7 @@ async fn init_actors(
         feature_flag_client,
         known_devices_map,
         object_registry,
+        event_bus: event_bus::EventBus::default(),
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(

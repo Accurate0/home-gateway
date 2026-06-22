@@ -1,14 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{
-    actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::{PresenceActionId, workflow::WorkflowSettings},
-    types::SharedActorState,
-    zigbee2mqtt::Aqara_FP1E,
-};
+use crate::{event_bus::EventBusMessage, types::SharedActorState, zigbee2mqtt::Aqara_FP1E};
 use ractor::{
-    ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
+    ActorProcessingErr, ActorRef, RpcReplyPort,
+    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use uuid::Uuid;
 
@@ -26,6 +21,12 @@ pub struct NewEvent {
 
 pub enum Message {
     NewEvent(NewEvent),
+    /// Last known presence for a sensor (keyed by ieee address or esphome node),
+    /// or `None` if the sensor hasn't reported since startup.
+    QueryLatest {
+        sensor: String,
+        reply: RpcReplyPort<Option<bool>>,
+    },
 }
 
 pub struct PresenceSensorState {
@@ -39,30 +40,6 @@ pub struct PresenceSensorHandler {
 impl PresenceSensorHandler {
     pub const NAME: &str = "presence-sensor";
 
-    fn execute_workflow(
-        event_id: Uuid,
-        workflow_settings: &WorkflowSettings,
-    ) -> Result<(), anyhow::Error> {
-        let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
-            tracing::warn!("actor not found for workflow");
-            return Ok(());
-        };
-
-        let message = FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: WorkflowWorkerMessage::Execute {
-                event_id,
-                workflow: workflow_settings.to_owned(),
-            },
-            options: JobOptions::default(),
-            accepted: None,
-        });
-
-        actor.send_message(message)?;
-
-        Ok(())
-    }
-
     fn process_presence(
         &self,
         event_id: Uuid,
@@ -70,16 +47,10 @@ impl PresenceSensorHandler {
         presence: bool,
         state: &mut PresenceSensorState,
     ) -> Result<(), anyhow::Error> {
-        let settings = self.shared_actor_state.settings.load();
-        let Some(presence_settings) = settings.presence_sensors.get(&key) else {
-            tracing::warn!("no valid setting found for: {key}");
-            return Ok(());
-        };
-
         let mut was_state_changed = true;
         state
             .last_presence
-            .entry(key)
+            .entry(key.clone())
             .and_modify(|prev| {
                 if *prev != presence {
                     *prev = presence;
@@ -89,23 +60,16 @@ impl PresenceSensorHandler {
             })
             .or_insert(presence);
 
+        // edge-detected here so triggers receive discrete transitions, not every
+        // sensor ping
         if was_state_changed {
-            let action_settings = if presence {
-                presence_settings
-                    .actions
-                    .get(&PresenceActionId::PresenceDetected)
-            } else {
-                presence_settings
-                    .actions
-                    .get(&PresenceActionId::NoPresenceDetected)
-            };
-
-            let Some(action_settings) = action_settings else {
-                tracing::warn!("no set action for event");
-                return Ok(());
-            };
-
-            Self::execute_workflow(event_id, &action_settings.workflow)?;
+            self.shared_actor_state
+                .event_bus
+                .publish(EventBusMessage::Presence {
+                    event_id,
+                    sensor: key,
+                    present: presence,
+                });
         }
 
         Ok(())
@@ -117,6 +81,9 @@ impl PresenceSensorHandler {
         state: &mut PresenceSensorState,
     ) -> Result<(), anyhow::Error> {
         match message {
+            Message::QueryLatest { sensor, reply } => {
+                reply.send(state.last_presence.get(&sensor).copied())?;
+            }
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraFP1E(aqara_fp1_e) => self.process_presence(
                     event.event_id,

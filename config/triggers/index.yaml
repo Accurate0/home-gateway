@@ -1,0 +1,5 @@
+- !include small_switch.yaml
+- !include control_switch.yaml
+- !include closet_presence.yaml
+- !include livingroom_motion.yaml
+- !include hallway_plant.yaml

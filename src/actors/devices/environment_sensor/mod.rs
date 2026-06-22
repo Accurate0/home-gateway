@@ -1,5 +1,6 @@
 use crate::{
     esphome,
+    event_bus::{EventBusMessage, SensorReading},
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
@@ -54,7 +55,7 @@ pub struct LatestReading {
 }
 
 pub enum Message {
-    NewEvent(NewEvent),
+    NewEvent(Box<NewEvent>),
     QueryLatest {
         entity_id: String,
         reply: RpcReplyPort<Option<LatestReading>>,
@@ -266,6 +267,25 @@ impl EnvironmentSensorHandler {
             uv_index,
             now,
         ).execute(&self.shared_actor_state.db).await?;
+
+        // publish each present reading onto the bus, keyed by device id, so
+        // `environment` triggers can match on a metric + threshold
+        let readings = [
+            SensorReading::Temperature { value: temperature }.into(),
+            humidity.map(|value| SensorReading::Humidity { value }),
+            pressure.map(|value| SensorReading::Pressure { value }),
+            lux.map(|value| SensorReading::Lux { value }),
+            uv_index.map(|value| SensorReading::UvIndex { value }),
+        ];
+        for reading in readings.into_iter().flatten() {
+            self.shared_actor_state
+                .event_bus
+                .publish(EventBusMessage::Environment {
+                    event_id,
+                    sensor: ieee_addr.clone(),
+                    reading,
+                });
+        }
 
         Ok(())
     }

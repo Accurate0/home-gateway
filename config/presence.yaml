@@ -1,26 +1,8 @@
 - name: Closet Presence Sensor
   source: { zigbee: closet_presence }
-  actions:
-    PresenceDetected:
-      - type: light
-        device: closet_light
-        state: ON
-    NoPresenceDetected:
-      - type: light
-        device: closet_light
-        state: OFF
 
 - name: Living Room Motion
   source:
     esphome:
       node: apollo-mtr-1-livingroom
       motion_entity: ld2450_moving_target
-  actions:
-    PresenceDetected:
-      - type: light
-        device: non_existent_light
-        state: ON
-    NoPresenceDetected:
-      - type: light
-        device: non_existent_light
-        state: OFF

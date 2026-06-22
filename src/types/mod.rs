@@ -1,6 +1,7 @@
 use crate::{
     actors::event_handler,
     delayqueue::DelayQueueError,
+    event_bus::EventBus,
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
     mqtt::{MqttClient, MqttError},
@@ -25,6 +26,7 @@ pub struct SharedActorState {
     pub feature_flag_client: FeatureFlagClient,
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
     pub object_registry: ObjectRegistry,
+    pub event_bus: EventBus,
 }
 
 #[derive(Clone)]

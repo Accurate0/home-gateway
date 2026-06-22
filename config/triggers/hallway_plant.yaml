@@ -1,0 +1,15 @@
+- name: Hallway plant dry
+  on: { type: environment, sensor: apollo-plt-1-hallway, metric: soil_moisture, op: lt, value: 20 }
+  cooldown: 24h
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Hallway plant is dry (soil moisture below 20%)"
+
+- name: Hallway plant overwatered
+  on: { type: environment, sensor: apollo-plt-1-hallway, metric: soil_moisture, op: gt, value: 80 }
+  cooldown: 24h
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Hallway plant is overwatered (soil moisture above 80%)"

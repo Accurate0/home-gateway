@@ -13,7 +13,10 @@ use super::{
     alarm::AlarmActor,
     devices::{control_switch, plant_sensor, presence_sensor},
     door_sensor, environment_sensor,
-    events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
+    events::{
+        appliances::ApplianceEventsSupervisor, dispatcher::EventDispatcher,
+        door_events::DoorEventsSupervisor,
+    },
     light,
     maccas::MaccasActor,
     push,
@@ -184,6 +187,23 @@ impl RootSupervisor {
 
         Ok(())
     }
+
+    async fn start_event_dispatcher(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(EventDispatcher::NAME.to_owned()),
+                EventDispatcher {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
 }
 
 impl Actor for RootSupervisor {
@@ -250,6 +270,7 @@ impl Actor for RootSupervisor {
         self.start_vacuum_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
+        self.start_event_dispatcher(&myself).await?;
 
         Ok(())
     }
@@ -317,6 +338,11 @@ impl Actor for RootSupervisor {
                     SolarIngestActor::NAME => {
                         tracing::info!("restarting solar ingest actor");
                         self.start_solar_actor(&myself).await?;
+                    }
+
+                    EventDispatcher::NAME => {
+                        tracing::info!("restarting event dispatcher");
+                        self.start_event_dispatcher(&myself).await?;
                     }
 
                     name => {

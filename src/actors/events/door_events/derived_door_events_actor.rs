@@ -1,4 +1,5 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
+use crate::event_bus::EventBusMessage;
 use crate::types::db::DoorState;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
@@ -40,6 +41,15 @@ impl DerivedDoorEvents {
         state.map.insert(message.ieee_addr.clone(), door_state);
 
         state.last_trigger.insert(message.ieee_addr.clone(), now);
+
+        // publish the confirmed, debounced transition so `door` triggers can fire
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Door {
+                event_id: message.event_id,
+                ieee_addr: message.ieee_addr.clone(),
+                open: matches!(door_state, DoorState::Open),
+            });
 
         Ok(())
     }

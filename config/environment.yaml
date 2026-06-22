@@ -1,5 +1,3 @@
-- id: LAUNDRY
-  source: { zigbee: "0x00158d008b8797bc" }
 - id: LIVING_ROOM
   source: { zigbee: "0x00158d008b8798a7" }
 - id: BATHROOM
