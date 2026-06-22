@@ -27,11 +27,14 @@ pub enum Entity {
 #[derive(Default)]
 struct EsphomeReadings {
     temperature: Option<f64>,
+    humidity: Option<f64>,
     pressure: Option<f64>,
+    lux: Option<f64>,
+    uv_index: Option<f64>,
 }
 
 #[derive(Default)]
-pub struct TemperatureSensorState {
+pub struct EnvironmentSensorState {
     esphome_readings: HashMap<String, EsphomeReadings>,
 }
 
@@ -44,22 +47,22 @@ pub enum Message {
     NewEvent(NewEvent),
 }
 
-pub struct TemperatureSensorHandler {
+pub struct EnvironmentSensorHandler {
     shared_actor_state: SharedActorState,
 }
 
-impl TemperatureSensorHandler {
-    pub const NAME: &str = "temperature-sensor";
+impl EnvironmentSensorHandler {
+    pub const NAME: &str = "environment-sensor";
 
     async fn handle(
         &self,
         message: Message,
-        state: &mut TemperatureSensorState,
+        state: &mut EnvironmentSensorState,
     ) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
-                    self.save_temperature_details(
+                    self.save_environment_details(
                         event.event_id,
                         aqara_wsdcgq12_lm.device.friendly_name,
                         aqara_wsdcgq12_lm.device.ieee_addr,
@@ -69,11 +72,13 @@ impl TemperatureSensorHandler {
                         Some(aqara_wsdcgq12_lm.pressure),
                         None,
                         None,
+                        None,
+                        None,
                     )
                     .await?;
                 }
                 Entity::LumiWSDCGQ11LM(lumi_wsdcgq11_lm) => {
-                    self.save_temperature_details(
+                    self.save_environment_details(
                         event.event_id,
                         lumi_wsdcgq11_lm.device.friendly_name,
                         lumi_wsdcgq11_lm.device.ieee_addr,
@@ -83,11 +88,13 @@ impl TemperatureSensorHandler {
                         Some(lumi_wsdcgq11_lm.pressure),
                         None,
                         None,
+                        None,
+                        None,
                     )
                     .await?;
                 }
                 Entity::IKEAE2112(ikea_e2112) => {
-                    self.save_temperature_details(
+                    self.save_environment_details(
                         event.event_id,
                         ikea_e2112.device.friendly_name,
                         ikea_e2112.device.ieee_addr,
@@ -97,6 +104,8 @@ impl TemperatureSensorHandler {
                         None,
                         Some(ikea_e2112.pm25),
                         Some(ikea_e2112.voc_index),
+                        None,
+                        None,
                     )
                     .await?;
                 }
@@ -107,10 +116,15 @@ impl TemperatureSensorHandler {
                 } => {
                     let readings = state.esphome_readings.entry(node.clone()).or_default();
                     match object_id.as_str() {
-                        esphome::TEMPERATURE_OBJECT_ID => readings.temperature = Some(value),
-                        esphome::PRESSURE_OBJECT_ID => readings.pressure = Some(value),
+                        esphome::DPS310_TEMPERATURE_OBJECT_ID
+                        | esphome::AIR_TEMPERATURE_OBJECT_ID => readings.temperature = Some(value),
+                        esphome::AIR_HUMIDITY_OBJECT_ID => readings.humidity = Some(value),
+                        esphome::DPS310_PRESSURE_OBJECT_ID => readings.pressure = Some(value),
+                        esphome::LTR390_LIGHT_OBJECT_ID => readings.lux = Some(value),
+                        esphome::LTR390_UV_INDEX_OBJECT_ID => readings.uv_index = Some(value),
                         other => {
-                            tracing::warn!("unhandled esphome sensor entity: {other}");
+                            // not a temperature-sensor entity (e.g. soil_moisture); ignore
+                            tracing::debug!("ignoring esphome sensor entity: {other}");
                             return Ok(());
                         }
                     }
@@ -119,7 +133,10 @@ impl TemperatureSensorHandler {
                     let Some(temperature) = readings.temperature else {
                         return Ok(());
                     };
+                    let humidity = readings.humidity;
                     let pressure = readings.pressure;
+                    let lux = readings.lux;
+                    let uv_index = readings.uv_index;
 
                     let friendly_name = self
                         .shared_actor_state
@@ -130,16 +147,18 @@ impl TemperatureSensorHandler {
                         .cloned()
                         .unwrap_or_else(|| node.clone());
 
-                    self.save_temperature_details(
+                    self.save_environment_details(
                         event.event_id,
                         friendly_name,
                         node,
                         temperature,
                         None,
-                        None,
+                        humidity,
                         pressure,
                         None,
                         None,
+                        lux,
+                        uv_index,
                     )
                     .await?;
                 }
@@ -150,7 +169,7 @@ impl TemperatureSensorHandler {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn save_temperature_details(
+    async fn save_environment_details(
         &self,
         event_id: Uuid,
         friendly_name: String,
@@ -161,13 +180,15 @@ impl TemperatureSensorHandler {
         pressure: Option<f64>,
         pm25: Option<i64>,
         voc_index: Option<i64>,
+        lux: Option<f64>,
+        uv_index: Option<f64>,
     ) -> Result<(), anyhow::Error> {
         let settings = self.shared_actor_state.settings.load();
-        let id = settings.temperature_sensors.get(&ieee_addr).map(|s| &s.id);
+        let id = settings.environment_sensors.get(&ieee_addr).map(|s| &s.id);
         let now = Utc::now();
 
         sqlx::query!(
-            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
             event_id,
             id,
             friendly_name,
@@ -178,10 +199,12 @@ impl TemperatureSensorHandler {
             pressure,
             pm25,
             voc_index,
+            lux,
+            uv_index,
         ).execute(&self.shared_actor_state.db).await?;
 
         sqlx::query!(
-            r#"INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            r#"INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             ON CONFLICT (entity_id)
             DO UPDATE SET
                 name = EXCLUDED.name,
@@ -192,6 +215,8 @@ impl TemperatureSensorHandler {
                 pressure = EXCLUDED.pressure,
                 pm25 = EXCLUDED.pm25,
                 voc_index = EXCLUDED.voc_index,
+                lux = EXCLUDED.lux,
+                uv_index = EXCLUDED.uv_index,
                 updated_at = EXCLUDED.updated_at
             "#,
             id,
@@ -203,6 +228,8 @@ impl TemperatureSensorHandler {
             pressure,
             pm25,
             voc_index,
+            lux,
+            uv_index,
             now,
         ).execute(&self.shared_actor_state.db).await?;
 
@@ -210,10 +237,10 @@ impl TemperatureSensorHandler {
     }
 }
 
-impl Worker for TemperatureSensorHandler {
+impl Worker for EnvironmentSensorHandler {
     type Key = ();
     type Message = Message;
-    type State = TemperatureSensorState;
+    type State = EnvironmentSensorState;
     type Arguments = ();
 
     async fn pre_start(
@@ -222,7 +249,7 @@ impl Worker for TemperatureSensorHandler {
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         _startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(TemperatureSensorState::default())
+        Ok(EnvironmentSensorState::default())
     }
 
     async fn handle(
@@ -240,13 +267,13 @@ impl Worker for TemperatureSensorHandler {
     }
 }
 
-pub struct TemperatureSensorHandlerBuilder {
+pub struct EnvironmentSensorHandlerBuilder {
     pub shared_actor_state: SharedActorState,
 }
-impl WorkerBuilder<TemperatureSensorHandler, ()> for TemperatureSensorHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (TemperatureSensorHandler, ()) {
+impl WorkerBuilder<EnvironmentSensorHandler, ()> for EnvironmentSensorHandlerBuilder {
+    fn build(&mut self, _wid: usize) -> (EnvironmentSensorHandler, ()) {
         (
-            TemperatureSensorHandler {
+            EnvironmentSensorHandler {
                 shared_actor_state: self.shared_actor_state.clone(),
             },
             (),

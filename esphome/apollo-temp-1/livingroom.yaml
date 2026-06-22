@@ -1,0 +1,7 @@
+esphome:
+  name: "${name}-livingroom"
+  friendly_name: Apollo TEMP-1 Living Room
+  comment: Apollo TEMP-1 Living Room
+
+packages:
+  core: !include core.yaml

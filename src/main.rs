@@ -171,6 +171,7 @@ async fn main() -> anyhow::Result<()> {
             tokio::spawn,
         ))
         .data(pool.clone())
+        .data(settings_container.clone())
         .extension(crate::graphql_tracing::Tracing)
         .finish();
 

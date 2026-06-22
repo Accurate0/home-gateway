@@ -75,6 +75,7 @@ axum-tracing-opentelemetry = "0.38.0"
 futures-util = "0.3.32"
 tracing-futures = "0.2.5"
 async-trait = "0.1.89"
+yaml-include = "0.8.1"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

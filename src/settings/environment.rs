@@ -3,39 +3,39 @@ use serde::Deserialize;
 use super::{DeviceAliases, IEEEAddress, resolve_device};
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub enum TemperatureSensorType {
+pub enum EnvironmentSensorType {
     #[default]
     Zigbee,
     Esphome,
 }
 
-/// Where a temperature sensor's readings come from. The variant is explicit so
+/// Where an environment sensor's readings come from. The variant is explicit so
 /// the map key's meaning (zigbee address vs esphome node name) is never implied.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
-pub enum TemperatureSource {
+pub enum EnvironmentSource {
     Zigbee(IEEEAddress),
     Esphome { node: String },
 }
 
-impl TemperatureSource {
+impl EnvironmentSource {
     fn identifier(&self) -> String {
         match self {
-            TemperatureSource::Zigbee(addr) => addr.clone(),
-            TemperatureSource::Esphome { node } => node.clone(),
+            EnvironmentSource::Zigbee(addr) => addr.clone(),
+            EnvironmentSource::Esphome { node } => node.clone(),
         }
     }
 
-    fn sensor_type(&self) -> TemperatureSensorType {
+    fn sensor_type(&self) -> EnvironmentSensorType {
         match self {
-            TemperatureSource::Zigbee(_) => TemperatureSensorType::Zigbee,
-            TemperatureSource::Esphome { .. } => TemperatureSensorType::Esphome,
+            EnvironmentSource::Zigbee(_) => EnvironmentSensorType::Zigbee,
+            EnvironmentSource::Esphome { .. } => EnvironmentSensorType::Esphome,
         }
     }
 
     /// Resolve a zigbee address that may be written as a device alias.
     fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
-        if let TemperatureSource::Zigbee(addr) = self {
+        if let EnvironmentSource::Zigbee(addr) = self {
             *addr = resolve_device(addr, devices)?;
         }
 
@@ -44,27 +44,27 @@ impl TemperatureSource {
 }
 
 #[derive(Debug, Clone)]
-pub struct TemperatureSensorSettings {
+pub struct EnvironmentSensorSettings {
     pub id: String,
-    pub sensor_type: TemperatureSensorType,
+    pub sensor_type: EnvironmentSensorType,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub(super) struct RawTemperatureSensor {
+pub(super) struct RawEnvironmentSensor {
     id: String,
-    source: TemperatureSource,
+    source: EnvironmentSource,
 }
 
-impl RawTemperatureSensor {
+impl RawEnvironmentSensor {
     /// Resolve into `(identifier, settings)` for the runtime sensor map.
     pub(super) fn resolve(
         mut self,
         devices: &DeviceAliases,
-    ) -> Result<(String, TemperatureSensorSettings), String> {
+    ) -> Result<(String, EnvironmentSensorSettings), String> {
         self.source.resolve_devices(devices)?;
         Ok((
             self.source.identifier(),
-            TemperatureSensorSettings {
+            EnvironmentSensorSettings {
                 id: self.id,
                 sensor_type: self.source.sensor_type(),
             },

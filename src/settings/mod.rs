@@ -1,34 +1,41 @@
 use arc_swap::{ArcSwap, Guard};
+use config::builder::{ConfigBuilder, DefaultState};
 use config::{Config, ConfigError, Environment, File, FileFormat};
 use serde::Deserialize;
+use std::path::Path;
 use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
 
 pub mod appliance;
 pub mod door;
+pub mod environment;
+pub mod graphql;
 pub mod maccas;
 pub mod notify;
+pub mod plant;
 pub mod presence;
 pub mod reminder;
 pub mod switch;
-pub mod temperature;
 pub mod workflow;
 
 pub use appliance::ApplianceSettings;
 pub use door::{ArmedDoorStates, DoorSettings};
+pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType};
+pub use graphql::GraphqlSettings;
 pub use maccas::MaccasSettings;
 pub use notify::{NotifySource, NotifyTargets};
+pub use plant::PlantSensorSettings;
 pub use presence::{PresenceActionId, PresenceSensorType, PresenceSettings};
 pub use reminder::{ReminderSettings, ReminderState};
 pub use switch::SwitchSettings;
-pub use temperature::{TemperatureSensorSettings, TemperatureSensorType};
 
 use appliance::RawApplianceSettings;
 use door::RawDoorSettings;
+use environment::RawEnvironmentSensor;
 use maccas::RawMaccasSettings;
+use plant::RawPlantSensor;
 use presence::RawPresenceSettings;
 use reminder::RawReminderSettings;
-use temperature::RawTemperatureSensor;
 
 pub type IEEEAddress = String;
 
@@ -78,7 +85,7 @@ pub struct Settings {
     pub mqtt_password: String,
     pub reminders: Vec<ReminderSettings>,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
-    pub temperature_sensors: HashMap<String, TemperatureSensorSettings>,
+    pub environment_sensors: HashMap<String, EnvironmentSensorSettings>,
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
     pub maccas: MaccasSettings,
     pub discord_token: String,
@@ -86,6 +93,8 @@ pub struct Settings {
     pub android_app_webhook_secret: String,
     pub switches: HashMap<IEEEAddress, SwitchSettings>,
     pub presence_sensors: HashMap<String, PresenceSettings>,
+    pub plant_sensors: HashMap<String, PlantSensorSettings>,
+    pub graphql: GraphqlSettings,
     pub s3: S3Settings,
 }
 
@@ -115,7 +124,7 @@ struct RawSettings {
     #[serde(default)]
     doors: HashMap<IEEEAddress, RawDoorSettings>,
     #[serde(default)]
-    temperature_sensors: Vec<RawTemperatureSensor>,
+    environment_sensors: Vec<RawEnvironmentSensor>,
     #[serde(default)]
     appliances: HashMap<IEEEAddress, RawApplianceSettings>,
     maccas: RawMaccasSettings,
@@ -123,6 +132,10 @@ struct RawSettings {
     switches: HashMap<IEEEAddress, SwitchSettings>,
     #[serde(default)]
     presence_sensors: Vec<RawPresenceSettings>,
+    #[serde(default)]
+    plant_sensors: Vec<RawPlantSensor>,
+    #[serde(default)]
+    graphql: GraphqlSettings,
     s3: S3Settings,
 }
 
@@ -143,11 +156,13 @@ impl RawSettings {
             notify_targets,
             reminders,
             doors,
-            temperature_sensors,
+            environment_sensors,
             appliances,
             maccas,
             mut switches,
             presence_sensors,
+            plant_sensors,
+            graphql,
             s3,
         } = self;
 
@@ -166,12 +181,17 @@ impl RawSettings {
             .map(|(addr, a)| Ok((addr, a.resolve(&notify_targets)?)))
             .collect::<Result<HashMap<_, _>, String>>()?;
 
-        let temperature_sensors = temperature_sensors
+        let environment_sensors = environment_sensors
             .into_iter()
             .map(|s| s.resolve(&devices))
             .collect::<Result<HashMap<_, _>, String>>()?;
 
         let presence_sensors = presence_sensors
+            .into_iter()
+            .map(|p| p.resolve(&devices))
+            .collect::<Result<HashMap<_, _>, String>>()?;
+
+        let plant_sensors = plant_sensors
             .into_iter()
             .map(|p| p.resolve(&devices))
             .collect::<Result<HashMap<_, _>, String>>()?;
@@ -195,11 +215,13 @@ impl RawSettings {
             android_app_webhook_secret,
             reminders,
             doors,
-            temperature_sensors,
+            environment_sensors,
             appliances,
             maccas,
             switches,
             presence_sensors,
+            plant_sensors,
+            graphql,
             s3,
         })
     }
@@ -216,13 +238,27 @@ impl SettingsContainer {
         raw.resolve().map_err(ConfigError::Message)
     }
 
+    /// Build a config from a directory of YAML files. `base.yaml` is the entry
+    /// point; its `!include <file>` tags (resolved by the `yaml-include` crate)
+    /// pull in the per-domain files (`plants.yaml`, `switches.yaml`, …) so each
+    /// concern lives in its own file.
+    fn config_sources(dir: &Path) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
+        let base = dir.join("base.yaml");
+        let merged = yaml_include::Transformer::new(base.clone(), true)
+            .map_err(|e| {
+                ConfigError::Message(format!(
+                    "failed to process includes in {}: {e}",
+                    base.display()
+                ))
+            })?
+            .to_string();
+
+        Ok(Config::builder().add_source(File::from_str(&merged, FileFormat::Yaml)))
+    }
+
     pub fn new() -> Result<Self, ConfigError> {
         // TODO: fetch config from catalog, falling back to file if not found or other error
-        let file_path = PathBuf::from("./config.yaml");
-        let file = File::from(file_path).required(true);
-
-        let config = Config::builder()
-            .add_source(file)
+        let config = Self::config_sources(&PathBuf::from("./config"))?
             .add_source(Environment::default().separator("__"))
             .build()?;
 
@@ -258,7 +294,6 @@ mod tests {
 
     #[test]
     fn config_yaml_parses_and_resolves() {
-        let file_contents = std::fs::read_to_string("./config.yaml").unwrap();
         // secrets normally come from the environment; supply dummies for the test
         let secrets = r#"
 api_key: x
@@ -272,8 +307,8 @@ android_app_webhook_secret: x
 maccas:
   webhook_secret: x
 "#;
-        let config = Config::builder()
-            .add_source(File::from_str(&file_contents, FileFormat::Yaml))
+        let config = SettingsContainer::config_sources(Path::new("./config"))
+            .unwrap()
             .add_source(File::from_str(secrets, FileFormat::Yaml))
             .build()
             .unwrap();
@@ -302,8 +337,8 @@ maccas:
             Some("ld2450_moving_target")
         );
         assert_eq!(
-            settings.temperature_sensors["apollo-mtr-1-livingroom"].sensor_type,
-            TemperatureSensorType::Esphome
+            settings.environment_sensors["apollo-mtr-1-livingroom"].sensor_type,
+            EnvironmentSensorType::Esphome
         );
     }
 }

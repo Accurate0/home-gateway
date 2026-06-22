@@ -1,17 +1,16 @@
 use super::{
     alarm::types::AndroidAppAlarmPayload,
-    devices::{control_switch, presence_sensor},
+    devices::{control_switch, plant_sensor, presence_sensor},
     maccas::types::MaccasOfferIngest,
     unifi::types::UnifiWebhookEvent,
 };
 use crate::{
     actors::{
         alarm::{AlarmActor, AlarmMessage},
-        door_sensor, light,
+        door_sensor, environment_sensor, light,
         maccas::{self, MaccasActor},
         smart_switch,
         synergy::{self, SynergyActor},
-        temperature_sensor,
         unifi::{UnifiConnectedClientHandler, UnifiMessage, types::Parameters},
     },
     types::SharedActorState,
@@ -145,7 +144,7 @@ impl EventHandler {
         Ok(())
     }
 
-    fn handle_temperature_sensor(
+    fn handle_environment_sensor(
         event_id: Uuid,
         actor_type: TypedActorName,
         actor_cell: ActorCell,
@@ -155,9 +154,9 @@ impl EventHandler {
             GenericZigbee2MqttMessage::IKEATemperatureSensor(ikea_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
+                    msg: environment_sensor::Message::NewEvent(environment_sensor::NewEvent {
                         event_id,
-                        entity: temperature_sensor::Entity::IKEAE2112(ikea_temperature_sensor),
+                        entity: environment_sensor::Entity::IKEAE2112(ikea_temperature_sensor),
                     }),
                     options: JobOptions::default(),
                     accepted: None,
@@ -166,9 +165,9 @@ impl EventHandler {
             GenericZigbee2MqttMessage::AqaraTemperatureSensor(aqara_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
+                    msg: environment_sensor::Message::NewEvent(environment_sensor::NewEvent {
                         event_id,
-                        entity: temperature_sensor::Entity::AqaraWSDCGQ12LM(
+                        entity: environment_sensor::Entity::AqaraWSDCGQ12LM(
                             aqara_temperature_sensor,
                         ),
                     }),
@@ -180,9 +179,9 @@ impl EventHandler {
             GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
+                    msg: environment_sensor::Message::NewEvent(environment_sensor::NewEvent {
                         event_id,
-                        entity: temperature_sensor::Entity::LumiWSDCGQ11LM(lumi_temperature_sensor),
+                        entity: environment_sensor::Entity::LumiWSDCGQ11LM(lumi_temperature_sensor),
                     }),
                     options: JobOptions::default(),
                     accepted: None,
@@ -322,16 +321,27 @@ impl EventHandler {
                 }
 
                 if let Some(temperature_settings) =
-                    settings.temperature_sensors.get(&discovery.name)
+                    settings.environment_sensors.get(&discovery.name)
                     && temperature_settings.sensor_type
-                        == crate::settings::TemperatureSensorType::Esphome
+                        == crate::settings::EnvironmentSensorType::Esphome
                 {
-                    for object_id in [
-                        crate::esphome::TEMPERATURE_OBJECT_ID,
-                        crate::esphome::PRESSURE_OBJECT_ID,
-                    ] {
+                    for object_id in crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS {
                         let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
                         tracing::info!("subscribing to esphome sensor topic: {topic}");
+                        self.shared_actor_state.mqtt.subscribe(topic).await?;
+                    }
+                }
+
+                if let Some(plant_settings) = settings.plant_sensors.get(&discovery.name) {
+                    // subscribe to each distinct entity referenced by a threshold
+                    let entities: std::collections::HashSet<&str> = plant_settings
+                        .actions
+                        .iter()
+                        .map(|a| a.entity.as_str())
+                        .collect();
+                    for object_id in entities {
+                        let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
+                        tracing::info!("subscribing to esphome plant sensor topic: {topic}");
                         self.shared_actor_state.mqtt.subscribe(topic).await?;
                     }
                 }
@@ -386,25 +396,58 @@ impl EventHandler {
                 };
 
                 let event_id = uuid::Uuid::new_v4();
-                let actor_name = TypedActorName::TemperatureSensor.to_string();
-                let Some(actor_cell) = ractor::registry::where_is(actor_name) else {
-                    tracing::error!("no temperature sensor actor found for esphome sensor");
-                    return Ok(());
-                };
+                let settings = self.shared_actor_state.settings.load();
 
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: temperature_sensor::Message::NewEvent(temperature_sensor::NewEvent {
-                        event_id,
-                        entity: temperature_sensor::Entity::Esphome {
-                            node: node.to_string(),
-                            object_id: object_id.to_string(),
-                            value,
-                        },
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
+                // a node can be both: the plant actor watches soil moisture for
+                // threshold workflows, while the temperature actor stores air
+                // temperature/humidity/lux/uv. Dispatch to each independently;
+                // each actor ignores object_ids it doesn't handle.
+                if settings.plant_sensors.contains_key(node) {
+                    match ractor::registry::where_is(
+                        plant_sensor::PlantSensorHandler::NAME.to_string(),
+                    ) {
+                        Some(actor_cell) => {
+                            actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                                key: (),
+                                msg: plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
+                                    event_id,
+                                    node: node.to_string(),
+                                    object_id: object_id.to_string(),
+                                    value,
+                                }),
+                                options: JobOptions::default(),
+                                accepted: None,
+                            }))?;
+                        }
+                        None => tracing::error!("no plant sensor actor found for esphome sensor"),
+                    }
+                }
+
+                if settings.environment_sensors.contains_key(node) {
+                    let actor_name = TypedActorName::EnvironmentSensor.to_string();
+                    match ractor::registry::where_is(actor_name) {
+                        Some(actor_cell) => {
+                            actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                                key: (),
+                                msg: environment_sensor::Message::NewEvent(
+                                    environment_sensor::NewEvent {
+                                        event_id,
+                                        entity: environment_sensor::Entity::Esphome {
+                                            node: node.to_string(),
+                                            object_id: object_id.to_string(),
+                                            value,
+                                        },
+                                    },
+                                ),
+                                options: JobOptions::default(),
+                                accepted: None,
+                            }))?;
+                        }
+                        None => {
+                            tracing::error!("no temperature sensor actor found for esphome sensor")
+                        }
+                    }
+                }
             }
             Message::MqttPacket { payload, .. } => {
                 let generic_message =
@@ -436,8 +479,8 @@ impl EventHandler {
                             actor_cell,
                             generic_message,
                         )?,
-                        types::TypedActorName::TemperatureSensor => {
-                            Self::handle_temperature_sensor(
+                        types::TypedActorName::EnvironmentSensor => {
+                            Self::handle_environment_sensor(
                                 event_id,
                                 actor_type,
                                 actor_cell,

@@ -1,0 +1,34 @@
+deep_sleep:
+  id: deep_sleep_1
+  sleep_duration: 5min
+  run_duration: 90s
+
+number:
+  - platform: template
+    name: "Sleep Duration"
+    id: deep_sleep_sleep_duration
+    min_value: 0
+    max_value: 800
+    step: 1
+    mode: box
+    update_interval: never
+    optimistic: true
+    restore_value: true
+    initial_value: 8
+    icon: "mdi:arrow-collapse-right"
+    entity_category: CONFIG
+    unit_of_measurement: "min"
+    on_value:
+      then:
+        - lambda: |-
+            id(deep_sleep_1).set_sleep_duration(x * 60 * 1000);
+
+script:
+  - id: reportAllValues
+    then:
+      - component.update: temp_probe
+      - component.update: source_sensor
+      - component.update: aht_20
+      - component.update: wifi_signal_db
+      - component.update: sys_esp_temperature
+      - component.update: sys_uptime

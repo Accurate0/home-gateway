@@ -1,0 +1,584 @@
+substitutions:
+  name: apollo-plt-1
+  version: "26.3.2.1"
+  device_description: ${name} made by Apollo Automation - version ${version}.
+  firmware_update_manifest_url: https://apolloautomation.github.io/PLT-1/firmware/manifest.json
+  # Per-device soil moisture calibration; override in each device file.
+  wet_voltage: "1.55"
+  dry_voltage: "2.7"
+
+esphome:
+  name_add_mac_suffix: false
+  project:
+    name: "ApolloAutomation.PLT-1"
+    version: "${version}"
+  min_version: 2025.6.0
+  on_boot:
+    - priority: 800.0
+      then:
+        - lambda: |-
+            id(deep_sleep_1).set_sleep_duration(id(deep_sleep_sleep_duration).state * 60 * 1000);
+            id(deep_sleep_1).set_run_duration(90 * 1000);
+        - if:
+            condition:
+              or:
+                - binary_sensor.is_on: ota_mode
+                - switch.is_on: prevent_sleep
+            then:
+              - lambda: |-
+                  ESP_LOGW("Apollo", "Preventing Deep Sleep Due To OTA On Boot");
+                  id(deep_sleep_1).prevent_deep_sleep();
+    - priority: 500
+      then:
+        - text_sensor.template.publish:
+            id: apollo_firmware_version
+            state: "${version}"
+    - priority: -10
+      then:
+        - if:
+            condition:
+              - lambda: "return id(runTest);"
+            then:
+              - lambda: "id(testScript).execute();"
+  on_shutdown:
+    - light.turn_off: rgb_light
+
+dashboard_import:
+  package_import_url: github://ApolloAutomation/PLT-1/Integrations/ESPHome/PLT-1_Minimal.yaml
+  import_full_config: false
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none
+
+web_server:
+  port: 80
+  version: 3
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+  - platform: http_request
+    id: ota_managed
+
+http_request:
+  verify_ssl: true
+
+safe_mode:
+
+update:
+  - platform: http_request
+    id: firmware_update
+    name: Firmware Update
+    source: ${firmware_update_manifest_url}
+
+wifi:
+  ap:
+    ssid: "Apollo PLT1 Hotspot"
+
+logger:
+
+esp32:
+  variant: esp32c3
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+    advanced:
+      assertion_level: SILENT
+      enable_lwip_assert: false
+
+api:
+  actions:
+    - action: play_buzzer
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda "return song_str;"
+  reboot_timeout: 0s
+  on_client_connected:
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            or:
+              - binary_sensor.is_on: ota_mode
+              - switch.is_on: prevent_sleep
+          then:
+            - lambda: |-
+                ESP_LOGW("Apollo", "Preventing Deep Sleep Due To OTA Or Switch");
+                id(deep_sleep_1).prevent_deep_sleep();
+          else:
+            - delay: 10s
+            - lambda: |-
+                id(reportAllValues).execute();
+            - delay: 5s
+            - deep_sleep.enter:
+                id: deep_sleep_1
+
+globals:
+  - id: cycleCounter
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: button_press_timestamp
+    restore_value: no
+    type: uint32_t
+    initial_value: "0"
+  - id: runTest
+    restore_value: yes
+    type: bool
+    initial_value: "true"
+  - id: testCycleCount
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: aht20
+    restore_value: no
+    type: bool
+    initial_value: "false"
+  - id: ltr390lightPassed
+    restore_value: no
+    type: bool
+    initial_value: "false"
+  - id: ltr390uvindexPassed
+    restore_value: no
+    type: bool
+    initial_value: "false"
+  - id: ltr390_last_update
+    restore_value: no
+    type: uint32_t
+    initial_value: "0"
+
+captive_portal:
+
+i2c:
+  sda: GPIO1
+  scl: GPIO0
+  id: bus_a
+  frequency: 200kHz
+
+one_wire:
+  - platform: gpio
+    pin: GPIO5
+
+output:
+  - platform: ledc
+    pin: GPIO10
+    id: buzzer
+rtttl:
+  output: buzzer
+
+number:
+  - platform: template
+    name: Air Temperature Offset
+    id: aht_temperature_offset
+    restore_value: true
+    initial_value: 0.0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "°C"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+
+  - platform: template
+    name: Air Humidity Offset
+    id: aht_humidity_offset
+    restore_value: true
+    initial_value: 0
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "%"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+  - platform: template
+    name: LTR390 Update Interval
+    id: ltr390_update_interval
+    restore_value: true
+    initial_value: 60
+    min_value: 1
+    max_value: 300
+    entity_category: "CONFIG"
+    unit_of_measurement: "s"
+    optimistic: true
+    update_interval: never
+    step: 1
+    mode: box
+
+binary_sensor:
+  - platform: status
+    name: Online
+    id: ink_ha_connected
+  - platform: gpio
+    pin:
+      number: GPIO9
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+      ignore_strapping_warning: true
+    id: reset_button
+    on_press:
+      then:
+        - lambda: |-
+            id(button_press_timestamp) = millis();
+    on_release:
+      then:
+        - lambda: |-
+            if (millis() - id(button_press_timestamp) >= 10000) {
+              // Remove Wifi
+              id(testCycleCount) = 0;
+              id(runTest) = true;
+              id(prevent_sleep).turn_on();
+              id(factory_reset_switch).turn_on();
+            }
+            else if (millis() - id(button_press_timestamp) >= 3000) {
+              //Turn Prevent Sleep On
+              id(prevent_sleep).turn_on();
+              //Prevent Sleep
+              id(deep_sleep_1).prevent_deep_sleep();
+            }
+            else {
+              // StatusCheck
+              id(statusCheck).execute();
+              delay(3000);
+              id(testCycleCount) = 0;
+              id(runTest) = true;
+              id(testScript).execute();
+            }
+  - platform: homeassistant
+    name: "OTA Mode"
+    id: ota_mode
+    entity_id: input_boolean.apollo_ota_mode
+    on_press:
+      then:
+        - lambda: |-
+            id(deep_sleep_1).prevent_deep_sleep();
+    on_release:
+      then:
+        - if:
+            condition:
+              switch.is_off: prevent_sleep
+            then:
+              - lambda: |-
+                  id(deep_sleep_1).allow_deep_sleep();
+
+sensor:
+  - platform: internal_temperature
+    name: "ESP Temperature"
+    id: sys_esp_temperature
+
+  - platform: uptime
+    name: Uptime
+    id: sys_uptime
+    update_interval: 60s
+
+  - platform: wifi_signal
+    name: RSSI
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: dallas_temp
+    name: "Soil Temperature"
+    update_interval: 60s
+    device_class: temperature
+    id: soil_temperature
+    icon: mdi:thermometer
+    filters:
+      - lambda: |-
+          if (isnan(x)) {
+            return NAN;
+          }
+
+          if (x == 85.0) {
+              return NAN;
+          }
+
+          return x;
+
+  - platform: aht10
+    id: aht_20
+    variant: AHT20
+    temperature:
+      name: "Air Temperature"
+      id: aht_temperature
+      filters:
+        - lambda: return x - id(aht_temperature_offset).state;
+    humidity:
+      name: "Air Humidity"
+      id: aht_humidity
+      filters:
+        - lambda: return x - id(aht_humidity_offset).state;
+    update_interval: 60s
+    setup_priority: -100 # LATE
+
+  - platform: adc
+    pin: GPIO4
+    id: soil_adc
+    attenuation: auto
+    name: "Soil ADC"
+    update_interval: 5s
+    accuracy_decimals: 2
+    entity_category: "diagnostic"
+    disabled_by_default: true
+
+  - platform: template
+    name: "Soil Moisture"
+    update_interval: 60s
+    id: soil_moisture
+    unit_of_measurement: "%"
+    device_class: moisture
+    state_class: measurement
+    icon: mdi:water
+    lambda: |-
+      // Calibration values configured per device via substitutions
+      float high = ${wet_voltage};
+      float low = ${dry_voltage};
+      float x = id(soil_adc).state;
+
+      // Perform linear calibration
+      float calibrated_value = ((x - low)/(high - low)) * 100;
+
+      // Bound the result between 0 and 100
+      if (calibrated_value < 0) return 0;
+      else if (calibrated_value > 100) return 100;
+      else return calibrated_value;
+    accuracy_decimals: 0
+
+  - platform: ltr390
+    id: ltr_390
+    update_interval: never
+    light:
+      name: "LTR390 Light"
+      id: ltr390light
+    uv_index:
+      name: "LTR390 UV Index"
+      id: ltr390uvindex
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_light
+    name: "RGB Light"
+    pin: GPIO3
+    default_transition_length: 0s
+    chipset: WS2812
+    num_leds: 1
+    rgb_order: grb
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 1000ms
+          update_interval: 1000ms
+          min_brightness: 0%
+          max_brightness: 100%
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 50%
+          max_brightness: 100%
+
+button:
+  - platform: restart
+    icon: mdi:power-cycle
+    name: "ESP Reboot"
+
+  - platform: factory_reset
+    disabled_by_default: True
+    name: "Factory Reset ESP"
+    id: factory_reset_all
+
+switch:
+  - platform: factory_reset
+    id: factory_reset_switch
+    internal: true
+  - platform: template
+    name: "Prevent Sleep"
+    id: prevent_sleep
+    icon: mdi:sleep
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    entity_category: "config"
+    on_turn_on:
+      then:
+        - lambda: |-
+            id(deep_sleep_1).prevent_deep_sleep();
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              binary_sensor.is_off: ota_mode
+            then:
+              - lambda: |-
+                  id(deep_sleep_1).allow_deep_sleep();
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: wifi_ip
+      entity_category: "diagnostic"
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+    entity_category: "diagnostic"
+  - platform: template
+    name: "Apollo Firmware Version"
+    id: apollo_firmware_version
+    update_interval: never
+    entity_category: "diagnostic"
+
+script:
+  - id: statusCheck
+    then:
+      - if:
+          condition:
+            - lambda: "return id(ink_ha_connected).state;"
+          then:
+            - logger.log: "Apollo Automation: Connected To HA"
+            - light.turn_on:
+                id: rgb_light
+                brightness: 100%
+                red: 0%
+                green: 0%
+                blue: 100%
+          else:
+            - if:
+                condition:
+                  - wifi.connected
+                then:
+                  - logger.log: "Apollo Automation: Connected To Wifi"
+                  - light.turn_on:
+                      id: rgb_light
+                      brightness: 100%
+                      red: 0%
+                      green: 100%
+                      blue: 0%
+                else:
+                  - logger.log: "Apollo Automation: Not Connected To Wifi"
+                  - light.turn_on:
+                      id: rgb_light
+                      brightness: 100%
+                      red: 100%
+                      green: 100%
+                      blue: 0%
+      - delay: 5s
+      - light.turn_off: rgb_light
+
+  - id: testScript
+    then:
+      if:
+        condition:
+          - lambda: "return id(runTest) == true;"
+        then:
+          - lambda: "id(runTest) = false;"
+          - lambda: "id(testCycleCount) = 0;"
+          - while:
+              condition:
+                - lambda: "return id(testCycleCount) < 5;"
+              then:
+                - if:
+                    condition:
+                      - lambda: "return id(ltr390lightPassed) == false;"
+                    then:
+                      - if:
+                          condition:
+                            - lambda: "return id(ltr390light).state > 10;"
+                          then:
+                            - lambda: "id(ltr390lightPassed) = true;"
+                - if:
+                    condition:
+                      - lambda: "return id(ltr390uvindexPassed) == false;"
+                    then:
+                      - if:
+                          condition:
+                            - lambda: "return !isnan(id(ltr390uvindex).state);"
+                          then:
+                            - lambda: "id(ltr390uvindexPassed) = true;"
+                - if:
+                    condition:
+                      - lambda: "return id(aht20) == false;"
+                    then:
+                      - if:
+                          condition:
+                            - lambda: "return id(aht_temperature).state > 15;"
+                          then:
+                            - lambda: "id(aht20) = true;"
+
+                - if:
+                    condition:
+                      - lambda: "return id(aht20) && id(ltr390lightPassed) && id(ltr390uvindexPassed);"
+                    then:
+                      - lambda: "id(testCycleCount) = 10;"
+                - lambda: "id(runTest) = false;"
+                - delay: 1s
+                - lambda: "id(testCycleCount) += 1;"
+
+          #Check If Test Passed To Trigger Lights
+          - if:
+              condition:
+                - lambda: "return id(aht20) && id(ltr390lightPassed) && id(ltr390uvindexPassed);"
+              then:
+                - lambda: "id(runTest) = false;"
+                - light.turn_on:
+                    id: rgb_light
+                    red: 0%
+                    green: 100%
+                    blue: 0%
+                - delay: 5s
+                - light.turn_on:
+                    id: rgb_light
+                    red: 0%
+                    green: 0%
+                    blue: 0%
+                - light.turn_off:
+                    id: rgb_light
+
+              else:
+                - lambda: "id(runTest) = false;"
+                - light.turn_on:
+                    id: rgb_light
+                    red: 100%
+                    green: 0%
+                    blue: 0%
+                - delay: 5s
+                - light.turn_on:
+                    id: rgb_light
+                    red: 0%
+                    green: 0%
+                    blue: 0%
+                - light.turn_off:
+                    id: rgb_light
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          uint32_t current_time = millis() / 1000;
+          uint32_t last_update = id(ltr390_last_update);
+          uint32_t interval = (uint32_t)id(ltr390_update_interval).state;
+
+          // Immediate update on boot (when last_update is still 0)
+          if (last_update == 0 && current_time > 0) {
+            id(ltr_390).update();
+            id(ltr390_last_update) = current_time;
+            return;
+          }
+
+          // Check if enough time has passed
+          if (current_time - last_update >= interval) {
+            id(ltr_390).update();
+            id(ltr390_last_update) = current_time;
+          }
+
+packages:
+  network: !include ../common/network.yaml
+  nonbattery: !include nonbattery.yaml

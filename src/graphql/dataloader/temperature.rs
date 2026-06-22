@@ -26,6 +26,8 @@ pub struct TemperatureModel {
     pub pm25: Option<i64>,
     #[allow(unused)]
     pub voc_index: Option<i64>,
+    pub lux: Option<f64>,
+    pub uv_index: Option<f64>,
     pub time: DateTime<Utc>,
 }
 
@@ -39,7 +41,7 @@ impl Loader<String> for LatestTemperatureDataLoader {
         let results = sqlx::query_as!(
             TemperatureModel,
             r#"
-            SELECT id, entity_id, name, ieee_addr, temperature, battery, humidity as "humidity!", pressure, pm25, voc_index, updated_at as time
+            SELECT id, entity_id, name, ieee_addr, temperature, battery, humidity as "humidity!", pressure, pm25, voc_index, lux, uv_index, updated_at as time
             FROM latest_temperature_sensor
             WHERE entity_id = ANY($1)
             "#,

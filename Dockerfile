@@ -41,7 +41,7 @@ RUN CHROME_DIRS="/var/www/.local /var/www/.config /var/www/.cache /var/www/.pki"
 USER appuser
 
 WORKDIR /opt/${BINARY_NAME}
-COPY config.yaml /opt/${BINARY_NAME}/config.yaml
+COPY config /opt/${BINARY_NAME}/config
 
 RUN ln -s /usr/local/bin/${BINARY_NAME} executable
 ENTRYPOINT ["./executable"]

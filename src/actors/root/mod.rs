@@ -11,8 +11,8 @@ use ractor::Actor;
 
 use super::{
     alarm::AlarmActor,
-    devices::{control_switch, presence_sensor},
-    door_sensor,
+    devices::{control_switch, plant_sensor, presence_sensor},
+    door_sensor, environment_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light,
     maccas::MaccasActor,
@@ -20,7 +20,6 @@ use super::{
     reminder::{ReminderActor, ReminderActorDelayQueueValue},
     smart_switch,
     synergy::SynergyActor,
-    temperature_sensor,
     unifi::UnifiConnectedClientHandler,
     workflows,
 };
@@ -211,13 +210,16 @@ impl Actor for RootSupervisor {
         push::spawn::spawn_push(&myself, self.shared_actor_state.clone()).await?;
 
         light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
-        temperature_sensor::spawn::spawn_temperature_sensor_handler(
+        environment_sensor::spawn::spawn_environment_sensor_handler(
             &myself,
             shared_actor_state.clone(),
         )
         .await?;
 
         presence_sensor::spawn::spawn_presence_handler(&myself, shared_actor_state.clone()).await?;
+
+        plant_sensor::spawn::spawn_plant_sensor_handler(&myself, shared_actor_state.clone())
+            .await?;
 
         myself
             .spawn_linked(

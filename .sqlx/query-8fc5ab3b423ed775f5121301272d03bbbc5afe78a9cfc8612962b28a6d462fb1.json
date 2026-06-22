@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, entity_id, name, ieee_addr, temperature, battery, humidity as \"humidity!\", pressure, pm25, voc_index, updated_at as time\n            FROM latest_temperature_sensor\n            WHERE entity_id = ANY($1)\n            ",
+  "query": "\n            SELECT id, entity_id, name, ieee_addr, temperature, battery, humidity as \"humidity!\", pressure, pm25, voc_index, lux, uv_index, updated_at as time\n            FROM latest_temperature_sensor\n            WHERE entity_id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
@@ -55,6 +55,16 @@
       },
       {
         "ordinal": 10,
+        "name": "lux",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 11,
+        "name": "uv_index",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 12,
         "name": "time",
         "type_info": "Timestamptz"
       }
@@ -75,8 +85,10 @@
       true,
       true,
       true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "27f560f5cb67e64e60e4c0418dd442feb979aaa840ac6029d1488fa112a7d14c"
+  "hash": "8fc5ab3b423ed775f5121301272d03bbbc5afe78a9cfc8612962b28a6d462fb1"
 }

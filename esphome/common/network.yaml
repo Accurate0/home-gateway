@@ -1,0 +1,6 @@
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+mqtt:
+  broker: 10.0.1.208

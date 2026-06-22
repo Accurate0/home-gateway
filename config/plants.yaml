@@ -1,0 +1,15 @@
+- id: HALLWAY_PLANT
+  source: { esphome: { node: apollo-plt-1-hallway } }
+  actions:
+    - entity: soil_moisture
+      when: { below: 20 }
+      run:
+        - type: notify
+          notify: { type: android_app }
+          message: "Hallway plant is dry (soil moisture below 20%)"
+    - entity: soil_moisture
+      when: { above: 80 }
+      run:
+        - type: notify
+          notify: { type: android_app }
+          message: "Hallway plant is overwatered (soil moisture above 80%)"

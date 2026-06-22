@@ -1,0 +1,11 @@
+substitutions:
+  wet_voltage: "1.55"
+  dry_voltage: "2.7"
+
+esphome:
+  name: "${name}-hallway"
+  friendly_name: Apollo PLT-1 Hallway
+  comment: Apollo PLT-1 Hallway
+
+packages:
+  core: !include core.yaml

@@ -2,9 +2,9 @@ use crate::{
     actors::{
         devices::{control_switch::ControlSwitchHandler, presence_sensor::PresenceSensorHandler},
         door_sensor::DoorSensorHandler,
+        environment_sensor::EnvironmentSensorHandler,
         light::LightHandler,
         smart_switch::SmartSwitchHandler,
-        temperature_sensor::TemperatureSensorHandler,
     },
     zigbee2mqtt::{
         Aqara_FP1E, Aqara_MCCGQ12LM, Aqara_T1, Aqara_WSDCGQ12LM, Aqara_WXKG11LM, IKEA_E2001,
@@ -147,17 +147,17 @@ impl GenericZigbee2MqttMessage {
         match self {
             GenericZigbee2MqttMessage::TS011FSmartSwitch(_) => TypedActorName::SmartSwitch,
             GenericZigbee2MqttMessage::AqaraTemperatureSensor(_) => {
-                TypedActorName::TemperatureSensor
+                TypedActorName::EnvironmentSensor
             }
             GenericZigbee2MqttMessage::AquaraDoorSensor(_) => TypedActorName::DoorSensor,
             GenericZigbee2MqttMessage::PhillipsLight(_) => TypedActorName::Light,
             GenericZigbee2MqttMessage::IKEALight(_) => TypedActorName::Light,
             GenericZigbee2MqttMessage::LumiTemperatureSensor(_) => {
-                TypedActorName::TemperatureSensor
+                TypedActorName::EnvironmentSensor
             }
             GenericZigbee2MqttMessage::IKEASwitch(_) => TypedActorName::ControlSwitch,
             GenericZigbee2MqttMessage::IKEATemperatureSensor(_) => {
-                TypedActorName::TemperatureSensor
+                TypedActorName::EnvironmentSensor
             }
             GenericZigbee2MqttMessage::AqaraPresenceSensor(_) => TypedActorName::PresenceSensor,
             GenericZigbee2MqttMessage::AqaraWhiteLight(_) => TypedActorName::Light,
@@ -168,7 +168,7 @@ impl GenericZigbee2MqttMessage {
 
 pub enum TypedActorName {
     SmartSwitch,
-    TemperatureSensor,
+    EnvironmentSensor,
     PresenceSensor,
     DoorSensor,
     Light,
@@ -179,7 +179,7 @@ impl std::fmt::Display for TypedActorName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TypedActorName::SmartSwitch => write!(f, "{}", SmartSwitchHandler::NAME),
-            TypedActorName::TemperatureSensor => write!(f, "{}", TemperatureSensorHandler::NAME),
+            TypedActorName::EnvironmentSensor => write!(f, "{}", EnvironmentSensorHandler::NAME),
             TypedActorName::DoorSensor => write!(f, "{}", DoorSensorHandler::NAME),
             TypedActorName::Light => write!(f, "{}", LightHandler::NAME),
             TypedActorName::ControlSwitch => write!(f, "{}", ControlSwitchHandler::NAME),
