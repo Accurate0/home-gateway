@@ -317,7 +317,7 @@ maccas:
 
         // device alias resolved to its raw address
         let small_switch = &settings.switches["0x00158d008bbe0316"].actions["single"].workflow;
-        let workflow::WorkflowEntityType::Light { ieee_addr, .. } = &small_switch.run[0] else {
+        let workflow::Step::Light { ieee_addr, .. } = &small_switch.run[0] else {
             panic!("expected a light step");
         };
         assert_eq!(ieee_addr, "0x94a081fffe2eedc0");

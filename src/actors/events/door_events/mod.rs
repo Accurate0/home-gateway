@@ -1,7 +1,7 @@
-use crate::{settings::IEEEAddress, types::SharedActorState};
+use crate::{settings::IEEEAddress, types::SharedActorState, types::db::DoorState};
 use armed_door_actor::ArmedDoor;
-use derived_door_events_actor::DerivedDoorEvents;
-use ractor::{Actor, ActorCell};
+pub use derived_door_events_actor::DerivedDoorEvents;
+use ractor::{Actor, ActorCell, RpcReplyPort};
 use uuid::Uuid;
 
 mod armed_door_actor;
@@ -17,6 +17,17 @@ pub struct DoorEvents {
     pub event_id: Uuid,
     pub ieee_addr: IEEEAddress,
     pub event: DoorEventsType,
+}
+
+/// Shared message type for both door-event listeners so the pg-group broadcast
+/// stays uniform. Only [`DerivedDoorEvents`] answers `QueryState` (it holds the
+/// current open/closed map); [`ArmedDoor`] ignores it.
+pub enum DoorEventsMessage {
+    Event(DoorEvents),
+    QueryState {
+        ieee_addr: IEEEAddress,
+        reply: RpcReplyPort<Option<DoorState>>,
+    },
 }
 
 pub struct DoorEventsSupervisor {

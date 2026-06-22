@@ -1,4 +1,4 @@
-use super::{DoorEvents, DoorEventsType};
+use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::{
     notify::notify,
     settings::{ArmedDoorStates, IEEEAddress},
@@ -39,7 +39,7 @@ impl ArmedDoor {
 
 // TODO: audit log
 impl Actor for ArmedDoor {
-    type Msg = DoorEvents;
+    type Msg = DoorEventsMessage;
     type State = ArmedDoorState;
     type Arguments = ();
 
@@ -65,7 +65,11 @@ impl Actor for ArmedDoor {
             event_id,
             ieee_addr,
             ref event,
-        } = message;
+        } = match message {
+            DoorEventsMessage::Event(event) => event,
+            // only DerivedDoorEvents answers state queries
+            DoorEventsMessage::QueryState { .. } => return Ok(()),
+        };
 
         let settings = self.shared_actor_state.settings.load();
 
@@ -76,10 +80,12 @@ impl Actor for ArmedDoor {
                     && let ArmedDoorStates::Armed { timeout } = value.armed
                 {
                     let duration = timeout.to_std()?;
-                    myself.send_after(duration, move || DoorEvents {
-                        ieee_addr,
-                        event_id,
-                        event: DoorEventsType::Trigger,
+                    myself.send_after(duration, move || {
+                        DoorEventsMessage::Event(DoorEvents {
+                            ieee_addr,
+                            event_id,
+                            event: DoorEventsType::Trigger,
+                        })
                     });
                 }
             }

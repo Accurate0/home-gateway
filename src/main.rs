@@ -114,6 +114,7 @@ async fn init_actors(
 async fn main() -> anyhow::Result<()> {
     aws_lc_rs::default_provider().install_default().unwrap();
     tracing_setup::init();
+    let metrics_registry = tracing_setup::init_metrics();
 
     let settings_container = SettingsContainer::new()?;
     let settings = settings_container.load_full();
@@ -209,6 +210,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/unifi", post(unifi))
         .layer(OtelAxumLayer::default())
         .route("/health", get(health))
+        .route(
+            "/metrics",
+            get(move || {
+                let registry = metrics_registry.clone();
+                async move { routes::metrics::render(&registry) }
+            }),
+        )
         .layer(cors)
         .with_state(api_state);
 

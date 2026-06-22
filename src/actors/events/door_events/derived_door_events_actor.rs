@@ -1,4 +1,4 @@
-use super::{DoorEvents, DoorEventsType};
+use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::types::db::DoorState;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
@@ -46,7 +46,7 @@ impl DerivedDoorEvents {
 }
 
 impl Actor for DerivedDoorEvents {
-    type Msg = DoorEvents;
+    type Msg = DoorEventsMessage;
     type State = DerivedDoorEventsState;
     type Arguments = ();
 
@@ -84,6 +84,14 @@ impl Actor for DerivedDoorEvents {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
+        let message = match message {
+            DoorEventsMessage::Event(event) => event,
+            DoorEventsMessage::QueryState { ieee_addr, reply } => {
+                reply.send(state.map.get(&ieee_addr).copied())?;
+                return Ok(());
+            }
+        };
+
         let settings = self.shared_actor_state.settings.load();
         if let Some(door_settings) = settings.doors.get(&message.ieee_addr) {
             let last_state = state.map.get(&message.ieee_addr);

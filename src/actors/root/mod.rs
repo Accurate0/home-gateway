@@ -198,7 +198,7 @@ impl Actor for RootSupervisor {
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let shared_actor_state = &self.shared_actor_state;
 
-        workflows::spawn::spawn_workflows(&myself).await?;
+        workflows::spawn::spawn_workflows(&myself, shared_actor_state.clone()).await?;
 
         control_switch::spawn::spawn_control_switch_handler(&myself, shared_actor_state.clone())
             .await?;
