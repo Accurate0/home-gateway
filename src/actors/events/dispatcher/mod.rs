@@ -90,11 +90,6 @@ impl EventDispatcher {
         }
     }
 
-    #[tracing::instrument(
-        name = "dispatch_event",
-        skip_all,
-        fields(event_kind = msg.kind(), event_id = %msg.event_id()),
-    )]
     async fn handle(
         &self,
         msg: EventBusMessage,
@@ -280,7 +275,20 @@ impl Actor for EventDispatcher {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = EventDispatcher::handle(self, message, state).await {
+        // Root span per event: `parent: None` detaches from any span ractor
+        // re-enters from the `send_message` call site, so each dispatched event
+        // is its own trace rather than all sharing the bridge task's context.
+        let span = tracing::info_span!(
+            parent: None,
+            "dispatch_event",
+            event_kind = message.kind(),
+            event_id = %message.event_id(),
+        );
+
+        if let Err(e) = EventDispatcher::handle(self, message, state)
+            .instrument(span)
+            .await
+        {
             tracing::error!("error while dispatching event: {e}");
         }
 
