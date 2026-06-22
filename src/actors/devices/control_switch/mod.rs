@@ -1,12 +1,11 @@
 use crate::{
-    actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::WorkflowSettings,
+    event_bus::EventBusMessage,
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WXKG11LM, IKEA_E2001},
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
+    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use uuid::Uuid;
 
@@ -29,52 +28,23 @@ pub enum ControlSwitchMessage {
 }
 
 pub struct ControlSwitchHandler {
-    #[allow(unused)]
     shared_actor_state: SharedActorState,
 }
 
 impl ControlSwitchHandler {
     pub const NAME: &str = "control-switch";
 
-    fn execute_workflow(
-        event_id: Uuid,
-        workflow_settings: &WorkflowSettings,
-    ) -> Result<(), anyhow::Error> {
-        let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
-            tracing::warn!("actor not found for workflow");
-            return Ok(());
-        };
-
-        let message = FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: WorkflowWorkerMessage::Execute {
-                event_id,
-                workflow: workflow_settings.to_owned(),
-            },
-            options: JobOptions::default(),
-            accepted: None,
-        });
-
-        actor.send_message(message)?;
-
-        Ok(())
-    }
-
     async fn handle(&self, message: ControlSwitchMessage) -> Result<(), anyhow::Error> {
-        let settings = self.shared_actor_state.settings.load();
         match message {
             ControlSwitchMessage::NewEvent(event) => match &event.entity {
                 Entity::IKEASwitch(ikea_e20001) => {
-                    let Some(action_settings) = settings
-                        .switches
-                        .get(&ikea_e20001.device.ieee_addr)
-                        .and_then(|s| s.actions.get(&ikea_e20001.action))
-                    else {
-                        tracing::warn!("no valid action found for: {:?}", &event);
-                        return Ok(());
-                    };
-
-                    Self::execute_workflow(event.event_id, &action_settings.workflow)?;
+                    self.shared_actor_state
+                        .event_bus
+                        .publish(EventBusMessage::SwitchAction {
+                            event_id: event.event_id,
+                            ieee_addr: ikea_e20001.device.ieee_addr.clone(),
+                            action: ikea_e20001.action.clone(),
+                        });
                 }
                 Entity::AqaraSingleButton(aqara_wxkg11_lm) => {
                     // ignore empty action
@@ -82,16 +52,13 @@ impl ControlSwitchHandler {
                         return Ok(());
                     }
 
-                    let Some(action_settings) = settings
-                        .switches
-                        .get(&aqara_wxkg11_lm.device.ieee_addr)
-                        .and_then(|s| s.actions.get(&aqara_wxkg11_lm.action))
-                    else {
-                        tracing::warn!("no valid action found for: {:?}", &event);
-                        return Ok(());
-                    };
-
-                    Self::execute_workflow(event.event_id, &action_settings.workflow)?;
+                    self.shared_actor_state
+                        .event_bus
+                        .publish(EventBusMessage::SwitchAction {
+                            event_id: event.event_id,
+                            ieee_addr: aqara_wxkg11_lm.device.ieee_addr.clone(),
+                            action: aqara_wxkg11_lm.action.clone(),
+                        });
                 }
             },
         }

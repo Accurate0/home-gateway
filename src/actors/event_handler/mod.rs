@@ -154,10 +154,12 @@ impl EventHandler {
             GenericZigbee2MqttMessage::IKEATemperatureSensor(ikea_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: environment_sensor::Message::NewEvent(environment_sensor::NewEvent {
-                        event_id,
-                        entity: environment_sensor::Entity::IKEAE2112(ikea_temperature_sensor),
-                    }),
+                    msg: environment_sensor::Message::NewEvent(Box::new(
+                        environment_sensor::NewEvent {
+                            event_id,
+                            entity: environment_sensor::Entity::IKEAE2112(ikea_temperature_sensor),
+                        },
+                    )),
                     options: JobOptions::default(),
                     accepted: None,
                 }))?;
@@ -165,12 +167,14 @@ impl EventHandler {
             GenericZigbee2MqttMessage::AqaraTemperatureSensor(aqara_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: environment_sensor::Message::NewEvent(environment_sensor::NewEvent {
-                        event_id,
-                        entity: environment_sensor::Entity::AqaraWSDCGQ12LM(
-                            aqara_temperature_sensor,
-                        ),
-                    }),
+                    msg: environment_sensor::Message::NewEvent(Box::new(
+                        environment_sensor::NewEvent {
+                            event_id,
+                            entity: environment_sensor::Entity::AqaraWSDCGQ12LM(
+                                aqara_temperature_sensor,
+                            ),
+                        },
+                    )),
                     options: JobOptions::default(),
                     accepted: None,
                 }))?;
@@ -179,10 +183,14 @@ impl EventHandler {
             GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_temperature_sensor) => {
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: environment_sensor::Message::NewEvent(environment_sensor::NewEvent {
-                        event_id,
-                        entity: environment_sensor::Entity::LumiWSDCGQ11LM(lumi_temperature_sensor),
-                    }),
+                    msg: environment_sensor::Message::NewEvent(Box::new(
+                        environment_sensor::NewEvent {
+                            event_id,
+                            entity: environment_sensor::Entity::LumiWSDCGQ11LM(
+                                lumi_temperature_sensor,
+                            ),
+                        },
+                    )),
                     options: JobOptions::default(),
                     accepted: None,
                 }))?;
@@ -333,13 +341,8 @@ impl EventHandler {
                 }
 
                 if let Some(plant_settings) = settings.plant_sensors.get(&discovery.name) {
-                    // subscribe to each distinct entity referenced by a threshold
-                    let entities: std::collections::HashSet<&str> = plant_settings
-                        .actions
-                        .iter()
-                        .map(|a| a.entity.as_str())
-                        .collect();
-                    for object_id in entities {
+                    // subscribe to each configured plant sensor entity
+                    for object_id in &plant_settings.entities {
                         let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
                         tracing::info!("subscribing to esphome plant sensor topic: {topic}");
                         self.shared_actor_state.mqtt.subscribe(topic).await?;
@@ -429,7 +432,7 @@ impl EventHandler {
                         Some(actor_cell) => {
                             actor_cell.send_message(FactoryMessage::Dispatch(Job {
                                 key: (),
-                                msg: environment_sensor::Message::NewEvent(
+                                msg: environment_sensor::Message::NewEvent(Box::new(
                                     environment_sensor::NewEvent {
                                         event_id,
                                         entity: environment_sensor::Entity::Esphome {
@@ -438,7 +441,7 @@ impl EventHandler {
                                             value,
                                         },
                                     },
-                                ),
+                                )),
                                 options: JobOptions::default(),
                                 accepted: None,
                             }))?;

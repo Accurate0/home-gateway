@@ -15,7 +15,7 @@ pub mod notify;
 pub mod plant;
 pub mod presence;
 pub mod reminder;
-pub mod switch;
+pub mod trigger;
 pub mod workflow;
 
 pub use appliance::ApplianceSettings;
@@ -25,9 +25,10 @@ pub use graphql::GraphqlSettings;
 pub use maccas::MaccasSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
-pub use presence::{PresenceActionId, PresenceSensorType, PresenceSettings};
+pub use presence::{PresenceSensorType, PresenceSettings};
 pub use reminder::{ReminderSettings, ReminderState};
-pub use switch::SwitchSettings;
+pub use trigger::{Trigger, TriggerMatcher};
+pub use workflow::WorkflowSettings;
 
 use appliance::RawApplianceSettings;
 use door::RawDoorSettings;
@@ -91,9 +92,11 @@ pub struct Settings {
     pub discord_token: String,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
-    pub switches: HashMap<IEEEAddress, SwitchSettings>,
     pub presence_sensors: HashMap<String, PresenceSettings>,
     pub plant_sensors: HashMap<String, PlantSensorSettings>,
+    pub triggers: Vec<Trigger>,
+    /// Named, reusable workflows referenced by `run_workflow` steps.
+    pub workflows: HashMap<String, WorkflowSettings>,
     pub graphql: GraphqlSettings,
     pub s3: S3Settings,
 }
@@ -129,11 +132,15 @@ struct RawSettings {
     appliances: HashMap<IEEEAddress, RawApplianceSettings>,
     maccas: RawMaccasSettings,
     #[serde(default)]
-    switches: HashMap<IEEEAddress, SwitchSettings>,
-    #[serde(default)]
     presence_sensors: Vec<RawPresenceSettings>,
     #[serde(default)]
     plant_sensors: Vec<RawPlantSensor>,
+    // triggers are split into per-device files, each a list, so the included
+    // shape is a list-of-lists; flattened during resolve
+    #[serde(default)]
+    triggers: Vec<Vec<Trigger>>,
+    #[serde(default)]
+    workflows: HashMap<String, WorkflowSettings>,
     #[serde(default)]
     graphql: GraphqlSettings,
     s3: S3Settings,
@@ -159,12 +166,15 @@ impl RawSettings {
             environment_sensors,
             appliances,
             maccas,
-            mut switches,
             presence_sensors,
             plant_sensors,
+            triggers,
+            mut workflows,
             graphql,
             s3,
         } = self;
+
+        let mut triggers: Vec<Trigger> = triggers.into_iter().flatten().collect();
 
         let reminders = reminders
             .into_iter()
@@ -196,8 +206,12 @@ impl RawSettings {
             .map(|p| p.resolve(&devices))
             .collect::<Result<HashMap<_, _>, String>>()?;
 
-        for switch in switches.values_mut() {
-            switch.resolve_devices(&devices)?;
+        for trigger in &mut triggers {
+            trigger.resolve_devices(&devices)?;
+        }
+
+        for workflow in workflows.values_mut() {
+            workflow.resolve_devices(&devices)?;
         }
 
         let maccas = maccas.resolve(&notify_targets)?;
@@ -218,9 +232,10 @@ impl RawSettings {
             environment_sensors,
             appliances,
             maccas,
-            switches,
             presence_sensors,
             plant_sensors,
+            triggers,
+            workflows,
             graphql,
             s3,
         })
@@ -315,9 +330,16 @@ maccas:
 
         let settings = SettingsContainer::build(config).unwrap();
 
-        // device alias resolved to its raw address
-        let small_switch = &settings.switches["0x00158d008bbe0316"].actions["single"].workflow;
-        let workflow::WorkflowEntityType::Light { ieee_addr, .. } = &small_switch.run[0] else {
+        // a switch trigger resolves device aliases on both its matcher and steps
+        let switch_trigger = settings
+            .triggers
+            .iter()
+            .find(|t| {
+                matches!(&t.on, trigger::TriggerMatcher::Switch { ieee_addr, action }
+                if ieee_addr == "0x00158d008bbe0316" && action == "single")
+            })
+            .expect("expected a switch trigger for the small switch");
+        let workflow::Step::Light { ieee_addr, .. } = &switch_trigger.run[0] else {
             panic!("expected a light step");
         };
         assert_eq!(ieee_addr, "0x94a081fffe2eedc0");

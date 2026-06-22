@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT temperature, humidity, pressure, lux, uv_index FROM latest_temperature_sensor WHERE entity_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "temperature",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "humidity",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "pressure",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "lux",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "uv_index",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d50a6c0b334362016ae6f498ce86f52f2939c0c0b808267e06a66317cda4fa02"
+}

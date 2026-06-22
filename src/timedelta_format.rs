@@ -96,6 +96,26 @@ pub mod time_delta_from_str {
     }
 }
 
+pub mod option_time_delta_from_str {
+    use super::parse_datetime_str_with_ms;
+    use chrono::TimeDelta;
+    use serde::{self, Deserialize, Deserializer};
+
+    /// Deserialize an optional duration string (e.g. `"24h"`) into
+    /// `Option<TimeDelta>`. Pairs with `#[serde(default)]` so the field can be
+    /// omitted entirely.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<TimeDelta>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let Some(s) = Option::<String>::deserialize(deserializer)? else {
+            return Ok(None);
+        };
+        let time_delta = parse_datetime_str_with_ms(&s).map_err(serde::de::Error::custom)?;
+        Ok(Some(time_delta))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

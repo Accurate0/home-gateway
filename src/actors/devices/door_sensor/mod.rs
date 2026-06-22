@@ -1,5 +1,7 @@
 use crate::{
-    actors::events::door_events::{DoorEvents, DoorEventsSupervisor, DoorEventsType},
+    actors::events::door_events::{
+        DoorEvents, DoorEventsMessage, DoorEventsSupervisor, DoorEventsType,
+    },
     types::SharedActorState,
     zigbee2mqtt::Aqara_MCCGQ12LM,
 };
@@ -70,7 +72,7 @@ impl DoorSensorHandler {
                 },
             };
 
-            member.send_message(event)?;
+            member.send_message(DoorEventsMessage::Event(event))?;
         }
 
         Ok(())

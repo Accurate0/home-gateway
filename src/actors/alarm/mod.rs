@@ -1,9 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::{
-        WorkflowEntityLightQueryState, WorkflowEntityLightTypeState, WorkflowEntityType,
-        WorkflowQueryType, WorkflowSettings,
-    },
+    settings::workflow::{Condition, LightState, Step, WorkflowSettings},
     types::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -96,28 +93,26 @@ impl Actor for AlarmActor {
 
                         let workflow = WorkflowSettings {
                             enabled: true,
-                            run: vec![WorkflowEntityType::Conditional {
+                            run: vec![Step::Scene {
                                 run: vec![
-                                    WorkflowEntityType::Light {
+                                    Step::Light {
                                         ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                        state: WorkflowEntityLightTypeState::SetBrightness {
-                                            value: 1,
-                                        },
+                                        state: LightState::SetBrightness { value: 1 },
                                         when: None,
                                     },
-                                    WorkflowEntityType::Light {
+                                    Step::Light {
                                         ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                        state: WorkflowEntityLightTypeState::IncreaseBrightness {
+                                        state: LightState::IncreaseBrightness {
                                             value: 1,
                                             on_off: false,
                                         },
                                         when: None,
                                     },
                                 ],
-                                when: WorkflowQueryType::Light {
+                                when: Some(Condition::Light {
                                     ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                    state: WorkflowEntityLightQueryState::Off,
-                                },
+                                    on: false,
+                                }),
                             }],
                         };
 

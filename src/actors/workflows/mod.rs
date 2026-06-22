@@ -1,23 +1,48 @@
 use crate::{
-    actors::light::{LightHandler, LightHandlerMessage},
-    notify::notify,
-    settings::{
-        NotifySource,
-        workflow::{
-            WorkflowEntityLightQueryState, WorkflowEntityLightTypeState, WorkflowEntityType,
-            WorkflowQueryType, WorkflowSettings,
-        },
+    actors::{
+        light::{LightHandler, LightHandlerMessage},
+        vacuum::{VacuumActor, VacuumMessage},
     },
+    notify::notify,
+    settings::workflow::{LightState, Step, VacuumCommand, WorkflowSettings},
     timer::timed_async,
+    types::SharedActorState,
 };
 use ractor::{
-    ActorRef, RpcReplyPort,
+    ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
 use std::time::Duration;
+use tracing::Instrument;
 use uuid::Uuid;
 
+pub mod conditions;
 pub mod spawn;
+
+/// Maximum nesting depth for `run_workflow` expansion, guarding against
+/// workflows that (directly or transitively) reference themselves.
+const MAX_DEPTH: u8 = 8;
+
+#[derive(thiserror::Error, Debug)]
+pub enum WorkflowError {
+    #[error("actor `{0}` not found")]
+    ActorNotFound(&'static str),
+    #[error("workflow recursion depth exceeded (>{MAX_DEPTH})")]
+    DepthExceeded,
+    #[error("messaging error: {0}")]
+    Messaging(String),
+    #[error("not implemented: {0}")]
+    NotImplemented(&'static str),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+/// Per-execution context threaded through the recursive executor.
+#[derive(Clone, Copy)]
+struct WorkflowContext {
+    event_id: Uuid,
+    depth: u8,
+}
 
 pub enum WorkflowWorkerMessage {
     Execute {
@@ -26,122 +51,184 @@ pub enum WorkflowWorkerMessage {
     },
 }
 
-pub struct WorkflowWorker {}
+pub struct WorkflowWorker {
+    shared_actor_state: SharedActorState,
+}
 
 impl WorkflowWorker {
     pub const NAME: &str = "workflow";
 
-    async fn handle_query(when: &WorkflowQueryType) -> Result<bool, anyhow::Error> {
-        match when {
-            WorkflowQueryType::Light { ieee_addr, state } => {
-                let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
-                    tracing::warn!("could not find light actor");
-                    return Ok(false);
-                };
-
-                let (tx, rx) = ractor::concurrency::oneshot();
-                let port: RpcReplyPort<bool> = (tx, Duration::from_secs(10)).into();
-                let message = FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: LightHandlerMessage::QueryPowerState {
-                        ieee_addr: ieee_addr.to_owned(),
-                        reply: port,
-                    },
-                    options: JobOptions::default(),
-                    accepted: None,
-                });
-
-                actor.send_message(message)?;
-
-                let is_on = rx.await?;
-                let does_match_query = match state {
-                    WorkflowEntityLightQueryState::On => is_on,
-                    WorkflowEntityLightQueryState::Off => !is_on,
-                };
-
-                Ok(does_match_query)
-            }
+    pub async fn execute_workflow(
+        &self,
+        event_id: Uuid,
+        workflow: WorkflowSettings,
+    ) -> Result<(), WorkflowError> {
+        if !workflow.enabled {
+            tracing::warn!("[{event_id}] workflow not executed as it's disabled in config");
+            crate::metrics::record_workflow("disabled", Duration::ZERO);
+            return Ok(());
         }
+
+        tracing::info!("executing workflow for: {event_id}");
+        let ctx = WorkflowContext { event_id, depth: 0 };
+        let start = std::time::Instant::now();
+        let result = self.run_steps(ctx, &workflow.run).await;
+        let outcome = if result.is_ok() { "success" } else { "error" };
+        crate::metrics::record_workflow(outcome, start.elapsed());
+        result
     }
 
-    async fn handle_notify_operation(
-        notify_source: NotifySource,
-        message: String,
-        when: Option<WorkflowQueryType>,
-    ) -> Result<(), anyhow::Error> {
-        if let Some(ref when) = when
-            && !Self::handle_query(when).await?
-        {
-            tracing::info!("failed when condition for {:?}", when);
-            return Ok(());
-        };
-
-        notify(&[notify_source], message);
-
+    async fn run_steps(&self, ctx: WorkflowContext, steps: &[Step]) -> Result<(), WorkflowError> {
+        for step in steps {
+            self.run_step(ctx, step).await?;
+        }
         Ok(())
     }
 
-    async fn handle_light_operation(
-        ieee_addr: String,
-        state: WorkflowEntityLightTypeState,
-        when: Option<WorkflowQueryType>,
-    ) -> Result<(), anyhow::Error> {
-        let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
-            tracing::warn!("could not find light actor");
+    async fn run_step(&self, ctx: WorkflowContext, step: &Step) -> Result<(), WorkflowError> {
+        // a failed guard skips only this step, not the rest of the workflow
+        if let Some(when) = step.guard()
+            && !conditions::eval(&self.shared_actor_state, when).await?
+        {
+            tracing::info!("[{}] skipping step, guard not satisfied", ctx.event_id);
+            return Ok(());
+        }
+
+        let span = tracing::info_span!(
+            "step.execute",
+            otel.name = format!("step: {}", step.kind()),
+            step = step.kind(),
+            event_id = %ctx.event_id,
+        );
+        let start = std::time::Instant::now();
+        let result = self.dispatch_step(ctx, step).instrument(span).await;
+        crate::metrics::record_step(step.kind(), result.is_ok(), start.elapsed());
+        result
+    }
+
+    async fn dispatch_step(&self, ctx: WorkflowContext, step: &Step) -> Result<(), WorkflowError> {
+        match step {
+            Step::Light {
+                ieee_addr, state, ..
+            } => self.run_light(ieee_addr.clone(), state.clone()).await,
+            Step::Switch { ieee_addr, .. } => {
+                // implemented in a later phase (needs a smart-switch control path)
+                let _ = ieee_addr;
+                Err(WorkflowError::NotImplemented("switch action"))
+            }
+            Step::Vacuum { command, .. } => self.run_vacuum(*command),
+            Step::Scene { run, .. } => Box::pin(self.run_steps(ctx, run)).await,
+            Step::Notify {
+                notify: n, message, ..
+            } => {
+                notify(std::slice::from_ref(n), message.clone());
+                Ok(())
+            }
+            Step::Delay { seconds, .. } => {
+                tokio::time::sleep(Duration::from_secs(*seconds)).await;
+                Ok(())
+            }
+            Step::RunWorkflow { workflow, .. } => self.run_named_workflow(ctx, workflow).await,
+        }
+    }
+
+    /// Expand a `run_workflow` step: look the named workflow up in settings and
+    /// run its steps with an incremented depth. `MAX_DEPTH` bounds transitive
+    /// self-reference so a workflow cycle can't recurse forever.
+    async fn run_named_workflow(
+        &self,
+        ctx: WorkflowContext,
+        name: &str,
+    ) -> Result<(), WorkflowError> {
+        if ctx.depth >= MAX_DEPTH {
+            tracing::error!(
+                "[{}] workflow recursion depth exceeded at `{name}`",
+                ctx.event_id
+            );
+            return Err(WorkflowError::DepthExceeded);
+        }
+
+        let settings = self.shared_actor_state.settings.load_full();
+        let Some(workflow) = settings.workflows.get(name) else {
+            tracing::warn!(
+                "[{}] run_workflow references unknown workflow `{name}`",
+                ctx.event_id
+            );
             return Ok(());
         };
 
-        if let Some(ref when) = when
-            && !Self::handle_query(when).await?
-        {
-            tracing::info!("failed when condition for {:?}", when);
+        if !workflow.enabled {
+            tracing::info!("[{}] skipping disabled workflow `{name}`", ctx.event_id);
             return Ok(());
+        }
+
+        let child = WorkflowContext {
+            event_id: ctx.event_id,
+            depth: ctx.depth + 1,
         };
+        Box::pin(self.run_steps(child, &workflow.run)).await
+    }
+
+    fn run_vacuum(&self, command: VacuumCommand) -> Result<(), WorkflowError> {
+        let actor = ractor::registry::where_is(VacuumActor::NAME.to_string())
+            .ok_or(WorkflowError::ActorNotFound(VacuumActor::NAME))?;
+        let message = match command {
+            VacuumCommand::Start => VacuumMessage::Start,
+            VacuumCommand::Stop => VacuumMessage::Stop,
+            VacuumCommand::Pause => VacuumMessage::Pause,
+            VacuumCommand::Home => VacuumMessage::Home,
+        };
+        actor
+            .send_message(message)
+            .map_err(|e| WorkflowError::Messaging(e.to_string()))
+    }
+
+    async fn run_light(&self, ieee_addr: String, state: LightState) -> Result<(), WorkflowError> {
+        let actor = ractor::registry::where_is(LightHandler::NAME.to_string())
+            .ok_or(WorkflowError::ActorNotFound(LightHandler::NAME))?;
 
         let light_actor_message = match state {
-            WorkflowEntityLightTypeState::On => LightHandlerMessage::TurnOn { ieee_addr },
-            WorkflowEntityLightTypeState::Off => LightHandlerMessage::TurnOff { ieee_addr },
-            WorkflowEntityLightTypeState::Toggle => LightHandlerMessage::Toggle { ieee_addr },
-            WorkflowEntityLightTypeState::SetBrightness { value } => {
+            LightState::On => LightHandlerMessage::TurnOn { ieee_addr },
+            LightState::Off => LightHandlerMessage::TurnOff { ieee_addr },
+            LightState::Toggle => LightHandlerMessage::Toggle { ieee_addr },
+            LightState::SetBrightness { value } => {
                 LightHandlerMessage::SetBrightness { ieee_addr, value }
             }
-            WorkflowEntityLightTypeState::IncreaseBrightness { value, on_off } => {
+            LightState::IncreaseBrightness { value, on_off } => {
                 LightHandlerMessage::BrightnessMove {
                     ieee_addr,
-                    value: value.try_into()?,
+                    value: value.try_into().map_err(anyhow::Error::from)?,
                     on_off,
                 }
             }
-            WorkflowEntityLightTypeState::DecreaseBrightness { value, on_off } => {
+            LightState::DecreaseBrightness { value, on_off } => {
                 LightHandlerMessage::BrightnessMove {
                     ieee_addr,
-                    value: -value.try_into()?,
+                    value: -TryInto::<i64>::try_into(value).map_err(anyhow::Error::from)?,
                     on_off,
                 }
             }
-            WorkflowEntityLightTypeState::StopBrightness => LightHandlerMessage::BrightnessMove {
+            LightState::StopBrightness => LightHandlerMessage::BrightnessMove {
                 ieee_addr,
                 value: 0,
                 on_off: false,
             },
-            WorkflowEntityLightTypeState::IncreaseColourTemperature { value } => {
+            LightState::IncreaseColourTemperature { value } => {
                 LightHandlerMessage::ColourTemperatureMove {
                     ieee_addr,
-                    value: value.try_into()?,
+                    value: value.try_into().map_err(anyhow::Error::from)?,
                 }
             }
-            WorkflowEntityLightTypeState::DecreaseColourTemperature { value } => {
+            LightState::DecreaseColourTemperature { value } => {
                 LightHandlerMessage::ColourTemperatureMove {
                     ieee_addr,
-                    value: -value.try_into()?,
+                    value: -TryInto::<i64>::try_into(value).map_err(anyhow::Error::from)?,
                 }
             }
-            WorkflowEntityLightTypeState::StopColourTemperature => {
-                LightHandlerMessage::ColourTemperatureMove {
-                    ieee_addr,
-                    value: 0,
-                }
-            }
+            LightState::StopColourTemperature => LightHandlerMessage::ColourTemperatureMove {
+                ieee_addr,
+                value: 0,
+            },
         };
 
         let message = FactoryMessage::Dispatch(Job {
@@ -150,63 +237,9 @@ impl WorkflowWorker {
             options: JobOptions::default(),
             accepted: None,
         });
-        actor.send_message(message)?;
-
-        Ok(())
-    }
-
-    pub async fn execute_workflow(
-        event_id: Uuid,
-        workflow: WorkflowSettings,
-    ) -> Result<(), anyhow::Error> {
-        if !workflow.enabled {
-            tracing::warn!("[{event_id}] workflow not executed as it's disabled in config");
-            return Ok(());
-        }
-
-        tracing::info!("executing workflow for: {event_id}");
-        for step in workflow.run {
-            match step {
-                WorkflowEntityType::Light {
-                    ieee_addr,
-                    state,
-                    when,
-                } => {
-                    Self::handle_light_operation(ieee_addr, state, when).await?;
-                }
-                WorkflowEntityType::Conditional { run: inner, when } => {
-                    if !Self::handle_query(&when).await? {
-                        tracing::info!("failed when condition for {:?}", when);
-                        return Ok(());
-                    }
-
-                    for step in inner {
-                        match step {
-                            WorkflowEntityType::Conditional { .. } => {
-                                unreachable!("nested condition not allowed")
-                            }
-                            WorkflowEntityType::Light {
-                                ieee_addr,
-                                state,
-                                when,
-                            } => Self::handle_light_operation(ieee_addr, state, when).await?,
-                            WorkflowEntityType::Notify {
-                                notify,
-                                when,
-                                message,
-                            } => Self::handle_notify_operation(notify, message, when).await?,
-                        };
-                    }
-                }
-                WorkflowEntityType::Notify {
-                    notify,
-                    when,
-                    message,
-                } => Self::handle_notify_operation(notify, message, when).await?,
-            }
-        }
-
-        Ok(())
+        actor
+            .send_message(message)
+            .map_err(|e| WorkflowError::Messaging(e.to_string()))
     }
 }
 
@@ -235,7 +268,16 @@ impl Worker for WorkflowWorker {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
             WorkflowWorkerMessage::Execute { event_id, workflow } => {
-                timed_async(|| Self::execute_workflow(event_id, workflow)).await?;
+                let result = timed_async(|| async {
+                    self.execute_workflow(event_id, workflow)
+                        .await
+                        .map_err(anyhow::Error::from)
+                })
+                .await;
+
+                if let Err(e) = result {
+                    tracing::error!("[{event_id}] workflow execution failed: {e}");
+                }
             }
         }
 
@@ -262,9 +304,16 @@ impl Worker for WorkflowWorker {
     }
 }
 
-pub struct WorkflowWorkerBuilder {}
+pub struct WorkflowWorkerBuilder {
+    pub shared_actor_state: SharedActorState,
+}
 impl WorkerBuilder<WorkflowWorker, ()> for WorkflowWorkerBuilder {
     fn build(&mut self, _wid: usize) -> (WorkflowWorker, ()) {
-        (WorkflowWorker {}, ())
+        (
+            WorkflowWorker {
+                shared_actor_state: self.shared_actor_state.clone(),
+            },
+            (),
+        )
     }
 }

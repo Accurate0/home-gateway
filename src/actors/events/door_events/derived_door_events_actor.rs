@@ -1,4 +1,5 @@
-use super::{DoorEvents, DoorEventsType};
+use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
+use crate::event_bus::EventBusMessage;
 use crate::types::db::DoorState;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
@@ -41,12 +42,21 @@ impl DerivedDoorEvents {
 
         state.last_trigger.insert(message.ieee_addr.clone(), now);
 
+        // publish the confirmed, debounced transition so `door` triggers can fire
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Door {
+                event_id: message.event_id,
+                ieee_addr: message.ieee_addr.clone(),
+                open: matches!(door_state, DoorState::Open),
+            });
+
         Ok(())
     }
 }
 
 impl Actor for DerivedDoorEvents {
-    type Msg = DoorEvents;
+    type Msg = DoorEventsMessage;
     type State = DerivedDoorEventsState;
     type Arguments = ();
 
@@ -84,6 +94,14 @@ impl Actor for DerivedDoorEvents {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
+        let message = match message {
+            DoorEventsMessage::Event(event) => event,
+            DoorEventsMessage::QueryState { ieee_addr, reply } => {
+                reply.send(state.map.get(&ieee_addr).copied())?;
+                return Ok(());
+            }
+        };
+
         let settings = self.shared_actor_state.settings.load();
         if let Some(door_settings) = settings.doors.get(&message.ieee_addr) {
             let last_state = state.map.get(&message.ieee_addr);

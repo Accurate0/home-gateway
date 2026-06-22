@@ -1,11 +1,12 @@
 use crate::{
     esphome,
+    event_bus::{EventBusMessage, SensorReading},
     types::SharedActorState,
     zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
 use chrono::Utc;
 use ractor::{
-    ActorProcessingErr, ActorRef,
+    ActorProcessingErr, ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use std::collections::HashMap;
@@ -43,8 +44,22 @@ pub struct NewEvent {
     pub entity: Entity,
 }
 
+/// Latest persisted readings for an environment sensor, used to answer workflow
+/// condition queries without the workflow worker touching the database directly.
+pub struct LatestReading {
+    pub temperature: f64,
+    pub humidity: Option<f64>,
+    pub pressure: Option<f64>,
+    pub lux: Option<f64>,
+    pub uv_index: Option<f64>,
+}
+
 pub enum Message {
-    NewEvent(NewEvent),
+    NewEvent(Box<NewEvent>),
+    QueryLatest {
+        entity_id: String,
+        reply: RpcReplyPort<Option<LatestReading>>,
+    },
 }
 
 pub struct EnvironmentSensorHandler {
@@ -60,6 +75,26 @@ impl EnvironmentSensorHandler {
         state: &mut EnvironmentSensorState,
     ) -> Result<(), anyhow::Error> {
         match message {
+            Message::QueryLatest { entity_id, reply } => {
+                let row = sqlx::query!(
+                    "SELECT temperature, humidity, pressure, lux, uv_index \
+                     FROM latest_temperature_sensor WHERE entity_id = $1",
+                    entity_id
+                )
+                .fetch_optional(&self.shared_actor_state.db)
+                .await?;
+
+                let reading = row.map(|r| LatestReading {
+                    temperature: r.temperature,
+                    humidity: r.humidity,
+                    pressure: r.pressure,
+                    lux: r.lux,
+                    uv_index: r.uv_index,
+                });
+
+                reply.send(reading)?;
+                return Ok(());
+            }
             Message::NewEvent(event) => match event.entity {
                 Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
                     self.save_environment_details(
@@ -232,6 +267,25 @@ impl EnvironmentSensorHandler {
             uv_index,
             now,
         ).execute(&self.shared_actor_state.db).await?;
+
+        // publish each present reading onto the bus, keyed by device id, so
+        // `environment` triggers can match on a metric + threshold
+        let readings = [
+            SensorReading::Temperature { value: temperature }.into(),
+            humidity.map(|value| SensorReading::Humidity { value }),
+            pressure.map(|value| SensorReading::Pressure { value }),
+            lux.map(|value| SensorReading::Lux { value }),
+            uv_index.map(|value| SensorReading::UvIndex { value }),
+        ];
+        for reading in readings.into_iter().flatten() {
+            self.shared_actor_state
+                .event_bus
+                .publish(EventBusMessage::Environment {
+                    event_id,
+                    sensor: ieee_addr.clone(),
+                    reading,
+                });
+        }
 
         Ok(())
     }

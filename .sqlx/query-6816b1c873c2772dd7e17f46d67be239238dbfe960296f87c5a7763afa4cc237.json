@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO trigger_cooldowns (name, last_fired) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET last_fired = EXCLUDED.last_fired",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6816b1c873c2772dd7e17f46d67be239238dbfe960296f87c5a7763afa4cc237"
+}
