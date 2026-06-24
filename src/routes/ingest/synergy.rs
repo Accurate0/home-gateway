@@ -1,26 +1,17 @@
 use crate::{
-    actors::event_handler,
-    types::{ApiState, AppError},
+    actors::synergy::{SynergyActor, SynergyMessage},
+    types::AppError,
 };
-use axum::extract::State;
 use bytes::Bytes;
 use http::StatusCode;
-use ractor::factory::JobOptions;
 
-pub async fn synergy(
-    State(ApiState {
-        ref event_handler, ..
-    }): State<ApiState>,
-    body: Bytes,
-) -> Result<StatusCode, AppError> {
-    match event_handler.send_message(ractor::factory::FactoryMessage::Dispatch(
-        ractor::factory::Job {
-            key: (),
-            msg: event_handler::Message::SynergyDataIngest { payload: body },
-            options: JobOptions::default(),
-            accepted: None,
-        },
-    )) {
+pub async fn synergy(body: Bytes) -> Result<StatusCode, AppError> {
+    let Some(actor) = ractor::registry::where_is(SynergyActor::NAME.to_string()) else {
+        tracing::warn!("synergy actor not found");
+        return Ok(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+
+    match actor.send_message(SynergyMessage::NewUpload(body)) {
         Ok(()) => Ok(StatusCode::ACCEPTED),
         Err(e) => {
             tracing::error!("error forwarding synergy event {e}");

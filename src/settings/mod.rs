@@ -10,7 +10,6 @@ pub mod appliance;
 pub mod door;
 pub mod environment;
 pub mod graphql;
-pub mod maccas;
 pub mod notify;
 pub mod plant;
 pub mod presence;
@@ -21,7 +20,6 @@ pub use appliance::ApplianceSettings;
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType};
 pub use graphql::GraphqlSettings;
-pub use maccas::MaccasSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
@@ -31,7 +29,6 @@ pub use workflow::WorkflowSettings;
 use appliance::RawApplianceSettings;
 use door::RawDoorSettings;
 use environment::RawEnvironmentSensor;
-use maccas::RawMaccasSettings;
 use plant::RawPlantSensor;
 use presence::RawPresenceSettings;
 
@@ -84,7 +81,6 @@ pub struct Settings {
     pub doors: HashMap<IEEEAddress, DoorSettings>,
     pub environment_sensors: HashMap<String, EnvironmentSensorSettings>,
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
-    pub maccas: MaccasSettings,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
     pub presence_sensors: HashMap<String, PresenceSettings>,
@@ -122,7 +118,6 @@ struct RawSettings {
     environment_sensors: Vec<RawEnvironmentSensor>,
     #[serde(default)]
     appliances: HashMap<IEEEAddress, RawApplianceSettings>,
-    maccas: RawMaccasSettings,
     #[serde(default)]
     presence_sensors: Vec<RawPresenceSettings>,
     #[serde(default)]
@@ -155,7 +150,6 @@ impl RawSettings {
             doors,
             environment_sensors,
             appliances,
-            maccas,
             presence_sensors,
             plant_sensors,
             triggers,
@@ -199,8 +193,6 @@ impl RawSettings {
             workflow.resolve_devices(&devices)?;
         }
 
-        let maccas = maccas.resolve(&notify_targets)?;
-
         Ok(Settings {
             api_key,
             database_url,
@@ -214,7 +206,6 @@ impl RawSettings {
             doors,
             environment_sensors,
             appliances,
-            maccas,
             presence_sensors,
             plant_sensors,
             triggers,
@@ -301,8 +292,6 @@ mqtt_username: x
 mqtt_password: x
 unifi_webhook_secret: x
 android_app_webhook_secret: x
-maccas:
-  webhook_secret: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -343,6 +332,16 @@ maccas:
         assert_eq!(
             settings.environment_sensors["apollo-mtr-1-livingroom"].sensor_type,
             EnvironmentSensorType::Esphome
+        );
+
+        // an esphome environment sensor with no explicit `entities:` falls back to
+        // the default temperature object_ids, which drive its subscriptions
+        assert_eq!(
+            settings.environment_sensors["apollo-mtr-1-livingroom"].entities,
+            crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
         );
     }
 }

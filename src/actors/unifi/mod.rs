@@ -1,12 +1,15 @@
 use crate::types::{SharedActorState, db::UnifiState};
 use ractor::Actor;
 use tracing::instrument;
+use types::{Parameters, UnifiWebhookEvent};
 
 pub mod types;
 
 pub enum UnifiMessage {
-    ClientDisconnect { mac_address: String },
-    ClientConnect { mac_address: String },
+    /// A raw connect/disconnect webhook from the UniFi controller. Parsing the
+    /// client mac and connection state out of it lives here rather than in the
+    /// HTTP route, so the route is just a thin authenticated forwarder.
+    Webhook(Box<UnifiWebhookEvent>),
 }
 
 pub struct UnifiConnectedClientHandler {
@@ -77,13 +80,23 @@ impl Actor for UnifiConnectedClientHandler {
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
-            UnifiMessage::ClientDisconnect { mac_address } => {
-                self.set_client_state(&mac_address, UnifiState::Disconnected)
-                    .await?;
-            }
-            UnifiMessage::ClientConnect { mac_address } => {
-                self.set_client_state(&mac_address, UnifiState::Connected)
-                    .await?;
+            UnifiMessage::Webhook(event) => {
+                let mac_address = match event.parameters {
+                    Parameters::Connect(p) => p.unificlient_mac,
+                    Parameters::Disconnect(p) => p.unificlient_mac,
+                };
+
+                match event.name.as_str() {
+                    "WiFi Client Connected" => {
+                        self.set_client_state(&mac_address, UnifiState::Connected)
+                            .await?;
+                    }
+                    "WiFi Client Disconnected" => {
+                        self.set_client_state(&mac_address, UnifiState::Disconnected)
+                            .await?;
+                    }
+                    unknown => tracing::warn!("unknown webhook event: {unknown}"),
+                }
             }
         }
 

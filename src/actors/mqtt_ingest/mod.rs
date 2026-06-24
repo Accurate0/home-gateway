@@ -1,22 +1,9 @@
-use super::{
-    alarm::types::AndroidAppAlarmPayload,
-    devices::{control_switch, plant_sensor, presence_sensor},
-    maccas::types::MaccasOfferIngest,
-    unifi::types::UnifiWebhookEvent,
-};
+use super::devices::{control_switch, plant_sensor, presence_sensor};
 use crate::{
-    actors::{
-        alarm::{AlarmActor, AlarmMessage},
-        door_sensor, environment_sensor, light,
-        maccas::{self, MaccasActor},
-        smart_switch,
-        synergy::{self, SynergyActor},
-        unifi::{UnifiConnectedClientHandler, UnifiMessage, types::Parameters},
-    },
+    actors::{door_sensor, environment_sensor, light, smart_switch},
     types::SharedActorState,
     zigbee2mqtt::devices::BridgeDevices,
 };
-use bytes::Bytes;
 use ractor::{
     ActorCell, ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
@@ -27,31 +14,55 @@ use uuid::Uuid;
 pub mod spawn;
 mod types;
 
+/// Messages handled by the MQTT router worker. The worker's sole job is to
+/// decode an incoming MQTT packet and forward a typed event to the device actor
+/// that owns it; HTTP webhook ingests talk to their target actors directly.
 pub enum Message {
-    MqttPacket {
-        payload: bytes::Bytes,
-        topic: String,
-    },
-    AlarmChangeIngest {
-        payload: AndroidAppAlarmPayload,
-    },
-    MaccasOfferIngest {
-        payload: MaccasOfferIngest,
-    },
-    SynergyDataIngest {
-        payload: Bytes,
-    },
-    UnifiWebhook {
-        payload: Box<UnifiWebhookEvent>,
-    },
+    MqttPacket { payload: bytes::Bytes, topic: String },
 }
 
-pub struct EventHandler {
+/// What an incoming MQTT topic maps to. zigbee2mqtt and esphome share the broker
+/// but never the topic space: zigbee2mqtt always publishes under `zigbee2mqtt/`,
+/// while esphome uses `esphome/discover/...` for discovery and
+/// `<node>/<platform>/<object_id>/state` for entity state. Classifying the topic
+/// up front means the producer is decided by an explicit rule rather than by an
+/// "everything else is zigbee" fallthrough.
+enum MqttTopic {
+    /// `zigbee2mqtt/bridge/devices` — the retained device list.
+    Zigbee2MqttBridgeDevices,
+    /// `zigbee2mqtt/<friendly_name>` — a device's state report.
+    Zigbee2MqttDevice,
+    /// `esphome/discover/<node>` — a node announcing itself.
+    EsphomeDiscovery,
+    /// Anything else — resolved against the esphome subscription registry, since
+    /// the only other topics we subscribe to are esphome state topics we chose.
+    Other,
+}
+
+impl MqttTopic {
+    fn classify(topic: &str) -> Self {
+        if let Some(rest) = topic.strip_prefix("zigbee2mqtt/") {
+            return if rest == "bridge/devices" {
+                MqttTopic::Zigbee2MqttBridgeDevices
+            } else {
+                MqttTopic::Zigbee2MqttDevice
+            };
+        }
+
+        if topic.starts_with("esphome/discover/") {
+            return MqttTopic::EsphomeDiscovery;
+        }
+
+        MqttTopic::Other
+    }
+}
+
+pub struct MqttIngest {
     shared_actor_state: SharedActorState,
 }
 
-impl EventHandler {
-    pub const NAME: &str = "event-handler";
+impl MqttIngest {
+    pub const NAME: &str = "mqtt-ingest";
 
     fn handle_control_switch(
         event_id: Uuid,
@@ -279,9 +290,103 @@ impl EventHandler {
         Ok(())
     }
 
+    /// Route an esphome motion (`binary_sensor`) reading to the presence actor.
+    fn dispatch_esphome_motion(&self, node: &str, payload: &[u8]) -> Result<(), anyhow::Error> {
+        let Some(motion) = crate::esphome::parse_binary_state(payload) else {
+            tracing::warn!("unrecognised esphome binary state payload for {node}");
+            return Ok(());
+        };
+
+        let event_id = uuid::Uuid::new_v4();
+        let Some(actor_cell) =
+            ractor::registry::where_is(TypedActorName::PresenceSensor.to_string())
+        else {
+            tracing::error!("no presence sensor actor found for esphome motion");
+            return Ok(());
+        };
+
+        actor_cell.send_message(FactoryMessage::Dispatch(Job {
+            key: (),
+            msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
+                event_id,
+                entity: presence_sensor::Entity::Esphome {
+                    node: node.to_string(),
+                    motion,
+                },
+            }),
+            options: JobOptions::default(),
+            accepted: None,
+        }))?;
+
+        Ok(())
+    }
+
+    /// Route an esphome scalar `sensor` reading to whichever of the plant /
+    /// environment actors claim the node — a node can be configured as both, and
+    /// each actor ignores object_ids it doesn't handle.
+    fn dispatch_esphome_sensor(
+        &self,
+        node: &str,
+        object_id: &str,
+        payload: &[u8],
+    ) -> Result<(), anyhow::Error> {
+        let Some(value) = crate::esphome::parse_sensor_state(payload) else {
+            tracing::warn!("unrecognised esphome sensor payload for {node}/{object_id}");
+            return Ok(());
+        };
+
+        let event_id = uuid::Uuid::new_v4();
+        let settings = self.shared_actor_state.settings.load();
+
+        if settings.plant_sensors.contains_key(node) {
+            match ractor::registry::where_is(plant_sensor::PlantSensorHandler::NAME.to_string()) {
+                Some(actor_cell) => {
+                    actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                        key: (),
+                        msg: plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
+                            event_id,
+                            node: node.to_string(),
+                            object_id: object_id.to_string(),
+                            value,
+                        }),
+                        options: JobOptions::default(),
+                        accepted: None,
+                    }))?;
+                }
+                None => tracing::error!("no plant sensor actor found for esphome sensor"),
+            }
+        }
+
+        if settings.environment_sensors.contains_key(node) {
+            match ractor::registry::where_is(TypedActorName::EnvironmentSensor.to_string()) {
+                Some(actor_cell) => {
+                    actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                        key: (),
+                        msg: environment_sensor::Message::NewEvent(Box::new(
+                            environment_sensor::NewEvent {
+                                event_id,
+                                entity: environment_sensor::Entity::Esphome {
+                                    node: node.to_string(),
+                                    object_id: object_id.to_string(),
+                                    value,
+                                },
+                            },
+                        )),
+                        options: JobOptions::default(),
+                        accepted: None,
+                    }))?;
+                }
+                None => tracing::error!("no temperature sensor actor found for esphome sensor"),
+            }
+        }
+
+        Ok(())
+    }
+
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
-        match message {
-            Message::MqttPacket { payload, topic } if topic == "zigbee2mqtt/bridge/devices" => {
+        let Message::MqttPacket { payload, topic } = message;
+        match MqttTopic::classify(&topic) {
+            MqttTopic::Zigbee2MqttBridgeDevices => {
                 let devices_payload = serde_json::from_slice::<BridgeDevices>(&payload)?;
                 let mut devices_map = self.shared_actor_state.known_devices_map.write().await;
                 for device in devices_payload {
@@ -296,7 +401,7 @@ impl EventHandler {
                 }
                 drop(devices_map)
             }
-            Message::MqttPacket { payload, topic } if topic.starts_with("esphome/discover/") => {
+            MqttTopic::EsphomeDiscovery => {
                 let discovery =
                     serde_json::from_slice::<crate::esphome::EsphomeDiscovery>(&payload)?;
                 tracing::info!(
@@ -311,15 +416,24 @@ impl EventHandler {
                     .await
                     .insert(discovery.name.clone(), discovery.friendly_name.clone());
 
+                // Build the set of state topics this node exposes from config,
+                // then subscribe and record each in the registry so the matching
+                // state messages route by exact lookup.
                 let settings = self.shared_actor_state.settings.load();
+                let mut new_subs: Vec<(String, crate::esphome::EsphomeTarget)> = Vec::new();
+
                 if let Some(presence_settings) = settings.presence_sensors.get(&discovery.name)
                     && presence_settings.sensor_type == crate::settings::PresenceSensorType::Esphome
                 {
                     if let Some(motion_entity) = &presence_settings.motion_entity {
                         let topic =
                             crate::esphome::motion_state_topic(&discovery.name, motion_entity);
-                        tracing::info!("subscribing to esphome motion topic: {topic}");
-                        self.shared_actor_state.mqtt.subscribe(topic).await?;
+                        new_subs.push((
+                            topic,
+                            crate::esphome::EsphomeTarget::Motion {
+                                node: discovery.name.clone(),
+                            },
+                        ));
                     } else {
                         tracing::warn!(
                             "esphome presence sensor {} has no motionEntity configured",
@@ -328,131 +442,72 @@ impl EventHandler {
                     }
                 }
 
-                if let Some(temperature_settings) =
-                    settings.environment_sensors.get(&discovery.name)
-                    && temperature_settings.sensor_type
+                if let Some(environment_settings) = settings.environment_sensors.get(&discovery.name)
+                    && environment_settings.sensor_type
                         == crate::settings::EnvironmentSensorType::Esphome
                 {
-                    for object_id in crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS {
+                    for object_id in &environment_settings.entities {
                         let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
-                        tracing::info!("subscribing to esphome sensor topic: {topic}");
-                        self.shared_actor_state.mqtt.subscribe(topic).await?;
+                        new_subs.push((
+                            topic,
+                            crate::esphome::EsphomeTarget::Sensor {
+                                node: discovery.name.clone(),
+                                object_id: object_id.clone(),
+                            },
+                        ));
                     }
                 }
 
                 if let Some(plant_settings) = settings.plant_sensors.get(&discovery.name) {
-                    // subscribe to each configured plant sensor entity
                     for object_id in &plant_settings.entities {
                         let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
-                        tracing::info!("subscribing to esphome plant sensor topic: {topic}");
-                        self.shared_actor_state.mqtt.subscribe(topic).await?;
+                        new_subs.push((
+                            topic,
+                            crate::esphome::EsphomeTarget::Sensor {
+                                node: discovery.name.clone(),
+                                object_id: object_id.clone(),
+                            },
+                        ));
+                    }
+                }
+                drop(settings);
+
+                // subscribe first (no registry lock held across the await), then
+                // record the topic→target mappings in one short critical section
+                for (topic, _) in &new_subs {
+                    tracing::info!("subscribing to esphome topic: {topic}");
+                    self.shared_actor_state.mqtt.subscribe(topic.clone()).await?;
+                }
+                self.shared_actor_state
+                    .esphome_subscriptions
+                    .write()
+                    .await
+                    .extend(new_subs);
+            }
+            MqttTopic::Other => {
+                // the only non-control topics we subscribe to are esphome state
+                // topics we recorded on discovery; look the target up exactly
+                let target = self
+                    .shared_actor_state
+                    .esphome_subscriptions
+                    .read()
+                    .await
+                    .get(&topic)
+                    .cloned();
+
+                match target {
+                    Some(crate::esphome::EsphomeTarget::Motion { node }) => {
+                        self.dispatch_esphome_motion(&node, &payload)?
+                    }
+                    Some(crate::esphome::EsphomeTarget::Sensor { node, object_id }) => {
+                        self.dispatch_esphome_sensor(&node, &object_id, &payload)?
+                    }
+                    None => {
+                        tracing::warn!("ignoring mqtt packet on unhandled topic: {topic}")
                     }
                 }
             }
-            Message::MqttPacket { payload, topic }
-                if topic.contains("/binary_sensor/") && topic.ends_with("/state") =>
-            {
-                let Some(node) = topic.split('/').next() else {
-                    tracing::warn!("malformed esphome state topic: {topic}");
-                    return Ok(());
-                };
-
-                let Some(motion) = crate::esphome::parse_binary_state(&payload) else {
-                    tracing::warn!("unrecognised esphome binary state payload on {topic}");
-                    return Ok(());
-                };
-
-                let event_id = uuid::Uuid::new_v4();
-                let actor_name = TypedActorName::PresenceSensor.to_string();
-                let Some(actor_cell) = ractor::registry::where_is(actor_name) else {
-                    tracing::error!("no presence sensor actor found for esphome motion");
-                    return Ok(());
-                };
-
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
-                        event_id,
-                        entity: presence_sensor::Entity::Esphome {
-                            node: node.to_string(),
-                            motion,
-                        },
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            Message::MqttPacket { payload, topic }
-                if topic.contains("/sensor/") && topic.ends_with("/state") =>
-            {
-                let mut segments = topic.split('/');
-                let (Some(node), Some(_), Some(object_id)) =
-                    (segments.next(), segments.next(), segments.next())
-                else {
-                    tracing::warn!("malformed esphome sensor topic: {topic}");
-                    return Ok(());
-                };
-
-                let Some(value) = crate::esphome::parse_sensor_state(&payload) else {
-                    tracing::warn!("unrecognised esphome sensor payload on {topic}");
-                    return Ok(());
-                };
-
-                let event_id = uuid::Uuid::new_v4();
-                let settings = self.shared_actor_state.settings.load();
-
-                // a node can be both: the plant actor watches soil moisture for
-                // threshold workflows, while the temperature actor stores air
-                // temperature/humidity/lux/uv. Dispatch to each independently;
-                // each actor ignores object_ids it doesn't handle.
-                if settings.plant_sensors.contains_key(node) {
-                    match ractor::registry::where_is(
-                        plant_sensor::PlantSensorHandler::NAME.to_string(),
-                    ) {
-                        Some(actor_cell) => {
-                            actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                                key: (),
-                                msg: plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
-                                    event_id,
-                                    node: node.to_string(),
-                                    object_id: object_id.to_string(),
-                                    value,
-                                }),
-                                options: JobOptions::default(),
-                                accepted: None,
-                            }))?;
-                        }
-                        None => tracing::error!("no plant sensor actor found for esphome sensor"),
-                    }
-                }
-
-                if settings.environment_sensors.contains_key(node) {
-                    let actor_name = TypedActorName::EnvironmentSensor.to_string();
-                    match ractor::registry::where_is(actor_name) {
-                        Some(actor_cell) => {
-                            actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                                key: (),
-                                msg: environment_sensor::Message::NewEvent(Box::new(
-                                    environment_sensor::NewEvent {
-                                        event_id,
-                                        entity: environment_sensor::Entity::Esphome {
-                                            node: node.to_string(),
-                                            object_id: object_id.to_string(),
-                                            value,
-                                        },
-                                    },
-                                )),
-                                options: JobOptions::default(),
-                                accepted: None,
-                            }))?;
-                        }
-                        None => {
-                            tracing::error!("no temperature sensor actor found for esphome sensor")
-                        }
-                    }
-                }
-            }
-            Message::MqttPacket { payload, .. } => {
+            MqttTopic::Zigbee2MqttDevice => {
                 let generic_message =
                     match serde_json::from_slice::<GenericZigbee2MqttMessage>(&payload) {
                         Ok(payload) => payload,
@@ -509,69 +564,13 @@ impl EventHandler {
                     None => tracing::error!("no actor found for {actor_type}"),
                 }
             }
-            Message::MaccasOfferIngest { payload } => {
-                tracing::info!(
-                    "received maccas offer event for {}",
-                    payload.details.short_name
-                );
-
-                let maybe_actor = ractor::registry::where_is(MaccasActor::NAME.to_string());
-                if let Some(actor) = maybe_actor {
-                    actor.send_message(maccas::MaccasMessage::NewOffer(payload))?;
-                }
-            }
-            Message::SynergyDataIngest { payload } => {
-                tracing::info!("received synergy event");
-                let maybe_actor = ractor::registry::where_is(SynergyActor::NAME.to_string());
-                if let Some(actor) = maybe_actor {
-                    actor.send_message(synergy::SynergyMessage::NewUpload(payload))?;
-                }
-            }
-            Message::UnifiWebhook { payload } => {
-                tracing::info!("received unifi webhook event",);
-                let maybe_actor =
-                    ractor::registry::where_is(UnifiConnectedClientHandler::NAME.to_string());
-
-                if maybe_actor.is_none() {
-                    tracing::warn!("unifi actor not found");
-                    return Ok(());
-                }
-
-                let actor = maybe_actor.unwrap();
-
-                let mac_address = match payload.parameters {
-                    Parameters::Connect(connect_parameters) => connect_parameters.unificlient_mac,
-                    Parameters::Disconnect(disconnect_parameters) => {
-                        disconnect_parameters.unificlient_mac
-                    }
-                };
-
-                match payload.name.as_str() {
-                    "WiFi Client Connected" => {
-                        actor.send_message(UnifiMessage::ClientConnect { mac_address })?;
-                    }
-                    "WiFi Client Disconnected" => {
-                        actor.send_message(UnifiMessage::ClientDisconnect { mac_address })?;
-                    }
-                    unknown => tracing::warn!("unknown webhook event: {unknown}"),
-                }
-            }
-            Message::AlarmChangeIngest { payload } => {
-                tracing::info!("received alarm webhook event");
-                let Some(actor) = ractor::registry::where_is(AlarmActor::NAME.to_string()) else {
-                    tracing::warn!("alarm actor not found");
-                    return Ok(());
-                };
-
-                actor.send_message(AlarmMessage::NextAlarm(payload))?;
-            }
-        };
+        }
 
         Ok(())
     }
 }
 
-impl Worker for EventHandler {
+impl Worker for MqttIngest {
     type Key = ();
     type Message = Message;
     type State = ();
@@ -604,13 +603,44 @@ impl Worker for EventHandler {
 pub struct MqttMessageHandlerBuilder {
     pub shared_actor_state: SharedActorState,
 }
-impl WorkerBuilder<EventHandler, ()> for MqttMessageHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (EventHandler, ()) {
+impl WorkerBuilder<MqttIngest, ()> for MqttMessageHandlerBuilder {
+    fn build(&mut self, _wid: usize) -> (MqttIngest, ()) {
         (
-            EventHandler {
+            MqttIngest {
                 shared_actor_state: self.shared_actor_state.clone(),
             },
             (),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_routes_control_topics_and_defers_the_rest() {
+        assert!(matches!(
+            MqttTopic::classify("zigbee2mqtt/bridge/devices"),
+            MqttTopic::Zigbee2MqttBridgeDevices
+        ));
+        assert!(matches!(
+            MqttTopic::classify("zigbee2mqtt/0x00158d008bbe0316"),
+            MqttTopic::Zigbee2MqttDevice
+        ));
+        assert!(matches!(
+            MqttTopic::classify("esphome/discover/apollo-mtr-1-livingroom"),
+            MqttTopic::EsphomeDiscovery
+        ));
+        // esphome state topics are not classified by shape any more — they fall
+        // through to `Other` and are resolved against the subscription registry
+        assert!(matches!(
+            MqttTopic::classify("apollo-mtr-1-livingroom/sensor/air_temperature/state"),
+            MqttTopic::Other
+        ));
+        assert!(matches!(
+            MqttTopic::classify("apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state"),
+            MqttTopic::Other
+        ));
     }
 }

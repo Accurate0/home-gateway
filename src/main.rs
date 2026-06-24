@@ -4,7 +4,7 @@ use crate::routes::{
     workflow::execute::workflow_execute,
 };
 use ::http::Method;
-use actors::{event_handler::{self}, root::RootSupervisor};
+use actors::{mqtt_ingest::{self}, root::RootSupervisor};
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireApiKey;
 use axum::{
@@ -26,7 +26,6 @@ use routes::{
     health::health,
     ingest::{
         home::{alarm::alarm, push_token::push_token},
-        maccas::maccas,
         synergy::synergy,
     },
     push::notify as push_notify,
@@ -76,7 +75,7 @@ async fn init_actors(
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
     object_registry: ObjectRegistry,
-) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
+) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     let shared_actor_state = SharedActorState {
         settings,
         db,
@@ -85,6 +84,7 @@ async fn init_actors(
         known_devices_map,
         object_registry,
         event_bus: event_bus::EventBus::default(),
+        esphome_subscriptions: Arc::new(RwLock::new(HashMap::new())),
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(
@@ -96,11 +96,11 @@ async fn init_actors(
     )
     .await?;
 
-    let event_handler_actor =
-        event_handler::spawn::spawn_event_handler(&root_supervisor_ref, shared_actor_state.clone())
+    let mqtt_ingest_actor =
+        mqtt_ingest::spawn::spawn_mqtt_ingest(&root_supervisor_ref, shared_actor_state.clone())
             .await?;
 
-    Ok(event_handler_actor)
+    Ok(mqtt_ingest_actor)
 }
 
 #[tokio::main]
@@ -143,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
         settings.s3.endpoint.clone(),
     )?;
 
-    let event_handler_actor = init_actors(
+    let mqtt_ingest_actor = init_actors(
         settings_container.clone(),
         feature_flag_client.clone(),
         mqtt_client,
@@ -172,7 +172,6 @@ async fn main() -> anyhow::Result<()> {
 
     let api_state = ApiState {
         feature_flag_client,
-        event_handler: event_handler_actor.clone(),
         schema,
         settings: settings_container.clone(),
         db: pool.clone(),
@@ -195,7 +194,6 @@ async fn main() -> anyhow::Result<()> {
         ))
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/home/push-token", post(push_token))
-        .route("/ingest/maccas", post(maccas))
         .route("/ingest/unifi", post(unifi))
         .layer(OtelAxumLayer::default())
         .route("/health", get(health))
@@ -226,9 +224,9 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let mqtt_cancellation_token = cancellation_token.child_token();
-    let mqtt_event_handler = event_handler_actor.clone();
+    let mqtt_ingest = mqtt_ingest_actor.clone();
     task_set.spawn(async move {
-        mqtt.process_events(mqtt_cancellation_token, mqtt_event_handler)
+        mqtt.process_events(mqtt_cancellation_token, mqtt_ingest)
             .await?;
         Ok::<(), MainError>(())
     });

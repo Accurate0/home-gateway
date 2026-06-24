@@ -46,7 +46,7 @@ pub enum TriggerMatcher {
     /// Fires on a recurring schedule. `schedule` is a standard 5-field cron
     /// expression (e.g. `"0 20 * * THU"`), evaluated in local time. Driven by the
     /// [`crate::actors::cron::CronActor`] producer, which matches by trigger name.
-    Cron { schedule: CronSchedule },
+    Cron { schedule: Box<CronSchedule> },
 }
 
 impl TriggerMatcher {

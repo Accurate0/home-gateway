@@ -18,7 +18,6 @@ use super::{
         door_events::DoorEventsSupervisor,
     },
     light,
-    maccas::MaccasActor,
     push,
     smart_switch,
     synergy::SynergyActor,
@@ -151,23 +150,6 @@ impl RootSupervisor {
         Ok(())
     }
 
-    async fn start_maccas_actor(
-        &self,
-        myself: &ractor::ActorRef<()>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(MaccasActor::NAME.to_owned()),
-                MaccasActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
     async fn start_solar_actor(
         &self,
         myself: &ractor::ActorRef<()>,
@@ -258,7 +240,6 @@ impl Actor for RootSupervisor {
             )
             .await?;
 
-        self.start_maccas_actor(&myself).await?;
         self.start_unifi_connected_clients_handler(&myself).await?;
         self.start_cron_actor(&myself).await?;
         self.start_synergy_actor(&myself).await?;
@@ -295,11 +276,6 @@ impl Actor for RootSupervisor {
                     UnifiConnectedClientHandler::NAME => {
                         tracing::info!("restarting unifi handler");
                         self.start_unifi_connected_clients_handler(&myself).await?;
-                    }
-
-                    MaccasActor::NAME => {
-                        tracing::info!("restarting maccas actor");
-                        self.start_maccas_actor(&myself).await?;
                     }
 
                     VacuumActor::NAME => {

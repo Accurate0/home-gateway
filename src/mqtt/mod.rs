@@ -1,4 +1,4 @@
-use crate::actors::event_handler;
+use crate::actors::mqtt_ingest;
 use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, JobOptions},
@@ -24,7 +24,7 @@ pub enum MqttError {
     Mqtt(#[from] rumqttc::ClientError),
 
     #[error("a actor message error occurred: {0}")]
-    ActorMessage(#[from] Box<ractor::MessagingErr<FactoryMessage<(), event_handler::Message>>>),
+    ActorMessage(#[from] Box<ractor::MessagingErr<FactoryMessage<(), mqtt_ingest::Message>>>),
 }
 
 #[derive(Clone)]
@@ -104,7 +104,7 @@ impl Mqtt {
     pub async fn process_events(
         &mut self,
         cancellation_token: CancellationToken,
-        actor: ActorRef<FactoryMessage<(), event_handler::Message>>,
+        actor: ActorRef<FactoryMessage<(), mqtt_ingest::Message>>,
     ) -> Result<(), MqttError> {
         loop {
             tokio::select! {
@@ -127,7 +127,7 @@ impl Mqtt {
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {
                                 let response = actor.send_message(FactoryMessage::Dispatch(Job {
                                     key: (),
-                                    msg: event_handler::Message::MqttPacket {
+                                    msg: mqtt_ingest::Message::MqttPacket {
                                         payload: publish.payload,
                                         topic: publish.topic
                                     },

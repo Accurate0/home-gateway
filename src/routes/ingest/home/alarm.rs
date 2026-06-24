@@ -1,17 +1,12 @@
 use crate::{
-    actors::{alarm::types::AndroidAppAlarmPayload, event_handler},
+    actors::alarm::{AlarmActor, AlarmMessage, types::AndroidAppAlarmPayload},
     types::ApiState,
 };
 use axum::{Json, extract::State};
 use http::{HeaderMap, StatusCode};
-use ractor::factory::JobOptions;
 
 pub async fn alarm(
-    State(ApiState {
-        ref event_handler,
-        ref settings,
-        ..
-    }): State<ApiState>,
+    State(ApiState { ref settings, .. }): State<ApiState>,
     headers: HeaderMap,
     Json(payload): Json<AndroidAppAlarmPayload>,
 ) -> StatusCode {
@@ -19,14 +14,12 @@ pub async fn alarm(
     let settings = settings.load();
     match secret_header {
         Some(secret_value) if *secret_value == settings.android_app_webhook_secret => {
-            if let Err(e) = event_handler.send_message(ractor::factory::FactoryMessage::Dispatch(
-                ractor::factory::Job {
-                    key: (),
-                    msg: event_handler::Message::AlarmChangeIngest { payload },
-                    options: JobOptions::default(),
-                    accepted: None,
-                },
-            )) {
+            let Some(actor) = ractor::registry::where_is(AlarmActor::NAME.to_string()) else {
+                tracing::warn!("alarm actor not found");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            };
+
+            if let Err(e) = actor.send_message(AlarmMessage::NextAlarm(payload)) {
                 tracing::error!("error forwarding alarm event {e}")
             };
 

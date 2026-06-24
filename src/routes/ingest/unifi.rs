@@ -1,17 +1,12 @@
 use crate::{
-    actors::{event_handler, unifi::types::UnifiWebhookEvent},
+    actors::unifi::{UnifiConnectedClientHandler, UnifiMessage, types::UnifiWebhookEvent},
     types::ApiState,
 };
 use axum::{Json, extract::State};
 use http::{HeaderMap, StatusCode};
-use ractor::factory::JobOptions;
 
 pub async fn unifi(
-    State(ApiState {
-        ref event_handler,
-        ref settings,
-        ..
-    }): State<ApiState>,
+    State(ApiState { ref settings, .. }): State<ApiState>,
     headers: HeaderMap,
     Json(unifi_event): Json<UnifiWebhookEvent>,
 ) -> StatusCode {
@@ -19,16 +14,14 @@ pub async fn unifi(
     let settings = settings.load();
     match unifi_secret_header {
         Some(secret_value) if *secret_value == settings.unifi_webhook_secret => {
-            if let Err(e) = event_handler.send_message(ractor::factory::FactoryMessage::Dispatch(
-                ractor::factory::Job {
-                    key: (),
-                    msg: event_handler::Message::UnifiWebhook {
-                        payload: Box::new(unifi_event),
-                    },
-                    options: JobOptions::default(),
-                    accepted: None,
-                },
-            )) {
+            let Some(actor) =
+                ractor::registry::where_is(UnifiConnectedClientHandler::NAME.to_string())
+            else {
+                tracing::warn!("unifi actor not found");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            };
+
+            if let Err(e) = actor.send_message(UnifiMessage::Webhook(Box::new(unifi_event))) {
                 tracing::error!("error forwarding unifi event {e}")
             };
 

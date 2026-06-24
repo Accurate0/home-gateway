@@ -140,7 +140,7 @@ impl Worker for PushWorker {
                 };
 
                 let device_tokens: Vec<String> =
-                    match sqlx::query_scalar("SELECT token FROM android_push_tokens")
+                    match sqlx::query_scalar!("SELECT token FROM android_push_tokens")
                         .fetch_all(&self.shared_actor_state.db)
                         .await
                     {

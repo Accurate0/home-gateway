@@ -1,11 +1,11 @@
-use super::{EventHandler, Message, MqttMessageHandlerBuilder};
+use super::{MqttIngest, Message, MqttMessageHandlerBuilder};
 use crate::types::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, FactoryMessage, queues, routing},
 };
 
-pub async fn spawn_event_handler(
+pub async fn spawn_mqtt_ingest(
     root_supervisor_ref: &ActorRef<()>,
     shared_actor_state: SharedActorState,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), Message>>> {
@@ -13,7 +13,7 @@ pub async fn spawn_event_handler(
         (),
         Message,
         (),
-        EventHandler,
+        MqttIngest,
         routing::QueuerRouting<(), Message>,
         queues::DefaultQueue<(), Message>,
     >::default();
@@ -27,7 +27,7 @@ pub async fn spawn_event_handler(
 
     let (actor_ref, _) = root_supervisor_ref
         .spawn_linked(
-            Some(EventHandler::NAME.to_string()),
+            Some(MqttIngest::NAME.to_string()),
             door_handler_factory_def,
             door_handler_factory_args,
         )

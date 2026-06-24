@@ -1,5 +1,5 @@
 use crate::{
-    actors::event_handler,
+    esphome::EsphomeTarget,
     event_bus::EventBus,
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
@@ -10,7 +10,6 @@ use crate::{
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
-use ractor::{ActorRef, factory::FactoryMessage};
 use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -26,13 +25,17 @@ pub struct SharedActorState {
     pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
     pub object_registry: ObjectRegistry,
     pub event_bus: EventBus,
+    /// esphome state topics we've subscribed to (driven by discovery + config),
+    /// mapped to what each one routes to. Populated on discovery, read when a
+    /// state message arrives so routing is an exact lookup, never a topic-shape
+    /// guess. Shared across factory workers, like [`Self::known_devices_map`].
+    pub esphome_subscriptions: Arc<RwLock<HashMap<String, EsphomeTarget>>>,
 }
 
 #[derive(Clone)]
 pub struct ApiState {
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
-    pub event_handler: ActorRef<FactoryMessage<(), event_handler::Message>>,
     #[allow(unused)]
     pub settings: SettingsContainer,
     #[allow(unused)]
