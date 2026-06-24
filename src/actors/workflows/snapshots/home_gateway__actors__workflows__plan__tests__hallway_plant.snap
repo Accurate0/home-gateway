@@ -1,0 +1,9 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Hallway plant dry  (on: environment(hallway_plant).SoilMoisture Lt 20)
+  notify: notify(AndroidApp): Hallway plant is dry (soil moisture below 20%)
+
+# Hallway plant overwatered  (on: environment(hallway_plant).SoilMoisture Gt 80)
+  notify: notify(AndroidApp): Hallway plant is overwatered (soil moisture above 80%)

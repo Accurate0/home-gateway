@@ -1,7 +1,7 @@
 //! In-memory event bus.
 //!
 //! Producers anywhere in the app publish an [`EventBusMessage`] without knowing
-//! which (if any) workflows it triggers. The [`crate::actors::events::dispatcher`]
+//! which (if any) workflows it triggers. The [`crate::actors::workflows::dispatcher`]
 //! actor subscribes, matches the message against the configured `triggers:`, and
 //! forwards work to the parallel workflow factory. The bus itself does no
 //! matching or execution — it is a thin fan-out wrapper around a tokio broadcast

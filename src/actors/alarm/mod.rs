@@ -1,6 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::{Condition, LightState, Step, WorkflowSettings},
+    settings::workflow::{Condition, LightState, Step, Workflow, WorkflowTrigger},
     types::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -91,8 +91,11 @@ impl Actor for AlarmActor {
                             return Ok(());
                         };
 
-                        let workflow = WorkflowSettings {
+                        let workflow = Workflow {
+                            name: "alarm-wakeup".to_owned(),
                             enabled: true,
+                            dry_run: false,
+                            trigger: WorkflowTrigger::Reusable,
                             run: vec![Step::Scene {
                                 run: vec![
                                     Step::Light {

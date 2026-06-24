@@ -117,7 +117,10 @@ impl EnvironmentDetails {
         self.load(ctx, |t| t.temperature).await
     }
 
-    async fn humidity(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<f64> {
+    async fn humidity(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
         self.load(ctx, |t| t.humidity).await
     }
 

@@ -22,8 +22,8 @@ pub use graphql::GraphqlSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
-pub use trigger::{Trigger, TriggerMatcher};
-pub use workflow::WorkflowSettings;
+pub use trigger::TriggerMatcher;
+pub use workflow::Workflow;
 
 use crate::device_registry::{DeviceRegistry, RawSensor};
 
@@ -44,18 +44,14 @@ pub struct S3Settings {
 /// `devices:` key. Referenced from workflow steps so addresses are written once.
 pub type DeviceAliases = HashMap<String, IEEEAddress>;
 
-/// Resolve a workflow device reference: a named alias, or a raw `0x…` address.
-/// Anything else is rejected at load time so typos fail loudly.
-pub(crate) fn resolve_device(
-    reference: &str,
-    devices: &DeviceAliases,
-) -> Result<IEEEAddress, String> {
-    if let Some(addr) = devices.get(reference) {
-        Ok(addr.clone())
-    } else if reference.starts_with("0x") {
-        Ok(reference.to_string())
+/// Validate a workflow device reference. References must be device registry ids;
+/// the id is kept as-is and resolved to an address at runtime. Unknown ids are
+/// rejected at load time so typos fail loudly.
+pub(crate) fn validate_device(reference: &str, devices: &DeviceAliases) -> Result<(), String> {
+    if devices.contains_key(reference) {
+        Ok(())
     } else {
-        Err(format!("unknown device alias: {reference}"))
+        Err(format!("unknown device registry id: {reference}"))
     }
 }
 
@@ -75,9 +71,7 @@ pub struct Settings {
     pub mqtt_password: String,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
-    pub triggers: Vec<Trigger>,
-    /// Named, reusable workflows referenced by `run_workflow` steps.
-    pub workflows: HashMap<String, WorkflowSettings>,
+    pub workflows: HashMap<String, Workflow>,
     pub graphql: GraphqlSettings,
     pub s3: S3Settings,
 }
@@ -102,12 +96,8 @@ struct RawSettings {
     notify_targets: NotifyTargets,
     #[serde(default)]
     devices: Vec<RawSensor>,
-    // triggers are split into per-device files, each a list, so the included
-    // shape is a list-of-lists; flattened during resolve
     #[serde(default)]
-    triggers: Vec<Vec<Trigger>>,
-    #[serde(default)]
-    workflows: HashMap<String, WorkflowSettings>,
+    workflows: Vec<Vec<Workflow>>,
     #[serde(default)]
     graphql: GraphqlSettings,
     s3: S3Settings,
@@ -127,23 +117,21 @@ impl RawSettings {
             android_app_webhook_secret,
             notify_targets,
             devices,
-            triggers,
-            mut workflows,
+            workflows,
             graphql,
             s3,
         } = self;
 
-        let mut triggers: Vec<Trigger> = triggers.into_iter().flatten().collect();
-
         let registry = DeviceRegistry::build(devices, &notify_targets)?;
         let aliases = registry.aliases();
 
-        for trigger in &mut triggers {
-            trigger.resolve_devices(aliases)?;
-        }
-
-        for workflow in workflows.values_mut() {
+        let mut resolved = HashMap::new();
+        for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
+            let name = workflow.name.clone();
+            if resolved.insert(name.clone(), workflow).is_some() {
+                return Err(format!("duplicate workflow name: {name}"));
+            }
         }
 
         Ok((
@@ -157,8 +145,7 @@ impl RawSettings {
                 mqtt_password,
                 unifi_webhook_secret,
                 android_app_webhook_secret,
-                triggers,
-                workflows,
+                workflows: resolved,
                 graphql,
                 s3,
             },
@@ -245,26 +232,31 @@ android_app_webhook_secret: x
 
         let (settings, registry) = SettingsContainer::build(config).unwrap();
 
-        // a switch trigger resolves device aliases on both its matcher and steps
-        let switch_trigger = settings
-            .triggers
-            .iter()
-            .find(|t| {
-                matches!(&t.on, trigger::TriggerMatcher::Switch { ieee_addr, action }
-                if ieee_addr == "0x00158d008bbe0316" && action == "single")
+        let switch_workflow = settings
+            .workflows
+            .values()
+            .find(|w| {
+                matches!(w.on(), Some(trigger::TriggerMatcher::Switch { ieee_addr, action })
+                if ieee_addr == "small_switch" && action == "single")
             })
-            .expect("expected a switch trigger for the small switch");
-        let workflow::Step::Light { ieee_addr, .. } = &switch_trigger.run[0] else {
+            .expect("expected a switch workflow for the small switch");
+        let workflow::Step::Light { ieee_addr, .. } = &switch_workflow.run[0] else {
             panic!("expected a light step");
         };
-        assert_eq!(ieee_addr, "0x94a081fffe2eedc0");
+        assert_eq!(ieee_addr, "floor_lamp_living_room");
 
-        // a cron trigger parses its schedule and anchor
+        assert_eq!(
+            registry.address_or_self("small_switch"),
+            "0x00158d008bbe0316"
+        );
+        assert_eq!(
+            registry.address_or_self("floor_lamp_living_room"),
+            "0x94a081fffe2eedc0"
+        );
+
         assert!(
-            settings
-                .triggers
-                .iter()
-                .any(|t| t.name == "Bins" && matches!(&t.on, trigger::TriggerMatcher::Cron { .. }))
+            settings.workflows.values().any(|w| w.name == "Bins"
+                && matches!(w.on(), Some(trigger::TriggerMatcher::Cron { .. })))
         );
 
         // a zigbee presence sensor is keyed by its address in the registry
@@ -279,19 +271,25 @@ android_app_webhook_secret: x
                 .as_deref(),
             Some("ld2450_moving_target")
         );
+        // apollo-mtr is presence-only, not an environment sensor
+        assert!(registry.environment("apollo-mtr-1-livingroom").is_none());
+
+        // a single device definition can carry multiple kinds: the hallway plant
+        // is registered as both an environment and a plant sensor at one address
         assert_eq!(
             registry
-                .environment("apollo-mtr-1-livingroom")
+                .environment("apollo-plt-1-hallway")
                 .unwrap()
                 .sensor_type,
             EnvironmentSensorType::Esphome
         );
+        assert!(registry.plant("apollo-plt-1-hallway").is_some());
 
         // an esphome environment sensor with no explicit `entities:` falls back to
         // the default temperature object_ids, which drive its subscriptions
         assert_eq!(
             registry
-                .environment("apollo-mtr-1-livingroom")
+                .environment("apollo-plt-1-hallway")
                 .unwrap()
                 .entities,
             crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS

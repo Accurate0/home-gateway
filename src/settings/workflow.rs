@@ -1,7 +1,9 @@
 use crate::settings::NotifySource;
+use crate::settings::trigger::TriggerMatcher;
+use crate::timedelta_format::option_time_delta_from_str;
 
-use super::{DeviceAliases, IEEEAddress, resolve_device, yes};
-use chrono::NaiveTime;
+use super::{DeviceAliases, IEEEAddress, validate_device, yes};
+use chrono::{NaiveTime, TimeDelta};
 use serde::Deserialize;
 
 /// Brightness / colour-temperature mutations applied to a light. Kept in
@@ -133,7 +135,7 @@ impl Condition {
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         match self {
             Condition::Light { ieee_addr, .. } | Condition::Door { ieee_addr, .. } => {
-                *ieee_addr = resolve_device(ieee_addr, devices)?;
+                validate_device(ieee_addr, devices)?;
             }
             Condition::All { conditions } | Condition::Any { conditions } => {
                 for c in conditions {
@@ -147,6 +149,49 @@ impl Condition {
         }
         Ok(())
     }
+
+    pub fn describe(&self) -> String {
+        match self {
+            Condition::Light { ieee_addr, on } => {
+                format!("light({ieee_addr}) is {}", if *on { "on" } else { "off" })
+            }
+            Condition::Environment {
+                sensor,
+                metric,
+                cmp,
+            } => format!("env({sensor}).{metric:?} {:?} {}", cmp.op, cmp.value),
+            Condition::Presence { sensor, present } => {
+                format!("presence({sensor}) is {present}")
+            }
+            Condition::Door { ieee_addr, open } => {
+                format!(
+                    "door({ieee_addr}) is {}",
+                    if *open { "open" } else { "closed" }
+                )
+            }
+            Condition::TimeOfDay { after, before } => match (after, before) {
+                (Some(a), Some(b)) => format!("time in [{a}, {b})"),
+                (Some(a), None) => format!("time after {a}"),
+                (None, Some(b)) => format!("time before {b}"),
+                (None, None) => "time always".to_string(),
+            },
+            Condition::All { conditions } => {
+                format!("all[{}]", describe_join(conditions))
+            }
+            Condition::Any { conditions } => {
+                format!("any[{}]", describe_join(conditions))
+            }
+            Condition::Not { condition } => format!("not({})", condition.describe()),
+        }
+    }
+}
+
+fn describe_join(conditions: &[Condition]) -> String {
+    conditions
+        .iter()
+        .map(Condition::describe)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// A single workflow step: one action, optionally guarded by a `when` condition.
@@ -220,6 +265,22 @@ impl Step {
         }
     }
 
+    pub fn describe_action(&self) -> Option<String> {
+        match self {
+            Step::Light {
+                ieee_addr, state, ..
+            } => Some(format!("light({ieee_addr}) -> {state:?}")),
+            Step::Switch {
+                ieee_addr, state, ..
+            } => Some(format!("switch({ieee_addr}) -> {state:?}")),
+            Step::Notify {
+                notify, message, ..
+            } => Some(format!("notify({notify:?}): {message}")),
+            Step::Delay { seconds, .. } => Some(format!("delay {seconds}s")),
+            Step::Scene { .. } | Step::RunWorkflow { .. } => None,
+        }
+    }
+
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         match self {
             Step::Light {
@@ -228,7 +289,7 @@ impl Step {
             | Step::Switch {
                 ieee_addr, when, ..
             } => {
-                *ieee_addr = resolve_device(ieee_addr, devices)?;
+                validate_device(ieee_addr, devices)?;
                 resolve_opt(when, devices)?;
             }
             Step::Scene { run, when } => {
@@ -252,15 +313,92 @@ fn resolve_opt(when: &mut Option<Condition>, devices: &DeviceAliases) -> Result<
     Ok(())
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct WorkflowSettings {
-    #[serde(default = "yes")]
+#[derive(Debug, Clone)]
+pub enum WorkflowTrigger {
+    Triggered {
+        on: TriggerMatcher,
+        when: Option<Condition>,
+        cooldown: Option<TimeDelta>,
+    },
+    Reusable,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(from = "RawWorkflow")]
+pub struct Workflow {
+    pub name: String,
     pub enabled: bool,
+    pub dry_run: bool,
+    pub trigger: WorkflowTrigger,
     pub run: Vec<Step>,
 }
 
-impl WorkflowSettings {
+#[derive(Debug, Deserialize, Clone)]
+struct RawWorkflow {
+    #[serde(default)]
+    name: String,
+    #[serde(default = "yes")]
+    enabled: bool,
+    #[serde(default)]
+    dry_run: bool,
+    #[serde(default)]
+    on: Option<TriggerMatcher>,
+    #[serde(default)]
+    when: Option<Condition>,
+    #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
+    cooldown: Option<TimeDelta>,
+    run: Vec<Step>,
+}
+
+impl From<RawWorkflow> for Workflow {
+    fn from(raw: RawWorkflow) -> Self {
+        let trigger = match raw.on {
+            Some(on) => WorkflowTrigger::Triggered {
+                on,
+                when: raw.when,
+                cooldown: raw.cooldown,
+            },
+            None => WorkflowTrigger::Reusable,
+        };
+        Workflow {
+            name: raw.name,
+            enabled: raw.enabled,
+            dry_run: raw.dry_run,
+            trigger,
+            run: raw.run,
+        }
+    }
+}
+
+impl Workflow {
+    pub fn on(&self) -> Option<&TriggerMatcher> {
+        match &self.trigger {
+            WorkflowTrigger::Triggered { on, .. } => Some(on),
+            WorkflowTrigger::Reusable => None,
+        }
+    }
+
+    pub fn when(&self) -> Option<&Condition> {
+        match &self.trigger {
+            WorkflowTrigger::Triggered { when, .. } => when.as_ref(),
+            WorkflowTrigger::Reusable => None,
+        }
+    }
+
+    pub fn cooldown(&self) -> Option<TimeDelta> {
+        match &self.trigger {
+            WorkflowTrigger::Triggered { cooldown, .. } => *cooldown,
+            WorkflowTrigger::Reusable => None,
+        }
+    }
+
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+        if let WorkflowTrigger::Triggered { on, when, .. } = &mut self.trigger {
+            on.resolve_devices(devices)?;
+            if let Some(when) = when {
+                when.resolve_devices(devices)?;
+            }
+        }
         for step in &mut self.run {
             step.resolve_devices(devices)?;
         }

@@ -1,0 +1,6 @@
+---
+source: src/actors/workflows/plan.rs
+expression: "rendered(&all, &entry)"
+---
+light: light(0x1) -> On
+  notify: notify(AndroidApp): from leaf [when: time after 22:00:00]

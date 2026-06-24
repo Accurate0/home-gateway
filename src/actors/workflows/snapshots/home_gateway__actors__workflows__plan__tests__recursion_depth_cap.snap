@@ -1,0 +1,5 @@
+---
+source: src/actors/workflows/plan.rs
+expression: "rendered(&all, &entry)"
+---
+                depth_exceeded: loop

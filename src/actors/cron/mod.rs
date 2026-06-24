@@ -61,12 +61,12 @@ impl Actor for CronActor {
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let settings = &self.shared_actor_state.settings;
-        for trigger in &settings.triggers {
-            if !trigger.enabled {
+        for workflow in settings.workflows.values() {
+            if !workflow.enabled {
                 continue;
             }
-            if let TriggerMatcher::Cron { schedule } = &trigger.on {
-                Self::schedule_next(&myself, trigger.name.clone(), schedule.as_ref().clone());
+            if let Some(TriggerMatcher::Cron { schedule }) = workflow.on() {
+                Self::schedule_next(&myself, workflow.name.clone(), schedule.as_ref().clone());
             }
         }
 

@@ -1,0 +1,6 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Bins  (on: cron(0 20 * * 4))
+  notify: notify(AndroidApp): Bins

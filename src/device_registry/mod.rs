@@ -43,8 +43,7 @@ pub struct RawSensor {
     pub id: String,
     pub transport: Transport,
     pub address: String,
-    #[serde(flatten)]
-    config: DeviceConfig,
+    pub kinds: Vec<DeviceConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -103,73 +102,85 @@ impl DeviceRegistry {
                 id,
                 transport,
                 address,
-                config,
+                kinds,
             } = sensor;
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
                 return Err(format!("duplicate sensor id: {id}"));
             }
 
-            match config {
-                DeviceConfig::Door(door) => {
-                    reg.doors.insert(address.clone(), door.resolve(notify)?);
-                }
-                DeviceConfig::Appliance(appliance) => {
-                    reg.appliances
-                        .insert(address.clone(), appliance.resolve(notify)?);
-                }
-                DeviceConfig::Presence(presence) => {
-                    if transport == Transport::Esphome {
-                        if let Some(motion_entity) = &presence.motion_entity {
-                            reg.esphome_topics.insert(
-                                motion_state_topic(&address, motion_entity),
-                                EsphomeTarget::Motion {
-                                    node: address.clone(),
-                                },
-                            );
-                        } else {
-                            return Err(format!(
-                                "esphome presence sensor {id} has no motion_entity"
-                            ));
-                        }
-                    }
-                    reg.presence.insert(
-                        address.clone(),
-                        PresenceSettings {
-                            name: presence.name,
-                            sensor_type: transport.presence_type(),
-                            motion_entity: presence.motion_entity,
-                        },
-                    );
-                }
-                DeviceConfig::Environment(environment) => {
-                    if transport == Transport::Esphome {
-                        reg.add_esphome_sensor_topics(&address, &environment.entities);
-                    }
-                    reg.environment.insert(
-                        address.clone(),
-                        EnvironmentSensorSettings {
-                            id: environment.id,
-                            sensor_type: transport.environment_type(),
-                            entities: environment.entities,
-                        },
-                    );
-                }
-                DeviceConfig::Plant(plant) => {
-                    reg.add_esphome_sensor_topics(&address, &plant.entities);
-                    reg.plant.insert(
-                        address.clone(),
-                        PlantSensorSettings {
-                            id: plant.id,
-                            entities: plant.entities,
-                        },
-                    );
-                }
-                DeviceConfig::Light | DeviceConfig::ControlSwitch | DeviceConfig::SmartSwitch => {}
+            for config in kinds {
+                reg.add_kind(&id, transport, &address, config, notify)?;
             }
         }
 
         Ok(reg)
+    }
+
+    fn add_kind(
+        &mut self,
+        id: &str,
+        transport: Transport,
+        address: &str,
+        config: DeviceConfig,
+        notify: &NotifyTargets,
+    ) -> Result<(), String> {
+        match config {
+            DeviceConfig::Door(door) => {
+                self.doors.insert(address.to_owned(), door.resolve(notify)?);
+            }
+            DeviceConfig::Appliance(appliance) => {
+                self.appliances
+                    .insert(address.to_owned(), appliance.resolve(notify)?);
+            }
+            DeviceConfig::Presence(presence) => {
+                if transport == Transport::Esphome {
+                    if let Some(motion_entity) = &presence.motion_entity {
+                        self.esphome_topics.insert(
+                            motion_state_topic(address, motion_entity),
+                            EsphomeTarget::Motion {
+                                node: address.to_owned(),
+                            },
+                        );
+                    } else {
+                        return Err(format!("esphome presence sensor {id} has no motion_entity"));
+                    }
+                }
+                self.presence.insert(
+                    address.to_owned(),
+                    PresenceSettings {
+                        name: presence.name,
+                        sensor_type: transport.presence_type(),
+                        motion_entity: presence.motion_entity,
+                    },
+                );
+            }
+            DeviceConfig::Environment(environment) => {
+                if transport == Transport::Esphome {
+                    self.add_esphome_sensor_topics(address, &environment.entities);
+                }
+                self.environment.insert(
+                    address.to_owned(),
+                    EnvironmentSensorSettings {
+                        id: environment.id,
+                        sensor_type: transport.environment_type(),
+                        entities: environment.entities,
+                    },
+                );
+            }
+            DeviceConfig::Plant(plant) => {
+                self.add_esphome_sensor_topics(address, &plant.entities);
+                self.plant.insert(
+                    address.to_owned(),
+                    PlantSensorSettings {
+                        id: plant.id,
+                        entities: plant.entities,
+                    },
+                );
+            }
+            DeviceConfig::Light | DeviceConfig::ControlSwitch | DeviceConfig::SmartSwitch => {}
+        }
+        Ok(())
     }
 
     fn add_esphome_sensor_topics(&mut self, node: &str, entities: &[String]) {
@@ -186,6 +197,12 @@ impl DeviceRegistry {
 
     pub fn aliases(&self) -> &DeviceAliases {
         &self.aliases
+    }
+
+    pub fn address_or_self<'a>(&'a self, reference: &'a str) -> &'a str {
+        self.aliases
+            .get(reference)
+            .map_or(reference, |a| a.as_str())
     }
 
     pub async fn record_friendly_name(&self, address: IEEEAddress, name: String) {

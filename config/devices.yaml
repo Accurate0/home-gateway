@@ -1,106 +1,111 @@
 - id: front_door
   transport: zigbee
   address: "0x54ef441000d2b0b0"
-  kind: door
-  config:
-    name: Front Door
-    id: FRONT_DOOR
-    state: armed
-    timeout: 3m
-    notify: [android_app]
+  kinds:
+    - kind: door
+      config:
+        name: Front Door
+        id: FRONT_DOOR
+        state: armed
+        timeout: 3m
+        notify: [android_app]
 
 - id: washing_machine
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
-  kind: appliance
-  config:
-    name: Washing Machine
-    id: WASHING_MACHINE
-    current: { threshold: 0.05 }
-    notify: [android_app]
+  kinds:
+    - kind: appliance
+      config:
+        name: Washing Machine
+        id: WASHING_MACHINE
+        current: { threshold: 0.05 }
+        notify: [android_app]
 
 - id: env_living_room
   transport: zigbee
   address: "0x00158d008b8798a7"
-  kind: environment
-  config: { id: LIVING_ROOM }
+  kinds:
+    - kind: environment
+      config: { id: LIVING_ROOM }
 
 - id: env_bathroom
   transport: zigbee
   address: "0x00158d008b879b53"
-  kind: environment
-  config: { id: BATHROOM }
+  kinds:
+    - kind: environment
+      config: { id: BATHROOM }
 
 - id: env_bedroom
   transport: zigbee
   address: "0xb0c7defffef6a9be"
-  kind: environment
-  config: { id: BEDROOM }
+  kinds:
+    - kind: environment
+      config: { id: BEDROOM }
 
 - id: env_outdoor
   transport: zigbee
   address: "0x54ef441000ee2ca3"
-  kind: environment
-  config: { id: OUTDOOR }
-
-- id: env_living_room_mtr
-  transport: esphome
-  address: apollo-mtr-1-livingroom
-  kind: environment
-  config: { id: LIVING_ROOM_MTR }
-
-- id: env_hallway_plant
-  transport: esphome
-  address: apollo-plt-1-hallway
-  kind: environment
-  config: { id: HALLWAY_PLANT }
-
-- id: closet_presence
-  transport: zigbee
-  address: "0x54ef441000dbc81c"
-  kind: presence
-  config: { name: Closet Presence Sensor }
+  kinds:
+    - kind: environment
+      config: { id: OUTDOOR }
 
 - id: livingroom_motion
   transport: esphome
   address: apollo-mtr-1-livingroom
-  kind: presence
-  config:
-    name: Living Room Motion
-    motion_entity: ld2450_moving_target
+  kinds:
+    - kind: presence
+      config:
+        name: Living Room Motion
+        motion_entity: ld2450_moving_target
+
+- id: closet_presence
+  transport: zigbee
+  address: "0x54ef441000dbc81c"
+  kinds:
+    - kind: presence
+      config: { name: Closet Presence Sensor }
 
 - id: hallway_plant
   transport: esphome
   address: apollo-plt-1-hallway
-  kind: plant
-  config: { id: HALLWAY_PLANT, entities: [soil_moisture] }
+  kinds:
+    - kind: environment
+      config: { id: HALLWAY_PLANT }
+    - kind: plant
+      config: { id: HALLWAY_PLANT, entities: [soil_moisture] }
 
 - id: closet_light
   transport: zigbee
   address: "0x54ef441000d4f05c"
-  kind: light
+  kinds:
+    - kind: light
 
 - id: non_existent_light
   transport: zigbee
   address: "0x000000000000000"
-  kind: light
+  kinds:
+    - kind: light
 
 - id: table_lamp_bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
-  kind: light
+  kinds:
+    - kind: light
 
 - id: floor_lamp_living_room
   transport: zigbee
   address: "0x94a081fffe2eedc0"
-  kind: light
+  kinds:
+    - kind: light
 
 - id: control_switch
   transport: zigbee
   address: "0x64028ffffe638218"
-  kind: control_switch
+  kinds:
+    - kind: control_switch
 
 - id: small_switch
   transport: zigbee
   address: "0x00158d008bbe0316"
-  kind: control_switch
+  kinds:
+    - kind: control_switch

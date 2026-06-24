@@ -1,6 +1,6 @@
 //! Condition evaluation, shared between two callers:
 //! - workflow step `when` guards ([`super::WorkflowWorker`]), and
-//! - trigger `when` gates ([`crate::actors::events::dispatcher`]).
+//! - trigger `when` gates ([`crate::actors::workflows::dispatcher`]).
 //!
 //! Both need to answer the same boolean predicates against live device/sensor
 //! state, so the actor-query RPC logic lives here once and takes a plain
@@ -38,14 +38,20 @@ const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 /// Evaluate a condition against current state. Recursive via `all`/`any`/`not`.
 pub async fn eval(state: &SharedActorState, cond: &Condition) -> Result<bool, WorkflowError> {
     match cond {
-        Condition::Light { ieee_addr, on } => Ok(query_light_on(ieee_addr).await? == *on),
+        Condition::Light { ieee_addr, on } => {
+            Ok(query_light_on(state.devices.address_or_self(ieee_addr)).await? == *on)
+        }
         Condition::Environment {
             sensor,
             metric,
             cmp,
-        } => eval_environment(sensor, *metric, *cmp).await,
-        Condition::Door { ieee_addr, open } => Ok(query_door_open(ieee_addr).await? == *open),
-        Condition::Presence { sensor, present } => Ok(query_presence(sensor).await? == *present),
+        } => eval_environment(state.devices.address_or_self(sensor), *metric, *cmp).await,
+        Condition::Door { ieee_addr, open } => {
+            Ok(query_door_open(state.devices.address_or_self(ieee_addr)).await? == *open)
+        }
+        Condition::Presence { sensor, present } => {
+            Ok(query_presence(state.devices.address_or_self(sensor)).await? == *present)
+        }
         Condition::TimeOfDay { after, before } => {
             let now = Local::now().time();
             Ok(match (after, before) {

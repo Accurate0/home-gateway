@@ -2,7 +2,7 @@
 //! runs.
 //!
 //! It subscribes to the in-memory [`EventBus`](crate::event_bus::EventBus),
-//! matches each [`EventBusMessage`] against the configured `triggers:`, gates on
+//! matches each [`EventBusMessage`] against the configured `workflows:`, gates on
 //! the optional `when` condition, and forwards matching workflows to the
 //! `WorkflowWorker` factory. It deliberately does **no** workflow execution
 //! itself — it only matches and dispatches, so the factory's worker pool keeps
@@ -20,29 +20,40 @@ use tracing::Instrument;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage, conditions},
     event_bus::{EventBusMessage, SensorMetric},
-    settings::{Trigger, TriggerMatcher, workflow::WorkflowSettings},
+    settings::{TriggerMatcher, Workflow},
     types::SharedActorState,
 };
 
-pub struct EventDispatcher {
+pub struct WorkflowDispatcher {
     pub shared_actor_state: SharedActorState,
 }
 
 #[derive(Default)]
-pub struct EventDispatcherState {
+pub struct WorkflowDispatcherState {
     /// `(trigger name, sensor, metric) -> comparison satisfied at last reading`.
     /// Lets environment triggers fire on the rising edge only, matching the old
     /// plant-sensor semantics.
     last_satisfied: HashMap<(String, String, SensorMetric), bool>,
 }
 
-impl EventDispatcher {
-    pub const NAME: &str = "event-dispatcher";
+impl WorkflowDispatcher {
+    pub const NAME: &str = "workflow-dispatcher";
 
-    /// Decide whether `trigger.on` matches `msg`. For environment triggers this
-    /// also updates rising-edge state, so it takes `&mut state`.
-    fn matches(trigger: &Trigger, msg: &EventBusMessage, state: &mut EventDispatcherState) -> bool {
-        match (&trigger.on, msg) {
+    /// Decide whether `trigger.on` matches `msg`. The matcher's device/sensor
+    /// references are registry ids, resolved to addresses here to compare against
+    /// the event (which carries addresses). For environment triggers this also
+    /// updates rising-edge state, so it takes `&mut state`.
+    fn matches(
+        &self,
+        workflow: &Workflow,
+        msg: &EventBusMessage,
+        state: &mut WorkflowDispatcherState,
+    ) -> bool {
+        let Some(on) = workflow.on() else {
+            return false;
+        };
+        let devices = &self.shared_actor_state.devices;
+        match (on, msg) {
             (
                 TriggerMatcher::Presence { sensor, present },
                 EventBusMessage::Presence {
@@ -50,7 +61,7 @@ impl EventDispatcher {
                     present: p,
                     ..
                 },
-            ) => sensor == s && present == p,
+            ) => devices.address_or_self(sensor) == s.as_str() && present == p,
             (
                 TriggerMatcher::Door { ieee_addr, open },
                 EventBusMessage::Door {
@@ -58,7 +69,7 @@ impl EventDispatcher {
                     open: o,
                     ..
                 },
-            ) => ieee_addr == a && open == o,
+            ) => devices.address_or_self(ieee_addr) == a.as_str() && open == o,
             (
                 TriggerMatcher::Switch { ieee_addr, action },
                 EventBusMessage::SwitchAction {
@@ -66,7 +77,7 @@ impl EventDispatcher {
                     action: ac,
                     ..
                 },
-            ) => ieee_addr == a && action == ac,
+            ) => devices.address_or_self(ieee_addr) == a.as_str() && action == ac,
             (
                 TriggerMatcher::Environment {
                     sensor,
@@ -77,17 +88,17 @@ impl EventDispatcher {
                     sensor: s, reading, ..
                 },
             ) => {
-                if sensor != s || *metric != reading.metric() {
+                if devices.address_or_self(sensor) != s.as_str() || *metric != reading.metric() {
                     return false;
                 }
                 let satisfied = cmp.matches(reading.value());
-                let key = (trigger.name.clone(), s.clone(), reading.metric());
+                let key = (workflow.name.clone(), s.clone(), reading.metric());
                 let was_satisfied = state.last_satisfied.insert(key, satisfied).unwrap_or(false);
                 // rising edge only: fire when the threshold is newly crossed
                 satisfied && !was_satisfied
             }
             (TriggerMatcher::Cron { .. }, EventBusMessage::Cron { name, .. }) => {
-                &trigger.name == name
+                &workflow.name == name
             }
             _ => false,
         }
@@ -96,24 +107,24 @@ impl EventDispatcher {
     async fn handle(
         &self,
         msg: EventBusMessage,
-        state: &mut EventDispatcherState,
+        state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
         let event_id = msg.event_id();
         crate::metrics::record_event(msg.kind());
         let settings = self.shared_actor_state.settings.clone();
 
-        for trigger in &settings.triggers {
-            if !trigger.enabled || !Self::matches(trigger, &msg, state) {
+        for workflow in settings.workflows.values() {
+            if !workflow.enabled || !self.matches(workflow, &msg, state) {
                 continue;
             }
 
             let trigger_span = tracing::info_span!(
                 "trigger.evaluate",
-                otel.name = format!("trigger: {}", trigger.name),
-                trigger = trigger.name,
+                otel.name = format!("trigger: {}", workflow.name),
+                trigger = workflow.name,
                 event_kind = msg.kind(),
             );
-            self.evaluate_trigger(event_id, trigger)
+            self.evaluate_trigger(event_id, workflow)
                 .instrument(trigger_span)
                 .await?;
         }
@@ -127,18 +138,18 @@ impl EventDispatcher {
     async fn evaluate_trigger(
         &self,
         event_id: uuid::Uuid,
-        trigger: &Trigger,
+        workflow: &Workflow,
     ) -> Result<(), ActorProcessingErr> {
-        if let Some(when) = &trigger.when {
+        if let Some(when) = workflow.when() {
             match conditions::eval(&self.shared_actor_state, when).await {
                 Ok(true) => {}
                 Ok(false) => {
                     tracing::info!(
                         "[{event_id}] trigger '{}' matched but `when` not satisfied",
-                        trigger.name
+                        workflow.name
                     );
                     crate::metrics::record_trigger(
-                        &trigger.name,
+                        &workflow.name,
                         crate::metrics::TriggerOutcome::WhenNotMet,
                     );
                     return Ok(());
@@ -146,10 +157,10 @@ impl EventDispatcher {
                 Err(e) => {
                     tracing::error!(
                         "[{event_id}] trigger '{}' `when` evaluation failed: {e}",
-                        trigger.name
+                        workflow.name
                     );
                     crate::metrics::record_trigger(
-                        &trigger.name,
+                        &workflow.name,
                         crate::metrics::TriggerOutcome::WhenError,
                     );
                     return Ok(());
@@ -157,23 +168,23 @@ impl EventDispatcher {
             }
         }
 
-        if let Some(cooldown) = trigger.cooldown
-            && !self.cooldown_ok(&trigger.name, cooldown).await?
+        if let Some(cooldown) = workflow.cooldown()
+            && !self.cooldown_ok(&workflow.name, cooldown).await?
         {
             tracing::info!(
                 "[{event_id}] trigger '{}' within cooldown, skipping",
-                trigger.name
+                workflow.name
             );
             crate::metrics::record_trigger(
-                &trigger.name,
+                &workflow.name,
                 crate::metrics::TriggerOutcome::CooldownSkipped,
             );
             return Ok(());
         }
 
-        tracing::info!("[{event_id}] trigger '{}' fired", trigger.name);
-        crate::metrics::record_trigger(&trigger.name, crate::metrics::TriggerOutcome::Fired);
-        self.dispatch_workflow(event_id, trigger.run.clone())?;
+        tracing::info!("[{event_id}] trigger '{}' fired", workflow.name);
+        crate::metrics::record_trigger(&workflow.name, crate::metrics::TriggerOutcome::Fired);
+        self.dispatch_workflow(event_id, workflow.clone())?;
 
         Ok(())
     }
@@ -217,7 +228,7 @@ impl EventDispatcher {
     fn dispatch_workflow(
         &self,
         event_id: uuid::Uuid,
-        run: Vec<crate::settings::workflow::Step>,
+        workflow: Workflow,
     ) -> Result<(), ActorProcessingErr> {
         let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
             tracing::warn!("[{event_id}] workflow factory not found, dropping trigger");
@@ -226,10 +237,7 @@ impl EventDispatcher {
 
         actor.send_message(FactoryMessage::Dispatch(Job {
             key: (),
-            msg: WorkflowWorkerMessage::Execute {
-                event_id,
-                workflow: WorkflowSettings { enabled: true, run },
-            },
+            msg: WorkflowWorkerMessage::Execute { event_id, workflow },
             options: JobOptions::default(),
             accepted: None,
         }))?;
@@ -238,9 +246,9 @@ impl EventDispatcher {
     }
 }
 
-impl Actor for EventDispatcher {
+impl Actor for WorkflowDispatcher {
     type Msg = EventBusMessage;
-    type State = EventDispatcherState;
+    type State = WorkflowDispatcherState;
     type Arguments = ();
 
     async fn pre_start(
@@ -268,7 +276,7 @@ impl Actor for EventDispatcher {
             }
         });
 
-        Ok(EventDispatcherState::default())
+        Ok(WorkflowDispatcherState::default())
     }
 
     async fn handle(
@@ -287,7 +295,7 @@ impl Actor for EventDispatcher {
             event_id = %message.event_id(),
         );
 
-        if let Err(e) = EventDispatcher::handle(self, message, state)
+        if let Err(e) = WorkflowDispatcher::handle(self, message, state)
             .instrument(span)
             .await
         {

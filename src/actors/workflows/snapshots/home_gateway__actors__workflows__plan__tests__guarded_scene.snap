@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: "rendered(&HashMap::new(), &wf)"
+---
+light: light(0x1) -> On [when: presence(hallway) is true]
+delay: delay 5s [when: presence(hallway) is true]
+light: light(0x1) -> Off [when: presence(hallway) is true && door(0x2) is closed]

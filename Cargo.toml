@@ -82,6 +82,7 @@ croner = { version = "3.0.1", features = ["serde"] }
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 rstest = "0.26.1"
+insta = "1"
 
 [workspace.dependencies]
 axum = { version = "0.8.9", features = ["macros"] }

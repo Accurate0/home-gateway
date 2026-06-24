@@ -20,6 +20,10 @@ use serde::Deserialize;
 pub struct CronSchedule(Cron);
 
 impl CronSchedule {
+    pub fn expression(&self) -> String {
+        self.0.pattern.to_string()
+    }
+
     /// Time from now until the next occurrence strictly after now.
     pub fn time_until_next(&self) -> Result<Duration, CronError> {
         let now = Utc::now().with_timezone(&Perth);

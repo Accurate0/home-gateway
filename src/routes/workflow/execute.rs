@@ -1,6 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::WorkflowSettings,
+    settings::workflow::Workflow,
     types::{ApiState, AppError},
 };
 use axum::{Json, extract::State};
@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct WorkflowExecutePayload {
-    pub workflow: WorkflowSettings,
+    pub workflow: Workflow,
 }
 
 pub async fn workflow_execute(

@@ -9,28 +9,21 @@ use crate::actors::{
     door_sensor,
     eink_display::EInkDisplayActor,
     environment_sensor,
-    events::{
-        appliances::ApplianceEventsSupervisor, dispatcher::EventDispatcher,
-        door_events::DoorEventsSupervisor,
-    },
+    events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light, push, smart_switch,
     solar::SolarIngestActor,
     synergy::SynergyActor,
     unifi::UnifiConnectedClientHandler,
     woolworths::WoolworthsActor,
-    workflows::WorkflowWorker,
+    workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher},
 };
 
 pub async fn health() -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
-/// Long-lived singleton actors that should always be registered while the
-/// gateway is running. Each is spawned (and restarted on failure) by the root
-/// supervisor or a spawn helper, so a missing entry here means that actor has
-/// died and failed to come back.
 const EXPECTED_ACTORS: &[&str] = &[
-    EventDispatcher::NAME,
+    WorkflowDispatcher::NAME,
     UnifiConnectedClientHandler::NAME,
     CronActor::NAME,
     SynergyActor::NAME,
@@ -64,9 +57,6 @@ pub struct ActorHealth {
     registered: Vec<String>,
 }
 
-/// Reports liveness of the expected singleton actors. Returns `503` if any are
-/// missing from the registry so external probes (k8s, uptime checks) can act on
-/// a crashed actor that the supervisor couldn't restart.
 pub async fn actor_health() -> (StatusCode, Json<ActorHealth>) {
     let actors: Vec<ActorStatus> = EXPECTED_ACTORS
         .iter()

@@ -12,14 +12,11 @@ use super::{
     cron::CronActor,
     devices::{control_switch, plant_sensor, presence_sensor},
     door_sensor, environment_sensor,
-    events::{
-        appliances::ApplianceEventsSupervisor, dispatcher::EventDispatcher,
-        door_events::DoorEventsSupervisor,
-    },
+    events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
     light, push, smart_switch,
     synergy::SynergyActor,
     unifi::UnifiConnectedClientHandler,
-    workflows,
+    workflows::{self, dispatcher::WorkflowDispatcher},
 };
 
 pub struct RootSupervisor {
@@ -147,14 +144,14 @@ impl RootSupervisor {
         Ok(())
     }
 
-    async fn start_event_dispatcher(
+    async fn start_workflow_dispatcher(
         &self,
         myself: &ractor::ActorRef<()>,
     ) -> Result<(), ractor::ActorProcessingErr> {
         myself
             .spawn_linked(
-                Some(EventDispatcher::NAME.to_owned()),
-                EventDispatcher {
+                Some(WorkflowDispatcher::NAME.to_owned()),
+                WorkflowDispatcher {
                     shared_actor_state: self.shared_actor_state.clone(),
                 },
                 (),
@@ -227,7 +224,7 @@ impl Actor for RootSupervisor {
         self.start_alarm_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
-        self.start_event_dispatcher(&myself).await?;
+        self.start_workflow_dispatcher(&myself).await?;
 
         Ok(())
     }
@@ -287,9 +284,9 @@ impl Actor for RootSupervisor {
                         self.start_solar_actor(&myself).await?;
                     }
 
-                    EventDispatcher::NAME => {
+                    WorkflowDispatcher::NAME => {
                         tracing::info!("restarting event dispatcher");
-                        self.start_event_dispatcher(&myself).await?;
+                        self.start_workflow_dispatcher(&myself).await?;
                     }
 
                     name => {

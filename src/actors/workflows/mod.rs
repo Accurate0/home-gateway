@@ -1,7 +1,7 @@
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
     notify::notify,
-    settings::workflow::{LightState, Step, WorkflowSettings},
+    settings::workflow::{LightState, Step, Workflow},
     timer::timed_async,
     types::SharedActorState,
 };
@@ -14,6 +14,8 @@ use tracing::Instrument;
 use uuid::Uuid;
 
 pub mod conditions;
+pub mod dispatcher;
+pub mod plan;
 pub mod spawn;
 
 /// Maximum nesting depth for `run_workflow` expansion, guarding against
@@ -39,13 +41,11 @@ pub enum WorkflowError {
 struct WorkflowContext {
     event_id: Uuid,
     depth: u8,
+    dry_run: bool,
 }
 
 pub enum WorkflowWorkerMessage {
-    Execute {
-        event_id: Uuid,
-        workflow: WorkflowSettings,
-    },
+    Execute { event_id: Uuid, workflow: Workflow },
 }
 
 pub struct WorkflowWorker {
@@ -58,7 +58,7 @@ impl WorkflowWorker {
     pub async fn execute_workflow(
         &self,
         event_id: Uuid,
-        workflow: WorkflowSettings,
+        workflow: Workflow,
     ) -> Result<(), WorkflowError> {
         if !workflow.enabled {
             tracing::warn!("[{event_id}] workflow not executed as it's disabled in config");
@@ -67,7 +67,14 @@ impl WorkflowWorker {
         }
 
         tracing::info!("executing workflow for: {event_id}");
-        let ctx = WorkflowContext { event_id, depth: 0 };
+        if workflow.dry_run {
+            tracing::info!("[{event_id}] workflow running in dry-run (shadow) mode");
+        }
+        let ctx = WorkflowContext {
+            event_id,
+            depth: 0,
+            dry_run: workflow.dry_run,
+        };
         let start = std::time::Instant::now();
         let result = self.run_steps(ctx, &workflow.run).await;
         let outcome = if result.is_ok() { "success" } else { "error" };
@@ -104,6 +111,17 @@ impl WorkflowWorker {
     }
 
     async fn dispatch_step(&self, ctx: WorkflowContext, step: &Step) -> Result<(), WorkflowError> {
+        if ctx.dry_run
+            && let Some(detail) = step.describe_action()
+        {
+            tracing::info!(
+                "[{}] DRY-RUN would fire {}: {detail}",
+                ctx.event_id,
+                step.kind()
+            );
+            return Ok(());
+        }
+
         match step {
             Step::Light {
                 ieee_addr, state, ..
@@ -161,13 +179,20 @@ impl WorkflowWorker {
         let child = WorkflowContext {
             event_id: ctx.event_id,
             depth: ctx.depth + 1,
+            dry_run: ctx.dry_run || workflow.dry_run,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }
 
-    async fn run_light(&self, ieee_addr: String, state: LightState) -> Result<(), WorkflowError> {
+    async fn run_light(&self, device: String, state: LightState) -> Result<(), WorkflowError> {
         let actor = ractor::registry::where_is(LightHandler::NAME.to_string())
             .ok_or(WorkflowError::ActorNotFound(LightHandler::NAME))?;
+
+        let ieee_addr = self
+            .shared_actor_state
+            .devices
+            .address_or_self(&device)
+            .to_owned();
 
         let light_actor_message = match state {
             LightState::On => LightHandlerMessage::TurnOn { ieee_addr },
