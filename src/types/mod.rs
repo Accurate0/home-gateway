@@ -1,18 +1,17 @@
 use crate::{
-    esphome::EsphomeTarget,
+    device_registry::DeviceRegistry,
     event_bus::EventBus,
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
     mqtt::{MqttClient, MqttError},
-    object_registry::ObjectRegistry,
-    settings::{IEEEAddress, SettingsContainer},
+    s3::S3,
+    settings::SettingsContainer,
     woolworths::WoolworthsError,
 };
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 use sqlx::{Pool, Postgres};
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
+use std::sync::Arc;
 
 pub mod db;
 
@@ -21,15 +20,10 @@ pub struct SharedActorState {
     pub db: Pool<Postgres>,
     pub mqtt: MqttClient,
     pub settings: SettingsContainer,
+    pub devices: Arc<DeviceRegistry>,
     pub feature_flag_client: FeatureFlagClient,
-    pub known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
-    pub object_registry: ObjectRegistry,
+    pub s3: S3,
     pub event_bus: EventBus,
-    /// esphome state topics we've subscribed to (driven by discovery + config),
-    /// mapped to what each one routes to. Populated on discovery, read when a
-    /// state message arrives so routing is an exact lookup, never a topic-shape
-    /// guess. Shared across factory workers, like [`Self::known_devices_map`].
-    pub esphome_subscriptions: Arc<RwLock<HashMap<String, EsphomeTarget>>>,
 }
 
 #[derive(Clone)]
@@ -40,7 +34,7 @@ pub struct ApiState {
     pub settings: SettingsContainer,
     #[allow(unused)]
     pub db: Pool<Postgres>,
-    pub object_registry: ObjectRegistry,
+    pub s3: S3,
 }
 
 pub enum AppError {

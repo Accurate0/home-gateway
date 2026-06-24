@@ -127,9 +127,7 @@ impl Worker for PushWorker {
                     return Ok(());
                 }
 
-                let settings = self.shared_actor_state.settings.load();
-                let project_id = settings.fcm_project_id.clone();
-                drop(settings);
+                let project_id = self.shared_actor_state.settings.fcm_project_id.clone();
 
                 let access_token = match token_provider.token(&[FCM_SCOPE]).await {
                     Ok(t) => t,

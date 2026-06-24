@@ -175,11 +175,9 @@ impl EnvironmentSensorHandler {
 
                     let friendly_name = self
                         .shared_actor_state
-                        .known_devices_map
-                        .read()
+                        .devices
+                        .friendly_name(&node)
                         .await
-                        .get(&node)
-                        .cloned()
                         .unwrap_or_else(|| node.clone());
 
                     self.save_environment_details(
@@ -218,8 +216,11 @@ impl EnvironmentSensorHandler {
         lux: Option<f64>,
         uv_index: Option<f64>,
     ) -> Result<(), anyhow::Error> {
-        let settings = self.shared_actor_state.settings.load();
-        let id = settings.environment_sensors.get(&ieee_addr).map(|s| &s.id);
+        let id = self
+            .shared_actor_state
+            .devices
+            .environment(&ieee_addr)
+            .map(|s| &s.id);
         let now = Utc::now();
 
         sqlx::query!(

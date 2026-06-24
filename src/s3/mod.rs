@@ -3,7 +3,7 @@ use http::HeaderMap;
 use s3::{Bucket, Region, creds::Credentials};
 
 #[derive(Clone)]
-pub struct ObjectRegistry {
+pub struct S3 {
     bucket: Box<Bucket>,
 }
 
@@ -19,7 +19,7 @@ pub enum OptionalObjectResponse {
     ObjectUpdated(ObjectResponse),
 }
 
-impl ObjectRegistry {
+impl S3 {
     /// Credentials are read from the standard AWS environment
     /// (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` / …).
     /// When `endpoint` is set, an S3-compatible store is assumed and path-style

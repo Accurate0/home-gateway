@@ -44,15 +44,6 @@ pub enum SwitchState {
     Toggle,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
-pub enum VacuumCommand {
-    Start,
-    Stop,
-    Pause,
-    Home,
-}
-
 /// Which reading of an environment sensor a condition compares against.
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
@@ -181,11 +172,6 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
-    Vacuum {
-        command: VacuumCommand,
-        #[serde(default)]
-        when: Option<Condition>,
-    },
     Scene {
         run: Vec<Step>,
         #[serde(default)]
@@ -215,7 +201,6 @@ impl Step {
         match self {
             Step::Light { .. } => "light",
             Step::Switch { .. } => "switch",
-            Step::Vacuum { .. } => "vacuum",
             Step::Scene { .. } => "scene",
             Step::Notify { .. } => "notify",
             Step::Delay { .. } => "delay",
@@ -228,7 +213,6 @@ impl Step {
         match self {
             Step::Light { when, .. }
             | Step::Switch { when, .. }
-            | Step::Vacuum { when, .. }
             | Step::Scene { when, .. }
             | Step::Notify { when, .. }
             | Step::Delay { when, .. }
@@ -253,8 +237,7 @@ impl Step {
                 }
                 resolve_opt(when, devices)?;
             }
-            Step::Vacuum { when, .. }
-            | Step::Notify { when, .. }
+            Step::Notify { when, .. }
             | Step::Delay { when, .. }
             | Step::RunWorkflow { when, .. } => resolve_opt(when, devices)?,
         }

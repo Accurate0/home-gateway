@@ -163,17 +163,14 @@ impl LightHandler {
         ieee_addr: String,
         state: serde_json::Value,
     ) -> Result<(), anyhow::Error> {
-        let friendly_name = {
-            let devices_map = self.shared_actor_state.known_devices_map.read().await;
-            devices_map.get(&ieee_addr).cloned()
-        };
+        let target = self
+            .shared_actor_state
+            .devices
+            .friendly_name(&ieee_addr)
+            .await
+            .unwrap_or_else(|| ieee_addr.clone());
 
-        let Some(friendly_name) = friendly_name else {
-            tracing::warn!("could not find device for {ieee_addr}");
-            return Ok(());
-        };
-
-        let topic = format!("{ZIGBEE2MQTT_BASE}/{friendly_name}/set");
+        let topic = format!("{ZIGBEE2MQTT_BASE}/{target}/set");
         self.shared_actor_state
             .mqtt
             .send_event(topic, state)

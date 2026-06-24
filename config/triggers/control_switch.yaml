@@ -1,19 +1,19 @@
 - name: Control Switch on
-  on: { type: switch, device: "0x64028ffffe638218", action: on }
+  on: { type: switch, device: control_switch, action: on }
   run:
     - type: light
       device: table_lamp_bedroom
       state: ON
 
 - name: Control Switch off
-  on: { type: switch, device: "0x64028ffffe638218", action: off }
+  on: { type: switch, device: control_switch, action: off }
   run:
     - type: light
       device: table_lamp_bedroom
       state: OFF
 
 - name: Control Switch brightness up
-  on: { type: switch, device: "0x64028ffffe638218", action: brightness_move_up }
+  on: { type: switch, device: control_switch, action: brightness_move_up }
   run:
     - type: light
       device: table_lamp_bedroom
@@ -21,7 +21,7 @@
       value: 75
 
 - name: Control Switch brightness down
-  on: { type: switch, device: "0x64028ffffe638218", action: brightness_move_down }
+  on: { type: switch, device: control_switch, action: brightness_move_down }
   run:
     - type: light
       device: table_lamp_bedroom
@@ -29,14 +29,14 @@
       value: 75
 
 - name: Control Switch brightness stop
-  on: { type: switch, device: "0x64028ffffe638218", action: brightness_stop }
+  on: { type: switch, device: control_switch, action: brightness_stop }
   run:
     - type: light
       device: table_lamp_bedroom
       state: STOP_BRIGHTNESS
 
 - name: Control Switch colour temp up
-  on: { type: switch, device: "0x64028ffffe638218", action: arrow_right_hold }
+  on: { type: switch, device: control_switch, action: arrow_right_hold }
   run:
     - type: light
       device: table_lamp_bedroom
@@ -44,7 +44,7 @@
       value: 120
 
 - name: Control Switch colour temp down
-  on: { type: switch, device: "0x64028ffffe638218", action: arrow_left_hold }
+  on: { type: switch, device: control_switch, action: arrow_left_hold }
   run:
     - type: light
       device: table_lamp_bedroom
@@ -52,21 +52,21 @@
       value: 120
 
 - name: Control Switch colour temp stop left
-  on: { type: switch, device: "0x64028ffffe638218", action: arrow_left_release }
+  on: { type: switch, device: control_switch, action: arrow_left_release }
   run:
     - type: light
       device: table_lamp_bedroom
       state: STOP_COLOUR_TEMPERATURE
 
 - name: Control Switch colour temp stop right
-  on: { type: switch, device: "0x64028ffffe638218", action: arrow_right_release }
+  on: { type: switch, device: control_switch, action: arrow_right_release }
   run:
     - type: light
       device: table_lamp_bedroom
       state: STOP_COLOUR_TEMPERATURE
 
 - name: Control Switch set brightness low
-  on: { type: switch, device: "0x64028ffffe638218", action: arrow_left_click }
+  on: { type: switch, device: control_switch, action: arrow_left_click }
   run:
     - type: light
       device: table_lamp_bedroom
@@ -74,7 +74,7 @@
       value: 50
 
 - name: Control Switch set brightness high
-  on: { type: switch, device: "0x64028ffffe638218", action: arrow_right_click }
+  on: { type: switch, device: control_switch, action: arrow_right_click }
   run:
     - type: light
       device: table_lamp_bedroom

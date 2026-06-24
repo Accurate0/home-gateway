@@ -102,8 +102,7 @@ impl Actor for DerivedDoorEvents {
             }
         };
 
-        let settings = self.shared_actor_state.settings.load();
-        if let Some(door_settings) = settings.doors.get(&message.ieee_addr) {
+        if let Some(door_settings) = self.shared_actor_state.devices.door(&message.ieee_addr) {
             let last_state = state.map.get(&message.ieee_addr);
             let now = chrono::offset::Utc::now();
             let last_event_is_too_soon = state

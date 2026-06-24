@@ -23,7 +23,7 @@ pub struct DoorSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub(super) struct RawDoorSettings {
+pub(crate) struct RawDoorSettings {
     name: String,
     id: String,
     #[serde(flatten)]
@@ -33,7 +33,7 @@ pub(super) struct RawDoorSettings {
 }
 
 impl RawDoorSettings {
-    pub(super) fn resolve(self, targets: &NotifyTargets) -> Result<DoorSettings, String> {
+    pub(crate) fn resolve(self, targets: &NotifyTargets) -> Result<DoorSettings, String> {
         Ok(DoorSettings {
             name: self.name,
             id: self.id,

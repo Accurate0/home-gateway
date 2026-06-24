@@ -140,7 +140,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a3a1fd6f75306b68087b831f025c712524bcb19aad54e557b1129cfa0a2b207"
 dependencies = [
  "rustversion",
- "serde",
 ]
 
 [[package]]
@@ -2009,7 +2008,6 @@ name = "home-gateway"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "arc-swap",
  "async-graphql",
  "async-graphql-axum",
  "async-trait",

@@ -68,7 +68,6 @@ lazy_static = "1.5.0"
 chromiumoxide = "0.9.1"
 image = "0.25.10"
 futures.workspace = true
-arc-swap = { version = "1.9.1", features = ["serde"] }
 serde_yaml = "0.9.34"
 rustls = { version = "0.23", features = ["aws-lc-rs"] }
 axum-tracing-opentelemetry = "0.38.0"

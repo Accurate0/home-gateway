@@ -1,4 +1,4 @@
-use super::{MqttIngest, Message, MqttMessageHandlerBuilder};
+use super::{Message, MqttIngest, MqttMessageHandlerBuilder};
 use crate::types::SharedActorState;
 use ractor::{
     ActorRef,

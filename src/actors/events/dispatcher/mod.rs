@@ -100,8 +100,7 @@ impl EventDispatcher {
     ) -> Result<(), ActorProcessingErr> {
         let event_id = msg.event_id();
         crate::metrics::record_event(msg.kind());
-        // owned snapshot so we don't hold the arc-swap guard across awaits
-        let settings = self.shared_actor_state.settings.load_full();
+        let settings = self.shared_actor_state.settings.clone();
 
         for trigger in &settings.triggers {
             if !trigger.enabled || !Self::matches(trigger, &msg, state) {

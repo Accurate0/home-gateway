@@ -1,7 +1,6 @@
 use crate::{
     actors::{
-        eink_display::EInkDisplayActor, solar::SolarIngestActor, vacuum::VacuumActor,
-        woolworths::WoolworthsActor,
+        eink_display::EInkDisplayActor, solar::SolarIngestActor, woolworths::WoolworthsActor,
     },
     types::SharedActorState,
     woolworths::Woolworths,
@@ -17,9 +16,7 @@ use super::{
         appliances::ApplianceEventsSupervisor, dispatcher::EventDispatcher,
         door_events::DoorEventsSupervisor,
     },
-    light,
-    push,
-    smart_switch,
+    light, push, smart_switch,
     synergy::SynergyActor,
     unifi::UnifiConnectedClientHandler,
     workflows,
@@ -30,23 +27,6 @@ pub struct RootSupervisor {
 }
 
 impl RootSupervisor {
-    async fn start_vacuum_actor(
-        &self,
-        myself: &ractor::ActorRef<()>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(VacuumActor::NAME.to_owned()),
-                VacuumActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
     async fn start_eink_display_actor(
         &self,
         myself: &ractor::ActorRef<()>,
@@ -245,7 +225,6 @@ impl Actor for RootSupervisor {
         self.start_synergy_actor(&myself).await?;
         self.start_woolworths_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
-        self.start_vacuum_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
         self.start_event_dispatcher(&myself).await?;
@@ -276,11 +255,6 @@ impl Actor for RootSupervisor {
                     UnifiConnectedClientHandler::NAME => {
                         tracing::info!("restarting unifi handler");
                         self.start_unifi_connected_clients_handler(&myself).await?;
-                    }
-
-                    VacuumActor::NAME => {
-                        tracing::info!("restarting vacuum actor");
-                        self.start_vacuum_actor(&myself).await?;
                     }
 
                     CronActor::NAME => {

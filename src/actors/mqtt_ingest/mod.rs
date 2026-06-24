@@ -18,7 +18,10 @@ mod types;
 /// decode an incoming MQTT packet and forward a typed event to the device actor
 /// that owns it; HTTP webhook ingests talk to their target actors directly.
 pub enum Message {
-    MqttPacket { payload: bytes::Bytes, topic: String },
+    MqttPacket {
+        payload: bytes::Bytes,
+        topic: String,
+    },
 }
 
 /// What an incoming MQTT topic maps to. zigbee2mqtt and esphome share the broker
@@ -336,9 +339,8 @@ impl MqttIngest {
         };
 
         let event_id = uuid::Uuid::new_v4();
-        let settings = self.shared_actor_state.settings.load();
 
-        if settings.plant_sensors.contains_key(node) {
+        if self.shared_actor_state.devices.plant(node).is_some() {
             match ractor::registry::where_is(plant_sensor::PlantSensorHandler::NAME.to_string()) {
                 Some(actor_cell) => {
                     actor_cell.send_message(FactoryMessage::Dispatch(Job {
@@ -357,7 +359,7 @@ impl MqttIngest {
             }
         }
 
-        if settings.environment_sensors.contains_key(node) {
+        if self.shared_actor_state.devices.environment(node).is_some() {
             match ractor::registry::where_is(TypedActorName::EnvironmentSensor.to_string()) {
                 Some(actor_cell) => {
                     actor_cell.send_message(FactoryMessage::Dispatch(Job {
@@ -388,18 +390,21 @@ impl MqttIngest {
         match MqttTopic::classify(&topic) {
             MqttTopic::Zigbee2MqttBridgeDevices => {
                 let devices_payload = serde_json::from_slice::<BridgeDevices>(&payload)?;
-                let mut devices_map = self.shared_actor_state.known_devices_map.write().await;
                 for device in devices_payload {
+                    let ieee_address = device.ieee_address;
+                    let friendly_name = device.friendly_name;
                     sqlx::query!(
                             "INSERT INTO known_devices (ieee_addr, name) VALUES ($1, $2) ON CONFLICT (ieee_addr) DO UPDATE SET name = $2",
-                                &device.ieee_address,
-                                device.friendly_name
+                                &ieee_address,
+                                &friendly_name
                             )
                             .execute(&self.shared_actor_state.db)
                             .await?;
-                    devices_map.insert(device.ieee_address, device.friendly_name);
+                    self.shared_actor_state
+                        .devices
+                        .record_friendly_name(ieee_address, friendly_name)
+                        .await;
                 }
-                drop(devices_map)
             }
             MqttTopic::EsphomeDiscovery => {
                 let discovery =
@@ -411,88 +416,29 @@ impl MqttIngest {
                 );
 
                 self.shared_actor_state
-                    .known_devices_map
-                    .write()
-                    .await
-                    .insert(discovery.name.clone(), discovery.friendly_name.clone());
+                    .devices
+                    .record_friendly_name(discovery.name.clone(), discovery.friendly_name)
+                    .await;
 
-                // Build the set of state topics this node exposes from config,
-                // then subscribe and record each in the registry so the matching
-                // state messages route by exact lookup.
-                let settings = self.shared_actor_state.settings.load();
-                let mut new_subs: Vec<(String, crate::esphome::EsphomeTarget)> = Vec::new();
+                let topics: Vec<String> = self
+                    .shared_actor_state
+                    .devices
+                    .esphome_topics_for(&discovery.name)
+                    .map(|(topic, _)| topic.clone())
+                    .collect();
 
-                if let Some(presence_settings) = settings.presence_sensors.get(&discovery.name)
-                    && presence_settings.sensor_type == crate::settings::PresenceSensorType::Esphome
-                {
-                    if let Some(motion_entity) = &presence_settings.motion_entity {
-                        let topic =
-                            crate::esphome::motion_state_topic(&discovery.name, motion_entity);
-                        new_subs.push((
-                            topic,
-                            crate::esphome::EsphomeTarget::Motion {
-                                node: discovery.name.clone(),
-                            },
-                        ));
-                    } else {
-                        tracing::warn!(
-                            "esphome presence sensor {} has no motionEntity configured",
-                            discovery.name
-                        );
-                    }
-                }
-
-                if let Some(environment_settings) = settings.environment_sensors.get(&discovery.name)
-                    && environment_settings.sensor_type
-                        == crate::settings::EnvironmentSensorType::Esphome
-                {
-                    for object_id in &environment_settings.entities {
-                        let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
-                        new_subs.push((
-                            topic,
-                            crate::esphome::EsphomeTarget::Sensor {
-                                node: discovery.name.clone(),
-                                object_id: object_id.clone(),
-                            },
-                        ));
-                    }
-                }
-
-                if let Some(plant_settings) = settings.plant_sensors.get(&discovery.name) {
-                    for object_id in &plant_settings.entities {
-                        let topic = crate::esphome::sensor_state_topic(&discovery.name, object_id);
-                        new_subs.push((
-                            topic,
-                            crate::esphome::EsphomeTarget::Sensor {
-                                node: discovery.name.clone(),
-                                object_id: object_id.clone(),
-                            },
-                        ));
-                    }
-                }
-                drop(settings);
-
-                // subscribe first (no registry lock held across the await), then
-                // record the topic→target mappings in one short critical section
-                for (topic, _) in &new_subs {
+                for topic in topics {
                     tracing::info!("subscribing to esphome topic: {topic}");
-                    self.shared_actor_state.mqtt.subscribe(topic.clone()).await?;
+                    self.shared_actor_state.mqtt.subscribe(topic).await?;
                 }
-                self.shared_actor_state
-                    .esphome_subscriptions
-                    .write()
-                    .await
-                    .extend(new_subs);
             }
             MqttTopic::Other => {
                 // the only non-control topics we subscribe to are esphome state
-                // topics we recorded on discovery; look the target up exactly
+                // topics declared in the sensor registry; look the target up exactly
                 let target = self
                     .shared_actor_state
-                    .esphome_subscriptions
-                    .read()
-                    .await
-                    .get(&topic)
+                    .devices
+                    .esphome_target(&topic)
                     .cloned();
 
                 match target {

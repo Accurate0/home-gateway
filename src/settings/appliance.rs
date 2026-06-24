@@ -16,7 +16,7 @@ pub struct ApplianceSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub(super) struct RawApplianceSettings {
+pub(crate) struct RawApplianceSettings {
     name: String,
     id: String,
     current: ApplianceCurrentThreshold,
@@ -25,7 +25,7 @@ pub(super) struct RawApplianceSettings {
 }
 
 impl RawApplianceSettings {
-    pub(super) fn resolve(self, targets: &NotifyTargets) -> Result<ApplianceSettings, String> {
+    pub(crate) fn resolve(self, targets: &NotifyTargets) -> Result<ApplianceSettings, String> {
         Ok(ApplianceSettings {
             name: self.name,
             id: self.id,

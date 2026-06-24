@@ -11,7 +11,6 @@ pub async fn unifi(
     Json(unifi_event): Json<UnifiWebhookEvent>,
 ) -> StatusCode {
     let unifi_secret_header = headers.get("X-Webhook-Secret");
-    let settings = settings.load();
     match unifi_secret_header {
         Some(secret_value) if *secret_value == settings.unifi_webhook_secret => {
             let Some(actor) =

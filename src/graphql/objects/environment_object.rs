@@ -20,7 +20,7 @@ impl EnvironmentObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<EnvironmentDetails>> {
-        let settings = ctx.data::<SettingsContainer>()?.load();
+        let settings = ctx.data::<SettingsContainer>()?;
         Ok(settings
             .graphql
             .environments

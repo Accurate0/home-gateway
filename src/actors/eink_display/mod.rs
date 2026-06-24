@@ -1,4 +1,4 @@
-use crate::object_registry::OptionalObjectResponse;
+use crate::s3::OptionalObjectResponse;
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
@@ -48,7 +48,7 @@ impl EInkDisplayActor {
         let etag = state.index_html_etag.as_deref();
         let optional_index = self
             .shared_actor_state
-            .object_registry
+            .s3
             .get_object_optional("index.html", etag)
             .await?;
 
@@ -167,7 +167,7 @@ impl Actor for EInkDisplayActor {
                     .await?;
 
                 self.shared_actor_state
-                    .object_registry
+                    .s3
                     .put_object("eink-display-screenshot.png", &image, Some("image/png"))
                     .await?;
 

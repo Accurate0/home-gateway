@@ -1,3 +1,0 @@
-- id: HALLWAY_PLANT
-  source: { esphome: { node: apollo-plt-1-hallway } }
-  entities: [soil_moisture]

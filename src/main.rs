@@ -4,7 +4,10 @@ use crate::routes::{
     workflow::execute::workflow_execute,
 };
 use ::http::Method;
-use actors::{mqtt_ingest::{self}, root::RootSupervisor};
+use actors::{
+    mqtt_ingest::{self},
+    root::RootSupervisor,
+};
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireApiKey;
 use axum::{
@@ -12,6 +15,7 @@ use axum::{
     routing::{get, post},
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
+use device_registry::DeviceRegistry;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
@@ -19,11 +23,10 @@ use graphql::{
     handler::{graphiql, graphql_handler},
 };
 use mqtt::{Mqtt, MqttClient};
-use object_registry::ObjectRegistry;
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
     control::light::light_control,
-    health::health,
+    health::{actor_health, health},
     ingest::{
         home::{alarm::alarm, push_token::push_token},
         synergy::synergy,
@@ -32,13 +35,14 @@ use routes::{
     schema::schema as schema_route,
 };
 use rustls::crypto::aws_lc_rs;
-use settings::{IEEEAddress, SettingsContainer};
+use s3::S3;
+use settings::SettingsContainer;
 use sqlx::{
     ConnectOptions, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
-use tokio::{sync::RwLock, task::JoinSet};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
+use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use types::{ApiState, MainError, SharedActorState};
@@ -46,6 +50,7 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod auth;
+mod device_registry;
 mod esphome;
 mod event_bus;
 mod feature_flag;
@@ -55,8 +60,8 @@ mod http;
 mod metrics;
 mod mqtt;
 mod notify;
-mod object_registry;
 mod routes;
+mod s3;
 mod settings;
 mod timed_average;
 mod timedelta_format;
@@ -70,21 +75,20 @@ mod zigbee2mqtt;
 
 async fn init_actors(
     settings: SettingsContainer,
+    devices: Arc<DeviceRegistry>,
     feature_flag_client: FeatureFlagClient,
     mqtt_client: MqttClient,
     db: Pool<Postgres>,
-    known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
-    object_registry: ObjectRegistry,
+    s3: S3,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     let shared_actor_state = SharedActorState {
         settings,
+        devices,
         db,
         mqtt: mqtt_client,
         feature_flag_client,
-        known_devices_map,
-        object_registry,
+        s3,
         event_bus: event_bus::EventBus::default(),
-        esphome_subscriptions: Arc::new(RwLock::new(HashMap::new())),
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(
@@ -109,8 +113,9 @@ async fn main() -> anyhow::Result<()> {
     tracing_setup::init();
     let metrics_registry = tracing_setup::init_metrics();
 
-    let settings_container = SettingsContainer::new()?;
-    let settings = settings_container.load_full();
+    let (settings_container, device_registry) = SettingsContainer::new()?;
+    let device_registry = Arc::new(device_registry);
+    let settings = settings_container.clone();
 
     let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?
         .log_slow_statements(log::LevelFilter::Warn, Duration::from_secs(6));
@@ -135,9 +140,7 @@ async fn main() -> anyhow::Result<()> {
     let cancellation_token = CancellationToken::new();
     handle_cancellation(cancellation_token.clone());
 
-    let known_devices_map = Arc::new(RwLock::new(HashMap::new()));
-
-    let object_registry = ObjectRegistry::new(
+    let s3 = S3::new(
         &settings.s3.bucket,
         &settings.s3.region,
         settings.s3.endpoint.clone(),
@@ -145,11 +148,11 @@ async fn main() -> anyhow::Result<()> {
 
     let mqtt_ingest_actor = init_actors(
         settings_container.clone(),
+        device_registry.clone(),
         feature_flag_client.clone(),
         mqtt_client,
         pool.clone(),
-        known_devices_map,
-        object_registry.clone(),
+        s3.clone(),
     )
     .await?;
 
@@ -175,7 +178,7 @@ async fn main() -> anyhow::Result<()> {
         schema,
         settings: settings_container.clone(),
         db: pool.clone(),
-        object_registry,
+        s3,
     };
 
     let api_routes = axum::Router::new()
@@ -197,6 +200,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/unifi", post(unifi))
         .layer(OtelAxumLayer::default())
         .route("/health", get(health))
+        .route("/health/actors", get(actor_health))
         .route(
             "/metrics",
             get(move || {

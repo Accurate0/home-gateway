@@ -1,10 +1,7 @@
 use crate::{
-    actors::{
-        light::{LightHandler, LightHandlerMessage},
-        vacuum::{VacuumActor, VacuumMessage},
-    },
+    actors::light::{LightHandler, LightHandlerMessage},
     notify::notify,
-    settings::workflow::{LightState, Step, VacuumCommand, WorkflowSettings},
+    settings::workflow::{LightState, Step, WorkflowSettings},
     timer::timed_async,
     types::SharedActorState,
 };
@@ -116,7 +113,6 @@ impl WorkflowWorker {
                 let _ = ieee_addr;
                 Err(WorkflowError::NotImplemented("switch action"))
             }
-            Step::Vacuum { command, .. } => self.run_vacuum(*command),
             Step::Scene { run, .. } => Box::pin(self.run_steps(ctx, run)).await,
             Step::Notify {
                 notify: n, message, ..
@@ -148,7 +144,7 @@ impl WorkflowWorker {
             return Err(WorkflowError::DepthExceeded);
         }
 
-        let settings = self.shared_actor_state.settings.load_full();
+        let settings = self.shared_actor_state.settings.clone();
         let Some(workflow) = settings.workflows.get(name) else {
             tracing::warn!(
                 "[{}] run_workflow references unknown workflow `{name}`",
@@ -167,20 +163,6 @@ impl WorkflowWorker {
             depth: ctx.depth + 1,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
-    }
-
-    fn run_vacuum(&self, command: VacuumCommand) -> Result<(), WorkflowError> {
-        let actor = ractor::registry::where_is(VacuumActor::NAME.to_string())
-            .ok_or(WorkflowError::ActorNotFound(VacuumActor::NAME))?;
-        let message = match command {
-            VacuumCommand::Start => VacuumMessage::Start,
-            VacuumCommand::Stop => VacuumMessage::Stop,
-            VacuumCommand::Pause => VacuumMessage::Pause,
-            VacuumCommand::Home => VacuumMessage::Home,
-        };
-        actor
-            .send_message(message)
-            .map_err(|e| WorkflowError::Messaging(e.to_string()))
     }
 
     async fn run_light(&self, ieee_addr: String, state: LightState) -> Result<(), WorkflowError> {

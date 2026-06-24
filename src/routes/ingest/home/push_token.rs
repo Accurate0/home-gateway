@@ -19,7 +19,6 @@ pub async fn push_token(
     Json(payload): Json<PushTokenPayload>,
 ) -> StatusCode {
     let secret_header = headers.get("X-Webhook-Secret");
-    let settings = settings.load();
     match secret_header {
         Some(secret_value) if *secret_value == settings.android_app_webhook_secret => {
             let result = sqlx::query(

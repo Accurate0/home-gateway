@@ -11,7 +11,6 @@ pub async fn alarm(
     Json(payload): Json<AndroidAppAlarmPayload>,
 ) -> StatusCode {
     let secret_header = headers.get("X-Webhook-Secret");
-    let settings = settings.load();
     match secret_header {
         Some(secret_value) if *secret_value == settings.android_app_webhook_secret => {
             let Some(actor) = ractor::registry::where_is(AlarmActor::NAME.to_string()) else {

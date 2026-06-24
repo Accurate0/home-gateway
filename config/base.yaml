@@ -2,23 +2,12 @@ s3:
   bucket: home-gateway-bucket
   region: ap-southeast-2
 
-devices:
-  closet_light: "0x54ef441000d4f05c"
-  non_existent_light: "0x000000000000000"
-  table_lamp_bedroom: "0x001788010381ef5d"
-  floor_lamp_living_room: "0x94a081fffe2eedc0"
-  closet_presence: "0x54ef441000dbc81c"
-
 notify_targets:
-  home:
+  android_app:
     type: android_app
 
 fcm_project_id: home-gateway-22
 
-doors: !include doors.yaml
-appliances: !include appliances.yaml
-environment_sensors: !include environment.yaml
-plant_sensors: !include plants.yaml
-presence_sensors: !include presence.yaml
+devices: !include devices.yaml
 triggers: !include triggers/index.yaml
 graphql: !include graphql.yaml

@@ -18,7 +18,10 @@ pub mod schedule;
 pub enum CronActorMessage {
     /// A scheduled trigger came due. Carries the schedule so the actor can
     /// re-arm itself for the next occurrence after publishing.
-    Fire { name: String, schedule: CronSchedule },
+    Fire {
+        name: String,
+        schedule: CronSchedule,
+    },
 }
 
 pub struct CronActor {
@@ -57,7 +60,7 @@ impl Actor for CronActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let settings = self.shared_actor_state.settings.load();
+        let settings = &self.shared_actor_state.settings;
         for trigger in &settings.triggers {
             if !trigger.enabled {
                 continue;
@@ -79,10 +82,12 @@ impl Actor for CronActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             CronActorMessage::Fire { name, schedule } => {
-                self.shared_actor_state.event_bus.publish(EventBusMessage::Cron {
-                    event_id: Uuid::new_v4(),
-                    name: name.clone(),
-                });
+                self.shared_actor_state
+                    .event_bus
+                    .publish(EventBusMessage::Cron {
+                        event_id: Uuid::new_v4(),
+                        name: name.clone(),
+                    });
 
                 Self::schedule_next(&myself, name, schedule);
             }

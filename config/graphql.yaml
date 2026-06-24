@@ -1,9 +1,5 @@
-# Environment sensor ids exposed as fields on the GraphQL `environment` object.
-# Each id (matching environment_sensors[].id) becomes a lowercase field, e.g.
-# OUTDOOR -> environment { outdoor { temperature } }.
 environments:
   - OUTDOOR
-  - LAUNDRY
   - LIVING_ROOM
   - BATHROOM
   - BEDROOM

@@ -29,8 +29,7 @@ impl ArmedDoor {
 
 impl ArmedDoor {
     pub fn trigger_action(&self, ieee_addr: &IEEEAddress) {
-        let settings = self.shared_actor_state.settings.load();
-        if let Some(settings) = settings.doors.get(ieee_addr) {
+        if let Some(settings) = self.shared_actor_state.devices.door(ieee_addr) {
             let message = format!("{} has been left open.", settings.name);
             notify(&settings.notify, message);
         }
@@ -71,12 +70,10 @@ impl Actor for ArmedDoor {
             DoorEventsMessage::QueryState { .. } => return Ok(()),
         };
 
-        let settings = self.shared_actor_state.settings.load();
-
         match event {
             DoorEventsType::Opened => {
                 state.map.insert(ieee_addr.clone(), DoorState::Open);
-                if let Some(value) = settings.doors.get(&ieee_addr)
+                if let Some(value) = self.shared_actor_state.devices.door(&ieee_addr)
                     && let ArmedDoorStates::Armed { timeout } = value.armed
                 {
                     let duration = timeout.to_std()?;

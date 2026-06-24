@@ -2,15 +2,14 @@ pub mod alarm;
 pub mod cron;
 pub mod devices;
 pub mod eink_display;
-pub mod mqtt_ingest;
 pub mod events;
+pub mod mqtt_ingest;
 pub mod push;
 pub mod root;
 pub mod rpc;
 pub mod solar;
 pub mod synergy;
 pub mod unifi;
-pub mod vacuum;
 pub mod woolworths;
 pub mod workflows;
 

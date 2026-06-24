@@ -46,7 +46,9 @@ pub enum TriggerMatcher {
     /// Fires on a recurring schedule. `schedule` is a standard 5-field cron
     /// expression (e.g. `"0 20 * * THU"`), evaluated in local time. Driven by the
     /// [`crate::actors::cron::CronActor`] producer, which matches by trigger name.
-    Cron { schedule: Box<CronSchedule> },
+    Cron {
+        schedule: Box<CronSchedule>,
+    },
 }
 
 impl TriggerMatcher {
@@ -55,9 +57,11 @@ impl TriggerMatcher {
             TriggerMatcher::Door { ieee_addr, .. } | TriggerMatcher::Switch { ieee_addr, .. } => {
                 *ieee_addr = resolve_device(ieee_addr, devices)?;
             }
-            TriggerMatcher::Presence { .. }
-            | TriggerMatcher::Environment { .. }
-            | TriggerMatcher::Cron { .. } => {}
+            TriggerMatcher::Presence { sensor, .. }
+            | TriggerMatcher::Environment { sensor, .. } => {
+                *sensor = resolve_device(sensor, devices)?;
+            }
+            TriggerMatcher::Cron { .. } => {}
         }
         Ok(())
     }

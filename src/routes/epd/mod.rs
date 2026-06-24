@@ -48,14 +48,8 @@ pub async fn take_screenshot() -> Result<StatusCode, AppError> {
     }
 }
 
-pub async fn latest(
-    State(ApiState {
-        object_registry, ..
-    }): State<ApiState>,
-) -> Result<Vec<u8>, AppError> {
-    let image_response = object_registry
-        .get_object("eink-display-screenshot.png")
-        .await?;
+pub async fn latest(State(ApiState { s3, .. }): State<ApiState>) -> Result<Vec<u8>, AppError> {
+    let image_response = s3.get_object("eink-display-screenshot.png").await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();

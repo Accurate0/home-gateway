@@ -1,4 +1,3 @@
-use arc_swap::{ArcSwap, Guard};
 use config::builder::{ConfigBuilder, DefaultState};
 use config::{Config, ConfigError, Environment, File, FileFormat};
 use serde::Deserialize;
@@ -26,11 +25,7 @@ pub use presence::{PresenceSensorType, PresenceSettings};
 pub use trigger::{Trigger, TriggerMatcher};
 pub use workflow::WorkflowSettings;
 
-use appliance::RawApplianceSettings;
-use door::RawDoorSettings;
-use environment::RawEnvironmentSensor;
-use plant::RawPlantSensor;
-use presence::RawPresenceSettings;
+use crate::device_registry::{DeviceRegistry, RawSensor};
 
 pub type IEEEAddress = String;
 
@@ -78,13 +73,8 @@ pub struct Settings {
     pub mqtt_url: String,
     pub mqtt_username: String,
     pub mqtt_password: String,
-    pub doors: HashMap<IEEEAddress, DoorSettings>,
-    pub environment_sensors: HashMap<String, EnvironmentSensorSettings>,
-    pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
-    pub presence_sensors: HashMap<String, PresenceSettings>,
-    pub plant_sensors: HashMap<String, PlantSensorSettings>,
     pub triggers: Vec<Trigger>,
     /// Named, reusable workflows referenced by `run_workflow` steps.
     pub workflows: HashMap<String, WorkflowSettings>,
@@ -109,19 +99,9 @@ struct RawSettings {
     unifi_webhook_secret: String,
     android_app_webhook_secret: String,
     #[serde(default)]
-    devices: DeviceAliases,
-    #[serde(default)]
     notify_targets: NotifyTargets,
     #[serde(default)]
-    doors: HashMap<IEEEAddress, RawDoorSettings>,
-    #[serde(default)]
-    environment_sensors: Vec<RawEnvironmentSensor>,
-    #[serde(default)]
-    appliances: HashMap<IEEEAddress, RawApplianceSettings>,
-    #[serde(default)]
-    presence_sensors: Vec<RawPresenceSettings>,
-    #[serde(default)]
-    plant_sensors: Vec<RawPlantSensor>,
+    devices: Vec<RawSensor>,
     // triggers are split into per-device files, each a list, so the included
     // shape is a list-of-lists; flattened during resolve
     #[serde(default)]
@@ -134,7 +114,7 @@ struct RawSettings {
 }
 
 impl RawSettings {
-    fn resolve(self) -> Result<Settings, String> {
+    fn resolve(self) -> Result<(Settings, DeviceRegistry), String> {
         let RawSettings {
             api_key,
             database_url,
@@ -145,13 +125,8 @@ impl RawSettings {
             mqtt_password,
             unifi_webhook_secret,
             android_app_webhook_secret,
-            devices,
             notify_targets,
-            doors,
-            environment_sensors,
-            appliances,
-            presence_sensors,
-            plant_sensors,
+            devices,
             triggers,
             mut workflows,
             graphql,
@@ -160,69 +135,45 @@ impl RawSettings {
 
         let mut triggers: Vec<Trigger> = triggers.into_iter().flatten().collect();
 
-        let doors = doors
-            .into_iter()
-            .map(|(addr, d)| Ok((addr, d.resolve(&notify_targets)?)))
-            .collect::<Result<HashMap<_, _>, String>>()?;
-
-        let appliances = appliances
-            .into_iter()
-            .map(|(addr, a)| Ok((addr, a.resolve(&notify_targets)?)))
-            .collect::<Result<HashMap<_, _>, String>>()?;
-
-        let environment_sensors = environment_sensors
-            .into_iter()
-            .map(|s| s.resolve(&devices))
-            .collect::<Result<HashMap<_, _>, String>>()?;
-
-        let presence_sensors = presence_sensors
-            .into_iter()
-            .map(|p| p.resolve(&devices))
-            .collect::<Result<HashMap<_, _>, String>>()?;
-
-        let plant_sensors = plant_sensors
-            .into_iter()
-            .map(|p| p.resolve(&devices))
-            .collect::<Result<HashMap<_, _>, String>>()?;
+        let registry = DeviceRegistry::build(devices, &notify_targets)?;
+        let aliases = registry.aliases();
 
         for trigger in &mut triggers {
-            trigger.resolve_devices(&devices)?;
+            trigger.resolve_devices(aliases)?;
         }
 
         for workflow in workflows.values_mut() {
-            workflow.resolve_devices(&devices)?;
+            workflow.resolve_devices(aliases)?;
         }
 
-        Ok(Settings {
-            api_key,
-            database_url,
-            fcm_project_id,
-            fcm_service_account_json,
-            mqtt_url,
-            mqtt_username,
-            mqtt_password,
-            unifi_webhook_secret,
-            android_app_webhook_secret,
-            doors,
-            environment_sensors,
-            appliances,
-            presence_sensors,
-            plant_sensors,
-            triggers,
-            workflows,
-            graphql,
-            s3,
-        })
+        Ok((
+            Settings {
+                api_key,
+                database_url,
+                fcm_project_id,
+                fcm_service_account_json,
+                mqtt_url,
+                mqtt_username,
+                mqtt_password,
+                unifi_webhook_secret,
+                android_app_webhook_secret,
+                triggers,
+                workflows,
+                graphql,
+                s3,
+            },
+            registry,
+        ))
     }
 }
 
 #[derive(Clone)]
 pub struct SettingsContainer {
-    inner: Arc<ArcSwap<Settings>>,
+    inner: Arc<Settings>,
 }
 
 impl SettingsContainer {
-    fn build(config: Config) -> Result<Settings, ConfigError> {
+    fn build(config: Config) -> Result<(Settings, DeviceRegistry), ConfigError> {
         let raw: RawSettings = config.try_deserialize()?;
         raw.resolve().map_err(ConfigError::Message)
     }
@@ -245,35 +196,28 @@ impl SettingsContainer {
         Ok(Config::builder().add_source(File::from_str(&merged, FileFormat::Yaml)))
     }
 
-    pub fn new() -> Result<Self, ConfigError> {
+    pub fn new() -> Result<(Self, DeviceRegistry), ConfigError> {
         // TODO: fetch config from catalog, falling back to file if not found or other error
         let config = Self::config_sources(&PathBuf::from("./config"))?
             .add_source(Environment::default().separator("__"))
             .build()?;
 
-        Ok(Self {
-            inner: Arc::new(ArcSwap::new(Arc::new(Self::build(config)?))),
-        })
+        let (settings, registry) = Self::build(config)?;
+
+        Ok((
+            Self {
+                inner: Arc::new(settings),
+            },
+            registry,
+        ))
     }
+}
 
-    pub fn load_full(&self) -> Arc<Settings> {
-        self.inner.load_full()
-    }
+impl std::ops::Deref for SettingsContainer {
+    type Target = Settings;
 
-    pub fn load(&self) -> Guard<Arc<Settings>> {
-        self.inner.load()
-    }
-
-    #[allow(unused)]
-    pub fn reload(&self, new_settings: String) -> Result<(), ConfigError> {
-        let config = Config::builder()
-            .add_source(File::from_str(&new_settings, FileFormat::Yaml))
-            .add_source(Environment::default().separator("__"))
-            .build()?;
-
-        self.inner.store(Arc::new(Self::build(config)?));
-
-        Ok(())
+    fn deref(&self) -> &Settings {
+        &self.inner
     }
 }
 
@@ -299,7 +243,7 @@ android_app_webhook_secret: x
             .build()
             .unwrap();
 
-        let settings = SettingsContainer::build(config).unwrap();
+        let (settings, registry) = SettingsContainer::build(config).unwrap();
 
         // a switch trigger resolves device aliases on both its matcher and steps
         let switch_trigger = settings
@@ -316,32 +260,51 @@ android_app_webhook_secret: x
         assert_eq!(ieee_addr, "0x94a081fffe2eedc0");
 
         // a cron trigger parses its schedule and anchor
-        assert!(settings.triggers.iter().any(|t| t.name == "Bins"
-            && matches!(&t.on, trigger::TriggerMatcher::Cron { .. })));
+        assert!(
+            settings
+                .triggers
+                .iter()
+                .any(|t| t.name == "Bins" && matches!(&t.on, trigger::TriggerMatcher::Cron { .. }))
+        );
 
-        // a zigbee source written as a device alias resolves to its address
-        assert!(settings.presence_sensors.contains_key("0x54ef441000dbc81c"));
+        // a zigbee presence sensor is keyed by its address in the registry
+        assert!(registry.presence("0x54ef441000dbc81c").is_some());
 
-        // esphome sensor keyed by node name with explicit source
+        // esphome presence sensor keyed by node name carries its motion entity
         assert_eq!(
-            settings.presence_sensors["apollo-mtr-1-livingroom"]
+            registry
+                .presence("apollo-mtr-1-livingroom")
+                .unwrap()
                 .motion_entity
                 .as_deref(),
             Some("ld2450_moving_target")
         );
         assert_eq!(
-            settings.environment_sensors["apollo-mtr-1-livingroom"].sensor_type,
+            registry
+                .environment("apollo-mtr-1-livingroom")
+                .unwrap()
+                .sensor_type,
             EnvironmentSensorType::Esphome
         );
 
         // an esphome environment sensor with no explicit `entities:` falls back to
         // the default temperature object_ids, which drive its subscriptions
         assert_eq!(
-            settings.environment_sensors["apollo-mtr-1-livingroom"].entities,
+            registry
+                .environment("apollo-mtr-1-livingroom")
+                .unwrap()
+                .entities,
             crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS
                 .iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>()
+        );
+
+        // the esphome motion topic is registered for routing
+        assert!(
+            registry
+                .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state")
+                .is_some()
         );
     }
 }
