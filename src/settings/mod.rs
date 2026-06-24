@@ -14,7 +14,6 @@ pub mod maccas;
 pub mod notify;
 pub mod plant;
 pub mod presence;
-pub mod reminder;
 pub mod trigger;
 pub mod workflow;
 
@@ -26,7 +25,6 @@ pub use maccas::MaccasSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
-pub use reminder::{ReminderSettings, ReminderState};
 pub use trigger::{Trigger, TriggerMatcher};
 pub use workflow::WorkflowSettings;
 
@@ -36,7 +34,6 @@ use environment::RawEnvironmentSensor;
 use maccas::RawMaccasSettings;
 use plant::RawPlantSensor;
 use presence::RawPresenceSettings;
-use reminder::RawReminderSettings;
 
 pub type IEEEAddress = String;
 
@@ -84,12 +81,10 @@ pub struct Settings {
     pub mqtt_url: String,
     pub mqtt_username: String,
     pub mqtt_password: String,
-    pub reminders: Vec<ReminderSettings>,
     pub doors: HashMap<IEEEAddress, DoorSettings>,
     pub environment_sensors: HashMap<String, EnvironmentSensorSettings>,
     pub appliances: HashMap<IEEEAddress, ApplianceSettings>,
     pub maccas: MaccasSettings,
-    pub discord_token: String,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
     pub presence_sensors: HashMap<String, PresenceSettings>,
@@ -115,15 +110,12 @@ struct RawSettings {
     mqtt_url: String,
     mqtt_username: String,
     mqtt_password: String,
-    discord_token: String,
     unifi_webhook_secret: String,
     android_app_webhook_secret: String,
     #[serde(default)]
     devices: DeviceAliases,
     #[serde(default)]
     notify_targets: NotifyTargets,
-    #[serde(default)]
-    reminders: Vec<RawReminderSettings>,
     #[serde(default)]
     doors: HashMap<IEEEAddress, RawDoorSettings>,
     #[serde(default)]
@@ -156,12 +148,10 @@ impl RawSettings {
             mqtt_url,
             mqtt_username,
             mqtt_password,
-            discord_token,
             unifi_webhook_secret,
             android_app_webhook_secret,
             devices,
             notify_targets,
-            reminders,
             doors,
             environment_sensors,
             appliances,
@@ -175,11 +165,6 @@ impl RawSettings {
         } = self;
 
         let mut triggers: Vec<Trigger> = triggers.into_iter().flatten().collect();
-
-        let reminders = reminders
-            .into_iter()
-            .map(|r| r.resolve(&notify_targets))
-            .collect::<Result<Vec<_>, String>>()?;
 
         let doors = doors
             .into_iter()
@@ -224,10 +209,8 @@ impl RawSettings {
             mqtt_url,
             mqtt_username,
             mqtt_password,
-            discord_token,
             unifi_webhook_secret,
             android_app_webhook_secret,
-            reminders,
             doors,
             environment_sensors,
             appliances,
@@ -316,7 +299,6 @@ database_url: x
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
-discord_token: x
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 maccas:
@@ -344,9 +326,9 @@ maccas:
         };
         assert_eq!(ieee_addr, "0x94a081fffe2eedc0");
 
-        // notify target resolved
-        let bins = settings.reminders.iter().find(|r| r.id == "bins").unwrap();
-        assert!(matches!(bins.notify[0], NotifySource::AndroidApp));
+        // a cron trigger parses its schedule and anchor
+        assert!(settings.triggers.iter().any(|t| t.name == "Bins"
+            && matches!(&t.on, trigger::TriggerMatcher::Cron { .. })));
 
         // a zigbee source written as a device alias resolves to its address
         assert!(settings.presence_sensors.contains_key("0x54ef441000dbc81c"));

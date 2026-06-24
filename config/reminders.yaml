@@ -1,7 +1,0 @@
-- id: bins
-  name: Bins
-  starts_on: 2025-07-17T20:00:00.0+08:00
-  frequency: every 1 week
-  state: active
-  notify:
-    - home

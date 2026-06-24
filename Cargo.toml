@@ -78,6 +78,7 @@ async-trait = "0.1.89"
 yaml-include = "0.8.1"
 opentelemetry-prometheus = "0.32"
 prometheus = "0.14.0"
+croner = { version = "3.0.1", features = ["serde"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

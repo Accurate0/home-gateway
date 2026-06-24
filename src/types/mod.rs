@@ -1,6 +1,5 @@
 use crate::{
     actors::event_handler,
-    delayqueue::DelayQueueError,
     event_bus::EventBus,
     feature_flag::FeatureFlagClient,
     graphql::FinalSchema,
@@ -78,8 +77,6 @@ where
 pub enum MainError {
     #[error(transparent)]
     Mqtt(#[from] MqttError),
-    #[error(transparent)]
-    DelayQueue(#[from] DelayQueueError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]

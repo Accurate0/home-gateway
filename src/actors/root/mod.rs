@@ -3,7 +3,6 @@ use crate::{
         eink_display::EInkDisplayActor, solar::SolarIngestActor, vacuum::VacuumActor,
         woolworths::WoolworthsActor,
     },
-    delayqueue::DelayQueue,
     types::SharedActorState,
     woolworths::Woolworths,
 };
@@ -11,6 +10,7 @@ use ractor::Actor;
 
 use super::{
     alarm::AlarmActor,
+    cron::CronActor,
     devices::{control_switch, plant_sensor, presence_sensor},
     door_sensor, environment_sensor,
     events::{
@@ -20,7 +20,6 @@ use super::{
     light,
     maccas::MaccasActor,
     push,
-    reminder::{ReminderActor, ReminderActorDelayQueueValue},
     smart_switch,
     synergy::SynergyActor,
     unifi::UnifiConnectedClientHandler,
@@ -29,7 +28,6 @@ use super::{
 
 pub struct RootSupervisor {
     pub shared_actor_state: SharedActorState,
-    pub reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
 }
 
 impl RootSupervisor {
@@ -101,15 +99,14 @@ impl RootSupervisor {
         Ok(())
     }
 
-    async fn start_reminder_actor(
+    async fn start_cron_actor(
         &self,
         myself: &ractor::ActorRef<()>,
     ) -> Result<(), ractor::ActorProcessingErr> {
         myself
             .spawn_linked(
-                Some(ReminderActor::NAME.to_owned()),
-                ReminderActor {
-                    delay_queue: self.reminder_delayqueue.clone(),
+                Some(CronActor::NAME.to_owned()),
+                CronActor {
                     shared_actor_state: self.shared_actor_state.clone(),
                 },
                 (),
@@ -263,7 +260,7 @@ impl Actor for RootSupervisor {
 
         self.start_maccas_actor(&myself).await?;
         self.start_unifi_connected_clients_handler(&myself).await?;
-        self.start_reminder_actor(&myself).await?;
+        self.start_cron_actor(&myself).await?;
         self.start_synergy_actor(&myself).await?;
         self.start_woolworths_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
@@ -310,9 +307,9 @@ impl Actor for RootSupervisor {
                         self.start_vacuum_actor(&myself).await?;
                     }
 
-                    ReminderActor::NAME => {
-                        tracing::info!("restarting reminder actor");
-                        self.start_reminder_actor(&myself).await?;
+                    CronActor::NAME => {
+                        tracing::info!("restarting cron actor");
+                        self.start_cron_actor(&myself).await?;
                     }
 
                     SynergyActor::NAME => {

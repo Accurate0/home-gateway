@@ -1,11 +1,11 @@
 pub mod alarm;
+pub mod cron;
 pub mod devices;
 pub mod eink_display;
 pub mod event_handler;
 pub mod events;
 pub mod maccas;
 pub mod push;
-pub mod reminder;
 pub mod root;
 pub mod rpc;
 pub mod solar;

@@ -11,6 +11,7 @@ use serde::Deserialize;
 
 use super::workflow::{Comparison, Condition, Step};
 use super::{DeviceAliases, IEEEAddress, resolve_device, yes};
+use crate::actors::cron::schedule::CronSchedule;
 use crate::event_bus::SensorMetric;
 use crate::timedelta_format::option_time_delta_from_str;
 
@@ -42,6 +43,10 @@ pub enum TriggerMatcher {
         #[serde(flatten)]
         cmp: Comparison,
     },
+    /// Fires on a recurring schedule. `schedule` is a standard 5-field cron
+    /// expression (e.g. `"0 20 * * THU"`), evaluated in local time. Driven by the
+    /// [`crate::actors::cron::CronActor`] producer, which matches by trigger name.
+    Cron { schedule: CronSchedule },
 }
 
 impl TriggerMatcher {
@@ -50,7 +55,9 @@ impl TriggerMatcher {
             TriggerMatcher::Door { ieee_addr, .. } | TriggerMatcher::Switch { ieee_addr, .. } => {
                 *ieee_addr = resolve_device(ieee_addr, devices)?;
             }
-            TriggerMatcher::Presence { .. } | TriggerMatcher::Environment { .. } => {}
+            TriggerMatcher::Presence { .. }
+            | TriggerMatcher::Environment { .. }
+            | TriggerMatcher::Cron { .. } => {}
         }
         Ok(())
     }

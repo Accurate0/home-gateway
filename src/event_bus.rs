@@ -127,6 +127,10 @@ pub enum EventBusMessage {
         sensor: String,
         reading: SensorReading,
     },
+    /// A scheduled `Cron` trigger came due. `name` identifies the trigger so the
+    /// dispatcher can match it; the schedule itself lives in the trigger config
+    /// and is owned by the [`crate::actors::cron::CronActor`] producer.
+    Cron { event_id: Uuid, name: String },
 }
 
 impl EventBusMessage {
@@ -137,7 +141,8 @@ impl EventBusMessage {
             EventBusMessage::Presence { event_id, .. }
             | EventBusMessage::Door { event_id, .. }
             | EventBusMessage::SwitchAction { event_id, .. }
-            | EventBusMessage::Environment { event_id, .. } => *event_id,
+            | EventBusMessage::Environment { event_id, .. }
+            | EventBusMessage::Cron { event_id, .. } => *event_id,
         }
     }
 
@@ -148,6 +153,7 @@ impl EventBusMessage {
             EventBusMessage::Door { .. } => "door",
             EventBusMessage::SwitchAction { .. } => "switch_action",
             EventBusMessage::Environment { .. } => "environment",
+            EventBusMessage::Cron { .. } => "cron",
         }
     }
 }

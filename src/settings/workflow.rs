@@ -176,6 +176,7 @@ pub enum Step {
     Switch {
         #[serde(rename = "device", alias = "ieeeAddr")]
         ieee_addr: IEEEAddress,
+        #[allow(unused)]
         state: SwitchState,
         #[serde(default)]
         when: Option<Condition>,

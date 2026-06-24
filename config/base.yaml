@@ -15,7 +15,6 @@ notify_targets:
 
 fcm_project_id: home-gateway-22
 
-reminders: !include reminders.yaml
 doors: !include doors.yaml
 maccas: !include maccas.yaml
 appliances: !include appliances.yaml

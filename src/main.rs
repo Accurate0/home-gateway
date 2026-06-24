@@ -4,11 +4,7 @@ use crate::routes::{
     workflow::execute::workflow_execute,
 };
 use ::http::Method;
-use actors::{
-    event_handler::{self},
-    reminder::{ReminderActor, ReminderActorDelayQueueValue, background::reminder_background},
-    root::RootSupervisor,
-};
+use actors::{event_handler::{self}, root::RootSupervisor};
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
 use auth::RequireApiKey;
 use axum::{
@@ -16,8 +12,6 @@ use axum::{
     routing::{get, post},
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
-use delayqueue::DelayQueue;
-use discord::start_discord;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
@@ -53,8 +47,6 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 
 mod actors;
 mod auth;
-mod delayqueue;
-mod discord;
 mod esphome;
 mod event_bus;
 mod feature_flag;
@@ -83,7 +75,6 @@ async fn init_actors(
     mqtt_client: MqttClient,
     db: Pool<Postgres>,
     known_devices_map: Arc<RwLock<HashMap<IEEEAddress, String>>>,
-    reminder_delayqueue: DelayQueue<ReminderActorDelayQueueValue>,
     object_registry: ObjectRegistry,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), event_handler::Message>>> {
     let shared_actor_state = SharedActorState {
@@ -100,7 +91,6 @@ async fn init_actors(
         None,
         RootSupervisor {
             shared_actor_state: shared_actor_state.clone(),
-            reminder_delayqueue,
         },
         (),
     )
@@ -153,16 +143,12 @@ async fn main() -> anyhow::Result<()> {
         settings.s3.endpoint.clone(),
     )?;
 
-    let reminder_delayqueue =
-        DelayQueue::new(pool.clone(), ReminderActor::QUEUE_NAME.to_owned()).await?;
-
     let event_handler_actor = init_actors(
         settings_container.clone(),
         feature_flag_client.clone(),
         mqtt_client,
         pool.clone(),
         known_devices_map,
-        reminder_delayqueue.clone(),
         object_registry.clone(),
     )
     .await?;
@@ -247,25 +233,6 @@ async fn main() -> anyhow::Result<()> {
         Ok::<(), MainError>(())
     });
 
-    if !cfg!(debug_assertions) {
-        let discord_cancellation_token = cancellation_token.child_token();
-        task_set.spawn(async move {
-            start_discord(
-                settings.discord_token.clone(),
-                pool.clone(),
-                discord_cancellation_token,
-            )
-            .await?;
-            Ok::<(), MainError>(())
-        });
-    }
-
-    let reminder_cancellation_token = cancellation_token.child_token();
-    task_set.spawn(async move {
-        reminder_background(reminder_delayqueue, reminder_cancellation_token).await?;
-        Ok::<(), MainError>(())
-    });
-
     if let Some(r) = task_set.join_next().await {
         match r {
             Ok(r) => match r {
@@ -283,9 +250,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-// TODO:
-// - store the built file to object registry via CI
-// - use events to create a new screenshot if the file in object registry has changed
-// - read the file from object registry instead of bucket
-// - store the screenshot in object registry too i guess

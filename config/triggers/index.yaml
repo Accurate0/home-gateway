@@ -3,3 +3,4 @@
 - !include closet_presence.yaml
 - !include livingroom_motion.yaml
 - !include hallway_plant.yaml
+- !include bins.yaml

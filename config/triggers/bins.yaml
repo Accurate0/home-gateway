@@ -1,0 +1,6 @@
+- name: Bins
+  on: { type: cron, schedule: "0 20 * * THU" }
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Bins"

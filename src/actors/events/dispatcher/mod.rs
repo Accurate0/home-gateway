@@ -86,6 +86,9 @@ impl EventDispatcher {
                 // rising edge only: fire when the threshold is newly crossed
                 satisfied && !was_satisfied
             }
+            (TriggerMatcher::Cron { .. }, EventBusMessage::Cron { name, .. }) => {
+                &trigger.name == name
+            }
             _ => false,
         }
     }
