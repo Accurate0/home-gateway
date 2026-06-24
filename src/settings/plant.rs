@@ -8,7 +8,6 @@ pub(crate) fn default_plant_entities() -> Vec<String> {
 pub struct PlantSensorSettings {
     #[allow(unused)]
     pub id: String,
-    /// esphome sensor object_ids to subscribe to and publish as `Environment`
-    /// events (thresholds live in `triggers:`).
+    #[allow(unused)]
     pub entities: Vec<String>,
 }

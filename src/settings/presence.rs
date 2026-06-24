@@ -9,8 +9,8 @@ pub enum PresenceSensorType {
 pub struct PresenceSettings {
     #[allow(unused)]
     pub name: String,
+    #[allow(unused)]
     pub sensor_type: PresenceSensorType,
-    /// Set when the sensor is esphome: the binary_sensor object_id treated as
-    /// motion.
+    #[allow(unused)]
     pub motion_entity: Option<String>,
 }

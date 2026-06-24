@@ -48,7 +48,7 @@ pub struct RawSensor {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", content = "config", rename_all = "snake_case")]
-enum DeviceConfig {
+pub enum DeviceConfig {
     Door(RawDoorSettings),
     Appliance(RawApplianceSettings),
     Presence(RawPresenceBlock),
@@ -60,7 +60,7 @@ enum DeviceConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct RawPresenceBlock {
+pub struct RawPresenceBlock {
     #[serde(default)]
     name: String,
     #[serde(default)]
@@ -68,14 +68,14 @@ struct RawPresenceBlock {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct RawEnvironmentBlock {
+pub struct RawEnvironmentBlock {
     id: String,
     #[serde(default = "default_environment_entities")]
     entities: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct RawPlantBlock {
+pub struct RawPlantBlock {
     id: String,
     #[serde(default = "default_plant_entities")]
     entities: Vec<String>,
@@ -241,6 +241,7 @@ impl DeviceRegistry {
         self.environment.get(address)
     }
 
+    #[allow(unused)]
     pub fn presence(&self, address: &str) -> Option<&PresenceSettings> {
         self.presence.get(address)
     }

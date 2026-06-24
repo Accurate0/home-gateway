@@ -42,6 +42,8 @@ pub enum TriggerMatcher {
 }
 
 impl TriggerMatcher {
+    // used by the workflow `plan` renderer, currently exercised only in tests
+    #[allow(dead_code)]
     pub fn describe(&self) -> String {
         match self {
             TriggerMatcher::Presence { sensor, present } => {
