@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO device_last_seen (device_key, last_seen) VALUES ($1, now()) ON CONFLICT (device_key) DO UPDATE SET last_seen = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f299c4401867666b5afea33007aba800b6799d7f9aca3cc5071ec8bd7b69aa0d"
+}

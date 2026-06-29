@@ -26,8 +26,22 @@ pub use trigger::TriggerMatcher;
 pub use workflow::Workflow;
 
 use crate::device_registry::{DeviceRegistry, RawSensor};
+use crate::timedelta_format::time_delta_from_str;
+use chrono::TimeDelta;
 
 pub type IEEEAddress = String;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WatchdogSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(with = "time_delta_from_str")]
+    pub timeout: TimeDelta,
+    #[serde(with = "time_delta_from_str")]
+    pub check_interval: TimeDelta,
+    #[serde(with = "time_delta_from_str")]
+    pub realert_after: TimeDelta,
+}
 
 /// S3 / object-storage config. Credentials are taken from the standard AWS
 /// environment, never from this file. `endpoint` is only set for
@@ -74,6 +88,7 @@ pub struct Settings {
     pub workflows: HashMap<String, Workflow>,
     pub graphql: GraphqlSettings,
     pub s3: S3Settings,
+    pub watchdog: WatchdogSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -101,6 +116,7 @@ struct RawSettings {
     #[serde(default)]
     graphql: GraphqlSettings,
     s3: S3Settings,
+    watchdog: WatchdogSettings,
 }
 
 impl RawSettings {
@@ -120,6 +136,7 @@ impl RawSettings {
             workflows,
             graphql,
             s3,
+            watchdog,
         } = self;
 
         let registry = DeviceRegistry::build(devices, &notify_targets)?;
@@ -148,6 +165,7 @@ impl RawSettings {
                 workflows: resolved,
                 graphql,
                 s3,
+                watchdog,
             },
             registry,
         ))

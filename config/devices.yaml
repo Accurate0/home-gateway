@@ -1,6 +1,9 @@
 - id: front_door
   transport: zigbee
   address: "0x54ef441000d2b0b0"
+  watchdog:
+    timeout: 1h
+    notify: [android_app]
   kinds:
     - kind: door
       config:

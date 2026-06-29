@@ -10,6 +10,7 @@ pub mod rpc;
 pub mod solar;
 pub mod synergy;
 pub mod unifi;
+pub mod watchdog;
 pub mod woolworths;
 pub mod workflows;
 

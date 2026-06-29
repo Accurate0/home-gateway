@@ -90,7 +90,7 @@ rstest = "0.26.1"
 insta = "1"
 
 [workspace.dependencies]
-axum = { version = "0.8.9", features = ["macros"] }
+axum = { version = "0.8.9", features = ["macros", "ws"] }
 reqwest = { version = "0.13.4", features = ["json", "stream", "cookies", "query", "rustls", "blocking"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
 anyhow = "1.0.102"

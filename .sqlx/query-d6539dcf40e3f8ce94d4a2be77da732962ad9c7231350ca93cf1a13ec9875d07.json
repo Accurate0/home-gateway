@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_last_seen SET alerted_at = $1 WHERE device_key = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d6539dcf40e3f8ce94d4a2be77da732962ad9c7231350ca93cf1a13ec9875d07"
+}

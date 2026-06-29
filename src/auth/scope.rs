@@ -4,6 +4,7 @@ pub enum Domain {
     Rest,
     Ingest,
     Admin,
+    Events,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +24,11 @@ pub enum Resource {
     Home,
     Unifi,
     Keys,
+    Presence,
+    Door,
+    Switch,
+    Environment,
+    Cron,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,6 +45,7 @@ impl Domain {
             "rest" => Self::Rest,
             "ingest" => Self::Ingest,
             "admin" => Self::Admin,
+            "events" => Self::Events,
             _ => return None,
         })
     }
@@ -62,6 +69,11 @@ impl Resource {
             "home" => Self::Home,
             "unifi" => Self::Unifi,
             "keys" => Self::Keys,
+            "presence" => Self::Presence,
+            "door" => Self::Door,
+            "switch" => Self::Switch,
+            "environment" => Self::Environment,
+            "cron" => Self::Cron,
             _ => return None,
         })
     }
@@ -85,6 +97,7 @@ impl Domain {
             Self::Rest => "rest",
             Self::Ingest => "ingest",
             Self::Admin => "admin",
+            Self::Events => "events",
         }
     }
 }
@@ -107,7 +120,23 @@ impl Resource {
             Self::Home => "home",
             Self::Unifi => "unifi",
             Self::Keys => "keys",
+            Self::Presence => "presence",
+            Self::Door => "door",
+            Self::Switch => "switch",
+            Self::Environment => "environment",
+            Self::Cron => "cron",
         }
+    }
+
+    pub fn for_event_kind(kind: &str) -> Option<Self> {
+        Some(match kind {
+            "presence" => Self::Presence,
+            "door" => Self::Door,
+            "switch_action" => Self::Switch,
+            "environment" => Self::Environment,
+            "cron" => Self::Cron,
+            _ => return None,
+        })
     }
 }
 

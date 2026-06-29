@@ -385,6 +385,19 @@ impl MqttIngest {
         Ok(())
     }
 
+    async fn record_last_seen(&self, device_key: &str) {
+        if let Err(e) = sqlx::query!(
+            "INSERT INTO device_last_seen (device_key, last_seen) VALUES ($1, now()) \
+             ON CONFLICT (device_key) DO UPDATE SET last_seen = now()",
+            device_key
+        )
+        .execute(&self.shared_actor_state.db)
+        .await
+        {
+            tracing::error!("failed to record last seen for {device_key}: {e}");
+        }
+    }
+
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         let Message::MqttPacket { payload, topic } = message;
         match MqttTopic::classify(&topic) {
@@ -443,9 +456,11 @@ impl MqttIngest {
 
                 match target {
                     Some(crate::esphome::EsphomeTarget::Motion { node }) => {
+                        self.record_last_seen(&node).await;
                         self.dispatch_esphome_motion(&node, &payload)?
                     }
                     Some(crate::esphome::EsphomeTarget::Sensor { node, object_id }) => {
+                        self.record_last_seen(&node).await;
                         self.dispatch_esphome_sensor(&node, &object_id, &payload)?
                     }
                     None => {
@@ -454,6 +469,10 @@ impl MqttIngest {
                 }
             }
             MqttTopic::Zigbee2MqttDevice => {
+                if let Some(friendly_name) = topic.strip_prefix("zigbee2mqtt/") {
+                    self.record_last_seen(friendly_name).await;
+                }
+
                 let generic_message =
                     match serde_json::from_slice::<GenericZigbee2MqttMessage>(&payload) {
                         Ok(payload) => payload,

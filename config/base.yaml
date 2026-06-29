@@ -8,6 +8,12 @@ notify_targets:
 
 fcm_project_id: home-gateway-22
 
+watchdog:
+  enabled: false
+  timeout: 30m
+  check_interval: 5m
+  realert_after: 6h
+
 devices: !include devices.yaml
 workflows: !include workflows/index.yaml
 graphql: !include graphql.yaml

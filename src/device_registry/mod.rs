@@ -8,8 +8,10 @@ use crate::esphome::{EsphomeTarget, motion_state_topic, sensor_state_topic};
 use crate::settings::appliance::RawApplianceSettings;
 use crate::settings::door::RawDoorSettings;
 use crate::settings::environment::default_environment_entities;
-use crate::settings::notify::NotifyTargets;
+use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 use crate::settings::plant::default_plant_entities;
+use crate::timedelta_format::option_time_delta_from_str;
+use chrono::TimeDelta;
 use crate::settings::{
     ApplianceSettings, DeviceAliases, DoorSettings, EnvironmentSensorSettings,
     EnvironmentSensorType, IEEEAddress, PlantSensorSettings, PresenceSensorType, PresenceSettings,
@@ -44,6 +46,22 @@ pub struct RawSensor {
     pub transport: Transport,
     pub address: String,
     pub kinds: Vec<DeviceConfig>,
+    #[serde(default)]
+    pub watchdog: Option<RawDeviceWatchdog>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawDeviceWatchdog {
+    #[serde(default, with = "option_time_delta_from_str")]
+    timeout: Option<TimeDelta>,
+    #[serde(default)]
+    notify: Vec<NotifyRef>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeviceWatchdog {
+    pub timeout: Option<TimeDelta>,
+    pub notify: Vec<NotifySource>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,6 +108,7 @@ pub struct DeviceRegistry {
     environment: HashMap<String, EnvironmentSensorSettings>,
     presence: HashMap<String, PresenceSettings>,
     plant: HashMap<String, PlantSensorSettings>,
+    watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: Arc<RwLock<HashMap<IEEEAddress, String>>>,
 }
 
@@ -103,10 +122,21 @@ impl DeviceRegistry {
                 transport,
                 address,
                 kinds,
+                watchdog,
             } = sensor;
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
                 return Err(format!("duplicate sensor id: {id}"));
+            }
+
+            if let Some(watchdog) = watchdog {
+                reg.watchdog.insert(
+                    address.clone(),
+                    DeviceWatchdog {
+                        timeout: watchdog.timeout,
+                        notify: resolve_notify(watchdog.notify, notify)?,
+                    },
+                );
             }
 
             for config in kinds {
@@ -248,5 +278,9 @@ impl DeviceRegistry {
 
     pub fn plant(&self, address: &str) -> Option<&PlantSensorSettings> {
         self.plant.get(address)
+    }
+
+    pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
+        self.watchdog.iter()
     }
 }

@@ -1,14 +1,17 @@
-use crate::routes::{
-    epd,
-    ingest::{solar::solar, unifi::unifi},
-    workflow::execute::workflow_execute,
+use crate::{
+    graphql::subscription::SubscriptionRoot,
+    routes::{
+        epd,
+        ingest::{solar::solar, unifi::unifi},
+        workflow::execute::workflow_execute,
+    },
 };
 use ::http::Method;
 use actors::{
     mqtt_ingest::{self},
     root::RootSupervisor,
 };
-use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
+use async_graphql::{EmptyMutation, Schema, dataloader::DataLoader};
 use auth::{AuthManager, auth_middleware};
 use axum::{
     middleware::from_fn_with_state,
@@ -16,11 +19,12 @@ use axum::{
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
+use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
     dataloader::temperature::LatestTemperatureDataLoader,
-    handler::{graphiql, graphql_handler},
+    handler::{graphiql, graphql_handler, graphql_ws_handler},
 };
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
@@ -81,6 +85,7 @@ async fn init_actors(
     mqtt_client: MqttClient,
     db: Pool<Postgres>,
     s3: S3,
+    event_bus: EventBus,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     let shared_actor_state = SharedActorState {
         settings,
@@ -89,7 +94,7 @@ async fn init_actors(
         mqtt: mqtt_client,
         feature_flag_client,
         s3,
-        event_bus: event_bus::EventBus::default(),
+        event_bus,
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(
@@ -147,6 +152,8 @@ async fn main() -> anyhow::Result<()> {
         settings.s3.endpoint.clone(),
     )?;
 
+    let event_bus = EventBus::default();
+
     let mqtt_ingest_actor = init_actors(
         settings_container.clone(),
         device_registry.clone(),
@@ -154,10 +161,11 @@ async fn main() -> anyhow::Result<()> {
         mqtt_client,
         pool.clone(),
         s3.clone(),
+        event_bus.clone(),
     )
     .await?;
 
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(QueryRoot::default(), EmptyMutation, SubscriptionRoot)
         .data(DataLoader::new(
             LatestTemperatureDataLoader {
                 database: pool.clone(),
@@ -166,6 +174,7 @@ async fn main() -> anyhow::Result<()> {
         ))
         .data(pool.clone())
         .data(settings_container.clone())
+        .data(event_bus)
         .extension(crate::graphql_tracing::Tracing)
         .finish();
 
@@ -201,6 +210,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
+        .route("/graphql/ws", get(graphql_ws_handler))
         .route("/health", get(health))
         .route("/health/actors", get(actor_health))
         .route(

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT device_key, last_seen, alerted_at FROM device_last_seen",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_seen",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "alerted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6a274ad77e71bc4d0f506e3e722b26821497c7d40326d3151ea3891e20fe7880"
+}

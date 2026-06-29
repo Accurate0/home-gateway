@@ -22,6 +22,63 @@ pub fn hash_key(key: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+async fn resolve_api_key(
+    api_key: &str,
+    state: &ApiState,
+) -> Result<Option<AuthContext>, StatusCode> {
+    let settings = &state.settings;
+
+    if !settings.api_key.is_empty() && api_key == settings.api_key {
+        return Ok(Some(AuthContext::full_access(true)));
+    }
+
+    let hashed = hash_key(api_key);
+    let key = state.auth.lookup_by_hash(&hashed).await.map_err(|e| {
+        tracing::error!("failed to look up api key: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if let Some(key) = key {
+        if key.revoked_at.is_some() {
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+        if let Some(expires_at) = key.expires_at
+            && expires_at <= Utc::now()
+        {
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+
+        state.auth.touch_last_used(key.id);
+
+        return Ok(Some(AuthContext::from_scopes(
+            Some(key.id),
+            Some(key.name.clone()),
+            &key.scopes,
+        )));
+    }
+
+    Ok(None)
+}
+
+pub async fn resolve_ws_auth(
+    token: Option<&str>,
+    state: &ApiState,
+) -> Result<AuthContext, StatusCode> {
+    if cfg!(debug_assertions) {
+        return Ok(AuthContext::full_access(false));
+    }
+
+    let api_key = token.map(|s| s.trim()).filter(|s| !s.is_empty());
+
+    if let Some(api_key) = api_key
+        && let Some(auth) = resolve_api_key(api_key, state).await?
+    {
+        return Ok(auth);
+    }
+
+    Err(StatusCode::UNAUTHORIZED)
+}
+
 pub async fn resolve_auth(
     headers: &HeaderMap,
     state: &ApiState,
@@ -37,35 +94,10 @@ pub async fn resolve_auth(
         .and_then(|value| value.to_str().ok())
         .map(|s| s.trim());
 
-    if let Some(api_key) = api_key {
-        if !settings.api_key.is_empty() && api_key == settings.api_key {
-            return Ok(AuthContext::full_access(true));
-        }
-
-        let hashed = hash_key(api_key);
-        let key = state.auth.lookup_by_hash(&hashed).await.map_err(|e| {
-            tracing::error!("failed to look up api key: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-        if let Some(key) = key {
-            if key.revoked_at.is_some() {
-                return Err(StatusCode::UNAUTHORIZED);
-            }
-            if let Some(expires_at) = key.expires_at
-                && expires_at <= Utc::now()
-            {
-                return Err(StatusCode::UNAUTHORIZED);
-            }
-
-            state.auth.touch_last_used(key.id);
-
-            return Ok(AuthContext::from_scopes(
-                Some(key.id),
-                Some(key.name.clone()),
-                &key.scopes,
-            ));
-        }
+    if let Some(api_key) = api_key
+        && let Some(auth) = resolve_api_key(api_key, state).await?
+    {
+        return Ok(auth);
     }
 
     let webhook_secret = headers
