@@ -78,6 +78,10 @@ yaml-include = "0.8.1"
 opentelemetry-prometheus = "0.32"
 prometheus = "0.14.0"
 croner = { version = "3.0.1", features = ["serde"] }
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.9"
+moka = { version = "0.12", features = ["future"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

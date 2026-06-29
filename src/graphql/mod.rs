@@ -7,6 +7,7 @@ use queries::{
 use crate::graphql::queries::woolworths_query::WoolworthsQuery;
 
 pub mod dataloader;
+pub mod guard;
 pub mod handler;
 mod objects;
 mod queries;

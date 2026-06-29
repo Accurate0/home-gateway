@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod control;
 pub mod epd;
 pub mod health;

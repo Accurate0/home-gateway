@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO android_push_tokens (token) VALUES ($1) ON CONFLICT (token) DO UPDATE SET updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "654cf7ed171a58b916a69cd18993eaabc8e05ba7ad8da9bfad84e7b4bc282e4d"
+}

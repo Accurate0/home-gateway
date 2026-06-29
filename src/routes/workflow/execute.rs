@@ -1,5 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
+    auth::{Auth, scope::required},
     settings::workflow::Workflow,
     types::{ApiState, AppError},
 };
@@ -15,8 +16,12 @@ pub struct WorkflowExecutePayload {
 
 pub async fn workflow_execute(
     State(ApiState { .. }): State<ApiState>,
+    Auth(auth): Auth,
     Json(payload): Json<WorkflowExecutePayload>,
 ) -> Result<StatusCode, AppError> {
+    auth.require(&required::REST_WORKFLOW_EXECUTE)
+        .map_err(AppError::StatusCode)?;
+
     let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
         tracing::warn!("could not find workflow actor");
         return Ok(StatusCode::INTERNAL_SERVER_ERROR);

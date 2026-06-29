@@ -1,3 +1,5 @@
+use crate::auth::scope::required;
+use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::{environment_object::EnvironmentObject, events_object::EventsObject};
 use async_graphql::{InputObject, Object};
 use chrono::{DateTime, Utc};
@@ -12,6 +14,7 @@ pub struct EventsQuery;
 
 #[Object]
 impl EventsQuery {
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_EVENTS_READ))]
     async fn events(
         &self,
         _ctx: &async_graphql::Context<'_>,
@@ -20,6 +23,7 @@ impl EventsQuery {
         Ok(EventsObject { since: input.since })
     }
 
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_ENTITY_READ))]
     async fn environment(
         &self,
         _ctx: &async_graphql::Context<'_>,

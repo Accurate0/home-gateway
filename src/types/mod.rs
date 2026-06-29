@@ -1,4 +1,5 @@
 use crate::{
+    auth::AuthManager,
     device_registry::DeviceRegistry,
     event_bus::EventBus,
     feature_flag::FeatureFlagClient,
@@ -30,11 +31,10 @@ pub struct SharedActorState {
 pub struct ApiState {
     pub feature_flag_client: FeatureFlagClient,
     pub schema: FinalSchema,
-    #[allow(unused)]
     pub settings: SettingsContainer,
-    #[allow(unused)]
     pub db: Pool<Postgres>,
     pub s3: S3,
+    pub auth: AuthManager,
 }
 
 pub enum AppError {

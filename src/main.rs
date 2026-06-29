@@ -9,10 +9,10 @@ use actors::{
     root::RootSupervisor,
 };
 use async_graphql::{EmptyMutation, EmptySubscription, Schema, dataloader::DataLoader};
-use auth::RequireApiKey;
+use auth::{AuthManager, auth_middleware};
 use axum::{
-    middleware::from_extractor_with_state,
-    routing::{get, post},
+    middleware::from_fn_with_state,
+    routing::{delete, get, post},
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
@@ -25,6 +25,7 @@ use graphql::{
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
+    admin::keys::{create_key, list_keys, revoke_key},
     control::light::light_control,
     health::{actor_health, health},
     ingest::{
@@ -179,6 +180,7 @@ async fn main() -> anyhow::Result<()> {
         settings: settings_container.clone(),
         db: pool.clone(),
         s3,
+        auth: AuthManager::new(pool.clone()),
     };
 
     let api_routes = axum::Router::new()
@@ -192,12 +194,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/epd/latest", get(epd::latest))
         .route("/epd/take-screenshot", post(epd::take_screenshot))
         .route("/push/notify", post(push_notify))
-        .route_layer(from_extractor_with_state::<RequireApiKey, ApiState>(
-            api_state.clone(),
-        ))
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/home/push-token", post(push_token))
         .route("/ingest/unifi", post(unifi))
+        .route("/admin/keys", post(create_key).get(list_keys))
+        .route("/admin/keys/{id}", delete(revoke_key))
+        .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
         .route("/health", get(health))
         .route("/health/actors", get(actor_health))

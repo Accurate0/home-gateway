@@ -1,5 +1,6 @@
 use crate::{
     actors::solar::{SolarIngestActor, SolarMessage},
+    auth::{Auth, scope::required},
     types::ApiState,
 };
 use axum::{Json, extract::State};
@@ -23,8 +24,13 @@ pub struct SolarIngestPayload {
 
 pub async fn solar(
     State(ApiState { .. }): State<ApiState>,
+    Auth(auth): Auth,
     Json(solar_payload): Json<SolarIngestPayload>,
 ) -> StatusCode {
+    if auth.require(&required::INGEST_SOLAR_WRITE).is_err() {
+        return StatusCode::FORBIDDEN;
+    }
+
     if let Some(solar_actor) = ractor::registry::where_is(SolarIngestActor::NAME.to_string())
         && let Err(e) = solar_actor.send_message(SolarMessage::NewData(solar_payload))
     {

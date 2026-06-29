@@ -1,5 +1,6 @@
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
+    auth::{Auth, scope::required},
     settings::IEEEAddress,
     types::{ApiState, AppError},
 };
@@ -24,8 +25,12 @@ pub struct LightControlPayload {
 
 pub async fn light_control(
     State(ApiState { .. }): State<ApiState>,
+    Auth(auth): Auth,
     Json(control): Json<LightControlPayload>,
 ) -> Result<StatusCode, AppError> {
+    auth.require(&required::REST_CONTROL_WRITE)
+        .map_err(AppError::StatusCode)?;
+
     let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
         tracing::warn!("could not find light actor");
         return Ok(StatusCode::INTERNAL_SERVER_ERROR);

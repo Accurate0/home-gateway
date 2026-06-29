@@ -1,5 +1,6 @@
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
+    auth::{Auth, scope::required},
     types::{ApiState, AppError},
 };
 use axum::{Json, extract::State};
@@ -19,8 +20,12 @@ pub async fn config(
         feature_flag_client,
         ..
     }): State<ApiState>,
-) -> Json<EpdConfig> {
-    Json(EpdConfig {
+    Auth(auth): Auth,
+) -> Result<Json<EpdConfig>, AppError> {
+    auth.require(&required::REST_EPD_READ)
+        .map_err(AppError::StatusCode)?;
+
+    Ok(Json(EpdConfig {
         refresh_interval_mins: Some(15),
         #[cfg(debug_assertions)]
         image_url: Some("http://192.168.0.104:8000/v1/epd/latest".to_string()),
@@ -35,10 +40,13 @@ pub async fn config(
                 )
                 .await,
         ),
-    })
+    }))
 }
 
-pub async fn take_screenshot() -> Result<StatusCode, AppError> {
+pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
+    auth.require(&required::REST_EPD_WRITE)
+        .map_err(AppError::StatusCode)?;
+
     let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME.to_string());
     if let Some(actor) = maybe_actor {
         actor.send_message(EInkDisplayMessage::TakeScreenshot)?;
@@ -48,7 +56,13 @@ pub async fn take_screenshot() -> Result<StatusCode, AppError> {
     }
 }
 
-pub async fn latest(State(ApiState { s3, .. }): State<ApiState>) -> Result<Vec<u8>, AppError> {
+pub async fn latest(
+    State(ApiState { s3, .. }): State<ApiState>,
+    Auth(auth): Auth,
+) -> Result<Vec<u8>, AppError> {
+    auth.require(&required::REST_EPD_READ)
+        .map_err(AppError::StatusCode)?;
+
     let image_response = s3.get_object("eink-display-screenshot.png").await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
