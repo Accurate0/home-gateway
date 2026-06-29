@@ -1,9 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
+use home_gateway::api_types::{ApiKeyInfo, CreatedKey};
 use moka::future::Cache;
 use rand::{Rng, distr::Alphanumeric};
-use serde::Serialize;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
@@ -20,28 +20,6 @@ pub struct CachedKey {
     pub scopes: Vec<String>,
     pub expires_at: Option<DateTime<Utc>>,
     pub revoked_at: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ApiKeyInfo {
-    pub id: Uuid,
-    pub name: String,
-    pub key_prefix: String,
-    pub scopes: Vec<String>,
-    pub created_at: DateTime<Utc>,
-    pub last_used_at: Option<DateTime<Utc>>,
-    pub expires_at: Option<DateTime<Utc>>,
-    pub revoked_at: Option<DateTime<Utc>>,
-}
-
-#[derive(Serialize)]
-pub struct CreatedKey {
-    pub id: Uuid,
-    pub name: String,
-    pub key_prefix: String,
-    pub scopes: Vec<String>,
-    pub expires_at: Option<DateTime<Utc>>,
-    pub key: String,
 }
 
 #[derive(Clone)]
@@ -142,6 +120,46 @@ impl AuthManager {
         )
         .fetch_all(&self.db)
         .await
+    }
+
+    pub async fn update(
+        &self,
+        id: Uuid,
+        name: Option<&str>,
+        scopes: Option<&[String]>,
+        expires_at: Option<DateTime<Utc>>,
+    ) -> Result<Option<ApiKeyInfo>, sqlx::Error> {
+        let row = sqlx::query!(
+            "UPDATE api_keys SET \
+               name = COALESCE($2, name), \
+               scopes = COALESCE($3, scopes), \
+               expires_at = COALESCE($4, expires_at) \
+             WHERE id = $1 AND revoked_at IS NULL \
+             RETURNING id, name, key_prefix, key_hash, scopes, created_at, last_used_at, expires_at, revoked_at",
+            id,
+            name,
+            scopes,
+            expires_at
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        self.cache.invalidate(&row.key_hash).await;
+
+        Ok(Some(ApiKeyInfo {
+            id: row.id,
+            name: row.name,
+            key_prefix: row.key_prefix,
+            scopes: row.scopes,
+            created_at: row.created_at,
+            last_used_at: row.last_used_at,
+            expires_at: row.expires_at,
+            revoked_at: row.revoked_at,
+        }))
     }
 
     pub async fn revoke(&self, id: Uuid) -> Result<bool, sqlx::Error> {

@@ -25,7 +25,7 @@ use graphql::{
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
-    admin::keys::{create_key, list_keys, revoke_key},
+    admin::keys::{create_key, list_keys, revoke_key, update_key},
     control::light::light_control,
     health::{actor_health, health},
     ingest::{
@@ -198,7 +198,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/home/push-token", post(push_token))
         .route("/ingest/unifi", post(unifi))
         .route("/admin/keys", post(create_key).get(list_keys))
-        .route("/admin/keys/{id}", delete(revoke_key))
+        .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
         .route("/health", get(health))

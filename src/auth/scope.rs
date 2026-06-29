@@ -78,10 +78,62 @@ impl Action {
     }
 }
 
+impl Domain {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Graphql => "graphql",
+            Self::Rest => "rest",
+            Self::Ingest => "ingest",
+            Self::Admin => "admin",
+        }
+    }
+}
+
+impl Resource {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Energy => "energy",
+            Self::Entity => "entity",
+            Self::Events => "events",
+            Self::Solar => "solar",
+            Self::Weather => "weather",
+            Self::Woolworths => "woolworths",
+            Self::Control => "control",
+            Self::Workflow => "workflow",
+            Self::Push => "push",
+            Self::Epd => "epd",
+            Self::Schema => "schema",
+            Self::Synergy => "synergy",
+            Self::Home => "home",
+            Self::Unifi => "unifi",
+            Self::Keys => "keys",
+        }
+    }
+}
+
+impl Action {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Write => "write",
+            Self::Execute => "execute",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Segment<T> {
     Any,
     Exact(T),
+}
+
+impl<T> Segment<T> {
+    fn as_str(&self, render: impl Fn(&T) -> &'static str) -> &'static str {
+        match self {
+            Segment::Any => "*",
+            Segment::Exact(value) => render(value),
+        }
+    }
 }
 
 impl<T: PartialEq> Segment<T> {
@@ -162,6 +214,25 @@ impl ScopePattern {
                     && resource.matches(&required.resource)
                     && action.matches(&required.action)
             }
+        }
+    }
+}
+
+impl std::fmt::Display for ScopePattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ScopePattern::Global => f.write_str("*"),
+            ScopePattern::Parts {
+                domain,
+                resource,
+                action,
+            } => write!(
+                f,
+                "{}:{}:{}",
+                domain.as_str(Domain::as_str),
+                resource.as_str(Resource::as_str),
+                action.as_str(Action::as_str)
+            ),
         }
     }
 }

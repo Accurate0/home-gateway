@@ -2055,6 +2055,7 @@ dependencies = [
  "chromiumoxide",
  "chrono",
  "chrono-tz",
+ "clap",
  "config",
  "croner",
  "csv",

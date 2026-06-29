@@ -1,4 +1,5 @@
 pub mod appliances_object;
+pub mod auth_object;
 pub mod doors_object;
 pub mod energy_object;
 pub mod environment_object;

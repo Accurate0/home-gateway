@@ -2,23 +2,14 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use chrono::{DateTime, Utc};
+use home_gateway::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use http::StatusCode;
-use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-    auth::{Auth, manager::CreatedKey, scope::required},
+    auth::{Auth, scope::required},
     types::{ApiState, AppError},
 };
-
-#[derive(Deserialize)]
-pub struct CreateKeyPayload {
-    pub name: String,
-    pub scopes: Vec<String>,
-    #[serde(default)]
-    pub expires_at: Option<DateTime<Utc>>,
-}
 
 pub async fn create_key(
     State(ApiState { auth: manager, .. }): State<ApiState>,
@@ -43,6 +34,29 @@ pub async fn list_keys(
     let keys = manager.list().await?;
 
     Ok(Json(keys))
+}
+
+pub async fn update_key(
+    State(ApiState { auth: manager, .. }): State<ApiState>,
+    Auth(auth): Auth,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<UpdateKeyPayload>,
+) -> Result<Json<ApiKeyInfo>, AppError> {
+    auth.require(&required::ADMIN_KEYS_WRITE).map_err(AppError::StatusCode)?;
+
+    let updated = manager
+        .update(
+            id,
+            payload.name.as_deref(),
+            payload.scopes.as_deref(),
+            payload.expires_at,
+        )
+        .await?;
+
+    match updated {
+        Some(info) => Ok(Json(info)),
+        None => Err(AppError::StatusCode(StatusCode::NOT_FOUND)),
+    }
 }
 
 pub async fn revoke_key(
