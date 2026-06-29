@@ -1,4 +1,5 @@
 use crate::{
+    event_bus::EventBusMessage,
     mqtt::ZIGBEE2MQTT_BASE,
     settings::IEEEAddress,
     types::SharedActorState,
@@ -23,7 +24,6 @@ pub enum Entity {
 }
 
 pub struct NewEvent {
-    #[allow(unused)]
     pub event_id: Uuid,
     pub entity: Entity,
 }
@@ -67,6 +67,7 @@ impl LightHandler {
 
     async fn update_light_state(
         &self,
+        event_id: Uuid,
         ieee_addr: IEEEAddress,
         state: String,
     ) -> Result<(), anyhow::Error> {
@@ -76,28 +77,48 @@ impl LightHandler {
             state,
         ).execute(&self.shared_actor_state.db).await?;
 
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Light {
+                event_id,
+                on: state == "ON",
+                ieee_addr,
+            });
+
         Ok(())
     }
 
     async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
         match message {
-            LightHandlerMessage::NewEvent(event) => match event.entity {
-                Entity::Phillips9290012573A(phillips_9290012573_a) => {
-                    self.update_light_state(
-                        phillips_9290012573_a.device.ieee_addr,
-                        phillips_9290012573_a.state,
-                    )
-                    .await?
-                }
-                Entity::IKEALED2201G8(ikealed2201_g8) => {
-                    self.update_light_state(ikealed2201_g8.device.ieee_addr, ikealed2201_g8.state)
+            LightHandlerMessage::NewEvent(event) => {
+                let event_id = event.event_id;
+                match event.entity {
+                    Entity::Phillips9290012573A(phillips_9290012573_a) => {
+                        self.update_light_state(
+                            event_id,
+                            phillips_9290012573_a.device.ieee_addr,
+                            phillips_9290012573_a.state,
+                        )
                         .await?
-                }
-                Entity::AqaraT1(aqara_t1) => {
-                    self.update_light_state(aqara_t1.device.ieee_addr, aqara_t1.state)
+                    }
+                    Entity::IKEALED2201G8(ikealed2201_g8) => {
+                        self.update_light_state(
+                            event_id,
+                            ikealed2201_g8.device.ieee_addr,
+                            ikealed2201_g8.state,
+                        )
                         .await?
+                    }
+                    Entity::AqaraT1(aqara_t1) => {
+                        self.update_light_state(
+                            event_id,
+                            aqara_t1.device.ieee_addr,
+                            aqara_t1.state,
+                        )
+                        .await?
+                    }
                 }
-            },
+            }
             LightHandlerMessage::TurnOn { ieee_addr } => {
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "ON"}))
                     .await?;

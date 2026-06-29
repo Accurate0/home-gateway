@@ -269,24 +269,26 @@ impl EnvironmentSensorHandler {
             now,
         ).execute(&self.shared_actor_state.db).await?;
 
-        // publish each present reading onto the bus, keyed by device id, so
-        // `environment` triggers can match on a metric + threshold
-        let readings = [
-            SensorReading::Temperature { value: temperature }.into(),
+        // publish all present readings in a single event, keyed by device id, so
+        // `environment` triggers and subscribers see the full metric snapshot
+        let readings: Vec<SensorReading> = [
+            Some(SensorReading::Temperature { value: temperature }),
             humidity.map(|value| SensorReading::Humidity { value }),
             pressure.map(|value| SensorReading::Pressure { value }),
             lux.map(|value| SensorReading::Lux { value }),
             uv_index.map(|value| SensorReading::UvIndex { value }),
-        ];
-        for reading in readings.into_iter().flatten() {
-            self.shared_actor_state
-                .event_bus
-                .publish(EventBusMessage::Environment {
-                    event_id,
-                    sensor: ieee_addr.clone(),
-                    reading,
-                });
-        }
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Environment {
+                event_id,
+                sensor: ieee_addr,
+                readings,
+            });
 
         Ok(())
     }

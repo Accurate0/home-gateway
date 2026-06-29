@@ -1,3 +1,4 @@
+use crate::event_bus::EventBusMessage;
 use crate::types::{SharedActorState, db::UnifiState};
 use ractor::Actor;
 use tracing::instrument;
@@ -54,6 +55,15 @@ impl UnifiConnectedClientHandler {
         )
         .execute(&self.shared_actor_state.db)
         .await?;
+
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Unifi {
+                event_id,
+                mac_address: mac_address.to_string(),
+                client: name.to_string(),
+                connected: matches!(state, UnifiState::Connected),
+            });
 
         Ok(())
     }

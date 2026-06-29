@@ -85,12 +85,17 @@ impl WorkflowDispatcher {
                     cmp,
                 },
                 EventBusMessage::Environment {
-                    sensor: s, reading, ..
+                    sensor: s,
+                    readings,
+                    ..
                 },
             ) => {
-                if devices.address_or_self(sensor) != s.as_str() || *metric != reading.metric() {
+                if devices.address_or_self(sensor) != s.as_str() {
                     return false;
                 }
+                let Some(reading) = readings.iter().find(|r| r.metric() == *metric) else {
+                    return false;
+                };
                 let satisfied = cmp.matches(reading.value());
                 let key = (workflow.name.clone(), s.clone(), reading.metric());
                 let was_satisfied = state.last_satisfied.insert(key, satisfied).unwrap_or(false);

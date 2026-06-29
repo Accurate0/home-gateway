@@ -34,9 +34,7 @@ fn telemetry_resource() -> Resource {
     Resource::builder_empty().with_attributes(tags).build()
 }
 
-pub fn external_tracer() -> Tracer {
-    let ingest_url = std::env::var("OTEL_TRACING_URL").unwrap();
-
+pub fn external_tracer(ingest_url: String) -> Tracer {
     let resource = telemetry_resource();
 
     let batch_config = BatchConfigBuilder::default()
@@ -65,12 +63,6 @@ pub fn external_tracer() -> Tracer {
     tracer
 }
 
-/// Stand up a pull-based Prometheus metrics pipeline so instruments created via
-/// `opentelemetry::global::meter(...)` are actually exported. Without this the
-/// SDK uses a no-op provider and every recorded metric is silently dropped.
-///
-/// Returns the registry to be served from the `/metrics` endpoint that
-/// Prometheus (via a ServiceMonitor) scrapes.
 pub fn init_metrics() -> Registry {
     let registry = Registry::new();
 
@@ -90,18 +82,28 @@ pub fn init_metrics() -> Registry {
 }
 
 pub fn init() {
-    let tracer = external_tracer();
+    let filter = Targets::default()
+        .with_target("otel::tracing", Level::TRACE)
+        .with_target("sea_orm::database", Level::TRACE)
+        .with_default(Level::INFO);
 
-    opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
+    match std::env::var("OTEL_TRACING_URL") {
+        Ok(ingest_url) if !ingest_url.is_empty() => {
+            let tracer = external_tracer(ingest_url);
 
-    tracing_subscriber::registry()
-        .with(
-            Targets::default()
-                .with_target("otel::tracing", Level::TRACE)
-                .with_target("sea_orm::database", Level::TRACE)
-                .with_default(Level::INFO),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .with(tracing_opentelemetry::layer().with_tracer(tracer))
-        .init();
+            opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
+
+            tracing_subscriber::registry()
+                .with(filter)
+                .with(tracing_subscriber::fmt::layer())
+                .with(tracing_opentelemetry::layer().with_tracer(tracer))
+                .init();
+        }
+        _ => {
+            tracing_subscriber::registry()
+                .with(filter)
+                .with(tracing_subscriber::fmt::layer())
+                .init();
+        }
+    }
 }

@@ -29,6 +29,7 @@ pub enum Resource {
     Switch,
     Environment,
     Cron,
+    Light,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,6 +75,7 @@ impl Resource {
             "switch" => Self::Switch,
             "environment" => Self::Environment,
             "cron" => Self::Cron,
+            "light" => Self::Light,
             _ => return None,
         })
     }
@@ -125,6 +127,7 @@ impl Resource {
             Self::Switch => "switch",
             Self::Environment => "environment",
             Self::Cron => "cron",
+            Self::Light => "light",
         }
     }
 
@@ -132,9 +135,11 @@ impl Resource {
         Some(match kind {
             "presence" => Self::Presence,
             "door" => Self::Door,
-            "switch_action" => Self::Switch,
+            "switch" => Self::Switch,
             "environment" => Self::Environment,
             "cron" => Self::Cron,
+            "light" => Self::Light,
+            "unifi" => Self::Unifi,
             _ => return None,
         })
     }
@@ -295,8 +300,7 @@ pub mod required {
         Scope::new(Domain::Ingest, Resource::Synergy, Action::Write);
     pub const INGEST_SOLAR_WRITE: Scope =
         Scope::new(Domain::Ingest, Resource::Solar, Action::Write);
-    pub const INGEST_HOME_WRITE: Scope =
-        Scope::new(Domain::Ingest, Resource::Home, Action::Write);
+    pub const INGEST_HOME_WRITE: Scope = Scope::new(Domain::Ingest, Resource::Home, Action::Write);
     pub const INGEST_UNIFI_WRITE: Scope =
         Scope::new(Domain::Ingest, Resource::Unifi, Action::Write);
 

@@ -41,7 +41,7 @@ impl PlantSensorHandler {
             .publish(EventBusMessage::Environment {
                 event_id: event.event_id,
                 sensor: event.node,
-                reading: SensorReading::new(event.object_id.into(), event.value),
+                readings: vec![SensorReading::new(event.object_id.into(), event.value)],
             });
 
         Ok(())

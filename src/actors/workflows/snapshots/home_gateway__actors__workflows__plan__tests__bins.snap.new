@@ -1,7 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-assertion_line: 208
-expression: out
----
-# Bins  (on: cron(0 19 * * 4))
-  notify: notify(AndroidApp): Bins

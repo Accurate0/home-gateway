@@ -118,19 +118,35 @@ pub enum EventBusMessage {
         ieee_addr: IEEEAddress,
         action: String,
     },
-    /// A scalar sensor reading. `metric` is the esphome object_id / reading name
-    /// (`soil_moisture`, `temperature`, `humidity`, …). Threshold + rising-edge
-    /// handling lives in the dispatcher so a reading staying past a threshold
-    /// only fires once.
+    /// A bundle of scalar sensor readings captured together. An environment
+    /// sensor emits all of its metrics (`temperature`, `humidity`, …) in a single
+    /// event so every trigger and subscriber sees the full snapshot. Threshold +
+    /// rising-edge handling lives in the dispatcher so a reading staying past a
+    /// threshold only fires once.
     Environment {
         event_id: Uuid,
         sensor: String,
-        reading: SensorReading,
+        readings: Vec<SensorReading>,
     },
     /// A scheduled `Cron` trigger came due. `name` identifies the trigger so the
     /// dispatcher can match it; the schedule itself lives in the trigger config
     /// and is owned by the [`crate::actors::cron::CronActor`] producer.
     Cron { event_id: Uuid, name: String },
+    /// A light reported a power-state change (`on`/off), published for
+    /// subscribers; the dispatcher does not currently trigger on it.
+    Light {
+        event_id: Uuid,
+        ieee_addr: IEEEAddress,
+        on: bool,
+    },
+    /// A UniFi WiFi client connected or disconnected. `client` is the mapped
+    /// friendly name (or `unknown`); published for subscribers, not triggered on.
+    Unifi {
+        event_id: Uuid,
+        mac_address: String,
+        client: String,
+        connected: bool,
+    },
 }
 
 impl EventBusMessage {
@@ -142,7 +158,9 @@ impl EventBusMessage {
             | EventBusMessage::Door { event_id, .. }
             | EventBusMessage::SwitchAction { event_id, .. }
             | EventBusMessage::Environment { event_id, .. }
-            | EventBusMessage::Cron { event_id, .. } => *event_id,
+            | EventBusMessage::Cron { event_id, .. }
+            | EventBusMessage::Light { event_id, .. }
+            | EventBusMessage::Unifi { event_id, .. } => *event_id,
         }
     }
 
@@ -151,22 +169,33 @@ impl EventBusMessage {
         match self {
             EventBusMessage::Presence { .. } => "presence",
             EventBusMessage::Door { .. } => "door",
-            EventBusMessage::SwitchAction { .. } => "switch_action",
+            EventBusMessage::SwitchAction { .. } => "switch",
             EventBusMessage::Environment { .. } => "environment",
             EventBusMessage::Cron { .. } => "cron",
+            EventBusMessage::Light { .. } => "light",
+            EventBusMessage::Unifi { .. } => "unifi",
         }
     }
 
-    pub const KINDS: &'static [&'static str] =
-        &["presence", "door", "switch_action", "environment", "cron"];
+    pub const KINDS: &'static [&'static str] = &[
+        "presence",
+        "door",
+        "switch",
+        "environment",
+        "cron",
+        "light",
+        "unifi",
+    ];
 
     pub fn entity(&self) -> String {
         match self {
             EventBusMessage::Presence { sensor, .. }
             | EventBusMessage::Environment { sensor, .. } => sensor.clone(),
             EventBusMessage::Door { ieee_addr, .. }
-            | EventBusMessage::SwitchAction { ieee_addr, .. } => ieee_addr.to_string(),
+            | EventBusMessage::SwitchAction { ieee_addr, .. }
+            | EventBusMessage::Light { ieee_addr, .. } => ieee_addr.to_string(),
             EventBusMessage::Cron { name, .. } => name.clone(),
+            EventBusMessage::Unifi { mac_address, .. } => mac_address.clone(),
         }
     }
 }
