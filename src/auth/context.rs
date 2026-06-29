@@ -7,6 +7,7 @@ use super::scope::{Scope, ScopePattern};
 pub struct AuthContext {
     #[allow(dead_code)]
     pub key_id: Option<Uuid>,
+    pub name: Option<String>,
     pub scopes: Vec<ScopePattern>,
     #[allow(dead_code)]
     pub legacy: bool,
@@ -16,12 +17,13 @@ impl AuthContext {
     pub fn full_access(legacy: bool) -> Self {
         Self {
             key_id: None,
+            name: None,
             scopes: vec![ScopePattern::Global],
             legacy,
         }
     }
 
-    pub fn from_scopes(key_id: Option<Uuid>, scopes: &[String]) -> Self {
+    pub fn from_scopes(key_id: Option<Uuid>, name: Option<String>, scopes: &[String]) -> Self {
         let scopes = scopes
             .iter()
             .filter_map(|raw| match ScopePattern::parse(raw) {
@@ -35,6 +37,7 @@ impl AuthContext {
 
         Self {
             key_id,
+            name,
             scopes,
             legacy: false,
         }

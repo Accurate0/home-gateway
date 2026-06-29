@@ -17,6 +17,7 @@ const CACHE_TTL: Duration = Duration::from_secs(3600);
 #[derive(Debug, Clone)]
 pub struct CachedKey {
     pub id: Uuid,
+    pub name: String,
     pub scopes: Vec<String>,
     pub expires_at: Option<DateTime<Utc>>,
     pub revoked_at: Option<DateTime<Utc>>,
@@ -49,7 +50,7 @@ impl AuthManager {
             .try_get_with(hash.clone(), async move {
                 let row = sqlx::query_as!(
                     CachedKey,
-                    "SELECT id, scopes, expires_at, revoked_at FROM api_keys WHERE key_hash = $1",
+                    "SELECT id, name, scopes, expires_at, revoked_at FROM api_keys WHERE key_hash = $1",
                     hash
                 )
                 .fetch_optional(&db)

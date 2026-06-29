@@ -60,7 +60,11 @@ pub async fn resolve_auth(
 
             state.auth.touch_last_used(key.id);
 
-            return Ok(AuthContext::from_scopes(Some(key.id), &key.scopes));
+            return Ok(AuthContext::from_scopes(
+                Some(key.id),
+                Some(key.name.clone()),
+                &key.scopes,
+            ));
         }
     }
 
@@ -75,6 +79,7 @@ pub async fn resolve_auth(
         {
             return Ok(AuthContext::from_scopes(
                 None,
+                Some("android-webhook".to_owned()),
                 &["ingest:home:write".to_owned()],
             ));
         }
@@ -82,6 +87,7 @@ pub async fn resolve_auth(
         if !settings.unifi_webhook_secret.is_empty() && secret == settings.unifi_webhook_secret {
             return Ok(AuthContext::from_scopes(
                 None,
+                Some("unifi-webhook".to_owned()),
                 &["ingest:unifi:write".to_owned()],
             ));
         }

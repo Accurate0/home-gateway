@@ -12,6 +12,7 @@ impl AuthQuery {
 
         Ok(AuthObject {
             id: auth.key_id.map(|id| id.to_string()),
+            name: auth.name.clone(),
             scopes: auth.scopes.iter().map(ToString::to_string).collect(),
         })
     }
