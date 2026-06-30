@@ -1,7 +1,8 @@
 use async_graphql::{EmptyMutation, MergedObject, Schema};
 use queries::{
-    auth_query::AuthQuery, energy_query::EnergyQuery, environments_query::EnvironmentsQuery,
-    events_query::EventsQuery, solar_query::SolarQuery, weather_query::WeatherQuery,
+    auth_query::AuthQuery, energy_query::EnergyQuery, entities_query::EntitiesQuery,
+    environments_query::EnvironmentsQuery, events_query::EventsQuery, solar_query::SolarQuery,
+    weather_query::WeatherQuery,
 };
 
 use crate::graphql::queries::woolworths_query::WoolworthsQuery;
@@ -19,6 +20,7 @@ pub struct QueryRoot(
     AuthQuery,
     EventsQuery,
     EnvironmentsQuery,
+    EntitiesQuery,
     SolarQuery,
     EnergyQuery,
     WeatherQuery,

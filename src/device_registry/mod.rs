@@ -72,9 +72,14 @@ pub enum DeviceConfig {
     Presence(RawPresenceBlock),
     Environment(RawEnvironmentBlock),
     Plant(RawPlantBlock),
-    Light,
+    Light(RawLightBlock),
     ControlSwitch,
     SmartSwitch,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawLightBlock {
+    name: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -88,6 +93,8 @@ pub struct RawPresenceBlock {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawEnvironmentBlock {
     id: String,
+    #[serde(default)]
+    name: Option<String>,
     #[serde(default = "default_environment_entities")]
     entities: Vec<String>,
 }
@@ -107,6 +114,7 @@ pub struct DeviceRegistry {
     appliances: HashMap<String, ApplianceSettings>,
     environment: HashMap<String, EnvironmentSensorSettings>,
     presence: HashMap<String, PresenceSettings>,
+    lights: HashMap<String, String>,
     plant: HashMap<String, PlantSensorSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: Arc<RwLock<HashMap<IEEEAddress, String>>>,
@@ -189,10 +197,12 @@ impl DeviceRegistry {
                 if transport == Transport::Esphome {
                     self.add_esphome_sensor_topics(address, &environment.entities);
                 }
+                let name = environment.name.unwrap_or_else(|| environment.id.clone());
                 self.environment.insert(
                     address.to_owned(),
                     EnvironmentSensorSettings {
                         id: environment.id,
+                        name,
                         sensor_type: transport.environment_type(),
                         entities: environment.entities,
                     },
@@ -208,7 +218,10 @@ impl DeviceRegistry {
                     },
                 );
             }
-            DeviceConfig::Light | DeviceConfig::ControlSwitch | DeviceConfig::SmartSwitch => {}
+            DeviceConfig::Light(light) => {
+                self.lights.insert(address.to_owned(), light.name);
+            }
+            DeviceConfig::ControlSwitch | DeviceConfig::SmartSwitch => {}
         }
         Ok(())
     }
@@ -233,6 +246,14 @@ impl DeviceRegistry {
         self.aliases
             .get(reference)
             .map_or(reference, |a| a.as_str())
+    }
+
+    /// Reverse of the alias map: the configured sensor slug for a device address.
+    pub fn id_for_address(&self, address: &str) -> Option<&str> {
+        self.aliases
+            .iter()
+            .find(|(_, a)| a.as_str() == address)
+            .map(|(id, _)| id.as_str())
     }
 
     pub async fn record_friendly_name(&self, address: IEEEAddress, name: String) {
@@ -282,5 +303,26 @@ impl DeviceRegistry {
 
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
         self.watchdog.iter()
+    }
+
+    /// Every configured light, keyed by address with its human name, for entity
+    /// enumeration.
+    pub fn lights(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.lights.iter()
+    }
+
+    /// Every configured door, keyed by address, for entity enumeration.
+    pub fn doors(&self) -> impl Iterator<Item = (&String, &DoorSettings)> {
+        self.doors.iter()
+    }
+
+    /// Every configured presence sensor, keyed by address, for entity enumeration.
+    pub fn presence_devices(&self) -> impl Iterator<Item = (&String, &PresenceSettings)> {
+        self.presence.iter()
+    }
+
+    /// Every configured environment sensor, keyed by address, for entity enumeration.
+    pub fn environment_devices(&self) -> impl Iterator<Item = (&String, &EnvironmentSensorSettings)> {
+        self.environment.iter()
     }
 }

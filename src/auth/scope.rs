@@ -280,6 +280,14 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::Entity, Action::Read);
     pub const GRAPHQL_EVENTS_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Events, Action::Read);
+    pub const GRAPHQL_LIGHT_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Light, Action::Read);
+    pub const GRAPHQL_DOOR_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Door, Action::Read);
+    pub const GRAPHQL_PRESENCE_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Presence, Action::Read);
+    pub const GRAPHQL_ENVIRONMENT_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Environment, Action::Read);
     pub const GRAPHQL_SOLAR_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Solar, Action::Read);
     pub const GRAPHQL_WEATHER_READ: Scope =

@@ -174,6 +174,7 @@ async fn main() -> anyhow::Result<()> {
         ))
         .data(pool.clone())
         .data(settings_container.clone())
+        .data(device_registry.clone())
         .data(event_bus)
         .extension(crate::graphql_tracing::Tracing)
         .finish();

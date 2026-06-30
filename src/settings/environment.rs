@@ -20,6 +20,7 @@ pub(crate) fn default_environment_entities() -> Vec<String> {
 #[derive(Debug, Clone)]
 pub struct EnvironmentSensorSettings {
     pub id: String,
+    pub name: String,
     #[allow(unused)]
     pub sensor_type: EnvironmentSensorType,
     /// esphome sensor object_ids to subscribe to on discovery. Unused for zigbee

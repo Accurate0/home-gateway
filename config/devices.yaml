@@ -29,28 +29,28 @@
   address: "0x00158d008b8798a7"
   kinds:
     - kind: environment
-      config: { id: LIVING_ROOM }
+      config: { id: LIVING_ROOM, name: Living Room }
 
 - id: env_bathroom
   transport: zigbee
   address: "0x00158d008b879b53"
   kinds:
     - kind: environment
-      config: { id: BATHROOM }
+      config: { id: BATHROOM, name: Bathroom }
 
 - id: env_bedroom
   transport: zigbee
   address: "0xb0c7defffef6a9be"
   kinds:
     - kind: environment
-      config: { id: BEDROOM }
+      config: { id: BEDROOM, name: Bedroom }
 
 - id: env_outdoor
   transport: zigbee
   address: "0x54ef441000ee2ca3"
   kinds:
     - kind: environment
-      config: { id: OUTDOOR }
+      config: { id: OUTDOOR, name: Outdoor }
 
 - id: livingroom_motion
   transport: esphome
@@ -73,7 +73,7 @@
   address: apollo-plt-1-hallway
   kinds:
     - kind: environment
-      config: { id: HALLWAY_PLANT }
+      config: { id: HALLWAY_PLANT, name: Hallway Plant }
     - kind: plant
       config: { id: HALLWAY_PLANT, entities: [soil_moisture] }
 
@@ -82,24 +82,28 @@
   address: "0x54ef441000d4f05c"
   kinds:
     - kind: light
+      config: { name: Closet Light }
 
 - id: non_existent_light
   transport: zigbee
   address: "0x000000000000000"
   kinds:
     - kind: light
+      config: { name: Non Existent Light }
 
 - id: table_lamp_bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
   kinds:
     - kind: light
+      config: { name: Bedroom Table Lamp }
 
 - id: floor_lamp_living_room
   transport: zigbee
   address: "0x94a081fffe2eedc0"
   kinds:
     - kind: light
+      config: { name: Living Room Floor Lamp }
 
 - id: control_switch
   transport: zigbee
