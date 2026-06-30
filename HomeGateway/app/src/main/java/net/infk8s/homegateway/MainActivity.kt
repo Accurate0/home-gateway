@@ -21,11 +21,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlin.concurrent.thread
 import net.infk8s.homegateway.graphql.EntitiesUiState
@@ -48,6 +52,16 @@ class MainActivity : ComponentActivity() {
             HomeGatewayTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val state by entitiesViewModel.state.collectAsStateWithLifecycle()
+                    // Run the live WebSocket only while the UI is at least STARTED.
+                    // repeatOnLifecycle cancels run() when the app is backgrounded or the
+                    // phone locks, and restarts it on return — which re-fetches a fresh
+                    // snapshot so the list is correct after time away.
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    LaunchedEffect(lifecycleOwner) {
+                        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                            entitiesViewModel.run()
+                        }
+                    }
                     EntitiesScreen(state, Modifier.padding(innerPadding))
                 }
             }

@@ -2,15 +2,11 @@ package net.infk8s.homegateway.graphql
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.retryWhen
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 
 /// A single entity rendered in the list, with just the state we display.
 sealed interface EntityUi {
@@ -45,24 +41,42 @@ class EntitiesViewModel : ViewModel() {
     private val _state = MutableStateFlow<EntitiesUiState>(EntitiesUiState.Loading)
     val state: StateFlow<EntitiesUiState> = _state.asStateFlow()
 
-    init {
-        viewModelScope.launch { loadAndSubscribe() }
+    /// Drives the live connection for as long as the caller's coroutine is active.
+    /// The Activity launches this from a STARTED-scoped lifecycle, so the WebSocket
+    /// only runs while the UI is visible — when the phone locks or the app is
+    /// backgrounded the coroutine is cancelled and the socket torn down, instead of
+    /// leaving Apollo to spin reconnect attempts against a Doze-suspended network.
+    suspend fun run() {
+        var backoffMs = INITIAL_BACKOFF_MS
+        while (true) {
+            try {
+                // Re-fetch a full snapshot on every (re)connect: the subscription only
+                // carries deltas, so any events missed while disconnected would otherwise
+                // leave the UI permanently stale. Querying first reconciles that.
+                loadSnapshot()
+                backoffMs = INITIAL_BACKOFF_MS
+                subscribe()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("EntitiesViewModel", "live connection lost, reconnecting in ${backoffMs}ms", e)
+                // Keep showing the last snapshot while reconnecting; only surface an
+                // error if we never managed to load anything in the first place.
+                if (_state.value !is EntitiesUiState.Loaded) {
+                    _state.value = EntitiesUiState.Error(e.message ?: "Failed to load entities")
+                }
+                delay(backoffMs)
+                backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+            }
+        }
     }
 
-    private suspend fun loadAndSubscribe() {
-        val response = try {
-            apollo.query(EntitiesQuery()).execute()
-        } catch (e: Exception) {
-            _state.value = EntitiesUiState.Error(e.message ?: "Failed to load entities")
-            return
-        }
+    private suspend fun loadSnapshot() {
+        val response = apollo.query(EntitiesQuery()).execute()
         val data = response.data
-        if (data == null) {
-            _state.value = EntitiesUiState.Error(
+            ?: throw IllegalStateException(
                 response.errors?.firstOrNull()?.message ?: "Failed to load entities",
             )
-            return
-        }
         // Partial errors (e.g. an unreachable actor) only null individual fields,
         // not the entity — keep rendering the list and just log them.
         if (response.hasErrors()) {
@@ -71,19 +85,12 @@ class EntitiesViewModel : ViewModel() {
 
         val items = data.entities.mapNotNull { it.toUi() }.sortedBy { it.name.lowercase() }
         _state.value = EntitiesUiState.Loaded(items)
-
-        subscribe()
     }
 
     private suspend fun subscribe() {
+        // A dropped WebSocket throws out of collect; the run() loop catches it, backs
+        // off, and reconnects with a fresh snapshot rather than resuming stale deltas.
         apollo.subscription(EventsSubscription()).toFlow()
-            .retryWhen { cause, _ ->
-                // Reconnect on a dropped WebSocket rather than tearing the screen down.
-                Log.w("EntitiesViewModel", "events subscription error, retrying", cause)
-                delay(2_000.milliseconds)
-                true
-            }
-            .catch { Log.e("EntitiesViewModel", "events subscription stopped", it) }
             .collect { response ->
                 val event = response.data?.events ?: return@collect
                 applyEvent(event)
@@ -148,5 +155,10 @@ class EntitiesViewModel : ViewModel() {
             )
 
         else -> null
+    }
+
+    private companion object {
+        const val INITIAL_BACKOFF_MS = 1_000L
+        const val MAX_BACKOFF_MS = 30_000L
     }
 }
