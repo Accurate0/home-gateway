@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.apollo)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
@@ -70,10 +71,18 @@ android {
     }
 }
 
+apollo {
+    service("gateway") {
+        packageName.set("net.infk8s.homegateway.graphql")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.okhttp)
+    implementation(libs.apollo.runtime)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.core.ktx)

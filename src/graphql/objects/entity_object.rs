@@ -50,8 +50,10 @@ impl LightEntity {
         &self.name
     }
 
-    async fn on(&self) -> async_graphql::Result<bool> {
-        Ok(
+    /// Current power state. Nullable so an unreachable light actor reports the
+    /// error against this field without nulling the whole entity.
+    async fn on(&self) -> async_graphql::Result<Option<bool>> {
+        Ok(Some(
             rpc::query_factory(LightHandler::NAME, QUERY_TIMEOUT, |reply| {
                 LightHandlerMessage::QueryPowerState {
                     ieee_addr: self.address.clone(),
@@ -59,7 +61,7 @@ impl LightEntity {
                 }
             })
             .await?,
-        )
+        ))
     }
 }
 
@@ -81,7 +83,9 @@ impl DoorEntity {
         &self.name
     }
 
-    async fn open(&self) -> async_graphql::Result<bool> {
+    /// Whether the door is open. Nullable so an unreachable door-events actor
+    /// reports the error against this field without nulling the whole entity.
+    async fn open(&self) -> async_graphql::Result<Option<bool>> {
         let state: Option<DoorState> = rpc::query(DerivedDoorEvents::NAME, QUERY_TIMEOUT, |reply| {
             DoorEventsMessage::QueryState {
                 ieee_addr: self.address.clone(),
@@ -89,7 +93,7 @@ impl DoorEntity {
             }
         })
         .await?;
-        Ok(matches!(state, Some(DoorState::Open)))
+        Ok(Some(matches!(state, Some(DoorState::Open))))
     }
 }
 
@@ -112,7 +116,9 @@ impl PresenceEntity {
         &self.name
     }
 
-    async fn present(&self) -> async_graphql::Result<bool> {
+    /// Whether presence is detected. Nullable so an unreachable presence actor
+    /// reports the error against this field without nulling the whole entity.
+    async fn present(&self) -> async_graphql::Result<Option<bool>> {
         let present: Option<bool> =
             rpc::query_factory(PresenceSensorHandler::NAME, QUERY_TIMEOUT, |reply| {
                 PresenceMessage::QueryLatest {
@@ -121,7 +127,7 @@ impl PresenceEntity {
                 }
             })
             .await?;
-        Ok(present.unwrap_or(false))
+        Ok(Some(present.unwrap_or(false)))
     }
 }
 
@@ -160,8 +166,13 @@ impl EnvironmentEntity {
         &self.name
     }
 
-    async fn temperature(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<f64> {
-        self.load(ctx, |t| t.temperature).await
+    /// Nullable so a missing reading reports the error against this field
+    /// without nulling the whole entity.
+    async fn temperature(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
+        Ok(Some(self.load(ctx, |t| t.temperature).await?))
     }
 
     async fn humidity(
@@ -189,7 +200,12 @@ impl EnvironmentEntity {
         self.load(ctx, |t| t.uv_index).await
     }
 
-    async fn time(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<DateTime<Utc>> {
-        self.load(ctx, |t| t.time).await
+    /// Nullable so a missing reading reports the error against this field
+    /// without nulling the whole entity.
+    async fn time(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        Ok(Some(self.load(ctx, |t| t.time).await?))
     }
 }

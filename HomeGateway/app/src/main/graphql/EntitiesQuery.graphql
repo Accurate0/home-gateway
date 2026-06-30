@@ -1,0 +1,30 @@
+query Entities {
+  entities {
+    __typename
+    ... on LightEntity {
+      id
+      name
+      on
+    }
+    ... on DoorEntity {
+      id
+      name
+      open
+    }
+    ... on PresenceEntity {
+      id
+      name
+      present
+    }
+    ... on EnvironmentEntity {
+      id
+      name
+      temperature
+      humidity
+      pressure
+      lux
+      uvIndex
+      time
+    }
+  }
+}

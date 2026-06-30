@@ -32,10 +32,6 @@ scalar DateTime
 type DoorEntity {
 	id: String!
 	name: String!
-	"""
-	Whether the door is open. Nullable so an unreachable door-events actor
-	reports the error against this field without nulling the whole entity.
-	"""
 	open: Boolean
 }
 
@@ -54,17 +50,8 @@ enum DoorState {
 
 type DoorUpdate {
 	eventId: UUID!
-	"""
-	Config slug, matching the `id` from the `entities` query.
-	"""
 	id: String!
-	"""
-	Human-friendly name, matching the `entities` query.
-	"""
 	name: String!
-	"""
-	Raw device address the event was emitted for.
-	"""
 	device: String!
 	open: Boolean!
 }
@@ -100,19 +87,11 @@ type EnvironmentDetails {
 type EnvironmentEntity {
 	id: String!
 	name: String!
-	"""
-	Nullable so a missing reading reports the error against this field
-	without nulling the whole entity.
-	"""
 	temperature: Float
 	humidity: Float
 	pressure: Float
 	lux: Float
 	uvIndex: Float
-	"""
-	Nullable so a missing reading reports the error against this field
-	without nulling the whole entity.
-	"""
 	time: DateTime
 }
 
@@ -135,17 +114,8 @@ type EnvironmentObject {
 
 type EnvironmentUpdate {
 	eventId: UUID!
-	"""
-	Config slug, matching the `id` from the `entities` query.
-	"""
 	id: String!
-	"""
-	Human-friendly name, matching the `entities` query.
-	"""
 	name: String!
-	"""
-	Raw device address the event was emitted for.
-	"""
 	sensor: String!
 	readings: [MetricReading!]!
 }
@@ -187,26 +157,13 @@ type GenerationHistory {
 type LightEntity {
 	id: String!
 	name: String!
-	"""
-	Current power state. Nullable so an unreachable light actor reports the
-	error against this field without nulling the whole entity.
-	"""
 	on: Boolean
 }
 
 type LightUpdate {
 	eventId: UUID!
-	"""
-	Config slug, matching the `id` from the `entities` query.
-	"""
 	id: String!
-	"""
-	Human-friendly name, matching the `entities` query.
-	"""
 	name: String!
-	"""
-	Raw device address the event was emitted for.
-	"""
 	device: String!
 	on: Boolean!
 }
@@ -228,26 +185,13 @@ scalar NaiveDateTime
 type PresenceEntity {
 	id: String!
 	name: String!
-	"""
-	Whether presence is detected. Nullable so an unreachable presence actor
-	reports the error against this field without nulling the whole entity.
-	"""
 	present: Boolean
 }
 
 type PresenceUpdate {
 	eventId: UUID!
-	"""
-	Config slug, matching the `id` from the `entities` query.
-	"""
 	id: String!
-	"""
-	Human-friendly name, matching the `entities` query.
-	"""
 	name: String!
-	"""
-	Raw device address the event was emitted for.
-	"""
 	sensor: String!
 	present: Boolean!
 }

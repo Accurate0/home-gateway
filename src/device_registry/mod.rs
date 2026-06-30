@@ -321,6 +321,11 @@ impl DeviceRegistryInner {
         self.plant.get(address)
     }
 
+    /// The configured human name for a light, keyed by address.
+    pub fn light(&self, address: &str) -> Option<&String> {
+        self.lights.get(address)
+    }
+
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
         self.watchdog.iter()
     }

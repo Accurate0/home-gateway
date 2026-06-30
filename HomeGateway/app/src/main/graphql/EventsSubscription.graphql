@@ -1,0 +1,24 @@
+subscription Events {
+  events(filter: "*") {
+    __typename
+    ... on LightUpdate {
+      id
+      on
+    }
+    ... on DoorUpdate {
+      id
+      open
+    }
+    ... on PresenceUpdate {
+      id
+      present
+    }
+    ... on EnvironmentUpdate {
+      id
+      readings {
+        metric
+        value
+      }
+    }
+  }
+}

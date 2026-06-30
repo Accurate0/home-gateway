@@ -4,6 +4,7 @@ use tokio::sync::broadcast;
 
 use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Domain, Resource, Scope};
+use crate::device_registry::DeviceRegistry;
 use crate::event_bus::{EventBus, EventBusMessage, EventFilter};
 
 pub mod types;
@@ -31,13 +32,17 @@ impl SubscriptionRoot {
         }
 
         let rx = ctx.data::<EventBus>()?.subscribe();
-        Ok(event_stream(rx, filter))
+        // Cheap Arc clone; moved into the stream so updates can resolve device
+        // addresses to the same slug/name the `entities` query exposes.
+        let registry = ctx.data::<DeviceRegistry>()?.clone();
+        Ok(event_stream(rx, filter, registry))
     }
 }
 
 fn event_stream(
     rx: broadcast::Receiver<EventBusMessage>,
     filter: EventFilter,
+    registry: DeviceRegistry,
 ) -> impl Stream<Item = EventUpdate> {
     futures::stream::unfold(rx, |mut rx| async move {
         loop {
@@ -50,6 +55,7 @@ fn event_stream(
     })
     .filter_map(move |msg| {
         let keep = filter.matches(&msg);
-        async move { keep.then(|| EventUpdate::from(msg)) }
+        let registry = registry.clone();
+        async move { keep.then(|| EventUpdate::from_message(msg, &registry)) }
     })
 }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6d0c9683b68c112f2a3ae90a10693bc8>>
+ * @generated SignedSource<<f32fa218f9ce34e9dfa4a877f3253331>>
  * @lightSyntaxTransform
  */
 
@@ -16,7 +16,7 @@ export type AppQuery$variables = {
 export type AppQuery$data = {
   readonly environment: {
     readonly outdoor: {
-      readonly humidity: number;
+      readonly humidity: number | null | undefined;
       readonly temperature: number;
     };
   };
