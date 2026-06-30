@@ -12,7 +12,6 @@ use crate::{
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 use sqlx::{Pool, Postgres};
-use std::sync::Arc;
 
 pub mod db;
 
@@ -21,7 +20,7 @@ pub struct SharedActorState {
     pub db: Pool<Postgres>,
     pub mqtt: MqttClient,
     pub settings: SettingsContainer,
-    pub devices: Arc<DeviceRegistry>,
+    pub devices: DeviceRegistry,
     pub feature_flag_client: FeatureFlagClient,
     pub s3: S3,
     pub event_bus: EventBus,

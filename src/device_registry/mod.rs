@@ -106,8 +106,8 @@ pub struct RawPlantBlock {
     entities: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct DeviceRegistry {
+#[derive(Debug, Default)]
+pub struct DeviceRegistryInner {
     aliases: DeviceAliases,
     esphome_topics: HashMap<String, EsphomeTarget>,
     doors: HashMap<String, DoorSettings>,
@@ -117,12 +117,28 @@ pub struct DeviceRegistry {
     lights: HashMap<String, String>,
     plant: HashMap<String, PlantSensorSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
-    known_devices: Arc<RwLock<HashMap<IEEEAddress, String>>>,
+    known_devices: RwLock<HashMap<IEEEAddress, String>>,
+}
+
+/// Cheap to clone: the resolved device data lives behind a shared `Arc`, so
+/// every actor and the GraphQL schema hold the same registry without each
+/// wrapping it in their own `Arc`.
+#[derive(Debug, Clone, Default)]
+pub struct DeviceRegistry {
+    inner: Arc<DeviceRegistryInner>,
+}
+
+impl std::ops::Deref for DeviceRegistry {
+    type Target = DeviceRegistryInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl DeviceRegistry {
     pub fn build(raw: Vec<RawSensor>, notify: &NotifyTargets) -> Result<Self, String> {
-        let mut reg = DeviceRegistry::default();
+        let mut reg = DeviceRegistryInner::default();
 
         for sensor in raw {
             let RawSensor {
@@ -152,9 +168,13 @@ impl DeviceRegistry {
             }
         }
 
-        Ok(reg)
+        Ok(Self {
+            inner: Arc::new(reg),
+        })
     }
+}
 
+impl DeviceRegistryInner {
     fn add_kind(
         &mut self,
         id: &str,

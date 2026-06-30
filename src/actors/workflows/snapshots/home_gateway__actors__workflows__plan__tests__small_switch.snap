@@ -1,6 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-expression: out
----
-# Small Switch single toggles floor lamp  (on: switch(small_switch) action=single)
-  light: light(floor_lamp_living_room) -> Toggle

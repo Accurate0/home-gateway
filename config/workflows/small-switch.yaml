@@ -1,0 +1,6 @@
+- name: Small Switch single toggles floor lamp
+  on: { type: switch, device: small-switch, action: single }
+  run:
+    - type: light
+      device: floor-lamp-living-room
+      state: TOGGLE

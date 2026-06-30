@@ -1,0 +1,82 @@
+- name: Control Switch on
+  on: { type: switch, device: control-switch, action: on }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: ON
+
+- name: Control Switch off
+  on: { type: switch, device: control-switch, action: off }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: OFF
+
+- name: Control Switch brightness up
+  on: { type: switch, device: control-switch, action: brightness_move_up }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: INCREASE_BRIGHTNESS
+      value: 75
+
+- name: Control Switch brightness down
+  on: { type: switch, device: control-switch, action: brightness_move_down }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: DECREASE_BRIGHTNESS
+      value: 75
+
+- name: Control Switch brightness stop
+  on: { type: switch, device: control-switch, action: brightness_stop }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: STOP_BRIGHTNESS
+
+- name: Control Switch colour temp up
+  on: { type: switch, device: control-switch, action: arrow_right_hold }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: INCREASE_COLOUR_TEMPERATURE
+      value: 120
+
+- name: Control Switch colour temp down
+  on: { type: switch, device: control-switch, action: arrow_left_hold }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: DECREASE_COLOUR_TEMPERATURE
+      value: 120
+
+- name: Control Switch colour temp stop left
+  on: { type: switch, device: control-switch, action: arrow_left_release }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: STOP_COLOUR_TEMPERATURE
+
+- name: Control Switch colour temp stop right
+  on: { type: switch, device: control-switch, action: arrow_right_release }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: STOP_COLOUR_TEMPERATURE
+
+- name: Control Switch set brightness low
+  on: { type: switch, device: control-switch, action: arrow_left_click }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: SET_BRIGHTNESS
+      value: 50
+
+- name: Control Switch set brightness high
+  on: { type: switch, device: control-switch, action: arrow_right_click }
+  run:
+    - type: light
+      device: table-lamp-bedroom
+      state: SET_BRIGHTNESS
+      value: 254

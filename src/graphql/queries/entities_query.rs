@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use async_graphql::Object;
 
 use crate::auth::context::AuthContext;
@@ -21,7 +19,7 @@ impl EntitiesQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<Entity>> {
-        let registry = ctx.data::<Arc<DeviceRegistry>>()?;
+        let registry = ctx.data::<DeviceRegistry>()?;
         let auth = ctx.data::<AuthContext>()?;
 
         let mut out = Vec::new();

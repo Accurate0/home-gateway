@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use async_graphql::{Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
@@ -22,7 +20,7 @@ impl EnvironmentObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<EnvironmentDetails>> {
-        let registry = ctx.data::<Arc<DeviceRegistry>>()?;
+        let registry = ctx.data::<DeviceRegistry>()?;
         Ok(registry
             .environment_devices()
             .map(|(_address, settings)| EnvironmentDetails {
@@ -31,7 +29,7 @@ impl EnvironmentObject {
             .collect())
     }
 
-    /// Look up a single environment sensor by its configured id (e.g. `OUTDOOR`).
+    /// Look up a single environment sensor by its configured id (e.g. `outdoor`).
     pub async fn by_id(
         &self,
         _ctx: &async_graphql::Context<'_>,
@@ -46,7 +44,7 @@ impl EnvironmentObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnvironmentDetails> {
         Ok(EnvironmentDetails {
-            id: "OUTDOOR".to_owned(),
+            id: "outdoor".to_owned(),
         })
     }
 
@@ -56,7 +54,7 @@ impl EnvironmentObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnvironmentDetails> {
         Ok(EnvironmentDetails {
-            id: "LAUNDRY".to_owned(),
+            id: "laundry".to_owned(),
         })
     }
 
@@ -66,7 +64,7 @@ impl EnvironmentObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnvironmentDetails> {
         Ok(EnvironmentDetails {
-            id: "LIVING_ROOM".to_owned(),
+            id: "living-room".to_owned(),
         })
     }
 
@@ -76,7 +74,7 @@ impl EnvironmentObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnvironmentDetails> {
         Ok(EnvironmentDetails {
-            id: "BATHROOM".to_owned(),
+            id: "bathroom".to_owned(),
         })
     }
 
@@ -86,7 +84,7 @@ impl EnvironmentObject {
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnvironmentDetails> {
         Ok(EnvironmentDetails {
-            id: "BEDROOM".to_owned(),
+            id: "bedroom".to_owned(),
         })
     }
 }

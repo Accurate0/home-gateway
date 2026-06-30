@@ -1,0 +1,13 @@
+- name: Closet presence on
+  on: { type: presence, sensor: closet-presence, present: true }
+  run:
+    - type: light
+      device: closet-light
+      state: ON
+
+- name: Closet presence off
+  on: { type: presence, sensor: closet-presence, present: false }
+  run:
+    - type: light
+      device: closet-light
+      state: OFF

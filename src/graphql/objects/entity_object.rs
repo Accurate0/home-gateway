@@ -126,7 +126,7 @@ impl PresenceEntity {
 }
 
 pub struct EnvironmentEntity {
-    /// configured entity id (e.g. `OUTDOOR`), the dataloader key.
+    /// configured entity id (e.g. `outdoor`), the dataloader key.
     pub id: String,
     /// human-friendly name.
     pub name: String,

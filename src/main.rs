@@ -46,7 +46,7 @@ use sqlx::{
     ConnectOptions, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, time::Duration};
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
@@ -80,7 +80,7 @@ mod zigbee2mqtt;
 
 async fn init_actors(
     settings: SettingsContainer,
-    devices: Arc<DeviceRegistry>,
+    devices: DeviceRegistry,
     feature_flag_client: FeatureFlagClient,
     mqtt_client: MqttClient,
     db: Pool<Postgres>,
@@ -120,7 +120,6 @@ async fn main() -> anyhow::Result<()> {
     let metrics_registry = tracing_setup::init_metrics();
 
     let (settings_container, device_registry) = SettingsContainer::new()?;
-    let device_registry = Arc::new(device_registry);
     let settings = settings_container.clone();
 
     let pg_connect_options = PgConnectOptions::from_url(&settings.database_url.parse()?)?

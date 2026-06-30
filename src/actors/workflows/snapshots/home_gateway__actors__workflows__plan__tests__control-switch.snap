@@ -1,0 +1,36 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Control Switch on  (on: switch(control-switch) action=on)
+  light: light(table-lamp-bedroom) -> On
+
+# Control Switch off  (on: switch(control-switch) action=off)
+  light: light(table-lamp-bedroom) -> Off
+
+# Control Switch brightness up  (on: switch(control-switch) action=brightness_move_up)
+  light: light(table-lamp-bedroom) -> IncreaseBrightness { value: 75, on_off: false }
+
+# Control Switch brightness down  (on: switch(control-switch) action=brightness_move_down)
+  light: light(table-lamp-bedroom) -> DecreaseBrightness { value: 75, on_off: false }
+
+# Control Switch brightness stop  (on: switch(control-switch) action=brightness_stop)
+  light: light(table-lamp-bedroom) -> StopBrightness
+
+# Control Switch colour temp up  (on: switch(control-switch) action=arrow_right_hold)
+  light: light(table-lamp-bedroom) -> IncreaseColourTemperature { value: 120 }
+
+# Control Switch colour temp down  (on: switch(control-switch) action=arrow_left_hold)
+  light: light(table-lamp-bedroom) -> DecreaseColourTemperature { value: 120 }
+
+# Control Switch colour temp stop left  (on: switch(control-switch) action=arrow_left_release)
+  light: light(table-lamp-bedroom) -> StopColourTemperature
+
+# Control Switch colour temp stop right  (on: switch(control-switch) action=arrow_right_release)
+  light: light(table-lamp-bedroom) -> StopColourTemperature
+
+# Control Switch set brightness low  (on: switch(control-switch) action=arrow_left_click)
+  light: light(table-lamp-bedroom) -> SetBrightness { value: 50 }
+
+# Control Switch set brightness high  (on: switch(control-switch) action=arrow_right_click)
+  light: light(table-lamp-bedroom) -> SetBrightness { value: 254 }

@@ -1,9 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-expression: out
----
-# Closet presence on  (on: presence(closet_presence) -> true)
-  light: light(closet_light) -> On
-
-# Closet presence off  (on: presence(closet_presence) -> false)
-  light: light(closet_light) -> Off

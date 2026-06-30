@@ -248,20 +248,20 @@ android_app_webhook_secret: x
             .values()
             .find(|w| {
                 matches!(w.on(), Some(trigger::TriggerMatcher::Switch { ieee_addr, action })
-                if ieee_addr == "small_switch" && action == "single")
+                if ieee_addr == "small-switch" && action == "single")
             })
             .expect("expected a switch workflow for the small switch");
         let workflow::Step::Light { ieee_addr, .. } = &switch_workflow.run[0] else {
             panic!("expected a light step");
         };
-        assert_eq!(ieee_addr, "floor_lamp_living_room");
+        assert_eq!(ieee_addr, "floor-lamp-living-room");
 
         assert_eq!(
-            registry.address_or_self("small_switch"),
+            registry.address_or_self("small-switch"),
             "0x00158d008bbe0316"
         );
         assert_eq!(
-            registry.address_or_self("floor_lamp_living_room"),
+            registry.address_or_self("floor-lamp-living-room"),
             "0x94a081fffe2eedc0"
         );
 

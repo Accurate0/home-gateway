@@ -1,5 +1,5 @@
 - name: Hallway plant dry
-  on: { type: environment, sensor: hallway_plant, metric: soil_moisture, op: lt, value: 20 }
+  on: { type: environment, sensor: hallway-plant, metric: soil_moisture, op: lt, value: 20 }
   cooldown: 24h
   run:
     - type: notify
@@ -7,7 +7,7 @@
       message: "Hallway plant is dry (soil moisture below 20%)"
 
 - name: Hallway plant overwatered
-  on: { type: environment, sensor: hallway_plant, metric: soil_moisture, op: gt, value: 80 }
+  on: { type: environment, sensor: hallway-plant, metric: soil_moisture, op: gt, value: 80 }
   cooldown: 24h
   run:
     - type: notify
