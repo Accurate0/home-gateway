@@ -8,7 +8,6 @@ use std::{collections::HashMap, path::PathBuf};
 pub mod appliance;
 pub mod door;
 pub mod environment;
-pub mod graphql;
 pub mod notify;
 pub mod plant;
 pub mod presence;
@@ -18,7 +17,6 @@ pub mod workflow;
 pub use appliance::ApplianceSettings;
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType};
-pub use graphql::GraphqlSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
@@ -86,7 +84,6 @@ pub struct Settings {
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
     pub workflows: HashMap<String, Workflow>,
-    pub graphql: GraphqlSettings,
     pub s3: S3Settings,
     pub watchdog: WatchdogSettings,
 }
@@ -113,8 +110,6 @@ struct RawSettings {
     devices: Vec<RawSensor>,
     #[serde(default)]
     workflows: Vec<Vec<Workflow>>,
-    #[serde(default)]
-    graphql: GraphqlSettings,
     s3: S3Settings,
     watchdog: WatchdogSettings,
 }
@@ -134,7 +129,6 @@ impl RawSettings {
             notify_targets,
             devices,
             workflows,
-            graphql,
             s3,
             watchdog,
         } = self;
@@ -163,7 +157,6 @@ impl RawSettings {
                 unifi_webhook_secret,
                 android_app_webhook_secret,
                 workflows: resolved,
-                graphql,
                 s3,
                 watchdog,
             },

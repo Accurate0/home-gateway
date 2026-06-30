@@ -16,4 +16,3 @@ watchdog:
 
 devices: !include devices.yaml
 workflows: !include workflows/index.yaml
-graphql: !include graphql.yaml

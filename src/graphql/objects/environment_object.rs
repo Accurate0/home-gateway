@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use async_graphql::{Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
 use crate::{
+    device_registry::DeviceRegistry,
     graphql::dataloader::temperature::{LatestTemperatureDataLoader, TemperatureModel},
-    settings::SettingsContainer,
 };
 
 pub struct EnvironmentObject {}
@@ -14,18 +16,18 @@ pub struct EnvironmentDetails {
 
 #[Object]
 impl EnvironmentObject {
-    /// Every environment sensor exposed via config (`config/graphql.yaml`), so
-    /// new sensors appear without code changes.
+    /// Every environment sensor in the device registry, so new sensors appear
+    /// without code changes.
     pub async fn sensors(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<EnvironmentDetails>> {
-        let settings = ctx.data::<SettingsContainer>()?;
-        Ok(settings
-            .graphql
-            .environments
-            .iter()
-            .map(|id| EnvironmentDetails { id: id.clone() })
+        let registry = ctx.data::<Arc<DeviceRegistry>>()?;
+        Ok(registry
+            .environment_devices()
+            .map(|(_address, settings)| EnvironmentDetails {
+                id: settings.id.clone(),
+            })
             .collect())
     }
 
