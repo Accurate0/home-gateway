@@ -13,6 +13,17 @@
         timeout: 3m
         notify: [android_app]
 
+- id: garage_door
+  transport: zigbee
+  address: "0x54ef441000d2b1ba"
+  kinds:
+    - kind: door
+      config:
+        name: Garage Door
+        id: GARAGE_DOOR
+        state: unarmed
+        notify: [android_app]
+
 - id: washing_machine
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
