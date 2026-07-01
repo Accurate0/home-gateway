@@ -319,6 +319,7 @@ pub enum WorkflowTrigger {
         on: TriggerMatcher,
         when: Option<Condition>,
         cooldown: Option<TimeDelta>,
+        delay: Option<TimeDelta>,
     },
     Reusable,
 }
@@ -347,6 +348,8 @@ struct RawWorkflow {
     when: Option<Condition>,
     #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
     cooldown: Option<TimeDelta>,
+    #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
+    delay: Option<TimeDelta>,
     run: Vec<Step>,
 }
 
@@ -357,6 +360,7 @@ impl From<RawWorkflow> for Workflow {
                 on,
                 when: raw.when,
                 cooldown: raw.cooldown,
+                delay: raw.delay,
             },
             None => WorkflowTrigger::Reusable,
         };
@@ -388,6 +392,13 @@ impl Workflow {
     pub fn cooldown(&self) -> Option<TimeDelta> {
         match &self.trigger {
             WorkflowTrigger::Triggered { cooldown, .. } => *cooldown,
+            WorkflowTrigger::Reusable => None,
+        }
+    }
+
+    pub fn delay(&self) -> Option<TimeDelta> {
+        match &self.trigger {
+            WorkflowTrigger::Triggered { delay, .. } => *delay,
             WorkflowTrigger::Reusable => None,
         }
     }

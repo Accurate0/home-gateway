@@ -34,7 +34,10 @@ pub struct WorkflowDispatcherState {
     /// Lets environment triggers fire on the rising edge only, matching the old
     /// plant-sensor semantics.
     last_satisfied: HashMap<(String, String, SensorMetric), bool>,
+    pending_delays: HashMap<(EventSubject, String), tokio::task::JoinHandle<()>>,
 }
+
+type EventSubject = (String, String);
 
 impl WorkflowDispatcher {
     pub const NAME: &str = "workflow-dispatcher";
@@ -118,6 +121,17 @@ impl WorkflowDispatcher {
         crate::metrics::record_event(msg.kind());
         let settings = self.shared_actor_state.settings.clone();
 
+        let subject: EventSubject = (msg.kind().to_string(), msg.entity());
+        state.pending_delays.retain(|(s, name), handle| {
+            if s == &subject {
+                handle.abort();
+                tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
+                false
+            } else {
+                true
+            }
+        });
+
         for workflow in settings.workflows.values() {
             if !workflow.enabled || !self.matches(workflow, &msg, state) {
                 continue;
@@ -129,7 +143,7 @@ impl WorkflowDispatcher {
                 trigger = workflow.name,
                 event_kind = msg.kind(),
             );
-            self.evaluate_trigger(event_id, workflow)
+            self.evaluate_trigger(event_id, workflow, &subject, state)
                 .instrument(trigger_span)
                 .await?;
         }
@@ -144,6 +158,8 @@ impl WorkflowDispatcher {
         &self,
         event_id: uuid::Uuid,
         workflow: &Workflow,
+        subject: &EventSubject,
+        state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
         if let Some(when) = workflow.when() {
             match conditions::eval(&self.shared_actor_state, when).await {
@@ -189,9 +205,49 @@ impl WorkflowDispatcher {
 
         tracing::info!("[{event_id}] trigger '{}' fired", workflow.name);
         crate::metrics::record_trigger(&workflow.name, crate::metrics::TriggerOutcome::Fired);
-        self.dispatch_workflow(event_id, workflow.clone())?;
+
+        match workflow.delay() {
+            Some(delay) => self.schedule_delayed(event_id, workflow, delay, subject, state),
+            None => self.dispatch_workflow(event_id, workflow.clone())?,
+        }
 
         Ok(())
+    }
+
+    fn schedule_delayed(
+        &self,
+        event_id: uuid::Uuid,
+        workflow: &Workflow,
+        delay: chrono::TimeDelta,
+        subject: &EventSubject,
+        state: &mut WorkflowDispatcherState,
+    ) {
+        let Ok(delay) = delay.to_std() else {
+            let _ = self.dispatch_workflow(event_id, workflow.clone());
+            return;
+        };
+
+        let name = workflow.name.clone();
+        let workflow = workflow.clone();
+        tracing::info!(
+            "[{event_id}] trigger '{name}' deferred by {}s",
+            delay.as_secs()
+        );
+
+        let task_name = name.clone();
+        let handle = tokio::spawn(async move {
+            tokio::time::sleep(delay).await;
+            tracing::info!("[{event_id}] delayed trigger '{task_name}' firing");
+            if let Err(e) = Self::send_to_factory(event_id, workflow) {
+                tracing::error!(
+                    "[{event_id}] failed to dispatch delayed trigger '{task_name}': {e}"
+                );
+            }
+        });
+
+        if let Some(prev) = state.pending_delays.insert((subject.clone(), name), handle) {
+            prev.abort();
+        }
     }
 
     /// Returns `true` if the trigger is allowed to fire now (no record, or the
@@ -232,6 +288,13 @@ impl WorkflowDispatcher {
 
     fn dispatch_workflow(
         &self,
+        event_id: uuid::Uuid,
+        workflow: Workflow,
+    ) -> Result<(), ActorProcessingErr> {
+        Self::send_to_factory(event_id, workflow)
+    }
+
+    fn send_to_factory(
         event_id: uuid::Uuid,
         workflow: Workflow,
     ) -> Result<(), ActorProcessingErr> {
