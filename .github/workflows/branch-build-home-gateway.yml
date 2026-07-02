@@ -2,7 +2,9 @@ name: Branch build home-gateway
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches-ignore:
+      - main
     paths:
       - src/**
       - migrations/**

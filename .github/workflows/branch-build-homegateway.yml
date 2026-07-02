@@ -2,7 +2,9 @@ name: Branch build HomeGateway
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches-ignore:
+      - main
     paths:
       - "HomeGateway/**"
       - ".github/workflows/branch-build-homegateway.yml"

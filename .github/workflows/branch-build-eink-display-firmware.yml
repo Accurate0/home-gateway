@@ -2,7 +2,9 @@ name: Branch build eink-display-firmware
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches-ignore:
+      - main
     paths:
       - eink-display-firmware/**
       - .github/workflows/branch-build-eink-display-firmware.yml
