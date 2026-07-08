@@ -56,6 +56,10 @@ pub enum LightHandlerMessage {
         ieee_addr: IEEEAddress,
         value: u64,
     },
+    SetColour {
+        ieee_addr: IEEEAddress,
+        hex: String,
+    },
 }
 
 pub struct LightHandler {
@@ -135,6 +139,10 @@ impl LightHandler {
                 let value = value.clamp(0, 254);
 
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
+                    .await?;
+            }
+            LightHandlerMessage::SetColour { ieee_addr, hex } => {
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"color": {"hex": hex}}))
                     .await?;
             }
             LightHandlerMessage::BrightnessMove {

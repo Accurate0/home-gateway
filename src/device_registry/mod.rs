@@ -48,6 +48,15 @@ pub struct RawSensor {
     pub kinds: Vec<DeviceConfig>,
     #[serde(default)]
     pub watchdog: Option<RawDeviceWatchdog>,
+    #[serde(default)]
+    pub capabilities: Vec<Capability>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum)]
+#[serde(rename_all = "snake_case")]
+pub enum Capability {
+    ColourTemp,
+    Rgb,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -115,6 +124,7 @@ pub struct DeviceRegistryInner {
     environment: HashMap<String, EnvironmentSensorSettings>,
     presence: HashMap<String, PresenceSettings>,
     lights: HashMap<String, String>,
+    capabilities: HashMap<String, Vec<Capability>>,
     plant: HashMap<String, PlantSensorSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
@@ -147,10 +157,15 @@ impl DeviceRegistry {
                 address,
                 kinds,
                 watchdog,
+                capabilities,
             } = sensor;
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
                 return Err(format!("duplicate sensor id: {id}"));
+            }
+
+            if !capabilities.is_empty() {
+                reg.capabilities.insert(address.clone(), capabilities);
             }
 
             if let Some(watchdog) = watchdog {
@@ -321,17 +336,18 @@ impl DeviceRegistryInner {
         self.plant.get(address)
     }
 
-    /// The configured human name for a light, keyed by address.
     pub fn light(&self, address: &str) -> Option<&String> {
         self.lights.get(address)
+    }
+
+    pub fn capabilities(&self, address: &str) -> &[Capability] {
+        self.capabilities.get(address).map_or(&[], Vec::as_slice)
     }
 
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
         self.watchdog.iter()
     }
 
-    /// Every configured light, keyed by address with its human name, for entity
-    /// enumeration.
     pub fn lights(&self) -> impl Iterator<Item = (&String, &String)> {
         self.lights.iter()
     }

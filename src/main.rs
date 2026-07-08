@@ -11,7 +11,7 @@ use actors::{
     mqtt_ingest::{self},
     root::RootSupervisor,
 };
-use async_graphql::{EmptyMutation, Schema, dataloader::DataLoader};
+use async_graphql::{Schema, dataloader::DataLoader};
 use auth::{AuthManager, OAuthValidator, auth_middleware};
 use axum::{
     middleware::from_fn_with_state,
@@ -24,6 +24,7 @@ use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
     dataloader::temperature::LatestTemperatureDataLoader,
+    mutations::MutationRoot,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
 };
 use mqtt::{Mqtt, MqttClient};
@@ -164,7 +165,7 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, SubscriptionRoot)
+    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), SubscriptionRoot)
         .data(DataLoader::new(
             LatestTemperatureDataLoader {
                 database: pool.clone(),

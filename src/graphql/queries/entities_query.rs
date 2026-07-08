@@ -31,6 +31,7 @@ impl EntitiesQuery {
                     id,
                     name: name.clone(),
                     address: address.clone(),
+                    capabilities: registry.capabilities(address).to_vec(),
                 })
             }));
         }
@@ -41,6 +42,7 @@ impl EntitiesQuery {
                     id: settings.id.clone(),
                     name: settings.name.clone(),
                     address: address.clone(),
+                    capabilities: registry.capabilities(address).to_vec(),
                 })
             }));
         }
@@ -57,15 +59,17 @@ impl EntitiesQuery {
                     id,
                     name,
                     address: address.clone(),
+                    capabilities: registry.capabilities(address).to_vec(),
                 })
             }));
         }
 
         if auth.has(&required::GRAPHQL_ENVIRONMENT_READ) {
-            out.extend(registry.environment_devices().map(|(_address, settings)| {
+            out.extend(registry.environment_devices().map(|(address, settings)| {
                 Entity::Environment(EnvironmentEntity {
                     id: settings.id.clone(),
                     name: settings.name.clone(),
+                    capabilities: registry.capabilities(address).to_vec(),
                 })
             }));
         }

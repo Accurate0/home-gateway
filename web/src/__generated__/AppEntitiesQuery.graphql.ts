@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ce1046941148b122d20f25a790e998c6>>
+ * @generated SignedSource<<7b69f449e79f874b7c264bff38aac972>>
  * @lightSyntaxTransform
  */
 
@@ -8,6 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type Capability = "COLOUR_TEMP" | "RGB" | "%future added value";
 export type AppEntitiesQuery$variables = Record<PropertyKey, never>;
 export type AppEntitiesQuery$data = {
   readonly entities: ReadonlyArray<{
@@ -27,6 +28,7 @@ export type AppEntitiesQuery$data = {
     readonly uvIndex: number | null | undefined;
   } | {
     readonly __typename: "LightEntity";
+    readonly capabilities: ReadonlyArray<Capability>;
     readonly id: string;
     readonly name: string;
     readonly on: boolean | null | undefined;
@@ -82,6 +84,13 @@ v2 = [
         "selections": [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "capabilities",
+            "storageKey": null
+          },
           {
             "alias": null,
             "args": null,
@@ -198,16 +207,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "fcc4f50f4e652370d221f740d5fc5afe",
+    "cacheID": "cfc878a04d2edbd9a3865a9acf0a272c",
     "id": null,
     "metadata": {},
     "name": "AppEntitiesQuery",
     "operationKind": "query",
-    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      on\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n    }\n  }\n}\n"
+    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b228c9c930ff38c708cf9b365336071b";
+(node as any).hash = "cd4462db753e2ff52ad9ab21527ff47b";
 
 export default node;

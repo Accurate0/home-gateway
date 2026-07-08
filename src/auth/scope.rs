@@ -295,6 +295,9 @@ pub mod required {
     pub const GRAPHQL_WOOLWORTHS_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Woolworths, Action::Read);
 
+    pub const GRAPHQL_LIGHT_WRITE: Scope =
+        Scope::new(Domain::Graphql, Resource::Light, Action::Write);
+
     pub const REST_CONTROL_WRITE: Scope =
         Scope::new(Domain::Rest, Resource::Control, Action::Write);
     pub const REST_WORKFLOW_EXECUTE: Scope =

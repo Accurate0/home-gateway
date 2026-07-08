@@ -17,6 +17,20 @@ type AuthObject {
 	scopes: [String!]!
 }
 
+input BrightnessMoveInput {
+	value: Int!
+	onOff: Boolean!
+}
+
+enum Capability {
+	COLOUR_TEMP
+	RGB
+}
+
+input ColourTemperatureMoveInput {
+	value: Int!
+}
+
 type CronUpdate {
 	eventId: UUID!
 	name: String!
@@ -32,6 +46,7 @@ scalar DateTime
 type DoorEntity {
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
 	"""
 	Whether the door is open. Nullable so an unreachable door-events actor
 	reports the error against this field without nulling the whole entity.
@@ -100,6 +115,7 @@ type EnvironmentDetails {
 type EnvironmentEntity {
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
 	"""
 	Nullable so a missing reading reports the error against this field
 	without nulling the whole entity.
@@ -187,11 +203,22 @@ type GenerationHistory {
 type LightEntity {
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
 	"""
 	Current power state. Nullable so an unreachable light actor reports the
 	error against this field without nulling the whole entity.
 	"""
 	on: Boolean
+}
+
+type LightMutation {
+	on: Boolean!
+	off: Boolean!
+	toggle: Boolean!
+	setBrightness(input: SetBrightnessInput!): Boolean!
+	brightnessMove(input: BrightnessMoveInput!): Boolean!
+	setColour(input: SetColourInput!): Boolean!
+	colourTemperatureMove(input: ColourTemperatureMoveInput!): Boolean!
 }
 
 type LightUpdate {
@@ -216,6 +243,10 @@ type MetricReading {
 	value: Float!
 }
 
+type MutationRoot {
+	light(id: String!): LightMutation!
+}
+
 """
 ISO 8601 combined date and time without timezone.
 
@@ -228,6 +259,7 @@ scalar NaiveDateTime
 type PresenceEntity {
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
 	"""
 	Whether presence is detected. Nullable so an unreachable presence actor
 	reports the error against this field without nulling the whole entity.
@@ -266,6 +298,14 @@ type QueryRoot {
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
+}
+
+input SetBrightnessInput {
+	value: Int!
+}
+
+input SetColourInput {
+	hex: String!
 }
 
 type SolarCurrentResponse {
@@ -374,5 +414,6 @@ Provides a scalar specification URL for specifying the behavior of custom scalar
 directive @specifiedBy(url: String!) on SCALAR
 schema {
 	query: QueryRoot
+	mutation: MutationRoot
 	subscription: SubscriptionRoot
 }

@@ -8,6 +8,7 @@ export interface Entity {
   kind: EntityKind;
   id: string;
   name: string;
+  capabilities?: readonly string[];
   on?: boolean | null;
   open?: boolean | null;
   present?: boolean | null;

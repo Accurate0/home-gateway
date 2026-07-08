@@ -17,6 +17,7 @@ use crate::{
         light::{LightHandler, LightHandlerMessage},
         rpc,
     },
+    device_registry::Capability,
     graphql::dataloader::temperature::{LatestTemperatureDataLoader, TemperatureModel},
     types::db::DoorState,
 };
@@ -38,6 +39,7 @@ pub struct LightEntity {
     pub name: String,
     /// ieee address, the RPC key for the light actor.
     pub address: String,
+    pub capabilities: Vec<Capability>,
 }
 
 #[Object]
@@ -48,6 +50,10 @@ impl LightEntity {
 
     async fn name(&self) -> &str {
         &self.name
+    }
+
+    async fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
     }
 
     /// Current power state. Nullable so an unreachable light actor reports the
@@ -71,6 +77,7 @@ pub struct DoorEntity {
     pub name: String,
     /// ieee address, the RPC key for the door-events actor.
     pub address: String,
+    pub capabilities: Vec<Capability>,
 }
 
 #[Object]
@@ -81,6 +88,10 @@ impl DoorEntity {
 
     async fn name(&self) -> &str {
         &self.name
+    }
+
+    async fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
     }
 
     /// Whether the door is open. Nullable so an unreachable door-events actor
@@ -104,6 +115,7 @@ pub struct PresenceEntity {
     pub name: String,
     /// ieee address or esphome node, the RPC key for the presence actor.
     pub address: String,
+    pub capabilities: Vec<Capability>,
 }
 
 #[Object]
@@ -114,6 +126,10 @@ impl PresenceEntity {
 
     async fn name(&self) -> &str {
         &self.name
+    }
+
+    async fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
     }
 
     /// Whether presence is detected. Nullable so an unreachable presence actor
@@ -136,6 +152,7 @@ pub struct EnvironmentEntity {
     pub id: String,
     /// human-friendly name.
     pub name: String,
+    pub capabilities: Vec<Capability>,
 }
 
 impl EnvironmentEntity {
@@ -164,6 +181,10 @@ impl EnvironmentEntity {
 
     async fn name(&self) -> &str {
         &self.name
+    }
+
+    async fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
     }
 
     /// Nullable so a missing reading reports the error against this field

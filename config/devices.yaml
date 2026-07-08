@@ -91,6 +91,7 @@
 - id: closet-light
   transport: zigbee
   address: "0x54ef441000d4f05c"
+  capabilities: [colour_temp]
   kinds:
     - kind: light
       config: { name: Closet Light }
@@ -105,6 +106,7 @@
 - id: table-lamp-bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
+  capabilities: [colour_temp, rgb]
   kinds:
     - kind: light
       config: { name: Bedroom Table Lamp }
@@ -112,6 +114,7 @@
 - id: floor-lamp-living-room
   transport: zigbee
   address: "0x94a081fffe2eedc0"
+  capabilities: [colour_temp]
   kinds:
     - kind: light
       config: { name: Living Room Floor Lamp }

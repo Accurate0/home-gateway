@@ -3,100 +3,375 @@ import {
   DoorOpen,
   Lightbulb,
   LightbulbOff,
+  Palette,
   PersonStanding,
+  SlidersHorizontal,
   Thermometer,
   UserX,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { Popover, Slider } from "radix-ui";
+import { cn } from "@/lib/utils";
 import type { Entity } from "@/entities";
 
-function StateBadge({
-  value,
-  labels,
-}: {
-  value: boolean | null | undefined;
-  labels: { on: string; off: string };
-}) {
-  if (value == null) {
-    return <Badge variant="outline">unknown</Badge>;
-  }
-  return (
-    <Badge variant={value ? "default" : "secondary"}>
-      {value ? labels.on : labels.off}
-    </Badge>
-  );
+export interface LightActions {
+  onToggle: () => void;
+  onSetBrightness: (value: number) => void;
+  onColourMove: (value: number) => void;
+  onSetColour: (hex: string) => void;
+  canSetColour: boolean;
 }
+
+const COLOUR_SWATCHES = [
+  "#ff5a5a",
+  "#ff9d3c",
+  "#ffd23c",
+  "#3ce17a",
+  "#3cc7ff",
+  "#6a7bff",
+  "#c86bff",
+  "#ffffff",
+];
+
+const BRIGHTNESS_MAX = 254;
+const COLOUR_MOVE_RATE = 40;
 
 function fmt(value: number | null | undefined, unit: string, digits = 1) {
   return value == null ? "—" : `${value.toFixed(digits)}${unit}`;
 }
 
-function EntityIcon({ entity }: { entity: Entity }) {
-  const className = "text-muted-foreground mt-0.5 size-5 shrink-0";
-  switch (entity.kind) {
-    case "light":
-      return entity.on ? (
-        <Lightbulb className={className} />
-      ) : (
-        <LightbulbOff className={className} />
-      );
-    case "door":
-      return entity.open ? (
-        <DoorOpen className={className} />
-      ) : (
-        <DoorClosed className={className} />
-      );
-    case "presence":
-      return entity.present ? (
-        <PersonStanding className={className} />
-      ) : (
-        <UserX className={className} />
-      );
-    case "environment":
-      return <Thermometer className={className} />;
-  }
+function StatePill({
+  tone,
+  children,
+}: {
+  tone: "on" | "off" | "unknown";
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase",
+        tone === "on" && "bg-foreground text-background",
+        tone === "off" && "bg-muted text-muted-foreground",
+        tone === "unknown" &&
+          "border-border text-muted-foreground border bg-transparent",
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
-export default function EntityCard({ entity }: { entity: Entity }) {
+function Tile({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
-    <Card className="gap-3 py-4">
-      <CardContent className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <EntityIcon entity={entity} />
+    <div
+      className={cn(
+        "bg-card border-border flex flex-col rounded-2xl border p-4 transition-all",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function LightControls({ actions }: { actions: LightActions }) {
+  const [brightness, setBrightness] = useState(Math.round(BRIGHTNESS_MAX / 2));
+  const pct = Math.round((brightness / BRIGHTNESS_MAX) * 100);
+
+  const holdMove = (value: number) => ({
+    onPointerDown: () => actions.onColourMove(value),
+    onPointerUp: () => actions.onColourMove(0),
+    onPointerLeave: () => actions.onColourMove(0),
+  });
+
+  return (
+    <Popover.Portal>
+      <Popover.Content
+        align="end"
+        sideOffset={8}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-popover text-popover-foreground border-border z-50 w-64 rounded-2xl border p-4 shadow-lg outline-none"
+      >
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={actions.onToggle}
+            className="bg-foreground text-background flex-1 rounded-lg py-1.5 text-sm font-medium"
+          >
+            Toggle
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <div className="text-muted-foreground mb-2 flex justify-between text-xs">
+            <span className="uppercase tracking-wide">Brightness</span>
+            <span>{pct}%</span>
+          </div>
+          <Slider.Root
+            value={[brightness]}
+            min={0}
+            max={BRIGHTNESS_MAX}
+            step={1}
+            onValueChange={([v]) => setBrightness(v)}
+            onValueCommit={([v]) => actions.onSetBrightness(v)}
+            className="relative flex h-4 w-full touch-none items-center select-none"
+          >
+            <Slider.Track className="bg-muted relative h-1.5 grow rounded-full">
+              <Slider.Range className="bg-state-light absolute h-full rounded-full" />
+            </Slider.Track>
+            <Slider.Thumb className="border-state-light bg-background block size-4 rounded-full border-2 shadow-sm outline-none" />
+          </Slider.Root>
+        </div>
+
+        <div>
+          <div className="text-muted-foreground mb-2 text-xs uppercase tracking-wide">
+            Colour temperature
+          </div>
+          <div className="flex gap-2">
+            <button
+              {...holdMove(COLOUR_MOVE_RATE)}
+              className="border-border hover:bg-accent flex-1 rounded-lg border py-1.5 text-sm"
+            >
+              Warmer
+            </button>
+            <button
+              {...holdMove(-COLOUR_MOVE_RATE)}
+              className="border-border hover:bg-accent flex-1 rounded-lg border py-1.5 text-sm"
+            >
+              Cooler
+            </button>
+          </div>
+          <div className="text-muted-foreground mt-1.5 text-[11px]">
+            Hold to shift, release to stop
+          </div>
+        </div>
+
+        {actions.canSetColour && (
+          <div className="mt-4">
+            <div className="text-muted-foreground mb-2 text-xs uppercase tracking-wide">
+              Colour
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {COLOUR_SWATCHES.map((hex) => (
+                <button
+                  key={hex}
+                  aria-label={hex}
+                  onClick={() => actions.onSetColour(hex)}
+                  style={{ backgroundColor: hex }}
+                  className="border-border/60 size-6 rounded-full border transition-transform hover:scale-110"
+                />
+              ))}
+              <label className="border-border ml-auto grid size-6 cursor-pointer place-items-center rounded-full border">
+                <Palette className="text-muted-foreground size-3.5" />
+                <input
+                  type="color"
+                  onChange={(e) => actions.onSetColour(e.target.value)}
+                  className="absolute size-0 opacity-0"
+                />
+              </label>
+            </div>
+          </div>
+        )}
+      </Popover.Content>
+    </Popover.Portal>
+  );
+}
+
+function LightTile({
+  entity,
+  actions,
+}: {
+  entity: Entity;
+  actions?: LightActions;
+}) {
+  const on = entity.on;
+  const unknown = on == null;
+  return (
+    <Popover.Root>
+      <Tile
+        role="button"
+        tabIndex={0}
+        onClick={actions?.onToggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            actions?.onToggle();
+          }
+        }}
+        className={cn(
+          "col-span-1 cursor-pointer justify-between gap-3 select-none",
+          "hover:-translate-y-0.5 active:translate-y-0",
+          on
+            ? "border-state-light/50 bg-state-light/15 ring-state-light/40 shadow-[0_8px_30px_-12px_var(--state-light)] ring-1"
+            : "hover:border-foreground/20",
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div
+            className={cn(
+              "grid size-10 place-items-center rounded-xl transition-colors",
+              on
+                ? "bg-state-light text-state-light-foreground"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {on ? (
+              <Lightbulb
+                className="size-5"
+                fill="currentColor"
+                strokeWidth={1.5}
+              />
+            ) : (
+              <LightbulbOff className="size-5" strokeWidth={1.5} />
+            )}
+          </div>
+          {actions && (
+            <Popover.Trigger asChild>
+              <button
+                aria-label="Light controls"
+                onClick={(e) => e.stopPropagation()}
+                className="text-muted-foreground hover:bg-accent hover:text-foreground -m-1 grid size-8 place-items-center rounded-lg transition-colors"
+              >
+                <SlidersHorizontal className="size-4" strokeWidth={1.75} />
+              </button>
+            </Popover.Trigger>
+          )}
+        </div>
+        <div>
+          <div className="leading-tight font-medium">{entity.name}</div>
+          <div className="text-muted-foreground mb-2 text-xs">{entity.id}</div>
+          <StatePill tone={unknown ? "unknown" : on ? "on" : "off"}>
+            {unknown ? "unknown" : on ? "on" : "off"}
+          </StatePill>
+        </div>
+      </Tile>
+      {actions && <LightControls actions={actions} />}
+    </Popover.Root>
+  );
+}
+
+function EnvironmentTile({ entity }: { entity: Entity }) {
+  const hum = entity.humidity;
+  const pct = hum == null ? 0 : Math.max(0, Math.min(100, hum));
+  return (
+    <Tile className="col-span-2 justify-between sm:col-span-1 lg:col-span-2">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-muted text-muted-foreground grid size-9 place-items-center rounded-xl">
+            <Thermometer className="size-5" strokeWidth={1.5} />
+          </div>
           <div>
-            <div className="font-medium leading-tight">{entity.name}</div>
+            <div className="leading-tight font-medium">{entity.name}</div>
             <div className="text-muted-foreground text-xs">{entity.id}</div>
           </div>
         </div>
-        <div className="text-right">
-          {entity.kind === "light" && (
-            <StateBadge value={entity.on} labels={{ on: "on", off: "off" }} />
-          )}
-          {entity.kind === "door" && (
-            <StateBadge
-              value={entity.open}
-              labels={{ on: "open", off: "closed" }}
-            />
-          )}
-          {entity.kind === "presence" && (
-            <StateBadge
-              value={entity.present}
-              labels={{ on: "present", off: "away" }}
-            />
-          )}
-          {entity.kind === "environment" && (
-            <div className="text-sm">
-              <div className="text-lg font-semibold">
-                {fmt(entity.temperature, "°")}
-              </div>
-              <div className="text-muted-foreground">
-                {fmt(entity.humidity, "%", 0)} hum
-              </div>
-            </div>
-          )}
+        <div className="font-display text-3xl font-semibold tracking-tight">
+          {fmt(entity.temperature, "°")}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="mt-4">
+        <div className="text-muted-foreground mb-1.5 flex justify-between text-xs">
+          <span>Humidity</span>
+          <span>{fmt(hum, "%", 0)}</span>
+        </div>
+        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+          <div
+            className="bg-state-present/70 h-full rounded-full transition-[width]"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </Tile>
   );
+}
+
+const STATUS_TONES = {
+  present: {
+    active:
+      "border-state-present/40 bg-state-present/10",
+    iconActive: "bg-state-present text-state-present-foreground",
+  },
+  open: {
+    active: "border-state-open/40 bg-state-open/10",
+    iconActive: "bg-state-open text-state-open-foreground",
+  },
+} as const;
+
+function StatusTile({
+  entity,
+  active,
+  icon,
+  activeIcon,
+  labels,
+  tone,
+}: {
+  entity: Entity;
+  active: boolean | null | undefined;
+  icon: React.ReactNode;
+  activeIcon: React.ReactNode;
+  labels: { on: string; off: string };
+  tone: keyof typeof STATUS_TONES;
+}) {
+  const unknown = active == null;
+  const t = STATUS_TONES[tone];
+  return (
+    <Tile
+      className={cn("col-span-1 justify-between gap-3", active && t.active)}
+    >
+      <div
+        className={cn(
+          "grid size-10 place-items-center rounded-xl transition-colors",
+          active ? t.iconActive : "bg-muted text-muted-foreground",
+        )}
+      >
+        {active ? activeIcon : icon}
+      </div>
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground mb-2 text-xs">{entity.id}</div>
+        <StatePill tone={unknown ? "unknown" : active ? "on" : "off"}>
+          {unknown ? "unknown" : active ? labels.on : labels.off}
+        </StatePill>
+      </div>
+    </Tile>
+  );
+}
+
+export default function EntityCard({
+  entity,
+  lightActions,
+}: {
+  entity: Entity;
+  lightActions?: LightActions;
+}) {
+  switch (entity.kind) {
+    case "light":
+      return <LightTile entity={entity} actions={lightActions} />;
+    case "environment":
+      return <EnvironmentTile entity={entity} />;
+    case "door":
+      return (
+        <StatusTile
+          entity={entity}
+          active={entity.open}
+          icon={<DoorClosed className="size-5" strokeWidth={1.5} />}
+          activeIcon={<DoorOpen className="size-5" strokeWidth={1.5} />}
+          labels={{ on: "open", off: "closed" }}
+          tone="open"
+        />
+      );
+    case "presence":
+      return (
+        <StatusTile
+          entity={entity}
+          active={entity.present}
+          icon={<UserX className="size-5" strokeWidth={1.5} />}
+          activeIcon={<PersonStanding className="size-5" strokeWidth={1.5} />}
+          labels={{ on: "present", off: "away" }}
+          tone="present"
+        />
+      );
+  }
 }
