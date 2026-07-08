@@ -1,9 +1,11 @@
 pub mod context;
 pub mod manager;
+pub mod oauth;
 pub mod scope;
 
 pub use context::AuthContext;
 pub use manager::AuthManager;
+pub use oauth::OAuthValidator;
 
 use axum::{
     extract::{FromRequestParts, Request, State},
@@ -68,12 +70,18 @@ pub async fn resolve_ws_auth(
         return Ok(AuthContext::full_access(false));
     }
 
-    let api_key = token.map(|s| s.trim()).filter(|s| !s.is_empty());
+    let token = token.map(|s| s.trim()).filter(|s| !s.is_empty());
 
-    if let Some(api_key) = api_key
-        && let Some(auth) = resolve_api_key(api_key, state).await?
-    {
-        return Ok(auth);
+    if let Some(token) = token {
+        if let Some(auth) = resolve_api_key(token, state).await? {
+            return Ok(auth);
+        }
+        // ws sends a single token field; a JWT (has dots) is an OAuth access token.
+        if token.contains('.')
+            && let Some(oauth) = &state.auth.oauth
+        {
+            return oauth.validate(token).await;
+        }
     }
 
     Err(StatusCode::UNAUTHORIZED)
@@ -98,6 +106,19 @@ pub async fn resolve_auth(
         && let Some(auth) = resolve_api_key(api_key, state).await?
     {
         return Ok(auth);
+    }
+
+    let bearer = headers
+        .get(http::header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+
+    if let Some(token) = bearer
+        && let Some(oauth) = &state.auth.oauth
+    {
+        return oauth.validate(token).await;
     }
 
     let webhook_secret = headers

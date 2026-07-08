@@ -52,6 +52,25 @@ pub struct S3Settings {
     pub endpoint: Option<String>,
 }
 
+/// Default for the OAuth `groups` claim name.
+pub(crate) fn default_groups_claim() -> String {
+    "groups".to_owned()
+}
+
+/// OAuth (OIDC) settings. Access tokens are JWTs validated locally against the
+/// provider's JWKS — no client secret is needed. A caller's scopes are derived
+/// from their group memberships (the `groups_claim`) via `group_scopes`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OAuthSettings {
+    pub issuer: String,
+    pub jwks_url: String,
+    pub audience: String,
+    #[serde(default = "default_groups_claim")]
+    pub groups_claim: String,
+    /// group SPN -> granted scope strings (`domain:resource:action`).
+    pub group_scopes: HashMap<String, Vec<String>>,
+}
+
 /// Named device aliases (`alias -> ieee address`) declared under the top-level
 /// `devices:` key. Referenced from workflow steps so addresses are written once.
 pub type DeviceAliases = HashMap<String, IEEEAddress>;
@@ -86,6 +105,7 @@ pub struct Settings {
     pub workflows: HashMap<String, Workflow>,
     pub s3: S3Settings,
     pub watchdog: WatchdogSettings,
+    pub oauth: Option<OAuthSettings>,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -112,6 +132,8 @@ struct RawSettings {
     workflows: Vec<Vec<Workflow>>,
     s3: S3Settings,
     watchdog: WatchdogSettings,
+    #[serde(default)]
+    oauth: Option<OAuthSettings>,
 }
 
 impl RawSettings {
@@ -131,6 +153,7 @@ impl RawSettings {
             workflows,
             s3,
             watchdog,
+            oauth,
         } = self;
 
         let registry = DeviceRegistry::build(devices, &notify_targets)?;
@@ -159,6 +182,7 @@ impl RawSettings {
                 workflows: resolved,
                 s3,
                 watchdog,
+                oauth,
             },
             registry,
         ))

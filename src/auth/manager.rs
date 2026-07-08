@@ -7,7 +7,7 @@ use rand::{RngExt, distr::Alphanumeric};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use super::hash_key;
+use super::{OAuthValidator, hash_key};
 
 const KEY_PREFIX: &str = "hg_";
 const KEY_RANDOM_LEN: usize = 40;
@@ -27,16 +27,18 @@ pub struct CachedKey {
 pub struct AuthManager {
     db: Pool<Postgres>,
     cache: Cache<String, Option<Arc<CachedKey>>>,
+    /// OAuth (OIDC) validator, present when the `oauth` config section is set.
+    pub oauth: Option<Arc<OAuthValidator>>,
 }
 
 impl AuthManager {
-    pub fn new(db: Pool<Postgres>) -> Self {
+    pub fn new(db: Pool<Postgres>, oauth: Option<Arc<OAuthValidator>>) -> Self {
         let cache = Cache::builder()
             .max_capacity(CACHE_CAPACITY)
             .time_to_live(CACHE_TTL)
             .build();
 
-        Self { db, cache }
+        Self { db, cache, oauth }
     }
 
     pub async fn lookup_by_hash(

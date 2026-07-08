@@ -12,7 +12,7 @@ use actors::{
     root::RootSupervisor,
 };
 use async_graphql::{EmptyMutation, Schema, dataloader::DataLoader};
-use auth::{AuthManager, auth_middleware};
+use auth::{AuthManager, OAuthValidator, auth_middleware};
 use axum::{
     middleware::from_fn_with_state,
     routing::{delete, get, post},
@@ -183,13 +183,18 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(AllowHeaders::any());
 
+    let oauth = match settings.oauth.clone() {
+        Some(oauth_settings) => Some(std::sync::Arc::new(OAuthValidator::new(oauth_settings)?)),
+        None => None,
+    };
+
     let api_state = ApiState {
         feature_flag_client,
         schema,
         settings: settings_container.clone(),
         db: pool.clone(),
         s3,
-        auth: AuthManager::new(pool.clone()),
+        auth: AuthManager::new(pool.clone(), oauth),
     };
 
     let api_routes = axum::Router::new()

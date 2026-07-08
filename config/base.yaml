@@ -14,5 +14,13 @@ watchdog:
   check_interval: 5m
   realert_after: 6h
 
+oauth:
+  issuer: https://idm.anurag.sh/oauth2/openid/home-gateway
+  jwks_url: https://idm.anurag.sh/oauth2/openid/home-gateway/public_key.jwks
+  audience: home-gateway
+  group_scopes:
+    home_gateway_admins@idm.anurag.sh: ["*"]
+    home_gateway_readers@idm.anurag.sh: ["graphql:*:read", "rest:epd:read"]
+
 devices: !include devices.yaml
 workflows: !include workflows/index.yaml
