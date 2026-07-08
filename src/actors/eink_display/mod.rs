@@ -93,6 +93,9 @@ impl Actor for EInkDisplayActor {
                 .arg("--disable-crash-reporter")
                 .arg("--no-crashpad")
                 .arg("--no-sandbox")
+                // container has a small /dev/shm; without this Chromium crashes on startup (SIGTRAP)
+                .arg("--disable-dev-shm-usage")
+                .arg("--disable-gpu")
                 .env("XDG_CONFIG_HOME", "/tmp/chromium")
                 .env("XDG_CACHE_HOME", "/tmp/chromium")
                 .viewport(Some(Viewport {
