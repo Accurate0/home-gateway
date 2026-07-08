@@ -25,8 +25,8 @@ use graphql::{
     QueryRoot,
     dataloader::last_seen::LastSeenDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
-    mutations::MutationRoot,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
+    mutations::MutationRoot,
 };
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
@@ -166,25 +166,29 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
-    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), SubscriptionRoot)
-        .data(DataLoader::new(
-            LatestTemperatureDataLoader {
-                database: pool.clone(),
-            },
-            tokio::spawn,
-        ))
-        .data(DataLoader::new(
-            LastSeenDataLoader {
-                database: pool.clone(),
-            },
-            tokio::spawn,
-        ))
-        .data(pool.clone())
-        .data(settings_container.clone())
-        .data(device_registry.clone())
-        .data(event_bus)
-        .extension(crate::graphql_tracing::Tracing)
-        .finish();
+    let schema = Schema::build(
+        QueryRoot::default(),
+        MutationRoot::default(),
+        SubscriptionRoot,
+    )
+    .data(DataLoader::new(
+        LatestTemperatureDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        LastSeenDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(pool.clone())
+    .data(settings_container.clone())
+    .data(device_registry.clone())
+    .data(event_bus)
+    .extension(crate::graphql_tracing::Tracing)
+    .finish();
 
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::any())
@@ -277,3 +281,5 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// TODO: query brightness and temperature states too if possible
