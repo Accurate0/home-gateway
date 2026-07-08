@@ -35,9 +35,12 @@ impl EInkDisplayActor {
 
 pub struct EInkActorState {
     index_html_etag: Option<String>,
-    browser: Browser,
+    // Optional so the gateway still starts where Chromium can't launch (e.g. a
+    // dev box or sandbox with no usable /dev/shm or dbus). Screenshotting is
+    // skipped in that case rather than crashing the whole process.
+    browser: Option<Browser>,
     #[allow(unused)]
-    browser_handle: JoinHandle<()>,
+    browser_handle: Option<JoinHandle<()>>,
 }
 
 impl EInkDisplayActor {
@@ -87,41 +90,54 @@ impl Actor for EInkDisplayActor {
             EInkDisplayMessage::TakeScreenshot
         });
 
-        let (browser, mut handler) = Browser::launch(
-            BrowserConfig::builder()
-                .new_headless_mode()
-                .arg("--disable-crash-reporter")
-                .arg("--no-crashpad")
-                .arg("--no-sandbox")
-                // container has a small /dev/shm; without this Chromium crashes on startup (SIGTRAP)
-                .arg("--disable-dev-shm-usage")
-                .arg("--disable-gpu")
-                .env("XDG_CONFIG_HOME", "/tmp/chromium")
-                .env("XDG_CACHE_HOME", "/tmp/chromium")
-                .viewport(Some(Viewport {
-                    width: 1600,
-                    height: 1200,
-                    device_scale_factor: None,
-                    emulating_mobile: true,
-                    is_landscape: true,
-                    has_touch: false,
-                }))
-                .build()?,
-        )
-        .await?;
+        let launch = BrowserConfig::builder()
+            .new_headless_mode()
+            .arg("--disable-crash-reporter")
+            .arg("--no-crashpad")
+            .arg("--no-sandbox")
+            // container has a small /dev/shm; without this Chromium crashes on startup (SIGTRAP)
+            .arg("--disable-dev-shm-usage")
+            .arg("--disable-gpu")
+            .env("XDG_CONFIG_HOME", "/tmp/chromium")
+            .env("XDG_CACHE_HOME", "/tmp/chromium")
+            .viewport(Some(Viewport {
+                width: 1600,
+                height: 1200,
+                device_scale_factor: None,
+                emulating_mobile: true,
+                is_landscape: true,
+                has_touch: false,
+            }))
+            .build()
+            .map_err(ractor::ActorProcessingErr::from);
 
-        let handle = tokio::spawn(async move {
-            while let Some(h) = handler.next().await {
-                if h.is_err() {
-                    break;
+        let (browser, browser_handle) = match launch {
+            Ok(config) => match Browser::launch(config).await {
+                Ok((browser, mut handler)) => {
+                    let handle = tokio::spawn(async move {
+                        while let Some(h) = handler.next().await {
+                            if h.is_err() {
+                                break;
+                            }
+                        }
+                    });
+                    (Some(browser), Some(handle))
                 }
+                Err(e) => {
+                    tracing::warn!("chromium failed to launch, screenshots disabled: {e}");
+                    (None, None)
+                }
+            },
+            Err(e) => {
+                tracing::warn!("chromium config invalid, screenshots disabled: {e}");
+                (None, None)
             }
-        });
+        };
 
         Ok(EInkActorState {
             browser,
             index_html_etag: None,
-            browser_handle: handle,
+            browser_handle,
         })
     }
 
@@ -130,7 +146,9 @@ impl Actor for EInkDisplayActor {
         _myself: ractor::ActorRef<Self::Msg>,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        state.browser.close().await?;
+        if let Some(browser) = &mut state.browser {
+            browser.close().await?;
+        }
         Ok(())
     }
 
@@ -146,7 +164,10 @@ impl Actor for EInkDisplayActor {
                     self.save_index_if_new(state).await?;
                 }
 
-                let browser = &state.browser;
+                let Some(browser) = &state.browser else {
+                    tracing::warn!("skipping screenshot: chromium not available");
+                    return Ok(());
+                };
                 let original_page = browser.new_page(Self::INDEX_PATH).await?;
                 tracing::info!("navigating to page");
 

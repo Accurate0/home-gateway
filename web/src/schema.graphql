@@ -1,0 +1,378 @@
+type ApplianceEvent {
+	time: DateTime!
+	id: UUID!
+	entityId: String!
+	state: ApplianceStateType!
+	name: String!
+}
+
+enum ApplianceStateType {
+	ON
+	OFF
+}
+
+type AuthObject {
+	id: String
+	name: String
+	scopes: [String!]!
+}
+
+type CronUpdate {
+	eventId: UUID!
+	name: String!
+}
+
+"""
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
+
+type DoorEntity {
+	id: String!
+	name: String!
+	"""
+	Whether the door is open. Nullable so an unreachable door-events actor
+	reports the error against this field without nulling the whole entity.
+	"""
+	open: Boolean
+}
+
+type DoorEvent {
+	time: DateTime!
+	state: DoorState!
+	name: String!
+	id: UUID!
+	entityId: String!
+}
+
+enum DoorState {
+	OPEN
+	CLOSED
+}
+
+type DoorUpdate {
+	eventId: UUID!
+	"""
+	Config slug, matching the `id` from the `entities` query.
+	"""
+	id: String!
+	"""
+	Human-friendly name, matching the `entities` query.
+	"""
+	name: String!
+	"""
+	Raw device address the event was emitted for.
+	"""
+	device: String!
+	open: Boolean!
+}
+
+type EnergyConsumption {
+	id: UUID!
+	used: Float!
+	solarExported: Float!
+	time: DateTime!
+}
+
+input EnergyHistoryInput {
+	since: DateTime!
+}
+
+type EnergyObject {
+	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
+}
+
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity
+
+type EnvironmentDetails {
+	id: String!
+	temperature: Float!
+	humidity: Float
+	pressure: Float
+	lux: Float
+	uvIndex: Float
+	time: DateTime!
+	name: String!
+}
+
+type EnvironmentEntity {
+	id: String!
+	name: String!
+	"""
+	Nullable so a missing reading reports the error against this field
+	without nulling the whole entity.
+	"""
+	temperature: Float
+	humidity: Float
+	pressure: Float
+	lux: Float
+	uvIndex: Float
+	"""
+	Nullable so a missing reading reports the error against this field
+	without nulling the whole entity.
+	"""
+	time: DateTime
+}
+
+type EnvironmentObject {
+	"""
+	Every environment sensor in the device registry, so new sensors appear
+	without code changes.
+	"""
+	sensors: [EnvironmentDetails!]!
+	"""
+	Look up a single environment sensor by its configured id (e.g. `outdoor`).
+	"""
+	byId(id: String!): EnvironmentDetails!
+	outdoor: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
+	laundry: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
+	livingRoom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
+	bathroom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
+	bedroom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
+}
+
+type EnvironmentUpdate {
+	eventId: UUID!
+	"""
+	Config slug, matching the `id` from the `entities` query.
+	"""
+	id: String!
+	"""
+	Human-friendly name, matching the `entities` query.
+	"""
+	name: String!
+	"""
+	Raw device address the event was emitted for.
+	"""
+	sensor: String!
+	readings: [MetricReading!]!
+}
+
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | LightUpdate | UnifiUpdate
+
+input EventsInput {
+	since: DateTime!
+}
+
+type EventsObject {
+	doors: [DoorEvent!]!
+	wifi: [WifiEvent!]!
+	appliances: [ApplianceEvent!]!
+}
+
+type Forecast {
+	days: [ForecastDetails!]!
+}
+
+type ForecastDetails {
+	dateTime: String!
+	code: String!
+	description: String!
+	emoji: String!
+	min: Int!
+	max: Int!
+	uv: Float
+}
+
+type GenerationHistory {
+	wh: Float!
+	at: NaiveDateTime!
+	uvLevel: Float
+	temperature: Float
+	timestamp: Int!
+}
+
+type LightEntity {
+	id: String!
+	name: String!
+	"""
+	Current power state. Nullable so an unreachable light actor reports the
+	error against this field without nulling the whole entity.
+	"""
+	on: Boolean
+}
+
+type LightUpdate {
+	eventId: UUID!
+	"""
+	Config slug, matching the `id` from the `entities` query.
+	"""
+	id: String!
+	"""
+	Human-friendly name, matching the `entities` query.
+	"""
+	name: String!
+	"""
+	Raw device address the event was emitted for.
+	"""
+	device: String!
+	on: Boolean!
+}
+
+type MetricReading {
+	metric: String!
+	value: Float!
+}
+
+"""
+ISO 8601 combined date and time without timezone.
+
+# Examples
+
+* `2015-07-01T08:59:60.123`,
+"""
+scalar NaiveDateTime
+
+type PresenceEntity {
+	id: String!
+	name: String!
+	"""
+	Whether presence is detected. Nullable so an unreachable presence actor
+	reports the error against this field without nulling the whole entity.
+	"""
+	present: Boolean
+}
+
+type PresenceUpdate {
+	eventId: UUID!
+	"""
+	Config slug, matching the `id` from the `entities` query.
+	"""
+	id: String!
+	"""
+	Human-friendly name, matching the `entities` query.
+	"""
+	name: String!
+	"""
+	Raw device address the event was emitted for.
+	"""
+	sensor: String!
+	present: Boolean!
+}
+
+type QueryRoot {
+	auth: AuthObject!
+	events(input: EventsInput!): EventsObject!
+	environment: EnvironmentObject!
+	"""
+	Every configured entity and its current state. Entity types the caller
+	lacks a `graphql:<type>:read` scope for are silently omitted — this query
+	never errors on missing permissions.
+	"""
+	entities: [Entity!]!
+	solar: SolarObject!
+	energy: EnergyObject!
+	weather(input: WeatherInput!): WeatherObject!
+	woolworths: WoolworthsObject!
+}
+
+type SolarCurrentResponse {
+	currentProductionWh: Float!
+	todayProductionKwh: Float!
+	yesterdayProductionKwh: Float!
+	monthProductionKwh: Float!
+	allTimeProductionKwh: Float!
+	statistics: SolarCurrentStatistics!
+	uvLevel: Float
+	temperature: Float
+}
+
+type SolarCurrentStatistics {
+	averages: SolarCurrentStatisticsAverages!
+}
+
+type SolarCurrentStatisticsAverages {
+	last15Mins: Float
+	last1Hour: Float
+	last3Hours: Float
+}
+
+input SolarHistoryInput {
+	since: DateTime!
+}
+
+type SolarObject {
+	current: SolarCurrentResponse!
+	history(input: SolarHistoryInput!): [GenerationHistory!]!
+}
+
+type SubscriptionRoot {
+	events(filter: String! = "*"): EventUpdate!
+}
+
+type SwitchUpdate {
+	eventId: UUID!
+	device: String!
+	action: String!
+}
+
+"""
+A UUID is a unique 128-bit number, stored as 16 octets. UUIDs are parsed as
+Strings within GraphQL. UUIDs are used to assign unique identifiers to
+entities without requiring a central allocating authority.
+
+# References
+
+* [Wikipedia: Universally Unique Identifier](http://en.wikipedia.org/wiki/Universally_unique_identifier)
+* [RFC4122: A Universally Unique Identifier (UUID) URN Namespace](http://tools.ietf.org/html/rfc4122)
+"""
+scalar UUID
+
+enum UnifiState {
+	CONNECTED
+	DISCONNECTED
+}
+
+type UnifiUpdate {
+	eventId: UUID!
+	macAddress: String!
+	client: String!
+	connected: Boolean!
+}
+
+input WeatherInput {
+	location: String!
+}
+
+type WeatherObject {
+	forecast: Forecast!
+}
+
+type WifiEvent {
+	name: String!
+	id: UUID!
+	time: DateTime!
+	state: UnifiState!
+}
+
+type WoolworthsObject {
+	products: [WoolworthsProducts!]!
+}
+
+type WoolworthsProducts {
+	name: String!
+	price: Float!
+}
+
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
+directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
+directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Provides a scalar specification URL for specifying the behavior of custom scalar types.
+"""
+directive @specifiedBy(url: String!) on SCALAR
+schema {
+	query: QueryRoot
+	subscription: SubscriptionRoot
+}

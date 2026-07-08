@@ -1,0 +1,12 @@
+minimumReleaseAge: 4320
+minimumReleaseAgeExclude:
+  - "@rollup/rollup-*"
+  - "@esbuild/*"
+  - "@swc/core-*"
+  - "@tailwindcss/oxide-*"
+  - "lightningcss-*"
+  - "@napi-rs/*"
+  # Renovate security update: pnpm@11.8.0
+  - pnpm@11.8.0
+onlyBuiltDependencies:
+  - esbuild
