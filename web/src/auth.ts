@@ -35,7 +35,7 @@ const userManager = AUTH_DISABLED
 let currentUser: User | null = null;
 
 export function getAccessToken(): string | null {
-  return currentUser?.id_token ?? null;
+  return currentUser?.access_token ?? null;
 }
 
 async function login(): Promise<never> {
