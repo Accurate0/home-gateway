@@ -64,6 +64,7 @@ pub(crate) fn default_groups_claim() -> String {
 pub struct OAuthSettings {
     pub issuer: String,
     pub jwks_url: String,
+    pub userinfo_url: String,
     pub audience: String,
     #[serde(default = "default_groups_claim")]
     pub groups_claim: String,

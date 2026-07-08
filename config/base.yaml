@@ -17,6 +17,7 @@ watchdog:
 oauth:
   issuer: https://idm.anurag.sh/oauth2/openid/home-gateway
   jwks_url: https://idm.anurag.sh/oauth2/openid/home-gateway/public_key.jwk
+  userinfo_url: https://idm.anurag.sh/oauth2/openid/home-gateway/userinfo
   audience: home-gateway
   group_scopes:
     home_gateway_admins@idm.anurag.sh: ["*"]

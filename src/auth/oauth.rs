@@ -17,11 +17,18 @@ const CACHE_CAPACITY: u64 = 32;
 const CACHE_TTL: Duration = Duration::from_secs(3600);
 
 /// Claims we read out of a Kanidm access token. `aud`/`iss`/`exp` are validated
-/// by `jsonwebtoken` itself; here we only need identity and group membership.
-/// `groups` is deserialized dynamically since the claim name is configurable.
+/// by `jsonwebtoken` itself; the access token only carries identity, so group
+/// membership is fetched separately from the userinfo endpoint.
 #[derive(Debug, Deserialize)]
 struct Claims {
     sub: String,
+}
+
+/// Identity and group membership from the OIDC userinfo endpoint. Kanidm omits
+/// `groups` from the access token, so it must be read from userinfo. `groups`
+/// is deserialized dynamically since the claim name is configurable.
+#[derive(Debug, Deserialize)]
+struct UserInfo {
     #[serde(default)]
     preferred_username: Option<String>,
     #[serde(flatten)]
@@ -112,20 +119,48 @@ impl OAuthValidator {
             })?
             .claims;
 
-        let scopes = self.scopes_for(&claims);
+        let userinfo = self.fetch_userinfo(token).await?;
+
+        let scopes = self.scopes_for(&userinfo);
         if scopes.is_empty() {
             tracing::error!("no scopes found");
             return Err(StatusCode::FORBIDDEN);
         }
 
-        let name = claims.preferred_username.clone().or(Some(claims.sub));
+        let name = userinfo.preferred_username.clone().or(Some(claims.sub));
         Ok(AuthContext::from_scopes(None, name, &scopes))
     }
 
-    /// Map the token's group claim through `group_scopes`, flattening and
+    /// Fetch the caller's userinfo from the OIDC endpoint using their bearer
+    /// token. Kanidm does not include `groups` in the access token, so this is
+    /// where group membership comes from.
+    async fn fetch_userinfo(&self, token: &str) -> Result<UserInfo, StatusCode> {
+        self.http
+            .get(&self.settings.userinfo_url)
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!("failed to fetch userinfo: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .error_for_status()
+            .map_err(|e| {
+                tracing::error!("userinfo request failed: {e}");
+                StatusCode::UNAUTHORIZED
+            })?
+            .json()
+            .await
+            .map_err(|e| {
+                tracing::error!("failed to parse userinfo: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })
+    }
+
+    /// Map the userinfo group claim through `group_scopes`, flattening and
     /// de-duplicating the granted scope strings.
-    fn scopes_for(&self, claims: &Claims) -> Vec<String> {
-        let groups = claims
+    fn scopes_for(&self, userinfo: &UserInfo) -> Vec<String> {
+        let groups = userinfo
             .extra
             .get(&self.settings.groups_claim)
             .and_then(|v| v.as_array())
@@ -159,6 +194,7 @@ mod tests {
             settings: OAuthSettings {
                 issuer: "iss".into(),
                 jwks_url: "http://jwks".into(),
+                userinfo_url: "http://userinfo".into(),
                 audience: "home-gateway".into(),
                 groups_claim: "groups".into(),
                 group_scopes,
@@ -168,14 +204,13 @@ mod tests {
         }
     }
 
-    fn claims(groups: &[&str]) -> Claims {
+    fn userinfo(groups: &[&str]) -> UserInfo {
         let mut extra = serde_json::Map::new();
         extra.insert(
             "groups".into(),
             serde_json::json!(groups.iter().collect::<Vec<_>>()),
         );
-        Claims {
-            sub: "user".into(),
+        UserInfo {
             preferred_username: Some("user".into()),
             extra,
         }
@@ -187,7 +222,7 @@ mod tests {
             "admins@idm".to_owned(),
             vec!["*".to_owned()],
         )]));
-        assert_eq!(v.scopes_for(&claims(&["admins@idm"])), vec!["*"]);
+        assert_eq!(v.scopes_for(&userinfo(&["admins@idm"])), vec!["*"]);
     }
 
     #[test]
@@ -199,7 +234,7 @@ mod tests {
                 vec!["graphql:*:read".to_owned(), "rest:epd:read".to_owned()],
             ),
         ]));
-        let mut scopes = v.scopes_for(&claims(&["a", "b"]));
+        let mut scopes = v.scopes_for(&userinfo(&["a", "b"]));
         scopes.sort();
         assert_eq!(scopes, vec!["graphql:*:read", "rest:epd:read"]);
     }
@@ -210,6 +245,6 @@ mod tests {
             "admins@idm".to_owned(),
             vec!["*".to_owned()],
         )]));
-        assert!(v.scopes_for(&claims(&["nobody@idm"])).is_empty());
+        assert!(v.scopes_for(&userinfo(&["nobody@idm"])).is_empty());
     }
 }
