@@ -114,6 +114,7 @@ impl OAuthValidator {
 
         let scopes = self.scopes_for(&claims);
         if scopes.is_empty() {
+            tracing::error!("no scopes found");
             return Err(StatusCode::FORBIDDEN);
         }
 
