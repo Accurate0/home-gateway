@@ -13,6 +13,11 @@ const SCOPE = "openid email profile groups";
 // access without a token, so we skip the Kanidm round-trip entirely.
 export const AUTH_DISABLED = import.meta.env.DEV;
 
+// Persist both the signed-in user and the transient signin state (PKCE verifier
+// + state) in localStorage so they survive the full-page redirect to Kanidm and
+// back. Using the same store for both avoids "No matching state found" races.
+const store = new WebStorageStateStore({ store: window.localStorage });
+
 const userManager = AUTH_DISABLED
   ? null
   : new UserManager({
@@ -23,7 +28,8 @@ const userManager = AUTH_DISABLED
       response_type: "code",
       scope: SCOPE,
       automaticSilentRenew: true,
-      userStore: new WebStorageStateStore({ store: window.localStorage }),
+      userStore: store,
+      stateStore: store,
     });
 
 let currentUser: User | null = null;
@@ -32,22 +38,38 @@ export function getAccessToken(): string | null {
   return currentUser?.access_token ?? null;
 }
 
+async function login(): Promise<never> {
+  await userManager!.signinRedirect();
+  // signinRedirect navigates away; this promise never resolves.
+  return new Promise<never>(() => {});
+}
+
 // Resolve the signed-in user, driving the redirect flow when needed. Returns
 // once we hold a valid access token (or immediately when auth is disabled).
 export async function ensureAuthenticated(): Promise<void> {
   if (!userManager) return;
 
-  if (window.location.pathname === "/callback") {
-    currentUser = await userManager.signinRedirectCallback();
+  const params = new URLSearchParams(window.location.search);
+  if (window.location.pathname === "/callback" && params.has("code")) {
+    try {
+      currentUser = await userManager.signinRedirectCallback();
+    } catch (e) {
+      // Strip the consumed code/state so a reload can't replay this callback,
+      // then surface a clear message instead of an uncaught error + reload loop.
+      window.history.replaceState({}, "", "/");
+      throw new Error(
+        `Sign-in failed during token exchange: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+        { cause: e },
+      );
+    }
     window.history.replaceState({}, "", "/");
-    return;
   }
 
-  currentUser = await userManager.getUser();
+  currentUser = currentUser ?? (await userManager.getUser());
   if (!currentUser || currentUser.expired) {
-    await userManager.signinRedirect();
-    // signinRedirect navigates away; this promise never resolves.
-    await new Promise(() => {});
+    await login();
   }
 
   userManager.events.addUserLoaded((user) => {
