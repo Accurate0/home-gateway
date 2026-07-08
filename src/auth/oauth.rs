@@ -95,7 +95,7 @@ impl OAuthValidator {
     /// Returns 401 for an invalid token and 403 when no group maps to any scope.
     pub async fn validate(&self, token: &str) -> Result<AuthContext, StatusCode> {
         let header = decode_header(token).map_err(|e| {
-            tracing::debug!("invalid jwt header: {e}");
+            tracing::error!("invalid jwt header: {e}");
             StatusCode::UNAUTHORIZED
         })?;
         let kid = header.kid.ok_or(StatusCode::UNAUTHORIZED)?;
@@ -107,7 +107,7 @@ impl OAuthValidator {
 
         let claims = decode::<Claims>(token, &key, &validation)
             .map_err(|e| {
-                tracing::debug!("jwt validation failed: {e}");
+                tracing::error!("jwt validation failed: {e}");
                 StatusCode::UNAUTHORIZED
             })?
             .claims;
