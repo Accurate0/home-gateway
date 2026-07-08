@@ -30,16 +30,19 @@ const EntitiesQuery = graphql`
         name
         capabilities
         on
+        lastSeen
       }
       ... on DoorEntity {
         id
         name
         open
+        lastSeen
       }
       ... on PresenceEntity {
         id
         name
         present
+        lastSeen
       }
       ... on EnvironmentEntity {
         id
@@ -50,6 +53,7 @@ const EntitiesQuery = graphql`
         lux
         uvIndex
         time
+        lastSeen
       }
     }
   }
@@ -141,6 +145,12 @@ export default function App() {
   const [entities, setEntities] = useState<Map<string, Entity>>(() =>
     seedEntities(data),
   );
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const sub = requestSubscription<AppEventsSubscription>(environment, {
@@ -157,10 +167,11 @@ export default function App() {
             prev.get(key) ??
             ({ key, kind, id: update.id, name: update.name } as Entity);
 
+          const lastSeen = new Date().toISOString();
           const merged: Entity =
             "readings" in update && update.readings
-              ? applyReadings({ ...existing }, update.readings)
-              : { ...existing, ...update, kind, key };
+              ? applyReadings({ ...existing, lastSeen }, update.readings)
+              : { ...existing, ...update, kind, key, lastSeen };
 
           const next = new Map(prev);
           next.set(key, merged);
@@ -247,6 +258,7 @@ export default function App() {
                 <EntityCard
                   key={entity.key}
                   entity={entity}
+                  now={now}
                   lightActions={
                     entity.kind === "light"
                       ? lightActionsFor(entity)

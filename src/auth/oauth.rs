@@ -16,6 +16,9 @@ use super::AuthContext;
 const CACHE_CAPACITY: u64 = 32;
 const CACHE_TTL: Duration = Duration::from_secs(3600);
 
+const USERINFO_CACHE_CAPACITY: u64 = 256;
+const USERINFO_CACHE_TTL: Duration = Duration::from_secs(15 * 60);
+
 /// Claims we read out of a Kanidm access token. `aud`/`iss`/`exp` are validated
 /// by `jsonwebtoken` itself; the access token only carries identity, so group
 /// membership is fetched separately from the userinfo endpoint.
@@ -40,6 +43,8 @@ pub struct OAuthValidator {
     http: ClientWithMiddleware,
     // kid -> decoding key. Missing/rotated keys trigger a JWKS refetch.
     keys: Cache<String, Arc<DecodingKey>>,
+    // bearer token -> userinfo, to avoid a userinfo round-trip on every request.
+    userinfo: Cache<String, Arc<UserInfo>>,
 }
 
 impl OAuthValidator {
@@ -50,6 +55,10 @@ impl OAuthValidator {
             keys: Cache::builder()
                 .max_capacity(CACHE_CAPACITY)
                 .time_to_live(CACHE_TTL)
+                .build(),
+            userinfo: Cache::builder()
+                .max_capacity(USERINFO_CACHE_CAPACITY)
+                .time_to_live(USERINFO_CACHE_TTL)
                 .build(),
         })
     }
@@ -133,8 +142,19 @@ impl OAuthValidator {
 
     /// Fetch the caller's userinfo from the OIDC endpoint using their bearer
     /// token. Kanidm does not include `groups` in the access token, so this is
-    /// where group membership comes from.
-    async fn fetch_userinfo(&self, token: &str) -> Result<UserInfo, StatusCode> {
+    /// where group membership comes from. Results are cached per token for
+    /// `USERINFO_CACHE_TTL` to avoid a round-trip on every request.
+    async fn fetch_userinfo(&self, token: &str) -> Result<Arc<UserInfo>, StatusCode> {
+        if let Some(userinfo) = self.userinfo.get(token).await {
+            return Ok(userinfo);
+        }
+
+        let userinfo = Arc::new(self.request_userinfo(token).await?);
+        self.userinfo.insert(token.to_owned(), userinfo.clone()).await;
+        Ok(userinfo)
+    }
+
+    async fn request_userinfo(&self, token: &str) -> Result<UserInfo, StatusCode> {
         self.http
             .get(&self.settings.userinfo_url)
             .bearer_auth(token)
@@ -201,6 +221,7 @@ mod tests {
             },
             http: get_traced_http_client().unwrap(),
             keys: Cache::builder().build(),
+            userinfo: Cache::builder().build(),
         }
     }
 

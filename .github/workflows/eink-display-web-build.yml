@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - "eink-display-web/**"
+      - "packages/**"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
       - ".github/workflows/eink-display-web-build.yml"
   workflow_dispatch:
 
@@ -27,15 +31,13 @@ jobs:
         with:
           node-version: "23"
           cache: "pnpm"
-          cache-dependency-path: eink-display-web/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        working-directory: eink-display-web
+        run: pnpm install --frozen-lockfile --filter eink-display-web...
 
       - name: Build
-        run: pnpm run build
-        working-directory: eink-display-web
+        run: pnpm --filter eink-display-web build
         env:
           VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_SECRET }}
 

@@ -52,6 +52,10 @@ type DoorEntity {
 	reports the error against this field without nulling the whole entity.
 	"""
 	open: Boolean
+	"""
+	Most recent time the device behind this entity was heard from.
+	"""
+	lastSeen: DateTime
 }
 
 type DoorEvent {
@@ -130,6 +134,10 @@ type EnvironmentEntity {
 	without nulling the whole entity.
 	"""
 	time: DateTime
+	"""
+	Most recent time the device behind this entity was heard from.
+	"""
+	lastSeen: DateTime
 }
 
 type EnvironmentObject {
@@ -209,6 +217,10 @@ type LightEntity {
 	error against this field without nulling the whole entity.
 	"""
 	on: Boolean
+	"""
+	Most recent time the device behind this entity was heard from.
+	"""
+	lastSeen: DateTime
 }
 
 type LightMutation {
@@ -265,6 +277,10 @@ type PresenceEntity {
 	reports the error against this field without nulling the whole entity.
 	"""
 	present: Boolean
+	"""
+	Most recent time the device behind this entity was heard from.
+	"""
+	lastSeen: DateTime
 }
 
 type PresenceUpdate {

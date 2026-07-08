@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b69f449e79f874b7c264bff38aac972>>
+ * @generated SignedSource<<a6f9075b0309f49a053234f605d6162c>>
  * @lightSyntaxTransform
  */
 
@@ -14,12 +14,14 @@ export type AppEntitiesQuery$data = {
   readonly entities: ReadonlyArray<{
     readonly __typename: "DoorEntity";
     readonly id: string;
+    readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly open: boolean | null | undefined;
   } | {
     readonly __typename: "EnvironmentEntity";
     readonly humidity: number | null | undefined;
     readonly id: string;
+    readonly lastSeen: any | null | undefined;
     readonly lux: number | null | undefined;
     readonly name: string;
     readonly pressure: number | null | undefined;
@@ -30,11 +32,13 @@ export type AppEntitiesQuery$data = {
     readonly __typename: "LightEntity";
     readonly capabilities: ReadonlyArray<Capability>;
     readonly id: string;
+    readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly on: boolean | null | undefined;
   } | {
     readonly __typename: "PresenceEntity";
     readonly id: string;
+    readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly present: boolean | null | undefined;
   } | {
@@ -63,7 +67,14 @@ v1 = {
   "name": "name",
   "storageKey": null
 },
-v2 = [
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "lastSeen",
+  "storageKey": null
+},
+v3 = [
   {
     "alias": null,
     "args": null,
@@ -97,7 +108,8 @@ v2 = [
             "kind": "ScalarField",
             "name": "on",
             "storageKey": null
-          }
+          },
+          (v2/*:: as any*/)
         ],
         "type": "LightEntity",
         "abstractKey": null
@@ -113,7 +125,8 @@ v2 = [
             "kind": "ScalarField",
             "name": "open",
             "storageKey": null
-          }
+          },
+          (v2/*:: as any*/)
         ],
         "type": "DoorEntity",
         "abstractKey": null
@@ -129,7 +142,8 @@ v2 = [
             "kind": "ScalarField",
             "name": "present",
             "storageKey": null
-          }
+          },
+          (v2/*:: as any*/)
         ],
         "type": "PresenceEntity",
         "abstractKey": null
@@ -180,7 +194,8 @@ v2 = [
             "kind": "ScalarField",
             "name": "time",
             "storageKey": null
-          }
+          },
+          (v2/*:: as any*/)
         ],
         "type": "EnvironmentEntity",
         "abstractKey": null
@@ -195,7 +210,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "AppEntitiesQuery",
-    "selections": (v2/*:: as any*/),
+    "selections": (v3/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -204,19 +219,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "AppEntitiesQuery",
-    "selections": (v2/*:: as any*/)
+    "selections": (v3/*:: as any*/)
   },
   "params": {
-    "cacheID": "cfc878a04d2edbd9a3865a9acf0a272c",
+    "cacheID": "89084279fe4a54d6b51ac4990204e3bb",
     "id": null,
     "metadata": {},
     "name": "AppEntitiesQuery",
     "operationKind": "query",
-    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n    }\n  }\n}\n"
+    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cd4462db753e2ff52ad9ab21527ff47b";
+(node as any).hash = "7f9e34efa965c7d2b6959824683bb765";
 
 export default node;

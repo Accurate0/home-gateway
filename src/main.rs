@@ -23,6 +23,7 @@ use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
+    dataloader::last_seen::LastSeenDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
     mutations::MutationRoot,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
@@ -168,6 +169,12 @@ async fn main() -> anyhow::Result<()> {
     let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), SubscriptionRoot)
         .data(DataLoader::new(
             LatestTemperatureDataLoader {
+                database: pool.clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            LastSeenDataLoader {
                 database: pool.clone(),
             },
             tokio::spawn,

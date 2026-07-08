@@ -12,7 +12,7 @@ import {
 import { useState } from "react";
 import { Popover, Slider } from "radix-ui";
 import { cn } from "@/lib/utils";
-import type { Entity } from "@/entities";
+import { formatLastSeen, type Entity } from "@/entities";
 
 export interface LightActions {
   onToggle: () => void;
@@ -58,6 +58,33 @@ function StatePill({
       )}
     >
       {children}
+    </span>
+  );
+}
+
+function LastSeen({
+  entity,
+  now,
+  className,
+}: {
+  entity: Entity;
+  now: number;
+  className?: string;
+}) {
+  const label = formatLastSeen(entity.lastSeen ?? entity.time, now);
+  if (!label) return null;
+  return (
+    <span
+      className={cn(
+        "text-muted-foreground text-[11px] tabular-nums",
+        className,
+      )}
+      title="Last seen"
+    >
+      <span aria-hidden className="mr-1">
+        -
+      </span>
+      {label}
     </span>
   );
 }
@@ -182,9 +209,11 @@ function LightControls({ actions }: { actions: LightActions }) {
 function LightTile({
   entity,
   actions,
+  now,
 }: {
   entity: Entity;
   actions?: LightActions;
+  now: number;
 }) {
   const on = entity.on;
   const unknown = on == null;
@@ -241,7 +270,10 @@ function LightTile({
         </div>
         <div>
           <div className="leading-tight font-medium">{entity.name}</div>
-          <div className="text-muted-foreground mb-2 text-xs">{entity.id}</div>
+          <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
+            <span>{entity.id}</span>
+            <LastSeen entity={entity} now={now} />
+          </div>
           <StatePill tone={unknown ? "unknown" : on ? "on" : "off"}>
             {unknown ? "unknown" : on ? "on" : "off"}
           </StatePill>
@@ -252,7 +284,7 @@ function LightTile({
   );
 }
 
-function EnvironmentTile({ entity }: { entity: Entity }) {
+function EnvironmentTile({ entity, now }: { entity: Entity; now: number }) {
   const hum = entity.humidity;
   const pct = hum == null ? 0 : Math.max(0, Math.min(100, hum));
   return (
@@ -264,7 +296,10 @@ function EnvironmentTile({ entity }: { entity: Entity }) {
           </div>
           <div>
             <div className="leading-tight font-medium">{entity.name}</div>
-            <div className="text-muted-foreground text-xs">{entity.id}</div>
+            <div className="text-muted-foreground flex items-center gap-1 text-xs">
+              <span>{entity.id}</span>
+              <LastSeen entity={entity} now={now} />
+            </div>
           </div>
         </div>
         <div className="font-display text-3xl font-semibold tracking-tight">
@@ -306,6 +341,7 @@ function StatusTile({
   activeIcon,
   labels,
   tone,
+  now,
 }: {
   entity: Entity;
   active: boolean | null | undefined;
@@ -313,6 +349,7 @@ function StatusTile({
   activeIcon: React.ReactNode;
   labels: { on: string; off: string };
   tone: keyof typeof STATUS_TONES;
+  now: number;
 }) {
   const unknown = active == null;
   const t = STATUS_TONES[tone];
@@ -330,7 +367,10 @@ function StatusTile({
       </div>
       <div>
         <div className="leading-tight font-medium">{entity.name}</div>
-        <div className="text-muted-foreground mb-2 text-xs">{entity.id}</div>
+        <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
         <StatePill tone={unknown ? "unknown" : active ? "on" : "off"}>
           {unknown ? "unknown" : active ? labels.on : labels.off}
         </StatePill>
@@ -342,15 +382,17 @@ function StatusTile({
 export default function EntityCard({
   entity,
   lightActions,
+  now,
 }: {
   entity: Entity;
   lightActions?: LightActions;
+  now: number;
 }) {
   switch (entity.kind) {
     case "light":
-      return <LightTile entity={entity} actions={lightActions} />;
+      return <LightTile entity={entity} actions={lightActions} now={now} />;
     case "environment":
-      return <EnvironmentTile entity={entity} />;
+      return <EnvironmentTile entity={entity} now={now} />;
     case "door":
       return (
         <StatusTile
@@ -360,6 +402,7 @@ export default function EntityCard({
           activeIcon={<DoorOpen className="size-5" strokeWidth={1.5} />}
           labels={{ on: "open", off: "closed" }}
           tone="open"
+          now={now}
         />
       );
     case "presence":
@@ -371,6 +414,7 @@ export default function EntityCard({
           activeIcon={<PersonStanding className="size-5" strokeWidth={1.5} />}
           labels={{ on: "present", off: "away" }}
           tone="present"
+          now={now}
         />
       );
   }

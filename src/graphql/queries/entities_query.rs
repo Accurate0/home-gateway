@@ -69,6 +69,7 @@ impl EntitiesQuery {
                 Entity::Environment(EnvironmentEntity {
                     id: settings.id.clone(),
                     name: settings.name.clone(),
+                    address: address.clone(),
                     capabilities: registry.capabilities(address).to_vec(),
                 })
             }));

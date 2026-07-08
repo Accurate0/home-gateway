@@ -18,11 +18,25 @@ use crate::{
         rpc,
     },
     device_registry::Capability,
-    graphql::dataloader::temperature::{LatestTemperatureDataLoader, TemperatureModel},
+    graphql::dataloader::{
+        last_seen::LastSeenDataLoader,
+        temperature::{LatestTemperatureDataLoader, TemperatureModel},
+    },
     types::db::DoorState,
 };
 
 const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Most recent time the device behind `address` was heard from, resolved via the
+/// batched `device_last_seen` dataloader. Nullable when the device has never been
+/// recorded.
+async fn last_seen_for(
+    ctx: &async_graphql::Context<'_>,
+    address: &str,
+) -> async_graphql::Result<Option<DateTime<Utc>>> {
+    let loader = ctx.data::<DataLoader<LastSeenDataLoader>>()?;
+    Ok(loader.load_one(address.to_owned()).await?)
+}
 
 #[derive(Union)]
 pub enum Entity {
@@ -69,6 +83,13 @@ impl LightEntity {
             .await?,
         ))
     }
+
+    async fn last_seen(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        last_seen_for(ctx, &self.address).await
+    }
 }
 
 pub struct DoorEntity {
@@ -105,6 +126,13 @@ impl DoorEntity {
         })
         .await?;
         Ok(Some(matches!(state, Some(DoorState::Open))))
+    }
+
+    async fn last_seen(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        last_seen_for(ctx, &self.address).await
     }
 }
 
@@ -145,6 +173,13 @@ impl PresenceEntity {
             .await?;
         Ok(Some(present.unwrap_or(false)))
     }
+
+    async fn last_seen(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        last_seen_for(ctx, &self.address).await
+    }
 }
 
 pub struct EnvironmentEntity {
@@ -152,6 +187,8 @@ pub struct EnvironmentEntity {
     pub id: String,
     /// human-friendly name.
     pub name: String,
+    /// device address (ieee addr or esphome node), the last-seen dataloader key.
+    pub address: String,
     pub capabilities: Vec<Capability>,
 }
 
@@ -228,5 +265,12 @@ impl EnvironmentEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<DateTime<Utc>>> {
         Ok(Some(self.load(ctx, |t| t.time).await?))
+    }
+
+    async fn last_seen(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        last_seen_for(ctx, &self.address).await
     }
 }
