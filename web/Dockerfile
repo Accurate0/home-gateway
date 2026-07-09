@@ -13,7 +13,7 @@ COPY packages ./packages
 COPY web ./web
 RUN pnpm --filter web build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS final
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS final
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/web/dist /usr/share/nginx/html
 EXPOSE 8080
