@@ -2,7 +2,10 @@ use crate::s3::OptionalObjectResponse;
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
-    cdp::browser_protocol::{emulation::SetLocaleOverrideParams, page::CaptureScreenshotFormat},
+    cdp::browser_protocol::{
+        emulation::{SetDeviceMetricsOverrideParams, SetLocaleOverrideParams},
+        page::CaptureScreenshotFormat,
+    },
     handler::viewport::Viewport,
     page::ScreenshotParams,
 };
@@ -196,6 +199,40 @@ impl Actor for EInkDisplayActor {
                     .await?;
 
                 tracing::info!("screenshot uploaded");
+
+                tracing::info!("resizing viewport for trmnl x");
+                page.execute(
+                    SetDeviceMetricsOverrideParams::builder()
+                        .width(1872)
+                        .height(1404)
+                        .device_scale_factor(1.0)
+                        .mobile(false)
+                        .build()
+                        .map_err(ractor::ActorProcessingErr::from)?,
+                )
+                .await?;
+
+                tokio::time::sleep(Duration::from_secs(2)).await;
+
+                let trmnl_image = page
+                    .screenshot(
+                        ScreenshotParams::builder()
+                            .format(CaptureScreenshotFormat::Png)
+                            .full_page(false)
+                            .build(),
+                    )
+                    .await?;
+
+                self.shared_actor_state
+                    .s3
+                    .put_object(
+                        "eink-display-screenshot-trmnl.png",
+                        &trmnl_image,
+                        Some("image/png"),
+                    )
+                    .await?;
+
+                tracing::info!("trmnl screenshot uploaded");
 
                 original_page.close().await?;
             }

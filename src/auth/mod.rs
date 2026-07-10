@@ -154,7 +154,29 @@ pub async fn auth_middleware(
     mut req: Request,
     next: Next,
 ) -> Response {
-    match resolve_auth(req.headers(), &state).await {
+    let query_auth = req.uri().query().and_then(|query| {
+        query
+            .split('&')
+            .filter_map(|pair| pair.split_once('='))
+            .find(|(key, _)| *key == "auth")
+            .map(|(_, value)| value.to_owned())
+    });
+
+    let resolved = if let Some(token) = query_auth
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        match resolve_api_key(token, &state).await {
+            Ok(Some(auth)) => Ok(auth),
+            Ok(None) => resolve_auth(req.headers(), &state).await,
+            Err(status) => Err(status),
+        }
+    } else {
+        resolve_auth(req.headers(), &state).await
+    };
+
+    match resolved {
         Ok(auth) => {
             req.extensions_mut().insert(auth);
             next.run(req).await

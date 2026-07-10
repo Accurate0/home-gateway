@@ -119,6 +119,18 @@ pub async fn latest(
     Ok(output_packed)
 }
 
+pub async fn latest_trmnl(
+    State(ApiState { s3, .. }): State<ApiState>,
+    Auth(auth): Auth,
+) -> Result<([(http::HeaderName, &'static str); 1], Vec<u8>), AppError> {
+    auth.require(&required::REST_EPD_READ)
+        .map_err(AppError::StatusCode)?;
+
+    let image = s3.get_object("eink-display-screenshot-trmnl.png").await?;
+
+    Ok(([(http::header::CONTENT_TYPE, "image/png")], image))
+}
+
 fn process_pixel(
     buffer: &mut [f32],
     width: u32,
