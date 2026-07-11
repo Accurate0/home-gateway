@@ -2,10 +2,7 @@ use crate::s3::OptionalObjectResponse;
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
-    cdp::browser_protocol::{
-        emulation::{SetDeviceMetricsOverrideParams, SetLocaleOverrideParams},
-        page::CaptureScreenshotFormat,
-    },
+    cdp::browser_protocol::{emulation::SetLocaleOverrideParams, page::CaptureScreenshotFormat},
     handler::viewport::Viewport,
     page::ScreenshotParams,
 };
@@ -72,39 +69,6 @@ impl EInkDisplayActor {
 
         Ok(())
     }
-}
-
-fn encode_trmnl_png(screenshot: &[u8]) -> anyhow::Result<Vec<u8>> {
-    let gray = image::load_from_memory(screenshot)?.to_luma8();
-    let (width, height) = gray.dimensions();
-
-    let row_bytes = width.div_ceil(2) as usize;
-    let mut packed = vec![0u8; row_bytes * height as usize];
-
-    for y in 0..height {
-        for x in 0..width {
-            let value = gray.get_pixel(x, y)[0] as u32;
-            let quantized = ((value * 15 + 127) / 255) as u8;
-            let byte = y as usize * row_bytes + (x / 2) as usize;
-            if x % 2 == 0 {
-                packed[byte] |= quantized << 4;
-            } else {
-                packed[byte] |= quantized;
-            }
-        }
-    }
-
-    let mut out = Vec::new();
-    {
-        let mut encoder = png::Encoder::new(&mut out, width, height);
-        encoder.set_color(png::ColorType::Grayscale);
-        encoder.set_depth(png::BitDepth::Four);
-        encoder.set_compression(png::Compression::High);
-        let mut writer = encoder.write_header()?;
-        writer.write_image_data(&packed)?;
-    }
-
-    Ok(out)
 }
 
 impl Actor for EInkDisplayActor {
@@ -232,44 +196,6 @@ impl Actor for EInkDisplayActor {
                     .await?;
 
                 tracing::info!("screenshot uploaded");
-
-                tracing::info!("resizing viewport for trmnl x");
-                page.execute(
-                    SetDeviceMetricsOverrideParams::builder()
-                        .width(1872)
-                        .height(1404)
-                        .device_scale_factor(1.0)
-                        .mobile(false)
-                        .build()
-                        .map_err(ractor::ActorProcessingErr::from)?,
-                )
-                .await?;
-
-                tokio::time::sleep(Duration::from_secs(2)).await;
-
-                let trmnl_screenshot = page
-                    .screenshot(
-                        ScreenshotParams::builder()
-                            .format(CaptureScreenshotFormat::Png)
-                            .full_page(false)
-                            .build(),
-                    )
-                    .await?;
-
-                let trmnl_image =
-                    tokio::task::spawn_blocking(move || encode_trmnl_png(&trmnl_screenshot))
-                        .await??;
-
-                self.shared_actor_state
-                    .s3
-                    .put_object(
-                        "eink-display-screenshot-trmnl.png",
-                        &trmnl_image,
-                        Some("image/png"),
-                    )
-                    .await?;
-
-                tracing::info!("trmnl screenshot uploaded");
 
                 original_page.close().await?;
             }

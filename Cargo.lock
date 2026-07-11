@@ -2084,7 +2084,6 @@ dependencies = [
  "opentelemetry_sdk",
  "pgmq",
  "phf 0.14.0",
- "png",
  "pretty_assertions",
  "prometheus",
  "ractor",
