@@ -3,6 +3,7 @@ use crate::settings::trigger::TriggerMatcher;
 use crate::timedelta_format::option_time_delta_from_str;
 
 use super::{DeviceAliases, IEEEAddress, validate_device, yes};
+use crate::actors::sun::calc::SunPeriod;
 use chrono::{NaiveTime, TimeDelta};
 use serde::Deserialize;
 
@@ -120,6 +121,14 @@ pub enum Condition {
         #[serde(default)]
         before: Option<NaiveTime>,
     },
+    Sun {
+        is: SunPeriod,
+        #[serde(
+            default,
+            deserialize_with = "crate::timedelta_format::signed_time_delta_from_str::deserialize"
+        )]
+        offset: TimeDelta,
+    },
     All {
         conditions: Vec<Condition>,
     },
@@ -145,7 +154,8 @@ impl Condition {
             Condition::Not { condition } => condition.resolve_devices(devices)?,
             Condition::Environment { .. }
             | Condition::Presence { .. }
-            | Condition::TimeOfDay { .. } => {}
+            | Condition::TimeOfDay { .. }
+            | Condition::Sun { .. } => {}
         }
         Ok(())
     }
@@ -175,6 +185,16 @@ impl Condition {
                 (None, Some(b)) => format!("time before {b}"),
                 (None, None) => "time always".to_string(),
             },
+            Condition::Sun { is, offset } => {
+                if offset.is_zero() {
+                    format!("sun is {is:?}")
+                } else {
+                    format!(
+                        "sun is {is:?} (offset {})",
+                        crate::timedelta_format::humanize(*offset)
+                    )
+                }
+            }
             Condition::All { conditions } => {
                 format!("all[{}]", describe_join(conditions))
             }

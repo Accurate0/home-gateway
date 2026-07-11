@@ -108,6 +108,14 @@ impl WorkflowDispatcher {
             (TriggerMatcher::Cron { .. }, EventBusMessage::Cron { name, .. }) => {
                 &workflow.name == name
             }
+            (
+                TriggerMatcher::Sun { transition, offset },
+                EventBusMessage::Sun {
+                    transition: t,
+                    offset: o,
+                    ..
+                },
+            ) => transition == t && offset == o,
             _ => false,
         }
     }

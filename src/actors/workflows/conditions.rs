@@ -21,7 +21,8 @@ use crate::{
     types::SharedActorState,
     types::db::DoorState,
 };
-use chrono::Local;
+use crate::actors::sun::calc;
+use chrono::{Local, Utc};
 use std::time::Duration;
 
 impl From<RpcError> for WorkflowError {
@@ -61,6 +62,9 @@ pub async fn eval(state: &SharedActorState, cond: &Condition) -> Result<bool, Wo
                 (None, Some(b)) => now < *b,
                 (None, None) => true,
             })
+        }
+        Condition::Sun { is, offset } => {
+            Ok(calc::current_period(state.settings.location, Utc::now(), *offset) == *is)
         }
         Condition::All { conditions } => {
             for c in conditions {

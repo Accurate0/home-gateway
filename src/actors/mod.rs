@@ -8,6 +8,7 @@ pub mod push;
 pub mod root;
 pub mod rpc;
 pub mod solar;
+pub mod sun;
 pub mod synergy;
 pub mod unifi;
 pub mod watchdog;

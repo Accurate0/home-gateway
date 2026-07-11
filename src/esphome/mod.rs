@@ -24,6 +24,9 @@ pub const AIR_TEMPERATURE_OBJECT_ID: &str = "air_temperature";
 pub const AIR_HUMIDITY_OBJECT_ID: &str = "air_humidity";
 pub const LTR390_LIGHT_OBJECT_ID: &str = "ltr390_light";
 pub const LTR390_UV_INDEX_OBJECT_ID: &str = "ltr390_uv_index";
+pub const SHTC3_TEMPERATURE_OBJECT_ID: &str = "temperature";
+pub const SHTC3_HUMIDITY_OBJECT_ID: &str = "humidity";
+pub const BH1750_ILLUMINANCE_OBJECT_ID: &str = "illuminance";
 
 pub const TEMPERATURE_SENSOR_OBJECT_IDS: &[&str] = &[
     DPS310_TEMPERATURE_OBJECT_ID,
@@ -32,6 +35,9 @@ pub const TEMPERATURE_SENSOR_OBJECT_IDS: &[&str] = &[
     AIR_HUMIDITY_OBJECT_ID,
     LTR390_LIGHT_OBJECT_ID,
     LTR390_UV_INDEX_OBJECT_ID,
+    SHTC3_TEMPERATURE_OBJECT_ID,
+    SHTC3_HUMIDITY_OBJECT_ID,
+    BH1750_ILLUMINANCE_OBJECT_ID,
 ];
 
 /// What a subscribed esphome state topic maps to. Recorded in the subscription

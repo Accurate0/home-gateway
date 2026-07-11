@@ -1,0 +1,15 @@
+- name: Living room lamp on (occupancy after sunset)
+  on: { type: presence, sensor: living-room-epp, present: true }
+  when: { type: sun, is: night }
+  run:
+    - type: light
+      device: floor-lamp-living-room
+      state: ON
+
+- name: Living room lamp on (sunset while occupied)
+  on: { type: sun, transition: sunset }
+  when: { type: presence, sensor: living-room-epp, present: true }
+  run:
+    - type: light
+      device: floor-lamp-living-room
+      state: ON

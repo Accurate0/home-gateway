@@ -116,6 +116,49 @@ pub mod option_time_delta_from_str {
     }
 }
 
+pub fn humanize(delta: TimeDelta) -> String {
+    let mut secs = delta.num_seconds();
+    let sign = if secs < 0 { "-" } else { "" };
+    secs = secs.abs();
+    let hours = secs / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
+
+    let mut parts = Vec::new();
+    if hours > 0 {
+        parts.push(format!("{hours}h"));
+    }
+    if minutes > 0 {
+        parts.push(format!("{minutes}m"));
+    }
+    if seconds > 0 || parts.is_empty() {
+        parts.push(format!("{seconds}s"));
+    }
+    format!("{sign}{}", parts.join(" "))
+}
+
+pub mod signed_time_delta_from_str {
+    use super::parse_datetime_str_with_ms;
+    use chrono::TimeDelta;
+    use serde::{self, Deserialize, Deserializer};
+
+    /// Deserialize a signed duration string (e.g. `"30m"`, `"-15m"`) into a
+    /// [`TimeDelta`]. A leading `-` negates the parsed magnitude. Pairs with
+    /// `#[serde(default)]` (which yields a zero delta) so the field is optional.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<TimeDelta, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let (negative, rest) = match s.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, s.as_str()),
+        };
+        let delta = parse_datetime_str_with_ms(rest).map_err(serde::de::Error::custom)?;
+        Ok(if negative { -delta } else { delta })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,6 +177,29 @@ mod tests {
     #[case("1s 200ms", TimeDelta::seconds(1) + TimeDelta::milliseconds(200))]
     fn test_parse_datetime_str_with_ms(#[case] s: &str, #[case] expected: TimeDelta) {
         let result = parse_datetime_str_with_ms(s).unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[rstest]
+    #[case(TimeDelta::minutes(30), "30m")]
+    #[case(TimeDelta::minutes(-30), "-30m")]
+    #[case(TimeDelta::hours(2), "2h")]
+    #[case(TimeDelta::seconds(5430), "1h 30m 30s")]
+    #[case(TimeDelta::zero(), "0s")]
+    fn test_humanize(#[case] delta: TimeDelta, #[case] expected: &str) {
+        assert_eq!(humanize(delta), expected);
+    }
+
+    #[rstest]
+    #[case("30m", TimeDelta::minutes(30))]
+    #[case("-30m", TimeDelta::minutes(-30))]
+    #[case("-1h 30m", TimeDelta::minutes(-90))]
+    #[case("2h", TimeDelta::hours(2))]
+    fn test_signed_offset_parses(#[case] s: &str, #[case] expected: TimeDelta) {
+        use serde::de::value::{Error, StrDeserializer};
+        use serde::de::IntoDeserializer;
+        let de: StrDeserializer<Error> = s.into_deserializer();
+        let result = signed_time_delta_from_str::deserialize(de).unwrap();
         assert_eq!(result, expected);
     }
 

@@ -1,0 +1,6 @@
+---
+source: src/actors/workflows/plan.rs
+expression: rendered_with_header(&wf)
+---
+on: sun -> Sunrise
+light: light(0x1) -> Off

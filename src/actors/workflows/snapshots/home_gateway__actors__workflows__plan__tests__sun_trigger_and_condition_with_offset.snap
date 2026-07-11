@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: rendered_with_header(&wf)
+---
+on: sun -> Sunset (offset -30m)
+when: sun is Night (offset 15m)
+light: light(0x1) -> On

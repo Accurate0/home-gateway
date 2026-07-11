@@ -3,6 +3,7 @@ use serde::Deserialize;
 use super::workflow::Comparison;
 use super::{DeviceAliases, IEEEAddress, validate_device};
 use crate::actors::cron::schedule::CronSchedule;
+use crate::actors::sun::calc::SunTransition;
 use crate::event_bus::SensorMetric;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
@@ -39,6 +40,16 @@ pub enum TriggerMatcher {
     Cron {
         schedule: Box<CronSchedule>,
     },
+    /// Fires at a sun transition (`sunrise`/`sunset`), driven by the
+    /// [`crate::actors::sun::SunActor`] producer.
+    Sun {
+        transition: SunTransition,
+        #[serde(
+            default,
+            deserialize_with = "crate::timedelta_format::signed_time_delta_from_str::deserialize"
+        )]
+        offset: chrono::TimeDelta,
+    },
 }
 
 impl TriggerMatcher {
@@ -69,6 +80,16 @@ impl TriggerMatcher {
                 )
             }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
+            TriggerMatcher::Sun { transition, offset } => {
+                if offset.is_zero() {
+                    format!("sun -> {transition:?}")
+                } else {
+                    format!(
+                        "sun -> {transition:?} (offset {})",
+                        crate::timedelta_format::humanize(*offset)
+                    )
+                }
+            }
         }
     }
 
@@ -81,7 +102,7 @@ impl TriggerMatcher {
             | TriggerMatcher::Environment { sensor, .. } => {
                 validate_device(sensor, devices)?;
             }
-            TriggerMatcher::Cron { .. } => {}
+            TriggerMatcher::Cron { .. } | TriggerMatcher::Sun { .. } => {}
         }
         Ok(())
     }

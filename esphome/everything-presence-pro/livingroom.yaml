@@ -1,0 +1,73 @@
+substitutions:
+  name: "living-room-epp"
+  friendly_name: "Living Room EPP"
+  hidden_ssid: "false"
+  factory_reset_disabled: "true"
+  uart_target_output_disabled: "true"
+  uart_presence_output_disabled: "true"
+  log_level: "DEBUG"
+
+  device_config:
+    ethernet_enabled: false
+    co2_enabled: false
+    bluetooth_enabled: false
+    board_revision: "1.8"
+    sensor_variant: "ld2450+sen0609"
+    firmware_channel: "stable"
+    model: "everything-presence-pro"
+
+dashboard_import:
+  package_import_url: github://everythingsmarthome/everything-presence-pro/everything-presence-pro-wifi.yaml@main
+  import_full_config: false
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+
+packages:
+  pro_base: !include common/base.yaml
+  ld2450_base: !include common/ld2450-base.yaml
+  sen0609_base: !include common/sen0609-base.yaml
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: True
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: |-
+            id(firmware_network).publish_state("WiFi");
+            id(firmware_co2).publish_state("Disabled");
+            id(firmware_ble).publish_state("Disabled");
+        - select.set:
+            id: led_mode_select
+            option: "Manual Control"
+        - select.set:
+            id: status_led_select
+            option: "Disabled"
+        - light.turn_off: led_rgb
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: Firmware Update
+    source: http://docs.everythingsmart.io/update/everything-presence-pro/everything-presence-pro-wifi-manifest.json
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  on_connect:
+    then:
+      - script.execute: control_leds
+
+  on_disconnect:
+    then:
+      - script.execute: control_leds
+
+mqtt:
+  broker: 10.0.1.208
+
+improv_serial:

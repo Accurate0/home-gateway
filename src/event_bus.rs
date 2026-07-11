@@ -11,6 +11,7 @@ use serde::Deserialize;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
+use crate::actors::sun::calc::SunTransition;
 use crate::settings::IEEEAddress;
 
 /// A named scalar sensor reading. Known metrics are typed; anything else (an
@@ -132,6 +133,13 @@ pub enum EventBusMessage {
     /// dispatcher can match it; the schedule itself lives in the trigger config
     /// and is owned by the [`crate::actors::cron::CronActor`] producer.
     Cron { event_id: Uuid, name: String },
+    /// A sun transition (sunrise/sunset) came due, published by the
+    /// [`crate::actors::sun::SunActor`] producer so workflows can trigger on dusk/dawn.
+    Sun {
+        event_id: Uuid,
+        transition: SunTransition,
+        offset: chrono::TimeDelta,
+    },
     /// A light reported a power-state change (`on`/off), published for
     /// subscribers; the dispatcher does not currently trigger on it.
     Light {
@@ -159,6 +167,7 @@ impl EventBusMessage {
             | EventBusMessage::SwitchAction { event_id, .. }
             | EventBusMessage::Environment { event_id, .. }
             | EventBusMessage::Cron { event_id, .. }
+            | EventBusMessage::Sun { event_id, .. }
             | EventBusMessage::Light { event_id, .. }
             | EventBusMessage::Unifi { event_id, .. } => *event_id,
         }
@@ -172,6 +181,7 @@ impl EventBusMessage {
             EventBusMessage::SwitchAction { .. } => "switch",
             EventBusMessage::Environment { .. } => "environment",
             EventBusMessage::Cron { .. } => "cron",
+            EventBusMessage::Sun { .. } => "sun",
             EventBusMessage::Light { .. } => "light",
             EventBusMessage::Unifi { .. } => "unifi",
         }
@@ -183,6 +193,7 @@ impl EventBusMessage {
         "switch",
         "environment",
         "cron",
+        "sun",
         "light",
         "unifi",
     ];
@@ -195,6 +206,10 @@ impl EventBusMessage {
             | EventBusMessage::SwitchAction { ieee_addr, .. }
             | EventBusMessage::Light { ieee_addr, .. } => ieee_addr.to_string(),
             EventBusMessage::Cron { name, .. } => name.clone(),
+            EventBusMessage::Sun { transition, .. } => match transition {
+                SunTransition::Sunrise => "sunrise".to_string(),
+                SunTransition::Sunset => "sunset".to_string(),
+            },
             EventBusMessage::Unifi { mac_address, .. } => mac_address.clone(),
         }
     }

@@ -98,6 +98,19 @@ mod tests {
         render(&plan(workflows, &wf.run))
     }
 
+    fn rendered_with_header(wf: &Workflow) -> String {
+        let mut out = String::new();
+        match wf.on() {
+            Some(on) => out.push_str(&format!("on: {}\n", on.describe())),
+            None => out.push_str("reusable\n"),
+        }
+        if let Some(when) = wf.when() {
+            out.push_str(&format!("when: {}\n", when.describe()));
+        }
+        out.push_str(&render(&plan(&HashMap::new(), &wf.run)));
+        out
+    }
+
     #[test]
     fn simple_light() {
         let wf = workflow(
@@ -206,6 +219,88 @@ mod tests {
 
         let stem = path.file_stem().unwrap().to_string_lossy();
         insta::assert_snapshot!(stem.as_ref(), out);
+    }
+
+    #[test]
+    fn sun_trigger_with_presence_guard() {
+        let wf = workflow(
+            r#"
+            name: dusk lamp
+            on: { type: sun, transition: sunset }
+            when: { type: presence, sensor: living-room-epp, present: true }
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn presence_trigger_with_sun_night_guard() {
+        let wf = workflow(
+            r#"
+            name: night lamp
+            on: { type: presence, sensor: living-room-epp, present: true }
+            when: { type: sun, is: night }
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn sun_condition_nested_in_all() {
+        let wf = workflow(
+            r#"
+            name: combined
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+                when:
+                  type: all
+                  conditions:
+                    - { type: sun, is: day }
+                    - { type: not, condition: { type: sun, is: night } }
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn sun_trigger_and_condition_with_offset() {
+        let wf = workflow(
+            r#"
+            name: pre-dusk lamp
+            on: { type: sun, transition: sunset, offset: "-30m" }
+            when: { type: sun, is: night, offset: "15m" }
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn sun_sunrise_trigger() {
+        let wf = workflow(
+            r#"
+            name: dawn off
+            on: { type: sun, transition: sunrise }
+            run:
+              - type: light
+                device: "0x1"
+                state: "OFF"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
     }
 
     #[test]

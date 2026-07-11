@@ -1,0 +1,11 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Living room lamp on (occupancy after sunset)  (on: presence(living-room-epp) -> true)
+  when: sun is Night
+  light: light(floor-lamp-living-room) -> On
+
+# Living room lamp on (sunset while occupied)  (on: sun -> Sunset)
+  when: presence(living-room-epp) is true
+  light: light(floor-lamp-living-room) -> On

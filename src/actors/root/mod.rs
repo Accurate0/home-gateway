@@ -1,7 +1,7 @@
 use crate::{
     actors::{
-        eink_display::EInkDisplayActor, solar::SolarIngestActor, watchdog::WatchdogActor,
-    woolworths::WoolworthsActor,
+        eink_display::EInkDisplayActor, solar::SolarIngestActor, sun::SunActor,
+    watchdog::WatchdogActor, woolworths::WoolworthsActor,
     },
     types::SharedActorState,
     woolworths::Woolworths,
@@ -145,6 +145,23 @@ impl RootSupervisor {
         Ok(())
     }
 
+    async fn start_sun_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(SunActor::NAME.to_owned()),
+                SunActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
     async fn start_watchdog_actor(
         &self,
         myself: &ractor::ActorRef<()>,
@@ -242,6 +259,7 @@ impl Actor for RootSupervisor {
         self.start_alarm_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
+        self.start_sun_actor(&myself).await?;
         self.start_watchdog_actor(&myself).await?;
         self.start_workflow_dispatcher(&myself).await?;
 
@@ -301,6 +319,11 @@ impl Actor for RootSupervisor {
                     SolarIngestActor::NAME => {
                         tracing::info!("restarting solar ingest actor");
                         self.start_solar_actor(&myself).await?;
+                    }
+
+                    SunActor::NAME => {
+                        tracing::info!("restarting sun actor");
+                        self.start_sun_actor(&myself).await?;
                     }
 
                     WatchdogActor::NAME => {

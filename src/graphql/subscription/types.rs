@@ -60,6 +60,12 @@ pub struct CronUpdate {
 }
 
 #[derive(SimpleObject)]
+pub struct SunUpdate {
+    pub event_id: Uuid,
+    pub transition: String,
+}
+
+#[derive(SimpleObject)]
 pub struct LightUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
@@ -87,6 +93,7 @@ pub enum EventUpdate {
     Switch(SwitchUpdate),
     Environment(EnvironmentUpdate),
     Cron(CronUpdate),
+    Sun(SunUpdate),
     Light(LightUpdate),
     Unifi(UnifiUpdate),
 }
@@ -177,6 +184,14 @@ impl EventUpdate {
             EventBusMessage::Cron { event_id, name } => {
                 EventUpdate::Cron(CronUpdate { event_id, name })
             }
+            EventBusMessage::Sun {
+                event_id,
+                transition,
+                ..
+            } => EventUpdate::Sun(SunUpdate {
+                event_id,
+                transition: format!("{transition:?}"),
+            }),
             EventBusMessage::Light {
                 event_id,
                 ieee_addr,

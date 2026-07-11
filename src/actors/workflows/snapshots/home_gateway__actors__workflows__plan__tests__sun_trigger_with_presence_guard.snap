@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: rendered_with_header(&wf)
+---
+on: sun -> Sunset
+when: presence(living-room-epp) is true
+light: light(0x1) -> On
