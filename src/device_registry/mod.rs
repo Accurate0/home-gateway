@@ -57,6 +57,11 @@ pub struct RawSensor {
 pub enum Capability {
     ColourTemp,
     Rgb,
+    Temperature,
+    Humidity,
+    Pressure,
+    Lux,
+    UvIndex,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -47,6 +47,7 @@ const EntitiesQuery = graphql`
       ... on EnvironmentEntity {
         id
         name
+        capabilities
         temperature
         humidity
         pressure

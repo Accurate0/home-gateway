@@ -284,41 +284,100 @@ function LightTile({
   );
 }
 
+const ENVIRONMENT_METRICS: {
+  label: string;
+  field: keyof Entity;
+  capability: string;
+  unit: string;
+  digits?: number;
+}[] = [
+  { label: "Temperature", field: "temperature", capability: "TEMPERATURE", unit: "°C" },
+  { label: "Humidity", field: "humidity", capability: "HUMIDITY", unit: "%", digits: 0 },
+  { label: "Pressure", field: "pressure", capability: "PRESSURE", unit: " hPa", digits: 0 },
+  { label: "Illuminance", field: "lux", capability: "LUX", unit: " lx", digits: 0 },
+  { label: "UV index", field: "uvIndex", capability: "UV_INDEX", unit: "" },
+];
+
+function environmentMetrics(entity: Entity) {
+  const caps = entity.capabilities;
+  if (!caps || caps.length === 0) return ENVIRONMENT_METRICS;
+  return ENVIRONMENT_METRICS.filter((m) => caps.includes(m.capability));
+}
+
+function EnvironmentDetails({ entity, now }: { entity: Entity; now: number }) {
+  return (
+    <Popover.Portal>
+      <Popover.Content
+        align="end"
+        sideOffset={8}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-popover text-popover-foreground border-border z-50 w-64 rounded-2xl border p-4 shadow-lg outline-none"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <span className="font-medium">{entity.name}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          {environmentMetrics(entity).map(({ label, field, unit, digits }) => (
+            <div key={label} className="flex flex-col">
+              <dt className="text-muted-foreground text-xs uppercase tracking-wide">
+                {label}
+              </dt>
+              <dd className="tabular-nums">
+                {fmt(entity[field] as number | null | undefined, unit, digits)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </Popover.Content>
+    </Popover.Portal>
+  );
+}
+
 function EnvironmentTile({ entity, now }: { entity: Entity; now: number }) {
   const hum = entity.humidity;
   const pct = hum == null ? 0 : Math.max(0, Math.min(100, hum));
   return (
-    <Tile className="col-span-2 justify-between sm:col-span-1 lg:col-span-2">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-muted text-muted-foreground grid size-9 place-items-center rounded-xl">
-            <Thermometer className="size-5" strokeWidth={1.5} />
-          </div>
-          <div>
-            <div className="leading-tight font-medium">{entity.name}</div>
-            <div className="text-muted-foreground flex items-center gap-1 text-xs">
-              <span>{entity.id}</span>
-              <LastSeen entity={entity} now={now} />
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <Tile
+          role="button"
+          tabIndex={0}
+          className="col-span-2 cursor-pointer justify-between transition-all select-none hover:-translate-y-0.5 hover:border-foreground/20 active:translate-y-0 sm:col-span-1 lg:col-span-2"
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-muted text-muted-foreground grid size-9 place-items-center rounded-xl">
+                <Thermometer className="size-5" strokeWidth={1.5} />
+              </div>
+              <div>
+                <div className="leading-tight font-medium">{entity.name}</div>
+                <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                  <span>{entity.id}</span>
+                  <LastSeen entity={entity} now={now} />
+                </div>
+              </div>
+            </div>
+            <div className="font-display text-3xl font-semibold tracking-tight">
+              {fmt(entity.temperature, "°")}
             </div>
           </div>
-        </div>
-        <div className="font-display text-3xl font-semibold tracking-tight">
-          {fmt(entity.temperature, "°")}
-        </div>
-      </div>
-      <div className="mt-4">
-        <div className="text-muted-foreground mb-1.5 flex justify-between text-xs">
-          <span>Humidity</span>
-          <span>{fmt(hum, "%", 0)}</span>
-        </div>
-        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-          <div
-            className="bg-state-present/70 h-full rounded-full transition-[width]"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-    </Tile>
+          <div className="mt-4">
+            <div className="text-muted-foreground mb-1.5 flex justify-between text-xs">
+              <span>Humidity</span>
+              <span>{fmt(hum, "%", 0)}</span>
+            </div>
+            <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+              <div
+                className="bg-state-present/70 h-full rounded-full transition-[width]"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        </Tile>
+      </Popover.Trigger>
+      <EnvironmentDetails entity={entity} now={now} />
+    </Popover.Root>
   );
 }
 

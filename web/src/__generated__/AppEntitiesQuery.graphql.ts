@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a6f9075b0309f49a053234f605d6162c>>
+ * @generated SignedSource<<1ed5ed3da58e41f51eaf60d2f1caa211>>
  * @lightSyntaxTransform
  */
 
@@ -19,6 +19,7 @@ export type AppEntitiesQuery$data = {
     readonly open: boolean | null | undefined;
   } | {
     readonly __typename: "EnvironmentEntity";
+    readonly capabilities: ReadonlyArray<Capability>;
     readonly humidity: number | null | undefined;
     readonly id: string;
     readonly lastSeen: any | null | undefined;
@@ -71,10 +72,17 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "capabilities",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "lastSeen",
   "storageKey": null
 },
-v3 = [
+v4 = [
   {
     "alias": null,
     "args": null,
@@ -95,13 +103,7 @@ v3 = [
         "selections": [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "capabilities",
-            "storageKey": null
-          },
+          (v2/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -109,7 +111,7 @@ v3 = [
             "name": "on",
             "storageKey": null
           },
-          (v2/*:: as any*/)
+          (v3/*:: as any*/)
         ],
         "type": "LightEntity",
         "abstractKey": null
@@ -126,7 +128,7 @@ v3 = [
             "name": "open",
             "storageKey": null
           },
-          (v2/*:: as any*/)
+          (v3/*:: as any*/)
         ],
         "type": "DoorEntity",
         "abstractKey": null
@@ -143,7 +145,7 @@ v3 = [
             "name": "present",
             "storageKey": null
           },
-          (v2/*:: as any*/)
+          (v3/*:: as any*/)
         ],
         "type": "PresenceEntity",
         "abstractKey": null
@@ -153,6 +155,7 @@ v3 = [
         "selections": [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
+          (v2/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -195,7 +198,7 @@ v3 = [
             "name": "time",
             "storageKey": null
           },
-          (v2/*:: as any*/)
+          (v3/*:: as any*/)
         ],
         "type": "EnvironmentEntity",
         "abstractKey": null
@@ -210,7 +213,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "AppEntitiesQuery",
-    "selections": (v3/*:: as any*/),
+    "selections": (v4/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -219,19 +222,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "AppEntitiesQuery",
-    "selections": (v3/*:: as any*/)
+    "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "89084279fe4a54d6b51ac4990204e3bb",
+    "cacheID": "2c9fcad303707cd0f9b6bdd4b4226e91",
     "id": null,
     "metadata": {},
     "name": "AppEntitiesQuery",
     "operationKind": "query",
-    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7f9e34efa965c7d2b6959824683bb765";
+(node as any).hash = "50e233436e307772291975b9c75bea78";
 
 export default node;

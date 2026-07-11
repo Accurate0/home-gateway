@@ -38,6 +38,7 @@
 - id: env-living-room
   transport: zigbee
   address: "0x00158d008b8798a7"
+  capabilities: [temperature, humidity, pressure]
   kinds:
     - kind: environment
       config: { id: living-room, name: Living Room }
@@ -45,6 +46,7 @@
 - id: env-bathroom
   transport: zigbee
   address: "0x00158d008b879b53"
+  capabilities: [temperature, humidity, pressure]
   kinds:
     - kind: environment
       config: { id: bathroom, name: Bathroom }
@@ -52,6 +54,7 @@
 - id: env-bedroom
   transport: zigbee
   address: "0xb0c7defffef6a9be"
+  capabilities: [temperature, humidity, pressure]
   kinds:
     - kind: environment
       config: { id: bedroom, name: Bedroom }
@@ -59,6 +62,7 @@
 - id: env-outdoor
   transport: zigbee
   address: "0x54ef441000ee2ca3"
+  capabilities: [temperature, humidity, pressure]
   kinds:
     - kind: environment
       config: { id: outdoor, name: Outdoor }
@@ -75,6 +79,7 @@
 - id: living-room-epp
   transport: esphome
   address: living-room-epp-e64e28
+  capabilities: [temperature, humidity, lux]
   kinds:
     - kind: environment
       config: { id: living-room-epp, name: Living Room EPP }
@@ -93,6 +98,7 @@
 - id: hallway-plant
   transport: esphome
   address: apollo-plt-1-hallway
+  capabilities: [temperature, humidity, lux, uv_index]
   kinds:
     - kind: environment
       config: { id: hallway-plant, name: Hallway Plant }
