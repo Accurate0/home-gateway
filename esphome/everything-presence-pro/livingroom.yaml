@@ -69,5 +69,11 @@ wifi:
 
 mqtt:
   broker: 10.0.1.208
+  on_connect:
+    - mqtt.publish:
+        topic: !lambda 'return "esphome/discover/" + App.get_name();'
+        payload: !lambda |-
+          return "{\"name\":\"" + App.get_name() + "\",\"friendly_name\":\"" + App.get_friendly_name() + "\"}";
+        retain: true
 
 improv_serial:

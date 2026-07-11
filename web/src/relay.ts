@@ -66,4 +66,6 @@ const subscribeFn: SubscribeFunction = (operation, variables) => {
 export const environment = new Environment({
   network: Network.create(fetchFn, subscribeFn),
   store: new Store(new RecordSource()),
+  getDataID: (fieldValue, typeName) =>
+    `${typeName}:${(fieldValue as { id?: string }).id ?? ""}`,
 });
