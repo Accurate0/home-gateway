@@ -13,3 +13,11 @@
     - type: light
       device: floor-lamp-living-room
       state: ON
+
+- name: Living room lamp off (no occupancy)
+  on: { type: presence, sensor: living-room-epp, present: false }
+  delay: 25m
+  run:
+    - type: light
+      device: floor-lamp-living-room
+      state: OFF

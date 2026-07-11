@@ -9,3 +9,6 @@ expression: out
 # Living room lamp on (sunset while occupied)  (on: sun -> Sunset)
   when: presence(living-room-epp) is true
   light: light(floor-lamp-living-room) -> On
+
+# Living room lamp off (no occupancy)  (on: presence(living-room-epp) -> false)
+  light: light(floor-lamp-living-room) -> Off
