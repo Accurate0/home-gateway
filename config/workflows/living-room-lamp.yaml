@@ -1,20 +1,42 @@
 - name: Living room lamp on (occupancy after sunset)
+  slug: living-room-lamp-on-occupancy
+  group: Living Room
   on: { type: presence, sensor: living-room-epp, present: true }
   when: { type: sun, is: night }
   run:
-    - type: light
-      device: floor-lamp-living-room
-      state: ON
+    - type: scene
+      when: { type: light, device: floor-lamp-living-room, on: false }
+      run:
+        - type: light
+          device: floor-lamp-living-room
+          state: SET_BRIGHTNESS
+          value: 1
+        - type: light
+          device: floor-lamp-living-room
+          state: INCREASE_BRIGHTNESS
+          value: 1
 
 - name: Living room lamp on (sunset while occupied)
+  slug: living-room-lamp-on-sunset
+  group: Living Room
   on: { type: sun, transition: sunset }
   when: { type: presence, sensor: living-room-epp, present: true }
   run:
-    - type: light
-      device: floor-lamp-living-room
-      state: ON
+    - type: scene
+      when: { type: light, device: floor-lamp-living-room, on: false }
+      run:
+        - type: light
+          device: floor-lamp-living-room
+          state: SET_BRIGHTNESS
+          value: 1
+        - type: light
+          device: floor-lamp-living-room
+          state: INCREASE_BRIGHTNESS
+          value: 1
 
 - name: Living room lamp off (no occupancy)
+  slug: living-room-lamp-off
+  group: Living Room
   on: { type: presence, sensor: living-room-epp, present: false }
   delay: 25m
   run:

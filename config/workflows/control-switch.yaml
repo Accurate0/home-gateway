@@ -1,4 +1,6 @@
 - name: Control Switch on
+  slug: control-switch-on
+  group: Control Switch
   on: { type: switch, device: control-switch, action: on }
   run:
     - type: light
@@ -6,6 +8,8 @@
       state: ON
 
 - name: Control Switch off
+  slug: control-switch-off
+  group: Control Switch
   on: { type: switch, device: control-switch, action: off }
   run:
     - type: light
@@ -13,6 +17,8 @@
       state: OFF
 
 - name: Control Switch brightness up
+  slug: control-switch-brightness-up
+  group: Control Switch
   on: { type: switch, device: control-switch, action: brightness_move_up }
   run:
     - type: light
@@ -21,6 +27,8 @@
       value: 75
 
 - name: Control Switch brightness down
+  slug: control-switch-brightness-down
+  group: Control Switch
   on: { type: switch, device: control-switch, action: brightness_move_down }
   run:
     - type: light
@@ -29,6 +37,8 @@
       value: 75
 
 - name: Control Switch brightness stop
+  slug: control-switch-brightness-stop
+  group: Control Switch
   on: { type: switch, device: control-switch, action: brightness_stop }
   run:
     - type: light
@@ -36,6 +46,8 @@
       state: STOP_BRIGHTNESS
 
 - name: Control Switch colour temp up
+  slug: control-switch-colour-temp-up
+  group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_right_hold }
   run:
     - type: light
@@ -44,6 +56,8 @@
       value: 120
 
 - name: Control Switch colour temp down
+  slug: control-switch-colour-temp-down
+  group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_left_hold }
   run:
     - type: light
@@ -52,6 +66,8 @@
       value: 120
 
 - name: Control Switch colour temp stop left
+  slug: control-switch-colour-temp-stop-left
+  group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_left_release }
   run:
     - type: light
@@ -59,6 +75,8 @@
       state: STOP_COLOUR_TEMPERATURE
 
 - name: Control Switch colour temp stop right
+  slug: control-switch-colour-temp-stop-right
+  group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_right_release }
   run:
     - type: light
@@ -66,6 +84,8 @@
       state: STOP_COLOUR_TEMPERATURE
 
 - name: Control Switch set brightness low
+  slug: control-switch-set-brightness-low
+  group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_left_click }
   run:
     - type: light
@@ -74,6 +94,8 @@
       value: 50
 
 - name: Control Switch set brightness high
+  slug: control-switch-set-brightness-high
+  group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_right_click }
   run:
     - type: light

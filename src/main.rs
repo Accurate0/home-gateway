@@ -19,6 +19,7 @@ use axum::{
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
+use actors::workflows::manager::WorkflowManager;
 use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
@@ -88,6 +89,7 @@ async fn init_actors(
     db: Pool<Postgres>,
     s3: S3,
     event_bus: EventBus,
+    workflows: WorkflowManager,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     let shared_actor_state = SharedActorState {
         settings,
@@ -97,6 +99,7 @@ async fn init_actors(
         feature_flag_client,
         s3,
         event_bus,
+        workflows,
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(
@@ -134,6 +137,8 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
+    let workflow_manager = WorkflowManager::new(pool.clone());
+
     let feature_flag_client = FeatureFlagClient::new().await;
 
     let (mqtt_client, mut mqtt) = Mqtt::new(
@@ -163,6 +168,7 @@ async fn main() -> anyhow::Result<()> {
         pool.clone(),
         s3.clone(),
         event_bus.clone(),
+        workflow_manager.clone(),
     )
     .await?;
 
@@ -187,6 +193,7 @@ async fn main() -> anyhow::Result<()> {
     .data(settings_container.clone())
     .data(device_registry.clone())
     .data(event_bus)
+    .data(workflow_manager)
     .extension(crate::graphql_tracing::Tracing)
     .finish();
 

@@ -8,4 +8,5 @@ pub mod events_object;
 pub mod solar_object;
 pub mod weather_object;
 pub mod wifi_object;
+pub mod workflow_object;
 pub mod woolworths_object;

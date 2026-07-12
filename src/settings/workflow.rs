@@ -347,7 +347,9 @@ pub enum WorkflowTrigger {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(from = "RawWorkflow")]
 pub struct Workflow {
+    pub slug: String,
     pub name: String,
+    pub group: Option<String>,
     pub enabled: bool,
     pub dry_run: bool,
     pub trigger: WorkflowTrigger,
@@ -357,7 +359,11 @@ pub struct Workflow {
 #[derive(Debug, Deserialize, Clone)]
 struct RawWorkflow {
     #[serde(default)]
+    slug: String,
+    #[serde(default)]
     name: String,
+    #[serde(default)]
+    group: Option<String>,
     #[serde(default = "yes")]
     enabled: bool,
     #[serde(default)]
@@ -385,7 +391,9 @@ impl From<RawWorkflow> for Workflow {
             None => WorkflowTrigger::Reusable,
         };
         Workflow {
+            slug: raw.slug,
             name: raw.name,
+            group: raw.group,
             enabled: raw.enabled,
             dry_run: raw.dry_run,
             trigger,

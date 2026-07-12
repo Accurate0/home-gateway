@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<de00c007c3adb8a81b6d621afc5e5828>>
+ * @generated SignedSource<<45e5d514048ea534a86d3af96bdf7b3e>>
  * @lightSyntaxTransform
  */
 
@@ -8,18 +8,18 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AppSetBrightnessMutation$variables = {
+export type DashboardSetBrightnessMutation$variables = {
   id: string;
   value: number;
 };
-export type AppSetBrightnessMutation$data = {
+export type DashboardSetBrightnessMutation$data = {
   readonly light: {
     readonly setBrightness: boolean;
   };
 };
-export type AppSetBrightnessMutation = {
-  response: AppSetBrightnessMutation$data;
-  variables: AppSetBrightnessMutation$variables;
+export type DashboardSetBrightnessMutation = {
+  response: DashboardSetBrightnessMutation$data;
+  variables: DashboardSetBrightnessMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -78,7 +78,7 @@ return {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "AppSetBrightnessMutation",
+    "name": "DashboardSetBrightnessMutation",
     "selections": (v1/*:: as any*/),
     "type": "MutationRoot",
     "abstractKey": null
@@ -87,20 +87,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
-    "name": "AppSetBrightnessMutation",
+    "name": "DashboardSetBrightnessMutation",
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "58645ef8ec11b71a7b549736dc650398",
+    "cacheID": "848c1c3bfdb4fea0d2b680c8188970ed",
     "id": null,
     "metadata": {},
-    "name": "AppSetBrightnessMutation",
+    "name": "DashboardSetBrightnessMutation",
     "operationKind": "mutation",
-    "text": "mutation AppSetBrightnessMutation(\n  $id: String!\n  $value: Int!\n) {\n  light(id: $id) {\n    setBrightness(input: {value: $value})\n  }\n}\n"
+    "text": "mutation DashboardSetBrightnessMutation(\n  $id: String!\n  $value: Int!\n) {\n  light(id: $id) {\n    setBrightness(input: {value: $value})\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "300efd91e061323a01e7a9f21881ef16";
+(node as any).hash = "3c537e53bde6df335daeb7fa86be0be8";
 
 export default node;

@@ -1,4 +1,6 @@
 - name: Small Switch single toggles floor lamp
+  slug: small-switch-single-toggle
+  group: Living Room
   on: { type: switch, device: small-switch, action: single }
   run:
     - type: light

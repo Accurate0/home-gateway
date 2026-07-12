@@ -1,4 +1,6 @@
 - name: Bins
+  slug: bins
+  group: Reminders
   on: { type: cron, schedule: "0 19 * * THU" }
   run:
     - type: notify

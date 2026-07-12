@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource-variable/fraunces/index.css";
 import "@fontsource-variable/hanken-grotesk/index.css";
 import "./index.css";
+import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 import { RelayEnvironmentProvider } from "react-relay";
 import { environment } from "./relay";
@@ -15,15 +16,17 @@ try {
   root.render(
     <StrictMode>
       <RelayEnvironmentProvider environment={environment}>
-        <Suspense
-          fallback={
-            <div className="text-muted-foreground grid min-h-screen place-items-center">
-              Loading…
-            </div>
-          }
-        >
-          <App />
-        </Suspense>
+        <BrowserRouter>
+          <Suspense
+            fallback={
+              <div className="text-muted-foreground grid min-h-screen place-items-center">
+                Loading…
+              </div>
+            }
+          >
+            <App />
+          </Suspense>
+        </BrowserRouter>
       </RelayEnvironmentProvider>
     </StrictMode>,
   );

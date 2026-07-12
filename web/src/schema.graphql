@@ -248,6 +248,7 @@ type MetricReading {
 
 type MutationRoot {
 	light(id: String!): LightMutation!
+	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 }
 
 """
@@ -302,6 +303,18 @@ type QueryRoot {
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
+	workflows: [WorkflowStatus!]!
+}
+
+type WorkflowStatus {
+	id: String!
+	slug: String!
+	name: String!
+	group: String!
+	enabled: Boolean!
+	configEnabled: Boolean!
+	dryRun: Boolean!
+	reusable: Boolean!
 }
 
 input SetBrightnessInput {

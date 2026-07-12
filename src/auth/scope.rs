@@ -294,9 +294,13 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::Weather, Action::Read);
     pub const GRAPHQL_WOOLWORTHS_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Woolworths, Action::Read);
+    pub const GRAPHQL_WORKFLOW_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Workflow, Action::Read);
 
     pub const GRAPHQL_LIGHT_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Write);
+    pub const GRAPHQL_WORKFLOW_WRITE: Scope =
+        Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
 
     pub const REST_CONTROL_WRITE: Scope =
         Scope::new(Domain::Rest, Resource::Control, Action::Write);

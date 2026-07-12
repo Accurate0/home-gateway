@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1ed5ed3da58e41f51eaf60d2f1caa211>>
+ * @generated SignedSource<<c180211985de89e1ec912f4248444d1f>>
  * @lightSyntaxTransform
  */
 
@@ -9,8 +9,8 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type Capability = "COLOUR_TEMP" | "RGB" | "%future added value";
-export type AppEntitiesQuery$variables = Record<PropertyKey, never>;
-export type AppEntitiesQuery$data = {
+export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
+export type DashboardEntitiesQuery$data = {
   readonly entities: ReadonlyArray<{
     readonly __typename: "DoorEntity";
     readonly id: string;
@@ -48,9 +48,9 @@ export type AppEntitiesQuery$data = {
     readonly __typename: "%other";
   }>;
 };
-export type AppEntitiesQuery = {
-  response: AppEntitiesQuery$data;
-  variables: AppEntitiesQuery$variables;
+export type DashboardEntitiesQuery = {
+  response: DashboardEntitiesQuery$data;
+  variables: DashboardEntitiesQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -212,7 +212,7 @@ return {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "AppEntitiesQuery",
+    "name": "DashboardEntitiesQuery",
     "selections": (v4/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
@@ -221,20 +221,20 @@ return {
   "operation": {
     "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "AppEntitiesQuery",
+    "name": "DashboardEntitiesQuery",
     "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "2c9fcad303707cd0f9b6bdd4b4226e91",
+    "cacheID": "a9435eefd58cd754fdad2d11dc3d60fe",
     "id": null,
     "metadata": {},
-    "name": "AppEntitiesQuery",
+    "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query AppEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "50e233436e307772291975b9c75bea78";
+(node as any).hash = "59add7be2f62a214a2646c1a6ad8e833";
 
 export default node;

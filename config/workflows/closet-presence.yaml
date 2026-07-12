@@ -1,4 +1,6 @@
 - name: Closet presence on
+  slug: closet-presence-on
+  group: Closet
   on: { type: presence, sensor: closet-presence, present: true }
   run:
     - type: light
@@ -6,6 +8,8 @@
       state: ON
 
 - name: Closet presence off
+  slug: closet-presence-off
+  group: Closet
   on: { type: presence, sensor: closet-presence, present: false }
   delay: 1m
   run:

@@ -1,4 +1,6 @@
 - name: Hallway plant dry
+  slug: hallway-plant-dry
+  group: Plants
   on: { type: environment, sensor: hallway-plant, metric: soil_moisture, op: lt, value: 20 }
   cooldown: 24h
   run:
@@ -7,6 +9,8 @@
       message: "Hallway plant is dry (soil moisture below 20%)"
 
 - name: Hallway plant overwatered
+  slug: hallway-plant-overwatered
+  group: Plants
   on: { type: environment, sensor: hallway-plant, metric: soil_moisture, op: gt, value: 80 }
   cooldown: 24h
   run:

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<665150d7691679ff1d1610bf81932489>>
+ * @generated SignedSource<<f71505b6e9daf13256e575ac55dafddc>>
  * @lightSyntaxTransform
  */
 
@@ -8,8 +8,8 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AppEventsSubscription$variables = Record<PropertyKey, never>;
-export type AppEventsSubscription$data = {
+export type DashboardEventsSubscription$variables = Record<PropertyKey, never>;
+export type DashboardEventsSubscription$data = {
   readonly events: {
     readonly __typename: "DoorUpdate";
     readonly id: string;
@@ -39,9 +39,9 @@ export type AppEventsSubscription$data = {
     readonly __typename: "%other";
   };
 };
-export type AppEventsSubscription = {
-  response: AppEventsSubscription$data;
-  variables: AppEventsSubscription$variables;
+export type DashboardEventsSubscription = {
+  response: DashboardEventsSubscription$data;
+  variables: DashboardEventsSubscription$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -172,7 +172,7 @@ return {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "AppEventsSubscription",
+    "name": "DashboardEventsSubscription",
     "selections": (v2/*:: as any*/),
     "type": "SubscriptionRoot",
     "abstractKey": null
@@ -181,20 +181,20 @@ return {
   "operation": {
     "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "AppEventsSubscription",
+    "name": "DashboardEventsSubscription",
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "347661cb2b9651611f91468be963e9db",
+    "cacheID": "967ff52c209f27aad990d5af73cf261c",
     "id": null,
     "metadata": {},
-    "name": "AppEventsSubscription",
+    "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription AppEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2fc029764c02b1547819b5741abf1071";
+(node as any).hash = "d7b58500f402eaa2d07f5b7851b4542c";
 
 export default node;

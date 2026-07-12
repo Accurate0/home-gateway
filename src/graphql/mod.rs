@@ -7,6 +7,7 @@ use queries::{
 
 use crate::graphql::mutations::MutationRoot;
 use crate::graphql::queries::woolworths_query::WoolworthsQuery;
+use crate::graphql::queries::workflows_query::WorkflowsQuery;
 use crate::graphql::subscription::SubscriptionRoot;
 
 pub mod dataloader;
@@ -27,6 +28,7 @@ pub struct QueryRoot(
     EnergyQuery,
     WeatherQuery,
     WoolworthsQuery,
+    WorkflowsQuery,
 );
 
 pub type FinalSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;

@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 pub mod conditions;
 pub mod dispatcher;
+pub mod manager;
 pub mod plan;
 pub mod spawn;
 
@@ -60,8 +61,13 @@ impl WorkflowWorker {
         event_id: Uuid,
         workflow: Workflow,
     ) -> Result<(), WorkflowError> {
-        if !workflow.enabled {
-            tracing::warn!("[{event_id}] workflow not executed as it's disabled in config");
+        if !self
+            .shared_actor_state
+            .workflows
+            .enabled(&workflow.slug, workflow.enabled)
+            .await
+        {
+            tracing::warn!("[{event_id}] workflow not executed as it's disabled");
             crate::metrics::record_workflow("disabled", Duration::ZERO);
             return Ok(());
         }
@@ -171,7 +177,12 @@ impl WorkflowWorker {
             return Ok(());
         };
 
-        if !workflow.enabled {
+        if !self
+            .shared_actor_state
+            .workflows
+            .enabled(&workflow.slug, workflow.enabled)
+            .await
+        {
             tracing::info!("[{}] skipping disabled workflow `{name}`", ctx.event_id);
             return Ok(());
         }

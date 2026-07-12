@@ -3,7 +3,10 @@ use config::{Config, ConfigError, Environment, File, FileFormat};
 use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 pub mod appliance;
 pub mod door;
@@ -166,8 +169,15 @@ impl RawSettings {
         let aliases = registry.aliases();
 
         let mut resolved = HashMap::new();
+        let mut slugs = HashSet::new();
         for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
+            if workflow.slug.trim().is_empty() {
+                return Err(format!("workflow '{}' has an empty slug", workflow.name));
+            }
+            if !slugs.insert(workflow.slug.clone()) {
+                return Err(format!("duplicate workflow slug: {}", workflow.slug));
+            }
             let name = workflow.name.clone();
             if resolved.insert(name.clone(), workflow).is_some() {
                 return Err(format!("duplicate workflow name: {name}"));
@@ -300,6 +310,12 @@ android_app_webhook_secret: x
             settings.workflows.values().any(|w| w.name == "Bins"
                 && matches!(w.on(), Some(trigger::TriggerMatcher::Cron { .. })))
         );
+
+        let mut seen = HashSet::new();
+        for wf in settings.workflows.values() {
+            assert!(!wf.slug.trim().is_empty(), "workflow '{}' has empty slug", wf.name);
+            assert!(seen.insert(&wf.slug), "duplicate workflow slug: {}", wf.slug);
+        }
 
         // a zigbee presence sensor is keyed by its address in the registry
         assert!(registry.presence("0x54ef441000dbc81c").is_some());

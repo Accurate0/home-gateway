@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f42a287f43b24a177c0ce0a900867172>>
+ * @generated SignedSource<<f9ae15b15e5f05f696f2791f028a8777>>
  * @lightSyntaxTransform
  */
 
@@ -8,18 +8,17 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AppColourMoveMutation$variables = {
+export type DashboardSetOffMutation$variables = {
   id: string;
-  value: number;
 };
-export type AppColourMoveMutation$data = {
+export type DashboardSetOffMutation$data = {
   readonly light: {
-    readonly colourTemperatureMove: boolean;
+    readonly off: boolean;
   };
 };
-export type AppColourMoveMutation = {
-  response: AppColourMoveMutation$data;
-  variables: AppColourMoveMutation$variables;
+export type DashboardSetOffMutation = {
+  response: DashboardSetOffMutation$data;
+  variables: DashboardSetOffMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -28,11 +27,6 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "id"
-  },
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "value"
   }
 ],
 v1 = [
@@ -52,21 +46,9 @@ v1 = [
     "selections": [
       {
         "alias": null,
-        "args": [
-          {
-            "fields": [
-              {
-                "kind": "Variable",
-                "name": "value",
-                "variableName": "value"
-              }
-            ],
-            "kind": "ObjectValue",
-            "name": "input"
-          }
-        ],
+        "args": null,
         "kind": "ScalarField",
-        "name": "colourTemperatureMove",
+        "name": "off",
         "storageKey": null
       }
     ],
@@ -78,7 +60,7 @@ return {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "AppColourMoveMutation",
+    "name": "DashboardSetOffMutation",
     "selections": (v1/*:: as any*/),
     "type": "MutationRoot",
     "abstractKey": null
@@ -87,20 +69,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
-    "name": "AppColourMoveMutation",
+    "name": "DashboardSetOffMutation",
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "08e0cd52f47b0b0c4111325cef920896",
+    "cacheID": "056f6b57d5458c0c574f5fdffa583578",
     "id": null,
     "metadata": {},
-    "name": "AppColourMoveMutation",
+    "name": "DashboardSetOffMutation",
     "operationKind": "mutation",
-    "text": "mutation AppColourMoveMutation(\n  $id: String!\n  $value: Int!\n) {\n  light(id: $id) {\n    colourTemperatureMove(input: {value: $value})\n  }\n}\n"
+    "text": "mutation DashboardSetOffMutation(\n  $id: String!\n) {\n  light(id: $id) {\n    off\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7c175a59b15425776ffc4cd724b192da";
+(node as any).hash = "8b821fc0ea4432a804b21f4f6b400d11";
 
 export default node;

@@ -1,4 +1,6 @@
 - name: Living room motion on
+  slug: livingroom-motion-on
+  group: Living Room
   on: { type: presence, sensor: livingroom-motion, present: true }
   run:
     - type: light
@@ -6,6 +8,8 @@
       state: ON
 
 - name: Living room motion off
+  slug: livingroom-motion-off
+  group: Living Room
   on: { type: presence, sensor: livingroom-motion, present: false }
   run:
     - type: light

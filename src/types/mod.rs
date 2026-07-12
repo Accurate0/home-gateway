@@ -1,4 +1,5 @@
 use crate::{
+    actors::workflows::manager::WorkflowManager,
     auth::AuthManager,
     device_registry::DeviceRegistry,
     event_bus::EventBus,
@@ -24,6 +25,7 @@ pub struct SharedActorState {
     pub feature_flag_client: FeatureFlagClient,
     pub s3: S3,
     pub event_bus: EventBus,
+    pub workflows: WorkflowManager,
 }
 
 #[derive(Clone)]

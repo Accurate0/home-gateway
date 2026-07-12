@@ -92,7 +92,9 @@ impl Actor for AlarmActor {
                         };
 
                         let workflow = Workflow {
+                            slug: "alarm-wakeup".to_owned(),
                             name: "alarm-wakeup".to_owned(),
+                            group: None,
                             enabled: true,
                             dry_run: false,
                             trigger: WorkflowTrigger::Reusable,

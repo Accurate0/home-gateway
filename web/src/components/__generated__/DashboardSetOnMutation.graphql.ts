@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9bf2860f25e01717e0b7bde62e4cc7da>>
+ * @generated SignedSource<<243b1035e70257a299adb62fab644557>>
  * @lightSyntaxTransform
  */
 
@@ -8,17 +8,17 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AppToggleLightMutation$variables = {
+export type DashboardSetOnMutation$variables = {
   id: string;
 };
-export type AppToggleLightMutation$data = {
+export type DashboardSetOnMutation$data = {
   readonly light: {
-    readonly toggle: boolean;
+    readonly on: boolean;
   };
 };
-export type AppToggleLightMutation = {
-  response: AppToggleLightMutation$data;
-  variables: AppToggleLightMutation$variables;
+export type DashboardSetOnMutation = {
+  response: DashboardSetOnMutation$data;
+  variables: DashboardSetOnMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -48,7 +48,7 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "toggle",
+        "name": "on",
         "storageKey": null
       }
     ],
@@ -60,7 +60,7 @@ return {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "AppToggleLightMutation",
+    "name": "DashboardSetOnMutation",
     "selections": (v1/*:: as any*/),
     "type": "MutationRoot",
     "abstractKey": null
@@ -69,20 +69,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
-    "name": "AppToggleLightMutation",
+    "name": "DashboardSetOnMutation",
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "a7d119cce78f0c50c0ebf5d2111bb5fc",
+    "cacheID": "274c9ee8d09255f6fbbff672930a60fd",
     "id": null,
     "metadata": {},
-    "name": "AppToggleLightMutation",
+    "name": "DashboardSetOnMutation",
     "operationKind": "mutation",
-    "text": "mutation AppToggleLightMutation(\n  $id: String!\n) {\n  light(id: $id) {\n    toggle\n  }\n}\n"
+    "text": "mutation DashboardSetOnMutation(\n  $id: String!\n) {\n  light(id: $id) {\n    on\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1f235a79a14b508717fe2c0933086019";
+(node as any).hash = "bc07693f3805a73fabfaf4627616d397";
 
 export default node;

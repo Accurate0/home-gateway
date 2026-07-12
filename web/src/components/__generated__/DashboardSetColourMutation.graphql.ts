@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8ae31adc900ff123f4871776eb60107b>>
+ * @generated SignedSource<<de7ff9bb3b016832f6ccc855c3601086>>
  * @lightSyntaxTransform
  */
 
@@ -8,18 +8,18 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AppSetColourMutation$variables = {
+export type DashboardSetColourMutation$variables = {
   hex: string;
   id: string;
 };
-export type AppSetColourMutation$data = {
+export type DashboardSetColourMutation$data = {
   readonly light: {
     readonly setColour: boolean;
   };
 };
-export type AppSetColourMutation = {
-  response: AppSetColourMutation$data;
-  variables: AppSetColourMutation$variables;
+export type DashboardSetColourMutation = {
+  response: DashboardSetColourMutation$data;
+  variables: DashboardSetColourMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -79,7 +79,7 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "AppSetColourMutation",
+    "name": "DashboardSetColourMutation",
     "selections": (v2/*:: as any*/),
     "type": "MutationRoot",
     "abstractKey": null
@@ -91,20 +91,20 @@ return {
       (v0/*:: as any*/)
     ],
     "kind": "Operation",
-    "name": "AppSetColourMutation",
+    "name": "DashboardSetColourMutation",
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "40d79934511951cf51671899c041b170",
+    "cacheID": "edf24a80abb277df260a808c469b8e4f",
     "id": null,
     "metadata": {},
-    "name": "AppSetColourMutation",
+    "name": "DashboardSetColourMutation",
     "operationKind": "mutation",
-    "text": "mutation AppSetColourMutation(\n  $id: String!\n  $hex: String!\n) {\n  light(id: $id) {\n    setColour(input: {hex: $hex})\n  }\n}\n"
+    "text": "mutation DashboardSetColourMutation(\n  $id: String!\n  $hex: String!\n) {\n  light(id: $id) {\n    setColour(input: {hex: $hex})\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e8daaec91da83f7e3d0908f55784a89f";
+(node as any).hash = "b1e66321850661f35ea7feeccae90ddc";
 
 export default node;

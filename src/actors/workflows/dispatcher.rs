@@ -141,7 +141,15 @@ impl WorkflowDispatcher {
         });
 
         for workflow in settings.workflows.values() {
-            if !workflow.enabled || !self.matches(workflow, &msg, state) {
+            if !self.matches(workflow, &msg, state) {
+                continue;
+            }
+            if !self
+                .shared_actor_state
+                .workflows
+                .enabled(&workflow.slug, workflow.enabled)
+                .await
+            {
                 continue;
             }
 
