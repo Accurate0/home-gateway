@@ -66,6 +66,7 @@ mod graphql;
 mod graphql_tracing;
 mod http;
 mod metrics;
+mod mode;
 mod mqtt;
 mod notify;
 mod routes;

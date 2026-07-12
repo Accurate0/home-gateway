@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBusMessage;
+use crate::mode::Mode;
 
 #[derive(SimpleObject)]
 pub struct PresenceUpdate {
@@ -85,6 +86,13 @@ pub struct UnifiUpdate {
     pub connected: bool,
 }
 
+#[derive(SimpleObject)]
+pub struct ModeUpdate {
+    pub event_id: Uuid,
+    pub mode: Mode,
+    pub active: bool,
+}
+
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
 pub enum EventUpdate {
@@ -96,6 +104,7 @@ pub enum EventUpdate {
     Sun(SunUpdate),
     Light(LightUpdate),
     Unifi(UnifiUpdate),
+    Mode(ModeUpdate),
 }
 
 impl EventUpdate {
@@ -229,6 +238,15 @@ impl EventUpdate {
                 mac_address,
                 client,
                 connected,
+            }),
+            EventBusMessage::Mode {
+                event_id,
+                mode,
+                active,
+            } => EventUpdate::Mode(ModeUpdate {
+                event_id,
+                mode,
+                active,
             }),
         }
     }

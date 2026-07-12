@@ -98,7 +98,9 @@ async fn eval_leaf(state: &SharedActorState, cond: &LeafCondition) -> Result<boo
         LeafCondition::Sun { is, offset } => {
             Ok(calc::current_period(state.settings.location, Utc::now(), *offset) == *is)
         }
-        LeafCondition::GuestMode { active } => Ok(state.workflows.guest_mode().await == *active),
+        LeafCondition::Mode { mode, active } => {
+            Ok(state.workflows.mode_active(*mode).await == *active)
+        }
     }
 }
 

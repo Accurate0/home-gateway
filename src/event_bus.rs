@@ -12,6 +12,7 @@ use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::actors::sun::calc::SunTransition;
+use crate::mode::Mode;
 use crate::settings::IEEEAddress;
 
 /// A named scalar sensor reading. Known metrics are typed; anything else (an
@@ -155,6 +156,13 @@ pub enum EventBusMessage {
         client: String,
         connected: bool,
     },
+    /// A house mode was toggled (published per changed mode when `set_mode`
+    /// runs), so transition workflows can trigger on enter/exit.
+    Mode {
+        event_id: Uuid,
+        mode: Mode,
+        active: bool,
+    },
 }
 
 impl EventBusMessage {
@@ -169,7 +177,8 @@ impl EventBusMessage {
             | EventBusMessage::Cron { event_id, .. }
             | EventBusMessage::Sun { event_id, .. }
             | EventBusMessage::Light { event_id, .. }
-            | EventBusMessage::Unifi { event_id, .. } => *event_id,
+            | EventBusMessage::Unifi { event_id, .. }
+            | EventBusMessage::Mode { event_id, .. } => *event_id,
         }
     }
 
@@ -184,6 +193,7 @@ impl EventBusMessage {
             EventBusMessage::Sun { .. } => "sun",
             EventBusMessage::Light { .. } => "light",
             EventBusMessage::Unifi { .. } => "unifi",
+            EventBusMessage::Mode { .. } => "mode",
         }
     }
 
@@ -196,6 +206,7 @@ impl EventBusMessage {
         "sun",
         "light",
         "unifi",
+        "mode",
     ];
 
     pub fn entity(&self) -> String {
@@ -211,6 +222,7 @@ impl EventBusMessage {
                 SunTransition::Sunset => "sunset".to_string(),
             },
             EventBusMessage::Unifi { mac_address, .. } => mac_address.clone(),
+            EventBusMessage::Mode { mode, .. } => mode.as_str().to_string(),
         }
     }
 }

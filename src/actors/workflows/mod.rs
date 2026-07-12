@@ -1,6 +1,7 @@
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
+    event_bus::EventBusMessage,
     notify::notify,
     settings::workflow::{LightState, Step, Workflow},
     timer::timed_async,
@@ -175,7 +176,32 @@ impl WorkflowWorker {
                 Ok(())
             }
             Step::RunWorkflow { workflow, .. } => self.run_named_workflow(ctx, workflow).await,
+            Step::SetMode { mode, active, .. } => self.run_set_mode(*mode, *active).await,
         }
+    }
+
+    async fn run_set_mode(
+        &self,
+        mode: crate::mode::Mode,
+        active: bool,
+    ) -> Result<(), WorkflowError> {
+        let transitions = self
+            .shared_actor_state
+            .workflows
+            .set_mode(mode, active)
+            .await
+            .map_err(|e| WorkflowError::Other(e.into()))?;
+
+        for (mode, active) in transitions {
+            self.shared_actor_state
+                .event_bus
+                .publish(EventBusMessage::Mode {
+                    event_id: Uuid::new_v4(),
+                    mode,
+                    active,
+                });
+        }
+        Ok(())
     }
 
     /// Expand a `run_workflow` step: look the named workflow up in settings and

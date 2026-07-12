@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: rendered_with_header(&wf)
+---
+on: mode(night) -> true
+light: light(0x1) -> Off
+set_mode: set_mode(away) -> true [when: mode(guest) is false]

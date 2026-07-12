@@ -112,6 +112,25 @@ mod tests {
     }
 
     #[test]
+    fn mode_trigger_and_set_mode_step() {
+        let wf = workflow(
+            r#"
+            name: night lights off
+            on: { type: mode, mode: night, active: true }
+            run:
+              - type: light
+                device: "0x1"
+                state: "OFF"
+              - type: set_mode
+                mode: away
+                active: true
+                when: { type: mode, mode: guest, active: false }
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
     fn simple_light() {
         let wf = workflow(
             r#"

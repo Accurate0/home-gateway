@@ -5,6 +5,7 @@ use super::{DeviceAliases, IEEEAddress, validate_device};
 use crate::actors::cron::schedule::CronSchedule;
 use crate::actors::sun::calc::SunTransition;
 use crate::event_bus::SensorMetric;
+use crate::mode::Mode;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
 /// variants; the dispatcher matches messages against these.
@@ -50,6 +51,12 @@ pub enum TriggerMatcher {
         )]
         offset: chrono::TimeDelta,
     },
+    /// Fires when a house mode is entered (`active: true`) or exited
+    /// (`active: false`), driven by `set_mode`.
+    Mode {
+        mode: Mode,
+        active: bool,
+    },
 }
 
 impl TriggerMatcher {
@@ -79,6 +86,9 @@ impl TriggerMatcher {
                     cmp.op, cmp.value
                 )
             }
+            TriggerMatcher::Mode { mode, active } => {
+                format!("mode({}) -> {active}", mode.as_str())
+            }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -102,7 +112,9 @@ impl TriggerMatcher {
             | TriggerMatcher::Environment { sensor, .. } => {
                 validate_device(sensor, devices)?;
             }
-            TriggerMatcher::Cron { .. } | TriggerMatcher::Sun { .. } => {}
+            TriggerMatcher::Cron { .. }
+            | TriggerMatcher::Sun { .. }
+            | TriggerMatcher::Mode { .. } => {}
         }
         Ok(())
     }

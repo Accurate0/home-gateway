@@ -4,6 +4,7 @@ use crate::timedelta_format::option_time_delta_from_str;
 
 use super::{DeviceAliases, IEEEAddress, validate_device, yes};
 use crate::actors::sun::calc::SunPeriod;
+use crate::mode::Mode;
 use chrono::{NaiveTime, TimeDelta};
 use serde::Deserialize;
 
@@ -146,7 +147,8 @@ pub enum LeafCondition {
         )]
         offset: TimeDelta,
     },
-    GuestMode {
+    Mode {
+        mode: Mode,
         active: bool,
     },
 }
@@ -198,7 +200,7 @@ impl LeafCondition {
             LeafCondition::Environment { .. }
             | LeafCondition::Presence { .. }
             | LeafCondition::TimeOfDay { .. }
-            | LeafCondition::GuestMode { .. }
+            | LeafCondition::Mode { .. }
             | LeafCondition::Sun { .. } => {}
         }
         Ok(())
@@ -239,8 +241,8 @@ impl LeafCondition {
                     )
                 }
             }
-            LeafCondition::GuestMode { active } => {
-                format!("guest_mode is {active}")
+            LeafCondition::Mode { mode, active } => {
+                format!("mode({}) is {active}", mode.as_str())
             }
         }
     }
@@ -298,6 +300,12 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    SetMode {
+        mode: Mode,
+        active: bool,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
 }
 
 impl Step {
@@ -310,6 +318,7 @@ impl Step {
             Step::Notify { .. } => "notify",
             Step::Delay { .. } => "delay",
             Step::RunWorkflow { .. } => "run_workflow",
+            Step::SetMode { .. } => "set_mode",
         }
     }
 
@@ -321,7 +330,8 @@ impl Step {
             | Step::Scene { when, .. }
             | Step::Notify { when, .. }
             | Step::Delay { when, .. }
-            | Step::RunWorkflow { when, .. } => when.as_ref(),
+            | Step::RunWorkflow { when, .. }
+            | Step::SetMode { when, .. } => when.as_ref(),
         }
     }
 
@@ -337,6 +347,9 @@ impl Step {
                 notify, message, ..
             } => Some(format!("notify({notify:?}): {message}")),
             Step::Delay { seconds, .. } => Some(format!("delay {seconds}s")),
+            Step::SetMode { mode, active, .. } => {
+                Some(format!("set_mode({}) -> {active}", mode.as_str()))
+            }
             Step::Scene { .. } | Step::RunWorkflow { .. } => None,
         }
     }
@@ -360,7 +373,8 @@ impl Step {
             }
             Step::Notify { when, .. }
             | Step::Delay { when, .. }
-            | Step::RunWorkflow { when, .. } => resolve_opt(when, devices)?,
+            | Step::RunWorkflow { when, .. }
+            | Step::SetMode { when, .. } => resolve_opt(when, devices)?,
         }
         Ok(())
     }
@@ -511,27 +525,31 @@ mod condition_tests {
             r#"
 when:
   or:
-    - type: guest_mode
+    - type: mode
+      mode: guest
       active: true
     - and:
         - type: presence
           sensor: living-room
           present: true
         - not:
-            type: guest_mode
+            type: mode
+            mode: guest
             active: true
 "#,
         );
         assert_eq!(
             cond.describe(),
-            "any[guest_mode is true, all[presence(living-room) is true, not(guest_mode is true)]]"
+            "any[mode(guest) is true, all[presence(living-room) is true, not(mode(guest) is true)]]"
         );
     }
 
     #[test]
     fn all_any_aliases_match_and_or() {
-        let with_all = parse("when:\n  all:\n    - type: guest_mode\n      active: true\n");
-        let with_and = parse("when:\n  and:\n    - type: guest_mode\n      active: true\n");
+        let with_all =
+            parse("when:\n  all:\n    - type: mode\n      mode: guest\n      active: true\n");
+        let with_and =
+            parse("when:\n  and:\n    - type: mode\n      mode: guest\n      active: true\n");
         assert_eq!(with_all.describe(), with_and.describe());
     }
 }

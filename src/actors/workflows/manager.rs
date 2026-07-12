@@ -3,6 +3,8 @@ use sqlx::{Pool, Postgres};
 use std::time::Duration;
 use uuid::Uuid;
 
+use crate::mode::Mode;
+
 #[derive(Clone)]
 pub struct WorkflowManager {
     db: Pool<Postgres>,
@@ -20,8 +22,6 @@ pub struct WorkflowRun {
 }
 
 impl WorkflowManager {
-    const GUEST_MODE_KEY: &str = "mode:guest";
-
     pub fn new(db: Pool<Postgres>) -> Self {
         let enabled_cache = Cache::builder()
             .max_capacity(1024)
@@ -51,29 +51,59 @@ impl WorkflowManager {
         }
     }
 
-    pub async fn guest_mode(&self) -> bool {
-        let row = sqlx::query_scalar!(
-            "SELECT value FROM state WHERE key = $1",
-            Self::GUEST_MODE_KEY
-        )
-        .fetch_optional(&self.db)
-        .await;
+    pub async fn mode_active(&self, mode: Mode) -> bool {
+        let row = sqlx::query_scalar!("SELECT value FROM state WHERE key = $1", mode.state_key())
+            .fetch_optional(&self.db)
+            .await;
 
         match row {
             Ok(Some(value)) => value == "true",
             Ok(None) => false,
             Err(err) => {
-                tracing::warn!("failed to read guest mode state: {err}");
+                tracing::warn!("failed to read mode {}: {err}", mode.as_str());
                 false
             }
         }
     }
 
-    pub async fn set_guest_mode(&self, active: bool) -> Result<(), sqlx::Error> {
+    pub async fn active_modes(&self) -> Vec<Mode> {
+        let mut active = Vec::new();
+        for mode in Mode::ALL {
+            if self.mode_active(*mode).await {
+                active.push(*mode);
+            }
+        }
+        active
+    }
+
+    /// Set `mode` to `active`, clearing any mutually-exclusive peers when
+    /// activating. Returns only the modes whose value actually changed so the
+    /// caller can publish a transition event per change.
+    pub async fn set_mode(
+        &self,
+        mode: Mode,
+        active: bool,
+    ) -> Result<Vec<(Mode, bool)>, sqlx::Error> {
+        let mut targets = vec![(mode, active)];
+        if active {
+            targets.extend(mode.exclusive_peers().map(|peer| (peer, false)));
+        }
+
+        let mut transitions = Vec::new();
+        for (m, want) in targets {
+            if self.mode_active(m).await != want {
+                self.write_mode(m, want).await?;
+                transitions.push((m, want));
+            }
+        }
+        Ok(transitions)
+    }
+
+    async fn write_mode(&self, mode: Mode, active: bool) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO state (key, value) VALUES ($1, $2) \
              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-            Self::GUEST_MODE_KEY,
+            mode.state_key(),
             if active { "true" } else { "false" }
         )
         .execute(&self.db)

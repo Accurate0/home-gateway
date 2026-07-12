@@ -116,6 +116,12 @@ impl WorkflowDispatcher {
                     ..
                 },
             ) => transition == t && offset == o,
+            (
+                TriggerMatcher::Mode { mode, active },
+                EventBusMessage::Mode {
+                    mode: m, active: a, ..
+                },
+            ) => mode == m && active == a,
             _ => false,
         }
     }

@@ -5,6 +5,7 @@ use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::required;
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::workflow_object::{WorkflowRun, WorkflowStatus};
+use crate::mode::Mode;
 use crate::settings::SettingsContainer;
 
 #[derive(Default)]
@@ -39,9 +40,21 @@ impl WorkflowsQuery {
     }
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]
+    async fn active_modes(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Vec<Mode>> {
+        let manager = ctx.data::<WorkflowManager>()?;
+        Ok(manager.active_modes().await)
+    }
+
+    #[graphql(
+        guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ),
+        deprecation = "use activeModes / mode(GUEST) instead"
+    )]
     async fn guest_mode(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         let manager = ctx.data::<WorkflowManager>()?;
-        Ok(manager.guest_mode().await)
+        Ok(manager.mode_active(Mode::Guest).await)
     }
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]
