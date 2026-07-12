@@ -118,13 +118,14 @@ impl DoorEntity {
     /// Whether the door is open. Nullable so an unreachable door-events actor
     /// reports the error against this field without nulling the whole entity.
     async fn open(&self) -> async_graphql::Result<Option<bool>> {
-        let state: Option<DoorState> = rpc::query(DerivedDoorEvents::NAME, QUERY_TIMEOUT, |reply| {
-            DoorEventsMessage::QueryState {
-                ieee_addr: self.address.clone(),
-                reply,
-            }
-        })
-        .await?;
+        let state: Option<DoorState> =
+            rpc::query(DerivedDoorEvents::NAME, QUERY_TIMEOUT, |reply| {
+                DoorEventsMessage::QueryState {
+                    ieee_addr: self.address.clone(),
+                    reply,
+                }
+            })
+            .await?;
         Ok(Some(matches!(state, Some(DoorState::Open))))
     }
 

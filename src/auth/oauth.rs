@@ -150,7 +150,9 @@ impl OAuthValidator {
         }
 
         let userinfo = Arc::new(self.request_userinfo(token).await?);
-        self.userinfo.insert(token.to_owned(), userinfo.clone()).await;
+        self.userinfo
+            .insert(token.to_owned(), userinfo.clone())
+            .await;
         Ok(userinfo)
     }
 

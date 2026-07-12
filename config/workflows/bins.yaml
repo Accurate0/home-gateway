@@ -6,3 +6,12 @@
     - type: notify
       notify: { type: android_app }
       message: "Bins"
+
+- name: Bring Bins Back
+  slug: bring-bins-back
+  group: Reminders
+  on: { type: cron, schedule: "0 12 * * FRI" }
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Bring the bins back in"

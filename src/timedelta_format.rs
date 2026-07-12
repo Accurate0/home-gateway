@@ -196,8 +196,8 @@ mod tests {
     #[case("-1h 30m", TimeDelta::minutes(-90))]
     #[case("2h", TimeDelta::hours(2))]
     fn test_signed_offset_parses(#[case] s: &str, #[case] expected: TimeDelta) {
-        use serde::de::value::{Error, StrDeserializer};
         use serde::de::IntoDeserializer;
+        use serde::de::value::{Error, StrDeserializer};
         let de: StrDeserializer<Error> = s.into_deserializer();
         let result = signed_time_delta_from_str::deserialize(de).unwrap();
         assert_eq!(result, expected);

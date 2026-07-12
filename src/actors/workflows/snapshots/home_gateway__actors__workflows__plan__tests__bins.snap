@@ -4,3 +4,6 @@ expression: out
 ---
 # Bins  (on: cron(0 19 * * 4))
   notify: notify(AndroidApp): Bins
+
+# Bring Bins Back  (on: cron(0 12 * * 5))
+  notify: notify(AndroidApp): Bring the bins back in

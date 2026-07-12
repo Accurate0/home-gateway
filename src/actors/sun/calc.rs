@@ -22,7 +22,8 @@ pub enum SunTransition {
 }
 
 fn sun_times(loc: LocationSettings, date: chrono::NaiveDate) -> (DateTime<Utc>, DateTime<Utc>) {
-    let coord = Coordinates::new(loc.latitude, loc.longitude).expect("invalid location coordinates");
+    let coord =
+        Coordinates::new(loc.latitude, loc.longitude).expect("invalid location coordinates");
     let day = SolarDay::new(coord, date);
     (
         day.event_time(SolarEvent::Sunrise),
@@ -91,7 +92,10 @@ mod tests {
     fn midday_is_day_midnight_is_night() {
         let midday = utc("2026-07-11T04:00:00Z");
         let midnight = utc("2026-07-11T16:00:00Z");
-        assert_eq!(current_period(LOC, midday, TimeDelta::zero()), SunPeriod::Day);
+        assert_eq!(
+            current_period(LOC, midday, TimeDelta::zero()),
+            SunPeriod::Day
+        );
         assert_eq!(
             current_period(LOC, midnight, TimeDelta::zero()),
             SunPeriod::Night

@@ -26,7 +26,10 @@ impl EntitiesQuery {
 
         if auth.has(&required::GRAPHQL_LIGHT_READ) {
             out.extend(registry.lights().map(|(address, name)| {
-                let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+                let id = registry
+                    .id_for_address(address)
+                    .unwrap_or(address)
+                    .to_owned();
                 Entity::Light(LightEntity {
                     id,
                     name: name.clone(),
@@ -49,7 +52,10 @@ impl EntitiesQuery {
 
         if auth.has(&required::GRAPHQL_PRESENCE_READ) {
             out.extend(registry.presence_devices().map(|(address, settings)| {
-                let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+                let id = registry
+                    .id_for_address(address)
+                    .unwrap_or(address)
+                    .to_owned();
                 let name = if settings.name.is_empty() {
                     id.clone()
                 } else {

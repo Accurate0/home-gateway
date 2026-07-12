@@ -22,11 +22,14 @@ fn main() {
 
         let yaml = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
-        let workflows: Vec<serde_yaml::Value> = serde_yaml::from_str(&yaml)
-            .unwrap_or_else(|e| panic!("parse {}: {e}", path.display()));
+        let workflows: Vec<serde_yaml::Value> =
+            serde_yaml::from_str(&yaml).unwrap_or_else(|e| panic!("parse {}: {e}", path.display()));
 
         for wf in workflows {
-            let name = wf.get("name").and_then(|v| v.as_str()).unwrap_or("<unnamed>");
+            let name = wf
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("<unnamed>");
             let slug = wf.get("slug").and_then(|v| v.as_str());
             let slug = match slug {
                 Some(s) if !s.trim().is_empty() => s.to_owned(),

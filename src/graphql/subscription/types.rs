@@ -140,8 +140,12 @@ impl EventUpdate {
             } => {
                 let device = ieee_addr.to_string();
                 let settings = registry.door(&device);
-                let id = settings.map(|s| s.id.clone()).unwrap_or_else(|| slug(&device));
-                let name = settings.map(|s| s.name.clone()).unwrap_or_else(|| id.clone());
+                let id = settings
+                    .map(|s| s.id.clone())
+                    .unwrap_or_else(|| slug(&device));
+                let name = settings
+                    .map(|s| s.name.clone())
+                    .unwrap_or_else(|| id.clone());
                 EventUpdate::Door(DoorUpdate {
                     event_id,
                     id,
@@ -165,8 +169,12 @@ impl EventUpdate {
                 readings,
             } => {
                 let settings = registry.environment(&sensor);
-                let id = settings.map(|s| s.id.clone()).unwrap_or_else(|| slug(&sensor));
-                let name = settings.map(|s| s.name.clone()).unwrap_or_else(|| id.clone());
+                let id = settings
+                    .map(|s| s.id.clone())
+                    .unwrap_or_else(|| slug(&sensor));
+                let name = settings
+                    .map(|s| s.name.clone())
+                    .unwrap_or_else(|| id.clone());
                 EventUpdate::Environment(EnvironmentUpdate {
                     event_id,
                     id,
@@ -199,7 +207,10 @@ impl EventUpdate {
             } => {
                 let device = ieee_addr.to_string();
                 let id = slug(&device);
-                let name = registry.light(&device).cloned().unwrap_or_else(|| id.clone());
+                let name = registry
+                    .light(&device)
+                    .cloned()
+                    .unwrap_or_else(|| id.clone());
                 EventUpdate::Light(LightUpdate {
                     event_id,
                     id,

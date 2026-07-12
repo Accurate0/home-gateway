@@ -90,11 +90,28 @@ impl Comparison {
     }
 }
 
-/// A boolean predicate evaluated against current device/sensor state. Recursive
-/// via `all`/`any`/`not` so arbitrary boolean expressions are expressible.
+/// A boolean predicate evaluated against current device/sensor state. Either a
+/// nested boolean combinator (`all`/`and`, `any`/`or`, `not`) or a leaf test.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum Condition {
+    Combinator(Combinator),
+    Leaf(LeafCondition),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum Combinator {
+    #[serde(rename = "all", alias = "and")]
+    All(Vec<Condition>),
+    #[serde(rename = "any", alias = "or")]
+    Any(Vec<Condition>),
+    #[serde(rename = "not")]
+    Not(Box<Condition>),
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum Condition {
+pub enum LeafCondition {
     Light {
         #[serde(rename = "device", alias = "ieeeAddr")]
         ieee_addr: IEEEAddress,
@@ -129,63 +146,90 @@ pub enum Condition {
         )]
         offset: TimeDelta,
     },
-    All {
-        conditions: Vec<Condition>,
-    },
-    Any {
-        conditions: Vec<Condition>,
-    },
-    Not {
-        condition: Box<Condition>,
+    GuestMode {
+        active: bool,
     },
 }
 
 impl Condition {
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         match self {
-            Condition::Light { ieee_addr, .. } | Condition::Door { ieee_addr, .. } => {
-                validate_device(ieee_addr, devices)?;
-            }
-            Condition::All { conditions } | Condition::Any { conditions } => {
-                for c in conditions {
-                    c.resolve_devices(devices)?;
-                }
-            }
-            Condition::Not { condition } => condition.resolve_devices(devices)?,
-            Condition::Environment { .. }
-            | Condition::Presence { .. }
-            | Condition::TimeOfDay { .. }
-            | Condition::Sun { .. } => {}
+            Condition::Combinator(c) => c.resolve_devices(devices),
+            Condition::Leaf(l) => l.resolve_devices(devices),
         }
-        Ok(())
     }
 
     pub fn describe(&self) -> String {
         match self {
-            Condition::Light { ieee_addr, on } => {
+            Condition::Combinator(c) => c.describe(),
+            Condition::Leaf(l) => l.describe(),
+        }
+    }
+}
+
+impl Combinator {
+    fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+        match self {
+            Combinator::All(conditions) | Combinator::Any(conditions) => {
+                for c in conditions {
+                    c.resolve_devices(devices)?;
+                }
+            }
+            Combinator::Not(condition) => condition.resolve_devices(devices)?,
+        }
+        Ok(())
+    }
+
+    fn describe(&self) -> String {
+        match self {
+            Combinator::All(conditions) => format!("all[{}]", describe_join(conditions)),
+            Combinator::Any(conditions) => format!("any[{}]", describe_join(conditions)),
+            Combinator::Not(condition) => format!("not({})", condition.describe()),
+        }
+    }
+}
+
+impl LeafCondition {
+    fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+        match self {
+            LeafCondition::Light { ieee_addr, .. } | LeafCondition::Door { ieee_addr, .. } => {
+                validate_device(ieee_addr, devices)?;
+            }
+            LeafCondition::Environment { .. }
+            | LeafCondition::Presence { .. }
+            | LeafCondition::TimeOfDay { .. }
+            | LeafCondition::GuestMode { .. }
+            | LeafCondition::Sun { .. } => {}
+        }
+        Ok(())
+    }
+
+    fn describe(&self) -> String {
+        match self {
+            LeafCondition::Light { ieee_addr, on } => {
                 format!("light({ieee_addr}) is {}", if *on { "on" } else { "off" })
             }
-            Condition::Environment {
+            LeafCondition::Environment {
                 sensor,
                 metric,
                 cmp,
             } => format!("env({sensor}).{metric:?} {:?} {}", cmp.op, cmp.value),
-            Condition::Presence { sensor, present } => {
+            LeafCondition::Presence { sensor, present } => {
                 format!("presence({sensor}) is {present}")
             }
-            Condition::Door { ieee_addr, open } => {
+            LeafCondition::Door { ieee_addr, open } => {
                 format!(
                     "door({ieee_addr}) is {}",
                     if *open { "open" } else { "closed" }
                 )
             }
-            Condition::TimeOfDay { after, before } => match (after, before) {
+            LeafCondition::TimeOfDay { after, before } => match (after, before) {
                 (Some(a), Some(b)) => format!("time in [{a}, {b})"),
                 (Some(a), None) => format!("time after {a}"),
                 (None, Some(b)) => format!("time before {b}"),
                 (None, None) => "time always".to_string(),
             },
-            Condition::Sun { is, offset } => {
+            LeafCondition::Sun { is, offset } => {
                 if offset.is_zero() {
                     format!("sun is {is:?}")
                 } else {
@@ -195,13 +239,9 @@ impl Condition {
                     )
                 }
             }
-            Condition::All { conditions } => {
-                format!("all[{}]", describe_join(conditions))
+            LeafCondition::GuestMode { active } => {
+                format!("guest_mode is {active}")
             }
-            Condition::Any { conditions } => {
-                format!("any[{}]", describe_join(conditions))
-            }
-            Condition::Not { condition } => format!("not({})", condition.describe()),
         }
     }
 }
@@ -442,5 +482,56 @@ impl Workflow {
             step.resolve_devices(devices)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod condition_tests {
+    use super::*;
+    use config::{Config, File, FileFormat};
+
+    #[derive(serde::Deserialize)]
+    struct Wrap {
+        when: Condition,
+    }
+
+    fn parse(yaml: &str) -> Condition {
+        Config::builder()
+            .add_source(File::from_str(yaml, FileFormat::Yaml))
+            .build()
+            .unwrap()
+            .try_deserialize::<Wrap>()
+            .unwrap()
+            .when
+    }
+
+    #[test]
+    fn nested_or_and_not_map_keys() {
+        let cond = parse(
+            r#"
+when:
+  or:
+    - type: guest_mode
+      active: true
+    - and:
+        - type: presence
+          sensor: living-room
+          present: true
+        - not:
+            type: guest_mode
+            active: true
+"#,
+        );
+        assert_eq!(
+            cond.describe(),
+            "any[guest_mode is true, all[presence(living-room) is true, not(guest_mode is true)]]"
+        );
+    }
+
+    #[test]
+    fn all_any_aliases_match_and_or() {
+        let with_all = parse("when:\n  all:\n    - type: guest_mode\n      active: true\n");
+        let with_and = parse("when:\n  and:\n    - type: guest_mode\n      active: true\n");
+        assert_eq!(with_all.describe(), with_and.describe());
     }
 }

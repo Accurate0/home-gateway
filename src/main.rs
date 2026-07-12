@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use ::http::Method;
+use actors::workflows::manager::WorkflowManager;
 use actors::{
     mqtt_ingest::{self},
     root::RootSupervisor,
@@ -19,7 +20,6 @@ use axum::{
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
-use actors::workflows::manager::WorkflowManager;
 use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{

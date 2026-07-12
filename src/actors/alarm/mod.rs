@@ -1,6 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::{Condition, LightState, Step, Workflow, WorkflowTrigger},
+    settings::workflow::{Condition, LeafCondition, LightState, Step, Workflow, WorkflowTrigger},
     types::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -114,10 +114,10 @@ impl Actor for AlarmActor {
                                         when: None,
                                     },
                                 ],
-                                when: Some(Condition::Light {
+                                when: Some(Condition::Leaf(LeafCondition::Light {
                                     ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
                                     on: false,
-                                }),
+                                })),
                             }],
                         };
 

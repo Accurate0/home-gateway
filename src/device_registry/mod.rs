@@ -10,12 +10,12 @@ use crate::settings::door::RawDoorSettings;
 use crate::settings::environment::default_environment_entities;
 use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 use crate::settings::plant::default_plant_entities;
-use crate::timedelta_format::option_time_delta_from_str;
-use chrono::TimeDelta;
 use crate::settings::{
     ApplianceSettings, DeviceAliases, DoorSettings, EnvironmentSensorSettings,
     EnvironmentSensorType, IEEEAddress, PlantSensorSettings, PresenceSensorType, PresenceSettings,
 };
+use crate::timedelta_format::option_time_delta_from_str;
+use chrono::TimeDelta;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -368,7 +368,9 @@ impl DeviceRegistryInner {
     }
 
     /// Every configured environment sensor, keyed by address, for entity enumeration.
-    pub fn environment_devices(&self) -> impl Iterator<Item = (&String, &EnvironmentSensorSettings)> {
+    pub fn environment_devices(
+        &self,
+    ) -> impl Iterator<Item = (&String, &EnvironmentSensorSettings)> {
         self.environment.iter()
     }
 }

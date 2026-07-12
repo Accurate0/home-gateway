@@ -160,8 +160,9 @@ impl EnvironmentSensorHandler {
                             readings.humidity = Some(value)
                         }
                         esphome::DPS310_PRESSURE_OBJECT_ID => readings.pressure = Some(value),
-                        esphome::LTR390_LIGHT_OBJECT_ID
-                        | esphome::BH1750_ILLUMINANCE_OBJECT_ID => readings.lux = Some(value),
+                        esphome::LTR390_LIGHT_OBJECT_ID | esphome::BH1750_ILLUMINANCE_OBJECT_ID => {
+                            readings.lux = Some(value)
+                        }
                         esphome::LTR390_UV_INDEX_OBJECT_ID => readings.uv_index = Some(value),
                         other => {
                             // not a temperature-sensor entity (e.g. soil_moisture); ignore

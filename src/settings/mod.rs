@@ -313,8 +313,16 @@ android_app_webhook_secret: x
 
         let mut seen = HashSet::new();
         for wf in settings.workflows.values() {
-            assert!(!wf.slug.trim().is_empty(), "workflow '{}' has empty slug", wf.name);
-            assert!(seen.insert(&wf.slug), "duplicate workflow slug: {}", wf.slug);
+            assert!(
+                !wf.slug.trim().is_empty(),
+                "workflow '{}' has empty slug",
+                wf.name
+            );
+            assert!(
+                seen.insert(&wf.slug),
+                "duplicate workflow slug: {}",
+                wf.slug
+            );
         }
 
         // a zigbee presence sensor is keyed by its address in the registry

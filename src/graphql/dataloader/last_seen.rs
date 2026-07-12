@@ -36,9 +36,6 @@ impl Loader<String> for LastSeenDataLoader {
         .instrument(tracing::info_span!("bulk-get-last-seen"))
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| (r.address, r.last_seen))
-            .collect())
+        Ok(rows.into_iter().map(|r| (r.address, r.last_seen)).collect())
     }
 }

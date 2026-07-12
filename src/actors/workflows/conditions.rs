@@ -7,6 +7,7 @@
 //! [`SharedActorState`] rather than being tied to the workflow worker.
 
 use super::WorkflowError;
+use crate::actors::sun::calc;
 use crate::{
     actors::{
         devices::environment_sensor::{
@@ -17,11 +18,10 @@ use crate::{
         light::{LightHandler, LightHandlerMessage},
         rpc::{self, RpcError},
     },
-    settings::workflow::{Comparison, Condition, EnvMetric},
+    settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
     types::SharedActorState,
     types::db::DoorState,
 };
-use crate::actors::sun::calc;
 use chrono::{Local, Utc};
 use std::time::Duration;
 
@@ -39,21 +39,53 @@ const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 /// Evaluate a condition against current state. Recursive via `all`/`any`/`not`.
 pub async fn eval(state: &SharedActorState, cond: &Condition) -> Result<bool, WorkflowError> {
     match cond {
-        Condition::Light { ieee_addr, on } => {
+        Condition::Combinator(c) => eval_combinator(state, c).await,
+        Condition::Leaf(l) => eval_leaf(state, l).await,
+    }
+}
+
+async fn eval_combinator(
+    state: &SharedActorState,
+    cond: &Combinator,
+) -> Result<bool, WorkflowError> {
+    match cond {
+        Combinator::All(conditions) => {
+            for c in conditions {
+                if !Box::pin(eval(state, c)).await? {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        }
+        Combinator::Any(conditions) => {
+            for c in conditions {
+                if Box::pin(eval(state, c)).await? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        Combinator::Not(condition) => Ok(!Box::pin(eval(state, condition)).await?),
+    }
+}
+
+async fn eval_leaf(state: &SharedActorState, cond: &LeafCondition) -> Result<bool, WorkflowError> {
+    match cond {
+        LeafCondition::Light { ieee_addr, on } => {
             Ok(query_light_on(state.devices.address_or_self(ieee_addr)).await? == *on)
         }
-        Condition::Environment {
+        LeafCondition::Environment {
             sensor,
             metric,
             cmp,
         } => eval_environment(state.devices.address_or_self(sensor), *metric, *cmp).await,
-        Condition::Door { ieee_addr, open } => {
+        LeafCondition::Door { ieee_addr, open } => {
             Ok(query_door_open(state.devices.address_or_self(ieee_addr)).await? == *open)
         }
-        Condition::Presence { sensor, present } => {
+        LeafCondition::Presence { sensor, present } => {
             Ok(query_presence(state.devices.address_or_self(sensor)).await? == *present)
         }
-        Condition::TimeOfDay { after, before } => {
+        LeafCondition::TimeOfDay { after, before } => {
             let now = Local::now().time();
             Ok(match (after, before) {
                 (Some(a), Some(b)) if a > b => now >= *a || now < *b, // wraps midnight
@@ -63,26 +95,10 @@ pub async fn eval(state: &SharedActorState, cond: &Condition) -> Result<bool, Wo
                 (None, None) => true,
             })
         }
-        Condition::Sun { is, offset } => {
+        LeafCondition::Sun { is, offset } => {
             Ok(calc::current_period(state.settings.location, Utc::now(), *offset) == *is)
         }
-        Condition::All { conditions } => {
-            for c in conditions {
-                if !Box::pin(eval(state, c)).await? {
-                    return Ok(false);
-                }
-            }
-            Ok(true)
-        }
-        Condition::Any { conditions } => {
-            for c in conditions {
-                if Box::pin(eval(state, c)).await? {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
-        }
-        Condition::Not { condition } => Ok(!Box::pin(eval(state, condition)).await?),
+        LeafCondition::GuestMode { active } => Ok(state.workflows.guest_mode().await == *active),
     }
 }
 

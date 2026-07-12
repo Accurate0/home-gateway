@@ -1,7 +1,7 @@
 use crate::{
     actors::{
         eink_display::EInkDisplayActor, solar::SolarIngestActor, sun::SunActor,
-    watchdog::WatchdogActor, woolworths::WoolworthsActor,
+        watchdog::WatchdogActor, woolworths::WoolworthsActor,
     },
     types::SharedActorState,
     woolworths::Woolworths,

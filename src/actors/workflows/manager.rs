@@ -20,6 +20,8 @@ pub struct WorkflowRun {
 }
 
 impl WorkflowManager {
+    const GUEST_MODE_KEY: &str = "mode:guest";
+
     pub fn new(db: Pool<Postgres>) -> Self {
         let enabled_cache = Cache::builder()
             .max_capacity(1024)
@@ -47,6 +49,36 @@ impl WorkflowManager {
                 config_default
             }
         }
+    }
+
+    pub async fn guest_mode(&self) -> bool {
+        let row = sqlx::query_scalar!(
+            "SELECT value FROM state WHERE key = $1",
+            Self::GUEST_MODE_KEY
+        )
+        .fetch_optional(&self.db)
+        .await;
+
+        match row {
+            Ok(Some(value)) => value == "true",
+            Ok(None) => false,
+            Err(err) => {
+                tracing::warn!("failed to read guest mode state: {err}");
+                false
+            }
+        }
+    }
+
+    pub async fn set_guest_mode(&self, active: bool) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO state (key, value) VALUES ($1, $2) \
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+            Self::GUEST_MODE_KEY,
+            if active { "true" } else { "false" }
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
     }
 
     pub async fn set_enabled(&self, slug: &str, enabled: bool) -> Result<(), sqlx::Error> {

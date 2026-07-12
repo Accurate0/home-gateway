@@ -27,10 +27,7 @@ impl WorkflowsQuery {
                 id: workflow.slug.clone(),
                 slug: workflow.slug.clone(),
                 name: workflow.name.clone(),
-                group: workflow
-                    .group
-                    .clone()
-                    .unwrap_or_else(|| "Other".to_owned()),
+                group: workflow.group.clone().unwrap_or_else(|| "Other".to_owned()),
                 enabled,
                 config_enabled: workflow.enabled,
                 dry_run: workflow.dry_run,
@@ -39,6 +36,12 @@ impl WorkflowsQuery {
         }
         statuses.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(statuses)
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]
+    async fn guest_mode(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
+        let manager = ctx.data::<WorkflowManager>()?;
+        Ok(manager.guest_mode().await)
     }
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]

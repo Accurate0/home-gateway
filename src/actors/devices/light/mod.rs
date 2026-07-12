@@ -114,12 +114,8 @@ impl LightHandler {
                         .await?
                     }
                     Entity::AqaraT1(aqara_t1) => {
-                        self.update_light_state(
-                            event_id,
-                            aqara_t1.device.ieee_addr,
-                            aqara_t1.state,
-                        )
-                        .await?
+                        self.update_light_state(event_id, aqara_t1.device.ieee_addr, aqara_t1.state)
+                            .await?
                     }
                 }
             }

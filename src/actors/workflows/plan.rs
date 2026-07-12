@@ -263,10 +263,9 @@ mod tests {
                 device: "0x1"
                 state: "ON"
                 when:
-                  type: all
-                  conditions:
+                  all:
                     - { type: sun, is: day }
-                    - { type: not, condition: { type: sun, is: night } }
+                    - not: { type: sun, is: night }
             "#,
         );
         insta::assert_snapshot!(rendered_with_header(&wf));

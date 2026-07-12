@@ -29,4 +29,15 @@ impl WorkflowsMutation {
         manager.set_enabled(&slug, enabled).await?;
         Ok(enabled)
     }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_WRITE))]
+    async fn set_guest_mode(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        active: bool,
+    ) -> async_graphql::Result<bool> {
+        let manager = ctx.data::<WorkflowManager>()?;
+        manager.set_guest_mode(active).await?;
+        Ok(active)
+    }
 }

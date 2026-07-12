@@ -310,10 +310,7 @@ impl WorkflowDispatcher {
         Self::send_to_factory(event_id, workflow)
     }
 
-    fn send_to_factory(
-        event_id: uuid::Uuid,
-        workflow: Workflow,
-    ) -> Result<(), ActorProcessingErr> {
+    fn send_to_factory(event_id: uuid::Uuid, workflow: Workflow) -> Result<(), ActorProcessingErr> {
         let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
             tracing::warn!("[{event_id}] workflow factory not found, dropping trigger");
             return Ok(());

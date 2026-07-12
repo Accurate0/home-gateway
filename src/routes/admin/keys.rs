@@ -16,7 +16,8 @@ pub async fn create_key(
     Auth(auth): Auth,
     Json(payload): Json<CreateKeyPayload>,
 ) -> Result<Json<CreatedKey>, AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE).map_err(AppError::StatusCode)?;
+    auth.require(&required::ADMIN_KEYS_WRITE)
+        .map_err(AppError::StatusCode)?;
 
     let created = manager
         .create(&payload.name, &payload.scopes, payload.expires_at)
@@ -29,7 +30,8 @@ pub async fn list_keys(
     State(ApiState { auth: manager, .. }): State<ApiState>,
     Auth(auth): Auth,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    auth.require(&required::ADMIN_KEYS_READ).map_err(AppError::StatusCode)?;
+    auth.require(&required::ADMIN_KEYS_READ)
+        .map_err(AppError::StatusCode)?;
 
     let keys = manager.list().await?;
 
@@ -42,7 +44,8 @@ pub async fn update_key(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateKeyPayload>,
 ) -> Result<Json<ApiKeyInfo>, AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE).map_err(AppError::StatusCode)?;
+    auth.require(&required::ADMIN_KEYS_WRITE)
+        .map_err(AppError::StatusCode)?;
 
     let updated = manager
         .update(
@@ -64,7 +67,8 @@ pub async fn revoke_key(
     Auth(auth): Auth,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE).map_err(AppError::StatusCode)?;
+    auth.require(&required::ADMIN_KEYS_WRITE)
+        .map_err(AppError::StatusCode)?;
 
     if manager.revoke(id).await? {
         Ok(StatusCode::NO_CONTENT)

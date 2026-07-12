@@ -34,9 +34,7 @@ pub struct SetColourInput {
 }
 
 fn is_valid_hex(hex: &str) -> bool {
-    hex.len() == 7
-        && hex.starts_with('#')
-        && hex[1..].bytes().all(|b| b.is_ascii_hexdigit())
+    hex.len() == 7 && hex.starts_with('#') && hex[1..].bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 fn dispatch(message: LightHandlerMessage) -> async_graphql::Result<bool> {
@@ -99,10 +97,14 @@ impl LightMutation {
     #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
     async fn set_colour(&self, input: SetColourInput) -> async_graphql::Result<bool> {
         if !self.capabilities.contains(&Capability::Rgb) {
-            return Err(async_graphql::Error::new("light does not support RGB colour"));
+            return Err(async_graphql::Error::new(
+                "light does not support RGB colour",
+            ));
         }
         if !is_valid_hex(&input.hex) {
-            return Err(async_graphql::Error::new("invalid hex colour, expected #RRGGBB"));
+            return Err(async_graphql::Error::new(
+                "invalid hex colour, expected #RRGGBB",
+            ));
         }
         dispatch(LightHandlerMessage::SetColour {
             ieee_addr: self.address.clone(),
