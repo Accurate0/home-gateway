@@ -4,17 +4,10 @@
   on: { type: presence, sensor: living-room-epp, present: true }
   when: { type: sun, is: night }
   run:
-    - type: scene
+    - type: light
       when: { type: light, device: floor-lamp-living-room, on: false }
-      run:
-        - type: light
-          device: floor-lamp-living-room
-          state: SET_BRIGHTNESS
-          value: 1
-        - type: light
-          device: floor-lamp-living-room
-          state: INCREASE_BRIGHTNESS
-          value: 1
+      device: floor-lamp-living-room
+      state: ON
 
 - name: Living room lamp on (sunset while occupied)
   slug: living-room-lamp-on-sunset

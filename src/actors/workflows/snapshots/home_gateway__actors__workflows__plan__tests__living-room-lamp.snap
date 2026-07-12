@@ -4,8 +4,7 @@ expression: out
 ---
 # Living room lamp on (occupancy after sunset)  (on: presence(living-room-epp) -> true)
   when: sun is Night
-  light: light(floor-lamp-living-room) -> SetBrightness { value: 1 } [when: light(floor-lamp-living-room) is off]
-  light: light(floor-lamp-living-room) -> IncreaseBrightness { value: 1, on_off: false } [when: light(floor-lamp-living-room) is off]
+  light: light(floor-lamp-living-room) -> On [when: light(floor-lamp-living-room) is off]
 
 # Living room lamp on (sunset while occupied)  (on: sun -> Sunset)
   when: presence(living-room-epp) is true
