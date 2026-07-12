@@ -1,5 +1,6 @@
 use crate::{
     actors::light::{LightHandler, LightHandlerMessage},
+    actors::workflows::manager::WorkflowRun,
     notify::notify,
     settings::workflow::{LightState, Step, Workflow},
     timer::timed_async,
@@ -69,6 +70,18 @@ impl WorkflowWorker {
         {
             tracing::warn!("[{event_id}] workflow not executed as it's disabled");
             crate::metrics::record_workflow("disabled", Duration::ZERO);
+            self.shared_actor_state
+                .workflows
+                .record_run(WorkflowRun {
+                    slug: workflow.slug.clone(),
+                    name: workflow.name.clone(),
+                    event_id,
+                    outcome: "disabled".to_owned(),
+                    dry_run: workflow.dry_run,
+                    duration: Duration::ZERO,
+                    error: None,
+                })
+                .await;
             return Ok(());
         }
 
@@ -83,8 +96,21 @@ impl WorkflowWorker {
         };
         let start = std::time::Instant::now();
         let result = self.run_steps(ctx, &workflow.run).await;
+        let elapsed = start.elapsed();
         let outcome = if result.is_ok() { "success" } else { "error" };
-        crate::metrics::record_workflow(outcome, start.elapsed());
+        crate::metrics::record_workflow(outcome, elapsed);
+        self.shared_actor_state
+            .workflows
+            .record_run(WorkflowRun {
+                slug: workflow.slug.clone(),
+                name: workflow.name.clone(),
+                event_id,
+                outcome: outcome.to_owned(),
+                dry_run: workflow.dry_run,
+                duration: elapsed,
+                error: result.as_ref().err().map(|e| e.to_string()),
+            })
+            .await;
         result
     }
 

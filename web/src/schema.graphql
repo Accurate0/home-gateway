@@ -304,6 +304,7 @@ type QueryRoot {
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
 	workflows: [WorkflowStatus!]!
+	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
 }
 
 type WorkflowStatus {
@@ -315,6 +316,18 @@ type WorkflowStatus {
 	configEnabled: Boolean!
 	dryRun: Boolean!
 	reusable: Boolean!
+}
+
+type WorkflowRun {
+	id: ID!
+	slug: String!
+	name: String!
+	eventId: String!
+	outcome: String!
+	dryRun: Boolean!
+	durationMs: Int!
+	error: String
+	startedAt: DateTime!
 }
 
 input SetBrightnessInput {
