@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import { graphql, useLazyLoadQuery, useRelayEnvironment } from "react-relay";
-import { requestSubscription } from "relay-runtime";
+import { graphql, useRelayEnvironment } from "react-relay";
+import { fetchQuery, requestSubscription } from "relay-runtime";
 import { formatDistanceToNow } from "date-fns";
 import type { HomeAssistantPageQuery } from "./__generated__/HomeAssistantPageQuery.graphql";
 import type { HomeAssistantPageSubscription } from "./__generated__/HomeAssistantPageSubscription.graphql";
@@ -64,20 +64,33 @@ const HistoryRow = memo(function HistoryRow({ row }: { row: Row }) {
 });
 
 export default function HomeAssistantPage() {
-  const [since] = useState(() =>
-    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  );
-  const data = useLazyLoadQuery<HomeAssistantPageQuery>(HistoryQuery, { since });
   const environment = useRelayEnvironment();
-  const [rows, setRows] = useState<Row[]>(() =>
-    data.events.homeAssistant.map((e) => ({
-      eventId: e.eventId,
-      entityId: e.entityId,
-      state: e.state,
-      time: e.time as string,
-    })),
-  );
+  const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const sub = fetchQuery<HomeAssistantPageQuery>(environment, HistoryQuery, {
+      since,
+    }).subscribe({
+      next: (data) => {
+        const history = data.events.homeAssistant.map((e) => ({
+          eventId: e.eventId,
+          entityId: e.entityId,
+          state: e.state,
+          time: e.time as string,
+        }));
+        setRows((prev) => {
+          const seen = new Set(prev.map((r) => r.eventId));
+          return [...prev, ...history.filter((r) => !seen.has(r.eventId))].slice(
+            0,
+            MAX_ROWS,
+          );
+        });
+      },
+    });
+    return () => sub.unsubscribe();
+  }, [environment]);
 
   useEffect(() => {
     const sub = requestSubscription<HomeAssistantPageSubscription>(environment, {
