@@ -35,6 +35,10 @@ pub enum WorkflowError {
     Messaging(String),
     #[error("not implemented: {0}")]
     NotImplemented(&'static str),
+    #[error("home assistant is not configured")]
+    HomeAssistantNotConfigured,
+    #[error(transparent)]
+    HomeAssistant(#[from] crate::home_assistant::HomeAssistantError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -177,7 +181,31 @@ impl WorkflowWorker {
             }
             Step::RunWorkflow { workflow, .. } => self.run_named_workflow(ctx, workflow).await,
             Step::SetMode { mode, active, .. } => self.run_set_mode(*mode, *active).await,
+            Step::HomeAssistant {
+                call_service, data, ..
+            } => self.run_home_assistant(call_service, data.clone()).await,
         }
+    }
+
+    async fn run_home_assistant(
+        &self,
+        call_service: &str,
+        data: serde_json::Value,
+    ) -> Result<(), WorkflowError> {
+        let home_assistant = self
+            .shared_actor_state
+            .home_assistant
+            .as_ref()
+            .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
+
+        let (domain, service) = call_service.split_once('.').ok_or_else(|| {
+            WorkflowError::HomeAssistant(
+                crate::home_assistant::HomeAssistantError::InvalidService(call_service.to_owned()),
+            )
+        })?;
+
+        home_assistant.call_service(domain, service, data).await?;
+        Ok(())
     }
 
     async fn run_set_mode(

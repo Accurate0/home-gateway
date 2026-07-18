@@ -57,6 +57,14 @@ pub enum TriggerMatcher {
         mode: Mode,
         active: bool,
     },
+    /// Fires when a Home Assistant entity changes state, driven by the
+    /// [`crate::actors::home_assistant`] producer. Optionally gate on the entity
+    /// reaching a specific `state`.
+    HomeAssistant {
+        entity_id: String,
+        #[serde(default)]
+        state: Option<String>,
+    },
 }
 
 impl TriggerMatcher {
@@ -89,6 +97,10 @@ impl TriggerMatcher {
             TriggerMatcher::Mode { mode, active } => {
                 format!("mode({}) -> {active}", mode.as_str())
             }
+            TriggerMatcher::HomeAssistant { entity_id, state } => match state {
+                Some(state) => format!("home_assistant({entity_id}) -> {state}"),
+                None => format!("home_assistant({entity_id})"),
+            },
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -114,7 +126,8 @@ impl TriggerMatcher {
             }
             TriggerMatcher::Cron { .. }
             | TriggerMatcher::Sun { .. }
-            | TriggerMatcher::Mode { .. } => {}
+            | TriggerMatcher::Mode { .. }
+            | TriggerMatcher::HomeAssistant { .. } => {}
         }
         Ok(())
     }

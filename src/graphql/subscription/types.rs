@@ -93,6 +93,13 @@ pub struct ModeUpdate {
     pub active: bool,
 }
 
+#[derive(SimpleObject)]
+pub struct HomeAssistantUpdate {
+    pub event_id: Uuid,
+    pub entity_id: String,
+    pub state: String,
+}
+
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
 pub enum EventUpdate {
@@ -105,6 +112,7 @@ pub enum EventUpdate {
     Light(LightUpdate),
     Unifi(UnifiUpdate),
     Mode(ModeUpdate),
+    HomeAssistant(HomeAssistantUpdate),
 }
 
 impl EventUpdate {
@@ -247,6 +255,15 @@ impl EventUpdate {
                 event_id,
                 mode,
                 active,
+            }),
+            EventBusMessage::HomeAssistant {
+                event_id,
+                entity_id,
+                state,
+            } => EventUpdate::HomeAssistant(HomeAssistantUpdate {
+                event_id,
+                entity_id,
+                state,
             }),
         }
     }

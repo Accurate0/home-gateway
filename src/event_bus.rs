@@ -163,6 +163,13 @@ pub enum EventBusMessage {
         mode: Mode,
         active: bool,
     },
+    /// A Home Assistant entity changed state, forwarded from HA's WebSocket
+    /// `state_changed` stream by the [`crate::actors::home_assistant`] producer.
+    HomeAssistant {
+        event_id: Uuid,
+        entity_id: String,
+        state: String,
+    },
 }
 
 impl EventBusMessage {
@@ -178,7 +185,8 @@ impl EventBusMessage {
             | EventBusMessage::Sun { event_id, .. }
             | EventBusMessage::Light { event_id, .. }
             | EventBusMessage::Unifi { event_id, .. }
-            | EventBusMessage::Mode { event_id, .. } => *event_id,
+            | EventBusMessage::Mode { event_id, .. }
+            | EventBusMessage::HomeAssistant { event_id, .. } => *event_id,
         }
     }
 
@@ -194,6 +202,7 @@ impl EventBusMessage {
             EventBusMessage::Light { .. } => "light",
             EventBusMessage::Unifi { .. } => "unifi",
             EventBusMessage::Mode { .. } => "mode",
+            EventBusMessage::HomeAssistant { .. } => "home_assistant",
         }
     }
 
@@ -207,6 +216,7 @@ impl EventBusMessage {
         "light",
         "unifi",
         "mode",
+        "home_assistant",
     ];
 
     pub fn entity(&self) -> String {
@@ -223,6 +233,7 @@ impl EventBusMessage {
             },
             EventBusMessage::Unifi { mac_address, .. } => mac_address.clone(),
             EventBusMessage::Mode { mode, .. } => mode.as_str().to_string(),
+            EventBusMessage::HomeAssistant { entity_id, .. } => entity_id.clone(),
         }
     }
 }

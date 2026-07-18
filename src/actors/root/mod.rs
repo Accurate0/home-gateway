@@ -11,6 +11,7 @@ use ractor::Actor;
 use super::{
     alarm::AlarmActor,
     cron::CronActor,
+    home_assistant::HomeAssistantActor,
     devices::{control_switch, plant_sensor, presence_sensor},
     door_sensor, environment_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
@@ -33,6 +34,27 @@ impl RootSupervisor {
             .spawn_linked(
                 Some(EInkDisplayActor::NAME.to_owned()),
                 EInkDisplayActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_home_assistant_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        if self.shared_actor_state.home_assistant.is_none() {
+            return Ok(());
+        }
+
+        myself
+            .spawn_linked(
+                Some(HomeAssistantActor::NAME.to_owned()),
+                HomeAssistantActor {
                     shared_actor_state: self.shared_actor_state.clone(),
                 },
                 (),
@@ -257,6 +279,7 @@ impl Actor for RootSupervisor {
         self.start_synergy_actor(&myself).await?;
         self.start_woolworths_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
+        self.start_home_assistant_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
         self.start_sun_actor(&myself).await?;
@@ -314,6 +337,11 @@ impl Actor for RootSupervisor {
                     EInkDisplayActor::NAME => {
                         tracing::info!("restarting eink display actor");
                         self.start_eink_display_actor(&myself).await?;
+                    }
+
+                    HomeAssistantActor::NAME => {
+                        tracing::info!("restarting home assistant actor");
+                        self.start_home_assistant_actor(&myself).await?;
                     }
 
                     SolarIngestActor::NAME => {

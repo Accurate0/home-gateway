@@ -122,6 +122,14 @@ impl WorkflowDispatcher {
                     mode: m, active: a, ..
                 },
             ) => mode == m && active == a,
+            (
+                TriggerMatcher::HomeAssistant { entity_id, state },
+                EventBusMessage::HomeAssistant {
+                    entity_id: e,
+                    state: s,
+                    ..
+                },
+            ) => entity_id == e && state.as_ref().is_none_or(|state| state == s),
             _ => false,
         }
     }

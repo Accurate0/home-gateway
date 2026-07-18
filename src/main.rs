@@ -63,6 +63,7 @@ mod esphome;
 mod event_bus;
 mod feature_flag;
 mod graphql;
+mod home_assistant;
 mod graphql_tracing;
 mod http;
 mod metrics;
@@ -91,6 +92,7 @@ async fn init_actors(
     s3: S3,
     event_bus: EventBus,
     workflows: WorkflowManager,
+    home_assistant: Option<home_assistant::HomeAssistant>,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     let shared_actor_state = SharedActorState {
         settings,
@@ -101,6 +103,7 @@ async fn init_actors(
         s3,
         event_bus,
         workflows,
+        home_assistant,
     };
 
     let (root_supervisor_ref, _) = Actor::spawn(
@@ -161,6 +164,8 @@ async fn main() -> anyhow::Result<()> {
 
     let event_bus = EventBus::default();
 
+    let home_assistant = home_assistant::HomeAssistant::from_env();
+
     let mqtt_ingest_actor = init_actors(
         settings_container.clone(),
         device_registry.clone(),
@@ -170,6 +175,7 @@ async fn main() -> anyhow::Result<()> {
         s3.clone(),
         event_bus.clone(),
         workflow_manager.clone(),
+        home_assistant,
     )
     .await?;
 

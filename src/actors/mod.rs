@@ -2,6 +2,7 @@ pub mod alarm;
 pub mod cron;
 pub mod devices;
 pub mod eink_display;
+pub mod home_assistant;
 pub mod events;
 pub mod mqtt_ingest;
 pub mod push;

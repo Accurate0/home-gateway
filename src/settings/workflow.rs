@@ -306,6 +306,14 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    HomeAssistant {
+        #[serde(rename = "call_service")]
+        call_service: String,
+        #[serde(default)]
+        data: serde_json::Value,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
 }
 
 impl Step {
@@ -319,6 +327,7 @@ impl Step {
             Step::Delay { .. } => "delay",
             Step::RunWorkflow { .. } => "run_workflow",
             Step::SetMode { .. } => "set_mode",
+            Step::HomeAssistant { .. } => "home_assistant",
         }
     }
 
@@ -331,7 +340,8 @@ impl Step {
             | Step::Notify { when, .. }
             | Step::Delay { when, .. }
             | Step::RunWorkflow { when, .. }
-            | Step::SetMode { when, .. } => when.as_ref(),
+            | Step::SetMode { when, .. }
+            | Step::HomeAssistant { when, .. } => when.as_ref(),
         }
     }
 
@@ -350,6 +360,9 @@ impl Step {
             Step::SetMode { mode, active, .. } => {
                 Some(format!("set_mode({}) -> {active}", mode.as_str()))
             }
+            Step::HomeAssistant {
+                call_service, data, ..
+            } => Some(format!("home_assistant({call_service}) {data}")),
             Step::Scene { .. } | Step::RunWorkflow { .. } => None,
         }
     }
@@ -374,7 +387,8 @@ impl Step {
             Step::Notify { when, .. }
             | Step::Delay { when, .. }
             | Step::RunWorkflow { when, .. }
-            | Step::SetMode { when, .. } => resolve_opt(when, devices)?,
+            | Step::SetMode { when, .. }
+            | Step::HomeAssistant { when, .. } => resolve_opt(when, devices)?,
         }
         Ok(())
     }
@@ -551,5 +565,47 @@ when:
         let with_and =
             parse("when:\n  and:\n    - type: mode\n      mode: guest\n      active: true\n");
         assert_eq!(with_all.describe(), with_and.describe());
+    }
+}
+
+#[cfg(test)]
+mod home_assistant_tests {
+    use super::*;
+    use crate::settings::trigger::TriggerMatcher;
+    use config::{Config, File, FileFormat};
+
+    fn parse(yaml: &str) -> Workflow {
+        Config::builder()
+            .add_source(File::from_str(yaml, FileFormat::Yaml))
+            .build()
+            .unwrap()
+            .try_deserialize::<Workflow>()
+            .unwrap()
+    }
+
+    #[test]
+    fn home_assistant_trigger_and_step_parse() {
+        let workflow = parse(
+            r#"
+name: HA test
+slug: ha-test
+on: { type: home_assistant, entity_id: binary_sensor.front_door, state: "on" }
+run:
+  - type: home_assistant
+    call_service: light.turn_on
+    data: { entity_id: light.hallway }
+"#,
+        );
+
+        assert!(matches!(
+            workflow.on(),
+            Some(TriggerMatcher::HomeAssistant { entity_id, state })
+                if entity_id == "binary_sensor.front_door" && state.as_deref() == Some("on")
+        ));
+
+        assert!(matches!(
+            &workflow.run[0],
+            Step::HomeAssistant { call_service, .. } if call_service == "light.turn_on"
+        ));
     }
 }

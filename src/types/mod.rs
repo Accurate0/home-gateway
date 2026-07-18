@@ -4,6 +4,7 @@ use crate::{
     device_registry::DeviceRegistry,
     event_bus::EventBus,
     feature_flag::FeatureFlagClient,
+    home_assistant::HomeAssistant,
     graphql::FinalSchema,
     mqtt::{MqttClient, MqttError},
     s3::S3,
@@ -26,6 +27,7 @@ pub struct SharedActorState {
     pub s3: S3,
     pub event_bus: EventBus,
     pub workflows: WorkflowManager,
+    pub home_assistant: Option<HomeAssistant>,
 }
 
 #[derive(Clone)]
