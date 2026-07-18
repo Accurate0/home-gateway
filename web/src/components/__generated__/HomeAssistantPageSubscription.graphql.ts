@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<465050f9e06b442675f9c37150bb2cac>>
+ * @generated SignedSource<<03119049abea63300196897be833be7b>>
  * @lightSyntaxTransform
  */
 
@@ -14,6 +14,7 @@ export type HomeAssistantPageSubscription$data = {
     readonly __typename: "HomeAssistantUpdate";
     readonly entityId: string;
     readonly eventId: any;
+    readonly id: string;
     readonly state: string;
   } | {
     // This will never be '%other', but we need some
@@ -29,57 +30,56 @@ export type HomeAssistantPageSubscription = {
 const node: ConcreteRequest = (function(){
 var v0 = [
   {
-    "alias": null,
-    "args": [
-      {
-        "kind": "Literal",
-        "name": "filter",
-        "value": "home_assistant:*"
-      }
-    ],
-    "concreteType": null,
-    "kind": "LinkedField",
-    "name": "events",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "__typename",
-        "storageKey": null
-      },
-      {
-        "kind": "InlineFragment",
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "eventId",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "state",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "entityId",
-            "storageKey": null
-          }
-        ],
-        "type": "HomeAssistantUpdate",
-        "abstractKey": null
-      }
-    ],
-    "storageKey": "events(filter:\"home_assistant:*\")"
+    "kind": "Literal",
+    "name": "filter",
+    "value": "home_assistant:*"
   }
+],
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "__typename",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v3 = {
+  "kind": "InlineFragment",
+  "selections": [
+    (v2/*:: as any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "eventId",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "state",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "entityId",
+      "storageKey": null
+    }
+  ],
+  "type": "HomeAssistantUpdate",
+  "abstractKey": null
+},
+v4 = [
+  (v2/*:: as any*/)
 ];
 return {
   "fragment": {
@@ -87,7 +87,21 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "HomeAssistantPageSubscription",
-    "selections": (v0/*:: as any*/),
+    "selections": [
+      {
+        "alias": null,
+        "args": (v0/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "events",
+        "plural": false,
+        "selections": [
+          (v1/*:: as any*/),
+          (v3/*:: as any*/)
+        ],
+        "storageKey": "events(filter:\"home_assistant:*\")"
+      }
+    ],
     "type": "SubscriptionRoot",
     "abstractKey": null
   },
@@ -96,19 +110,57 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "HomeAssistantPageSubscription",
-    "selections": (v0/*:: as any*/)
+    "selections": [
+      {
+        "alias": null,
+        "args": (v0/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "events",
+        "plural": false,
+        "selections": [
+          (v1/*:: as any*/),
+          (v3/*:: as any*/),
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
+            "type": "DoorUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
+            "type": "EnvironmentUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
+            "type": "LightUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
+            "type": "PresenceUpdate",
+            "abstractKey": null
+          }
+        ],
+        "storageKey": "events(filter:\"home_assistant:*\")"
+      }
+    ]
   },
   "params": {
-    "cacheID": "b57afb8a3f4010d0b852bb3688c55404",
+    "cacheID": "45e1782f925b375db44c2b4d4ea09847",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageSubscription",
     "operationKind": "subscription",
-    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      eventId\n      state\n      entityId\n    }\n  }\n}\n"
+    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "dba10cc1c6c1b4f0572d7b0f1c37816d";
+(node as any).hash = "1e2fec4706b604497b4becbe8e7fe88e";
 
 export default node;

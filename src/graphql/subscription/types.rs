@@ -1,4 +1,4 @@
-use async_graphql::{SimpleObject, Union};
+use async_graphql::{ComplexObject, SimpleObject, Union, ID};
 use uuid::Uuid;
 
 use crate::device_registry::DeviceRegistry;
@@ -9,7 +9,7 @@ use crate::mode::Mode;
 pub struct PresenceUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
-    pub id: String,
+    pub id: ID,
     /// Human-friendly name, matching the `entities` query.
     pub name: String,
     /// Raw device address the event was emitted for.
@@ -21,7 +21,7 @@ pub struct PresenceUpdate {
 pub struct DoorUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
-    pub id: String,
+    pub id: ID,
     /// Human-friendly name, matching the `entities` query.
     pub name: String,
     /// Raw device address the event was emitted for.
@@ -46,7 +46,7 @@ pub struct MetricReading {
 pub struct EnvironmentUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
-    pub id: String,
+    pub id: ID,
     /// Human-friendly name, matching the `entities` query.
     pub name: String,
     /// Raw device address the event was emitted for.
@@ -70,7 +70,7 @@ pub struct SunUpdate {
 pub struct LightUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
-    pub id: String,
+    pub id: ID,
     /// Human-friendly name, matching the `entities` query.
     pub name: String,
     /// Raw device address the event was emitted for.
@@ -94,10 +94,18 @@ pub struct ModeUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(complex)]
 pub struct HomeAssistantUpdate {
     pub event_id: Uuid,
     pub entity_id: String,
     pub state: String,
+}
+
+#[ComplexObject]
+impl HomeAssistantUpdate {
+    async fn id(&self) -> ID {
+        ID(self.event_id.to_string())
+    }
 }
 
 // TODO: friendly names for zigbee devices
@@ -144,7 +152,7 @@ impl EventUpdate {
                     .unwrap_or_else(|| id.clone());
                 EventUpdate::Presence(PresenceUpdate {
                     event_id,
-                    id,
+                    id: ID(id),
                     name,
                     sensor,
                     present,
@@ -165,7 +173,7 @@ impl EventUpdate {
                     .unwrap_or_else(|| id.clone());
                 EventUpdate::Door(DoorUpdate {
                     event_id,
-                    id,
+                    id: ID(id),
                     name,
                     device,
                     open,
@@ -194,7 +202,7 @@ impl EventUpdate {
                     .unwrap_or_else(|| id.clone());
                 EventUpdate::Environment(EnvironmentUpdate {
                     event_id,
-                    id,
+                    id: ID(id),
                     name,
                     sensor,
                     readings: readings
@@ -230,7 +238,7 @@ impl EventUpdate {
                     .unwrap_or_else(|| id.clone());
                 EventUpdate::Light(LightUpdate {
                     event_id,
-                    id,
+                    id: ID(id),
                     name,
                     device,
                     on,

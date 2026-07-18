@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { graphql, useLazyLoadQuery, useRelayEnvironment } from "react-relay";
 import { requestSubscription } from "relay-runtime";
 import { formatDistanceToNow } from "date-fns";
@@ -10,6 +10,7 @@ const HistoryQuery = graphql`
   query HomeAssistantPageQuery($since: DateTime!) {
     events(input: { since: $since }) {
       homeAssistant {
+        id
         eventId
         entityId
         state
@@ -24,6 +25,7 @@ const UpdatesSubscription = graphql`
     events(filter: "home_assistant:*") {
       __typename
       ... on HomeAssistantUpdate {
+        id
         eventId
         state
         entityId
@@ -40,6 +42,26 @@ type Row = {
   state: string;
   time: string;
 };
+
+const HistoryRow = memo(function HistoryRow({ row }: { row: Row }) {
+  return (
+    <div className="bg-card border-border flex items-center justify-between gap-4 rounded-2xl border p-4">
+      <span className="min-w-0 truncate font-mono text-xs">{row.entityId}</span>
+      <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+        <span
+          className={cn(
+            "border-border rounded-full border px-2 py-0.5 font-mono text-xs",
+          )}
+        >
+          {row.state}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          {formatDistanceToNow(new Date(row.time), { addSuffix: true })}
+        </span>
+      </div>
+    </div>
+  );
+});
 
 export default function HomeAssistantPage() {
   const [since] = useState(() =>
@@ -110,26 +132,7 @@ export default function HomeAssistantPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {visible.map((row) => (
-            <div
-              key={row.eventId}
-              className="bg-card border-border flex items-center justify-between gap-4 rounded-2xl border p-4"
-            >
-              <span className="min-w-0 truncate font-mono text-xs">
-                {row.entityId}
-              </span>
-              <div className="flex shrink-0 flex-col items-end gap-1 text-right">
-                <span
-                  className={cn(
-                    "border-border rounded-full border px-2 py-0.5 font-mono text-xs",
-                  )}
-                >
-                  {row.state}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {formatDistanceToNow(new Date(row.time), { addSuffix: true })}
-                </span>
-              </div>
-            </div>
+            <HistoryRow key={row.eventId} row={row} />
           ))}
         </div>
       )}

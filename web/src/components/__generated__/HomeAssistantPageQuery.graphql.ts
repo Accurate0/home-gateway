@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dc3a1d01bfb4e785875fc3bb417381b6>>
+ * @generated SignedSource<<35e4a4580a46fe5f64cae45332f6eae4>>
  * @lightSyntaxTransform
  */
 
@@ -16,6 +16,7 @@ export type HomeAssistantPageQuery$data = {
     readonly homeAssistant: ReadonlyArray<{
       readonly entityId: string;
       readonly eventId: any;
+      readonly id: string;
       readonly state: string;
       readonly time: any;
     }>;
@@ -63,6 +64,13 @@ v1 = [
         "name": "homeAssistant",
         "plural": true,
         "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "id",
+            "storageKey": null
+          },
           {
             "alias": null,
             "args": null,
@@ -116,16 +124,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "e7898022da0be04beb62c5bde95b675d",
+    "cacheID": "1b3a62d5dbfa4ee01455bf1bbc5dc120",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageQuery",
     "operationKind": "query",
-    "text": "query HomeAssistantPageQuery(\n  $since: DateTime!\n) {\n  events(input: {since: $since}) {\n    homeAssistant {\n      eventId\n      entityId\n      state\n      time\n    }\n  }\n}\n"
+    "text": "query HomeAssistantPageQuery(\n  $since: DateTime!\n) {\n  events(input: {since: $since}) {\n    homeAssistant {\n      id\n      eventId\n      entityId\n      state\n      time\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c9c4a2817b418187b5ed931ac0ede759";
+(node as any).hash = "6a5333506a05f2fba32cf92d7cc82dfd";
 
 export default node;

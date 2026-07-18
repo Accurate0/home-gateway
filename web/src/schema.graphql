@@ -78,7 +78,7 @@ type DoorUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -161,7 +161,7 @@ type EnvironmentUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -213,12 +213,14 @@ type HomeAssistantEvent {
 	entityId: String!
 	state: String!
 	time: DateTime!
+	id: ID!
 }
 
 type HomeAssistantUpdate {
 	eventId: UUID!
 	entityId: String!
 	state: String!
+	id: ID!
 }
 
 type LightEntity {
@@ -248,7 +250,7 @@ type LightUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -313,7 +315,7 @@ type PresenceUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
