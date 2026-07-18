@@ -1,4 +1,4 @@
-use async_graphql::{ComplexObject, SimpleObject, Union, ID};
+use async_graphql::{ComplexObject, ID, SimpleObject, Union};
 use uuid::Uuid;
 
 use crate::device_registry::DeviceRegistry;

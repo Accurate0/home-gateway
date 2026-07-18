@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# alarm-wakeup  (reusable)
+  light: light(table-lamp-bedroom) -> SetBrightness { value: 1 } [when: light(table-lamp-bedroom) is off]
+  light: light(table-lamp-bedroom) -> IncreaseBrightness { value: 1, on_off: false } [when: light(table-lamp-bedroom) is off]

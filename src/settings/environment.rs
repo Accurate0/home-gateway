@@ -1,4 +1,6 @@
-use crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS;
+use std::collections::HashMap;
+
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum EnvironmentSensorType {
@@ -7,14 +9,27 @@ pub enum EnvironmentSensorType {
     Esphome,
 }
 
-/// esphome sensor object_ids to subscribe to when none are configured. Matches
-/// the readings the environment actor knows how to ingest; boards simply never
-/// publish the topics they lack.
-pub(crate) fn default_environment_entities() -> Vec<String> {
-    TEMPERATURE_SENSOR_OBJECT_IDS
-        .iter()
-        .map(|s| s.to_string())
-        .collect()
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Metric {
+    Temperature,
+    Humidity,
+    Pressure,
+    Lux,
+    UvIndex,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn map_form_maps_metric_to_object_id() {
+        let map: HashMap<Metric, String> =
+            serde_yaml::from_str("temperature: my_custom_temp\nlux: my_lux").expect("map yaml");
+        assert_eq!(map.get(&Metric::Temperature).map(String::as_str), Some("my_custom_temp"));
+        assert_eq!(map.get(&Metric::Lux).map(String::as_str), Some("my_lux"));
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -23,8 +38,9 @@ pub struct EnvironmentSensorSettings {
     pub name: String,
     #[allow(unused)]
     pub sensor_type: EnvironmentSensorType,
-    /// esphome sensor object_ids to subscribe to on discovery. Unused for zigbee
-    /// sources (their readings arrive on the `zigbee2mqtt/+` wildcard).
-    #[allow(unused)]
-    pub entities: Vec<String>,
+    /// esphome sensor object_id → logical metric. Keys are the topics to
+    /// subscribe to on discovery; the value tells the actor which reading column
+    /// each object_id feeds. Empty for zigbee sources (their readings arrive as
+    /// typed device structs, not by object_id).
+    pub entities: HashMap<String, Metric>,
 }

@@ -1,4 +1,4 @@
-use async_graphql::{ComplexObject, SimpleObject, ID};
+use async_graphql::{ComplexObject, ID, SimpleObject};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 

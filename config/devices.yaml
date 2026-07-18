@@ -77,7 +77,12 @@
         name: Living Room Motion
         motion_entity: [ld2450_presence, ld2450_moving_target, ld2450_still_target]
     - kind: environment
-      config: { id: living-room-mtr-1, name: Living Room }
+      config:
+        id: living-room-mtr-1
+        name: Living Room
+        entities:
+          temperature: dps310_temperature
+          pressure: dps310_pressure
 
 - id: closet-presence
   transport: zigbee
@@ -92,7 +97,14 @@
   capabilities: [temperature, humidity, lux, uv_index]
   kinds:
     - kind: environment
-      config: { id: hallway-plant, name: Hallway Plant }
+      config:
+        id: hallway-plant
+        name: Hallway Plant
+        entities:
+          temperature: air_temperature
+          humidity: air_humidity
+          lux: ltr390_light
+          uv_index: ltr390_uv_index
     - kind: plant
       config: { id: hallway-plant, entities: [soil_moisture] }
 

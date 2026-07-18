@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 use crate::esphome::{EsphomeTarget, motion_state_topic, sensor_state_topic};
 use crate::settings::appliance::RawApplianceSettings;
 use crate::settings::door::RawDoorSettings;
-use crate::settings::environment::default_environment_entities;
+use crate::settings::environment::Metric;
 use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 use crate::settings::plant::default_plant_entities;
 use crate::settings::{
@@ -127,8 +127,8 @@ pub struct RawEnvironmentBlock {
     id: String,
     #[serde(default)]
     name: Option<String>,
-    #[serde(default = "default_environment_entities")]
-    entities: Vec<String>,
+    #[serde(default)]
+    entities: HashMap<Metric, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -254,8 +254,21 @@ impl DeviceRegistryInner {
                 );
             }
             DeviceConfig::Environment(environment) => {
+                let mut entities = HashMap::new();
+                for (metric, object_id) in environment.entities {
+                    if let Some(prev) = entities.insert(object_id.clone(), metric) {
+                        return Err(format!(
+                            "environment sensor {id}: object_id `{object_id}` mapped to both {prev:?} and {metric:?}"
+                        ));
+                    }
+                }
                 if transport == Transport::Esphome {
-                    self.add_esphome_sensor_topics(address, &environment.entities);
+                    if entities.is_empty() {
+                        return Err(format!(
+                            "esphome environment sensor {id} has no `entities` metric→object_id map"
+                        ));
+                    }
+                    self.add_esphome_sensor_topics(address, entities.keys().cloned());
                 }
                 let name = environment.name.unwrap_or_else(|| environment.id.clone());
                 self.environment.insert(
@@ -264,12 +277,12 @@ impl DeviceRegistryInner {
                         id: environment.id,
                         name,
                         sensor_type: transport.environment_type(),
-                        entities: environment.entities,
+                        entities,
                     },
                 );
             }
             DeviceConfig::Plant(plant) => {
-                self.add_esphome_sensor_topics(address, &plant.entities);
+                self.add_esphome_sensor_topics(address, plant.entities.iter().cloned());
                 self.plant.insert(
                     address.to_owned(),
                     PlantSensorSettings {
@@ -286,13 +299,17 @@ impl DeviceRegistryInner {
         Ok(())
     }
 
-    fn add_esphome_sensor_topics(&mut self, node: &str, entities: &[String]) {
+    fn add_esphome_sensor_topics(
+        &mut self,
+        node: &str,
+        entities: impl IntoIterator<Item = String>,
+    ) {
         for object_id in entities {
             self.esphome_topics.insert(
-                sensor_state_topic(node, object_id),
+                sensor_state_topic(node, &object_id),
                 EsphomeTarget::Sensor {
                     node: node.to_string(),
-                    object_id: object_id.clone(),
+                    object_id,
                 },
             );
         }

@@ -1,6 +1,5 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    settings::workflow::{Condition, LeafCondition, LightState, Step, Workflow, WorkflowTrigger},
     types::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -27,7 +26,6 @@ pub struct AlarmActor {
 impl AlarmActor {
     pub const NAME: &str = "alarm";
     const ALARM_STATE_KEY: &str = "next_alarm";
-    const LAMP_IEEE_ADDR: &str = "0x001788010381ef5d";
 }
 
 impl Actor for AlarmActor {
@@ -40,10 +38,9 @@ impl Actor for AlarmActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let _join_handle = myself.send_interval(Duration::from_secs(60), || {
-            AlarmMessage::CheckIfAlarmWillTrigger {
-                offset: TimeDelta::minutes(5),
-            }
+        let offset = self.shared_actor_state.settings.alarm.offset;
+        let _join_handle = myself.send_interval(Duration::from_secs(60), move || {
+            AlarmMessage::CheckIfAlarmWillTrigger { offset }
         });
 
         Ok(())
@@ -83,7 +80,8 @@ impl Actor for AlarmActor {
                         now.timestamp_millis() >= (alarm_time - offset).timestamp_millis();
 
                     if should_trigger {
-                        tracing::info!("triggering workflow to turn on lamp");
+                        let workflow_name = &self.shared_actor_state.settings.alarm.workflow;
+                        tracing::info!("triggering `{workflow_name}` workflow");
                         let Some(workflow_actor) =
                             ractor::registry::where_is(WorkflowWorker::NAME.to_owned())
                         else {
@@ -91,35 +89,13 @@ impl Actor for AlarmActor {
                             return Ok(());
                         };
 
-                        let workflow = Workflow {
-                            slug: "alarm-wakeup".to_owned(),
-                            name: "alarm-wakeup".to_owned(),
-                            group: None,
-                            enabled: true,
-                            dry_run: false,
-                            trigger: WorkflowTrigger::Reusable,
-                            run: vec![Step::Scene {
-                                run: vec![
-                                    Step::Light {
-                                        ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                        state: LightState::SetBrightness { value: 1 },
-                                        when: None,
-                                    },
-                                    Step::Light {
-                                        ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                        state: LightState::IncreaseBrightness {
-                                            value: 1,
-                                            on_off: false,
-                                        },
-                                        when: None,
-                                    },
-                                ],
-                                when: Some(Condition::Leaf(LeafCondition::Light {
-                                    ieee_addr: Self::LAMP_IEEE_ADDR.to_owned(),
-                                    on: false,
-                                })),
-                            }],
+                        let Some(workflow) =
+                            self.shared_actor_state.settings.workflows.get(workflow_name)
+                        else {
+                            tracing::warn!("alarm workflow `{workflow_name}` not configured");
+                            return Ok(());
                         };
+                        let workflow = workflow.clone();
 
                         let event_id = Uuid::new_v4();
                         let message = FactoryMessage::Dispatch(Job {

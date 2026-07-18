@@ -11,10 +11,10 @@ use ractor::Actor;
 use super::{
     alarm::AlarmActor,
     cron::CronActor,
-    home_assistant::HomeAssistantActor,
     devices::{control_switch, plant_sensor, presence_sensor},
     door_sensor, environment_sensor,
     events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
+    home_assistant::HomeAssistantActor,
     light, push, smart_switch,
     synergy::SynergyActor,
     unifi::UnifiConnectedClientHandler,

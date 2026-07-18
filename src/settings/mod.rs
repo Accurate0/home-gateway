@@ -20,7 +20,7 @@ pub mod workflow;
 
 pub use appliance::ApplianceSettings;
 pub use door::{ArmedDoorStates, DoorSettings};
-pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType};
+pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
 pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
@@ -44,6 +44,31 @@ pub struct WatchdogSettings {
     pub check_interval: TimeDelta,
     #[serde(with = "time_delta_from_str")]
     pub realert_after: TimeDelta,
+}
+
+pub(crate) fn default_alarm_offset() -> TimeDelta {
+    TimeDelta::minutes(5)
+}
+
+pub(crate) fn default_alarm_workflow() -> String {
+    "alarm-wakeup".to_owned()
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AlarmSettings {
+    #[serde(default = "default_alarm_offset", with = "time_delta_from_str")]
+    pub offset: TimeDelta,
+    #[serde(default = "default_alarm_workflow")]
+    pub workflow: String,
+}
+
+impl Default for AlarmSettings {
+    fn default() -> Self {
+        Self {
+            offset: default_alarm_offset(),
+            workflow: default_alarm_workflow(),
+        }
+    }
 }
 
 /// S3 / object-storage config. Credentials are taken from the standard AWS
@@ -113,6 +138,7 @@ pub struct Settings {
     pub watchdog: WatchdogSettings,
     pub oauth: Option<OAuthSettings>,
     pub location: LocationSettings,
+    pub alarm: AlarmSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -142,6 +168,8 @@ struct RawSettings {
     #[serde(default)]
     oauth: Option<OAuthSettings>,
     location: LocationSettings,
+    #[serde(default)]
+    alarm: AlarmSettings,
 }
 
 impl RawSettings {
@@ -163,6 +191,7 @@ impl RawSettings {
             watchdog,
             oauth,
             location,
+            alarm,
         } = self;
 
         let registry = DeviceRegistry::build(devices, &notify_targets)?;
@@ -200,6 +229,7 @@ impl RawSettings {
                 watchdog,
                 oauth,
                 location,
+                alarm,
             },
             registry,
         ))
@@ -353,17 +383,14 @@ android_app_webhook_secret: x
         );
         assert!(registry.plant("apollo-plt-1-hallway").is_some());
 
-        // an esphome environment sensor with no explicit `entities:` falls back to
-        // the default temperature object_ids, which drive its subscriptions
+        // an esphome environment sensor maps each configured object_id to a metric
         assert_eq!(
             registry
                 .environment("apollo-plt-1-hallway")
                 .unwrap()
-                .entities,
-            crate::esphome::TEMPERATURE_SENSOR_OBJECT_IDS
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>()
+                .entities
+                .get("air_temperature"),
+            Some(&Metric::Temperature)
         );
 
         // the esphome motion topic is registered for routing

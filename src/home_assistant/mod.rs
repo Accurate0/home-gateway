@@ -38,7 +38,9 @@ impl HomeAssistant {
         let token = match std::env::var(TOKEN_ENV) {
             Ok(token) if !token.trim().is_empty() => token,
             _ => {
-                tracing::warn!("{URL_ENV} is set but {TOKEN_ENV} is missing; disabling integration");
+                tracing::warn!(
+                    "{URL_ENV} is set but {TOKEN_ENV} is missing; disabling integration"
+                );
                 return None;
             }
         };
@@ -95,27 +97,23 @@ impl HomeAssistant {
     #[allow(unused)]
     pub async fn get_states(&self) -> Result<Value, HomeAssistantError> {
         let url = format!("{}/api/states", self.base_url);
-        let response = self
-            .client
-            .get(url)
-            .bearer_auth(&self.token)
-            .send()
-            .await?;
+        let response = self.client.get(url).bearer_auth(&self.token).send().await?;
         let response = Self::error_for_status(response).await?;
-        Ok(response.json().await.map_err(reqwest_middleware::Error::from)?)
+        Ok(response
+            .json()
+            .await
+            .map_err(reqwest_middleware::Error::from)?)
     }
 
     #[allow(unused)]
     pub async fn get_state(&self, entity_id: &str) -> Result<Value, HomeAssistantError> {
         let url = format!("{}/api/states/{entity_id}", self.base_url);
-        let response = self
-            .client
-            .get(url)
-            .bearer_auth(&self.token)
-            .send()
-            .await?;
+        let response = self.client.get(url).bearer_auth(&self.token).send().await?;
         let response = Self::error_for_status(response).await?;
-        Ok(response.json().await.map_err(reqwest_middleware::Error::from)?)
+        Ok(response
+            .json()
+            .await
+            .map_err(reqwest_middleware::Error::from)?)
     }
 
     async fn error_for_status(

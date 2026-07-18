@@ -199,9 +199,9 @@ impl WorkflowWorker {
             .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
 
         let (domain, service) = call_service.split_once('.').ok_or_else(|| {
-            WorkflowError::HomeAssistant(
-                crate::home_assistant::HomeAssistantError::InvalidService(call_service.to_owned()),
-            )
+            WorkflowError::HomeAssistant(crate::home_assistant::HomeAssistantError::InvalidService(
+                call_service.to_owned(),
+            ))
         })?;
 
         home_assistant.call_service(domain, service, data).await?;

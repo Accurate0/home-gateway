@@ -1,0 +1,15 @@
+- name: alarm-wakeup
+  slug: alarm-wakeup
+  run:
+    - type: scene
+      when: { type: light, device: table-lamp-bedroom, on: false }
+      run:
+        - type: light
+          device: table-lamp-bedroom
+          state: SET_BRIGHTNESS
+          value: 1
+        - type: light
+          device: table-lamp-bedroom
+          state: INCREASE_BRIGHTNESS
+          value: 1
+          on_off: false
