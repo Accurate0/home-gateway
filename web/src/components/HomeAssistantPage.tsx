@@ -34,10 +34,7 @@ const UpdatesSubscription = graphql`
   }
 `;
 
-const MAX_ROWS = 500;
-
 type Row = {
-  eventId: string;
   entityId: string;
   state: string;
   time: string;
@@ -63,9 +60,17 @@ const HistoryRow = memo(function HistoryRow({ row }: { row: Row }) {
   );
 });
 
+function upsert(prev: Map<string, Row>, row: Row): Map<string, Row> {
+  const existing = prev.get(row.entityId);
+  if (existing && existing.time >= row.time) return prev;
+  const next = new Map(prev);
+  next.set(row.entityId, row);
+  return next;
+}
+
 export default function HomeAssistantPage() {
   const environment = useRelayEnvironment();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [latest, setLatest] = useState<Map<string, Row>>(() => new Map());
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -74,19 +79,17 @@ export default function HomeAssistantPage() {
       since,
     }).subscribe({
       next: (data) => {
-        const history = data.events.homeAssistant.map((e) => ({
-          eventId: e.eventId,
-          entityId: e.entityId,
-          state: e.state,
-          time: e.time as string,
-        }));
-        setRows((prev) => {
-          const seen = new Set(prev.map((r) => r.eventId));
-          return [...prev, ...history.filter((r) => !seen.has(r.eventId))].slice(
-            0,
-            MAX_ROWS,
-          );
-        });
+        setLatest((prev) =>
+          data.events.homeAssistant.reduce(
+            (acc, e) =>
+              upsert(acc, {
+                entityId: e.entityId,
+                state: e.state,
+                time: e.time as string,
+              }),
+            prev,
+          ),
+        );
       },
     });
     return () => sub.unsubscribe();
@@ -99,27 +102,26 @@ export default function HomeAssistantPage() {
       onNext: (response) => {
         const update = response?.events;
         if (!update || update.__typename !== "HomeAssistantUpdate") return;
-        const row: Row = {
-          eventId: update.eventId,
-          entityId: update.entityId,
-          state: update.state,
-          time: new Date().toISOString(),
-        };
-        setRows((prev) => [row, ...prev].slice(0, MAX_ROWS));
+        setLatest((prev) =>
+          upsert(prev, {
+            entityId: update.entityId,
+            state: update.state,
+            time: new Date().toISOString(),
+          }),
+        );
       },
     });
     return () => sub.dispose();
   }, [environment]);
 
-  const visible = useMemo(
-    () =>
-      filter
-        ? rows.filter((r) =>
-            r.entityId.toLowerCase().includes(filter.toLowerCase()),
-          )
-        : rows,
-    [rows, filter],
-  );
+  const visible = useMemo(() => {
+    const rows = [...latest.values()].sort((a, b) =>
+      b.time.localeCompare(a.time),
+    );
+    return filter
+      ? rows.filter((r) => r.entityId.toLowerCase().includes(filter.toLowerCase()))
+      : rows;
+  }, [latest, filter]);
 
   return (
     <div>
@@ -127,7 +129,7 @@ export default function HomeAssistantPage() {
         <span className="bg-state-present relative flex size-2 rounded-full">
           <span className="bg-state-present absolute inline-flex size-full animate-ping rounded-full opacity-75" />
         </span>
-        {rows.length} updates · live
+        {latest.size} entities · live
       </p>
 
       <input
@@ -145,7 +147,7 @@ export default function HomeAssistantPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {visible.map((row) => (
-            <HistoryRow key={row.eventId} row={row} />
+            <HistoryRow key={row.entityId} row={row} />
           ))}
         </div>
       )}
