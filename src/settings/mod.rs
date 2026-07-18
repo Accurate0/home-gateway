@@ -370,33 +370,5 @@ android_app_webhook_secret: x
                 .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state")
                 .is_some()
         );
-
-        // the Everything Presence Pro is registered as both an environment and a
-        // presence sensor, keyed by its MAC-suffixed node name
-        assert_eq!(
-            registry
-                .environment("living-room-epp-e64e28")
-                .unwrap()
-                .sensor_type,
-            EnvironmentSensorType::Esphome
-        );
-        assert_eq!(
-            registry
-                .presence("living-room-epp-e64e28")
-                .unwrap()
-                .motion_entity
-                .as_deref(),
-            Some("occupancy")
-        );
-        // its environment (temperature/humidity/illuminance) and presence topics
-        // are registered for routing
-        for topic in [
-            "living-room-epp-e64e28/sensor/temperature/state",
-            "living-room-epp-e64e28/sensor/humidity/state",
-            "living-room-epp-e64e28/sensor/illuminance/state",
-            "living-room-epp-e64e28/binary_sensor/occupancy/state",
-        ] {
-            assert!(registry.esphome_target(topic).is_some(), "missing {topic}");
-        }
     }
 }

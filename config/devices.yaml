@@ -76,18 +76,6 @@
         name: Living Room Motion
         motion_entity: ld2450_moving_target
 
-- id: living-room-epp
-  transport: esphome
-  address: living-room-epp-e64e28
-  capabilities: [temperature, humidity, lux]
-  kinds:
-    - kind: environment
-      config: { id: living-room-epp, name: Living Room EPP }
-    - kind: presence
-      config:
-        name: Living Room EPP Presence
-        motion_entity: occupancy
-
 - id: closet-presence
   transport: zigbee
   address: "0x54ef441000dbc81c"

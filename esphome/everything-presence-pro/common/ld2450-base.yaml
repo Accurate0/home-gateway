@@ -280,7 +280,7 @@ switch:
   - platform: template
     name: "Auto-Clear Stuck Targets"
     id: ld2450_stale_reset
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_DEFAULT_ON
     optimistic: True
     entity_category: config
 
