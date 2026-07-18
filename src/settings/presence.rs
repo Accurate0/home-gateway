@@ -12,5 +12,5 @@ pub struct PresenceSettings {
     #[allow(unused)]
     pub sensor_type: PresenceSensorType,
     #[allow(unused)]
-    pub motion_entity: Option<String>,
+    pub motion_entities: Vec<String>,
 }

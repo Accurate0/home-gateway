@@ -11,7 +11,11 @@ pub mod spawn;
 
 pub enum Entity {
     AqaraFP1E(Box<Aqara_FP1E::AqaraFP1E>),
-    Esphome { node: String, motion: bool },
+    Esphome {
+        node: String,
+        object_id: String,
+        motion: bool,
+    },
 }
 
 pub struct NewEvent {
@@ -31,6 +35,7 @@ pub enum Message {
 
 pub struct PresenceSensorState {
     pub last_presence: HashMap<String, bool>,
+    pub esphome_entities: HashMap<String, HashMap<String, bool>>,
 }
 
 pub struct PresenceSensorHandler {
@@ -91,8 +96,15 @@ impl PresenceSensorHandler {
                     aqara_fp1_e.presence,
                     state,
                 )?,
-                Entity::Esphome { node, motion } => {
-                    self.process_presence(event.event_id, node, motion, state)?
+                Entity::Esphome {
+                    node,
+                    object_id,
+                    motion,
+                } => {
+                    let entities = state.esphome_entities.entry(node.clone()).or_default();
+                    entities.insert(object_id, motion);
+                    let present = entities.values().any(|&on| on);
+                    self.process_presence(event.event_id, node, present, state)?
                 }
             },
         }
@@ -115,6 +127,7 @@ impl Worker for PresenceSensorHandler {
     ) -> Result<Self::State, ActorProcessingErr> {
         Ok(PresenceSensorState {
             last_presence: Default::default(),
+            esphome_entities: Default::default(),
         })
     }
 

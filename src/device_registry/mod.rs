@@ -100,8 +100,26 @@ pub struct RawLightBlock {
 pub struct RawPresenceBlock {
     #[serde(default)]
     name: String,
-    #[serde(default)]
-    motion_entity: Option<String>,
+    #[serde(default, deserialize_with = "de_string_or_vec")]
+    motion_entity: Vec<String>,
+}
+
+fn de_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        One(String),
+        Many(Vec<String>),
+    }
+
+    Ok(match Option::<OneOrMany>::deserialize(deserializer)? {
+        None => Vec::new(),
+        Some(OneOrMany::One(entity)) => vec![entity],
+        Some(OneOrMany::Many(entities)) => entities,
+    })
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -213,15 +231,17 @@ impl DeviceRegistryInner {
             }
             DeviceConfig::Presence(presence) => {
                 if transport == Transport::Esphome {
-                    if let Some(motion_entity) = &presence.motion_entity {
+                    if presence.motion_entity.is_empty() {
+                        return Err(format!("esphome presence sensor {id} has no motion_entity"));
+                    }
+                    for object_id in &presence.motion_entity {
                         self.esphome_topics.insert(
-                            motion_state_topic(address, motion_entity),
+                            motion_state_topic(address, object_id),
                             EsphomeTarget::Motion {
                                 node: address.to_owned(),
+                                object_id: object_id.clone(),
                             },
                         );
-                    } else {
-                        return Err(format!("esphome presence sensor {id} has no motion_entity"));
                     }
                 }
                 self.presence.insert(
@@ -229,7 +249,7 @@ impl DeviceRegistryInner {
                     PresenceSettings {
                         name: presence.name,
                         sensor_type: transport.presence_type(),
-                        motion_entity: presence.motion_entity,
+                        motion_entities: presence.motion_entity,
                     },
                 );
             }
@@ -314,7 +334,7 @@ impl DeviceRegistryInner {
     ) -> impl Iterator<Item = (&'a String, &'a EsphomeTarget)> {
         self.esphome_topics.iter().filter(move |(_, target)| {
             let target_node = match target {
-                EsphomeTarget::Motion { node } | EsphomeTarget::Sensor { node, .. } => node,
+                EsphomeTarget::Motion { node, .. } | EsphomeTarget::Sensor { node, .. } => node,
             };
             target_node == node
         })

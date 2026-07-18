@@ -328,17 +328,19 @@ android_app_webhook_secret: x
         // a zigbee presence sensor is keyed by its address in the registry
         assert!(registry.presence("0x54ef441000dbc81c").is_some());
 
-        // esphome presence sensor keyed by node name carries its motion entity
+        // esphome presence sensor keyed by node name carries its motion entities
         assert_eq!(
             registry
                 .presence("apollo-mtr-1-livingroom")
                 .unwrap()
-                .motion_entity
-                .as_deref(),
-            Some("ld2450_moving_target")
+                .motion_entities,
+            vec![
+                "ld2450_presence".to_owned(),
+                "ld2450_moving_target".to_owned(),
+                "ld2450_still_target".to_owned(),
+            ]
         );
-        // apollo-mtr is presence-only, not an environment sensor
-        assert!(registry.environment("apollo-mtr-1-livingroom").is_none());
+        assert!(registry.environment("apollo-mtr-1-livingroom").is_some());
 
         // a single device definition can carry multiple kinds: the hallway plant
         // is registered as both an environment and a plant sensor at one address
@@ -367,7 +369,7 @@ android_app_webhook_secret: x
         // the esphome motion topic is registered for routing
         assert!(
             registry
-                .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state")
+                .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state")
                 .is_some()
         );
     }

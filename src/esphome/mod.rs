@@ -47,7 +47,7 @@ pub const TEMPERATURE_SENSOR_OBJECT_IDS: &[&str] = &[
 #[derive(Debug, Clone, PartialEq)]
 pub enum EsphomeTarget {
     /// A `binary_sensor` state topic — motion, routed to the presence actor.
-    Motion { node: String },
+    Motion { node: String, object_id: String },
     /// A `sensor` state topic — a scalar reading, routed to the plant and/or
     /// environment actor depending on which one(s) claim the node.
     Sensor { node: String, object_id: String },

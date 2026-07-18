@@ -294,7 +294,12 @@ impl MqttIngest {
     }
 
     /// Route an esphome motion (`binary_sensor`) reading to the presence actor.
-    fn dispatch_esphome_motion(&self, node: &str, payload: &[u8]) -> Result<(), anyhow::Error> {
+    fn dispatch_esphome_motion(
+        &self,
+        node: &str,
+        object_id: &str,
+        payload: &[u8],
+    ) -> Result<(), anyhow::Error> {
         let Some(motion) = crate::esphome::parse_binary_state(payload) else {
             tracing::warn!("unrecognised esphome binary state payload for {node}");
             return Ok(());
@@ -314,6 +319,7 @@ impl MqttIngest {
                 event_id,
                 entity: presence_sensor::Entity::Esphome {
                     node: node.to_string(),
+                    object_id: object_id.to_string(),
                     motion,
                 },
             }),
@@ -455,9 +461,9 @@ impl MqttIngest {
                     .cloned();
 
                 match target {
-                    Some(crate::esphome::EsphomeTarget::Motion { node }) => {
+                    Some(crate::esphome::EsphomeTarget::Motion { node, object_id }) => {
                         self.record_last_seen(&node).await;
-                        self.dispatch_esphome_motion(&node, &payload)?
+                        self.dispatch_esphome_motion(&node, &object_id, &payload)?
                     }
                     Some(crate::esphome::EsphomeTarget::Sensor { node, object_id }) => {
                         self.record_last_seen(&node).await;
