@@ -1,9 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-expression: out
----
-# Living room motion on  (on: presence(livingroom-motion) -> true)
-  light: light(non-existent-light) -> On
-
-# Living room motion off  (on: presence(livingroom-motion) -> false)
-  light: light(non-existent-light) -> Off

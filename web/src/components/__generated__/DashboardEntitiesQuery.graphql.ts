@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c180211985de89e1ec912f4248444d1f>>
+ * @generated SignedSource<<3a6e6b3f1a2f408b66a2282875093411>>
  * @lightSyntaxTransform
  */
 
@@ -8,7 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type Capability = "COLOUR_TEMP" | "RGB" | "%future added value";
+export type Capability = "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "%future added value";
 export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
 export type DashboardEntitiesQuery$data = {
   readonly entities: ReadonlyArray<{

@@ -69,7 +69,7 @@ impl HomeAssistantActor {
                 Some("auth_invalid") => {
                     return Err(anyhow::anyhow!("home assistant rejected the access token"));
                 }
-                Some("event") => self.handle_event(&payload),
+                Some("event") => self.handle_event(&payload).await,
                 _ => {}
             }
         }
@@ -77,7 +77,7 @@ impl HomeAssistantActor {
         Err(anyhow::anyhow!("home assistant websocket stream ended"))
     }
 
-    fn handle_event(&self, payload: &Value) {
+    async fn handle_event(&self, payload: &Value) {
         let data = &payload["event"]["data"];
         let Some(entity_id) = data.get("entity_id").and_then(Value::as_str) else {
             return;
@@ -88,13 +88,52 @@ impl HomeAssistantActor {
             .unwrap_or_default()
             .to_owned();
 
+        let event_id = Uuid::new_v4();
+
+        if let Err(e) = self.save_to_db(event_id, entity_id, &state).await {
+            tracing::error!("failed to persist home assistant state update: {e}");
+        }
+
         self.shared_actor_state
             .event_bus
             .publish(EventBusMessage::HomeAssistant {
-                event_id: Uuid::new_v4(),
+                event_id,
                 entity_id: entity_id.to_owned(),
                 state,
             });
+    }
+
+    async fn save_to_db(
+        &self,
+        event_id: Uuid,
+        entity_id: &str,
+        state: &str,
+    ) -> Result<(), anyhow::Error> {
+        sqlx::query!(
+            "INSERT INTO home_assistant_events (event_id, entity_id, state) VALUES ($1, $2, $3)",
+            event_id,
+            entity_id,
+            state,
+        )
+        .execute(&self.shared_actor_state.db)
+        .await?;
+
+        sqlx::query!(
+            r#"INSERT INTO latest_home_assistant_state (entity_id, state, event_id, updated_at) VALUES ($1, $2, $3, now())
+            ON CONFLICT (entity_id)
+            DO UPDATE SET
+                state = EXCLUDED.state,
+                event_id = EXCLUDED.event_id,
+                updated_at = EXCLUDED.updated_at
+            "#,
+            entity_id,
+            state,
+            event_id,
+        )
+        .execute(&self.shared_actor_state.db)
+        .await?;
+
+        Ok(())
     }
 }
 

@@ -1,4 +1,7 @@
-use super::{appliances_object::ApplianceEvent, doors_object::DoorEvent, wifi_object::WifiEvent};
+use super::{
+    appliances_object::ApplianceEvent, doors_object::DoorEvent,
+    home_assistant_object::HomeAssistantEvent, wifi_object::WifiEvent,
+};
 use crate::types::db::{ApplianceStateType, DoorState, UnifiState};
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
@@ -73,6 +76,28 @@ impl EventsObject {
             entity_id: r.id,
             state: r.state,
             name: r.name,
+        })
+        .collect_vec())
+    }
+
+    pub async fn home_assistant(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Vec<HomeAssistantEvent>> {
+        let db = ctx.data::<Pool<Postgres>>()?;
+
+        Ok(sqlx::query!(
+            r#"SELECT event_id, entity_id, state, "time" FROM home_assistant_events WHERE "time" >= $1 ORDER BY "time" DESC LIMIT 500"#,
+            self.since
+        )
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .map(|r| HomeAssistantEvent {
+            event_id: r.event_id,
+            entity_id: r.entity_id,
+            state: r.state,
+            time: r.time,
         })
         .collect_vec())
     }

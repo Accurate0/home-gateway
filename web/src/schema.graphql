@@ -25,6 +25,11 @@ input BrightnessMoveInput {
 enum Capability {
 	COLOUR_TEMP
 	RGB
+	TEMPERATURE
+	HUMIDITY
+	PRESSURE
+	LUX
+	UV_INDEX
 }
 
 input ColourTemperatureMoveInput {
@@ -168,7 +173,7 @@ type EnvironmentUpdate {
 	readings: [MetricReading!]!
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate
 
 input EventsInput {
 	since: DateTime!
@@ -178,6 +183,7 @@ type EventsObject {
 	doors: [DoorEvent!]!
 	wifi: [WifiEvent!]!
 	appliances: [ApplianceEvent!]!
+	homeAssistant: [HomeAssistantEvent!]!
 }
 
 type Forecast {
@@ -200,6 +206,19 @@ type GenerationHistory {
 	uvLevel: Float
 	temperature: Float
 	timestamp: Int!
+}
+
+type HomeAssistantEvent {
+	eventId: UUID!
+	entityId: String!
+	state: String!
+	time: DateTime!
+}
+
+type HomeAssistantUpdate {
+	eventId: UUID!
+	entityId: String!
+	state: String!
 }
 
 type LightEntity {
@@ -246,9 +265,26 @@ type MetricReading {
 	value: Float!
 }
 
+enum Mode {
+	HOME
+	AWAY
+	VACATION
+	NIGHT
+	GUEST
+	PARTY
+}
+
+type ModeUpdate {
+	eventId: UUID!
+	mode: Mode!
+	active: Boolean!
+}
+
 type MutationRoot {
 	light(id: String!): LightMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
+	setMode(mode: Mode!, active: Boolean!): [Mode!]!
+	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
 }
 
 """
@@ -304,30 +340,9 @@ type QueryRoot {
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
 	workflows: [WorkflowStatus!]!
+	activeModes: [Mode!]!
+	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
 	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
-}
-
-type WorkflowStatus {
-	id: String!
-	slug: String!
-	name: String!
-	group: String!
-	enabled: Boolean!
-	configEnabled: Boolean!
-	dryRun: Boolean!
-	reusable: Boolean!
-}
-
-type WorkflowRun {
-	id: ID!
-	slug: String!
-	name: String!
-	eventId: String!
-	outcome: String!
-	dryRun: Boolean!
-	durationMs: Int!
-	error: String
-	startedAt: DateTime!
 }
 
 input SetBrightnessInput {
@@ -429,6 +444,29 @@ type WoolworthsObject {
 type WoolworthsProducts {
 	name: String!
 	price: Float!
+}
+
+type WorkflowRun {
+	id: ID!
+	slug: String!
+	name: String!
+	eventId: String!
+	outcome: String!
+	dryRun: Boolean!
+	durationMs: Int!
+	error: String
+	startedAt: DateTime!
+}
+
+type WorkflowStatus {
+	id: String!
+	slug: String!
+	name: String!
+	group: String!
+	enabled: Boolean!
+	configEnabled: Boolean!
+	dryRun: Boolean!
+	reusable: Boolean!
 }
 
 """

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_home_assistant_state (entity_id, state, event_id, updated_at) VALUES ($1, $2, $3, now())\n            ON CONFLICT (entity_id)\n            DO UPDATE SET\n                state = EXCLUDED.state,\n                event_id = EXCLUDED.event_id,\n                updated_at = EXCLUDED.updated_at\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5b180fd8a4b157ebfd82fb41887791fa99b3e4b98ee00a6b7e63d3966d9f01fa"
+}

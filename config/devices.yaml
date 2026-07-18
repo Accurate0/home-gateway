@@ -104,13 +104,6 @@
     - kind: light
       config: { name: Closet Light }
 
-- id: non-existent-light
-  transport: zigbee
-  address: "0x000000000000000"
-  kinds:
-    - kind: light
-      config: { name: Non Existent Light }
-
 - id: table-lamp-bedroom
   transport: zigbee
   address: "0x001788010381ef5d"

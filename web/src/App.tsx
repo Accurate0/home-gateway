@@ -3,12 +3,14 @@ import { NavLink, Navigate, Route, Routes } from "react-router";
 import Dashboard from "./components/Dashboard";
 import WorkflowsPage from "./components/WorkflowsPage";
 import RunsPage from "./components/RunsPage";
+import HomeAssistantPage from "./components/HomeAssistantPage";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/workflows", label: "Workflows" },
   { to: "/runs", label: "Runs" },
+  { to: "/home-assistant", label: "Home Assistant" },
 ];
 
 function Fallback() {
@@ -49,6 +51,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/workflows" element={<WorkflowsPage />} />
           <Route path="/runs" element={<RunsPage />} />
+          <Route path="/home-assistant" element={<HomeAssistantPage />} />
         </Routes>
       </Suspense>
     </div>

@@ -9,8 +9,8 @@ notify_targets:
 fcm_project_id: home-gateway-22
 
 location:
-  latitude: -32.135429
-  longitude: 115.865509
+  latitude: -31.952429
+  longitude: 115.842283
 
 watchdog:
   enabled: false
