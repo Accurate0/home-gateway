@@ -30,6 +30,9 @@ pub enum Resource {
     Environment,
     Cron,
     Light,
+    Sun,
+    Mode,
+    HomeAssistant,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +79,9 @@ impl Resource {
             "environment" => Self::Environment,
             "cron" => Self::Cron,
             "light" => Self::Light,
+            "sun" => Self::Sun,
+            "mode" => Self::Mode,
+            "home_assistant" => Self::HomeAssistant,
             _ => return None,
         })
     }
@@ -128,6 +134,9 @@ impl Resource {
             Self::Environment => "environment",
             Self::Cron => "cron",
             Self::Light => "light",
+            Self::Sun => "sun",
+            Self::Mode => "mode",
+            Self::HomeAssistant => "home_assistant",
         }
     }
 
@@ -140,6 +149,9 @@ impl Resource {
             "cron" => Self::Cron,
             "light" => Self::Light,
             "unifi" => Self::Unifi,
+            "sun" => Self::Sun,
+            "mode" => Self::Mode,
+            "home_assistant" => Self::HomeAssistant,
             _ => return None,
         })
     }
@@ -360,6 +372,16 @@ mod tests {
     #[test]
     fn no_match_different_domain() {
         assert!(!matches("graphql:solar:read", &REST_CONTROL_WRITE));
+    }
+
+    #[test]
+    fn every_event_kind_maps_to_a_resource() {
+        for kind in crate::event_bus::EventBusMessage::KINDS {
+            assert!(
+                Resource::for_event_kind(kind).is_some(),
+                "event kind `{kind}` has no Resource mapping"
+            );
+        }
     }
 
     #[test]
