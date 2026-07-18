@@ -74,7 +74,7 @@
     - kind: presence
       config:
         name: Living Room Motion
-        motion_entity: ld2450_moving_target
+        motion_entity: ld2450_presence
 
 - id: closet-presence
   transport: zigbee
