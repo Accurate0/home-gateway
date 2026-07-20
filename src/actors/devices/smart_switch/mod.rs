@@ -1,8 +1,4 @@
-use crate::{
-    actors::events::appliances::{ApplianceEvents, ApplianceEventsSupervisor},
-    types::SharedActorState,
-    zigbee2mqtt::TS011F_plug_1,
-};
+use crate::{types::SharedActorState, zigbee2mqtt::TS011F_plug_1};
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -56,31 +52,6 @@ impl SmartSwitchHandler {
         Ok(())
     }
 
-    fn send_to_all_listeners(
-        event_id: Uuid,
-        ieee_addr: String,
-        voltage: i64,
-        power: i64,
-        current: f64,
-        energy: f64,
-    ) -> Result<(), anyhow::Error> {
-        let members = ractor::pg::get_members(&ApplianceEventsSupervisor::GROUP_NAME.to_owned());
-        for member in members {
-            let event = ApplianceEvents::PowerUsage {
-                event_id,
-                ieee_addr: ieee_addr.clone(),
-                power,
-                energy,
-                voltage,
-                current,
-            };
-
-            member.send_message(event)?;
-        }
-
-        Ok(())
-    }
-
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
@@ -95,15 +66,6 @@ impl SmartSwitchHandler {
                         ts011f_plug1.energy,
                     )
                     .await?;
-
-                    Self::send_to_all_listeners(
-                        event.event_id,
-                        ts011f_plug1.device.ieee_addr,
-                        ts011f_plug1.voltage,
-                        ts011f_plug1.power,
-                        ts011f_plug1.current,
-                        ts011f_plug1.energy,
-                    )?;
                 }
             },
         }

@@ -5,14 +5,13 @@ use serde::Deserialize;
 use tokio::sync::RwLock;
 
 use crate::esphome::{EsphomeTarget, motion_state_topic, sensor_state_topic};
-use crate::settings::appliance::RawApplianceSettings;
 use crate::settings::door::RawDoorSettings;
 use crate::settings::environment::Metric;
 use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 use crate::settings::plant::default_plant_entities;
 use crate::settings::{
-    ApplianceSettings, DeviceAliases, DoorSettings, EnvironmentSensorSettings,
-    EnvironmentSensorType, IEEEAddress, PlantSensorSettings, PresenceSensorType, PresenceSettings,
+    DeviceAliases, DoorSettings, EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress,
+    PlantSensorSettings, PresenceSensorType, PresenceSettings,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::TimeDelta;
@@ -55,6 +54,7 @@ pub struct RawSensor {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum)]
 #[serde(rename_all = "snake_case")]
 pub enum Capability {
+    Brightness,
     ColourTemp,
     Rgb,
     Temperature,
@@ -82,18 +82,30 @@ pub struct DeviceWatchdog {
 #[serde(tag = "kind", content = "config", rename_all = "snake_case")]
 pub enum DeviceConfig {
     Door(RawDoorSettings),
-    Appliance(RawApplianceSettings),
     Presence(RawPresenceBlock),
     Environment(RawEnvironmentBlock),
     Plant(RawPlantBlock),
     Light(RawLightBlock),
     ControlSwitch,
-    SmartSwitch,
+    SmartSwitch(RawSmartSwitchBlock),
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawLightBlock {
     name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawSmartSwitchBlock {
+    name: String,
+    #[serde(default, rename = "as")]
+    role: Option<SwitchRole>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SwitchRole {
+    Light,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -143,7 +155,7 @@ pub struct DeviceRegistryInner {
     aliases: DeviceAliases,
     esphome_topics: HashMap<String, EsphomeTarget>,
     doors: HashMap<String, DoorSettings>,
-    appliances: HashMap<String, ApplianceSettings>,
+    smart_switches: HashMap<String, String>,
     environment: HashMap<String, EnvironmentSensorSettings>,
     presence: HashMap<String, PresenceSettings>,
     lights: HashMap<String, String>,
@@ -225,10 +237,6 @@ impl DeviceRegistryInner {
             DeviceConfig::Door(door) => {
                 self.doors.insert(address.to_owned(), door.resolve(notify)?);
             }
-            DeviceConfig::Appliance(appliance) => {
-                self.appliances
-                    .insert(address.to_owned(), appliance.resolve(notify)?);
-            }
             DeviceConfig::Presence(presence) => {
                 if transport == Transport::Esphome {
                     if presence.motion_entity.is_empty() {
@@ -294,7 +302,14 @@ impl DeviceRegistryInner {
             DeviceConfig::Light(light) => {
                 self.lights.insert(address.to_owned(), light.name);
             }
-            DeviceConfig::ControlSwitch | DeviceConfig::SmartSwitch => {}
+            DeviceConfig::SmartSwitch(switch) => {
+                self.smart_switches
+                    .insert(address.to_owned(), switch.name.clone());
+                if switch.role == Some(SwitchRole::Light) {
+                    self.lights.insert(address.to_owned(), switch.name);
+                }
+            }
+            DeviceConfig::ControlSwitch => {}
         }
         Ok(())
     }
@@ -361,8 +376,14 @@ impl DeviceRegistryInner {
         self.doors.get(address)
     }
 
-    pub fn appliance(&self, address: &str) -> Option<&ApplianceSettings> {
-        self.appliances.get(address)
+    #[allow(unused)]
+    pub fn smart_switch(&self, address: &str) -> Option<&String> {
+        self.smart_switches.get(address)
+    }
+
+    #[allow(unused)]
+    pub fn smart_switches(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.smart_switches.iter()
     }
 
     pub fn environment(&self, address: &str) -> Option<&EnvironmentSensorSettings> {

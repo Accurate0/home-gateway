@@ -13,7 +13,7 @@ use super::{
     cron::CronActor,
     devices::{control_switch, plant_sensor, presence_sensor},
     door_sensor, environment_sensor,
-    events::{appliances::ApplianceEventsSupervisor, door_events::DoorEventsSupervisor},
+    events::door_events::DoorEventsSupervisor,
     home_assistant::HomeAssistantActor,
     light, push, smart_switch,
     synergy::SynergyActor,
@@ -258,16 +258,6 @@ impl Actor for RootSupervisor {
             .spawn_linked(
                 Some(DoorEventsSupervisor::NAME.to_string()),
                 DoorEventsSupervisor {
-                    shared_actor_state: shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        myself
-            .spawn_linked(
-                Some(ApplianceEventsSupervisor::NAME.to_string()),
-                ApplianceEventsSupervisor {
                     shared_actor_state: shared_actor_state.clone(),
                 },
                 (),

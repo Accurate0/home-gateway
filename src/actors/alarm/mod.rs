@@ -89,8 +89,11 @@ impl Actor for AlarmActor {
                             return Ok(());
                         };
 
-                        let Some(workflow) =
-                            self.shared_actor_state.settings.workflows.get(workflow_name)
+                        let Some(workflow) = self
+                            .shared_actor_state
+                            .settings
+                            .workflows
+                            .get(workflow_name)
                         else {
                             tracing::warn!("alarm workflow `{workflow_name}` not configured");
                             return Ok(());

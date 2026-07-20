@@ -8,7 +8,6 @@ use std::{
     path::PathBuf,
 };
 
-pub mod appliance;
 pub mod door;
 pub mod environment;
 pub mod location;
@@ -18,7 +17,6 @@ pub mod presence;
 pub mod trigger;
 pub mod workflow;
 
-pub use appliance::ApplianceSettings;
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
 pub use location::LocationSettings;
@@ -201,6 +199,7 @@ impl RawSettings {
         let mut slugs = HashSet::new();
         for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
+            workflow.validate_capabilities(&registry)?;
             if workflow.slug.trim().is_empty() {
                 return Err(format!("workflow '{}' has an empty slug", workflow.name));
             }
@@ -293,6 +292,49 @@ impl std::ops::Deref for SettingsContainer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device_registry::RawSensor;
+
+    fn lamp_registry() -> DeviceRegistry {
+        let devices: Vec<RawSensor> = serde_yaml::from_str(
+            r#"
+- id: living-room-table-lamp
+  transport: zigbee
+  address: "0xa4c1389fe5cea26e"
+  kinds:
+    - kind: smart_switch
+      config: { name: Living Room Table Lamp, as: light }
+"#,
+        )
+        .unwrap();
+
+        DeviceRegistry::build(devices, &NotifyTargets::default()).unwrap()
+    }
+
+    fn light_step(state: &str) -> workflow::Step {
+        serde_yaml::from_str(&format!(
+            "type: light\ndevice: living-room-table-lamp\nstate: {state}\nvalue: 50\n"
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn switch_as_light_accepts_on_off_but_not_brightness() {
+        let registry = lamp_registry();
+
+        light_step("TOGGLE")
+            .validate_capabilities(&registry)
+            .unwrap();
+
+        let err = light_step("SET_BRIGHTNESS")
+            .validate_capabilities(&registry)
+            .unwrap_err();
+        assert!(err.contains("does not support Brightness"), "{err}");
+
+        let err = light_step("INCREASE_COLOUR_TEMPERATURE")
+            .validate_capabilities(&registry)
+            .unwrap_err();
+        assert!(err.contains("does not support ColourTemp"), "{err}");
+    }
 
     #[test]
     fn config_yaml_parses_and_resolves() {
@@ -354,6 +396,20 @@ android_app_webhook_secret: x
                 wf.slug
             );
         }
+
+        // a smart switch declared `as: light` is addressable as both
+        let lamp = "0xa4c1389fe5cea26e";
+        assert_eq!(registry.address_or_self("living-room-table-lamp"), lamp);
+        assert_eq!(
+            registry.smart_switch(lamp).map(String::as_str),
+            Some("Living Room Table Lamp")
+        );
+        assert_eq!(
+            registry.light(lamp).map(String::as_str),
+            Some("Living Room Table Lamp")
+        );
+        // ...but with no capabilities, so it is on/off/toggle only
+        assert!(registry.capabilities(lamp).is_empty());
 
         // a zigbee presence sensor is keyed by its address in the registry
         assert!(registry.presence("0x54ef441000dbc81c").is_some());

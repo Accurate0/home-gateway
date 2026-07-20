@@ -73,7 +73,6 @@ mod notify;
 mod routes;
 mod s3;
 mod settings;
-mod timed_average;
 mod timedelta_format;
 mod timer;
 mod tracing_setup;

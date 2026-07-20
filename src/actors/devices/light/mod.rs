@@ -1,4 +1,5 @@
 use crate::{
+    device_registry::Capability,
     event_bus::EventBusMessage,
     mqtt::ZIGBEE2MQTT_BASE,
     settings::IEEEAddress,
@@ -92,6 +93,17 @@ impl LightHandler {
         Ok(())
     }
 
+    fn warn_if_unsupported(&self, ieee_addr: &str, capability: Capability) {
+        if !self
+            .shared_actor_state
+            .devices
+            .capabilities(ieee_addr)
+            .contains(&capability)
+        {
+            tracing::warn!("light {ieee_addr} does not support {capability:?}");
+        }
+    }
+
     async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
         match message {
             LightHandlerMessage::NewEvent(event) => {
@@ -132,12 +144,14 @@ impl LightHandler {
                     .await?;
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
+                self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
                 let value = value.clamp(0, 254);
 
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
                     .await?;
             }
             LightHandlerMessage::SetColour { ieee_addr, hex } => {
+                self.warn_if_unsupported(&ieee_addr, Capability::Rgb);
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"color": {"hex": hex}}))
                     .await?;
             }
@@ -146,6 +160,7 @@ impl LightHandler {
                 value,
                 on_off,
             } => {
+                self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
                 if on_off {
                     self.send_mqtt_state(
                         ieee_addr,
@@ -158,6 +173,7 @@ impl LightHandler {
                 }
             }
             LightHandlerMessage::ColourTemperatureMove { ieee_addr, value } => {
+                self.warn_if_unsupported(&ieee_addr, Capability::ColourTemp);
                 let state = if value == 0 {
                     serde_json::json!({"color_temp_move": "stop"})
                 } else {

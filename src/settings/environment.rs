@@ -27,7 +27,10 @@ mod tests {
     fn map_form_maps_metric_to_object_id() {
         let map: HashMap<Metric, String> =
             serde_yaml::from_str("temperature: my_custom_temp\nlux: my_lux").expect("map yaml");
-        assert_eq!(map.get(&Metric::Temperature).map(String::as_str), Some("my_custom_temp"));
+        assert_eq!(
+            map.get(&Metric::Temperature).map(String::as_str),
+            Some("my_custom_temp")
+        );
         assert_eq!(map.get(&Metric::Lux).map(String::as_str), Some("my_lux"));
     }
 }

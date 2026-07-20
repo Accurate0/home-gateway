@@ -215,7 +215,10 @@ mod tests {
         let file_workflows: Vec<Workflow> =
             serde_yaml::from_str(&yaml).expect("deserialize workflows");
 
-        let workflows = HashMap::new();
+        let workflows: HashMap<String, Workflow> = file_workflows
+            .iter()
+            .map(|wf| (wf.name.clone(), wf.clone()))
+            .collect();
         let mut out = String::new();
         for wf in &file_workflows {
             match wf.on() {

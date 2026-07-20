@@ -2,14 +2,25 @@
 source: src/actors/workflows/plan.rs
 expression: out
 ---
+# living-room-lamps-on  (reusable)
+  light: light(floor-lamp-living-room) -> On [when: light(floor-lamp-living-room) is off]
+  light: light(living-room-table-lamp) -> On
+
+# living-room-lamps-off  (reusable)
+  light: light(floor-lamp-living-room) -> Off
+  light: light(living-room-table-lamp) -> Off
+
 # Living room lamp on (occupancy after sunset)  (on: presence(livingroom-motion) -> true)
   when: sun is Night
-  light: light(floor-lamp-living-room) -> On [when: light(floor-lamp-living-room) is off]
+    light: light(floor-lamp-living-room) -> On [when: light(floor-lamp-living-room) is off]
+    light: light(living-room-table-lamp) -> On
 
 # Living room lamp on (sunset while occupied)  (on: sun -> Sunset)
   when: presence(livingroom-motion) is true
   light: light(floor-lamp-living-room) -> SetBrightness { value: 1 } [when: light(floor-lamp-living-room) is off]
   light: light(floor-lamp-living-room) -> IncreaseBrightness { value: 1, on_off: false } [when: light(floor-lamp-living-room) is off]
+  light: light(living-room-table-lamp) -> On
 
 # Living room lamp off (no occupancy)  (on: presence(livingroom-motion) -> false)
-  light: light(floor-lamp-living-room) -> Off
+    light: light(floor-lamp-living-room) -> Off
+    light: light(living-room-table-lamp) -> Off

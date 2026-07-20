@@ -1,3 +1,4 @@
+use crate::device_registry::{Capability, DeviceRegistry};
 use crate::settings::NotifySource;
 use crate::settings::trigger::TriggerMatcher;
 use crate::timedelta_format::option_time_delta_from_str;
@@ -37,6 +38,21 @@ pub enum LightState {
     },
     StopColourTemperature,
     StopBrightness,
+}
+
+impl LightState {
+    pub fn required_capability(&self) -> Option<Capability> {
+        match self {
+            LightState::On | LightState::Off | LightState::Toggle => None,
+            LightState::SetBrightness { .. }
+            | LightState::IncreaseBrightness { .. }
+            | LightState::DecreaseBrightness { .. }
+            | LightState::StopBrightness => Some(Capability::Brightness),
+            LightState::IncreaseColourTemperature { .. }
+            | LightState::DecreaseColourTemperature { .. }
+            | LightState::StopColourTemperature => Some(Capability::ColourTemp),
+        }
+    }
 }
 
 /// On/off set command for a smart switch / plug.
@@ -392,6 +408,30 @@ impl Step {
         }
         Ok(())
     }
+
+    pub(super) fn validate_capabilities(&self, registry: &DeviceRegistry) -> Result<(), String> {
+        match self {
+            Step::Light {
+                ieee_addr, state, ..
+            } => {
+                let address = registry.address_or_self(ieee_addr);
+                if let Some(required) = state.required_capability()
+                    && !registry.capabilities(address).contains(&required)
+                {
+                    return Err(format!(
+                        "light {ieee_addr} does not support {required:?}: {state:?}"
+                    ));
+                }
+            }
+            Step::Scene { run, .. } => {
+                for step in run {
+                    step.validate_capabilities(registry)?;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
 }
 
 fn resolve_opt(when: &mut Option<Condition>, devices: &DeviceAliases) -> Result<(), String> {
@@ -508,6 +548,13 @@ impl Workflow {
         }
         for step in &mut self.run {
             step.resolve_devices(devices)?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn validate_capabilities(&self, registry: &DeviceRegistry) -> Result<(), String> {
+        for step in &self.run {
+            step.validate_capabilities(registry)?;
         }
         Ok(())
     }

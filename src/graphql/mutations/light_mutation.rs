@@ -33,6 +33,18 @@ pub struct SetColourInput {
     pub hex: String,
 }
 
+impl LightMutation {
+    fn require(&self, capability: Capability) -> async_graphql::Result<()> {
+        if self.capabilities.contains(&capability) {
+            Ok(())
+        } else {
+            Err(async_graphql::Error::new(format!(
+                "light does not support {capability:?}"
+            )))
+        }
+    }
+}
+
 fn is_valid_hex(hex: &str) -> bool {
     hex.len() == 7 && hex.starts_with('#') && hex[1..].bytes().all(|b| b.is_ascii_hexdigit())
 }
@@ -79,6 +91,7 @@ impl LightMutation {
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
     async fn set_brightness(&self, input: SetBrightnessInput) -> async_graphql::Result<bool> {
+        self.require(Capability::Brightness)?;
         dispatch(LightHandlerMessage::SetBrightness {
             ieee_addr: self.address.clone(),
             value: input.value,
@@ -87,6 +100,7 @@ impl LightMutation {
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
     async fn brightness_move(&self, input: BrightnessMoveInput) -> async_graphql::Result<bool> {
+        self.require(Capability::Brightness)?;
         dispatch(LightHandlerMessage::BrightnessMove {
             ieee_addr: self.address.clone(),
             value: input.value,
@@ -96,11 +110,7 @@ impl LightMutation {
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
     async fn set_colour(&self, input: SetColourInput) -> async_graphql::Result<bool> {
-        if !self.capabilities.contains(&Capability::Rgb) {
-            return Err(async_graphql::Error::new(
-                "light does not support RGB colour",
-            ));
-        }
+        self.require(Capability::Rgb)?;
         if !is_valid_hex(&input.hex) {
             return Err(async_graphql::Error::new(
                 "invalid hex colour, expected #RRGGBB",
@@ -117,6 +127,7 @@ impl LightMutation {
         &self,
         input: ColourTemperatureMoveInput,
     ) -> async_graphql::Result<bool> {
+        self.require(Capability::ColourTemp)?;
         dispatch(LightHandlerMessage::ColourTemperatureMove {
             ieee_addr: self.address.clone(),
             value: input.value,
