@@ -299,7 +299,7 @@ impl std::ops::Deref for SettingsContainer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device_registry::RawSensor;
+    use crate::device_registry::{Capability, RawSensor};
 
     fn lamp_registry() -> DeviceRegistry {
         let devices: Vec<RawSensor> = serde_yaml::from_str(
@@ -315,6 +315,24 @@ mod tests {
         .unwrap();
 
         DeviceRegistry::build(devices, &NotifyTargets::default()).unwrap()
+    }
+
+    #[test]
+    fn esphome_light_without_entity_is_rejected() {
+        let devices: Vec<RawSensor> = serde_yaml::from_str(
+            r#"
+- id: living-room-mtr-1
+  transport: esphome
+  address: apollo-mtr-1-livingroom
+  kinds:
+    - kind: light
+      config: { name: Living Room MTR-1 RGB }
+"#,
+        )
+        .unwrap();
+
+        let err = DeviceRegistry::build(devices, &NotifyTargets::default()).unwrap_err();
+        assert!(err.contains("has no `entity` object_id"), "{err}");
     }
 
     fn light_step(state: &str) -> workflow::Step {
@@ -431,6 +449,23 @@ android_app_webhook_secret: x
         );
         // ...but with no capabilities, so it is on/off/toggle only
         assert!(registry.capabilities(lamp).is_empty());
+
+        // an esphome light is addressable and routes by its own command topic
+        let mtr = "apollo-mtr-1-livingroom";
+        assert_eq!(
+            registry.light(mtr).map(String::as_str),
+            Some("Living Room MTR-1 RGB")
+        );
+        assert_eq!(registry.esphome_light(mtr).map(String::as_str), Some("rgb_light"));
+        assert_eq!(
+            registry.esphome_target("apollo-mtr-1-livingroom/light/rgb_light/state"),
+            Some(&crate::esphome::EsphomeTarget::Light {
+                node: mtr.to_owned(),
+                object_id: "rgb_light".to_owned(),
+            })
+        );
+        // it has no colour temperature, so those workflow steps are rejected
+        assert!(!registry.capabilities(mtr).contains(&Capability::ColourTemp));
 
         // a zigbee presence sensor is keyed by its address in the registry
         assert!(registry.presence("0x54ef441000dbc81c").is_some());

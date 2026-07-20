@@ -294,6 +294,25 @@ impl MqttIngest {
     }
 
     /// Route an esphome motion (`binary_sensor`) reading to the presence actor.
+    async fn dispatch_esphome_light(
+        &self,
+        node: &str,
+        payload: &[u8],
+    ) -> Result<(), anyhow::Error> {
+        let Some(on) = crate::esphome::parse_light_state(payload) else {
+            tracing::warn!("unrecognised esphome light state payload for {node}");
+            return Ok(());
+        };
+
+        crate::actors::devices::light::record_light_state(
+            &self.shared_actor_state,
+            uuid::Uuid::new_v4(),
+            node.to_string(),
+            if on { "ON" } else { "OFF" }.to_string(),
+        )
+        .await
+    }
+
     fn dispatch_esphome_motion(
         &self,
         node: &str,
@@ -468,6 +487,10 @@ impl MqttIngest {
                     Some(crate::esphome::EsphomeTarget::Sensor { node, object_id }) => {
                         self.record_last_seen(&node).await;
                         self.dispatch_esphome_sensor(&node, &object_id, &payload)?
+                    }
+                    Some(crate::esphome::EsphomeTarget::Light { node, .. }) => {
+                        self.record_last_seen(&node).await;
+                        self.dispatch_esphome_light(&node, &payload).await?
                     }
                     None => {
                         tracing::warn!("ignoring mqtt packet on unhandled topic: {topic}")

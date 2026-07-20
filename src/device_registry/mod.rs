@@ -4,7 +4,7 @@ use std::sync::Arc;
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
-use crate::esphome::{EsphomeTarget, motion_state_topic, sensor_state_topic};
+use crate::esphome::{EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic};
 use crate::settings::door::RawDoorSettings;
 use crate::settings::environment::Metric;
 use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
@@ -93,6 +93,8 @@ pub enum DeviceConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawLightBlock {
     name: String,
+    #[serde(default)]
+    entity: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -159,6 +161,7 @@ pub struct DeviceRegistryInner {
     environment: HashMap<String, EnvironmentSensorSettings>,
     presence: HashMap<String, PresenceSettings>,
     lights: HashMap<String, String>,
+    esphome_lights: HashMap<String, String>,
     capabilities: HashMap<String, Vec<Capability>>,
     plant: HashMap<String, PlantSensorSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
@@ -300,6 +303,19 @@ impl DeviceRegistryInner {
                 );
             }
             DeviceConfig::Light(light) => {
+                if transport == Transport::Esphome {
+                    let Some(object_id) = light.entity else {
+                        return Err(format!("esphome light {id} has no `entity` object_id"));
+                    };
+                    self.esphome_topics.insert(
+                        light_state_topic(address, &object_id),
+                        EsphomeTarget::Light {
+                            node: address.to_owned(),
+                            object_id: object_id.clone(),
+                        },
+                    );
+                    self.esphome_lights.insert(address.to_owned(), object_id);
+                }
                 self.lights.insert(address.to_owned(), light.name);
             }
             DeviceConfig::SmartSwitch(switch) => {
@@ -366,7 +382,9 @@ impl DeviceRegistryInner {
     ) -> impl Iterator<Item = (&'a String, &'a EsphomeTarget)> {
         self.esphome_topics.iter().filter(move |(_, target)| {
             let target_node = match target {
-                EsphomeTarget::Motion { node, .. } | EsphomeTarget::Sensor { node, .. } => node,
+                EsphomeTarget::Motion { node, .. }
+                | EsphomeTarget::Sensor { node, .. }
+                | EsphomeTarget::Light { node, .. } => node,
             };
             target_node == node
         })
@@ -401,6 +419,10 @@ impl DeviceRegistryInner {
 
     pub fn light(&self, address: &str) -> Option<&String> {
         self.lights.get(address)
+    }
+
+    pub fn esphome_light(&self, address: &str) -> Option<&String> {
+        self.esphome_lights.get(address)
     }
 
     pub fn capabilities(&self, address: &str) -> &[Capability] {

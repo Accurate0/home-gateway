@@ -68,8 +68,12 @@
 - id: livingroom-motion
   transport: esphome
   address: apollo-mtr-1-livingroom
-  capabilities: [temperature, pressure, lux]
+  capabilities: [temperature, pressure, lux, brightness, rgb]
   kinds:
+    - kind: light
+      config:
+        name: Living Room MTR-1 RGB
+        entity: rgb_light
     - kind: presence
       config:
         name: Living Room Motion

@@ -1,6 +1,7 @@
 use crate::{
     device_registry::Capability,
     event_bus::EventBusMessage,
+    esphome::light_command_topic,
     mqtt::ZIGBEE2MQTT_BASE,
     settings::IEEEAddress,
     types::SharedActorState,
@@ -67,6 +68,41 @@ pub struct LightHandler {
     shared_actor_state: SharedActorState,
 }
 
+fn esphome_command(state: &serde_json::Value) -> Option<serde_json::Value> {
+    let object = state.as_object()?;
+    let mut out = serde_json::Map::new();
+
+    for (key, value) in object {
+        match key.as_str() {
+            "state" => match value.as_str()? {
+                on @ ("ON" | "OFF") => {
+                    out.insert("state".into(), on.into());
+                }
+                _ => return None,
+            },
+            "brightness" => {
+                let scaled = (value.as_u64()? * 255).div_ceil(254);
+                out.insert("brightness".into(), scaled.into());
+            }
+            "color" => {
+                let hex = value.get("hex")?.as_str()?.trim_start_matches('#');
+                let rgb = u32::from_str_radix(hex, 16).ok()?;
+                out.insert(
+                    "color".into(),
+                    serde_json::json!({
+                        "r": (rgb >> 16) & 0xff,
+                        "g": (rgb >> 8) & 0xff,
+                        "b": rgb & 0xff,
+                    }),
+                );
+            }
+            _ => return None,
+        }
+    }
+
+    Some(out.into())
+}
+
 pub async fn record_light_state(
     shared_actor_state: &SharedActorState,
     event_id: Uuid,
@@ -100,6 +136,17 @@ impl LightHandler {
         state: String,
     ) -> Result<(), anyhow::Error> {
         record_light_state(&self.shared_actor_state, event_id, ieee_addr, state).await
+    }
+
+    async fn stored_power_state(&self, ieee_addr: &str) -> Result<bool, anyhow::Error> {
+        let light_state = sqlx::query!(
+            "SELECT state FROM light_state WHERE ieee_address = $1",
+            ieee_addr
+        )
+        .fetch_optional(&self.shared_actor_state.db)
+        .await?;
+
+        Ok(light_state.is_some_and(|row| row.state == "ON"))
     }
 
     fn warn_if_unsupported(&self, ieee_addr: &str, capability: Capability) {
@@ -149,8 +196,19 @@ impl LightHandler {
                     .await?;
             }
             LightHandlerMessage::Toggle { ieee_addr } => {
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "TOGGLE"}))
-                    .await?;
+                let state = if self
+                    .shared_actor_state
+                    .devices
+                    .esphome_light(&ieee_addr)
+                    .is_some()
+                {
+                    let on = self.stored_power_state(&ieee_addr).await?;
+                    serde_json::json!({"state": if on { "OFF" } else { "ON" }})
+                } else {
+                    serde_json::json!({"state": "TOGGLE"})
+                };
+
+                self.send_mqtt_state(ieee_addr, state).await?;
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
@@ -213,6 +271,16 @@ impl LightHandler {
         ieee_addr: String,
         state: serde_json::Value,
     ) -> Result<(), anyhow::Error> {
+        if let Some(object_id) = self.shared_actor_state.devices.esphome_light(&ieee_addr) {
+            let topic = light_command_topic(&ieee_addr, object_id);
+            let Some(state) = esphome_command(&state) else {
+                tracing::warn!("esphome light {ieee_addr} does not support command: {state}");
+                return Ok(());
+            };
+            self.shared_actor_state.mqtt.send_event(topic, state).await?;
+            return Ok(());
+        }
+
         let target = self
             .shared_actor_state
             .devices
@@ -271,5 +339,42 @@ impl WorkerBuilder<LightHandler, ()> for LightHandlerBuilder {
             },
             (),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::esphome_command;
+
+    #[test]
+    fn translates_on_off_brightness_and_colour() {
+        assert_eq!(
+            esphome_command(&serde_json::json!({"state": "ON"})),
+            Some(serde_json::json!({"state": "ON"}))
+        );
+        assert_eq!(
+            esphome_command(&serde_json::json!({"brightness": 254})),
+            Some(serde_json::json!({"brightness": 255}))
+        );
+        assert_eq!(
+            esphome_command(&serde_json::json!({"brightness": 0})),
+            Some(serde_json::json!({"brightness": 0}))
+        );
+        assert_eq!(
+            esphome_command(&serde_json::json!({"color": {"hex": "#ff8000"}})),
+            Some(serde_json::json!({"color": {"r": 255, "g": 128, "b": 0}}))
+        );
+    }
+
+    #[test]
+    fn rejects_zigbee_only_commands() {
+        for command in [
+            serde_json::json!({"state": "TOGGLE"}),
+            serde_json::json!({"brightness_move": 40}),
+            serde_json::json!({"brightness_move_onoff": 40}),
+            serde_json::json!({"color_temp_move": "stop"}),
+        ] {
+            assert_eq!(esphome_command(&command), None, "{command}");
+        }
     }
 }

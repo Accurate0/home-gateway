@@ -24,6 +24,7 @@ pub enum EsphomeTarget {
     /// A `sensor` state topic — a scalar reading, routed to the plant and/or
     /// environment actor depending on which one(s) claim the node.
     Sensor { node: String, object_id: String },
+    Light { node: String, object_id: String },
 }
 
 pub fn motion_state_topic(node: &str, object_id: &str) -> String {
@@ -32,6 +33,28 @@ pub fn motion_state_topic(node: &str, object_id: &str) -> String {
 
 pub fn sensor_state_topic(node: &str, object_id: &str) -> String {
     format!("{node}/sensor/{object_id}/state")
+}
+
+pub fn light_state_topic(node: &str, object_id: &str) -> String {
+    format!("{node}/light/{object_id}/state")
+}
+
+pub fn light_command_topic(node: &str, object_id: &str) -> String {
+    format!("{node}/light/{object_id}/command")
+}
+
+pub fn parse_light_state(payload: &[u8]) -> Option<bool> {
+    #[derive(Deserialize)]
+    struct LightState {
+        state: String,
+    }
+
+    if let Some(on) = parse_binary_state(payload) {
+        return Some(on);
+    }
+
+    let parsed: LightState = serde_json::from_slice(payload).ok()?;
+    parse_binary_state(parsed.state.as_bytes())
 }
 
 pub fn parse_binary_state(payload: &[u8]) -> Option<bool> {
