@@ -20,11 +20,20 @@ pub struct EsphomeDiscovery {
 #[derive(Debug, Clone, PartialEq)]
 pub enum EsphomeTarget {
     /// A `binary_sensor` state topic — motion, routed to the presence actor.
-    Motion { node: String, object_id: String },
+    Motion {
+        node: String,
+        object_id: String,
+    },
     /// A `sensor` state topic — a scalar reading, routed to the plant and/or
     /// environment actor depending on which one(s) claim the node.
-    Sensor { node: String, object_id: String },
-    Light { node: String, object_id: String },
+    Sensor {
+        node: String,
+        object_id: String,
+    },
+    Light {
+        node: String,
+        object_id: String,
+    },
 }
 
 pub fn motion_state_topic(node: &str, object_id: &str) -> String {

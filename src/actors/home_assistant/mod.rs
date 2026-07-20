@@ -110,7 +110,10 @@ impl HomeAssistantActor {
             .for_entity(entity_id);
 
         let write_latest_state = entity.latest_state
-            && match (entity.throttle.to_std(), last_latest_state_write.get(entity_id)) {
+            && match (
+                entity.throttle.to_std(),
+                last_latest_state_write.get(entity_id),
+            ) {
                 (Ok(throttle), Some(last)) => last.elapsed() >= throttle,
                 _ => true,
             };

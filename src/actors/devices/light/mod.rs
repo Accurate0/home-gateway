@@ -1,7 +1,7 @@
 use crate::{
     device_registry::Capability,
-    event_bus::EventBusMessage,
     esphome::light_command_topic,
+    event_bus::EventBusMessage,
     mqtt::ZIGBEE2MQTT_BASE,
     settings::IEEEAddress,
     types::SharedActorState,
@@ -277,7 +277,10 @@ impl LightHandler {
                 tracing::warn!("esphome light {ieee_addr} does not support command: {state}");
                 return Ok(());
             };
-            self.shared_actor_state.mqtt.send_event(topic, state).await?;
+            self.shared_actor_state
+                .mqtt
+                .send_event(topic, state)
+                .await?;
             return Ok(());
         }
 

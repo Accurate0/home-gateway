@@ -456,7 +456,10 @@ android_app_webhook_secret: x
             registry.light(mtr).map(String::as_str),
             Some("Living Room MTR-1 RGB")
         );
-        assert_eq!(registry.esphome_light(mtr).map(String::as_str), Some("rgb_light"));
+        assert_eq!(
+            registry.esphome_light(mtr).map(String::as_str),
+            Some("rgb_light")
+        );
         assert_eq!(
             registry.esphome_target("apollo-mtr-1-livingroom/light/rgb_light/state"),
             Some(&crate::esphome::EsphomeTarget::Light {
