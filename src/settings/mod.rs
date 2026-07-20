@@ -364,10 +364,24 @@ android_app_webhook_secret: x
                 if ieee_addr == "small-switch" && action == "single")
             })
             .expect("expected a switch workflow for the small switch");
-        let workflow::Step::Light { ieee_addr, .. } = &switch_workflow.run[0] else {
-            panic!("expected a light step");
-        };
-        assert_eq!(ieee_addr, "floor-lamp-living-room");
+        let referenced = switch_workflow
+            .run
+            .iter()
+            .map(|step| match step {
+                workflow::Step::RunWorkflow { workflow, .. } => workflow.as_str(),
+                other => panic!("expected a run_workflow step, got {}", other.kind()),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            referenced,
+            ["living-room-lamps-off", "living-room-lamps-on"]
+        );
+        for name in referenced {
+            assert!(
+                settings.workflows.contains_key(name),
+                "small switch references unknown workflow {name}"
+            );
+        }
 
         assert_eq!(
             registry.address_or_self("small-switch"),

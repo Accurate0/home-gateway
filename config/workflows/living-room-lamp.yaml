@@ -24,6 +24,7 @@
 - name: Living room lamp on (occupancy after sunset)
   slug: living-room-lamp-on-occupancy
   group: Living Room
+  tags: [living-room]
   on: { type: presence, sensor: livingroom-motion, present: true }
   when: { type: sun, is: night }
   run:
@@ -33,6 +34,7 @@
 - name: Living room lamp on (sunset while occupied)
   slug: living-room-lamp-on-sunset
   group: Living Room
+  tags: [living-room]
   on: { type: sun, transition: sunset }
   when: { type: presence, sensor: livingroom-motion, present: true }
   run:
@@ -54,6 +56,7 @@
 - name: Living room lamp off (no occupancy)
   slug: living-room-lamp-off
   group: Living Room
+  tags: [living-room]
   on: { type: presence, sensor: livingroom-motion, present: false }
   delay: 25m
   run:

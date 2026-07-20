@@ -55,6 +55,16 @@ impl LightState {
     }
 }
 
+/// Target enablement for a `set_workflows_enabled` step. `Toggle` flips the
+/// whole tagged set together, based on whether any member is currently enabled.
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum EnableState {
+    Enabled,
+    Disabled,
+    Toggle,
+}
+
 /// On/off set command for a smart switch / plug.
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -322,6 +332,12 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    SetWorkflowsEnabled {
+        tag: String,
+        state: EnableState,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
     HomeAssistant {
         #[serde(rename = "call_service")]
         call_service: String,
@@ -343,6 +359,7 @@ impl Step {
             Step::Delay { .. } => "delay",
             Step::RunWorkflow { .. } => "run_workflow",
             Step::SetMode { .. } => "set_mode",
+            Step::SetWorkflowsEnabled { .. } => "set_workflows_enabled",
             Step::HomeAssistant { .. } => "home_assistant",
         }
     }
@@ -357,6 +374,7 @@ impl Step {
             | Step::Delay { when, .. }
             | Step::RunWorkflow { when, .. }
             | Step::SetMode { when, .. }
+            | Step::SetWorkflowsEnabled { when, .. }
             | Step::HomeAssistant { when, .. } => when.as_ref(),
         }
     }
@@ -375,6 +393,9 @@ impl Step {
             Step::Delay { seconds, .. } => Some(format!("delay {seconds}s")),
             Step::SetMode { mode, active, .. } => {
                 Some(format!("set_mode({}) -> {active}", mode.as_str()))
+            }
+            Step::SetWorkflowsEnabled { tag, state, .. } => {
+                Some(format!("set_workflows_enabled(#{tag}) -> {state:?}"))
             }
             Step::HomeAssistant {
                 call_service, data, ..
@@ -404,6 +425,7 @@ impl Step {
             | Step::Delay { when, .. }
             | Step::RunWorkflow { when, .. }
             | Step::SetMode { when, .. }
+            | Step::SetWorkflowsEnabled { when, .. }
             | Step::HomeAssistant { when, .. } => resolve_opt(when, devices)?,
         }
         Ok(())
@@ -458,6 +480,7 @@ pub struct Workflow {
     pub slug: String,
     pub name: String,
     pub group: Option<String>,
+    pub tags: Vec<String>,
     pub enabled: bool,
     pub dry_run: bool,
     pub trigger: WorkflowTrigger,
@@ -472,6 +495,8 @@ struct RawWorkflow {
     name: String,
     #[serde(default)]
     group: Option<String>,
+    #[serde(default)]
+    tags: Vec<String>,
     #[serde(default = "yes")]
     enabled: bool,
     #[serde(default)]
@@ -502,6 +527,7 @@ impl From<RawWorkflow> for Workflow {
             slug: raw.slug,
             name: raw.name,
             group: raw.group,
+            tags: raw.tags,
             enabled: raw.enabled,
             dry_run: raw.dry_run,
             trigger,

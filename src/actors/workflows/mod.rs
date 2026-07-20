@@ -3,7 +3,7 @@ use crate::{
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
     notify::notify,
-    settings::workflow::{LightState, Step, Workflow},
+    settings::workflow::{EnableState, LightState, Step, Workflow},
     timer::timed_async,
     types::SharedActorState,
 };
@@ -45,10 +45,13 @@ pub enum WorkflowError {
 
 /// Per-execution context threaded through the recursive executor.
 #[derive(Clone, Copy)]
-struct WorkflowContext {
+struct WorkflowContext<'a> {
     event_id: Uuid,
     depth: u8,
     dry_run: bool,
+    /// Slug of the workflow that was triggered, preserved across `run_workflow`
+    /// nesting so a `set_workflows_enabled` step never disables its own origin.
+    origin_slug: &'a str,
 }
 
 pub enum WorkflowWorkerMessage {
@@ -98,6 +101,7 @@ impl WorkflowWorker {
             event_id,
             depth: 0,
             dry_run: workflow.dry_run,
+            origin_slug: &workflow.slug,
         };
         let start = std::time::Instant::now();
         let result = self.run_steps(ctx, &workflow.run).await;
@@ -119,14 +123,18 @@ impl WorkflowWorker {
         result
     }
 
-    async fn run_steps(&self, ctx: WorkflowContext, steps: &[Step]) -> Result<(), WorkflowError> {
+    async fn run_steps(
+        &self,
+        ctx: WorkflowContext<'_>,
+        steps: &[Step],
+    ) -> Result<(), WorkflowError> {
         for step in steps {
             self.run_step(ctx, step).await?;
         }
         Ok(())
     }
 
-    async fn run_step(&self, ctx: WorkflowContext, step: &Step) -> Result<(), WorkflowError> {
+    async fn run_step(&self, ctx: WorkflowContext<'_>, step: &Step) -> Result<(), WorkflowError> {
         // a failed guard skips only this step, not the rest of the workflow
         if let Some(when) = step.guard()
             && !conditions::eval(&self.shared_actor_state, when).await?
@@ -147,7 +155,11 @@ impl WorkflowWorker {
         result
     }
 
-    async fn dispatch_step(&self, ctx: WorkflowContext, step: &Step) -> Result<(), WorkflowError> {
+    async fn dispatch_step(
+        &self,
+        ctx: WorkflowContext<'_>,
+        step: &Step,
+    ) -> Result<(), WorkflowError> {
         if ctx.dry_run
             && let Some(detail) = step.describe_action()
         {
@@ -181,6 +193,9 @@ impl WorkflowWorker {
             }
             Step::RunWorkflow { workflow, .. } => self.run_named_workflow(ctx, workflow).await,
             Step::SetMode { mode, active, .. } => self.run_set_mode(*mode, *active).await,
+            Step::SetWorkflowsEnabled { tag, state, .. } => {
+                self.run_set_workflows_enabled(ctx, tag, *state).await
+            }
             Step::HomeAssistant {
                 call_service, data, ..
             } => self.run_home_assistant(call_service, data.clone()).await,
@@ -205,6 +220,58 @@ impl WorkflowWorker {
         })?;
 
         home_assistant.call_service(domain, service, data).await?;
+        Ok(())
+    }
+
+    /// Enable/disable every workflow carrying `tag`, skipping the workflow the
+    /// step originated from so a switch can always undo itself. `Toggle` reads
+    /// the current state of the set first and flips it as a unit.
+    async fn run_set_workflows_enabled(
+        &self,
+        ctx: WorkflowContext<'_>,
+        tag: &str,
+        state: EnableState,
+    ) -> Result<(), WorkflowError> {
+        let settings = self.shared_actor_state.settings.clone();
+        let manager = &self.shared_actor_state.workflows;
+
+        let targets = settings
+            .workflows
+            .values()
+            .filter(|w| w.tags.iter().any(|t| t == tag) && w.slug != ctx.origin_slug)
+            .collect::<Vec<_>>();
+
+        if targets.is_empty() {
+            tracing::warn!("[{}] no workflows tagged `{tag}`", ctx.event_id);
+            return Ok(());
+        }
+
+        let enabled = match state {
+            EnableState::Enabled => true,
+            EnableState::Disabled => false,
+            EnableState::Toggle => {
+                let mut any_enabled = false;
+                for workflow in &targets {
+                    if manager.enabled(&workflow.slug, workflow.enabled).await {
+                        any_enabled = true;
+                        break;
+                    }
+                }
+                !any_enabled
+            }
+        };
+
+        for workflow in targets {
+            manager
+                .set_enabled(&workflow.slug, enabled)
+                .await
+                .map_err(|e| WorkflowError::Other(e.into()))?;
+        }
+
+        tracing::info!(
+            "[{}] set workflows tagged `{tag}` to {enabled}",
+            ctx.event_id
+        );
         Ok(())
     }
 
@@ -237,7 +304,7 @@ impl WorkflowWorker {
     /// self-reference so a workflow cycle can't recurse forever.
     async fn run_named_workflow(
         &self,
-        ctx: WorkflowContext,
+        ctx: WorkflowContext<'_>,
         name: &str,
     ) -> Result<(), WorkflowError> {
         if ctx.depth >= MAX_DEPTH {
@@ -271,6 +338,7 @@ impl WorkflowWorker {
             event_id: ctx.event_id,
             depth: ctx.depth + 1,
             dry_run: ctx.dry_run || workflow.dry_run,
+            origin_slug: ctx.origin_slug,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }

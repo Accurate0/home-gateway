@@ -330,6 +330,7 @@ type PresenceUpdate {
 type QueryRoot {
 	auth: AuthObject!
 	events(input: EventsInput!): EventsObject!
+	homeAssistantEntities: [HomeAssistantEvent!]!
 	environment: EnvironmentObject!
 	"""
 	Every configured entity and its current state. Entity types the caller

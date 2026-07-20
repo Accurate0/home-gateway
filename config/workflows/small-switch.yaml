@@ -1,8 +1,20 @@
-- name: Small Switch single toggles floor lamp
+- name: Small Switch single toggles living room
   slug: small-switch-single-toggle
   group: Living Room
   on: { type: switch, device: small-switch, action: single }
   run:
-    - type: light
-      device: floor-lamp-living-room
+    - type: run_workflow
+      when: { type: light, device: floor-lamp-living-room, on: true }
+      workflow: living-room-lamps-off
+    - type: run_workflow
+      when: { type: light, device: floor-lamp-living-room, on: false }
+      workflow: living-room-lamps-on
+
+- name: Small Switch double toggles living room automations
+  slug: small-switch-double-toggle-automations
+  group: Living Room
+  on: { type: switch, device: small-switch, action: double }
+  run:
+    - type: set_workflows_enabled
+      tag: living-room
       state: TOGGLE

@@ -29,6 +29,7 @@ impl WorkflowsQuery {
                 slug: workflow.slug.clone(),
                 name: workflow.name.clone(),
                 group: workflow.group.clone().unwrap_or_else(|| "Other".to_owned()),
+                tags: workflow.tags.clone(),
                 enabled,
                 config_enabled: workflow.enabled,
                 dry_run: workflow.dry_run,

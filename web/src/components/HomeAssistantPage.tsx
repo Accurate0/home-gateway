@@ -7,15 +7,13 @@ import type { HomeAssistantPageSubscription } from "./__generated__/HomeAssistan
 import { cn } from "@/lib/utils";
 
 const HistoryQuery = graphql`
-  query HomeAssistantPageQuery($since: DateTime!) {
-    events(input: { since: $since }) {
-      homeAssistant {
-        id
-        eventId
-        entityId
-        state
-        time
-      }
+  query HomeAssistantPageQuery {
+    homeAssistantEntities {
+      id
+      eventId
+      entityId
+      state
+      time
     }
   }
 `;
@@ -74,13 +72,14 @@ export default function HomeAssistantPage() {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const sub = fetchQuery<HomeAssistantPageQuery>(environment, HistoryQuery, {
-      since,
-    }).subscribe({
+    const sub = fetchQuery<HomeAssistantPageQuery>(
+      environment,
+      HistoryQuery,
+      {},
+    ).subscribe({
       next: (data) => {
         setLatest((prev) =>
-          data.events.homeAssistant.reduce(
+          data.homeAssistantEntities.reduce(
             (acc, e) =>
               upsert(acc, {
                 entityId: e.entityId,

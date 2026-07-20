@@ -2,5 +2,9 @@
 source: src/actors/workflows/plan.rs
 expression: out
 ---
-# Small Switch single toggles floor lamp  (on: switch(small-switch) action=single)
-  light: light(floor-lamp-living-room) -> Toggle
+# Small Switch single toggles living room  (on: switch(small-switch) action=single)
+  unknown_workflow: living-room-lamps-off [when: light(floor-lamp-living-room) is on]
+  unknown_workflow: living-room-lamps-on [when: light(floor-lamp-living-room) is off]
+
+# Small Switch double toggles living room automations  (on: switch(small-switch) action=double)
+  set_workflows_enabled: set_workflows_enabled(#living-room) -> Toggle

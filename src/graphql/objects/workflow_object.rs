@@ -20,6 +20,7 @@ pub struct WorkflowStatus {
     pub slug: String,
     pub name: String,
     pub group: String,
+    pub tags: Vec<String>,
     pub enabled: bool,
     pub config_enabled: bool,
     pub dry_run: bool,
