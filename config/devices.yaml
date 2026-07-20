@@ -68,7 +68,7 @@
 - id: livingroom-motion
   transport: esphome
   address: apollo-mtr-1-livingroom
-  capabilities: [temperature, pressure]
+  capabilities: [temperature, pressure, lux]
   kinds:
     - kind: presence
       config:
@@ -81,6 +81,7 @@
         entities:
           temperature: dps310_temperature
           pressure: dps310_pressure
+          lux: ltr390_light
 
 - id: closet-presence
   transport: zigbee
