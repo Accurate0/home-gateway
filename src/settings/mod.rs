@@ -10,6 +10,7 @@ use std::{
 
 pub mod door;
 pub mod environment;
+pub mod home_assistant;
 pub mod location;
 pub mod notify;
 pub mod plant;
@@ -19,6 +20,7 @@ pub mod workflow;
 
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
+pub use home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
@@ -137,6 +139,7 @@ pub struct Settings {
     pub oauth: Option<OAuthSettings>,
     pub location: LocationSettings,
     pub alarm: AlarmSettings,
+    pub home_assistant: HomeAssistantSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -168,6 +171,8 @@ struct RawSettings {
     location: LocationSettings,
     #[serde(default)]
     alarm: AlarmSettings,
+    #[serde(default)]
+    home_assistant: HomeAssistantSettings,
 }
 
 impl RawSettings {
@@ -190,6 +195,7 @@ impl RawSettings {
             oauth,
             location,
             alarm,
+            home_assistant,
         } = self;
 
         let registry = DeviceRegistry::build(devices, &notify_targets)?;
@@ -229,6 +235,7 @@ impl RawSettings {
                 oauth,
                 location,
                 alarm,
+                home_assistant,
             },
             registry,
         ))

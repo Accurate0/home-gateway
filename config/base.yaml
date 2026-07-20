@@ -27,5 +27,11 @@ oauth:
     home_gateway_admins@idm.anurag.sh: ["*"]
     home_gateway_readers@idm.anurag.sh: ["graphql:*:read", "rest:epd:read"]
 
+home_assistant:
+  entities:
+    - id: sensor.apollo_mtr_1_living_room_target_*
+      log: false
+      throttle: 30s
+
 devices: !include devices.yaml
 workflows: !include workflows/index.yaml
