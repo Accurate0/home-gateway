@@ -1,4 +1,6 @@
-use crate::{types::SharedActorState, zigbee2mqtt::TS011F_plug_1};
+use crate::{
+    actors::light::record_light_state, types::SharedActorState, zigbee2mqtt::TS011F_plug_1,
+};
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -66,6 +68,21 @@ impl SmartSwitchHandler {
                         ts011f_plug1.energy,
                     )
                     .await?;
+
+                    if self
+                        .shared_actor_state
+                        .devices
+                        .light(&ts011f_plug1.device.ieee_addr)
+                        .is_some()
+                    {
+                        record_light_state(
+                            &self.shared_actor_state,
+                            event.event_id,
+                            ts011f_plug1.device.ieee_addr,
+                            ts011f_plug1.state,
+                        )
+                        .await?;
+                    }
                 }
             },
         }

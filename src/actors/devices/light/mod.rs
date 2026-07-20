@@ -67,6 +67,29 @@ pub struct LightHandler {
     shared_actor_state: SharedActorState,
 }
 
+pub async fn record_light_state(
+    shared_actor_state: &SharedActorState,
+    event_id: Uuid,
+    ieee_addr: IEEEAddress,
+    state: String,
+) -> Result<(), anyhow::Error> {
+    sqlx::query!(
+        "INSERT INTO light_state (ieee_address, state) VALUES ($1, $2) ON CONFLICT (ieee_address) DO UPDATE SET state = EXCLUDED.state",
+        ieee_addr,
+        state,
+    ).execute(&shared_actor_state.db).await?;
+
+    shared_actor_state
+        .event_bus
+        .publish(EventBusMessage::Light {
+            event_id,
+            on: state == "ON",
+            ieee_addr,
+        });
+
+    Ok(())
+}
+
 impl LightHandler {
     pub const NAME: &str = "light";
 
@@ -76,21 +99,7 @@ impl LightHandler {
         ieee_addr: IEEEAddress,
         state: String,
     ) -> Result<(), anyhow::Error> {
-        sqlx::query!(
-            "INSERT INTO light_state (ieee_address, state) VALUES ($1, $2) ON CONFLICT (ieee_address) DO UPDATE SET state = EXCLUDED.state",
-            ieee_addr,
-            state,
-        ).execute(&self.shared_actor_state.db).await?;
-
-        self.shared_actor_state
-            .event_bus
-            .publish(EventBusMessage::Light {
-                event_id,
-                on: state == "ON",
-                ieee_addr,
-            });
-
-        Ok(())
+        record_light_state(&self.shared_actor_state, event_id, ieee_addr, state).await
     }
 
     fn warn_if_unsupported(&self, ieee_addr: &str, capability: Capability) {
