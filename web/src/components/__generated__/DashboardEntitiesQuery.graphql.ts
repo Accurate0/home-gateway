@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3a6e6b3f1a2f408b66a2282875093411>>
+ * @generated SignedSource<<a86595c9547fa8b703b709f635f8dc10>>
  * @lightSyntaxTransform
  */
 
@@ -17,6 +17,7 @@ export type DashboardEntitiesQuery$data = {
     readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly open: boolean | null | undefined;
+    readonly room: string | null | undefined;
   } | {
     readonly __typename: "EnvironmentEntity";
     readonly capabilities: ReadonlyArray<Capability>;
@@ -26,6 +27,7 @@ export type DashboardEntitiesQuery$data = {
     readonly lux: number | null | undefined;
     readonly name: string;
     readonly pressure: number | null | undefined;
+    readonly room: string | null | undefined;
     readonly temperature: number | null | undefined;
     readonly time: any | null | undefined;
     readonly uvIndex: number | null | undefined;
@@ -36,12 +38,14 @@ export type DashboardEntitiesQuery$data = {
     readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly on: boolean | null | undefined;
+    readonly room: string | null | undefined;
   } | {
     readonly __typename: "PresenceEntity";
     readonly id: string;
     readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly present: boolean | null | undefined;
+    readonly room: string | null | undefined;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
@@ -72,17 +76,24 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "capabilities",
+  "name": "room",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "capabilities",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "lastSeen",
   "storageKey": null
 },
-v4 = [
+v5 = [
   {
     "alias": null,
     "args": null,
@@ -104,6 +115,7 @@ v4 = [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
           (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -111,7 +123,7 @@ v4 = [
             "name": "on",
             "storageKey": null
           },
-          (v3/*:: as any*/)
+          (v4/*:: as any*/)
         ],
         "type": "LightEntity",
         "abstractKey": null
@@ -121,6 +133,7 @@ v4 = [
         "selections": [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
+          (v2/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -128,7 +141,7 @@ v4 = [
             "name": "open",
             "storageKey": null
           },
-          (v3/*:: as any*/)
+          (v4/*:: as any*/)
         ],
         "type": "DoorEntity",
         "abstractKey": null
@@ -138,6 +151,7 @@ v4 = [
         "selections": [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
+          (v2/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -145,7 +159,7 @@ v4 = [
             "name": "present",
             "storageKey": null
           },
-          (v3/*:: as any*/)
+          (v4/*:: as any*/)
         ],
         "type": "PresenceEntity",
         "abstractKey": null
@@ -156,6 +170,7 @@ v4 = [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
           (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -198,7 +213,7 @@ v4 = [
             "name": "time",
             "storageKey": null
           },
-          (v3/*:: as any*/)
+          (v4/*:: as any*/)
         ],
         "type": "EnvironmentEntity",
         "abstractKey": null
@@ -213,7 +228,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "DashboardEntitiesQuery",
-    "selections": (v4/*:: as any*/),
+    "selections": (v5/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -222,19 +237,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "DashboardEntitiesQuery",
-    "selections": (v4/*:: as any*/)
+    "selections": (v5/*:: as any*/)
   },
   "params": {
-    "cacheID": "a9435eefd58cd754fdad2d11dc3d60fe",
+    "cacheID": "c25a7a2332460c950e7f9f7a85ebd1dc",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "59add7be2f62a214a2646c1a6ad8e833";
+(node as any).hash = "236245cafc99661fb8086c2c31e154d7";
 
 export default node;

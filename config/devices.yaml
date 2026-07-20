@@ -1,4 +1,5 @@
 - id: front-door
+  room: entry
   transport: zigbee
   address: "0x54ef441000d2b0b0"
   watchdog:
@@ -14,6 +15,7 @@
         notify: [android_app]
 
 - id: garage-door
+  room: garage
   transport: zigbee
   address: "0x54ef441000d2b1ba"
   kinds:
@@ -25,6 +27,7 @@
         notify: [android_app]
 
 - id: living-room-table-lamp
+  room: living-room
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
   kinds:
@@ -34,6 +37,7 @@
         as: light
 
 - id: env-living-room
+  room: living-room
   transport: zigbee
   address: "0x00158d008b8798a7"
   capabilities: [temperature, humidity, pressure]
@@ -42,6 +46,7 @@
       config: { id: living-room, name: Living Room }
 
 - id: env-bathroom
+  room: bathroom
   transport: zigbee
   address: "0x00158d008b879b53"
   capabilities: [temperature, humidity, pressure]
@@ -50,6 +55,7 @@
       config: { id: bathroom, name: Bathroom }
 
 - id: env-bedroom
+  room: bedroom
   transport: zigbee
   address: "0xb0c7defffef6a9be"
   capabilities: [temperature, humidity, pressure]
@@ -58,6 +64,7 @@
       config: { id: bedroom, name: Bedroom }
 
 - id: env-outdoor
+  room: outdoor
   transport: zigbee
   address: "0x54ef441000ee2ca3"
   capabilities: [temperature, humidity, pressure]
@@ -66,6 +73,7 @@
       config: { id: outdoor, name: Outdoor }
 
 - id: livingroom-motion
+  room: living-room
   transport: esphome
   address: apollo-mtr-1-livingroom
   capabilities: [temperature, pressure, lux, brightness, rgb]
@@ -88,6 +96,7 @@
           lux: ltr390_light
 
 - id: closet-presence
+  room: closet
   transport: zigbee
   address: "0x54ef441000dbc81c"
   kinds:
@@ -95,6 +104,7 @@
       config: { name: Closet Presence Sensor }
 
 - id: hallway-plant
+  room: hallway
   transport: esphome
   address: apollo-plt-1-hallway
   capabilities: [temperature, humidity, lux, uv_index]
@@ -112,6 +122,7 @@
       config: { id: hallway-plant, entities: [soil_moisture] }
 
 - id: closet-light
+  room: closet
   transport: zigbee
   address: "0x54ef441000d4f05c"
   capabilities: [brightness, colour_temp]
@@ -120,6 +131,7 @@
       config: { name: Closet Light }
 
 - id: table-lamp-bedroom
+  room: bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
   capabilities: [brightness, colour_temp, rgb]
@@ -128,6 +140,7 @@
       config: { name: Bedroom Table Lamp }
 
 - id: floor-lamp-living-room
+  room: living-room
   transport: zigbee
   address: "0x94a081fffe2eedc0"
   capabilities: [brightness, colour_temp]

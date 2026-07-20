@@ -54,6 +54,7 @@ pub struct LightEntity {
     /// ieee address, the RPC key for the light actor.
     pub address: String,
     pub capabilities: Vec<Capability>,
+    pub room: Option<String>,
 }
 
 #[Object]
@@ -68,6 +69,10 @@ impl LightEntity {
 
     async fn capabilities(&self) -> &[Capability] {
         &self.capabilities
+    }
+
+    async fn room(&self) -> Option<&str> {
+        self.room.as_deref()
     }
 
     /// Current power state. Nullable so an unreachable light actor reports the
@@ -99,6 +104,7 @@ pub struct DoorEntity {
     /// ieee address, the RPC key for the door-events actor.
     pub address: String,
     pub capabilities: Vec<Capability>,
+    pub room: Option<String>,
 }
 
 #[Object]
@@ -113,6 +119,10 @@ impl DoorEntity {
 
     async fn capabilities(&self) -> &[Capability] {
         &self.capabilities
+    }
+
+    async fn room(&self) -> Option<&str> {
+        self.room.as_deref()
     }
 
     /// Whether the door is open. Nullable so an unreachable door-events actor
@@ -145,6 +155,7 @@ pub struct PresenceEntity {
     /// ieee address or esphome node, the RPC key for the presence actor.
     pub address: String,
     pub capabilities: Vec<Capability>,
+    pub room: Option<String>,
 }
 
 #[Object]
@@ -159,6 +170,10 @@ impl PresenceEntity {
 
     async fn capabilities(&self) -> &[Capability] {
         &self.capabilities
+    }
+
+    async fn room(&self) -> Option<&str> {
+        self.room.as_deref()
     }
 
     /// Whether presence is detected. Nullable so an unreachable presence actor
@@ -191,6 +206,7 @@ pub struct EnvironmentEntity {
     /// device address (ieee addr or esphome node), the last-seen dataloader key.
     pub address: String,
     pub capabilities: Vec<Capability>,
+    pub room: Option<String>,
 }
 
 impl EnvironmentEntity {
@@ -223,6 +239,10 @@ impl EnvironmentEntity {
 
     async fn capabilities(&self) -> &[Capability] {
         &self.capabilities
+    }
+
+    async fn room(&self) -> Option<&str> {
+        self.room.as_deref()
     }
 
     /// Nullable so a missing reading reports the error against this field

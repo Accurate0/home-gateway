@@ -29,6 +29,7 @@ const EntitiesQuery = graphql`
       ... on LightEntity {
         id
         name
+        room
         capabilities
         on
         lastSeen
@@ -36,18 +37,21 @@ const EntitiesQuery = graphql`
       ... on DoorEntity {
         id
         name
+        room
         open
         lastSeen
       }
       ... on PresenceEntity {
         id
         name
+        room
         present
         lastSeen
       }
       ... on EnvironmentEntity {
         id
         name
+        room
         capabilities
         temperature
         humidity
@@ -139,6 +143,37 @@ const SECTIONS: { kind: EntityKind; title: string }[] = [
   { kind: "environment", title: "Environment" },
 ];
 
+type GroupBy = "type" | "room";
+
+const GROUP_BY_KEY = "dashboard:groupBy";
+
+const UNASSIGNED = "Unassigned";
+
+function titleCase(slug: string): string {
+  return slug
+    .split(/[-_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function groupByRoom(entities: Iterable<Entity>): [string, Entity[]][] {
+  const groups = new Map<string, Entity[]>();
+  for (const e of entities) {
+    const title = e.room ? titleCase(e.room) : UNASSIGNED;
+    const list = groups.get(title) ?? [];
+    list.push(e);
+    groups.set(title, list);
+  }
+  for (const list of groups.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return [...groups.entries()].sort(([a], [b]) => {
+    if (a === UNASSIGNED) return 1;
+    if (b === UNASSIGNED) return -1;
+    return a.localeCompare(b);
+  });
+}
+
 function seedEntities(
   data: DashboardEntitiesQuery["response"],
 ): Map<string, Entity> {
@@ -158,6 +193,13 @@ export default function Dashboard() {
     seedEntities(data),
   );
   const [now, setNow] = useState(() => Date.now());
+  const [groupBy, setGroupBy] = useState<GroupBy>(() =>
+    localStorage.getItem(GROUP_BY_KEY) === "room" ? "room" : "type",
+  );
+
+  useEffect(() => {
+    localStorage.setItem(GROUP_BY_KEY, groupBy);
+  }, [groupBy]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
@@ -232,7 +274,9 @@ export default function Dashboard() {
     canSetColour: entity.capabilities?.includes("RGB") ?? false,
   });
 
-  const byKind = useMemo(() => {
+  const sections = useMemo(() => {
+    if (groupBy === "room") return groupByRoom(entities.values());
+
     const groups = new Map<EntityKind, Entity[]>();
     for (const e of entities.values()) {
       const list = groups.get(e.kind) ?? [];
@@ -242,23 +286,45 @@ export default function Dashboard() {
     for (const list of groups.values()) {
       list.sort((a, b) => a.name.localeCompare(b.name));
     }
-    return groups;
-  }, [entities]);
+    return SECTIONS.flatMap(({ kind, title }) => {
+      const list = groups.get(kind);
+      return list && list.length > 0
+        ? ([[title, list]] as [string, Entity[]][])
+        : [];
+    });
+  }, [entities, groupBy]);
 
   return (
     <div>
-      <p className="text-muted-foreground mb-8 flex items-center gap-2 text-sm">
-        <span className="bg-state-present relative flex size-2 rounded-full">
-          <span className="bg-state-present absolute inline-flex size-full animate-ping rounded-full opacity-75" />
-        </span>
-        {entities.size} entities · live
-      </p>
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <p className="text-muted-foreground flex items-center gap-2 text-sm">
+          <span className="bg-state-present relative flex size-2 rounded-full">
+            <span className="bg-state-present absolute inline-flex size-full animate-ping rounded-full opacity-75" />
+          </span>
+          {entities.size} entities · live
+        </p>
 
-      {SECTIONS.map(({ kind, title }) => {
-        const list = byKind.get(kind);
-        if (!list || list.length === 0) return null;
-        return (
-          <section key={kind} className="mb-10">
+        <div className="border-border flex rounded-md border text-xs">
+          {(["type", "room"] as GroupBy[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setGroupBy(mode)}
+              aria-pressed={groupBy === mode}
+              className={`px-3 py-1.5 capitalize first:rounded-l-md last:rounded-r-md ${
+                groupBy === mode
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {sections.map(([title, list]) => (
+        <section key={title} className="mb-10">
             <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-widest uppercase">
               {title}
             </h2>
@@ -277,8 +343,7 @@ export default function Dashboard() {
               ))}
             </div>
           </section>
-        );
-      })}
+      ))}
     </div>
   );
 }

@@ -49,6 +49,8 @@ pub struct RawSensor {
     pub watchdog: Option<RawDeviceWatchdog>,
     #[serde(default)]
     pub capabilities: Vec<Capability>,
+    #[serde(default)]
+    pub room: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum)]
@@ -163,6 +165,7 @@ pub struct DeviceRegistryInner {
     lights: HashMap<String, String>,
     esphome_lights: HashMap<String, String>,
     capabilities: HashMap<String, Vec<Capability>>,
+    rooms: HashMap<String, String>,
     plant: HashMap<String, PlantSensorSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
@@ -196,6 +199,7 @@ impl DeviceRegistry {
                 kinds,
                 watchdog,
                 capabilities,
+                room,
             } = sensor;
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
@@ -204,6 +208,10 @@ impl DeviceRegistry {
 
             if !capabilities.is_empty() {
                 reg.capabilities.insert(address.clone(), capabilities);
+            }
+
+            if let Some(room) = room {
+                reg.rooms.insert(address.clone(), room);
             }
 
             if let Some(watchdog) = watchdog {
@@ -427,6 +435,10 @@ impl DeviceRegistryInner {
 
     pub fn capabilities(&self, address: &str) -> &[Capability] {
         self.capabilities.get(address).map_or(&[], Vec::as_slice)
+    }
+
+    pub fn room(&self, address: &str) -> Option<&str> {
+        self.rooms.get(address).map(String::as_str)
     }
 
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {

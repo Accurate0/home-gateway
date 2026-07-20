@@ -52,6 +52,7 @@ type DoorEntity {
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
+	room: String
 	"""
 	Whether the door is open. Nullable so an unreachable door-events actor
 	reports the error against this field without nulling the whole entity.
@@ -122,6 +123,7 @@ type EnvironmentEntity {
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
+	room: String
 	"""
 	Nullable so a missing reading reports the error against this field
 	without nulling the whole entity.
@@ -227,6 +229,7 @@ type LightEntity {
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
+	room: String
 	"""
 	Current power state. Nullable so an unreachable light actor reports the
 	error against this field without nulling the whole entity.
@@ -302,6 +305,7 @@ type PresenceEntity {
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
+	room: String
 	"""
 	Whether presence is detected. Nullable so an unreachable presence actor
 	reports the error against this field without nulling the whole entity.

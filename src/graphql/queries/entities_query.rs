@@ -35,6 +35,7 @@ impl EntitiesQuery {
                     name: name.clone(),
                     address: address.clone(),
                     capabilities: registry.capabilities(address).to_vec(),
+                    room: registry.room(address).map(str::to_owned),
                 })
             }));
         }
@@ -46,6 +47,7 @@ impl EntitiesQuery {
                     name: settings.name.clone(),
                     address: address.clone(),
                     capabilities: registry.capabilities(address).to_vec(),
+                    room: registry.room(address).map(str::to_owned),
                 })
             }));
         }
@@ -66,6 +68,7 @@ impl EntitiesQuery {
                     name,
                     address: address.clone(),
                     capabilities: registry.capabilities(address).to_vec(),
+                    room: registry.room(address).map(str::to_owned),
                 })
             }));
         }
@@ -77,6 +80,7 @@ impl EntitiesQuery {
                     name: settings.name.clone(),
                     address: address.clone(),
                     capabilities: registry.capabilities(address).to_vec(),
+                    room: registry.room(address).map(str::to_owned),
                 })
             }));
         }

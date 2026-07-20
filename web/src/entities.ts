@@ -17,6 +17,7 @@ export interface Entity {
   id: string;
   name: string;
   capabilities?: readonly string[];
+  room?: string | null;
   on?: boolean | null;
   open?: boolean | null;
   present?: boolean | null;
