@@ -1,5 +1,6 @@
 use crate::device_registry::{Capability, DeviceRegistry};
 use crate::settings::NotifySource;
+use crate::settings::TemplateString;
 use crate::settings::trigger::TriggerMatcher;
 use crate::timedelta_format::option_time_delta_from_str;
 
@@ -7,11 +8,12 @@ use super::{DeviceAliases, IEEEAddress, validate_device, yes};
 use crate::actors::sun::calc::SunPeriod;
 use crate::mode::Mode;
 use chrono::{NaiveTime, TimeDelta};
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 /// Brightness / colour-temperature mutations applied to a light. Kept in
 /// `SCREAMING_SNAKE_CASE` to match the long-standing on-disk config.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(tag = "state", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LightState {
     On,
@@ -57,7 +59,7 @@ impl LightState {
 
 /// Target enablement for a `set_workflows_enabled` step. `Toggle` flips the
 /// whole tagged set together, based on whether any member is currently enabled.
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EnableState {
     Enabled,
@@ -66,7 +68,7 @@ pub enum EnableState {
 }
 
 /// On/off set command for a smart switch / plug.
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SwitchState {
     On,
@@ -75,7 +77,7 @@ pub enum SwitchState {
 }
 
 /// Which reading of an environment sensor a condition compares against.
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum EnvMetric {
     Temperature,
@@ -85,7 +87,7 @@ pub enum EnvMetric {
     UvIndex,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CompareOp {
     Gt,
@@ -97,7 +99,7 @@ pub enum CompareOp {
 
 /// A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the
 /// [`Condition::Environment`] variant.
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
 pub struct Comparison {
     pub op: CompareOp,
     pub value: f64,
@@ -119,14 +121,14 @@ impl Comparison {
 
 /// A boolean predicate evaluated against current device/sensor state. Either a
 /// nested boolean combinator (`all`/`and`, `any`/`or`, `not`) or a leaf test.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(untagged)]
 pub enum Condition {
     Combinator(Combinator),
     Leaf(LeafCondition),
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub enum Combinator {
     #[serde(rename = "all", alias = "and")]
     All(Vec<Condition>),
@@ -136,7 +138,7 @@ pub enum Combinator {
     Not(Box<Condition>),
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum LeafCondition {
     Light {
@@ -171,6 +173,7 @@ pub enum LeafCondition {
             default,
             deserialize_with = "crate::timedelta_format::signed_time_delta_from_str::deserialize"
         )]
+        #[schemars(with = "String")]
         offset: TimeDelta,
     },
     Mode {
@@ -284,7 +287,7 @@ fn describe_join(conditions: &[Condition]) -> String {
 
 /// A single workflow step: one action, optionally guarded by a `when` condition.
 /// Nesting (the old `conditional` block) is expressed as a guarded `scene`.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Step {
     Light {
@@ -312,7 +315,7 @@ pub enum Step {
     },
     Notify {
         notify: NotifySource,
-        message: String,
+        message: TemplateString,
         #[serde(default)]
         when: Option<Condition>,
     },
@@ -474,8 +477,9 @@ pub enum WorkflowTrigger {
     Reusable,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(from = "RawWorkflow")]
+#[schemars(with = "RawWorkflow")]
 pub struct Workflow {
     pub slug: String,
     pub name: String,
@@ -487,8 +491,8 @@ pub struct Workflow {
     pub run: Vec<Step>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-struct RawWorkflow {
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+pub struct RawWorkflow {
     #[serde(default)]
     slug: String,
     #[serde(default)]
@@ -506,8 +510,10 @@ struct RawWorkflow {
     #[serde(default)]
     when: Option<Condition>,
     #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
+    #[schemars(with = "Option<String>")]
     cooldown: Option<TimeDelta>,
     #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
+    #[schemars(with = "Option<String>")]
     delay: Option<TimeDelta>,
     run: Vec<Step>,
 }
@@ -542,6 +548,23 @@ impl Workflow {
             WorkflowTrigger::Triggered { on, .. } => Some(on),
             WorkflowTrigger::Reusable => None,
         }
+    }
+
+    pub fn template_placeholders(&self) -> Vec<String> {
+        fn collect(steps: &[Step], out: &mut Vec<String>) {
+            for step in steps {
+                match step {
+                    Step::Notify { message, .. } => {
+                        out.extend(message.placeholders().into_iter().map(str::to_owned));
+                    }
+                    Step::Scene { run, .. } => collect(run, out),
+                    _ => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        collect(&self.run, &mut out);
+        out
     }
 
     pub fn when(&self) -> Option<&Condition> {

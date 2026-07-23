@@ -1,14 +1,16 @@
 use crate::timedelta_format::time_delta_from_str;
 use chrono::TimeDelta;
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum ArmedDoorStates {
     Armed {
         #[serde(with = "time_delta_from_str")]
+        #[schemars(with = "String")]
         timeout: TimeDelta,
     },
     Unarmed,
@@ -22,8 +24,8 @@ pub struct DoorSettings {
     pub notify: Vec<NotifySource>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub(crate) struct RawDoorSettings {
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+pub struct RawDoorSettings {
     name: String,
     id: String,
     #[serde(flatten)]

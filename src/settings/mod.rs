@@ -1,5 +1,6 @@
 use config::builder::{ConfigBuilder, DefaultState};
 use config::{Config, ConfigError, Environment, File, FileFormat};
+use schemars::JsonSchema;
 use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
@@ -15,6 +16,7 @@ pub mod location;
 pub mod notify;
 pub mod plant;
 pub mod presence;
+pub mod template;
 pub mod trigger;
 pub mod workflow;
 
@@ -25,6 +27,7 @@ pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
+pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
 pub use workflow::Workflow;
 
@@ -34,15 +37,18 @@ use chrono::TimeDelta;
 
 pub type IEEEAddress = String;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct WatchdogSettings {
     #[serde(default)]
     pub enabled: bool,
     #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
     pub timeout: TimeDelta,
     #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
     pub check_interval: TimeDelta,
     #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
     pub realert_after: TimeDelta,
 }
 
@@ -54,12 +60,20 @@ pub(crate) fn default_alarm_workflow() -> String {
     "alarm-wakeup".to_owned()
 }
 
-#[derive(Debug, Clone, Deserialize)]
+pub(crate) fn default_alarm_poll_interval() -> TimeDelta {
+    TimeDelta::seconds(60)
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct AlarmSettings {
     #[serde(default = "default_alarm_offset", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
     pub offset: TimeDelta,
     #[serde(default = "default_alarm_workflow")]
     pub workflow: String,
+    #[serde(default = "default_alarm_poll_interval", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    pub poll_interval: TimeDelta,
 }
 
 impl Default for AlarmSettings {
@@ -67,6 +81,60 @@ impl Default for AlarmSettings {
         Self {
             offset: default_alarm_offset(),
             workflow: default_alarm_workflow(),
+            poll_interval: default_alarm_poll_interval(),
+        }
+    }
+}
+
+pub(crate) fn default_eink_refresh() -> TimeDelta {
+    TimeDelta::hours(1)
+}
+
+pub(crate) fn default_eink_settle() -> TimeDelta {
+    TimeDelta::seconds(10)
+}
+
+pub(crate) fn default_eink_s3_key() -> String {
+    "eink-display-screenshot.png".to_owned()
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct EInkDisplaySettings {
+    #[serde(default = "default_eink_refresh", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    pub refresh: TimeDelta,
+    #[serde(default = "default_eink_settle", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    pub settle: TimeDelta,
+    #[serde(default = "default_eink_s3_key")]
+    pub s3_key: String,
+}
+
+impl Default for EInkDisplaySettings {
+    fn default() -> Self {
+        Self {
+            refresh: default_eink_refresh(),
+            settle: default_eink_settle(),
+            s3_key: default_eink_s3_key(),
+        }
+    }
+}
+
+pub(crate) fn default_woolworths_refresh() -> TimeDelta {
+    TimeDelta::hours(1)
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct WoolworthsSettings {
+    #[serde(default = "default_woolworths_refresh", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    pub refresh: TimeDelta,
+}
+
+impl Default for WoolworthsSettings {
+    fn default() -> Self {
+        Self {
+            refresh: default_woolworths_refresh(),
         }
     }
 }
@@ -74,7 +142,7 @@ impl Default for AlarmSettings {
 /// S3 / object-storage config. Credentials are taken from the standard AWS
 /// environment, never from this file. `endpoint` is only set for
 /// S3-compatible stores (MinIO/R2/…); omit it for plain AWS S3.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct S3Settings {
     pub bucket: String,
     pub region: String,
@@ -90,7 +158,7 @@ pub(crate) fn default_groups_claim() -> String {
 /// OAuth (OIDC) settings. Access tokens are JWTs validated locally against the
 /// provider's JWKS — no client secret is needed. A caller's scopes are derived
 /// from their group memberships (the `groups_claim`) via `group_scopes`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct OAuthSettings {
     pub issuer: String,
     pub jwks_url: String,
@@ -140,14 +208,16 @@ pub struct Settings {
     pub oauth: Option<OAuthSettings>,
     pub location: LocationSettings,
     pub alarm: AlarmSettings,
+    pub eink_display: EInkDisplaySettings,
+    pub woolworths: WoolworthsSettings,
     pub home_assistant: HomeAssistantSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
 /// resolves device aliases / notify targets and unifies sensor keying so the rest
 /// of the app only ever sees the fully-resolved [`Settings`].
-#[derive(Debug, Deserialize, Clone)]
-struct RawSettings {
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+pub struct RawSettings {
     #[serde(default)]
     version: String,
     api_key: String,
@@ -175,6 +245,10 @@ struct RawSettings {
     #[serde(default)]
     alarm: AlarmSettings,
     #[serde(default)]
+    eink_display: EInkDisplaySettings,
+    #[serde(default)]
+    woolworths: WoolworthsSettings,
+    #[serde(default)]
     home_assistant: HomeAssistantSettings,
 }
 
@@ -199,6 +273,8 @@ impl RawSettings {
             oauth,
             location,
             alarm,
+            eink_display,
+            woolworths,
             home_assistant,
         } = self;
 
@@ -210,6 +286,19 @@ impl RawSettings {
         for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
             workflow.validate_capabilities(&registry)?;
+            if let Some(trigger) = workflow.on() {
+                let available = trigger.available_vars();
+                for var in workflow.template_placeholders() {
+                    if !available.contains(&var) {
+                        tracing::warn!(
+                            "workflow '{}' references unknown template var ${{{var}}}; \
+                             its trigger provides: [{}]",
+                            workflow.name,
+                            available.join(", ")
+                        );
+                    }
+                }
+            }
             if workflow.slug.trim().is_empty() {
                 return Err(format!("workflow '{}' has an empty slug", workflow.name));
             }
@@ -240,6 +329,8 @@ impl RawSettings {
                 oauth,
                 location,
                 alarm,
+                eink_display,
+                woolworths,
                 home_assistant,
             },
             registry,

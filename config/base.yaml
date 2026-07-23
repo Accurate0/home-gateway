@@ -29,6 +29,17 @@ oauth:
     home_gateway_admins@idm.anurag.sh: ["*"]
     home_gateway_readers@idm.anurag.sh: ["graphql:*:read", "rest:epd:read"]
 
+eink_display:
+  refresh: 1h
+  settle: 10s
+  s3_key: eink-display-screenshot.png
+
+woolworths:
+  refresh: 1h
+
+alarm:
+  poll_interval: 60s
+
 home_assistant:
   entities:
     - id: sensor.apollo_mtr_1_living_room_target_*

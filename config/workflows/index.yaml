@@ -5,3 +5,4 @@
 - !include bins.yaml
 - !include living-room-lamp.yaml
 - !include alarm.yaml
+- !include woolworths.yaml

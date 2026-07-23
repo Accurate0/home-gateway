@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
+use crate::api_types::{ApiKeyInfo, CreatedKey};
 use chrono::{DateTime, Utc};
-use home_gateway::api_types::{ApiKeyInfo, CreatedKey};
 use moka::future::Cache;
 use rand::{RngExt, distr::Alphanumeric};
 use sqlx::{Pool, Postgres};

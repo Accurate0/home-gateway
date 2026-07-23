@@ -1,8 +1,8 @@
+use crate::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use axum::{
     Json,
     extract::{Path, State},
 };
-use home_gateway::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use http::StatusCode;
 use uuid::Uuid;
 

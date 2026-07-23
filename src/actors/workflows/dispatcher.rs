@@ -130,6 +130,21 @@ impl WorkflowDispatcher {
                     ..
                 },
             ) => entity_id == e && state.as_ref().is_none_or(|state| state == s),
+            (
+                TriggerMatcher::Woolworths {
+                    product_id,
+                    min_drop,
+                },
+                EventBusMessage::Woolworths {
+                    product_id: id,
+                    old_price,
+                    new_price,
+                    ..
+                },
+            ) => {
+                product_id.is_none_or(|p| p == *id)
+                    && min_drop.is_none_or(|min| old_price - new_price >= min)
+            }
             _ => false,
         }
     }
@@ -142,6 +157,7 @@ impl WorkflowDispatcher {
         let event_id = msg.event_id();
         crate::metrics::record_event(msg.kind());
         let settings = self.shared_actor_state.settings.clone();
+        let vars = msg.vars();
 
         let subject: EventSubject = (msg.kind().to_string(), msg.entity());
         state.pending_delays.retain(|(s, name), handle| {
@@ -173,7 +189,7 @@ impl WorkflowDispatcher {
                 trigger = workflow.name,
                 event_kind = msg.kind(),
             );
-            self.evaluate_trigger(event_id, workflow, &subject, state)
+            self.evaluate_trigger(event_id, workflow, &subject, &vars, state)
                 .instrument(trigger_span)
                 .await?;
         }
@@ -189,6 +205,7 @@ impl WorkflowDispatcher {
         event_id: uuid::Uuid,
         workflow: &Workflow,
         subject: &EventSubject,
+        vars: &HashMap<String, String>,
         state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
         if let Some(when) = workflow.when() {
@@ -237,8 +254,8 @@ impl WorkflowDispatcher {
         crate::metrics::record_trigger(&workflow.name, crate::metrics::TriggerOutcome::Fired);
 
         match workflow.delay() {
-            Some(delay) => self.schedule_delayed(event_id, workflow, delay, subject, state),
-            None => self.dispatch_workflow(event_id, workflow.clone())?,
+            Some(delay) => self.schedule_delayed(event_id, workflow, delay, subject, vars, state),
+            None => self.dispatch_workflow(event_id, workflow.clone(), vars.clone())?,
         }
 
         Ok(())
@@ -250,10 +267,11 @@ impl WorkflowDispatcher {
         workflow: &Workflow,
         delay: chrono::TimeDelta,
         subject: &EventSubject,
+        vars: &HashMap<String, String>,
         state: &mut WorkflowDispatcherState,
     ) {
         let Ok(delay) = delay.to_std() else {
-            let _ = self.dispatch_workflow(event_id, workflow.clone());
+            let _ = self.dispatch_workflow(event_id, workflow.clone(), vars.clone());
             return;
         };
 
@@ -265,10 +283,11 @@ impl WorkflowDispatcher {
         );
 
         let task_name = name.clone();
+        let vars = vars.clone();
         let handle = tokio::spawn(async move {
             tokio::time::sleep(delay).await;
             tracing::info!("[{event_id}] delayed trigger '{task_name}' firing");
-            if let Err(e) = Self::send_to_factory(event_id, workflow) {
+            if let Err(e) = Self::send_to_factory(event_id, workflow, vars) {
                 tracing::error!(
                     "[{event_id}] failed to dispatch delayed trigger '{task_name}': {e}"
                 );
@@ -320,11 +339,16 @@ impl WorkflowDispatcher {
         &self,
         event_id: uuid::Uuid,
         workflow: Workflow,
+        vars: HashMap<String, String>,
     ) -> Result<(), ActorProcessingErr> {
-        Self::send_to_factory(event_id, workflow)
+        Self::send_to_factory(event_id, workflow, vars)
     }
 
-    fn send_to_factory(event_id: uuid::Uuid, workflow: Workflow) -> Result<(), ActorProcessingErr> {
+    fn send_to_factory(
+        event_id: uuid::Uuid,
+        workflow: Workflow,
+        vars: HashMap<String, String>,
+    ) -> Result<(), ActorProcessingErr> {
         let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
             tracing::warn!("[{event_id}] workflow factory not found, dropping trigger");
             return Ok(());
@@ -332,7 +356,11 @@ impl WorkflowDispatcher {
 
         actor.send_message(FactoryMessage::Dispatch(Job {
             key: (),
-            msg: WorkflowWorkerMessage::Execute { event_id, workflow },
+            msg: WorkflowWorkerMessage::Execute {
+                event_id,
+                workflow,
+                vars,
+            },
             options: JobOptions::default(),
             accepted: None,
         }))?;

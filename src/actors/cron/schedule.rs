@@ -15,8 +15,9 @@ use serde::Deserialize;
 /// Deserialized straight from a cron string by croner's `serde` feature, so the
 /// config accepts the full readable syntax: day/month aliases (`THU`, `JAN`),
 /// nicknames (`@weekly`, `@daily`), ranges (`MON-FRI`) and steps (`*/15`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, schemars::JsonSchema)]
 #[serde(transparent)]
+#[schemars(with = "String")]
 pub struct CronSchedule(Cron);
 
 impl CronSchedule {

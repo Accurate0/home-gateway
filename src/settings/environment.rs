@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -9,7 +10,7 @@ pub enum EnvironmentSensorType {
     Esphome,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Metric {
     Temperature,

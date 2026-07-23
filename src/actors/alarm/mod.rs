@@ -7,6 +7,7 @@ use ractor::{
     Actor,
     factory::{FactoryMessage, Job, JobOptions},
 };
+use std::collections::HashMap;
 use std::time::Duration;
 use tracing::Level;
 use types::AndroidAppAlarmPayload;
@@ -39,7 +40,14 @@ impl Actor for AlarmActor {
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let offset = self.shared_actor_state.settings.alarm.offset;
-        let _join_handle = myself.send_interval(Duration::from_secs(60), move || {
+        let poll_interval = self
+            .shared_actor_state
+            .settings
+            .alarm
+            .poll_interval
+            .to_std()
+            .unwrap_or(Duration::from_secs(60));
+        let _join_handle = myself.send_interval(poll_interval, move || {
             AlarmMessage::CheckIfAlarmWillTrigger { offset }
         });
 
@@ -103,7 +111,11 @@ impl Actor for AlarmActor {
                         let event_id = Uuid::new_v4();
                         let message = FactoryMessage::Dispatch(Job {
                             key: (),
-                            msg: WorkflowWorkerMessage::Execute { event_id, workflow },
+                            msg: WorkflowWorkerMessage::Execute {
+                                event_id,
+                                workflow,
+                                vars: HashMap::new(),
+                            },
                             options: JobOptions::default(),
                             accepted: None,
                         });

@@ -86,9 +86,14 @@ impl Actor for EInkDisplayActor {
             EInkDisplayMessage::TakeScreenshot
         });
 
-        let _join_handle = myself.send_interval(Duration::from_secs(3600), || {
-            EInkDisplayMessage::TakeScreenshot
-        });
+        let refresh = self
+            .shared_actor_state
+            .settings
+            .eink_display
+            .refresh
+            .to_std()
+            .unwrap_or(Duration::from_secs(3600));
+        let _join_handle = myself.send_interval(refresh, || EInkDisplayMessage::TakeScreenshot);
 
         let launch = BrowserConfig::builder()
             .new_headless_mode()
@@ -178,7 +183,14 @@ impl Actor for EInkDisplayActor {
                     .await?;
                 page.reload().await?;
 
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                let settle = self
+                    .shared_actor_state
+                    .settings
+                    .eink_display
+                    .settle
+                    .to_std()
+                    .unwrap_or(Duration::from_secs(10));
+                tokio::time::sleep(settle).await;
 
                 tracing::info!("screenshot taken");
                 let image = page
@@ -192,7 +204,11 @@ impl Actor for EInkDisplayActor {
 
                 self.shared_actor_state
                     .s3
-                    .put_object("eink-display-screenshot.png", &image, Some("image/png"))
+                    .put_object(
+                        &self.shared_actor_state.settings.eink_display.s3_key,
+                        &image,
+                        Some("image/png"),
+                    )
                     .await?;
 
                 tracing::info!("screenshot uploaded");

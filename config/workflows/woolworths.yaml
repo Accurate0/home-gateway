@@ -1,0 +1,8 @@
+- name: Woolworths Price Drop
+  slug: woolworths-price-drop
+  group: Shopping
+  on: { type: woolworths }
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "${name} dropped to $${new_price} (was $${old_price}, -$${drop})"

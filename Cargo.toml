@@ -76,6 +76,7 @@ futures-util = "0.3.32"
 tracing-futures = "0.2.5"
 async-trait = "0.1.89"
 yaml-include = "0.8.1"
+schemars = { version = "1", features = ["chrono04", "uuid1"] }
 opentelemetry-prometheus = "0.32"
 prometheus = "0.14.0"
 croner = { version = "3.0.1", features = ["serde"] }
@@ -89,6 +90,9 @@ tokio-tungstenite = { version = "0.30", features = ["rustls-tls-native-roots"] }
 
 [build-dependencies]
 serde_yaml = "0.9.34"
+serde_json = "1.0.150"
+yaml-include = "0.8"
+jsonschema = { version = "0.33", default-features = false }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

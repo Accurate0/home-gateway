@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use schemars::JsonSchema;
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
@@ -16,7 +17,7 @@ use crate::settings::{
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::TimeDelta;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Transport {
     Zigbee,
@@ -39,7 +40,7 @@ impl Transport {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawSensor {
     pub id: String,
     pub transport: Transport,
@@ -53,7 +54,7 @@ pub struct RawSensor {
     pub room: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Capability {
     Brightness,
@@ -66,9 +67,10 @@ pub enum Capability {
     UvIndex,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawDeviceWatchdog {
     #[serde(default, with = "option_time_delta_from_str")]
+    #[schemars(with = "Option<String>")]
     timeout: Option<TimeDelta>,
     #[serde(default)]
     notify: Vec<NotifyRef>,
@@ -80,7 +82,7 @@ pub struct DeviceWatchdog {
     pub notify: Vec<NotifySource>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(tag = "kind", content = "config", rename_all = "snake_case")]
 pub enum DeviceConfig {
     Door(RawDoorSettings),
@@ -92,31 +94,32 @@ pub enum DeviceConfig {
     SmartSwitch(RawSmartSwitchBlock),
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawLightBlock {
     name: String,
     #[serde(default)]
     entity: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawSmartSwitchBlock {
     name: String,
     #[serde(default, rename = "as")]
     role: Option<SwitchRole>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SwitchRole {
     Light,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawPresenceBlock {
     #[serde(default)]
     name: String,
     #[serde(default, deserialize_with = "de_string_or_vec")]
+    #[schemars(with = "Vec<String>")]
     motion_entity: Vec<String>,
 }
 
@@ -138,7 +141,7 @@ where
     })
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawEnvironmentBlock {
     id: String,
     #[serde(default)]
@@ -147,7 +150,7 @@ pub struct RawEnvironmentBlock {
     entities: HashMap<Metric, String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawPlantBlock {
     id: String,
     #[serde(default = "default_plant_entities")]

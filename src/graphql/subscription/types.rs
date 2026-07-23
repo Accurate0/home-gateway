@@ -108,6 +108,15 @@ impl HomeAssistantUpdate {
     }
 }
 
+#[derive(SimpleObject)]
+pub struct WoolworthsUpdate {
+    pub event_id: Uuid,
+    pub product_id: i64,
+    pub name: String,
+    pub old_price: f64,
+    pub new_price: f64,
+}
+
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
 pub enum EventUpdate {
@@ -121,6 +130,7 @@ pub enum EventUpdate {
     Unifi(UnifiUpdate),
     Mode(ModeUpdate),
     HomeAssistant(HomeAssistantUpdate),
+    Woolworths(WoolworthsUpdate),
 }
 
 impl EventUpdate {
@@ -272,6 +282,19 @@ impl EventUpdate {
                 event_id,
                 entity_id,
                 state,
+            }),
+            EventBusMessage::Woolworths {
+                event_id,
+                product_id,
+                name,
+                old_price,
+                new_price,
+            } => EventUpdate::Woolworths(WoolworthsUpdate {
+                event_id,
+                product_id,
+                name,
+                old_price,
+                new_price,
             }),
         }
     }

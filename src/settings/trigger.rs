@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::workflow::Comparison;
@@ -9,7 +10,7 @@ use crate::mode::Mode;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
 /// variants; the dispatcher matches messages against these.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TriggerMatcher {
     Presence {
@@ -49,6 +50,7 @@ pub enum TriggerMatcher {
             default,
             deserialize_with = "crate::timedelta_format::signed_time_delta_from_str::deserialize"
         )]
+        #[schemars(with = "String")]
         offset: chrono::TimeDelta,
     },
     /// Fires when a house mode is entered (`active: true`) or exited
@@ -64,6 +66,15 @@ pub enum TriggerMatcher {
         entity_id: String,
         #[serde(default)]
         state: Option<String>,
+    },
+    /// Fires when a tracked Woolworths product drops in price, driven by the
+    /// [`crate::actors::woolworths`] producer. Optionally gate on a specific
+    /// `product_id` and/or a minimum drop amount (in dollars).
+    Woolworths {
+        #[serde(default)]
+        product_id: Option<i64>,
+        #[serde(default)]
+        min_drop: Option<f64>,
     },
 }
 
@@ -101,6 +112,18 @@ impl TriggerMatcher {
                 Some(state) => format!("home_assistant({entity_id}) -> {state}"),
                 None => format!("home_assistant({entity_id})"),
             },
+            TriggerMatcher::Woolworths {
+                product_id,
+                min_drop,
+            } => {
+                let product = product_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| "*".to_owned());
+                match min_drop {
+                    Some(min) => format!("woolworths({product}) drop >= {min}"),
+                    None => format!("woolworths({product}) price drop"),
+                }
+            }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -111,6 +134,31 @@ impl TriggerMatcher {
                         crate::timedelta_format::humanize(*offset)
                     )
                 }
+            }
+        }
+    }
+
+    /// Template variable names this trigger's event can supply to a `notify`
+    /// message, mirroring [`crate::event_bus::EventBusMessage::vars`]. Used by the
+    /// config loader to warn about `${unknown}` placeholders.
+    pub fn available_vars(&self) -> Vec<String> {
+        let strs = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect();
+        match self {
+            TriggerMatcher::Presence { .. } => strs(&["sensor", "present"]),
+            TriggerMatcher::Door { .. } => strs(&["device", "open"]),
+            TriggerMatcher::Switch { .. } => strs(&["device", "action"]),
+            TriggerMatcher::Environment { metric, .. } => {
+                vec![
+                    "sensor".to_owned(),
+                    crate::event_bus::metric_var_name(metric),
+                ]
+            }
+            TriggerMatcher::Cron { .. } => strs(&["name"]),
+            TriggerMatcher::Sun { .. } => strs(&["transition"]),
+            TriggerMatcher::Mode { .. } => strs(&["mode", "active"]),
+            TriggerMatcher::HomeAssistant { .. } => strs(&["entity_id", "state"]),
+            TriggerMatcher::Woolworths { .. } => {
+                strs(&["product_id", "name", "old_price", "new_price", "drop"])
             }
         }
     }
@@ -127,7 +175,8 @@ impl TriggerMatcher {
             TriggerMatcher::Cron { .. }
             | TriggerMatcher::Sun { .. }
             | TriggerMatcher::Mode { .. }
-            | TriggerMatcher::HomeAssistant { .. } => {}
+            | TriggerMatcher::HomeAssistant { .. }
+            | TriggerMatcher::Woolworths { .. } => {}
         }
         Ok(())
     }

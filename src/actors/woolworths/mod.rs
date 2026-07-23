@@ -1,6 +1,5 @@
 use crate::{
-    notify::notify,
-    settings::NotifySource,
+    event_bus::EventBusMessage,
     types::SharedActorState,
     woolworths::{
         Woolworths,
@@ -9,6 +8,7 @@ use crate::{
 };
 use ractor::Actor;
 use std::{collections::HashMap, time::Duration};
+use uuid::Uuid;
 
 pub enum WoolworthsMessage {
     TrackedProductGroup {
@@ -49,9 +49,14 @@ impl Actor for WoolworthsActor {
             price_map.insert(result.product_id, result.price);
         }
 
-        myself.send_interval(Duration::from_secs(3600), || {
-            WoolworthsMessage::CheckProductPrices
-        });
+        let refresh = self
+            .shared_actor_state
+            .settings
+            .woolworths
+            .refresh
+            .to_std()
+            .unwrap_or(Duration::from_secs(3600));
+        myself.send_interval(refresh, || WoolworthsMessage::CheckProductPrices);
 
         Ok(WoolworthsActorState {
             woolworths_product_price: price_map,
@@ -99,13 +104,15 @@ impl Actor for WoolworthsActor {
                     let current_price = response.product.price;
                     let is_price_lower = current_price < *last_price;
                     if is_price_lower {
-                        let price_down_by = *last_price - current_price;
-                        let product_string = format!(
-                            "{} - ${} (-${:.2})",
-                            product_name, response.product.price, price_down_by
-                        );
-
-                        notify(&[NotifySource::AndroidApp], product_string);
+                        self.shared_actor_state
+                            .event_bus
+                            .publish(EventBusMessage::Woolworths {
+                                event_id: Uuid::new_v4(),
+                                product_id,
+                                name: product_name.clone(),
+                                old_price: *last_price,
+                                new_price: current_price,
+                            });
                     }
 
                     state
@@ -117,6 +124,15 @@ impl Actor for WoolworthsActor {
                         r#"INSERT INTO woolworths_product_price(product_id, price, display_name) VALUES ($1, $2, $3)
                         ON CONFLICT(product_id)
                         DO UPDATE SET price = EXCLUDED.price, display_name = EXCLUDED.display_name"#,
+                        product_id,
+                        current_price,
+                        product_name
+                    )
+                    .execute(&self.shared_actor_state.db)
+                    .await?;
+
+                    sqlx::query!(
+                        r#"INSERT INTO woolworths_price_history(product_id, price, display_name) VALUES ($1, $2, $3)"#,
                         product_id,
                         current_price,
                         product_name

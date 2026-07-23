@@ -152,6 +152,7 @@ impl Resource {
             "sun" => Self::Sun,
             "mode" => Self::Mode,
             "home_assistant" => Self::HomeAssistant,
+            "woolworths" => Self::Woolworths,
             _ => return None,
         })
     }

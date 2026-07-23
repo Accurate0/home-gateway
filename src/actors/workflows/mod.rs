@@ -11,6 +11,7 @@ use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
+use std::collections::HashMap;
 use std::time::Duration;
 use tracing::Instrument;
 use uuid::Uuid;
@@ -52,10 +53,17 @@ struct WorkflowContext<'a> {
     /// Slug of the workflow that was triggered, preserved across `run_workflow`
     /// nesting so a `set_workflows_enabled` step never disables its own origin.
     origin_slug: &'a str,
+    /// Template variables carried from the triggering event, substituted into
+    /// `notify` messages.
+    vars: &'a HashMap<String, String>,
 }
 
 pub enum WorkflowWorkerMessage {
-    Execute { event_id: Uuid, workflow: Workflow },
+    Execute {
+        event_id: Uuid,
+        workflow: Workflow,
+        vars: HashMap<String, String>,
+    },
 }
 
 pub struct WorkflowWorker {
@@ -69,6 +77,7 @@ impl WorkflowWorker {
         &self,
         event_id: Uuid,
         workflow: Workflow,
+        vars: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
         if !self
             .shared_actor_state
@@ -102,6 +111,7 @@ impl WorkflowWorker {
             depth: 0,
             dry_run: workflow.dry_run,
             origin_slug: &workflow.slug,
+            vars,
         };
         let start = std::time::Instant::now();
         let result = self.run_steps(ctx, &workflow.run).await;
@@ -184,7 +194,7 @@ impl WorkflowWorker {
             Step::Notify {
                 notify: n, message, ..
             } => {
-                notify(std::slice::from_ref(n), message.clone());
+                notify(std::slice::from_ref(n), message.render(ctx.vars));
                 Ok(())
             }
             Step::Delay { seconds, .. } => {
@@ -339,6 +349,7 @@ impl WorkflowWorker {
             depth: ctx.depth + 1,
             dry_run: ctx.dry_run || workflow.dry_run,
             origin_slug: ctx.origin_slug,
+            vars: ctx.vars,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }
@@ -433,9 +444,13 @@ impl Worker for WorkflowWorker {
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
-            WorkflowWorkerMessage::Execute { event_id, workflow } => {
+            WorkflowWorkerMessage::Execute {
+                event_id,
+                workflow,
+                vars,
+            } => {
                 let result = timed_async(|| async {
-                    self.execute_workflow(event_id, workflow)
+                    self.execute_workflow(event_id, workflow, &vars)
                         .await
                         .map_err(anyhow::Error::from)
                 })

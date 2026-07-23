@@ -8,6 +8,7 @@
 //! channel, cloned onto [`crate::types::SharedActorState`].
 
 use serde::Deserialize;
+use std::collections::HashMap;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
@@ -18,8 +19,9 @@ use crate::settings::IEEEAddress;
 /// A named scalar sensor reading. Known metrics are typed; anything else (an
 /// esphome object_id we don't model) falls back to [`SensorMetric::Other`] so
 /// producers and config stay honest without an exhaustive list.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, schemars::JsonSchema)]
 #[serde(from = "String")]
+#[schemars(with = "String")]
 pub enum SensorMetric {
     Temperature,
     Humidity,
@@ -55,6 +57,20 @@ pub enum SensorReading {
     UvIndex { value: f64 },
     SoilMoisture { value: f64 },
     Other { name: String, value: f64 },
+}
+
+/// Template variable name for a metric, matching the config metric strings
+/// (`temperature`, `soil_moisture`, …) so `${temperature}` works in a notify.
+pub fn metric_var_name(metric: &SensorMetric) -> String {
+    match metric {
+        SensorMetric::Temperature => "temperature".to_owned(),
+        SensorMetric::Humidity => "humidity".to_owned(),
+        SensorMetric::Pressure => "pressure".to_owned(),
+        SensorMetric::Lux => "lux".to_owned(),
+        SensorMetric::UvIndex => "uv_index".to_owned(),
+        SensorMetric::SoilMoisture => "soil_moisture".to_owned(),
+        SensorMetric::Other(name) => name.clone(),
+    }
 }
 
 impl SensorReading {
@@ -170,6 +186,15 @@ pub enum EventBusMessage {
         entity_id: String,
         state: String,
     },
+    /// A tracked Woolworths product dropped in price, published by the
+    /// [`crate::actors::woolworths`] producer so workflows can trigger on it.
+    Woolworths {
+        event_id: Uuid,
+        product_id: i64,
+        name: String,
+        old_price: f64,
+        new_price: f64,
+    },
 }
 
 impl EventBusMessage {
@@ -186,7 +211,8 @@ impl EventBusMessage {
             | EventBusMessage::Light { event_id, .. }
             | EventBusMessage::Unifi { event_id, .. }
             | EventBusMessage::Mode { event_id, .. }
-            | EventBusMessage::HomeAssistant { event_id, .. } => *event_id,
+            | EventBusMessage::HomeAssistant { event_id, .. }
+            | EventBusMessage::Woolworths { event_id, .. } => *event_id,
         }
     }
 
@@ -203,6 +229,7 @@ impl EventBusMessage {
             EventBusMessage::Unifi { .. } => "unifi",
             EventBusMessage::Mode { .. } => "mode",
             EventBusMessage::HomeAssistant { .. } => "home_assistant",
+            EventBusMessage::Woolworths { .. } => "woolworths",
         }
     }
 
@@ -217,6 +244,7 @@ impl EventBusMessage {
         "unifi",
         "mode",
         "home_assistant",
+        "woolworths",
     ];
 
     pub fn entity(&self) -> String {
@@ -234,6 +262,89 @@ impl EventBusMessage {
             EventBusMessage::Unifi { mac_address, .. } => mac_address.clone(),
             EventBusMessage::Mode { mode, .. } => mode.as_str().to_string(),
             EventBusMessage::HomeAssistant { entity_id, .. } => entity_id.clone(),
+            EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
+        }
+    }
+
+    /// Named variables carried by the event, substituted into templated workflow
+    /// strings (e.g. a `notify` message). The keys each event kind can provide
+    /// are declared in [`crate::settings::TriggerMatcher::available_vars`], which
+    /// the config loader validates templates against.
+    pub fn vars(&self) -> HashMap<String, String> {
+        match self {
+            EventBusMessage::Presence {
+                sensor, present, ..
+            } => HashMap::from([
+                ("sensor".to_owned(), sensor.clone()),
+                ("present".to_owned(), present.to_string()),
+            ]),
+            EventBusMessage::Door {
+                ieee_addr, open, ..
+            } => HashMap::from([
+                ("device".to_owned(), ieee_addr.clone()),
+                ("open".to_owned(), open.to_string()),
+            ]),
+            EventBusMessage::SwitchAction {
+                ieee_addr, action, ..
+            } => HashMap::from([
+                ("device".to_owned(), ieee_addr.clone()),
+                ("action".to_owned(), action.clone()),
+            ]),
+            EventBusMessage::Environment {
+                sensor, readings, ..
+            } => {
+                let mut vars = HashMap::from([("sensor".to_owned(), sensor.clone())]);
+                for reading in readings {
+                    vars.insert(
+                        metric_var_name(&reading.metric()),
+                        reading.value().to_string(),
+                    );
+                }
+                vars
+            }
+            EventBusMessage::Cron { name, .. } => {
+                HashMap::from([("name".to_owned(), name.clone())])
+            }
+            EventBusMessage::Sun { transition, .. } => {
+                HashMap::from([("transition".to_owned(), format!("{transition:?}"))])
+            }
+            EventBusMessage::Light { ieee_addr, on, .. } => HashMap::from([
+                ("device".to_owned(), ieee_addr.clone()),
+                ("on".to_owned(), on.to_string()),
+            ]),
+            EventBusMessage::Unifi {
+                mac_address,
+                client,
+                connected,
+                ..
+            } => HashMap::from([
+                ("mac_address".to_owned(), mac_address.clone()),
+                ("client".to_owned(), client.clone()),
+                ("connected".to_owned(), connected.to_string()),
+            ]),
+            EventBusMessage::Mode { mode, active, .. } => HashMap::from([
+                ("mode".to_owned(), mode.as_str().to_owned()),
+                ("active".to_owned(), active.to_string()),
+            ]),
+            EventBusMessage::HomeAssistant {
+                entity_id, state, ..
+            } => HashMap::from([
+                ("entity_id".to_owned(), entity_id.clone()),
+                ("state".to_owned(), state.clone()),
+            ]),
+            EventBusMessage::Woolworths {
+                product_id,
+                name,
+                old_price,
+                new_price,
+                ..
+            } => HashMap::from([
+                ("product_id".to_owned(), product_id.to_string()),
+                ("name".to_owned(), name.clone()),
+                ("old_price".to_owned(), format!("{old_price:.2}")),
+                ("new_price".to_owned(), format!("{new_price:.2}")),
+                ("drop".to_owned(), format!("{:.2}", old_price - new_price)),
+            ]),
         }
     }
 }

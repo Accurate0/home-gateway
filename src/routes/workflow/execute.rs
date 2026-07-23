@@ -8,6 +8,7 @@ use axum::{Json, extract::State};
 use http::StatusCode;
 use ractor::factory::{FactoryMessage, Job, JobOptions};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub struct WorkflowExecutePayload {
@@ -30,6 +31,7 @@ pub async fn workflow_execute(
     let message = WorkflowWorkerMessage::Execute {
         event_id: uuid::Uuid::new_v4(),
         workflow: payload.workflow,
+        vars: HashMap::new(),
     };
 
     let message = FactoryMessage::Dispatch(Job {

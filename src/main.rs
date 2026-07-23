@@ -1,11 +1,3 @@
-use crate::{
-    graphql::subscription::SubscriptionRoot,
-    routes::{
-        epd,
-        ingest::{solar::solar, unifi::unifi},
-        workflow::execute::workflow_execute,
-    },
-};
 use ::http::Method;
 use actors::workflows::manager::WorkflowManager;
 use actors::{
@@ -28,6 +20,18 @@ use graphql::{
     dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
     mutations::MutationRoot,
+};
+use home_gateway::{
+    actors, auth, device_registry, event_bus, feature_flag, graphql, home_assistant, mqtt, routes,
+    s3, settings, tracing_setup, types, utils,
+};
+use home_gateway::{
+    graphql::subscription::SubscriptionRoot,
+    routes::{
+        epd,
+        ingest::{solar::solar, unifi::unifi},
+        workflow::execute::workflow_execute,
+    },
 };
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
@@ -55,32 +59,6 @@ use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
-
-mod actors;
-mod auth;
-mod device_registry;
-mod esphome;
-mod event_bus;
-mod feature_flag;
-mod graphql;
-mod graphql_tracing;
-mod home_assistant;
-mod http;
-mod metrics;
-mod mode;
-mod mqtt;
-mod notify;
-mod routes;
-mod s3;
-mod settings;
-mod timedelta_format;
-mod timer;
-mod tracing_setup;
-mod tracker;
-mod types;
-mod utils;
-mod woolworths;
-mod zigbee2mqtt;
 
 async fn init_actors(
     settings: SettingsContainer,
@@ -200,7 +178,7 @@ async fn main() -> anyhow::Result<()> {
     .data(device_registry.clone())
     .data(event_bus)
     .data(workflow_manager)
-    .extension(crate::graphql_tracing::Tracing)
+    .extension(home_gateway::graphql_tracing::Tracing)
     .finish();
 
     let cors = CorsLayer::new()

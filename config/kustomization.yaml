@@ -18,3 +18,4 @@ configMapGenerator:
       - workflows/hallway-plant.yaml
       - workflows/living-room-lamp.yaml
       - workflows/small-switch.yaml
+      - workflows/woolworths.yaml

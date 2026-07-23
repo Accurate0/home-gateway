@@ -1,4 +1,5 @@
 use chrono::TimeDelta;
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::{settings::yes, timedelta_format::time_delta_from_str};
@@ -7,7 +8,7 @@ pub(crate) fn no_throttle() -> TimeDelta {
     TimeDelta::zero()
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct EntitySettings {
     pub id: String,
     #[serde(default = "yes")]
@@ -15,6 +16,7 @@ pub struct EntitySettings {
     #[serde(default = "yes")]
     pub latest_state: bool,
     #[serde(default = "no_throttle", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
     pub throttle: TimeDelta,
 }
 
@@ -29,7 +31,7 @@ impl Default for EntitySettings {
     }
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct HomeAssistantSettings {
     #[serde(default)]
     pub entities: Vec<EntitySettings>,

@@ -68,15 +68,14 @@ pub fn parse_datetime_str_with_ms(s: &str) -> anyhow::Result<TimeDelta> {
 
 pub mod time_delta_from_str {
     use super::parse_datetime_str_with_ms;
-    use chrono::{DateTime, TimeDelta, Utc};
+    use chrono::TimeDelta;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    #[allow(unused)]
-    pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(delta: &TimeDelta, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        todo!()
+        serializer.serialize_str(&super::humanize(*delta))
     }
 
     // The signature of a deserialize_with function must follow the pattern:
@@ -99,7 +98,17 @@ pub mod time_delta_from_str {
 pub mod option_time_delta_from_str {
     use super::parse_datetime_str_with_ms;
     use chrono::TimeDelta;
-    use serde::{self, Deserialize, Deserializer};
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(delta: &Option<TimeDelta>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match delta {
+            Some(delta) => serializer.serialize_some(&super::humanize(*delta)),
+            None => serializer.serialize_none(),
+        }
+    }
 
     /// Deserialize an optional duration string (e.g. `"24h"`) into
     /// `Option<TimeDelta>`. Pairs with `#[serde(default)]` so the field can be
