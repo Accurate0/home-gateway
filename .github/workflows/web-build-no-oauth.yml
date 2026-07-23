@@ -55,3 +55,15 @@ jobs:
           tags: ghcr.io/accurate0/home-gateway-web:no-oauth,ghcr.io/accurate0/home-gateway-web:no-oauth-${{ github.sha }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-new
+
+  deploy:
+    needs:
+      - build
+    uses: Accurate0/workflows/.github/workflows/deploy-ansible-role.yaml@main
+    with:
+      service-name: home-gateway-web
+      tag: no-oauth-${{ github.sha }}
+      vars-file: ansible/local/roles/home-gateway-web/defaults/main.yml
+      field: home_gateway_web_image_tag
+    secrets:
+      FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
