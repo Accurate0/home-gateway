@@ -96,7 +96,7 @@
           lux: ltr390_light
 
 - id: closet-presence
-  room: closet
+  room: bedroom
   transport: zigbee
   address: "0x54ef441000dbc81c"
   kinds:
@@ -122,7 +122,7 @@
       config: { id: hallway-plant, entities: [soil_moisture] }
 
 - id: closet-light
-  room: closet
+  room: bedroom
   transport: zigbee
   address: "0x54ef441000d4f05c"
   capabilities: [brightness, colour_temp]
