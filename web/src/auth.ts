@@ -11,7 +11,16 @@ const SCOPE = "openid email profile groups";
 
 // Local dev talks to a backend built with debug_assertions, which grants full
 // access without a token, so we skip the Kanidm round-trip entirely.
-export const AUTH_DISABLED = import.meta.env.DEV;
+export const AUTH_DISABLED =
+  import.meta.env.DEV || import.meta.env.VITE_AUTH_DISABLED === "true";
+
+export function getApiKey(): string | null {
+  return localStorage.getItem("apiKey");
+}
+
+export function setApiKey(value: string): void {
+  localStorage.setItem("apiKey", value.trim());
+}
 
 // Persist both the signed-in user and the transient signin state (PKCE verifier
 // + state) in localStorage so they survive the full-page redirect to Kanidm and

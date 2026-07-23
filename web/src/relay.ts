@@ -8,7 +8,7 @@ import {
   type SubscribeFunction,
 } from "relay-runtime";
 import { createClient } from "graphql-ws";
-import { getAccessToken } from "./auth";
+import { AUTH_DISABLED, getAccessToken, getApiKey } from "./auth";
 
 // Same-origin relative endpoints: in production the SPA and the API share the
 // `home.inf-k8s.net` host; in dev Vite proxies `/v1` to the local backend.
@@ -20,6 +20,10 @@ function wsUrl(): string {
 }
 
 function authHeaders(): Record<string, string> {
+  if (AUTH_DISABLED) {
+    const key = getApiKey();
+    return key ? { "X-Api-Key": key } : {};
+  }
   const token = getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }

@@ -7,28 +7,35 @@ import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 import { RelayEnvironmentProvider } from "react-relay";
 import { environment } from "./relay";
-import { ensureAuthenticated } from "./auth";
+import { AUTH_DISABLED, ensureAuthenticated, getApiKey } from "./auth";
+import ApiKeyGate from "./ApiKeyGate.tsx";
 
 const root = createRoot(document.getElementById("root")!);
 
 try {
   await ensureAuthenticated();
   root.render(
-    <StrictMode>
-      <RelayEnvironmentProvider environment={environment}>
-        <BrowserRouter>
-          <Suspense
-            fallback={
-              <div className="text-muted-foreground grid min-h-screen place-items-center">
-                Loading…
-              </div>
-            }
-          >
-            <App />
-          </Suspense>
-        </BrowserRouter>
-      </RelayEnvironmentProvider>
-    </StrictMode>,
+    AUTH_DISABLED && !getApiKey() ? (
+      <StrictMode>
+        <ApiKeyGate />
+      </StrictMode>
+    ) : (
+      <StrictMode>
+        <RelayEnvironmentProvider environment={environment}>
+          <BrowserRouter>
+            <Suspense
+              fallback={
+                <div className="text-muted-foreground grid min-h-screen place-items-center">
+                  Loading…
+                </div>
+              }
+            >
+              <App />
+            </Suspense>
+          </BrowserRouter>
+        </RelayEnvironmentProvider>
+      </StrictMode>
+    ),
   );
 } catch (e) {
   const message = e instanceof Error ? e.message : String(e);

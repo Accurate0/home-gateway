@@ -11,6 +11,8 @@ RUN pnpm install --frozen-lockfile --filter web...
 
 COPY packages ./packages
 COPY web ./web
+ARG VITE_AUTH_DISABLED
+ENV VITE_AUTH_DISABLED=${VITE_AUTH_DISABLED}
 RUN pnpm --filter web build
 
 FROM nginxinc/nginx-unprivileged:1.31-alpine AS final
