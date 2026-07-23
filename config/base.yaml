@@ -1,3 +1,5 @@
+version: "1"
+
 s3:
   bucket: home-gateway-bucket
   region: ap-southeast-2

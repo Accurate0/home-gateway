@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: home-gateway
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: home-gateway-config
+    files:
+      - base.yaml
+      - devices.yaml
+  - name: home-gateway-config-workflows
+    files:
+      - workflows/index.yaml
+      - workflows/alarm.yaml
+      - workflows/bins.yaml
+      - workflows/closet-presence.yaml
+      - workflows/control-switch.yaml
+      - workflows/hallway-plant.yaml
+      - workflows/living-room-lamp.yaml
+      - workflows/small-switch.yaml

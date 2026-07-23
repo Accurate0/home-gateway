@@ -9,7 +9,7 @@ on:
       - .sqlx/**
       - Cargo.toml
       - Cargo.lock
-      - config.yaml
+      - config/**
       - Dockerfile
       - .github/workflows/build-deploy.yml
   workflow_dispatch:

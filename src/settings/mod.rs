@@ -124,6 +124,7 @@ pub(crate) fn yes() -> bool {
 
 #[derive(Debug, Clone)]
 pub struct Settings {
+    pub version: String,
     pub api_key: String,
     pub database_url: String,
     pub fcm_project_id: String,
@@ -147,6 +148,8 @@ pub struct Settings {
 /// of the app only ever sees the fully-resolved [`Settings`].
 #[derive(Debug, Deserialize, Clone)]
 struct RawSettings {
+    #[serde(default)]
+    version: String,
     api_key: String,
     database_url: String,
     #[serde(default)]
@@ -178,6 +181,7 @@ struct RawSettings {
 impl RawSettings {
     fn resolve(self) -> Result<(Settings, DeviceRegistry), String> {
         let RawSettings {
+            version,
             api_key,
             database_url,
             fcm_project_id,
@@ -220,6 +224,7 @@ impl RawSettings {
 
         Ok((
             Settings {
+                version,
                 api_key,
                 database_url,
                 fcm_project_id,
@@ -259,6 +264,12 @@ impl SettingsContainer {
     /// concern lives in its own file.
     fn config_sources(dir: &Path) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
         let base = dir.join("base.yaml");
+        if !base.is_file() {
+            return Err(ConfigError::Message(format!(
+                "config entry point not found: {}",
+                base.display()
+            )));
+        }
         let merged = yaml_include::Transformer::new(base.clone(), true)
             .map_err(|e| {
                 ConfigError::Message(format!(
@@ -271,13 +282,36 @@ impl SettingsContainer {
         Ok(Config::builder().add_source(File::from_str(&merged, FileFormat::Yaml)))
     }
 
-    pub fn new() -> Result<(Self, DeviceRegistry), ConfigError> {
-        // TODO: fetch config from catalog, falling back to file if not found or other error
-        let config = Self::config_sources(&PathBuf::from("./config"))?
+    fn load_from_dir(dir: &Path) -> Result<(Settings, DeviceRegistry), ConfigError> {
+        let config = Self::config_sources(dir)?
             .add_source(Environment::default().separator("__"))
             .build()?;
 
-        let (settings, registry) = Self::build(config)?;
+        Self::build(config)
+    }
+
+    pub fn new() -> Result<(Self, DeviceRegistry), ConfigError> {
+        let override_dir =
+            std::env::var("CONFIG_DIR").unwrap_or_else(|_| "/etc/home-gateway/config".to_string());
+        let baked_dir = PathBuf::from("./config");
+
+        let (source, (settings, registry)) = match Self::load_from_dir(Path::new(&override_dir)) {
+            Ok(loaded) => ("override", loaded),
+            Err(e) => {
+                tracing::warn!(
+                    config_dir = %override_dir,
+                    error = %e,
+                    "failed to load config from override dir, falling back to baked-in config"
+                );
+                ("baked-in", Self::load_from_dir(&baked_dir)?)
+            }
+        };
+
+        tracing::info!(
+            source,
+            version = %settings.version,
+            "loaded config"
+        );
 
         Ok((
             Self {
@@ -514,5 +548,11 @@ android_app_webhook_secret: x
                 .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state")
                 .is_some()
         );
+    }
+
+    #[test]
+    fn load_from_dir_errors_on_missing_dir() {
+        let result = SettingsContainer::load_from_dir(Path::new("./does-not-exist"));
+        assert!(result.is_err());
     }
 }
