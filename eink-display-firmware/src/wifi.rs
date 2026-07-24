@@ -4,9 +4,11 @@ use esp_idf_svc::hal::peripheral;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 use log::info;
+use std::time::Duration;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASSWORD");
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub fn try_connect(
     modem: impl peripheral::Peripheral<P = esp_idf_svc::hal::modem::Modem> + 'static,
@@ -28,10 +30,17 @@ pub fn try_connect(
     wifi.start()?;
 
     info!("Connecting wifi...");
-    wifi.connect()?;
+    wifi.wifi_mut().connect()?;
+    wifi.wifi_wait_while(
+        || wifi.wifi().is_connected().map(|connected| !connected),
+        Some(CONNECT_TIMEOUT),
+    )?;
 
     info!("Waiting for DHCP lease...");
-    wifi.wait_netif_up()?;
+    wifi.ip_wait_while(
+        || wifi.is_up().map(|up| !up),
+        Some(CONNECT_TIMEOUT),
+    )?;
 
     let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
     info!("Wifi DHCP info: {:?}", ip_info);

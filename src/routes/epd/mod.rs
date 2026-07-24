@@ -28,17 +28,17 @@ async fn active_sleep(
 ) -> Option<SleepWindow> {
     let sleep = devices.eink_display(device_id).and_then(|d| d.sleep)?;
     let now = chrono::Utc::now().with_timezone(&Perth).time();
-    if !sleep.contains(now) {
-        return None;
+    if sleep.contains(now) {
+        return Some(sleep);
     }
-    let overridden = feature_flag_client
+    let forced = feature_flag_client
         .is_feature_enabled(
             "home-gateway-epd-sleep-override",
             false,
             EvaluationContext::default().with_custom_field("device_id", device_id.to_string()),
         )
         .await;
-    (!overridden).then_some(sleep)
+    forced.then_some(sleep)
 }
 
 async fn latest_image_key(
