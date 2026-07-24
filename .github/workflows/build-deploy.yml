@@ -43,6 +43,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx
 
+      - name: Cache cargo build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        id: cargo-cache
+        with:
+          path: |
+            cargo-target-cache
+            cargo-registry-cache
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-
+            ${{ runner.os }}-cargo-
+
+      - name: Inject cargo cache into buildkit
+        uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
+        with:
+          cache-map: |
+            {
+              "cargo-target-cache": "/app/home-gateway-build/target",
+              "cargo-registry-cache": "/usr/local/cargo/registry"
+            }
+          skip-extraction: ${{ steps.cargo-cache.outputs.cache-hit }}
+
       - name: Docker build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         env:
@@ -56,6 +78,11 @@ jobs:
             HOME_GATEWAY_API_SECRET=${{ secrets.HOME_GATEWAY_API_SECRET }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-new
+
+      - name: Move Docker layer cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   deploy:
     needs:
