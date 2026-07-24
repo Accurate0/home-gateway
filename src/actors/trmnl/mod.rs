@@ -152,8 +152,8 @@ mod tests {
         HashMap::from([(
             address.to_owned(),
             TrmnlDeviceSettings {
-                id: "living-room-trmnl".to_owned(),
-                name: "Living Room TRMNL".to_owned(),
+                id: "fridge-trmnl".to_owned(),
+                name: "Fridge TRMNL".to_owned(),
             },
         )])
     }
@@ -162,14 +162,14 @@ mod tests {
     fn matches_by_friendly_id_case_insensitive() {
         let reg = registry("653VZN");
         let matched = match_device(&device("653vzn", "12:34:56:78:9A:BC", Some(3.7)), &reg);
-        assert_eq!(matched.map(|(_, s)| s.id.as_str()), Some("living-room-trmnl"));
+        assert_eq!(matched.map(|(_, s)| s.id.as_str()), Some("fridge-trmnl"));
     }
 
     #[test]
     fn matches_by_mac_ignoring_colons_and_case() {
         let reg = registry("94a990cf8384");
         let matched = match_device(&device("XXX", "94:A9:90:CF:83:84", Some(3.7)), &reg);
-        assert_eq!(matched.map(|(_, s)| s.id.as_str()), Some("living-room-trmnl"));
+        assert_eq!(matched.map(|(_, s)| s.id.as_str()), Some("fridge-trmnl"));
     }
 
     #[test]

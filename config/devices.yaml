@@ -175,12 +175,12 @@
           start: "00:00"
           end: "08:00"
 
-- id: living-room-trmnl
-  room: living-room
+- id: fridge-trmnl
+  room: kitchen
   transport: trmnl
   address: "653VZN"
   kinds:
     - kind: trmnl
       config:
-        name: Living Room TRMNL
+        name: Fridge TRMNL
 
