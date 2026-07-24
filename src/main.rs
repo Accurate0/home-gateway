@@ -38,7 +38,7 @@ use home_gateway::{
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};
 use routes::{
-    admin::keys::{create_key, list_keys, revoke_key, update_key},
+    admin::keys::{create_key, list_keys, regenerate_key, revoke_key, update_key},
     control::light::light_control,
     health::{actor_health, health},
     ingest::{
@@ -222,6 +222,21 @@ async fn main() -> anyhow::Result<()> {
         devices: device_registry.clone(),
     };
 
+    for key in &settings.api_keys {
+        match api_state
+            .auth
+            .claim(&key.name, &key.scopes, key.expires_at)
+            .await
+        {
+            Ok(true) => tracing::info!(name = %key.name, "reconciled api key scopes from config"),
+            Ok(false) => tracing::warn!(
+                name = %key.name,
+                "config api key not found; mint it via the admin API"
+            ),
+            Err(e) => tracing::error!(name = %key.name, error = %e, "failed to reconcile api key"),
+        }
+    }
+
     let api_routes = axum::Router::new()
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
@@ -238,6 +253,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/unifi", post(unifi))
         .route("/admin/keys", post(create_key).get(list_keys))
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
+        .route("/admin/keys/{id}/regenerate", post(regenerate_key))
         .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
         .route("/graphql/ws", get(graphql_ws_handler))

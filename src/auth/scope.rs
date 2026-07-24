@@ -33,6 +33,7 @@ pub enum Resource {
     Sun,
     Mode,
     HomeAssistant,
+    Battery,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +83,7 @@ impl Resource {
             "sun" => Self::Sun,
             "mode" => Self::Mode,
             "home_assistant" => Self::HomeAssistant,
+            "battery" => Self::Battery,
             _ => return None,
         })
     }
@@ -137,6 +139,7 @@ impl Resource {
             Self::Sun => "sun",
             Self::Mode => "mode",
             Self::HomeAssistant => "home_assistant",
+            Self::Battery => "battery",
         }
     }
 
@@ -153,6 +156,7 @@ impl Resource {
             "mode" => Self::Mode,
             "home_assistant" => Self::HomeAssistant,
             "woolworths" => Self::Woolworths,
+            "device_battery" => Self::Battery,
             _ => return None,
         })
     }

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE api_keys SET scopes = $2, expires_at = COALESCE($3, expires_at) WHERE name = $1 AND revoked_at IS NULL RETURNING key_hash",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key_hash",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "TextArray",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dc7d7bb7289a77ff1ad63d4d81307dc380235cbaae2c2dc68e5b20790ca4f4dd"
+}

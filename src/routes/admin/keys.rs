@@ -62,6 +62,20 @@ pub async fn update_key(
     }
 }
 
+pub async fn regenerate_key(
+    State(ApiState { auth: manager, .. }): State<ApiState>,
+    Auth(auth): Auth,
+    Path(id): Path<Uuid>,
+) -> Result<(StatusCode, Json<CreatedKey>), AppError> {
+    auth.require(&required::ADMIN_KEYS_WRITE)
+        .map_err(AppError::StatusCode)?;
+
+    match manager.regenerate(id).await? {
+        Some(created) => Ok((StatusCode::CREATED, Json(created))),
+        None => Err(AppError::StatusCode(StatusCode::NOT_FOUND)),
+    }
+}
+
 pub async fn revoke_key(
     State(ApiState { auth: manager, .. }): State<ApiState>,
     Auth(auth): Auth,

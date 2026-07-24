@@ -33,6 +33,9 @@ enum Action {
         expires_at: Option<DateTime<Utc>>,
     },
     List,
+    Regenerate {
+        id: Uuid,
+    },
     Revoke {
         id: Uuid,
     },
@@ -106,6 +109,21 @@ async fn main() -> anyhow::Result<()> {
                 .await?;
 
             println!("{}", serde_json::to_string_pretty(&keys)?);
+        }
+        Action::Regenerate { id } => {
+            let resp = client
+                .post(format!("{base}/v1/admin/keys/{id}/regenerate"))
+                .header("X-Api-Key", &cli.api_key)
+                .send()
+                .await?;
+
+            if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                println!("no active key with id {id}");
+            } else {
+                let created: CreatedKey = resp.error_for_status()?.json().await?;
+                println!("{}", serde_json::to_string_pretty(&created)?);
+                println!("\nstore this key now, it will not be shown again");
+            }
         }
         Action::Revoke { id } => {
             let resp = client

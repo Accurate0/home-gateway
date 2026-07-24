@@ -29,6 +29,14 @@ oauth:
     home_gateway_admins@idm.anurag.sh: ["*"]
     home_gateway_readers@idm.anurag.sh: ["graphql:*:read", "rest:epd:read"]
 
+api_keys:
+  - name: eink-display-living-room
+    scopes: ["rest:epd:read"]
+  - name: unifi-ingest
+    scopes: ["ingest:unifi:write"]
+  - name: home-gateway-app
+    scopes: ["*"]
+
 eink_display:
   refresh: 1h
   settle: 10s

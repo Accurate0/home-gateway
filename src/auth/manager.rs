@@ -165,6 +165,77 @@ impl AuthManager {
         }))
     }
 
+    pub async fn claim(
+        &self,
+        name: &str,
+        scopes: &[String],
+        expires_at: Option<DateTime<Utc>>,
+    ) -> Result<bool, sqlx::Error> {
+        let hash: Option<String> = sqlx::query_scalar!(
+            "UPDATE api_keys SET \
+               scopes = $2, \
+               expires_at = COALESCE($3, expires_at) \
+             WHERE name = $1 AND revoked_at IS NULL \
+             RETURNING key_hash",
+            name,
+            scopes,
+            expires_at
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        if let Some(hash) = &hash {
+            self.cache.invalidate(hash).await;
+        }
+
+        Ok(hash.is_some())
+    }
+
+    pub async fn regenerate(&self, id: Uuid) -> Result<Option<CreatedKey>, sqlx::Error> {
+        let random: String = rand::rng()
+            .sample_iter(&Alphanumeric)
+            .take(KEY_RANDOM_LEN)
+            .map(char::from)
+            .collect();
+        let key = format!("{KEY_PREFIX}{random}");
+        let key_prefix = format!("{KEY_PREFIX}{}", &random[..6]);
+        let key_hash = hash_key(&key);
+
+        let old_hash: Option<String> = sqlx::query_scalar!(
+            "SELECT key_hash FROM api_keys WHERE id = $1 AND revoked_at IS NULL",
+            id
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        let Some(old_hash) = old_hash else {
+            return Ok(None);
+        };
+
+        let row = sqlx::query!(
+            "UPDATE api_keys SET key_prefix = $2, key_hash = $3 \
+             WHERE id = $1 AND revoked_at IS NULL \
+             RETURNING name, scopes, expires_at",
+            id,
+            key_prefix,
+            key_hash
+        )
+        .fetch_one(&self.db)
+        .await?;
+
+        self.cache.invalidate(&old_hash).await;
+        self.cache.invalidate(&key_hash).await;
+
+        Ok(Some(CreatedKey {
+            id,
+            name: row.name,
+            key_prefix,
+            scopes: row.scopes,
+            expires_at: row.expires_at,
+            key,
+        }))
+    }
+
     pub async fn revoke(&self, id: Uuid) -> Result<bool, sqlx::Error> {
         let hash: Option<String> = sqlx::query_scalar!(
             "UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL \
@@ -179,5 +250,72 @@ impl AuthManager {
         }
 
         Ok(hash.is_some())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn manager(db: Pool<Postgres>) -> AuthManager {
+        AuthManager::new(db, None)
+    }
+
+    #[sqlx::test]
+    async fn claim_updates_scopes_by_name(db: Pool<Postgres>) {
+        let mgr = manager(db);
+        let created = mgr
+            .create("svc", &["graphql:solar:read".to_owned()], None)
+            .await
+            .unwrap();
+
+        assert!(
+            mgr.claim("svc", &["rest:epd:read".to_owned()], None)
+                .await
+                .unwrap()
+        );
+
+        let looked_up = mgr
+            .lookup_by_hash(&hash_key(&created.key))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(looked_up.scopes, ["rest:epd:read"]);
+
+        assert!(!mgr.claim("missing", &[], None).await.unwrap());
+    }
+
+    #[sqlx::test]
+    async fn regenerate_swaps_the_token(db: Pool<Postgres>) {
+        let mgr = manager(db);
+        let created = mgr
+            .create("svc", &["graphql:solar:read".to_owned()], None)
+            .await
+            .unwrap();
+        let old_hash = hash_key(&created.key);
+
+        let regenerated = mgr.regenerate(created.id).await.unwrap().unwrap();
+        assert_eq!(regenerated.id, created.id);
+        assert_eq!(regenerated.name, "svc");
+        assert_eq!(regenerated.scopes, ["graphql:solar:read"]);
+        assert_ne!(regenerated.key, created.key);
+
+        assert!(
+            mgr.lookup_by_hash(&old_hash).await.unwrap().is_none(),
+            "old token must stop authenticating"
+        );
+        assert!(
+            mgr.lookup_by_hash(&hash_key(&regenerated.key))
+                .await
+                .unwrap()
+                .is_some(),
+            "new token must authenticate"
+        );
+    }
+
+    #[sqlx::test]
+    async fn regenerate_missing_returns_none(db: Pool<Postgres>) {
+        let mgr = manager(db);
+        assert!(mgr.regenerate(Uuid::new_v4()).await.unwrap().is_none());
     }
 }

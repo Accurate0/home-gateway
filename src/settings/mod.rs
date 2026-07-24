@@ -32,8 +32,9 @@ pub use trigger::TriggerMatcher;
 pub use workflow::Workflow;
 
 use crate::device_registry::{DeviceRegistry, RawSensor};
+use crate::auth::scope::ScopePattern;
 use crate::timedelta_format::time_delta_from_str;
-use chrono::TimeDelta;
+use chrono::{DateTime, TimeDelta, Utc};
 
 pub type IEEEAddress = String;
 
@@ -170,6 +171,18 @@ pub struct OAuthSettings {
     pub group_scopes: HashMap<String, Vec<String>>,
 }
 
+/// Declarative API key: config is the source of truth for a key's name + scope.
+/// Secret material is never here — the admin API mints/regenerates the token and
+/// startup reconciles these scopes onto the matching DB row by `name`.
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct ApiKeySettings {
+    pub name: String,
+    pub scopes: Vec<String>,
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
 /// Named device aliases (`alias -> ieee address`) declared under the top-level
 /// `devices:` key. Referenced from workflow steps so addresses are written once.
 pub type DeviceAliases = HashMap<String, IEEEAddress>;
@@ -206,6 +219,7 @@ pub struct Settings {
     pub s3: S3Settings,
     pub watchdog: WatchdogSettings,
     pub oauth: Option<OAuthSettings>,
+    pub api_keys: Vec<ApiKeySettings>,
     pub location: LocationSettings,
     pub alarm: AlarmSettings,
     pub eink_display: EInkDisplaySettings,
@@ -241,6 +255,8 @@ pub struct RawSettings {
     watchdog: WatchdogSettings,
     #[serde(default)]
     oauth: Option<OAuthSettings>,
+    #[serde(default)]
+    api_keys: Vec<ApiKeySettings>,
     location: LocationSettings,
     #[serde(default)]
     alarm: AlarmSettings,
@@ -271,12 +287,28 @@ impl RawSettings {
             s3,
             watchdog,
             oauth,
+            api_keys,
             location,
             alarm,
             eink_display,
             woolworths,
             home_assistant,
         } = self;
+
+        let mut seen_key_names = HashSet::new();
+        for key in &api_keys {
+            if !seen_key_names.insert(key.name.clone()) {
+                return Err(format!("duplicate api_keys name: {}", key.name));
+            }
+            for scope in &key.scopes {
+                if ScopePattern::parse(scope).is_none() {
+                    return Err(format!(
+                        "api key '{}' has invalid scope: {scope}",
+                        key.name
+                    ));
+                }
+            }
+        }
 
         let registry = DeviceRegistry::build(devices, &notify_targets)?;
         let aliases = registry.aliases();
@@ -327,6 +359,7 @@ impl RawSettings {
                 s3,
                 watchdog,
                 oauth,
+                api_keys,
                 location,
                 alarm,
                 eink_display,
@@ -639,6 +672,59 @@ android_app_webhook_secret: x
                 .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state")
                 .is_some()
         );
+    }
+
+    #[test]
+    fn api_keys_parse_and_validate_scopes() {
+        let secrets = r#"
+api_key: x
+database_url: x
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+"#;
+        let config = SettingsContainer::config_sources(Path::new("./config"))
+            .unwrap()
+            .add_source(File::from_str(secrets, FileFormat::Yaml))
+            .build()
+            .unwrap();
+
+        let (settings, _registry) = SettingsContainer::build(config).unwrap();
+        assert!(
+            settings
+                .api_keys
+                .iter()
+                .any(|k| k.name == "eink-display-living-room"
+                    && k.scopes == ["rest:epd:read"]),
+            "expected the eink config key to parse"
+        );
+    }
+
+    #[test]
+    fn api_keys_reject_invalid_scope() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+location: { latitude: 0.0, longitude: 0.0 }
+api_keys:
+  - name: bad-key
+    scopes: ["graphql:bogus:read"]
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(err.contains("invalid scope"), "{err}");
     }
 
     #[test]

@@ -13,6 +13,12 @@
     "api_key": {
       "type": "string"
     },
+    "api_keys": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ApiKeySettings"
+      }
+    },
     "database_url": {
       "type": "string"
     },
@@ -119,6 +125,32 @@
           "default": "alarm-wakeup"
         }
       }
+    },
+    "ApiKeySettings": {
+      "description": "Declarative API key: config is the source of truth for a key's name + scope.\nSecret material is never here — the admin API mints/regenerates the token and\nstartup reconciles these scopes onto the matching DB row by `name`.",
+      "type": "object",
+      "properties": {
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "scopes"
+      ]
     },
     "Capability": {
       "type": "string",
