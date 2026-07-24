@@ -23,6 +23,9 @@ pub enum EInkDisplayMessage {
         device_id: String,
         battery_voltage: f64,
     },
+    ConfigRequest {
+        device_id: String,
+    },
 }
 
 pub struct EInkDisplayActor {
@@ -254,8 +257,8 @@ impl Actor for EInkDisplayActor {
                         .await?;
 
                     sqlx::query!(
-                        "INSERT INTO eink_display (device_id, name, image_key, updated_at) VALUES ($1, $2, $3, now()) \
-                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key, updated_at = EXCLUDED.updated_at",
+                        "INSERT INTO eink_display (device_id, name, image_key) VALUES ($1, $2, $3) \
+                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key",
                         device_id,
                         name,
                         key,
@@ -315,6 +318,23 @@ impl Actor for EInkDisplayActor {
                         battery_voltage,
                     },
                 );
+            }
+            EInkDisplayMessage::ConfigRequest { device_id } => {
+                let Some(display) = self.shared_actor_state.devices.eink_display(&device_id) else {
+                    tracing::warn!(
+                        "config request from unregistered eink display '{device_id}', dropping"
+                    );
+                    return Ok(());
+                };
+
+                sqlx::query!(
+                    "INSERT INTO eink_display (device_id, name, updated_at) VALUES ($1, $2, now()) \
+                     ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, updated_at = EXCLUDED.updated_at",
+                    device_id,
+                    display.name,
+                )
+                .execute(&self.shared_actor_state.db)
+                .await?;
             }
         }
 

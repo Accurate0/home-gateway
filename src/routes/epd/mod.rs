@@ -164,15 +164,19 @@ pub async fn config(
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
 
-    if let Some(voltage) = request.battery_voltage {
-        if let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) {
+    if let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) {
+        actor.send_message(EInkDisplayMessage::ConfigRequest {
+            device_id: request.device_id.clone(),
+        })?;
+
+        if let Some(voltage) = request.battery_voltage {
             actor.send_message(EInkDisplayMessage::BatteryReport {
                 device_id: request.device_id.clone(),
                 battery_voltage: voltage as f64,
             })?;
-        } else {
-            tracing::warn!("eink display actor not found, dropping battery report");
         }
+    } else {
+        tracing::warn!("eink display actor not found, dropping config request");
     }
 
     #[cfg(debug_assertions)]
