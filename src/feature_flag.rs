@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use open_feature::{EvaluationContext, OpenFeature, provider::NoOpProvider};
+use open_feature::{
+    EvaluationContext, EvaluationError, OpenFeature, StructValue, provider::NoOpProvider,
+};
 use openfeature_provider::{EvaluationMode, FeatureFlagProvider};
 
 #[derive(Clone)]
@@ -66,5 +68,17 @@ impl FeatureFlagClient {
                 default
             }
         }
+    }
+
+    pub async fn get_struct(
+        &self,
+        feature_flag: &'static str,
+        mut evaluation_context: EvaluationContext,
+    ) -> Result<StructValue, EvaluationError> {
+        evaluation_context.merge_missing(&self.evaluation_context);
+
+        self.client
+            .get_struct_value::<StructValue>(feature_flag, Some(&evaluation_context), None)
+            .await
     }
 }

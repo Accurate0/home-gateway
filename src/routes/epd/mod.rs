@@ -20,24 +20,87 @@ use serde::{Deserialize, Serialize};
 const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
 const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
 
-async fn active_sleep(
+const EPD_FLAG: &str = "home-gateway-epd";
+
+#[derive(Debug, Clone)]
+struct EpdFlagConfig {
+    clear_screen: bool,
+    force_sleep: bool,
+    refresh_interval: u32,
+}
+
+impl Default for EpdFlagConfig {
+    fn default() -> Self {
+        Self {
+            clear_screen: false,
+            force_sleep: false,
+            refresh_interval: 15,
+        }
+    }
+}
+
+impl From<open_feature::StructValue> for EpdFlagConfig {
+    fn from(value: open_feature::StructValue) -> Self {
+        let default = EpdFlagConfig::default();
+        Self {
+            clear_screen: value
+                .fields
+                .get("clear_screen")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(default.clear_screen),
+            force_sleep: value
+                .fields
+                .get("force_sleep")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(default.force_sleep),
+            refresh_interval: value
+                .fields
+                .get("refresh_interval")
+                .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
+                .map(|n| n.max(0) as u32)
+                .unwrap_or(default.refresh_interval),
+        }
+    }
+}
+
+async fn epd_flag_config(
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     device_id: &str,
+) -> EpdFlagConfig {
+    let mut context =
+        EvaluationContext::default().with_custom_field("device_id", device_id.to_string());
+    if let Some(display) = devices.eink_display(device_id) {
+        context = context.with_custom_field("device_name", display.name.clone());
+    }
+
+    match feature_flag_client.get_struct(EPD_FLAG, context).await {
+        Ok(value) => {
+            let config = EpdFlagConfig::from(value);
+            tracing::info!("{EPD_FLAG} evaluated for {device_id}: {config:?}");
+            config
+        }
+        Err(e) => {
+            let fallback = EpdFlagConfig::default();
+            tracing::error!(
+                "error evaluating {EPD_FLAG} for {device_id}: {e:?}, using fallback: {fallback:?}"
+            );
+            fallback
+        }
+    }
+}
+
+fn active_sleep(
+    devices: &DeviceRegistry,
+    device_id: &str,
+    force_sleep: bool,
 ) -> Option<SleepWindow> {
     let sleep = devices.eink_display(device_id).and_then(|d| d.sleep)?;
     let now = chrono::Utc::now().with_timezone(&Perth).time();
-    if sleep.contains(now) {
+    if sleep.contains(now) || force_sleep {
         return Some(sleep);
     }
-    let forced = feature_flag_client
-        .is_feature_enabled(
-            "home-gateway-epd-sleep-override",
-            false,
-            EvaluationContext::default().with_custom_field("device_id", device_id.to_string()),
-        )
-        .await;
-    forced.then_some(sleep)
+    None
 }
 
 async fn latest_image_key(
@@ -117,7 +180,9 @@ pub async fn config(
     #[cfg(not(debug_assertions))]
     let base = "https://home.anurag.sh/v1/epd/latest";
 
-    if let Some(sleep) = active_sleep(&feature_flag_client, &devices, &request.device_id).await {
+    let flag = epd_flag_config(&feature_flag_client, &devices, &request.device_id).await;
+
+    if let Some(sleep) = active_sleep(&devices, &request.device_id, flag.force_sleep) {
         let now = chrono::Utc::now().with_timezone(&Perth).time();
         return Ok(Json(EpdConfig {
             refresh_interval_mins: Some(sleep.minutes_until_end(now)),
@@ -126,20 +191,10 @@ pub async fn config(
         }));
     }
 
-    let mut context =
-        EvaluationContext::default().with_custom_field("device_id", request.device_id.clone());
-    if let Some(display) = devices.eink_display(&request.device_id) {
-        context = context.with_custom_field("device_name", display.name.clone());
-    }
-
     Ok(Json(EpdConfig {
-        refresh_interval_mins: Some(15),
+        refresh_interval_mins: Some(flag.refresh_interval),
         image_url: Some(format!("{base}?device_id={}", request.device_id)),
-        clear_screen: Some(
-            feature_flag_client
-                .is_feature_enabled("home-gateway-epd-clear-screen", false, context)
-                .await,
-        ),
+        clear_screen: Some(flag.clear_screen),
     }))
 }
 
@@ -170,8 +225,10 @@ pub async fn latest(
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
 
+    let flag = epd_flag_config(&feature_flag_client, &devices, &params.device_id).await;
+
     let mut sleep_label = None;
-    let image_key = match active_sleep(&feature_flag_client, &devices, &params.device_id).await {
+    let image_key = match active_sleep(&devices, &params.device_id, flag.force_sleep) {
         Some(sleep) => {
             let images = s3.list_objects(SLEEP_IMAGE_PREFIX).await?;
             let picked = images.choose(&mut rand::rng()).cloned();

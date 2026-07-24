@@ -457,16 +457,18 @@ function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
         <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
           <MonitorSmartphone className="size-5" strokeWidth={1.5} />
         </div>
-        <div className="text-muted-foreground flex items-center gap-1 text-sm tabular-nums">
+        <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
           <BatteryIcon className="size-4" strokeWidth={1.75} />
-          <span>
-            {percentage == null ? "—" : `${Math.round(percentage)}%`}
+          <div className="flex flex-col items-end leading-tight">
+            <span className="text-sm">
+              {percentage == null ? "—" : `${Math.round(percentage)}%`}
+            </span>
             {voltage != null && (
-              <span className="text-muted-foreground/70 ml-1 text-xs">
+              <span className="text-muted-foreground/70 text-xs">
                 {fmt(voltage, " V", 2)}
               </span>
             )}
-          </span>
+          </div>
         </div>
       </div>
       <div>

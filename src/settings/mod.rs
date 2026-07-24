@@ -31,8 +31,8 @@ pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
 pub use workflow::Workflow;
 
-use crate::device_registry::{DeviceRegistry, RawSensor};
 use crate::auth::scope::ScopePattern;
+use crate::device_registry::{DeviceRegistry, RawSensor};
 use crate::timedelta_format::time_delta_from_str;
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -298,10 +298,7 @@ impl RawSettings {
             }
             for scope in &key.scopes {
                 if ScopePattern::parse(scope).is_none() {
-                    return Err(format!(
-                        "api key '{}' has invalid scope: {scope}",
-                        key.name
-                    ));
+                    return Err(format!("api key '{}' has invalid scope: {scope}", key.name));
                 }
             }
         }
@@ -693,8 +690,7 @@ android_app_webhook_secret: x
             settings
                 .api_keys
                 .iter()
-                .any(|k| k.name == "eink-display-living-room"
-                    && k.scopes == ["rest:epd:read"]),
+                .any(|k| k.name == "eink-display-living-room" && k.scopes == ["rest:epd:read"]),
             "expected the eink config key to parse"
         );
     }

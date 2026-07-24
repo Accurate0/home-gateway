@@ -1,7 +1,9 @@
 use async_graphql::{Enum, Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
-use crate::{device_registry::Capability, graphql::dataloader::eink_battery::EinkDisplayDataLoader};
+use crate::{
+    device_registry::Capability, graphql::dataloader::eink_battery::EinkDisplayDataLoader,
+};
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum EinkDisplayKind {
@@ -68,6 +70,9 @@ impl EinkDisplayEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<DateTime<Utc>>> {
         let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
-        Ok(loader.load_one(self.address.clone()).await?.map(|d| d.updated_at))
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .map(|d| d.updated_at))
     }
 }
