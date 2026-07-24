@@ -12,8 +12,7 @@ use axum::{
 };
 use chrono_tz::Australia::Perth;
 use http::StatusCode;
-use imageproc::drawing::{draw_filled_rect_mut, draw_text_mut, text_size};
-use imageproc::rect::Rect;
+use imageproc::drawing::{draw_text_mut, text_size};
 use open_feature::EvaluationContext;
 use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
@@ -61,31 +60,15 @@ fn draw_sleep_label(img: &mut image::RgbImage, label: &str) {
         return;
     };
 
-    let scale = PxScale::from(56.0);
+    let scale = PxScale::from(120.0);
     let (text_w, text_h) = text_size(scale, &font, label);
-    let pad = 16i32;
-    let margin = 40i32;
+    let margin = 48i32;
 
     let (img_w, img_h) = img.dimensions();
-    let box_w = text_w as i32 + pad * 2;
-    let box_h = text_h as i32 + pad * 2;
-    let box_x = img_w as i32 - box_w - margin;
-    let box_y = img_h as i32 - box_h - margin;
+    let x = img_w as i32 - text_w as i32 - margin;
+    let y = img_h as i32 - text_h as i32 - margin;
 
-    draw_filled_rect_mut(
-        img,
-        Rect::at(box_x, box_y).of_size(box_w as u32, box_h as u32),
-        image::Rgb([255, 255, 255]),
-    );
-    draw_text_mut(
-        img,
-        image::Rgb([0, 0, 0]),
-        box_x + pad,
-        box_y + pad,
-        scale,
-        &font,
-        label,
-    );
+    draw_text_mut(img, image::Rgb([0, 0, 0]), x, y, scale, &font, label);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -214,6 +197,10 @@ pub async fn latest(
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();
         let (width, height) = img.dimensions();
 
+        if let Some(label) = &sleep_label {
+            draw_sleep_label(&mut img, label);
+        }
+
         if width == 1600 && height == 1200 {
             img = image::imageops::rotate90(&img);
         } else if width != 1200 || height != 1600 {
@@ -223,10 +210,6 @@ pub async fn latest(
         }
 
         let (width, height) = img.dimensions();
-
-        if let Some(label) = &sleep_label {
-            draw_sleep_label(&mut img, label);
-        }
 
         // Convert to floating point for error diffusion
         let mut buffer: Vec<f32> = Vec::with_capacity((width * height * 3) as usize);
