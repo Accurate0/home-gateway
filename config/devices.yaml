@@ -159,3 +159,16 @@
   address: "0x00158d008bbe0316"
   kinds:
     - kind: control_switch
+
+- id: living-room-epd
+  room: living-room
+  transport: poll
+  address: "94a990cf8384"
+  kinds:
+    - kind: eink_display_firmware
+      config:
+        name: Living Room Display
+        sleep:
+          start: "00:00"
+          end: "08:00"
+

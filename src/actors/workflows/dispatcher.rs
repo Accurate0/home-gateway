@@ -145,6 +145,23 @@ impl WorkflowDispatcher {
                 product_id.is_none_or(|p| p == *id)
                     && min_drop.is_none_or(|min| old_price - new_price >= min)
             }
+            (
+                TriggerMatcher::DeviceBattery {
+                    device_id,
+                    kind,
+                    below,
+                },
+                EventBusMessage::DeviceBattery {
+                    device_id: id,
+                    kind: k,
+                    battery_voltage,
+                    ..
+                },
+            ) => {
+                device_id.as_ref().is_none_or(|d| d == id)
+                    && kind.as_ref().is_none_or(|want| want == k)
+                    && below.is_none_or(|threshold| *battery_voltage < threshold)
+            }
             _ => false,
         }
     }

@@ -15,13 +15,17 @@ use crate::settings::{
     PlantSensorSettings, PresenceSensorType, PresenceSettings,
 };
 use crate::timedelta_format::option_time_delta_from_str;
-use chrono::TimeDelta;
+use chrono::{NaiveTime, TimeDelta};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Transport {
     Zigbee,
     Esphome,
+    /// Devices we never poll: they check in on their own schedule and push
+    /// state to us over HTTP (e.g. the battery-powered eink display firmware
+    /// hitting `/epd/config`).
+    Poll,
 }
 
 impl Transport {
@@ -29,6 +33,7 @@ impl Transport {
         match self {
             Transport::Zigbee => EnvironmentSensorType::Zigbee,
             Transport::Esphome => EnvironmentSensorType::Esphome,
+            Transport::Poll => unreachable!("poll transport does not support environment kind"),
         }
     }
 
@@ -36,6 +41,7 @@ impl Transport {
         match self {
             Transport::Zigbee => PresenceSensorType::Zigbee,
             Transport::Esphome => PresenceSensorType::Esphome,
+            Transport::Poll => unreachable!("poll transport does not support presence kind"),
         }
     }
 }
@@ -92,6 +98,68 @@ pub enum DeviceConfig {
     Light(RawLightBlock),
     ControlSwitch,
     SmartSwitch(RawSmartSwitchBlock),
+    EinkDisplayFirmware(RawEinkDisplayBlock),
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawEinkDisplayBlock {
+    name: String,
+    #[serde(default, with = "option_time_delta_from_str")]
+    #[schemars(with = "Option<String>")]
+    refresh: Option<TimeDelta>,
+    #[serde(default)]
+    sleep: Option<RawSleepWindow>,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawSleepWindow {
+    start: String,
+    end: String,
+}
+
+impl RawSleepWindow {
+    fn resolve(self, id: &str) -> Result<SleepWindow, String> {
+        let parse = |value: &str| {
+            NaiveTime::parse_from_str(value, "%H:%M:%S")
+                .or_else(|_| NaiveTime::parse_from_str(value, "%H:%M"))
+                .map_err(|_| format!("eink display {id}: invalid sleep time `{value}`, expected HH:MM"))
+        };
+        Ok(SleepWindow {
+            start: parse(&self.start)?,
+            end: parse(&self.end)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SleepWindow {
+    pub start: NaiveTime,
+    pub end: NaiveTime,
+}
+
+impl SleepWindow {
+    pub fn contains(&self, now: NaiveTime) -> bool {
+        if self.start <= self.end {
+            now >= self.start && now < self.end
+        } else {
+            now >= self.start || now < self.end
+        }
+    }
+
+    pub fn minutes_until_end(&self, now: NaiveTime) -> u32 {
+        let mut delta = (self.end - now).num_minutes();
+        if delta <= 0 {
+            delta += 24 * 60;
+        }
+        delta as u32
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EinkDisplaySettings {
+    pub name: String,
+    pub refresh: Option<TimeDelta>,
+    pub sleep: Option<SleepWindow>,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -170,6 +238,7 @@ pub struct DeviceRegistryInner {
     capabilities: HashMap<String, Vec<Capability>>,
     rooms: HashMap<String, String>,
     plant: HashMap<String, PlantSensorSettings>,
+    eink_displays: HashMap<String, EinkDisplaySettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
@@ -247,6 +316,12 @@ impl DeviceRegistryInner {
         config: DeviceConfig,
         notify: &NotifyTargets,
     ) -> Result<(), String> {
+        let is_eink = matches!(config, DeviceConfig::EinkDisplayFirmware(_));
+        if (transport == Transport::Poll) != is_eink {
+            return Err(format!(
+                "device {id}: `poll` transport is only valid with the `eink_display_firmware` kind, and vice versa"
+            ));
+        }
         match config {
             DeviceConfig::Door(door) => {
                 self.doors.insert(address.to_owned(), door.resolve(notify)?);
@@ -337,8 +412,27 @@ impl DeviceRegistryInner {
                 }
             }
             DeviceConfig::ControlSwitch => {}
+            DeviceConfig::EinkDisplayFirmware(display) => {
+                let sleep = display.sleep.map(|s| s.resolve(id)).transpose()?;
+                self.eink_displays.insert(
+                    address.to_owned(),
+                    EinkDisplaySettings {
+                        name: display.name,
+                        refresh: display.refresh,
+                        sleep,
+                    },
+                );
+            }
         }
         Ok(())
+    }
+
+    pub fn eink_display(&self, id: &str) -> Option<&EinkDisplaySettings> {
+        self.eink_displays.get(id)
+    }
+
+    pub fn eink_displays(&self) -> &HashMap<String, EinkDisplaySettings> {
+        &self.eink_displays
     }
 
     fn add_esphome_sensor_topics(

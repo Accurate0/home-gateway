@@ -16,7 +16,13 @@ use tokio::task::JoinHandle;
 pub mod types;
 
 pub enum EInkDisplayMessage {
-    TakeScreenshot,
+    TakeScreenshot {
+        device_id: Option<String>,
+    },
+    BatteryReport {
+        device_id: String,
+        battery_voltage: f64,
+    },
 }
 
 pub struct EInkDisplayActor {
@@ -69,6 +75,52 @@ impl EInkDisplayActor {
 
         Ok(())
     }
+
+    async fn render_web(
+        &self,
+        state: &mut EInkActorState,
+    ) -> Result<Option<Vec<u8>>, ractor::ActorProcessingErr> {
+        if !cfg!(debug_assertions) {
+            self.save_index_if_new(state).await?;
+        }
+
+        let Some(browser) = &state.browser else {
+            tracing::warn!("skipping screenshot: chromium not available");
+            return Ok(None);
+        };
+        let original_page = browser.new_page(Self::INDEX_PATH).await?;
+        tracing::info!("navigating to page");
+
+        tracing::info!("setting locale and timezone");
+        let page = original_page.emulate_timezone("Australia/Perth").await?;
+        let page = page
+            .emulate_locale(SetLocaleOverrideParams::builder().locale("en-AU").build())
+            .await?;
+        page.reload().await?;
+
+        let settle = self
+            .shared_actor_state
+            .settings
+            .eink_display
+            .settle
+            .to_std()
+            .unwrap_or(Duration::from_secs(10));
+        tokio::time::sleep(settle).await;
+
+        tracing::info!("screenshot taken");
+        let image = page
+            .screenshot(
+                ScreenshotParams::builder()
+                    .format(CaptureScreenshotFormat::Png)
+                    .full_page(false)
+                    .build(),
+            )
+            .await?;
+
+        original_page.close().await?;
+
+        Ok(Some(image))
+    }
 }
 
 impl Actor for EInkDisplayActor {
@@ -81,19 +133,26 @@ impl Actor for EInkDisplayActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        // send initial before schedule
-        let _join_handle = myself.send_after(Duration::from_secs(1), || {
-            EInkDisplayMessage::TakeScreenshot
-        });
-
-        let refresh = self
+        let default_refresh = self
             .shared_actor_state
             .settings
             .eink_display
             .refresh
             .to_std()
             .unwrap_or(Duration::from_secs(3600));
-        let _join_handle = myself.send_interval(refresh, || EInkDisplayMessage::TakeScreenshot);
+
+        for (device_id, display) in self.shared_actor_state.devices.eink_displays() {
+            let refresh = display
+                .refresh
+                .and_then(|r| r.to_std().ok())
+                .unwrap_or(default_refresh);
+            let device_id = device_id.clone();
+            let _join_handle = myself.send_interval(refresh, move || {
+                EInkDisplayMessage::TakeScreenshot {
+                    device_id: Some(device_id.clone()),
+                }
+            });
+        }
 
         let launch = BrowserConfig::builder()
             .new_headless_mode()
@@ -139,6 +198,10 @@ impl Actor for EInkDisplayActor {
             }
         };
 
+        if browser.is_some() {
+            myself.send_message(EInkDisplayMessage::TakeScreenshot { device_id: None })?;
+        }
+
         Ok(EInkActorState {
             browser,
             index_html_etag: None,
@@ -164,56 +227,100 @@ impl Actor for EInkDisplayActor {
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
-            EInkDisplayMessage::TakeScreenshot => {
-                if !cfg!(debug_assertions) {
-                    self.save_index_if_new(state).await?;
+            EInkDisplayMessage::TakeScreenshot { device_id } => {
+                let all = self.shared_actor_state.devices.eink_displays();
+                let targets: Vec<(String, String)> = match &device_id {
+                    Some(id) => match all.get(id) {
+                        Some(display) => vec![(id.clone(), display.name.clone())],
+                        None => {
+                            tracing::warn!("render requested for unknown eink display '{id}'");
+                            return Ok(());
+                        }
+                    },
+                    None => all
+                        .iter()
+                        .map(|(id, display)| (id.clone(), display.name.clone()))
+                        .collect(),
+                };
+                if targets.is_empty() {
+                    tracing::debug!("no registered eink displays, skipping render");
+                    return Ok(());
                 }
 
-                let Some(browser) = &state.browser else {
-                    tracing::warn!("skipping screenshot: chromium not available");
+                let image = match self.render_web(state).await? {
+                    Some(image) => image,
+                    None => return Ok(()),
+                };
+
+                for (device_id, name) in targets {
+                    let key = format!("eink-display/image-{device_id}.png");
+                    self.shared_actor_state
+                        .s3
+                        .put_object(&key, &image, None)
+                        .await?;
+
+                    sqlx::query!(
+                        "INSERT INTO eink_display (device_id, name, image_key, updated_at) VALUES ($1, $2, $3, now()) \
+                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key, updated_at = EXCLUDED.updated_at",
+                        device_id,
+                        name,
+                        key,
+                    )
+                    .execute(&self.shared_actor_state.db)
+                    .await?;
+
+                    tracing::info!("eink display image uploaded for {device_id} -> {key}");
+                }
+            }
+            EInkDisplayMessage::BatteryReport {
+                device_id,
+                battery_voltage,
+            } => {
+                let Some(display) = self.shared_actor_state.devices.eink_display(&device_id) else {
+                    tracing::warn!(
+                        "battery report from unregistered eink display '{device_id}', dropping"
+                    );
                     return Ok(());
                 };
-                let original_page = browser.new_page(Self::INDEX_PATH).await?;
-                tracing::info!("navigating to page");
+                let name = display.name.clone();
+                let event_id = uuid::Uuid::new_v4();
+                let kind = "eink_display_firmware";
 
-                tracing::info!("setting locale and timezone");
-                let page = original_page.emulate_timezone("Australia/Perth").await?;
-                let page = page
-                    .emulate_locale(SetLocaleOverrideParams::builder().locale("en-AU").build())
-                    .await?;
-                page.reload().await?;
+                sqlx::query!(
+                    "INSERT INTO device_battery (event_id, device_id, kind, battery_voltage) VALUES ($1, $2, $3, $4)",
+                    event_id,
+                    device_id,
+                    kind,
+                    battery_voltage,
+                )
+                .execute(&self.shared_actor_state.db)
+                .await?;
 
-                let settle = self
-                    .shared_actor_state
-                    .settings
-                    .eink_display
-                    .settle
-                    .to_std()
-                    .unwrap_or(Duration::from_secs(10));
-                tokio::time::sleep(settle).await;
+                sqlx::query!(
+                    "INSERT INTO eink_display (device_id, name, battery_voltage, updated_at) VALUES ($1, $2, $3, now()) \
+                     ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, battery_voltage = EXCLUDED.battery_voltage, updated_at = EXCLUDED.updated_at",
+                    device_id,
+                    name,
+                    battery_voltage,
+                )
+                .execute(&self.shared_actor_state.db)
+                .await?;
 
-                tracing::info!("screenshot taken");
-                let image = page
-                    .screenshot(
-                        ScreenshotParams::builder()
-                            .format(CaptureScreenshotFormat::Png)
-                            .full_page(false)
-                            .build(),
-                    )
-                    .await?;
+                crate::metrics::record_device_battery_voltage(
+                    device_id.clone(),
+                    kind.to_owned(),
+                    battery_voltage,
+                );
 
                 self.shared_actor_state
-                    .s3
-                    .put_object(
-                        &self.shared_actor_state.settings.eink_display.s3_key,
-                        &image,
-                        Some("image/png"),
-                    )
-                    .await?;
-
-                tracing::info!("screenshot uploaded");
-
-                original_page.close().await?;
+                    .event_bus
+                    .publish(crate::event_bus::EventBusMessage::DeviceBattery {
+                        event_id,
+                        device_id,
+                        kind: kind.to_owned(),
+                        name,
+                        battery_voltage,
+                    });
             }
         }
 

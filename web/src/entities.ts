@@ -9,7 +9,12 @@ import { enUS } from "date-fns/locale/en-US";
 // A flat, client-side view of every entity, keyed by kind + id. The `entities`
 // query seeds it and `events` subscription updates merge in by matching id.
 
-export type EntityKind = "light" | "door" | "presence" | "environment";
+export type EntityKind =
+  | "light"
+  | "door"
+  | "presence"
+  | "environment"
+  | "einkDisplay";
 
 export interface Entity {
   key: string;
@@ -28,6 +33,7 @@ export interface Entity {
   uvIndex?: number | null;
   time?: string | null;
   lastSeen?: string | null;
+  batteryVoltage?: number | null;
 }
 
 const SHORT_UNITS: Record<string, string> = {
@@ -69,10 +75,12 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   DoorEntity: "door",
   PresenceEntity: "presence",
   EnvironmentEntity: "environment",
+  EinkDisplayEntity: "einkDisplay",
   LightUpdate: "light",
   DoorUpdate: "door",
   PresenceUpdate: "presence",
   EnvironmentUpdate: "environment",
+  DeviceBatteryUpdate: "einkDisplay",
 };
 
 export function kindOf(typename: string | undefined): EntityKind | null {

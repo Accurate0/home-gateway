@@ -7,7 +7,9 @@ use actors::{
 use async_graphql::{Schema, dataloader::DataLoader};
 use auth::{AuthManager, OAuthValidator, auth_middleware};
 use axum::{
-    middleware::from_fn_with_state,
+    extract::Request,
+    middleware::{Next, from_fn, from_fn_with_state},
+    response::Response,
     routing::{delete, get, post},
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
@@ -59,6 +61,25 @@ use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
+
+async fn log_request(req: Request, next: Next) -> Response {
+    let path = req.uri().path().to_owned();
+    if path.contains("/health") {
+        return next.run(req).await;
+    }
+
+    let method = req.method().clone();
+    let start = std::time::Instant::now();
+    let response = next.run(req).await;
+    tracing::info!(
+        %method,
+        path = %path,
+        status = response.status().as_u16(),
+        elapsed_ms = start.elapsed().as_millis() as u64,
+        "http request"
+    );
+    response
+}
 
 async fn init_actors(
     settings: SettingsContainer,
@@ -198,6 +219,7 @@ async fn main() -> anyhow::Result<()> {
         db: pool.clone(),
         s3,
         auth: AuthManager::new(pool.clone(), oauth),
+        devices: device_registry.clone(),
     };
 
     let api_routes = axum::Router::new()
@@ -229,6 +251,7 @@ async fn main() -> anyhow::Result<()> {
             }),
         )
         .layer(cors)
+        .layer(from_fn(log_request))
         .with_state(api_state);
 
     let app = axum::Router::new().nest("/v1", api_routes);

@@ -1,4 +1,5 @@
 pub mod auth_query;
+pub mod eink_display_query;
 pub mod energy_query;
 pub mod entities_query;
 pub mod environments_query;

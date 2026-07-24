@@ -1,12 +1,92 @@
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
+    device_registry::{DeviceRegistry, SleepWindow},
+    feature_flag::FeatureFlagClient,
     types::{ApiState, AppError},
 };
-use axum::{Json, extract::State};
+use axum::{
+    Json,
+    extract::{Query, State},
+};
+use ab_glyph::{FontRef, PxScale};
+use chrono_tz::Australia::Perth;
 use http::StatusCode;
+use imageproc::drawing::{draw_filled_rect_mut, draw_text_mut, text_size};
+use imageproc::rect::Rect;
 use open_feature::EvaluationContext;
+use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
+
+const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
+const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
+
+async fn active_sleep(
+    feature_flag_client: &FeatureFlagClient,
+    devices: &DeviceRegistry,
+    device_id: &str,
+) -> Option<SleepWindow> {
+    let sleep = devices.eink_display(device_id).and_then(|d| d.sleep)?;
+    let now = chrono::Utc::now().with_timezone(&Perth).time();
+    if !sleep.contains(now) {
+        return None;
+    }
+    let overridden = feature_flag_client
+        .is_feature_enabled(
+            "home-gateway-epd-sleep-override",
+            false,
+            EvaluationContext::default().with_custom_field("device_id", device_id.to_string()),
+        )
+        .await;
+    (!overridden).then_some(sleep)
+}
+
+async fn latest_image_key(
+    db: &sqlx::Pool<sqlx::Postgres>,
+    device_id: &str,
+) -> Result<String, AppError> {
+    sqlx::query_scalar!(
+        "SELECT image_key FROM eink_display WHERE device_id = $1",
+        device_id
+    )
+    .fetch_optional(db)
+    .await?
+    .flatten()
+    .ok_or_else(|| AppError::Error(anyhow::anyhow!("no rendered image for device {device_id}")))
+}
+
+fn draw_sleep_label(img: &mut image::RgbImage, label: &str) {
+    let Ok(font) = FontRef::try_from_slice(LABEL_FONT) else {
+        tracing::warn!("failed to load label font, skipping sleep label");
+        return;
+    };
+
+    let scale = PxScale::from(56.0);
+    let (text_w, text_h) = text_size(scale, &font, label);
+    let pad = 16i32;
+    let margin = 40i32;
+
+    let (img_w, img_h) = img.dimensions();
+    let box_w = text_w as i32 + pad * 2;
+    let box_h = text_h as i32 + pad * 2;
+    let box_x = img_w as i32 - box_w - margin;
+    let box_y = img_h as i32 - box_h - margin;
+
+    draw_filled_rect_mut(
+        img,
+        Rect::at(box_x, box_y).of_size(box_w as u32, box_h as u32),
+        image::Rgb([255, 255, 255]),
+    );
+    draw_text_mut(
+        img,
+        image::Rgb([0, 0, 0]),
+        box_x + pad,
+        box_y + pad,
+        scale,
+        &font,
+        label,
+    );
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
@@ -22,9 +102,15 @@ pub struct EpdConfigRequest {
     pub battery_voltage: Option<f32>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct LatestParams {
+    pub device_id: String,
+}
+
 pub async fn config(
     State(ApiState {
         feature_flag_client,
+        devices,
         ..
     }): State<ApiState>,
     Auth(auth): Auth,
@@ -34,25 +120,41 @@ pub async fn config(
         .map_err(AppError::StatusCode)?;
 
     if let Some(voltage) = request.battery_voltage {
-        crate::metrics::record_epd_battery_voltage(
-            request.device_id,
-            request.device_name,
-            voltage as f64,
-        );
+        if let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) {
+            actor.send_message(EInkDisplayMessage::BatteryReport {
+                device_id: request.device_id.clone(),
+                battery_voltage: voltage as f64,
+            })?;
+        } else {
+            tracing::warn!("eink display actor not found, dropping battery report");
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    let base = "http://192.168.0.104:8000/v1/epd/latest";
+    #[cfg(not(debug_assertions))]
+    let base = "https://home.anurag.sh/v1/epd/latest";
+
+    if let Some(sleep) = active_sleep(&feature_flag_client, &devices, &request.device_id).await {
+        let now = chrono::Utc::now().with_timezone(&Perth).time();
+        return Ok(Json(EpdConfig {
+            refresh_interval_mins: Some(sleep.minutes_until_end(now)),
+            image_url: Some(format!("{base}?device_id={}", request.device_id)),
+            clear_screen: Some(false),
+        }));
     }
 
     Ok(Json(EpdConfig {
         refresh_interval_mins: Some(15),
-        #[cfg(debug_assertions)]
-        image_url: Some("http://192.168.0.104:8000/v1/epd/latest".to_string()),
-        #[cfg(not(debug_assertions))]
-        image_url: Some("https://home.anurag.sh/v1/epd/latest".to_string()),
+        image_url: Some(format!("{base}?device_id={}", request.device_id)),
         clear_screen: Some(
             feature_flag_client
                 .is_feature_enabled(
                     "home-gateway-epd-clear-screen",
                     false,
-                    EvaluationContext::default(),
+                    EvaluationContext::default()
+                        .with_custom_field("device_id", request.device_id)
+                        .with_custom_field("device_name", request.device_name),
                 )
                 .await,
         ),
@@ -65,7 +167,7 @@ pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
 
     let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME.to_string());
     if let Some(actor) = maybe_actor {
-        actor.send_message(EInkDisplayMessage::TakeScreenshot)?;
+        actor.send_message(EInkDisplayMessage::TakeScreenshot { device_id: None })?;
         Ok(StatusCode::CREATED)
     } else {
         Ok(StatusCode::INTERNAL_SERVER_ERROR)
@@ -73,13 +175,41 @@ pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
 }
 
 pub async fn latest(
-    State(ApiState { s3, .. }): State<ApiState>,
+    State(ApiState {
+        s3,
+        db,
+        feature_flag_client,
+        devices,
+        ..
+    }): State<ApiState>,
     Auth(auth): Auth,
+    Query(params): Query<LatestParams>,
 ) -> Result<Vec<u8>, AppError> {
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
 
-    let image_response = s3.get_object("eink-display-screenshot.png").await?;
+    let mut sleep_label = None;
+    let image_key = match active_sleep(&feature_flag_client, &devices, &params.device_id).await {
+        Some(sleep) => {
+            let images = s3.list_objects(SLEEP_IMAGE_PREFIX).await?;
+            let picked = images.choose(&mut rand::rng()).cloned();
+            match picked {
+                Some(image_key) => {
+                    sleep_label = Some(format!("zzz till {}", sleep.end.format("%H:%M")));
+                    image_key
+                }
+                None => {
+                    tracing::warn!(
+                        "no sleep images under {SLEEP_IMAGE_PREFIX}, serving latest render"
+                    );
+                    latest_image_key(&db, &params.device_id).await?
+                }
+            }
+        }
+        None => latest_image_key(&db, &params.device_id).await?,
+    };
+
+    let image_response = s3.get_object(&image_key).await?;
 
     let output_packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();
@@ -94,6 +224,10 @@ pub async fn latest(
         }
 
         let (width, height) = img.dimensions();
+
+        if let Some(label) = &sleep_label {
+            draw_sleep_label(&mut img, label);
+        }
 
         // Convert to floating point for error diffusion
         let mut buffer: Vec<f32> = Vec::with_capacity((width * height * 3) as usize);

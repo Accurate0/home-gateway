@@ -76,6 +76,17 @@ pub enum TriggerMatcher {
         #[serde(default)]
         min_drop: Option<f64>,
     },
+    /// Fires when a poll-transport device reports its battery voltage on
+    /// check-in. Optionally gate on a specific `device_id`, device `kind`,
+    /// and/or a `below` voltage threshold for low-battery alerts.
+    DeviceBattery {
+        #[serde(default)]
+        device_id: Option<String>,
+        #[serde(default)]
+        kind: Option<String>,
+        #[serde(default)]
+        below: Option<f64>,
+    },
 }
 
 impl TriggerMatcher {
@@ -124,6 +135,20 @@ impl TriggerMatcher {
                     None => format!("woolworths({product}) price drop"),
                 }
             }
+            TriggerMatcher::DeviceBattery {
+                device_id,
+                kind,
+                below,
+            } => {
+                let device = device_id
+                    .clone()
+                    .or_else(|| kind.clone())
+                    .unwrap_or_else(|| "*".to_owned());
+                match below {
+                    Some(v) => format!("device_battery({device}) < {v}"),
+                    None => format!("device_battery({device})"),
+                }
+            }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -160,6 +185,9 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => {
                 strs(&["product_id", "name", "old_price", "new_price", "drop"])
             }
+            TriggerMatcher::DeviceBattery { .. } => {
+                strs(&["device_id", "kind", "name", "battery_voltage"])
+            }
         }
     }
 
@@ -176,7 +204,8 @@ impl TriggerMatcher {
             | TriggerMatcher::Sun { .. }
             | TriggerMatcher::Mode { .. }
             | TriggerMatcher::HomeAssistant { .. }
-            | TriggerMatcher::Woolworths { .. } => {}
+            | TriggerMatcher::Woolworths { .. }
+            | TriggerMatcher::DeviceBattery { .. } => {}
         }
         Ok(())
     }

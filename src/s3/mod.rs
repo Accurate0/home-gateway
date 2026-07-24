@@ -87,6 +87,16 @@ impl S3 {
         }
     }
 
+    pub async fn list_objects(&self, prefix: &str) -> anyhow::Result<Vec<String>> {
+        let results = self.bucket.list(prefix.to_owned(), None).await?;
+        Ok(results
+            .into_iter()
+            .flat_map(|page| page.contents)
+            .map(|object| object.key)
+            .filter(|key| !key.ends_with('/'))
+            .collect())
+    }
+
     pub async fn put_object(
         &self,
         key: &str,

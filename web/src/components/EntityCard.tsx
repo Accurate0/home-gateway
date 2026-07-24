@@ -1,8 +1,12 @@
 import {
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
   DoorClosed,
   DoorOpen,
   Lightbulb,
   LightbulbOff,
+  MonitorSmartphone,
   Palette,
   PersonStanding,
   SlidersHorizontal,
@@ -438,6 +442,36 @@ function StatusTile({
   );
 }
 
+function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
+  const voltage = entity.batteryVoltage;
+  const BatteryIcon =
+    voltage == null || voltage >= 3.9
+      ? BatteryFull
+      : voltage >= 3.6
+        ? BatteryMedium
+        : BatteryLow;
+  return (
+    <Tile className="col-span-1 justify-between gap-3">
+      <div className="flex items-start justify-between">
+        <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
+          <MonitorSmartphone className="size-5" strokeWidth={1.5} />
+        </div>
+        <div className="text-muted-foreground flex items-center gap-1 text-sm tabular-nums">
+          <BatteryIcon className="size-4" strokeWidth={1.75} />
+          {fmt(voltage, " V", 2)}
+        </div>
+      </div>
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+      </div>
+    </Tile>
+  );
+}
+
 export default function EntityCard({
   entity,
   lightActions,
@@ -476,5 +510,7 @@ export default function EntityCard({
           now={now}
         />
       );
+    case "einkDisplay":
+      return <EinkDisplayTile entity={entity} now={now} />;
   }
 }

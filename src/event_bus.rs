@@ -195,6 +195,17 @@ pub enum EventBusMessage {
         old_price: f64,
         new_price: f64,
     },
+    /// A poll-transport device reported its battery voltage when it checked in
+    /// (e.g. the eink display firmware hitting `/epd/config`), published so
+    /// workflows can trigger a low-battery notification. `kind` is the device
+    /// kind that reported it.
+    DeviceBattery {
+        event_id: Uuid,
+        device_id: String,
+        kind: String,
+        name: String,
+        battery_voltage: f64,
+    },
 }
 
 impl EventBusMessage {
@@ -212,7 +223,8 @@ impl EventBusMessage {
             | EventBusMessage::Unifi { event_id, .. }
             | EventBusMessage::Mode { event_id, .. }
             | EventBusMessage::HomeAssistant { event_id, .. }
-            | EventBusMessage::Woolworths { event_id, .. } => *event_id,
+            | EventBusMessage::Woolworths { event_id, .. }
+            | EventBusMessage::DeviceBattery { event_id, .. } => *event_id,
         }
     }
 
@@ -230,6 +242,7 @@ impl EventBusMessage {
             EventBusMessage::Mode { .. } => "mode",
             EventBusMessage::HomeAssistant { .. } => "home_assistant",
             EventBusMessage::Woolworths { .. } => "woolworths",
+            EventBusMessage::DeviceBattery { .. } => "device_battery",
         }
     }
 
@@ -245,6 +258,7 @@ impl EventBusMessage {
         "mode",
         "home_assistant",
         "woolworths",
+        "device_battery",
     ];
 
     pub fn entity(&self) -> String {
@@ -263,6 +277,7 @@ impl EventBusMessage {
             EventBusMessage::Mode { mode, .. } => mode.as_str().to_string(),
             EventBusMessage::HomeAssistant { entity_id, .. } => entity_id.clone(),
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
+            EventBusMessage::DeviceBattery { device_id, .. } => device_id.clone(),
         }
     }
 
@@ -344,6 +359,18 @@ impl EventBusMessage {
                 ("old_price".to_owned(), format!("{old_price:.2}")),
                 ("new_price".to_owned(), format!("{new_price:.2}")),
                 ("drop".to_owned(), format!("{:.2}", old_price - new_price)),
+            ]),
+            EventBusMessage::DeviceBattery {
+                device_id,
+                kind,
+                name,
+                battery_voltage,
+                ..
+            } => HashMap::from([
+                ("device_id".to_owned(), device_id.clone()),
+                ("kind".to_owned(), kind.clone()),
+                ("name".to_owned(), name.clone()),
+                ("battery_voltage".to_owned(), format!("{battery_voltage:.3}")),
             ]),
         }
     }

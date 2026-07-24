@@ -4,7 +4,7 @@ use crate::auth::context::AuthContext;
 use crate::auth::scope::required;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::objects::entity_object::{
-    DoorEntity, Entity, EnvironmentEntity, LightEntity, PresenceEntity,
+    DoorEntity, EinkDisplayEntity, Entity, EnvironmentEntity, LightEntity, PresenceEntity,
 };
 
 #[derive(Default)]
@@ -77,6 +77,22 @@ impl EntitiesQuery {
             out.extend(registry.environment_devices().map(|(address, settings)| {
                 Entity::Environment(EnvironmentEntity {
                     id: settings.id.clone(),
+                    name: settings.name.clone(),
+                    address: address.clone(),
+                    capabilities: registry.capabilities(address).to_vec(),
+                    room: registry.room(address).map(str::to_owned),
+                })
+            }));
+        }
+
+        if auth.has(&required::GRAPHQL_EPD_READ) {
+            out.extend(registry.eink_displays().iter().map(|(address, settings)| {
+                let id = registry
+                    .id_for_address(address)
+                    .unwrap_or(address)
+                    .to_owned();
+                Entity::EinkDisplay(EinkDisplayEntity {
+                    id,
                     name: settings.name.clone(),
                     address: address.clone(),
                     capabilities: registry.capabilities(address).to_vec(),

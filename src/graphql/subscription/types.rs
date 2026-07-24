@@ -117,6 +117,16 @@ pub struct WoolworthsUpdate {
     pub new_price: f64,
 }
 
+#[derive(SimpleObject)]
+pub struct DeviceBatteryUpdate {
+    pub event_id: Uuid,
+    /// Config slug, matching the `id` from the `entities` query.
+    pub id: ID,
+    pub name: String,
+    pub kind: String,
+    pub battery_voltage: f64,
+}
+
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
 pub enum EventUpdate {
@@ -131,6 +141,7 @@ pub enum EventUpdate {
     Mode(ModeUpdate),
     HomeAssistant(HomeAssistantUpdate),
     Woolworths(WoolworthsUpdate),
+    DeviceBattery(DeviceBatteryUpdate),
 }
 
 impl EventUpdate {
@@ -295,6 +306,19 @@ impl EventUpdate {
                 name,
                 old_price,
                 new_price,
+            }),
+            EventBusMessage::DeviceBattery {
+                event_id,
+                device_id,
+                kind,
+                name,
+                battery_voltage,
+            } => EventUpdate::DeviceBattery(DeviceBatteryUpdate {
+                event_id,
+                id: ID(slug(&device_id)),
+                name,
+                kind,
+                battery_voltage,
             }),
         }
     }

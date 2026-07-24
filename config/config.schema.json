@@ -313,6 +313,22 @@
             "kind",
             "config"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "config": {
+              "$ref": "#/$defs/RawEinkDisplayBlock"
+            },
+            "kind": {
+              "type": "string",
+              "const": "eink_display_firmware"
+            }
+          },
+          "required": [
+            "kind",
+            "config"
+          ]
         }
       ]
     },
@@ -716,6 +732,34 @@
         "id"
       ]
     },
+    "RawEinkDisplayBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "refresh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "sleep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawSleepWindow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
     "RawEnvironmentBlock": {
       "type": "object",
       "properties": {
@@ -856,6 +900,21 @@
         "transport",
         "address",
         "kinds"
+      ]
+    },
+    "RawSleepWindow": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
       ]
     },
     "RawSmartSwitchBlock": {
@@ -1438,10 +1497,19 @@
       ]
     },
     "Transport": {
-      "type": "string",
-      "enum": [
-        "zigbee",
-        "esphome"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "zigbee",
+            "esphome"
+          ]
+        },
+        {
+          "description": "Devices we never poll: they check in on their own schedule and push\nstate to us over HTTP (e.g. the battery-powered eink display firmware\nhitting `/epd/config`).",
+          "type": "string",
+          "const": "poll"
+        }
       ]
     },
     "TriggerMatcher": {
@@ -1646,6 +1714,41 @@
             "type": {
               "type": "string",
               "const": "woolworths"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fires when a poll-transport device reports its battery voltage on\ncheck-in. Optionally gate on a specific `device_id`, device `kind`,\nand/or a `below` voltage threshold for low-battery alerts.",
+          "type": "object",
+          "properties": {
+            "below": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "device_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "kind": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "device_battery"
             }
           },
           "required": [

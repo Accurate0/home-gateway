@@ -29,10 +29,12 @@ fn device_id() -> String {
     unsafe {
         esp_idf_sys::esp_read_mac(mac.as_mut_ptr(), esp_idf_sys::esp_mac_type_t_ESP_MAC_WIFI_STA);
     }
-    format!(
+    let id = format!(
         "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
-    )
+    );
+    info!("device id (address): {}", id);
+    id
 }
 
 pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
@@ -71,10 +73,6 @@ pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
     let status = response.status();
     info!("Response status: {}", status);
 
-    if status != 200 {
-        anyhow::bail!("Unexpected status code: {}", status);
-    }
-
     let mut body = Vec::new();
     let mut buffer = [0u8; 1024];
     let mut reader = response;
@@ -87,6 +85,15 @@ pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
             break;
         }
         body.extend_from_slice(&buffer[..n]);
+    }
+
+    if status != 200 {
+        log::error!(
+            "config request failed: status {} body: {}",
+            status,
+            String::from_utf8_lossy(&body)
+        );
+        anyhow::bail!("Unexpected status code: {}", status);
     }
 
     let config: EpdConfig = serde_json::from_slice(&body)?;
@@ -115,6 +122,20 @@ pub fn fetch_image(url: &str, buffer: &mut [u8]) -> Result<()> {
     info!("Response status: {}", status);
 
     if status != 200 {
+        let mut body = Vec::new();
+        let mut err_buf = [0u8; 512];
+        let mut reader = response;
+        while let Ok(n) = reader.read(&mut err_buf) {
+            if n == 0 {
+                break;
+            }
+            body.extend_from_slice(&err_buf[..n]);
+        }
+        log::error!(
+            "image request failed: status {} body: {}",
+            status,
+            String::from_utf8_lossy(&body)
+        );
         anyhow::bail!("Unexpected status code: {}", status);
     }
 

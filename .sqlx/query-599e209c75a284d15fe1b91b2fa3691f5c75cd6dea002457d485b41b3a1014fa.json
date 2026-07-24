@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT battery_voltage, \"time\"\n               FROM device_battery\n               WHERE device_id = $1 AND \"time\" >= $2\n               ORDER BY \"time\" ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "battery_voltage",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "599e209c75a284d15fe1b91b2fa3691f5c75cd6dea002457d485b41b3a1014fa"
+}

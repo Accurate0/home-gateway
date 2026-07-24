@@ -25,8 +25,8 @@ struct Instruments {
     steps_total: Counter<u64>,
     /// Wall-clock time to execute a single step.
     step_duration: Histogram<f64>,
-    /// Latest reported eink display battery voltage, labelled by device id.
-    epd_battery_voltage: Gauge<f64>,
+    /// Latest reported device battery voltage, labelled by device id and kind.
+    device_battery_voltage: Gauge<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -56,20 +56,20 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .f64_histogram("home_gateway_workflow_step_duration_seconds")
             .with_description("Workflow step execution duration in seconds")
             .build(),
-        epd_battery_voltage: meter
-            .f64_gauge("home_gateway_epd_battery_voltage")
-            .with_description("Latest reported eink display battery voltage")
+        device_battery_voltage: meter
+            .f64_gauge("home_gateway_device_battery_voltage")
+            .with_description("Latest reported device battery voltage")
             .build(),
     }
 });
 
-/// Record the latest battery voltage reported by an eink display device.
-pub fn record_epd_battery_voltage(device_id: String, device_name: String, voltage: f64) {
-    INSTRUMENTS.epd_battery_voltage.record(
+/// Record the latest battery voltage reported by a poll-transport device.
+pub fn record_device_battery_voltage(device_id: String, kind: String, voltage: f64) {
+    INSTRUMENTS.device_battery_voltage.record(
         voltage,
         &[
             KeyValue::new("device_id", device_id),
-            KeyValue::new("device_name", device_name),
+            KeyValue::new("kind", kind),
         ],
     );
 }

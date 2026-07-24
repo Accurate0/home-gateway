@@ -38,6 +38,7 @@ pub struct ApiState {
     pub db: Pool<Postgres>,
     pub s3: S3,
     pub auth: AuthManager,
+    pub devices: DeviceRegistry,
 }
 
 pub enum AppError {

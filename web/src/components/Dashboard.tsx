@@ -61,6 +61,13 @@ const EntitiesQuery = graphql`
         time
         lastSeen
       }
+      ... on EinkDisplayEntity {
+        id
+        name
+        room
+        batteryVoltage
+        lastSeen
+      }
     }
   }
 `;
@@ -141,6 +148,7 @@ const SECTIONS: { kind: EntityKind; title: string }[] = [
   { kind: "door", title: "Doors" },
   { kind: "presence", title: "Presence" },
   { kind: "environment", title: "Environment" },
+  { kind: "einkDisplay", title: "Displays" },
 ];
 
 type GroupBy = "type" | "room";

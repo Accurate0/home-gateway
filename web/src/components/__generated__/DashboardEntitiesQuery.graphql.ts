@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a86595c9547fa8b703b709f635f8dc10>>
+ * @generated SignedSource<<cd6bca38ca6b5edc2a4e855b8f7b0310>>
  * @lightSyntaxTransform
  */
 
@@ -17,6 +17,13 @@ export type DashboardEntitiesQuery$data = {
     readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly open: boolean | null | undefined;
+    readonly room: string | null | undefined;
+  } | {
+    readonly __typename: "EinkDisplayEntity";
+    readonly batteryVoltage: number | null | undefined;
+    readonly id: string;
+    readonly lastSeen: any | null | undefined;
+    readonly name: string;
     readonly room: string | null | undefined;
   } | {
     readonly __typename: "EnvironmentEntity";
@@ -217,6 +224,24 @@ v5 = [
         ],
         "type": "EnvironmentEntity",
         "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v0/*:: as any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "batteryVoltage",
+            "storageKey": null
+          },
+          (v4/*:: as any*/)
+        ],
+        "type": "EinkDisplayEntity",
+        "abstractKey": null
       }
     ],
     "storageKey": null
@@ -240,16 +265,16 @@ return {
     "selections": (v5/*:: as any*/)
   },
   "params": {
-    "cacheID": "c25a7a2332460c950e7f9f7a85ebd1dc",
+    "cacheID": "4ac6d1718908108246dcf7abf0fbd891",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      id\n      name\n      room\n      batteryVoltage\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "236245cafc99661fb8086c2c31e154d7";
+(node as any).hash = "b64a92076ed4cdd7d8b30fcf0ce3fc30";
 
 export default node;

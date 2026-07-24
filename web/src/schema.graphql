@@ -106,7 +106,16 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity
+
+type EinkDisplayEntity {
+	id: String!
+	name: String!
+	capabilities: [Capability!]!
+	room: String
+	batteryVoltage: Float
+	lastSeen: DateTime
+}
 
 type EnvironmentDetails {
 	id: String!

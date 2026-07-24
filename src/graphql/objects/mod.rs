@@ -1,5 +1,6 @@
 pub mod auth_object;
 pub mod doors_object;
+pub mod eink_display_object;
 pub mod energy_object;
 pub mod entity_object;
 pub mod environment_object;

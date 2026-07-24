@@ -44,6 +44,61 @@ pub enum Entity {
     Environment(EnvironmentEntity),
     Door(DoorEntity),
     Presence(PresenceEntity),
+    EinkDisplay(EinkDisplayEntity),
+}
+
+pub struct EinkDisplayEntity {
+    pub id: String,
+    pub name: String,
+    pub address: String,
+    pub capabilities: Vec<Capability>,
+    pub room: Option<String>,
+}
+
+#[Object]
+impl EinkDisplayEntity {
+    async fn id(&self) -> &str {
+        &self.id
+    }
+
+    async fn name(&self) -> &str {
+        &self.name
+    }
+
+    async fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
+    }
+
+    async fn room(&self) -> Option<&str> {
+        self.room.as_deref()
+    }
+
+    async fn battery_voltage(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
+        let db = ctx.data::<sqlx::Pool<sqlx::Postgres>>()?;
+        Ok(sqlx::query_scalar!(
+            "SELECT battery_voltage FROM eink_display WHERE device_id = $1",
+            self.address
+        )
+        .fetch_optional(db)
+        .await?
+        .flatten())
+    }
+
+    async fn last_seen(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        let db = ctx.data::<sqlx::Pool<sqlx::Postgres>>()?;
+        Ok(sqlx::query_scalar!(
+            r#"SELECT updated_at FROM eink_display WHERE device_id = $1"#,
+            self.address
+        )
+        .fetch_optional(db)
+        .await?)
+    }
 }
 
 pub struct LightEntity {
