@@ -15,15 +15,31 @@ pub struct EpdConfig {
     pub clear_screen: Option<bool>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EpdConfigRequest {
+    pub device_id: String,
+    pub device_name: String,
+    pub battery_voltage: Option<f32>,
+}
+
 pub async fn config(
     State(ApiState {
         feature_flag_client,
         ..
     }): State<ApiState>,
     Auth(auth): Auth,
+    Json(request): Json<EpdConfigRequest>,
 ) -> Result<Json<EpdConfig>, AppError> {
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
+
+    if let Some(voltage) = request.battery_voltage {
+        crate::metrics::record_epd_battery_voltage(
+            request.device_id,
+            request.device_name,
+            voltage as f64,
+        );
+    }
 
     Ok(Json(EpdConfig {
         refresh_interval_mins: Some(15),

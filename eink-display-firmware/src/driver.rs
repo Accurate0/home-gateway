@@ -64,6 +64,7 @@ pub struct Gdep133c02<'a> {
     spi: SpiDeviceDriver<'a, SpiDriver<'a>>,
     cs0: PinDriver<'a, AnyIOPin, Output>,
     cs1: PinDriver<'a, AnyIOPin, Output>,
+    dc: PinDriver<'a, AnyIOPin, Output>,
     rst: PinDriver<'a, AnyIOPin, Output>,
     busy: PinDriver<'a, AnyIOPin, Input>,
     delay: Delay,
@@ -79,6 +80,7 @@ impl<'a> Gdep133c02<'a> {
         >,
         cs0: AnyIOPin,
         cs1: AnyIOPin,
+        dc: AnyIOPin,
         rst: AnyIOPin,
         busy: AnyIOPin,
     ) -> Result<Self> {
@@ -100,6 +102,9 @@ impl<'a> Gdep133c02<'a> {
         cs0.set_high()?;
         cs1.set_high()?;
 
+        let mut dc = PinDriver::output(dc)?;
+        dc.set_high()?;
+
         let rst = PinDriver::output(rst)?;
         let mut busy = PinDriver::input(busy)?;
         busy.set_pull(Pull::Floating)?;
@@ -108,6 +113,7 @@ impl<'a> Gdep133c02<'a> {
             spi: spi_driver,
             cs0,
             cs1,
+            dc,
             rst,
             busy,
             delay: Delay::new_default(),
@@ -145,6 +151,7 @@ impl<'a> Gdep133c02<'a> {
     }
 
     fn write_command(&mut self, cmd: u8) -> Result<()> {
+        self.dc.set_low()?;
         self.spi
             .write(&[cmd])
             .map_err(|e| anyhow::anyhow!("SPI write error: {:?}", e))?;
@@ -152,6 +159,7 @@ impl<'a> Gdep133c02<'a> {
     }
 
     fn write_data(&mut self, data: &[u8]) -> Result<()> {
+        self.dc.set_high()?;
         const CHUNK_SIZE: usize = 32768;
         for chunk in data.chunks(CHUNK_SIZE) {
             self.spi
@@ -161,6 +169,7 @@ impl<'a> Gdep133c02<'a> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn read_data(&mut self, cmd: u8, rx_buf: &mut [u8]) -> Result<()> {
         self.spi
             .write(&[cmd])
@@ -259,6 +268,7 @@ impl<'a> Gdep133c02<'a> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn check_driver_ic_status(&mut self) -> Result<bool> {
         let mut status = true;
         let mut data_buf = [0u8; 3];

@@ -3,10 +3,12 @@ use esp_idf_svc::http::{
     client::{Configuration, EspHttpConnection},
     Method,
 };
+use embedded_svc::io::Write;
 use log::info;
 use serde::{Deserialize, Serialize};
 
 const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
+const DEVICE_NAME: &str = env!("DEVICE_NAME");
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
@@ -15,7 +17,25 @@ pub struct EpdConfig {
     pub clear_screen: Option<bool>,
 }
 
-pub fn fetch_config() -> Result<EpdConfig> {
+#[derive(Debug, Serialize)]
+struct ConfigRequest {
+    device_id: String,
+    device_name: &'static str,
+    battery_voltage: Option<f32>,
+}
+
+fn device_id() -> String {
+    let mut mac = [0u8; 6];
+    unsafe {
+        esp_idf_sys::esp_read_mac(mac.as_mut_ptr(), esp_idf_sys::esp_mac_type_t_ESP_MAC_WIFI_STA);
+    }
+    format!(
+        "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+    )
+}
+
+pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
     #[cfg(not(debug_assertions))]
     let url = "https://home.anurag.sh/v1/epd/config";
     #[cfg(debug_assertions)]
@@ -31,8 +51,21 @@ pub fn fetch_config() -> Result<EpdConfig> {
     let connection = EspHttpConnection::new(&config)?;
     let mut client = embedded_svc::http::client::Client::wrap(connection);
 
-    let headers = vec![("X-Api-Key", API_KEY)];
-    let request = client.request(Method::Get, url, &headers)?;
+    let payload = serde_json::to_vec(&ConfigRequest {
+        device_id: device_id(),
+        device_name: DEVICE_NAME,
+        battery_voltage,
+    })?;
+    let content_length = payload.len().to_string();
+
+    let headers = [
+        ("X-Api-Key", API_KEY),
+        ("Content-Type", "application/json"),
+        ("Content-Length", content_length.as_str()),
+    ];
+    let mut request = client.request(Method::Post, url, &headers)?;
+    request.write_all(&payload)?;
+    request.flush()?;
     let response = request.submit()?;
 
     let status = response.status();

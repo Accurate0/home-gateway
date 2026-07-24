@@ -9,7 +9,7 @@
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use opentelemetry::metrics::{Counter, Histogram};
+use opentelemetry::metrics::{Counter, Gauge, Histogram};
 use opentelemetry::{KeyValue, global};
 
 struct Instruments {
@@ -25,6 +25,8 @@ struct Instruments {
     steps_total: Counter<u64>,
     /// Wall-clock time to execute a single step.
     step_duration: Histogram<f64>,
+    /// Latest reported eink display battery voltage, labelled by device id.
+    epd_battery_voltage: Gauge<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -54,8 +56,23 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .f64_histogram("home_gateway_workflow_step_duration_seconds")
             .with_description("Workflow step execution duration in seconds")
             .build(),
+        epd_battery_voltage: meter
+            .f64_gauge("home_gateway_epd_battery_voltage")
+            .with_description("Latest reported eink display battery voltage")
+            .build(),
     }
 });
+
+/// Record the latest battery voltage reported by an eink display device.
+pub fn record_epd_battery_voltage(device_id: String, device_name: String, voltage: f64) {
+    INSTRUMENTS.epd_battery_voltage.record(
+        voltage,
+        &[
+            KeyValue::new("device_id", device_id),
+            KeyValue::new("device_name", device_name),
+        ],
+    );
+}
 
 /// A bus event was received by the dispatcher.
 pub fn record_event(event_kind: &'static str) {

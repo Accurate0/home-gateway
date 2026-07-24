@@ -1,10 +1,11 @@
 use anyhow::Result;
 use esp_idf_svc::hal::delay::FreeRtos;
-use esp_idf_svc::hal::gpio::{IOPin, PinDriver};
+use esp_idf_svc::hal::gpio::{AnyIOPin, IOPin, PinDriver};
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::log::EspLogger;
 use esp_idf_sys::{esp_deep_sleep_start, esp_sleep_enable_timer_wakeup};
 
+mod battery;
 mod driver;
 mod http_client;
 mod wifi;
@@ -42,20 +43,32 @@ fn run_task() -> Result<u64, anyhow::Error> {
     let sys_loop = esp_idf_svc::eventloop::EspSystemEventLoop::take()?;
     let nvs = esp_idf_svc::nvs::EspDefaultNvsPartition::take()?;
 
-    let mut load_sw = PinDriver::output(pins.gpio45.downgrade())?;
+    let mut load_sw = PinDriver::output(pins.gpio43.downgrade())?;
     load_sw.set_high()?;
+
+    let battery_voltage = match battery::read_voltage(peripherals.adc1, pins.gpio1, pins.gpio6) {
+        Ok(v) => {
+            log::info!("Battery voltage: {v:.2}V");
+            Some(v)
+        }
+        Err(e) => {
+            log::warn!("Failed to read battery voltage: {e}");
+            None
+        }
+    };
 
     let mut epd_buffer = vec![0u8; EPD_IMAGE_FULL_BUFFER_SIZE];
 
     let mut display = Gdep133c02::new(
         peripherals.spi3,
+        pins.gpio7,
         pins.gpio9,
-        pins.gpio41,
-        Some(pins.gpio40),
-        pins.gpio18.downgrade(),
-        pins.gpio17.downgrade(),
-        pins.gpio6.downgrade(),
-        pins.gpio7.downgrade(),
+        Option::<AnyIOPin>::None,
+        pins.gpio44.downgrade(),
+        pins.gpio41.downgrade(),
+        pins.gpio10.downgrade(),
+        pins.gpio38.downgrade(),
+        pins.gpio4.downgrade(),
     )?;
 
     let wifi = wifi::try_connect(peripherals.modem, sys_loop, Some(nvs))?;
@@ -64,7 +77,7 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
     if wifi.is_connected()? {
         log::info!("Wifi connected, fetching config...");
-        let config = http_client::fetch_config()?;
+        let config = http_client::fetch_config(battery_voltage)?;
         log::info!("Config: {:?}", config);
 
         if let Some(refresh_time) = config.refresh_interval_mins {
@@ -76,16 +89,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
                 log::info!("Initializing Display...");
 
                 display.init_epd()?;
-
-                if let Ok(status) = display.check_driver_ic_status() {
-                    if status {
-                        log::info!("Driver IC check passed.");
-                    } else {
-                        log::error!("Driver IC check failed!");
-                    }
-                } else {
-                    log::error!("Driver IC check error!");
-                }
 
                 display.hardware_reset()?;
                 display.set_cs_all(true)?;
@@ -103,16 +106,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
                     log::info!("Image fetched successfully");
 
                     display.init_epd()?;
-
-                    if let Ok(status) = display.check_driver_ic_status() {
-                        if status {
-                            log::info!("Driver IC check passed.");
-                        } else {
-                            log::error!("Driver IC check failed!");
-                        }
-                    } else {
-                        log::error!("Driver IC check error!");
-                    }
 
                     display.hardware_reset()?;
                     display.set_cs_all(true)?;
@@ -135,16 +128,6 @@ fn run_epd_test(mut epd_buffer: Vec<u8>, mut display: Gdep133c02<'_>) -> Result<
     log::info!("Initializing Display...");
 
     display.init_epd()?;
-
-    if let Ok(status) = display.check_driver_ic_status() {
-        if status {
-            log::info!("Driver IC check passed.");
-        } else {
-            log::error!("Driver IC check failed!");
-        }
-    } else {
-        log::error!("Driver IC check error!");
-    }
 
     display.hardware_reset()?;
     display.set_cs_all(true)?;

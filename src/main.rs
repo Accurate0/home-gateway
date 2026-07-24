@@ -207,7 +207,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/workflow/execute", post(workflow_execute))
         .route("/ingest/synergy", post(synergy))
         .route("/ingest/solar", post(solar))
-        .route("/epd/config", get(epd::config))
+        .route("/epd/config", post(epd::config))
         .route("/epd/latest", get(epd::latest))
         .route("/epd/take-screenshot", post(epd::take_screenshot))
         .route("/push/notify", post(push_notify))
