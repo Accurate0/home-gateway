@@ -8,7 +8,6 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
-const DEVICE_NAME: &str = env!("DEVICE_NAME");
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
@@ -20,7 +19,6 @@ pub struct EpdConfig {
 #[derive(Debug, Serialize)]
 struct ConfigRequest {
     device_id: String,
-    device_name: &'static str,
     battery_voltage: Option<f32>,
 }
 
@@ -58,7 +56,6 @@ pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
 
     let payload = serde_json::to_vec(&ConfigRequest {
         device_id: device_id(),
-        device_name: DEVICE_NAME,
         battery_voltage,
     })?;
     let content_length = payload.len().to_string();

@@ -98,7 +98,6 @@ pub struct EpdConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfigRequest {
     pub device_id: String,
-    pub device_name: String,
     pub battery_voltage: Option<f32>,
 }
 
@@ -144,18 +143,18 @@ pub async fn config(
         }));
     }
 
+    let mut context =
+        EvaluationContext::default().with_custom_field("device_id", request.device_id.clone());
+    if let Some(display) = devices.eink_display(&request.device_id) {
+        context = context.with_custom_field("device_name", display.name.clone());
+    }
+
     Ok(Json(EpdConfig {
         refresh_interval_mins: Some(15),
         image_url: Some(format!("{base}?device_id={}", request.device_id)),
         clear_screen: Some(
             feature_flag_client
-                .is_feature_enabled(
-                    "home-gateway-epd-clear-screen",
-                    false,
-                    EvaluationContext::default()
-                        .with_custom_field("device_id", request.device_id)
-                        .with_custom_field("device_name", request.device_name),
-                )
+                .is_feature_enabled("home-gateway-epd-clear-screen", false, context)
                 .await,
         ),
     }))
