@@ -34,6 +34,7 @@ pub enum Resource {
     Mode,
     HomeAssistant,
     Battery,
+    Roborock,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -84,6 +85,7 @@ impl Resource {
             "mode" => Self::Mode,
             "home_assistant" => Self::HomeAssistant,
             "battery" => Self::Battery,
+            "roborock" => Self::Roborock,
             _ => return None,
         })
     }
@@ -140,6 +142,7 @@ impl Resource {
             Self::Mode => "mode",
             Self::HomeAssistant => "home_assistant",
             Self::Battery => "battery",
+            Self::Roborock => "roborock",
         }
     }
 
@@ -313,9 +316,13 @@ pub mod required {
     pub const GRAPHQL_WORKFLOW_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Read);
     pub const GRAPHQL_EPD_READ: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Read);
+    pub const GRAPHQL_ROBOROCK_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Roborock, Action::Read);
 
     pub const GRAPHQL_LIGHT_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Write);
+    pub const GRAPHQL_ROBOROCK_WRITE: Scope =
+        Scope::new(Domain::Graphql, Resource::Roborock, Action::Write);
     pub const GRAPHQL_WORKFLOW_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
 

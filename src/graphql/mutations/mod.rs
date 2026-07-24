@@ -5,6 +5,7 @@ use crate::graphql::mutations::workflows_mutation::WorkflowsMutation;
 
 pub mod entities_mutation;
 pub mod light_mutation;
+pub mod roborock_mutation;
 pub mod workflows_mutation;
 
 #[derive(Default, MergedObject)]

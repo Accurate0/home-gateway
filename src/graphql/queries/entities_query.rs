@@ -5,7 +5,7 @@ use crate::auth::scope::required;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::objects::entity_object::{
     DoorEntity, EinkDisplayEntity, EinkDisplayKind, Entity, EnvironmentEntity, LightEntity,
-    PresenceEntity,
+    PresenceEntity, RoborockEntity,
 };
 
 #[derive(Default)]
@@ -110,6 +110,24 @@ impl EntitiesQuery {
                     kind: EinkDisplayKind::Trmnl,
                     capabilities: registry.capabilities(address).to_vec(),
                     room: registry.room(address).map(str::to_owned),
+                })
+            }));
+        }
+
+        if auth.has(&required::GRAPHQL_ROBOROCK_READ) {
+            out.extend(registry.roborocks().map(|(address, settings)| {
+                let id = registry
+                    .id_for_address(address)
+                    .unwrap_or(address)
+                    .to_owned();
+                Entity::Roborock(RoborockEntity {
+                    id,
+                    name: settings.name.clone(),
+                    room: registry.room(address).map(str::to_owned),
+                    capabilities: registry.capabilities(address).to_vec(),
+                    status_entity: settings.status_entity.clone(),
+                    battery_entity: settings.battery_entity.clone(),
+                    room_entity: settings.room_entity.clone(),
                 })
             }));
         }

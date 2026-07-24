@@ -12,7 +12,7 @@ use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_no
 use crate::settings::plant::default_plant_entities;
 use crate::settings::{
     DeviceAliases, DoorSettings, EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress,
-    PlantSensorSettings, PresenceSensorType, PresenceSettings,
+    PlantSensorSettings, PresenceSensorType, PresenceSettings, RawRoborockBlock, RoborockSettings,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
@@ -28,6 +28,9 @@ pub enum Transport {
     EinkDisplayFirmware,
     /// Devices whose state we fetch from the TRMNL cloud API on our own schedule.
     Trmnl,
+    /// Devices whose state we read from Home Assistant entities and control via
+    /// Home Assistant service calls.
+    HomeAssistant,
 }
 
 impl Transport {
@@ -39,6 +42,9 @@ impl Transport {
                 unreachable!("eink_display_firmware transport does not support environment kind")
             }
             Transport::Trmnl => unreachable!("trmnl transport does not support environment kind"),
+            Transport::HomeAssistant => {
+                unreachable!("home_assistant transport does not support environment kind")
+            }
         }
     }
 
@@ -50,6 +56,9 @@ impl Transport {
                 unreachable!("eink_display_firmware transport does not support presence kind")
             }
             Transport::Trmnl => unreachable!("trmnl transport does not support presence kind"),
+            Transport::HomeAssistant => {
+                unreachable!("home_assistant transport does not support presence kind")
+            }
         }
     }
 }
@@ -108,6 +117,7 @@ pub enum DeviceConfig {
     SmartSwitch(RawSmartSwitchBlock),
     EinkDisplayFirmware(RawEinkDisplayBlock),
     Trmnl(RawTrmnlBlock),
+    Roborock(RawRoborockBlock),
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -269,6 +279,7 @@ pub struct DeviceRegistryInner {
     plant: HashMap<String, PlantSensorSettings>,
     eink_displays: HashMap<String, EinkDisplaySettings>,
     trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
+    roborocks: HashMap<String, RoborockSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
@@ -358,6 +369,13 @@ impl DeviceRegistryInner {
                 "device {id}: `trmnl` transport is only valid with the `trmnl` kind, and vice versa"
             ));
         }
+        let is_roborock = matches!(config, DeviceConfig::Roborock(_));
+        if (transport == Transport::HomeAssistant) != is_roborock {
+            return Err(format!(
+                "device {id}: `home_assistant` transport is only valid with the `roborock` kind, and vice versa"
+            ));
+        }
+
         match config {
             DeviceConfig::Door(door) => {
                 self.doors.insert(address.to_owned(), door.resolve(notify)?);
@@ -470,6 +488,10 @@ impl DeviceRegistryInner {
                     },
                 );
             }
+            DeviceConfig::Roborock(roborock) => {
+                self.roborocks
+                    .insert(address.to_owned(), roborock.resolve());
+            }
         }
         Ok(())
     }
@@ -484,6 +506,14 @@ impl DeviceRegistryInner {
 
     pub fn trmnl_devices(&self) -> &HashMap<String, TrmnlDeviceSettings> {
         &self.trmnl_devices
+    }
+
+    pub fn roborock(&self, address: &str) -> Option<&RoborockSettings> {
+        self.roborocks.get(address)
+    }
+
+    pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
+        self.roborocks.iter()
     }
 
     fn add_esphome_sensor_topics(

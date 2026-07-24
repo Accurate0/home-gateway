@@ -184,3 +184,18 @@
       config:
         name: Fridge TRMNL
 
+
+- id: roborock
+  room: dining-room
+  transport: home_assistant
+  address: vacuum.robot
+  kinds:
+    - kind: roborock
+      config:
+        name: Roborock
+        status_entity: sensor.robot_status
+        battery_entity: sensor.robot_battery
+        room_entity: sensor.robot_current_room
+        control_entity: vacuum.robot
+        stop_service: vacuum.stop
+        dock_service: vacuum.return_to_base

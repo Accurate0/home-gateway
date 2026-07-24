@@ -384,6 +384,22 @@
             "kind",
             "config"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "config": {
+              "$ref": "#/$defs/RawRoborockBlock"
+            },
+            "kind": {
+              "type": "string",
+              "const": "roborock"
+            }
+          },
+          "required": [
+            "kind",
+            "config"
+          ]
         }
       ]
     },
@@ -904,6 +920,41 @@
           "default": ""
         }
       }
+    },
+    "RawRoborockBlock": {
+      "type": "object",
+      "properties": {
+        "battery_entity": {
+          "type": "string"
+        },
+        "control_entity": {
+          "type": "string"
+        },
+        "dock_service": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "room_entity": {
+          "type": "string"
+        },
+        "status_entity": {
+          "type": "string"
+        },
+        "stop_service": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status_entity",
+        "battery_entity",
+        "room_entity",
+        "control_entity",
+        "stop_service",
+        "dock_service"
+      ]
     },
     "RawSensor": {
       "type": "object",
@@ -1577,6 +1628,11 @@
           "description": "Devices whose state we fetch from the TRMNL cloud API on our own schedule.",
           "type": "string",
           "const": "trmnl"
+        },
+        {
+          "description": "Devices whose state we read from Home Assistant entities and control via\nHome Assistant service calls.",
+          "type": "string",
+          "const": "home_assistant"
         }
       ]
     },

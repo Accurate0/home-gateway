@@ -16,6 +16,7 @@ pub mod location;
 pub mod notify;
 pub mod plant;
 pub mod presence;
+pub mod roborock;
 pub mod template;
 pub mod trigger;
 pub mod workflow;
@@ -27,6 +28,7 @@ pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
+pub use roborock::{RawRoborockBlock, RoborockSettings};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
 pub use workflow::Workflow;
@@ -573,6 +575,15 @@ android_app_webhook_secret: x
             settings.workflows.values().any(|w| w.name == "Bins"
                 && matches!(w.on(), Some(trigger::TriggerMatcher::Cron { .. })))
         );
+
+        let roborock_address = registry.address_or_self("roborock");
+        let roborock = registry
+            .roborock(roborock_address)
+            .expect("roborock device resolves");
+        assert_eq!(registry.room(roborock_address), Some("dining-room"));
+        assert_eq!(roborock.battery_entity, "sensor.robot_battery");
+        assert_eq!(roborock.stop_service, "vacuum.stop");
+        assert_eq!(roborock.dock_service, "vacuum.return_to_base");
 
         let mut seen = HashSet::new();
         for wf in settings.workflows.values() {

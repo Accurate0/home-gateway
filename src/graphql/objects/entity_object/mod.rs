@@ -17,12 +17,14 @@ pub mod eink_display;
 pub mod environment;
 pub mod light;
 pub mod presence;
+pub mod roborock;
 
 pub use door::DoorEntity;
 pub use eink_display::{EinkDisplayEntity, EinkDisplayKind};
 pub use environment::EnvironmentEntity;
 pub use light::LightEntity;
 pub use presence::PresenceEntity;
+pub use roborock::RoborockEntity;
 
 pub(super) const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -44,4 +46,5 @@ pub enum Entity {
     Door(DoorEntity),
     Presence(PresenceEntity),
     EinkDisplay(EinkDisplayEntity),
+    Roborock(RoborockEntity),
 }

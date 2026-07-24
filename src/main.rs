@@ -19,6 +19,7 @@ use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
     dataloader::eink_battery::EinkDisplayDataLoader,
+    dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
@@ -164,6 +165,7 @@ async fn main() -> anyhow::Result<()> {
     let event_bus = EventBus::default();
 
     let home_assistant = home_assistant::HomeAssistant::from_env();
+    let graphql_home_assistant = home_assistant.clone();
 
     let mqtt_ingest_actor = init_actors(
         settings_container.clone(),
@@ -201,6 +203,13 @@ async fn main() -> anyhow::Result<()> {
         },
         tokio::spawn,
     ))
+    .data(DataLoader::new(
+        HomeAssistantStateDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(graphql_home_assistant)
     .data(pool.clone())
     .data(settings_container.clone())
     .data(device_registry.clone())
