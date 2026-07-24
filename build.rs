@@ -55,6 +55,11 @@ fn placeholders(message: &str) -> Vec<&str> {
 }
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=SKIP_SCHEMA_VALIDATION");
+    if std::env::var_os("SKIP_SCHEMA_VALIDATION").is_some() {
+        return;
+    }
+
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let config_dir = manifest_dir.join("config");
     println!("cargo:rerun-if-changed=config");
