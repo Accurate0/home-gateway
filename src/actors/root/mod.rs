@@ -1,8 +1,9 @@
 use crate::{
     actors::{
         eink_display::EInkDisplayActor, solar::SolarIngestActor, sun::SunActor,
-        watchdog::WatchdogActor, woolworths::WoolworthsActor,
+        trmnl::TrmnlActor, watchdog::WatchdogActor, woolworths::WoolworthsActor,
     },
+    trmnl::Trmnl,
     types::SharedActorState,
     woolworths::Woolworths,
 };
@@ -125,6 +126,31 @@ impl RootSupervisor {
                 WoolworthsActor {
                     shared_actor_state: self.shared_actor_state.clone(),
                     woolworths: Woolworths::new(self.shared_actor_state.db.clone()),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_trmnl_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let Some(api_key) = self.shared_actor_state.settings.trmnl_api_key.clone() else {
+            return Ok(());
+        };
+
+        myself
+            .spawn_linked(
+                Some(TrmnlActor::NAME.to_owned()),
+                TrmnlActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                    trmnl: Trmnl::new(
+                        api_key,
+                        self.shared_actor_state.settings.trmnl.base_url.clone(),
+                    ),
                 },
                 (),
             )
@@ -268,6 +294,7 @@ impl Actor for RootSupervisor {
         self.start_cron_actor(&myself).await?;
         self.start_synergy_actor(&myself).await?;
         self.start_woolworths_actor(&myself).await?;
+        self.start_trmnl_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
         self.start_home_assistant_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
@@ -317,6 +344,11 @@ impl Actor for RootSupervisor {
                     WoolworthsActor::NAME => {
                         tracing::info!("restarting woolworths actor");
                         self.start_woolworths_actor(&myself).await?;
+                    }
+
+                    TrmnlActor::NAME => {
+                        tracing::info!("restarting trmnl actor");
+                        self.start_trmnl_actor(&myself).await?;
                     }
 
                     AlarmActor::NAME => {

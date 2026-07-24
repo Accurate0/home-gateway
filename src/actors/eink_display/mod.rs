@@ -79,6 +79,7 @@ impl EInkDisplayActor {
     async fn render_web(
         &self,
         state: &mut EInkActorState,
+        settle: Duration,
     ) -> Result<Option<Vec<u8>>, ractor::ActorProcessingErr> {
         if !cfg!(debug_assertions) {
             self.save_index_if_new(state).await?;
@@ -98,13 +99,6 @@ impl EInkDisplayActor {
             .await?;
         page.reload().await?;
 
-        let settle = self
-            .shared_actor_state
-            .settings
-            .eink_display
-            .settle
-            .to_std()
-            .unwrap_or(Duration::from_secs(10));
         tokio::time::sleep(settle).await;
 
         tracing::info!("screenshot taken");
@@ -133,13 +127,7 @@ impl Actor for EInkDisplayActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let default_refresh = self
-            .shared_actor_state
-            .settings
-            .eink_display
-            .refresh
-            .to_std()
-            .unwrap_or(Duration::from_secs(3600));
+        let default_refresh = Duration::from_secs(3600);
 
         for (device_id, display) in self.shared_actor_state.devices.eink_displays() {
             let refresh = display
@@ -246,7 +234,14 @@ impl Actor for EInkDisplayActor {
                     return Ok(());
                 }
 
-                let image = match self.render_web(state).await? {
+                let settle = device_id
+                    .as_ref()
+                    .and_then(|id| all.get(id))
+                    .and_then(|display| display.settle)
+                    .and_then(|s| s.to_std().ok())
+                    .unwrap_or(Duration::from_secs(10));
+
+                let image = match self.render_web(state, settle).await? {
                     Some(image) => image,
                     None => return Ok(()),
                 };

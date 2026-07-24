@@ -18,6 +18,7 @@ pub mod routes;
 pub mod s3;
 pub mod settings;
 pub mod timedelta_format;
+pub mod trmnl;
 pub mod timer;
 pub mod tracing_setup;
 pub mod tracker;

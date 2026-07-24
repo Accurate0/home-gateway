@@ -87,40 +87,6 @@ impl Default for AlarmSettings {
     }
 }
 
-pub(crate) fn default_eink_refresh() -> TimeDelta {
-    TimeDelta::hours(1)
-}
-
-pub(crate) fn default_eink_settle() -> TimeDelta {
-    TimeDelta::seconds(10)
-}
-
-pub(crate) fn default_eink_s3_key() -> String {
-    "eink-display-screenshot.png".to_owned()
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct EInkDisplaySettings {
-    #[serde(default = "default_eink_refresh", with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub refresh: TimeDelta,
-    #[serde(default = "default_eink_settle", with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub settle: TimeDelta,
-    #[serde(default = "default_eink_s3_key")]
-    pub s3_key: String,
-}
-
-impl Default for EInkDisplaySettings {
-    fn default() -> Self {
-        Self {
-            refresh: default_eink_refresh(),
-            settle: default_eink_settle(),
-            s3_key: default_eink_s3_key(),
-        }
-    }
-}
-
 pub(crate) fn default_woolworths_refresh() -> TimeDelta {
     TimeDelta::hours(1)
 }
@@ -136,6 +102,32 @@ impl Default for WoolworthsSettings {
     fn default() -> Self {
         Self {
             refresh: default_woolworths_refresh(),
+        }
+    }
+}
+
+pub(crate) fn default_trmnl_refresh() -> TimeDelta {
+    TimeDelta::hours(3)
+}
+
+pub(crate) fn default_trmnl_base_url() -> String {
+    "https://trmnl.com".to_owned()
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct TrmnlSettings {
+    #[serde(default = "default_trmnl_refresh", with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    pub refresh: TimeDelta,
+    #[serde(default = "default_trmnl_base_url")]
+    pub base_url: String,
+}
+
+impl Default for TrmnlSettings {
+    fn default() -> Self {
+        Self {
+            refresh: default_trmnl_refresh(),
+            base_url: default_trmnl_base_url(),
         }
     }
 }
@@ -222,8 +214,9 @@ pub struct Settings {
     pub api_keys: Vec<ApiKeySettings>,
     pub location: LocationSettings,
     pub alarm: AlarmSettings,
-    pub eink_display: EInkDisplaySettings,
     pub woolworths: WoolworthsSettings,
+    pub trmnl: TrmnlSettings,
+    pub trmnl_api_key: Option<String>,
     pub home_assistant: HomeAssistantSettings,
 }
 
@@ -261,9 +254,11 @@ pub struct RawSettings {
     #[serde(default)]
     alarm: AlarmSettings,
     #[serde(default)]
-    eink_display: EInkDisplaySettings,
-    #[serde(default)]
     woolworths: WoolworthsSettings,
+    #[serde(default)]
+    trmnl: TrmnlSettings,
+    #[serde(default)]
+    trmnl_api_key: Option<String>,
     #[serde(default)]
     home_assistant: HomeAssistantSettings,
 }
@@ -290,8 +285,9 @@ impl RawSettings {
             api_keys,
             location,
             alarm,
-            eink_display,
             woolworths,
+            trmnl,
+            trmnl_api_key,
             home_assistant,
         } = self;
 
@@ -362,8 +358,9 @@ impl RawSettings {
                 api_keys,
                 location,
                 alarm,
-                eink_display,
                 woolworths,
+                trmnl,
+                trmnl_api_key,
                 home_assistant,
             },
             registry,

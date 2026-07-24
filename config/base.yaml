@@ -37,13 +37,11 @@ api_keys:
   - name: home-gateway-app
     scopes: ["*"]
 
-eink_display:
-  refresh: 1h
-  settle: 10s
-  s3_key: eink-display-screenshot.png
-
 woolworths:
   refresh: 1h
+
+trmnl:
+  refresh: 3h
 
 alarm:
   poll_interval: 60s

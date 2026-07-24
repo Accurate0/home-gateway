@@ -162,13 +162,25 @@
 
 - id: living-room-epd
   room: living-room
-  transport: poll
+  transport: eink_display_firmware
   address: "94a990cf8384"
   kinds:
     - kind: eink_display_firmware
       config:
         name: Living Room Display
+        refresh: 1h
+        settle: 10s
+        s3_key: eink-display-screenshot.png
         sleep:
           start: "00:00"
           end: "08:00"
+
+- id: living-room-trmnl
+  room: living-room
+  transport: trmnl
+  address: "653VZN"
+  kinds:
+    - kind: trmnl
+      config:
+        name: Living Room TRMNL
 

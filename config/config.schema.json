@@ -28,9 +28,6 @@
         "$ref": "#/$defs/RawSensor"
       }
     },
-    "eink_display": {
-      "$ref": "#/$defs/EInkDisplaySettings"
-    },
     "fcm_project_id": {
       "type": "string",
       "default": ""
@@ -72,6 +69,16 @@
     },
     "s3": {
       "$ref": "#/$defs/S3Settings"
+    },
+    "trmnl": {
+      "$ref": "#/$defs/TrmnlSettings"
+    },
+    "trmnl_api_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
     },
     "unifi_webhook_secret": {
       "type": "string"
@@ -361,25 +368,24 @@
             "kind",
             "config"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "config": {
+              "$ref": "#/$defs/RawTrmnlBlock"
+            },
+            "kind": {
+              "type": "string",
+              "const": "trmnl"
+            }
+          },
+          "required": [
+            "kind",
+            "config"
+          ]
         }
       ]
-    },
-    "EInkDisplaySettings": {
-      "type": "object",
-      "properties": {
-        "refresh": {
-          "type": "string",
-          "default": "1h"
-        },
-        "s3_key": {
-          "type": "string",
-          "default": "eink-display-screenshot.png"
-        },
-        "settle": {
-          "type": "string",
-          "default": "10s"
-        }
-      }
     },
     "EnableState": {
       "description": "Target enablement for a `set_workflows_enabled` step. `Toggle` flips the\nwhole tagged set together, based on whether any member is currently enabled.",
@@ -777,6 +783,20 @@
           ],
           "default": null
         },
+        "s3_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "settle": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
         "sleep": {
           "anyOf": [
             {
@@ -962,6 +982,17 @@
             }
           ]
         },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RawTrmnlBlock": {
+      "type": "object",
+      "properties": {
         "name": {
           "type": "string"
         }
@@ -1540,7 +1571,12 @@
         {
           "description": "Devices we never poll: they check in on their own schedule and push\nstate to us over HTTP (e.g. the battery-powered eink display firmware\nhitting `/epd/config`).",
           "type": "string",
-          "const": "poll"
+          "const": "eink_display_firmware"
+        },
+        {
+          "description": "Devices whose state we fetch from the TRMNL cloud API on our own schedule.",
+          "type": "string",
+          "const": "trmnl"
         }
       ]
     },
@@ -1788,6 +1824,19 @@
           ]
         }
       ]
+    },
+    "TrmnlSettings": {
+      "type": "object",
+      "properties": {
+        "base_url": {
+          "type": "string",
+          "default": "https://trmnl.com"
+        },
+        "refresh": {
+          "type": "string",
+          "default": "3h"
+        }
+      }
     },
     "WatchdogSettings": {
       "type": "object",

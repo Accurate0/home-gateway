@@ -11,6 +11,7 @@ pub mod rpc;
 pub mod solar;
 pub mod sun;
 pub mod synergy;
+pub mod trmnl;
 pub mod unifi;
 pub mod watchdog;
 pub mod woolworths;

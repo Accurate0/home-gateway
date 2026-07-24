@@ -25,7 +25,9 @@ pub enum Transport {
     /// Devices we never poll: they check in on their own schedule and push
     /// state to us over HTTP (e.g. the battery-powered eink display firmware
     /// hitting `/epd/config`).
-    Poll,
+    EinkDisplayFirmware,
+    /// Devices whose state we fetch from the TRMNL cloud API on our own schedule.
+    Trmnl,
 }
 
 impl Transport {
@@ -33,7 +35,10 @@ impl Transport {
         match self {
             Transport::Zigbee => EnvironmentSensorType::Zigbee,
             Transport::Esphome => EnvironmentSensorType::Esphome,
-            Transport::Poll => unreachable!("poll transport does not support environment kind"),
+            Transport::EinkDisplayFirmware => {
+                unreachable!("eink_display_firmware transport does not support environment kind")
+            }
+            Transport::Trmnl => unreachable!("trmnl transport does not support environment kind"),
         }
     }
 
@@ -41,7 +46,10 @@ impl Transport {
         match self {
             Transport::Zigbee => PresenceSensorType::Zigbee,
             Transport::Esphome => PresenceSensorType::Esphome,
-            Transport::Poll => unreachable!("poll transport does not support presence kind"),
+            Transport::EinkDisplayFirmware => {
+                unreachable!("eink_display_firmware transport does not support presence kind")
+            }
+            Transport::Trmnl => unreachable!("trmnl transport does not support presence kind"),
         }
     }
 }
@@ -99,6 +107,18 @@ pub enum DeviceConfig {
     ControlSwitch,
     SmartSwitch(RawSmartSwitchBlock),
     EinkDisplayFirmware(RawEinkDisplayBlock),
+    Trmnl(RawTrmnlBlock),
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawTrmnlBlock {
+    name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct TrmnlDeviceSettings {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -107,6 +127,11 @@ pub struct RawEinkDisplayBlock {
     #[serde(default, with = "option_time_delta_from_str")]
     #[schemars(with = "Option<String>")]
     refresh: Option<TimeDelta>,
+    #[serde(default, with = "option_time_delta_from_str")]
+    #[schemars(with = "Option<String>")]
+    settle: Option<TimeDelta>,
+    #[serde(default)]
+    s3_key: Option<String>,
     #[serde(default)]
     sleep: Option<RawSleepWindow>,
 }
@@ -161,6 +186,8 @@ impl SleepWindow {
 pub struct EinkDisplaySettings {
     pub name: String,
     pub refresh: Option<TimeDelta>,
+    pub settle: Option<TimeDelta>,
+    pub s3_key: Option<String>,
     pub sleep: Option<SleepWindow>,
 }
 
@@ -241,6 +268,7 @@ pub struct DeviceRegistryInner {
     rooms: HashMap<String, String>,
     plant: HashMap<String, PlantSensorSettings>,
     eink_displays: HashMap<String, EinkDisplaySettings>,
+    trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
@@ -319,9 +347,15 @@ impl DeviceRegistryInner {
         notify: &NotifyTargets,
     ) -> Result<(), String> {
         let is_eink = matches!(config, DeviceConfig::EinkDisplayFirmware(_));
-        if (transport == Transport::Poll) != is_eink {
+        if (transport == Transport::EinkDisplayFirmware) != is_eink {
             return Err(format!(
-                "device {id}: `poll` transport is only valid with the `eink_display_firmware` kind, and vice versa"
+                "device {id}: `eink_display_firmware` transport is only valid with the `eink_display_firmware` kind, and vice versa"
+            ));
+        }
+        let is_trmnl = matches!(config, DeviceConfig::Trmnl(_));
+        if (transport == Transport::Trmnl) != is_trmnl {
+            return Err(format!(
+                "device {id}: `trmnl` transport is only valid with the `trmnl` kind, and vice versa"
             ));
         }
         match config {
@@ -421,7 +455,18 @@ impl DeviceRegistryInner {
                     EinkDisplaySettings {
                         name: display.name,
                         refresh: display.refresh,
+                        settle: display.settle,
+                        s3_key: display.s3_key,
                         sleep,
+                    },
+                );
+            }
+            DeviceConfig::Trmnl(trmnl) => {
+                self.trmnl_devices.insert(
+                    address.to_owned(),
+                    TrmnlDeviceSettings {
+                        id: id.to_owned(),
+                        name: trmnl.name,
                     },
                 );
             }
@@ -435,6 +480,10 @@ impl DeviceRegistryInner {
 
     pub fn eink_displays(&self) -> &HashMap<String, EinkDisplaySettings> {
         &self.eink_displays
+    }
+
+    pub fn trmnl_devices(&self) -> &HashMap<String, TrmnlDeviceSettings> {
+        &self.trmnl_devices
     }
 
     fn add_esphome_sensor_topics(
