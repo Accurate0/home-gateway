@@ -370,7 +370,10 @@ impl EventBusMessage {
                 ("device_id".to_owned(), device_id.clone()),
                 ("kind".to_owned(), kind.clone()),
                 ("name".to_owned(), name.clone()),
-                ("battery_voltage".to_owned(), format!("{battery_voltage:.3}")),
+                (
+                    "battery_voltage".to_owned(),
+                    format!("{battery_voltage:.3}"),
+                ),
             ]),
         }
     }

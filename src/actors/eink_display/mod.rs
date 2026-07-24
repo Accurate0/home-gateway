@@ -147,11 +147,10 @@ impl Actor for EInkDisplayActor {
                 .and_then(|r| r.to_std().ok())
                 .unwrap_or(default_refresh);
             let device_id = device_id.clone();
-            let _join_handle = myself.send_interval(refresh, move || {
-                EInkDisplayMessage::TakeScreenshot {
+            let _join_handle =
+                myself.send_interval(refresh, move || EInkDisplayMessage::TakeScreenshot {
                     device_id: Some(device_id.clone()),
-                }
-            });
+                });
         }
 
         let launch = BrowserConfig::builder()
@@ -312,15 +311,15 @@ impl Actor for EInkDisplayActor {
                     battery_voltage,
                 );
 
-                self.shared_actor_state
-                    .event_bus
-                    .publish(crate::event_bus::EventBusMessage::DeviceBattery {
+                self.shared_actor_state.event_bus.publish(
+                    crate::event_bus::EventBusMessage::DeviceBattery {
                         event_id,
                         device_id,
                         kind: kind.to_owned(),
                         name,
                         battery_voltage,
-                    });
+                    },
+                );
             }
         }
 

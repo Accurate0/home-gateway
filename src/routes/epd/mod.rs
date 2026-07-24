@@ -5,11 +5,11 @@ use crate::{
     feature_flag::FeatureFlagClient,
     types::{ApiState, AppError},
 };
+use ab_glyph::{FontRef, PxScale};
 use axum::{
     Json,
     extract::{Query, State},
 };
-use ab_glyph::{FontRef, PxScale};
 use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use imageproc::drawing::{draw_filled_rect_mut, draw_text_mut, text_size};
@@ -131,7 +131,7 @@ pub async fn config(
     }
 
     #[cfg(debug_assertions)]
-    let base = "http://192.168.0.104:8000/v1/epd/latest";
+    let base = "http://192.168.0.149:8000/v1/epd/latest";
     #[cfg(not(debug_assertions))]
     let base = "https://home.anurag.sh/v1/epd/latest";
 

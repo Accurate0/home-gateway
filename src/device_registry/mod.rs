@@ -122,7 +122,9 @@ impl RawSleepWindow {
         let parse = |value: &str| {
             NaiveTime::parse_from_str(value, "%H:%M:%S")
                 .or_else(|_| NaiveTime::parse_from_str(value, "%H:%M"))
-                .map_err(|_| format!("eink display {id}: invalid sleep time `{value}`, expected HH:MM"))
+                .map_err(|_| {
+                    format!("eink display {id}: invalid sleep time `{value}`, expected HH:MM")
+                })
         };
         Ok(SleepWindow {
             start: parse(&self.start)?,

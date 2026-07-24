@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
+use embedded_svc::io::Write;
 use esp_idf_svc::http::{
     client::{Configuration, EspHttpConnection},
     Method,
 };
-use embedded_svc::io::Write;
 use log::info;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +27,10 @@ struct ConfigRequest {
 fn device_id() -> String {
     let mut mac = [0u8; 6];
     unsafe {
-        esp_idf_sys::esp_read_mac(mac.as_mut_ptr(), esp_idf_sys::esp_mac_type_t_ESP_MAC_WIFI_STA);
+        esp_idf_sys::esp_read_mac(
+            mac.as_mut_ptr(),
+            esp_idf_sys::esp_mac_type_t_ESP_MAC_WIFI_STA,
+        );
     }
     let id = format!(
         "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
@@ -41,7 +44,7 @@ pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
     #[cfg(not(debug_assertions))]
     let url = "https://home.anurag.sh/v1/epd/config";
     #[cfg(debug_assertions)]
-    let url = "http://192.168.0.104:8000/v1/epd/config";
+    let url = "http://192.168.0.149:8000/v1/epd/config";
     info!("Fetching config from {}...", url);
 
     let config = Configuration {
