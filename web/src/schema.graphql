@@ -114,6 +114,7 @@ type EinkDisplayEntity {
 	capabilities: [Capability!]!
 	room: String
 	batteryVoltage: Float
+	batteryPercentage: Float
 	lastSeen: DateTime
 }
 

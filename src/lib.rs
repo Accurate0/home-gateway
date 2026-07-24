@@ -1,6 +1,7 @@
 pub mod actors;
 pub mod api_types;
 pub mod auth;
+pub mod battery;
 pub mod device_registry;
 pub mod esphome;
 pub mod event_bus;

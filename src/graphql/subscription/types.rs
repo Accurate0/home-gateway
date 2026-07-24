@@ -118,6 +118,7 @@ pub struct WoolworthsUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(complex)]
 pub struct DeviceBatteryUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
@@ -125,6 +126,13 @@ pub struct DeviceBatteryUpdate {
     pub name: String,
     pub kind: String,
     pub battery_voltage: f64,
+}
+
+#[ComplexObject]
+impl DeviceBatteryUpdate {
+    async fn battery_percentage(&self) -> f64 {
+        crate::battery::voltage_to_percentage(self.battery_voltage)
+    }
 }
 
 // TODO: friendly names for zigbee devices

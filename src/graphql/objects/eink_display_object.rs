@@ -1,4 +1,5 @@
-use async_graphql::{Object, SimpleObject};
+use crate::battery::voltage_to_percentage;
+use async_graphql::{ComplexObject, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use sqlx::{Pool, Postgres};
@@ -6,7 +7,7 @@ use sqlx::{Pool, Postgres};
 pub struct EinkDisplayObject {}
 
 #[derive(SimpleObject)]
-#[graphql(rename_fields = "camelCase")]
+#[graphql(rename_fields = "camelCase", complex)]
 pub struct EinkDisplay {
     pub device_id: String,
     pub name: String,
@@ -14,11 +15,25 @@ pub struct EinkDisplay {
     pub updated_at: DateTime<Utc>,
 }
 
+#[ComplexObject]
+impl EinkDisplay {
+    async fn battery_percentage(&self) -> Option<f64> {
+        self.battery_voltage.map(voltage_to_percentage)
+    }
+}
+
 #[derive(SimpleObject)]
-#[graphql(rename_fields = "camelCase")]
+#[graphql(rename_fields = "camelCase", complex)]
 pub struct BatteryPoint {
     pub battery_voltage: f64,
     pub time: DateTime<Utc>,
+}
+
+#[ComplexObject]
+impl BatteryPoint {
+    async fn battery_percentage(&self) -> f64 {
+        voltage_to_percentage(self.battery_voltage)
+    }
 }
 
 #[Object]

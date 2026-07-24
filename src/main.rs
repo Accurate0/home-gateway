@@ -18,6 +18,7 @@ use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
+    dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
@@ -190,6 +191,12 @@ async fn main() -> anyhow::Result<()> {
     ))
     .data(DataLoader::new(
         LastSeenDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        EinkDisplayDataLoader {
             database: pool.clone(),
         },
         tokio::spawn,

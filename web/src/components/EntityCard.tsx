@@ -444,10 +444,11 @@ function StatusTile({
 
 function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
   const voltage = entity.batteryVoltage;
+  const percentage = entity.batteryPercentage;
   const BatteryIcon =
-    voltage == null || voltage >= 3.9
+    percentage == null || percentage >= 60
       ? BatteryFull
-      : voltage >= 3.6
+      : percentage >= 25
         ? BatteryMedium
         : BatteryLow;
   return (
@@ -458,7 +459,14 @@ function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
         </div>
         <div className="text-muted-foreground flex items-center gap-1 text-sm tabular-nums">
           <BatteryIcon className="size-4" strokeWidth={1.75} />
-          {fmt(voltage, " V", 2)}
+          <span>
+            {percentage == null ? "—" : `${Math.round(percentage)}%`}
+            {voltage != null && (
+              <span className="text-muted-foreground/70 ml-1 text-xs">
+                {fmt(voltage, " V", 2)}
+              </span>
+            )}
+          </span>
         </div>
       </div>
       <div>

@@ -19,6 +19,7 @@ use crate::{
     },
     device_registry::Capability,
     graphql::dataloader::{
+        eink_battery::EinkDisplayDataLoader,
         last_seen::LastSeenDataLoader,
         temperature::{LatestTemperatureDataLoader, TemperatureModel},
     },
@@ -77,27 +78,31 @@ impl EinkDisplayEntity {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<f64>> {
-        let db = ctx.data::<sqlx::Pool<sqlx::Postgres>>()?;
-        Ok(sqlx::query_scalar!(
-            "SELECT battery_voltage FROM eink_display WHERE device_id = $1",
-            self.address
-        )
-        .fetch_optional(db)
-        .await?
-        .flatten())
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.battery_voltage))
+    }
+
+    async fn battery_percentage(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.battery_voltage)
+            .map(crate::battery::voltage_to_percentage))
     }
 
     async fn last_seen(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<DateTime<Utc>>> {
-        let db = ctx.data::<sqlx::Pool<sqlx::Postgres>>()?;
-        Ok(sqlx::query_scalar!(
-            r#"SELECT updated_at FROM eink_display WHERE device_id = $1"#,
-            self.address
-        )
-        .fetch_optional(db)
-        .await?)
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader.load_one(self.address.clone()).await?.map(|d| d.updated_at))
     }
 }
 

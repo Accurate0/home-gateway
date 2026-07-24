@@ -66,6 +66,7 @@ const EntitiesQuery = graphql`
         name
         room
         batteryVoltage
+        batteryPercentage
         lastSeen
       }
     }

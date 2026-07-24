@@ -34,6 +34,7 @@ export interface Entity {
   time?: string | null;
   lastSeen?: string | null;
   batteryVoltage?: number | null;
+  batteryPercentage?: number | null;
 }
 
 const SHORT_UNITS: Record<string, string> = {
