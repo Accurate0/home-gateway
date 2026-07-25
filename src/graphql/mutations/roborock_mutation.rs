@@ -7,6 +7,7 @@ use crate::home_assistant::HomeAssistant;
 
 pub struct RoborockMutation {
     pub control_entity: String,
+    pub start_service: String,
     pub stop_service: String,
     pub dock_service: String,
 }
@@ -39,6 +40,12 @@ impl RoborockMutation {
 
 #[Object]
 impl RoborockMutation {
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOROCK_WRITE))]
+    async fn start(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
+        let service = self.start_service.clone();
+        self.call(ctx, &service).await
+    }
+
     #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOROCK_WRITE))]
     async fn stop(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         let service = self.stop_service.clone();

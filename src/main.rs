@@ -22,6 +22,7 @@ use graphql::{
     dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
+    dataloader::valetudo_state::ValetudoStateDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
     mutations::MutationRoot,
 };
@@ -171,7 +172,7 @@ async fn main() -> anyhow::Result<()> {
         settings_container.clone(),
         device_registry.clone(),
         feature_flag_client.clone(),
-        mqtt_client,
+        mqtt_client.clone(),
         pool.clone(),
         s3.clone(),
         event_bus.clone(),
@@ -209,7 +210,14 @@ async fn main() -> anyhow::Result<()> {
         },
         tokio::spawn,
     ))
+    .data(DataLoader::new(
+        ValetudoStateDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
     .data(graphql_home_assistant)
+    .data(mqtt_client)
     .data(pool.clone())
     .data(settings_container.clone())
     .data(device_registry.clone())

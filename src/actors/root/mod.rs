@@ -280,6 +280,12 @@ impl Actor for RootSupervisor {
         plant_sensor::spawn::spawn_plant_sensor_handler(&myself, shared_actor_state.clone())
             .await?;
 
+        crate::actors::devices::valetudo::spawn::spawn_valetudo_handler(
+            &myself,
+            shared_actor_state.clone(),
+        )
+        .await?;
+
         myself
             .spawn_linked(
                 Some(DoorEventsSupervisor::NAME.to_string()),

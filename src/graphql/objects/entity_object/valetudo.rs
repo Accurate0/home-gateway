@@ -2,31 +2,28 @@ use async_graphql::{Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
 use crate::device_registry::Capability;
-use crate::graphql::dataloader::home_assistant_state::HomeAssistantStateDataLoader;
+use crate::graphql::dataloader::valetudo_state::{ValetudoStateDataLoader, ValetudoStateModel};
 
-pub struct RoborockEntity {
+pub struct ValetudoEntity {
     pub id: String,
     pub name: String,
     pub room: Option<String>,
     pub capabilities: Vec<Capability>,
-    pub status_entity: String,
-    pub battery_entity: String,
-    pub room_entity: String,
+    pub identifier: String,
 }
 
-impl RoborockEntity {
-    async fn state_of(
+impl ValetudoEntity {
+    async fn model(
         &self,
         ctx: &async_graphql::Context<'_>,
-        entity_id: &str,
-    ) -> async_graphql::Result<Option<String>> {
-        let loader = ctx.data::<DataLoader<HomeAssistantStateDataLoader>>()?;
-        Ok(loader.load_one(entity_id.to_owned()).await?.map(|s| s.state))
+    ) -> async_graphql::Result<Option<ValetudoStateModel>> {
+        let loader = ctx.data::<DataLoader<ValetudoStateDataLoader>>()?;
+        Ok(loader.load_one(self.identifier.clone()).await?)
     }
 }
 
 #[Object]
-impl RoborockEntity {
+impl ValetudoEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Vacuums
     }
@@ -51,7 +48,7 @@ impl RoborockEntity {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<String>> {
-        self.state_of(ctx, &self.status_entity).await
+        Ok(self.model(ctx).await?.and_then(|m| m.state))
     }
 
     async fn battery_percentage(
@@ -59,36 +56,37 @@ impl RoborockEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<f64>> {
         Ok(self
-            .state_of(ctx, &self.battery_entity)
+            .model(ctx)
             .await?
-            .and_then(|s| s.parse::<f64>().ok()))
+            .and_then(|m| m.battery_level)
+            .map(|b| b as f64))
     }
 
-    async fn current_room(
+    async fn fan_speed(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<String>> {
-        self.state_of(ctx, &self.room_entity).await
+        Ok(self.model(ctx).await?.and_then(|m| m.fan_speed))
+    }
+
+    async fn current_clean_area(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
+        Ok(self.model(ctx).await?.and_then(|m| m.current_clean_area))
+    }
+
+    async fn clean_count(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<i32>> {
+        Ok(self.model(ctx).await?.and_then(|m| m.clean_count))
     }
 
     async fn last_seen(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<DateTime<Utc>>> {
-        let loader = ctx.data::<DataLoader<HomeAssistantStateDataLoader>>()?;
-        let entities = [
-            self.status_entity.clone(),
-            self.battery_entity.clone(),
-            self.room_entity.clone(),
-        ];
-
-        let mut latest: Option<DateTime<Utc>> = None;
-        for entity_id in entities {
-            if let Some(model) = loader.load_one(entity_id).await? {
-                latest = Some(latest.map_or(model.updated_at, |cur| cur.max(model.updated_at)));
-            }
-        }
-
-        Ok(latest)
+        Ok(self.model(ctx).await?.map(|m| m.updated_at))
     }
 }

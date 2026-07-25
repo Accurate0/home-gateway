@@ -23,6 +23,10 @@ pub struct DoorEntity {
 
 #[Object]
 impl DoorEntity {
+    async fn category(&self) -> super::EntityCategory {
+        super::EntityCategory::Doors
+    }
+
     async fn id(&self) -> &str {
         &self.id
     }

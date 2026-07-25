@@ -40,6 +40,10 @@ impl EnvironmentEntity {
 
 #[Object]
 impl EnvironmentEntity {
+    async fn category(&self) -> super::EntityCategory {
+        super::EntityCategory::Environment
+    }
+
     async fn id(&self) -> &str {
         &self.id
     }

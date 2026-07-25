@@ -23,6 +23,10 @@ pub struct PresenceEntity {
 
 #[Object]
 impl PresenceEntity {
+    async fn category(&self) -> super::EntityCategory {
+        super::EntityCategory::Presence
+    }
+
     async fn id(&self) -> &str {
         &self.id
     }

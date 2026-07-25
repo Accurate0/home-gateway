@@ -13,8 +13,12 @@ import type { DashboardSetOffMutation } from "./__generated__/DashboardSetOffMut
 import type { DashboardSetBrightnessMutation } from "./__generated__/DashboardSetBrightnessMutation.graphql";
 import type { DashboardColourMoveMutation } from "./__generated__/DashboardColourMoveMutation.graphql";
 import type { DashboardSetColourMutation } from "./__generated__/DashboardSetColourMutation.graphql";
+import type { DashboardRoborockStartMutation } from "./__generated__/DashboardRoborockStartMutation.graphql";
 import type { DashboardRoborockStopMutation } from "./__generated__/DashboardRoborockStopMutation.graphql";
 import type { DashboardRoborockDockMutation } from "./__generated__/DashboardRoborockDockMutation.graphql";
+import type { DashboardValetudoStartMutation } from "./__generated__/DashboardValetudoStartMutation.graphql";
+import type { DashboardValetudoStopMutation } from "./__generated__/DashboardValetudoStopMutation.graphql";
+import type { DashboardValetudoDockMutation } from "./__generated__/DashboardValetudoDockMutation.graphql";
 import EntityCard, {
   type LightActions,
   type RoborockActions,
@@ -24,14 +28,18 @@ import {
   entityKey,
   kindOf,
   type Entity,
-  type EntityKind,
 } from "../entities";
 
 const EntitiesQuery = graphql`
   query DashboardEntitiesQuery {
+    entitySections {
+      category
+      title
+    }
     entities {
       __typename
       ... on LightEntity {
+        category
         id
         name
         room
@@ -40,6 +48,7 @@ const EntitiesQuery = graphql`
         lastSeen
       }
       ... on DoorEntity {
+        category
         id
         name
         room
@@ -47,6 +56,7 @@ const EntitiesQuery = graphql`
         lastSeen
       }
       ... on PresenceEntity {
+        category
         id
         name
         room
@@ -54,6 +64,7 @@ const EntitiesQuery = graphql`
         lastSeen
       }
       ... on EnvironmentEntity {
+        category
         id
         name
         room
@@ -67,6 +78,7 @@ const EntitiesQuery = graphql`
         lastSeen
       }
       ... on EinkDisplayEntity {
+        category
         id
         name
         room
@@ -75,6 +87,7 @@ const EntitiesQuery = graphql`
         lastSeen
       }
       ... on RoborockEntity {
+        category
         id
         name
         room
@@ -82,6 +95,19 @@ const EntitiesQuery = graphql`
         status
         batteryPercentage
         currentRoom
+        lastSeen
+      }
+      ... on ValetudoEntity {
+        category
+        id
+        name
+        room
+        capabilities
+        status
+        batteryPercentage
+        fanSpeed
+        currentCleanArea
+        cleanCount
         lastSeen
       }
     }
@@ -159,6 +185,14 @@ const SetColourMutation = graphql`
   }
 `;
 
+const RoborockStartMutation = graphql`
+  mutation DashboardRoborockStartMutation($id: String!) {
+    roborock(id: $id) {
+      start
+    }
+  }
+`;
+
 const RoborockStopMutation = graphql`
   mutation DashboardRoborockStopMutation($id: String!) {
     roborock(id: $id) {
@@ -175,14 +209,29 @@ const RoborockDockMutation = graphql`
   }
 `;
 
-const SECTIONS: { kind: EntityKind; title: string }[] = [
-  { kind: "light", title: "Lights" },
-  { kind: "door", title: "Doors" },
-  { kind: "presence", title: "Presence" },
-  { kind: "environment", title: "Environment" },
-  { kind: "einkDisplay", title: "Displays" },
-  { kind: "roborock", title: "Vacuums" },
-];
+const ValetudoStartMutation = graphql`
+  mutation DashboardValetudoStartMutation($id: String!) {
+    valetudo(id: $id) {
+      start
+    }
+  }
+`;
+
+const ValetudoStopMutation = graphql`
+  mutation DashboardValetudoStopMutation($id: String!) {
+    valetudo(id: $id) {
+      stop
+    }
+  }
+`;
+
+const ValetudoDockMutation = graphql`
+  mutation DashboardValetudoDockMutation($id: String!) {
+    valetudo(id: $id) {
+      dock
+    }
+  }
+`;
 
 type GroupBy = "type" | "room";
 
@@ -287,10 +336,18 @@ export default function Dashboard() {
   );
   const [commitColour] =
     useMutation<DashboardSetColourMutation>(SetColourMutation);
+  const [commitRoborockStart] =
+    useMutation<DashboardRoborockStartMutation>(RoborockStartMutation);
   const [commitRoborockStop] =
     useMutation<DashboardRoborockStopMutation>(RoborockStopMutation);
   const [commitRoborockDock] =
     useMutation<DashboardRoborockDockMutation>(RoborockDockMutation);
+  const [commitValetudoStart] =
+    useMutation<DashboardValetudoStartMutation>(ValetudoStartMutation);
+  const [commitValetudoStop] =
+    useMutation<DashboardValetudoStopMutation>(ValetudoStopMutation);
+  const [commitValetudoDock] =
+    useMutation<DashboardValetudoDockMutation>(ValetudoDockMutation);
 
   const flip = (key: string) =>
     setEntities((prev) => {
@@ -320,29 +377,44 @@ export default function Dashboard() {
   });
 
   const roborockActionsFor = (entity: Entity): RoborockActions => ({
+    onStart: () => commitRoborockStart({ variables: { id: entity.id } }),
     onStop: () => commitRoborockStop({ variables: { id: entity.id } }),
     onDock: () => commitRoborockDock({ variables: { id: entity.id } }),
+  });
+
+  const valetudoActionsFor = (entity: Entity): RoborockActions => ({
+    onStart: () => commitValetudoStart({ variables: { id: entity.id } }),
+    onStop: () => commitValetudoStop({ variables: { id: entity.id } }),
+    onDock: () => commitValetudoDock({ variables: { id: entity.id } }),
   });
 
   const sections = useMemo(() => {
     if (groupBy === "room") return groupByRoom(entities.values());
 
-    const groups = new Map<EntityKind, Entity[]>();
+    // The backend owns categorisation and section order; we only bucket entities
+    // by the `category` it stamps on each one and render sections in that order.
+    const groups = new Map<string, Entity[]>();
     for (const e of entities.values()) {
-      const list = groups.get(e.kind) ?? [];
+      const category = e.category ?? UNASSIGNED;
+      const list = groups.get(category) ?? [];
       list.push(e);
-      groups.set(e.kind, list);
+      groups.set(category, list);
     }
     for (const list of groups.values()) {
       list.sort((a, b) => a.name.localeCompare(b.name));
     }
-    return SECTIONS.flatMap(({ kind, title }) => {
-      const list = groups.get(kind);
-      return list && list.length > 0
-        ? ([[title, list]] as [string, Entity[]][])
-        : [];
-    });
-  }, [entities, groupBy]);
+
+    const result: [string, Entity[]][] = [];
+    for (const { category, title } of data.entitySections) {
+      const list = groups.get(category);
+      if (list && list.length > 0) result.push([title, list]);
+    }
+    const uncategorised = groups.get(UNASSIGNED);
+    if (uncategorised && uncategorised.length > 0) {
+      result.push([UNASSIGNED, uncategorised]);
+    }
+    return result;
+  }, [entities, groupBy, data.entitySections]);
 
   return (
     <div>
@@ -392,6 +464,11 @@ export default function Dashboard() {
                   roborockActions={
                     entity.kind === "roborock"
                       ? roborockActionsFor(entity)
+                      : undefined
+                  }
+                  valetudoActions={
+                    entity.kind === "valetudo"
+                      ? valetudoActionsFor(entity)
                       : undefined
                   }
                 />

@@ -19,6 +19,7 @@ pub mod presence;
 pub mod roborock;
 pub mod template;
 pub mod trigger;
+pub mod valetudo;
 pub mod workflow;
 
 pub use door::{ArmedDoorStates, DoorSettings};
@@ -31,6 +32,7 @@ pub use presence::{PresenceSensorType, PresenceSettings};
 pub use roborock::{RawRoborockBlock, RoborockSettings};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
+pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use workflow::Workflow;
 
 use crate::auth::scope::ScopePattern;
@@ -582,8 +584,17 @@ android_app_webhook_secret: x
             .expect("roborock device resolves");
         assert_eq!(registry.room(roborock_address), Some("dining-room"));
         assert_eq!(roborock.battery_entity, "sensor.robot_battery");
+        assert_eq!(roborock.start_service, "vacuum.start");
         assert_eq!(roborock.stop_service, "vacuum.stop");
         assert_eq!(roborock.dock_service, "vacuum.return_to_base");
+
+        let valetudo_address = registry.address_or_self("valetudo");
+        let valetudo = registry
+            .valetudo(valetudo_address)
+            .expect("valetudo device resolves");
+        assert_eq!(registry.room(valetudo_address), Some("spare-room"));
+        assert_eq!(valetudo.command_topic, "valetudo/rockrobo/command");
+        assert_eq!(valetudo.dock_payload, "return_to_base");
 
         let mut seen = HashSet::new();
         for wf in settings.workflows.values() {

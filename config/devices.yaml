@@ -197,5 +197,16 @@
         battery_entity: sensor.robot_battery
         room_entity: sensor.robot_current_room
         control_entity: vacuum.robot
+        start_service: vacuum.start
         stop_service: vacuum.stop
         dock_service: vacuum.return_to_base
+
+
+- id: valetudo
+  room: spare-room
+  transport: valetudo
+  address: rockrobo
+  kinds:
+    - kind: valetudo
+      config:
+        name: Vacuum

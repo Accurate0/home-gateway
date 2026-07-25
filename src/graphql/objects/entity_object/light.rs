@@ -23,6 +23,10 @@ pub struct LightEntity {
 
 #[Object]
 impl LightEntity {
+    async fn category(&self) -> super::EntityCategory {
+        super::EntityCategory::Lights
+    }
+
     async fn id(&self) -> &str {
         &self.id
     }

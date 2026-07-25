@@ -11,6 +11,7 @@ import {
   MonitorSmartphone,
   Palette,
   PersonStanding,
+  Play,
   SlidersHorizontal,
   Square,
   Thermometer,
@@ -30,6 +31,7 @@ export interface LightActions {
 }
 
 export interface RoborockActions {
+  onStart: () => void;
   onStop: () => void;
   onDock: () => void;
 }
@@ -529,24 +531,79 @@ function RoborockTile({
           </span>
         )}
       </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={actions?.onStop}
-          className="border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-medium"
-        >
-          <Square className="size-3.5" strokeWidth={2} />
-          Stop
-        </button>
-        <button
-          type="button"
-          onClick={actions?.onDock}
-          className="border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-medium"
-        >
-          <Home className="size-3.5" strokeWidth={2} />
-          Dock
-        </button>
+      <VacuumControls actions={actions} />
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
       </div>
+    </Tile>
+  );
+}
+
+function VacuumControls({ actions }: { actions?: RoborockActions }) {
+  const cls =
+    "border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-medium";
+  return (
+    <div className="flex gap-2">
+      <button type="button" onClick={actions?.onStart} className={cls}>
+        <Play className="size-3.5" strokeWidth={2} />
+        Start
+      </button>
+      <button type="button" onClick={actions?.onStop} className={cls}>
+        <Square className="size-3.5" strokeWidth={2} />
+        Stop
+      </button>
+      <button type="button" onClick={actions?.onDock} className={cls}>
+        <Home className="size-3.5" strokeWidth={2} />
+        Dock
+      </button>
+    </div>
+  );
+}
+
+function ValetudoTile({
+  entity,
+  actions,
+  now,
+}: {
+  entity: Entity;
+  actions?: RoborockActions;
+  now: number;
+}) {
+  const percentage = entity.batteryPercentage;
+  const BatteryIcon =
+    percentage == null || percentage >= 60
+      ? BatteryFull
+      : percentage >= 25
+        ? BatteryMedium
+        : BatteryLow;
+  return (
+    <Tile className="col-span-1 justify-between gap-3">
+      <div className="flex items-start justify-between">
+        <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
+          <Bot className="size-5" strokeWidth={1.5} />
+        </div>
+        <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
+          <BatteryIcon className="size-4" strokeWidth={1.75} />
+          <span className="text-sm">
+            {percentage == null ? "—" : `${Math.round(percentage)}%`}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <StatePill tone={entity.status ? "on" : "unknown"}>
+          {entity.status ?? "unknown"}
+        </StatePill>
+        {entity.fanSpeed && (
+          <span className="text-muted-foreground text-xs capitalize">
+            {entity.fanSpeed}
+          </span>
+        )}
+      </div>
+      <VacuumControls actions={actions} />
       <div>
         <div className="leading-tight font-medium">{entity.name}</div>
         <div className="text-muted-foreground flex items-center gap-1 text-xs">
@@ -562,11 +619,13 @@ export default function EntityCard({
   entity,
   lightActions,
   roborockActions,
+  valetudoActions,
   now,
 }: {
   entity: Entity;
   lightActions?: LightActions;
   roborockActions?: RoborockActions;
+  valetudoActions?: RoborockActions;
   now: number;
 }) {
   switch (entity.kind) {
@@ -603,6 +662,10 @@ export default function EntityCard({
     case "roborock":
       return (
         <RoborockTile entity={entity} actions={roborockActions} now={now} />
+      );
+    case "valetudo":
+      return (
+        <ValetudoTile entity={entity} actions={valetudoActions} now={now} />
       );
   }
 }

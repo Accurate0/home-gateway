@@ -49,6 +49,7 @@ The input/output is a string in RFC3339 format.
 scalar DateTime
 
 type DoorEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
@@ -106,9 +107,24 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RoborockEntity
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RoborockEntity | ValetudoEntity
+
+enum EntityCategory {
+	LIGHTS
+	DOORS
+	PRESENCE
+	ENVIRONMENT
+	DISPLAYS
+	VACUUMS
+}
+
+type EntitySection {
+	category: EntityCategory!
+	title: String!
+}
 
 type EinkDisplayEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
@@ -130,6 +146,7 @@ type EnvironmentDetails {
 }
 
 type EnvironmentEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
@@ -236,6 +253,7 @@ type HomeAssistantUpdate {
 }
 
 type LightEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
@@ -281,6 +299,7 @@ type MetricReading {
 }
 
 type RoborockEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
 	room: String
@@ -292,6 +311,27 @@ type RoborockEntity {
 }
 
 type RoborockMutation {
+	start: Boolean!
+	stop: Boolean!
+	dock: Boolean!
+}
+
+type ValetudoEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	room: String
+	capabilities: [Capability!]!
+	status: String
+	batteryPercentage: Float
+	fanSpeed: String
+	currentCleanArea: Float
+	cleanCount: Int
+	lastSeen: DateTime
+}
+
+type ValetudoMutation {
+	start: Boolean!
 	stop: Boolean!
 	dock: Boolean!
 }
@@ -314,6 +354,7 @@ type ModeUpdate {
 type MutationRoot {
 	light(id: String!): LightMutation!
 	roborock(id: String!): RoborockMutation!
+	valetudo(id: String!): ValetudoMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
@@ -329,6 +370,7 @@ ISO 8601 combined date and time without timezone.
 scalar NaiveDateTime
 
 type PresenceEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
@@ -368,6 +410,7 @@ type QueryRoot {
 	lacks a `graphql:<type>:read` scope for are silently omitted — this query
 	never errors on missing permissions.
 	"""
+	entitySections: [EntitySection!]!
 	entities: [Entity!]!
 	solar: SolarObject!
 	energy: EnergyObject!

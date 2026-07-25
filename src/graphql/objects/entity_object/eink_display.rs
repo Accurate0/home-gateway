@@ -22,6 +22,10 @@ pub struct EinkDisplayEntity {
 
 #[Object]
 impl EinkDisplayEntity {
+    async fn category(&self) -> super::EntityCategory {
+        super::EntityCategory::Displays
+    }
+
     async fn id(&self) -> &str {
         &self.id
     }

@@ -1,4 +1,4 @@
-use super::devices::{control_switch, plant_sensor, presence_sensor};
+use super::devices::{control_switch, plant_sensor, presence_sensor, valetudo};
 use crate::{
     actors::{door_sensor, environment_sensor, light, smart_switch},
     types::SharedActorState,
@@ -37,6 +37,12 @@ enum MqttTopic {
     Zigbee2MqttDevice,
     /// `esphome/discover/<node>` — a node announcing itself.
     EsphomeDiscovery,
+    /// `valetudo/<identifier>/state` or `.../attributes` — a Valetudo robot's
+    /// state report.
+    Valetudo {
+        identifier: String,
+        leaf: valetudo::Leaf,
+    },
     /// Anything else — resolved against the esphome subscription registry, since
     /// the only other topics we subscribe to are esphome state topics we chose.
     Other,
@@ -54,6 +60,22 @@ impl MqttTopic {
 
         if topic.starts_with("esphome/discover/") {
             return MqttTopic::EsphomeDiscovery;
+        }
+
+        if let Some(rest) = topic.strip_prefix("valetudo/") {
+            if let Some((identifier, leaf)) = rest.split_once('/') {
+                let leaf = match leaf {
+                    "state" => Some(valetudo::Leaf::State),
+                    "attributes" => Some(valetudo::Leaf::Attributes),
+                    _ => None,
+                };
+                if let Some(leaf) = leaf {
+                    return MqttTopic::Valetudo {
+                        identifier: identifier.to_owned(),
+                        leaf,
+                    };
+                }
+            }
         }
 
         MqttTopic::Other
@@ -497,6 +519,28 @@ impl MqttIngest {
                     }
                 }
             }
+            MqttTopic::Valetudo { identifier, leaf } => {
+                self.record_last_seen(&identifier).await;
+
+                let Some(actor_cell) =
+                    ractor::registry::where_is(valetudo::ValetudoHandler::NAME.to_string())
+                else {
+                    tracing::error!("no valetudo actor found");
+                    return Ok(());
+                };
+
+                actor_cell.send_message(FactoryMessage::Dispatch(Job {
+                    key: (),
+                    msg: valetudo::Message::NewEvent(valetudo::NewEvent {
+                        event_id: uuid::Uuid::new_v4(),
+                        identifier,
+                        leaf,
+                        payload,
+                    }),
+                    options: JobOptions::default(),
+                    accepted: None,
+                }))?;
+            }
             MqttTopic::Zigbee2MqttDevice => {
                 if let Some(friendly_name) = topic.strip_prefix("zigbee2mqtt/") {
                     self.record_last_seen(friendly_name).await;
@@ -634,6 +678,18 @@ mod tests {
         ));
         assert!(matches!(
             MqttTopic::classify("apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state"),
+            MqttTopic::Other
+        ));
+        assert!(matches!(
+            MqttTopic::classify("valetudo/rockrobo/state"),
+            MqttTopic::Valetudo { leaf: valetudo::Leaf::State, .. }
+        ));
+        assert!(matches!(
+            MqttTopic::classify("valetudo/rockrobo/attributes"),
+            MqttTopic::Valetudo { leaf: valetudo::Leaf::Attributes, .. }
+        ));
+        assert!(matches!(
+            MqttTopic::classify("valetudo/rockrobo/map_data"),
             MqttTopic::Other
         ));
     }

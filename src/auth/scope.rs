@@ -35,6 +35,7 @@ pub enum Resource {
     HomeAssistant,
     Battery,
     Roborock,
+    Valetudo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,6 +87,7 @@ impl Resource {
             "home_assistant" => Self::HomeAssistant,
             "battery" => Self::Battery,
             "roborock" => Self::Roborock,
+            "valetudo" => Self::Valetudo,
             _ => return None,
         })
     }
@@ -143,6 +145,7 @@ impl Resource {
             Self::HomeAssistant => "home_assistant",
             Self::Battery => "battery",
             Self::Roborock => "roborock",
+            Self::Valetudo => "valetudo",
         }
     }
 
@@ -318,11 +321,15 @@ pub mod required {
     pub const GRAPHQL_EPD_READ: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Read);
     pub const GRAPHQL_ROBOROCK_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Roborock, Action::Read);
+    pub const GRAPHQL_VALETUDO_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Valetudo, Action::Read);
 
     pub const GRAPHQL_LIGHT_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Write);
     pub const GRAPHQL_ROBOROCK_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Roborock, Action::Write);
+    pub const GRAPHQL_VALETUDO_WRITE: Scope =
+        Scope::new(Domain::Graphql, Resource::Valetudo, Action::Write);
     pub const GRAPHQL_WORKFLOW_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
 

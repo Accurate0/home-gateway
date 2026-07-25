@@ -8,6 +8,7 @@ pub struct RawRoborockBlock {
     pub battery_entity: String,
     pub room_entity: String,
     pub control_entity: String,
+    pub start_service: String,
     pub stop_service: String,
     pub dock_service: String,
 }
@@ -19,6 +20,7 @@ pub struct RoborockSettings {
     pub battery_entity: String,
     pub room_entity: String,
     pub control_entity: String,
+    pub start_service: String,
     pub stop_service: String,
     pub dock_service: String,
 }
@@ -31,6 +33,7 @@ impl RawRoborockBlock {
             battery_entity: self.battery_entity,
             room_entity: self.room_entity,
             control_entity: self.control_entity,
+            start_service: self.start_service,
             stop_service: self.stop_service,
             dock_service: self.dock_service,
         }

@@ -12,7 +12,8 @@ use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_no
 use crate::settings::plant::default_plant_entities;
 use crate::settings::{
     DeviceAliases, DoorSettings, EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress,
-    PlantSensorSettings, PresenceSensorType, PresenceSettings, RawRoborockBlock, RoborockSettings,
+    PlantSensorSettings, PresenceSensorType, PresenceSettings, RawRoborockBlock, RawValetudoBlock,
+    RoborockSettings, ValetudoSettings,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
@@ -31,6 +32,9 @@ pub enum Transport {
     /// Devices whose state we read from Home Assistant entities and control via
     /// Home Assistant service calls.
     HomeAssistant,
+    /// Valetudo-flashed robots that publish state and accept commands directly
+    /// over MQTT under `valetudo/<identifier>/...`.
+    Valetudo,
 }
 
 impl Transport {
@@ -45,6 +49,9 @@ impl Transport {
             Transport::HomeAssistant => {
                 unreachable!("home_assistant transport does not support environment kind")
             }
+            Transport::Valetudo => {
+                unreachable!("valetudo transport does not support environment kind")
+            }
         }
     }
 
@@ -58,6 +65,9 @@ impl Transport {
             Transport::Trmnl => unreachable!("trmnl transport does not support presence kind"),
             Transport::HomeAssistant => {
                 unreachable!("home_assistant transport does not support presence kind")
+            }
+            Transport::Valetudo => {
+                unreachable!("valetudo transport does not support presence kind")
             }
         }
     }
@@ -118,6 +128,7 @@ pub enum DeviceConfig {
     EinkDisplayFirmware(RawEinkDisplayBlock),
     Trmnl(RawTrmnlBlock),
     Roborock(RawRoborockBlock),
+    Valetudo(RawValetudoBlock),
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -280,6 +291,7 @@ pub struct DeviceRegistryInner {
     eink_displays: HashMap<String, EinkDisplaySettings>,
     trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
     roborocks: HashMap<String, RoborockSettings>,
+    valetudos: HashMap<String, ValetudoSettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
@@ -373,6 +385,12 @@ impl DeviceRegistryInner {
         if (transport == Transport::HomeAssistant) != is_roborock {
             return Err(format!(
                 "device {id}: `home_assistant` transport is only valid with the `roborock` kind, and vice versa"
+            ));
+        }
+        let is_valetudo = matches!(config, DeviceConfig::Valetudo(_));
+        if (transport == Transport::Valetudo) != is_valetudo {
+            return Err(format!(
+                "device {id}: `valetudo` transport is only valid with the `valetudo` kind, and vice versa"
             ));
         }
 
@@ -492,6 +510,10 @@ impl DeviceRegistryInner {
                 self.roborocks
                     .insert(address.to_owned(), roborock.resolve());
             }
+            DeviceConfig::Valetudo(valetudo) => {
+                self.valetudos
+                    .insert(address.to_owned(), valetudo.resolve(address));
+            }
         }
         Ok(())
     }
@@ -514,6 +536,14 @@ impl DeviceRegistryInner {
 
     pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
         self.roborocks.iter()
+    }
+
+    pub fn valetudo(&self, address: &str) -> Option<&ValetudoSettings> {
+        self.valetudos.get(address)
+    }
+
+    pub fn valetudos(&self) -> impl Iterator<Item = (&String, &ValetudoSettings)> {
+        self.valetudos.iter()
     }
 
     fn add_esphome_sensor_topics(

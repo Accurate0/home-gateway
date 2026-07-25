@@ -5,7 +5,7 @@ use crate::auth::scope::required;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::objects::entity_object::{
     DoorEntity, EinkDisplayEntity, EinkDisplayKind, Entity, EnvironmentEntity, LightEntity,
-    PresenceEntity, RoborockEntity,
+    EntitySection, PresenceEntity, RoborockEntity, ValetudoEntity,
 };
 
 #[derive(Default)]
@@ -16,6 +16,13 @@ impl EntitiesQuery {
     /// Every configured entity and its current state. Entity types the caller
     /// lacks a `graphql:<type>:read` scope for are silently omitted — this query
     /// never errors on missing permissions.
+    /// The dashboard sections, in display order, with their titles. Categorising
+    /// a device kind is a backend concern — the frontend renders whatever order
+    /// and titles this returns.
+    async fn entity_sections(&self) -> Vec<EntitySection> {
+        EntitySection::ordered()
+    }
+
     async fn entities(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -128,6 +135,22 @@ impl EntitiesQuery {
                     status_entity: settings.status_entity.clone(),
                     battery_entity: settings.battery_entity.clone(),
                     room_entity: settings.room_entity.clone(),
+                })
+            }));
+        }
+
+        if auth.has(&required::GRAPHQL_VALETUDO_READ) {
+            out.extend(registry.valetudos().map(|(address, settings)| {
+                let id = registry
+                    .id_for_address(address)
+                    .unwrap_or(address)
+                    .to_owned();
+                Entity::Valetudo(ValetudoEntity {
+                    id,
+                    name: settings.name.clone(),
+                    room: registry.room(address).map(str::to_owned),
+                    capabilities: registry.capabilities(address).to_vec(),
+                    identifier: address.clone(),
                 })
             }));
         }

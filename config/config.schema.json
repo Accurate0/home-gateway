@@ -400,6 +400,22 @@
             "kind",
             "config"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "config": {
+              "$ref": "#/$defs/RawValetudoBlock"
+            },
+            "kind": {
+              "type": "string",
+              "const": "valetudo"
+            }
+          },
+          "required": [
+            "kind",
+            "config"
+          ]
         }
       ]
     },
@@ -939,6 +955,9 @@
         "room_entity": {
           "type": "string"
         },
+        "start_service": {
+          "type": "string"
+        },
         "status_entity": {
           "type": "string"
         },
@@ -952,6 +971,7 @@
         "battery_entity",
         "room_entity",
         "control_entity",
+        "start_service",
         "stop_service",
         "dock_service"
       ]
@@ -1046,6 +1066,45 @@
       "properties": {
         "name": {
           "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RawValetudoBlock": {
+      "type": "object",
+      "properties": {
+        "dock_payload": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "mqtt_prefix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "start_payload": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "stop_payload": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         }
       },
       "required": [
@@ -1633,6 +1692,11 @@
           "description": "Devices whose state we read from Home Assistant entities and control via\nHome Assistant service calls.",
           "type": "string",
           "const": "home_assistant"
+        },
+        {
+          "description": "Valetudo-flashed robots that publish state and accept commands directly\nover MQTT under `valetudo/<identifier>/...`.",
+          "type": "string",
+          "const": "valetudo"
         }
       ]
     },
