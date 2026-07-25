@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<14583794c294cb5b35c387816d290a5c>>
+ * @generated SignedSource<<6f8febefc17bf40a86af00fc25922f8d>>
  * @lightSyntaxTransform
  */
 
@@ -55,6 +55,16 @@ export type DashboardEntitiesQuery$data = {
     readonly present: boolean | null | undefined;
     readonly room: string | null | undefined;
   } | {
+    readonly __typename: "RoborockEntity";
+    readonly batteryPercentage: number | null | undefined;
+    readonly capabilities: ReadonlyArray<Capability>;
+    readonly currentRoom: string | null | undefined;
+    readonly id: string;
+    readonly lastSeen: any | null | undefined;
+    readonly name: string;
+    readonly room: string | null | undefined;
+    readonly status: string | null | undefined;
+  } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
     readonly __typename: "%other";
@@ -101,7 +111,14 @@ v4 = {
   "name": "lastSeen",
   "storageKey": null
 },
-v5 = [
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "batteryPercentage",
+  "storageKey": null
+},
+v6 = [
   {
     "alias": null,
     "args": null,
@@ -239,16 +256,37 @@ v5 = [
             "name": "batteryVoltage",
             "storageKey": null
           },
+          (v5/*:: as any*/),
+          (v4/*:: as any*/)
+        ],
+        "type": "EinkDisplayEntity",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v0/*:: as any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "batteryPercentage",
+            "name": "status",
+            "storageKey": null
+          },
+          (v5/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "currentRoom",
             "storageKey": null
           },
           (v4/*:: as any*/)
         ],
-        "type": "EinkDisplayEntity",
+        "type": "RoborockEntity",
         "abstractKey": null
       }
     ],
@@ -261,7 +299,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "DashboardEntitiesQuery",
-    "selections": (v5/*:: as any*/),
+    "selections": (v6/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -270,19 +308,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "DashboardEntitiesQuery",
-    "selections": (v5/*:: as any*/)
+    "selections": (v6/*:: as any*/)
   },
   "params": {
-    "cacheID": "ba6d4201fed3a956ab18e299ac33e46c",
+    "cacheID": "97aea0c60568e04aa0dda7121398c495",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      id\n      name\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      id\n      name\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n    }\n    ... on RoborockEntity {\n      id\n      name\n      room\n      capabilities\n      status\n      batteryPercentage\n      currentRoom\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b01430a14be3037c3063ba66e5c67a3c";
+(node as any).hash = "2db12278a974d6e75963052baf63c267";
 
 export default node;

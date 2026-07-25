@@ -106,7 +106,7 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RoborockEntity
 
 type EinkDisplayEntity {
 	id: String!
@@ -280,6 +280,22 @@ type MetricReading {
 	value: Float!
 }
 
+type RoborockEntity {
+	id: String!
+	name: String!
+	room: String
+	capabilities: [Capability!]!
+	status: String
+	batteryPercentage: Float
+	currentRoom: String
+	lastSeen: DateTime
+}
+
+type RoborockMutation {
+	stop: Boolean!
+	dock: Boolean!
+}
+
 enum Mode {
 	HOME
 	AWAY
@@ -297,6 +313,7 @@ type ModeUpdate {
 
 type MutationRoot {
 	light(id: String!): LightMutation!
+	roborock(id: String!): RoborockMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")

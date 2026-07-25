@@ -14,7 +14,8 @@ export type EntityKind =
   | "door"
   | "presence"
   | "environment"
-  | "einkDisplay";
+  | "einkDisplay"
+  | "roborock";
 
 export interface Entity {
   key: string;
@@ -35,6 +36,8 @@ export interface Entity {
   lastSeen?: string | null;
   batteryVoltage?: number | null;
   batteryPercentage?: number | null;
+  status?: string | null;
+  currentRoom?: string | null;
 }
 
 const SHORT_UNITS: Record<string, string> = {
@@ -77,6 +80,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   PresenceEntity: "presence",
   EnvironmentEntity: "environment",
   EinkDisplayEntity: "einkDisplay",
+  RoborockEntity: "roborock",
   LightUpdate: "light",
   DoorUpdate: "door",
   PresenceUpdate: "presence",

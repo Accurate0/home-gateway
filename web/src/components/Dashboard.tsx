@@ -13,7 +13,12 @@ import type { DashboardSetOffMutation } from "./__generated__/DashboardSetOffMut
 import type { DashboardSetBrightnessMutation } from "./__generated__/DashboardSetBrightnessMutation.graphql";
 import type { DashboardColourMoveMutation } from "./__generated__/DashboardColourMoveMutation.graphql";
 import type { DashboardSetColourMutation } from "./__generated__/DashboardSetColourMutation.graphql";
-import EntityCard, { type LightActions } from "./EntityCard";
+import type { DashboardRoborockStopMutation } from "./__generated__/DashboardRoborockStopMutation.graphql";
+import type { DashboardRoborockDockMutation } from "./__generated__/DashboardRoborockDockMutation.graphql";
+import EntityCard, {
+  type LightActions,
+  type RoborockActions,
+} from "./EntityCard";
 import {
   applyReadings,
   entityKey,
@@ -67,6 +72,16 @@ const EntitiesQuery = graphql`
         room
         batteryVoltage
         batteryPercentage
+        lastSeen
+      }
+      ... on RoborockEntity {
+        id
+        name
+        room
+        capabilities
+        status
+        batteryPercentage
+        currentRoom
         lastSeen
       }
     }
@@ -144,12 +159,29 @@ const SetColourMutation = graphql`
   }
 `;
 
+const RoborockStopMutation = graphql`
+  mutation DashboardRoborockStopMutation($id: String!) {
+    roborock(id: $id) {
+      stop
+    }
+  }
+`;
+
+const RoborockDockMutation = graphql`
+  mutation DashboardRoborockDockMutation($id: String!) {
+    roborock(id: $id) {
+      dock
+    }
+  }
+`;
+
 const SECTIONS: { kind: EntityKind; title: string }[] = [
   { kind: "light", title: "Lights" },
   { kind: "door", title: "Doors" },
   { kind: "presence", title: "Presence" },
   { kind: "environment", title: "Environment" },
   { kind: "einkDisplay", title: "Displays" },
+  { kind: "roborock", title: "Vacuums" },
 ];
 
 type GroupBy = "type" | "room";
@@ -255,6 +287,10 @@ export default function Dashboard() {
   );
   const [commitColour] =
     useMutation<DashboardSetColourMutation>(SetColourMutation);
+  const [commitRoborockStop] =
+    useMutation<DashboardRoborockStopMutation>(RoborockStopMutation);
+  const [commitRoborockDock] =
+    useMutation<DashboardRoborockDockMutation>(RoborockDockMutation);
 
   const flip = (key: string) =>
     setEntities((prev) => {
@@ -281,6 +317,11 @@ export default function Dashboard() {
       commitColourMove({ variables: { id: entity.id, value } }),
     onSetColour: (hex) => commitColour({ variables: { id: entity.id, hex } }),
     canSetColour: entity.capabilities?.includes("RGB") ?? false,
+  });
+
+  const roborockActionsFor = (entity: Entity): RoborockActions => ({
+    onStop: () => commitRoborockStop({ variables: { id: entity.id } }),
+    onDock: () => commitRoborockDock({ variables: { id: entity.id } }),
   });
 
   const sections = useMemo(() => {
@@ -346,6 +387,11 @@ export default function Dashboard() {
                   lightActions={
                     entity.kind === "light"
                       ? lightActionsFor(entity)
+                      : undefined
+                  }
+                  roborockActions={
+                    entity.kind === "roborock"
+                      ? roborockActionsFor(entity)
                       : undefined
                   }
                 />
