@@ -22,3 +22,7 @@ jobs:
       - name: Build
         run: cargo build --release
         working-directory: eink-display-firmware
+        env:
+          HOME_GATEWAY_API_KEY: ${{ secrets.HOME_GATEWAY_API_KEY || 'placeholder' }}
+          WIFI_SSID: ${{ secrets.WIFI_SSID || 'placeholder' }}
+          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD || 'placeholder' }}
