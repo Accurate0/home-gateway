@@ -18,7 +18,7 @@ import {
   UserX,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Popover, Slider } from "radix-ui";
+import { Dialog, Popover, Slider } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { authHeaders } from "@/relay";
 import { formatLastSeen, type Entity } from "@/entities";
@@ -469,7 +469,7 @@ const EPD_PALETTE: Record<number, [number, number, number]> = {
   6: [0, 255, 0],
 };
 
-function unpackEpd(bytes: Uint8Array, landscape: boolean): string | null {
+function unpackEpd(bytes: Uint8Array, rotate: boolean): string | null {
   if (bytes.length < (EPD_WIDTH * EPD_HEIGHT) / 2) return null;
   const src = document.createElement("canvas");
   src.width = EPD_WIDTH;
@@ -496,7 +496,7 @@ function unpackEpd(bytes: Uint8Array, landscape: boolean): string | null {
   }
   srcCtx.putImageData(image, 0, 0);
 
-  if (!landscape) return src.toDataURL("image/png");
+  if (!rotate) return src.toDataURL("image/png");
 
   const dest = document.createElement("canvas");
   dest.width = EPD_HEIGHT;
@@ -511,7 +511,7 @@ function unpackEpd(bytes: Uint8Array, landscape: boolean): string | null {
 
 function useEinkPreview(
   imageUrl: string | null | undefined,
-  landscape: boolean,
+  rotate: boolean,
 ) {
   const [loaded, setLoaded] = useState<{ url: string; dataUrl: string } | null>(
     null,
@@ -521,14 +521,14 @@ function useEinkPreview(
   useEffect(() => {
     if (!imageUrl) return;
     let cancelled = false;
-    fetch(imageUrl, { headers: authHeaders() })
+    fetch(imageUrl, { headers: authHeaders(), cache: "no-store" })
       .then((resp) => {
         if (!resp.ok) throw new Error(`status ${resp.status}`);
         return resp.arrayBuffer();
       })
       .then((buffer) => {
         if (cancelled) return;
-        const dataUrl = unpackEpd(new Uint8Array(buffer), landscape);
+        const dataUrl = unpackEpd(new Uint8Array(buffer), rotate);
         if (!dataUrl) throw new Error("unpack failed");
         setLoaded({ url: imageUrl, dataUrl });
       })
@@ -539,7 +539,7 @@ function useEinkPreview(
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, landscape]);
+  }, [imageUrl, rotate]);
 
   const dataUrl = loaded && loaded.url === imageUrl ? loaded.dataUrl : null;
   const status: "idle" | "loading" | "error" = !imageUrl
@@ -561,24 +561,25 @@ function EinkDisplayConfigDetails({
   now: number;
 }) {
   const deviceConfig = entity.deviceConfig;
-  const landscape = entity.config?.orientation === "LANDSCAPE";
-  const { dataUrl, status } = useEinkPreview(deviceConfig?.imageUrl, landscape);
+  const rotate = entity.config?.orientation !== "LANDSCAPE";
+  const { dataUrl, status } = useEinkPreview(deviceConfig?.imageUrl, rotate);
   return (
-    <Popover.Portal>
-      <Popover.Content
-        align="end"
-        sideOffset={8}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-popover text-popover-foreground border-border z-50 w-[min(90vw,40rem)] max-w-[90vw] rounded-2xl border p-4 shadow-lg outline-none"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <span className="font-medium">{entity.name}</span>
+    <Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+      <Dialog.Content className="bg-popover text-popover-foreground border-border fixed top-1/2 left-1/2 z-50 flex max-h-[90vh] w-[min(92vw,48rem)] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-2xl border p-5 shadow-2xl outline-none">
+        <div className="mb-4 flex items-center justify-between">
+          <Dialog.Title className="font-medium">{entity.name}</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Current display preview and configuration for {entity.name}
+          </Dialog.Description>
           <LastSeen entity={entity} now={now} />
         </div>
         <div
           className={cn(
-            "bg-muted border-border mx-auto mb-3 grid place-items-center overflow-hidden rounded-lg border",
-            landscape ? "aspect-[4/3] w-full" : "aspect-[3/4] h-[min(70vh,32rem)]",
+            "bg-muted border-border mx-auto mb-4 grid place-items-center overflow-hidden rounded-lg border",
+            rotate
+              ? "aspect-[4/3] w-full max-h-[65vh]"
+              : "aspect-[3/4] h-[65vh]",
           )}
         >
           {dataUrl ? (
@@ -600,8 +601,8 @@ function EinkDisplayConfigDetails({
             {JSON.stringify(deviceConfig, null, 2)}
           </pre>
         )}
-      </Popover.Content>
-    </Popover.Portal>
+      </Dialog.Content>
+    </Dialog.Portal>
   );
 }
 
@@ -623,12 +624,12 @@ function EinkDisplayTile({
         ? BatteryMedium
         : BatteryLow;
   return (
-    <Popover.Root
+    <Dialog.Root
       onOpenChange={(open) => {
         if (open) actions?.onReload();
       }}
     >
-      <Popover.Trigger asChild>
+      <Dialog.Trigger asChild>
         <Tile
           role="button"
           tabIndex={0}
@@ -660,9 +661,9 @@ function EinkDisplayTile({
             </div>
           </div>
         </Tile>
-      </Popover.Trigger>
+      </Dialog.Trigger>
       <EinkDisplayConfigDetails entity={entity} now={now} />
-    </Popover.Root>
+    </Dialog.Root>
   );
 }
 
