@@ -424,6 +424,15 @@ fn srgb_to_linear(c: f32) -> f32 {
     }
 }
 
+fn linear_to_srgb(c: f32) -> f32 {
+    let c = c.clamp(0.0, 1.0);
+    if c <= 0.0031308 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    }
+}
+
 fn dither_improved(
     buffer: &[f32],
     width: u32,
@@ -443,9 +452,10 @@ fn dither_improved(
         .map(|&(r, g, b, idx)| (srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), idx))
         .collect();
 
-    const WR: f32 = 0.2126;
-    const WG: f32 = 0.7152;
-    const WB: f32 = 0.0722;
+    let palette_srgb: Vec<(f32, f32, f32)> = palette
+        .iter()
+        .map(|&(r, g, b, _)| (r / 255.0, g / 255.0, b / 255.0))
+        .collect();
 
     let mut indices = vec![0u8; w * h];
 
@@ -464,26 +474,29 @@ fn dither_improved(
             let g = lin[base + 1];
             let b = lin[base + 2];
 
+            let sr = linear_to_srgb(r);
+            let sg = linear_to_srgb(g);
+            let sb = linear_to_srgb(b);
+
             let mut min_dist = f32::MAX;
-            let mut closest = (0.0f32, 0.0f32, 0.0f32);
-            let mut closest_idx = 0u8;
-            for &(pr, pg, pb, pidx) in &palette_lin {
-                let dr = (r - pr) * WR;
-                let dg = (g - pg) * WG;
-                let db = (b - pb) * WB;
+            let mut closest = 0usize;
+            for (i, &(pr, pg, pb)) in palette_srgb.iter().enumerate() {
+                let dr = sr - pr;
+                let dg = sg - pg;
+                let db = sb - pb;
                 let dist = dr * dr + dg * dg + db * db;
                 if dist < min_dist {
                     min_dist = dist;
-                    closest = (pr, pg, pb);
-                    closest_idx = pidx;
+                    closest = i;
                 }
             }
 
-            indices[y * w + x] = closest_idx;
+            let (lr, lg, lb, pidx) = palette_lin[closest];
+            indices[y * w + x] = pidx;
 
-            let er = r - closest.0;
-            let eg = g - closest.1;
-            let eb = b - closest.2;
+            let er = r - lr;
+            let eg = g - lg;
+            let eb = b - lb;
 
             let mut spread = |nx: isize, ny: isize, factor: f32| {
                 if nx < 0 || nx >= width as isize || ny < 0 || ny >= height as isize {
