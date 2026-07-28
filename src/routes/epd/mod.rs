@@ -23,6 +23,16 @@ const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.tt
 
 const EPD_FLAG: &str = "home-gateway-epd";
 const EPD_NEW_DITHERING_FLAG: &str = "home-gateway-epd-new-dithering";
+const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
+
+const DEFAULT_PALETTE: [(&str, f32, f32, f32, u8); 6] = [
+    ("black", 0.0, 0.0, 0.0, 0),
+    ("white", 255.0, 255.0, 255.0, 1),
+    ("yellow", 255.0, 255.0, 0.0, 2),
+    ("red", 255.0, 0.0, 0.0, 3),
+    ("blue", 0.0, 0.0, 255.0, 5),
+    ("green", 0.0, 255.0, 0.0, 6),
+];
 
 #[derive(Debug, Clone)]
 pub(crate) struct EpdFlagConfig {
@@ -171,6 +181,45 @@ pub(crate) async fn epd_new_dithering_enabled(
     feature_flag_client
         .is_feature_enabled(EPD_NEW_DITHERING_FLAG, false, context)
         .await
+}
+
+pub(crate) async fn epd_palette(
+    feature_flag_client: &FeatureFlagClient,
+    devices: &DeviceRegistry,
+    device_id: &str,
+) -> Vec<(f32, f32, f32, u8)> {
+    let mut context =
+        EvaluationContext::default().with_custom_field("device_id", device_id.to_string());
+    if let Some(display) = devices.eink_display(device_id) {
+        context = context.with_custom_field("device_name", display.name.clone());
+    }
+
+    let config = feature_flag_client
+        .get_struct(EPD_DITHERING_CONFIG_FLAG, context)
+        .await
+        .ok();
+
+    DEFAULT_PALETTE
+        .iter()
+        .map(|&(name, dr, dg, db, idx)| {
+            let (r, g, b) = config
+                .as_ref()
+                .and_then(|c| c.fields.get(name))
+                .and_then(|v| v.as_struct())
+                .map(|s| {
+                    let channel = |key: &str, default: f32| {
+                        s.fields
+                            .get(key)
+                            .and_then(|v| v.as_i64().map(|n| n as f32).or_else(|| v.as_f64().map(|f| f as f32)))
+                            .map(|n| n.clamp(0.0, 255.0))
+                            .unwrap_or(default)
+                    };
+                    (channel("r", dr), channel("g", dg), channel("b", db))
+                })
+                .unwrap_or((dr, dg, db));
+            (r, g, b, idx)
+        })
+        .collect()
 }
 
 fn active_sleep(
@@ -350,6 +399,7 @@ pub async fn latest(
 
     let new_dithering =
         epd_new_dithering_enabled(&feature_flag_client, &devices, &params.device_id).await;
+    let palette = epd_palette(&feature_flag_client, &devices, &params.device_id).await;
 
     let output_packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();
@@ -376,15 +426,6 @@ pub async fn latest(
             buffer.push(pixel[1] as f32);
             buffer.push(pixel[2] as f32);
         }
-
-        let palette = [
-            (0.0, 0.0, 0.0, 0u8),
-            (255.0, 255.0, 255.0, 1u8),
-            (255.0, 255.0, 0.0, 2u8),
-            (255.0, 0.0, 0.0, 3u8),
-            (0.0, 0.0, 255.0, 5u8),
-            (0.0, 255.0, 0.0, 6u8),
-        ];
 
         let indices = if new_dithering {
             dither_improved(&buffer, width, height, &palette)
