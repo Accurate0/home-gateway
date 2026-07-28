@@ -328,6 +328,7 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Write);
     pub const GRAPHQL_WORKFLOW_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
+    pub const GRAPHQL_EPD_WRITE: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Write);
 
     pub const REST_CONTROL_WRITE: Scope =
         Scope::new(Domain::Rest, Resource::Control, Action::Write);

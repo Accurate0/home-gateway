@@ -22,6 +22,7 @@ const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
 const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
 
 const EPD_FLAG: &str = "home-gateway-epd";
+const EPD_NEW_DITHERING_FLAG: &str = "home-gateway-epd-new-dithering";
 
 #[derive(Debug, Clone)]
 pub(crate) struct EpdFlagConfig {
@@ -154,6 +155,22 @@ pub(crate) async fn epd_flag_config(
             fallback
         }
     }
+}
+
+pub(crate) async fn epd_new_dithering_enabled(
+    feature_flag_client: &FeatureFlagClient,
+    devices: &DeviceRegistry,
+    device_id: &str,
+) -> bool {
+    let mut context =
+        EvaluationContext::default().with_custom_field("device_id", device_id.to_string());
+    if let Some(display) = devices.eink_display(device_id) {
+        context = context.with_custom_field("device_name", display.name.clone());
+    }
+
+    feature_flag_client
+        .is_feature_enabled(EPD_NEW_DITHERING_FLAG, false, context)
+        .await
 }
 
 fn active_sleep(
@@ -331,6 +348,9 @@ pub async fn latest(
 
     let image_response = s3.get_object(&image_key).await?;
 
+    let new_dithering =
+        epd_new_dithering_enabled(&feature_flag_client, &devices, &params.device_id).await;
+
     let output_packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();
         let (width, height) = img.dimensions();
@@ -357,27 +377,33 @@ pub async fn latest(
             buffer.push(pixel[2] as f32);
         }
 
-        let mut output_packed = Vec::with_capacity((width * height / 2) as usize);
-
-        // Palette: Black, White, Yellow, Red, Blue, Green
-        // Indices: 0, 1, 2, 3, 5, 6
         let palette = [
-            (0.0, 0.0, 0.0, 0u8),       // Black
-            (255.0, 255.0, 255.0, 1u8), // White
-            (255.0, 255.0, 0.0, 2u8),   // Yellow
-            (255.0, 0.0, 0.0, 3u8),     // Red
-            (0.0, 0.0, 255.0, 5u8),     // Blue
-            (0.0, 255.0, 0.0, 6u8),     // Green
+            (0.0, 0.0, 0.0, 0u8),
+            (255.0, 255.0, 255.0, 1u8),
+            (255.0, 255.0, 0.0, 2u8),
+            (255.0, 0.0, 0.0, 3u8),
+            (0.0, 0.0, 255.0, 5u8),
+            (0.0, 255.0, 0.0, 6u8),
         ];
 
+        let indices = if new_dithering {
+            dither_improved(&buffer, width, height, &palette)
+        } else {
+            let mut indices = vec![0u8; (width * height) as usize];
+            for y in 0..height {
+                for x in 0..width {
+                    indices[(y * width + x) as usize] =
+                        process_pixel(&mut buffer, width, height, x, y, &palette);
+                }
+            }
+            indices
+        };
+
+        let mut output_packed = Vec::with_capacity((width * height / 2) as usize);
         for y in 0..height {
             for x in (0..width).step_by(2) {
-                // Process pixel 1 (high nibble)
-                let idx1 = process_pixel(&mut buffer, width, height, x, y, &palette);
-
-                // Process pixel 2 (low nibble)
-                let idx2 = process_pixel(&mut buffer, width, height, x + 1, y, &palette);
-
+                let idx1 = indices[(y * width + x) as usize];
+                let idx2 = indices[(y * width + x + 1) as usize];
                 output_packed.push((idx1 << 4) | idx2);
             }
         }
@@ -387,6 +413,98 @@ pub async fn latest(
     .map_err(|e| anyhow::anyhow!("Join error: {}", e))??;
 
     Ok(output_packed)
+}
+
+fn srgb_to_linear(c: f32) -> f32 {
+    let c = c / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn dither_improved(
+    buffer: &[f32],
+    width: u32,
+    height: u32,
+    palette: &[(f32, f32, f32, u8)],
+) -> Vec<u8> {
+    let w = width as usize;
+    let h = height as usize;
+
+    let mut lin: Vec<f32> = Vec::with_capacity(w * h * 3);
+    for &v in buffer.iter() {
+        lin.push(srgb_to_linear(v));
+    }
+
+    let palette_lin: Vec<(f32, f32, f32, u8)> = palette
+        .iter()
+        .map(|&(r, g, b, idx)| (srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), idx))
+        .collect();
+
+    const WR: f32 = 0.2126;
+    const WG: f32 = 0.7152;
+    const WB: f32 = 0.0722;
+
+    let mut indices = vec![0u8; w * h];
+
+    for y in 0..h {
+        let left_to_right = y % 2 == 0;
+        let xs: Vec<usize> = if left_to_right {
+            (0..w).collect()
+        } else {
+            (0..w).rev().collect()
+        };
+        let dir: isize = if left_to_right { 1 } else { -1 };
+
+        for &x in &xs {
+            let base = (y * w + x) * 3;
+            let r = lin[base];
+            let g = lin[base + 1];
+            let b = lin[base + 2];
+
+            let mut min_dist = f32::MAX;
+            let mut closest = (0.0f32, 0.0f32, 0.0f32);
+            let mut closest_idx = 0u8;
+            for &(pr, pg, pb, pidx) in &palette_lin {
+                let dr = (r - pr) * WR;
+                let dg = (g - pg) * WG;
+                let db = (b - pb) * WB;
+                let dist = dr * dr + dg * dg + db * db;
+                if dist < min_dist {
+                    min_dist = dist;
+                    closest = (pr, pg, pb);
+                    closest_idx = pidx;
+                }
+            }
+
+            indices[y * w + x] = closest_idx;
+
+            let er = r - closest.0;
+            let eg = g - closest.1;
+            let eb = b - closest.2;
+
+            let mut spread = |nx: isize, ny: isize, factor: f32| {
+                if nx < 0 || nx >= width as isize || ny < 0 || ny >= height as isize {
+                    return;
+                }
+                let nbase = ((ny as usize) * w + nx as usize) * 3;
+                lin[nbase] = (lin[nbase] + er * factor).clamp(0.0, 1.0);
+                lin[nbase + 1] = (lin[nbase + 1] + eg * factor).clamp(0.0, 1.0);
+                lin[nbase + 2] = (lin[nbase + 2] + eb * factor).clamp(0.0, 1.0);
+            };
+
+            let xi = x as isize;
+            let yi = y as isize;
+            spread(xi + dir, yi, 7.0 / 16.0);
+            spread(xi - dir, yi + 1, 3.0 / 16.0);
+            spread(xi, yi + 1, 5.0 / 16.0);
+            spread(xi + dir, yi + 1, 1.0 / 16.0);
+        }
+    }
+
+    indices
 }
 
 fn process_pixel(

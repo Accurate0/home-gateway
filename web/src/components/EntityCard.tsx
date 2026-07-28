@@ -3,6 +3,7 @@ import {
   BatteryLow,
   BatteryMedium,
   Bot,
+  Camera,
   DoorClosed,
   DoorOpen,
   Home,
@@ -39,6 +40,7 @@ export interface VacuumActions {
 
 export interface EinkActions {
   onReload: () => void;
+  onTakeScreenshot: () => Promise<void>;
 }
 
 const COLOUR_SWATCHES = [
@@ -555,24 +557,45 @@ function useEinkPreview(
 
 function EinkDisplayConfigDetails({
   entity,
+  actions,
   now,
 }: {
   entity: Entity;
+  actions?: EinkActions;
   now: number;
 }) {
   const deviceConfig = entity.deviceConfig;
   const rotate = entity.config?.orientation !== "LANDSCAPE";
   const { dataUrl, status } = useEinkPreview(deviceConfig?.imageUrl, rotate);
+  const [capturing, setCapturing] = useState(false);
+  const takeScreenshot = () => {
+    if (capturing || !actions) return;
+    setCapturing(true);
+    actions.onTakeScreenshot().finally(() => setCapturing(false));
+  };
   return (
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
       <Dialog.Content className="bg-popover text-popover-foreground border-border fixed top-1/2 left-1/2 z-50 flex max-h-[90vh] w-[min(92vw,48rem)] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-2xl border p-5 shadow-2xl outline-none">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <Dialog.Title className="font-medium">{entity.name}</Dialog.Title>
           <Dialog.Description className="sr-only">
             Current display preview and configuration for {entity.name}
           </Dialog.Description>
-          <LastSeen entity={entity} now={now} />
+          <div className="flex items-center gap-3">
+            <LastSeen entity={entity} now={now} />
+            {actions && (
+              <button
+                type="button"
+                onClick={takeScreenshot}
+                disabled={capturing}
+                className="border-border text-muted-foreground hover:bg-muted flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium disabled:opacity-50"
+              >
+                <Camera className="size-3.5" strokeWidth={2} />
+                {capturing ? "Capturing…" : "New screenshot"}
+              </button>
+            )}
+          </div>
         </div>
         <div
           className={cn(
@@ -662,7 +685,7 @@ function EinkDisplayTile({
           </div>
         </Tile>
       </Dialog.Trigger>
-      <EinkDisplayConfigDetails entity={entity} now={now} />
+      <EinkDisplayConfigDetails entity={entity} actions={actions} now={now} />
     </Dialog.Root>
   );
 }

@@ -307,9 +307,14 @@ type ModeUpdate {
 	active: Boolean!
 }
 
+type EinkDisplayMutation {
+	takeScreenshot: Boolean!
+}
+
 type MutationRoot {
 	light(id: String!): LightMutation!
 	robotVacuum(id: String!): RobotVacuumMutation!
+	einkDisplay(id: String!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")

@@ -17,6 +17,7 @@ import type { DashboardVacuumStartMutation } from "./__generated__/DashboardVacu
 import type { DashboardVacuumStopMutation } from "./__generated__/DashboardVacuumStopMutation.graphql";
 import type { DashboardVacuumDockMutation } from "./__generated__/DashboardVacuumDockMutation.graphql";
 import type { DashboardEinkConfigQuery } from "./__generated__/DashboardEinkConfigQuery.graphql";
+import type { DashboardTakeScreenshotMutation } from "./__generated__/DashboardTakeScreenshotMutation.graphql";
 import EntityCard, {
   type EinkActions,
   type LightActions,
@@ -221,6 +222,14 @@ const EinkConfigQuery = graphql`
   }
 `;
 
+const TakeScreenshotMutation = graphql`
+  mutation DashboardTakeScreenshotMutation($id: String!) {
+    einkDisplay(id: $id) {
+      takeScreenshot
+    }
+  }
+`;
+
 type GroupBy = "type" | "room";
 
 const GROUP_BY_KEY = "dashboard:groupBy";
@@ -341,6 +350,9 @@ export default function Dashboard() {
     useMutation<DashboardVacuumStopMutation>(VacuumStopMutation);
   const [commitVacuumDock] =
     useMutation<DashboardVacuumDockMutation>(VacuumDockMutation);
+  const [commitTakeScreenshot] = useMutation<DashboardTakeScreenshotMutation>(
+    TakeScreenshotMutation,
+  );
 
   const flip = (key: string) =>
     setEntities((prev) => {
@@ -376,6 +388,14 @@ export default function Dashboard() {
   });
 
   const einkActionsFor = (entity: Entity): EinkActions => ({
+    onTakeScreenshot: () =>
+      new Promise<void>((resolve, reject) => {
+        commitTakeScreenshot({
+          variables: { id: entity.id },
+          onCompleted: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      }),
     onReload: () => {
       fetchQuery<DashboardEinkConfigQuery>(
         environment,

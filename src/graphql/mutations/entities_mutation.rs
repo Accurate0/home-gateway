@@ -1,6 +1,7 @@
 use async_graphql::Object;
 
 use crate::device_registry::DeviceRegistry;
+use crate::graphql::mutations::eink_display_mutation::EinkDisplayMutation;
 use crate::graphql::mutations::light_mutation::LightMutation;
 use crate::graphql::mutations::robot_vacuum_mutation::RobotVacuumMutation;
 
@@ -42,5 +43,22 @@ impl EntitiesMutation {
         Err(async_graphql::Error::new(format!(
             "unknown robot vacuum `{id}`"
         )))
+    }
+
+    async fn eink_display(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<EinkDisplayMutation> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+
+        if registry.eink_display(&address).is_none() {
+            return Err(async_graphql::Error::new(format!(
+                "unknown eink display `{id}`"
+            )));
+        }
+
+        Ok(EinkDisplayMutation { address })
     }
 }
