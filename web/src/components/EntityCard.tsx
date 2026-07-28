@@ -36,6 +36,10 @@ export interface RoborockActions {
   onDock: () => void;
 }
 
+export interface EinkActions {
+  onReload: () => void;
+}
+
 const COLOUR_SWATCHES = [
   "#ff5a5a",
   "#ff9d3c",
@@ -460,30 +464,13 @@ function EinkDisplayConfigDetails({
   now: number;
 }) {
   const config = entity.config;
-  const rows: { label: string; value: string | null | undefined }[] = config
-    ? [
-        { label: "Mode", value: config.mode },
-        { label: "View", value: config.view },
-        { label: "Album", value: config.album },
-        { label: "Orientation", value: config.orientation },
-        { label: "Refresh", value: config.refresh },
-        { label: "Settle", value: config.settle },
-        {
-          label: "Sleep",
-          value:
-            config.sleepStart && config.sleepEnd
-              ? `${config.sleepStart}–${config.sleepEnd}`
-              : null,
-        },
-      ].filter((r) => r.value != null)
-    : [];
   return (
     <Popover.Portal>
       <Popover.Content
         align="end"
         sideOffset={8}
         onClick={(e) => e.stopPropagation()}
-        className="bg-popover text-popover-foreground border-border z-50 w-64 rounded-2xl border p-4 shadow-lg outline-none"
+        className="bg-popover text-popover-foreground border-border z-50 w-72 rounded-2xl border p-4 shadow-lg outline-none"
       >
         <div className="mb-3 flex items-center justify-between">
           <span className="font-medium">{entity.name}</span>
@@ -492,23 +479,24 @@ function EinkDisplayConfigDetails({
         {config == null ? (
           <div className="text-muted-foreground text-sm">No config</div>
         ) : (
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {rows.map(({ label, value }) => (
-              <div key={label} className="flex flex-col">
-                <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-                  {label}
-                </dt>
-                <dd className="tabular-nums capitalize">{value}</dd>
-              </div>
-            ))}
-          </dl>
+          <pre className="bg-muted text-muted-foreground overflow-x-auto rounded-lg p-3 text-xs leading-relaxed">
+            {JSON.stringify(config, null, 2)}
+          </pre>
         )}
       </Popover.Content>
     </Popover.Portal>
   );
 }
 
-function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
+function EinkDisplayTile({
+  entity,
+  actions,
+  now,
+}: {
+  entity: Entity;
+  actions?: EinkActions;
+  now: number;
+}) {
   const voltage = entity.batteryVoltage;
   const percentage = entity.batteryPercentage;
   const BatteryIcon =
@@ -518,7 +506,11 @@ function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
         ? BatteryMedium
         : BatteryLow;
   return (
-    <Popover.Root>
+    <Popover.Root
+      onOpenChange={(open) => {
+        if (open) actions?.onReload();
+      }}
+    >
       <Popover.Trigger asChild>
         <Tile
           role="button"
@@ -685,12 +677,14 @@ export default function EntityCard({
   lightActions,
   roborockActions,
   valetudoActions,
+  einkActions,
   now,
 }: {
   entity: Entity;
   lightActions?: LightActions;
   roborockActions?: RoborockActions;
   valetudoActions?: RoborockActions;
+  einkActions?: EinkActions;
   now: number;
 }) {
   switch (entity.kind) {
@@ -723,7 +717,9 @@ export default function EntityCard({
         />
       );
     case "einkDisplay":
-      return <EinkDisplayTile entity={entity} now={now} />;
+      return (
+        <EinkDisplayTile entity={entity} actions={einkActions} now={now} />
+      );
     case "roborock":
       return (
         <RoborockTile entity={entity} actions={roborockActions} now={now} />

@@ -5,7 +5,7 @@ import {
   useMutation,
   useRelayEnvironment,
 } from "react-relay";
-import { requestSubscription } from "relay-runtime";
+import { fetchQuery, requestSubscription } from "relay-runtime";
 import type { DashboardEntitiesQuery } from "./__generated__/DashboardEntitiesQuery.graphql";
 import type { DashboardEventsSubscription } from "./__generated__/DashboardEventsSubscription.graphql";
 import type { DashboardSetOnMutation } from "./__generated__/DashboardSetOnMutation.graphql";
@@ -20,6 +20,7 @@ import type { DashboardValetudoStartMutation } from "./__generated__/DashboardVa
 import type { DashboardValetudoStopMutation } from "./__generated__/DashboardValetudoStopMutation.graphql";
 import type { DashboardValetudoDockMutation } from "./__generated__/DashboardValetudoDockMutation.graphql";
 import EntityCard, {
+  type EinkActions,
   type LightActions,
   type RoborockActions,
 } from "./EntityCard";
@@ -398,6 +399,34 @@ export default function Dashboard() {
     onDock: () => commitValetudoDock({ variables: { id: entity.id } }),
   });
 
+  const einkActionsFor = (entity: Entity): EinkActions => ({
+    onReload: () => {
+      fetchQuery<DashboardEntitiesQuery>(
+        environment,
+        EntitiesQuery,
+        {},
+        { fetchPolicy: "network-only" },
+      ).subscribe({
+        next: (response) => {
+          const match = response.entities.find(
+            (e) =>
+              e.__typename === "EinkDisplayEntity" &&
+              "id" in e &&
+              e.id === entity.id,
+          );
+          if (!match || !("config" in match)) return;
+          setEntities((prev) => {
+            const existing = prev.get(entity.key);
+            if (!existing) return prev;
+            const next = new Map(prev);
+            next.set(entity.key, { ...existing, config: match.config ?? null });
+            return next;
+          });
+        },
+      });
+    },
+  });
+
   const sections = useMemo(() => {
     if (groupBy === "room") return groupByRoom(entities.values());
 
@@ -479,6 +508,11 @@ export default function Dashboard() {
                   valetudoActions={
                     entity.kind === "valetudo"
                       ? valetudoActionsFor(entity)
+                      : undefined
+                  }
+                  einkActions={
+                    entity.kind === "einkDisplay"
+                      ? einkActionsFor(entity)
                       : undefined
                   }
                 />
