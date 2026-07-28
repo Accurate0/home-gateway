@@ -5,33 +5,35 @@
   watchdog:
     timeout: 1h
     notify: [android_app]
-  kinds:
-    - kind: door
+  roles:
+    - type: door
       config:
         name: Front Door
         id: front-door
         state: armed
         timeout: 3m
         notify: [android_app]
+    - type: battery
 
 - id: garage-door
   room: garage
   transport: zigbee
   address: "0x54ef441000d2b1ba"
-  kinds:
-    - kind: door
+  roles:
+    - type: door
       config:
         name: Garage Door
         id: garage-door
         state: unarmed
         notify: [android_app]
+    - type: battery
 
 - id: living-room-table-lamp
   room: living-room
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
-  kinds:
-    - kind: smart_switch
+  roles:
+    - type: smart_switch
       config:
         name: Living Room Table Lamp
         as: light
@@ -40,54 +42,58 @@
   room: living-room
   transport: zigbee
   address: "0x00158d008b8798a7"
-  capabilities: [temperature, humidity, pressure]
-  kinds:
-    - kind: environment
+  roles:
+    - type: environment
       config: { id: living-room, name: Living Room }
+      capabilities: [temperature, humidity, pressure]
+    - type: battery
 
 - id: env-bathroom
   room: bathroom
   transport: zigbee
   address: "0x00158d008b879b53"
-  capabilities: [temperature, humidity, pressure]
-  kinds:
-    - kind: environment
+  roles:
+    - type: environment
       config: { id: bathroom, name: Bathroom }
+      capabilities: [temperature, humidity, pressure]
+    - type: battery
 
 - id: env-bedroom
   room: bedroom
   transport: zigbee
   address: "0xb0c7defffef6a9be"
-  capabilities: [temperature, humidity, pressure]
-  kinds:
-    - kind: environment
+  roles:
+    - type: environment
       config: { id: bedroom, name: Bedroom }
+      capabilities: [temperature, humidity, pressure]
+    - type: battery
 
 - id: env-outdoor
   room: outdoor
   transport: zigbee
   address: "0x54ef441000ee2ca3"
-  capabilities: [temperature, humidity, pressure]
-  kinds:
-    - kind: environment
+  roles:
+    - type: environment
       config: { id: outdoor, name: Outdoor }
+      capabilities: [temperature, humidity, pressure]
+    - type: battery
 
 - id: livingroom-motion
   room: living-room
   transport: esphome
   address: apollo-mtr-1-livingroom
-  capabilities: [temperature, pressure, lux, brightness, rgb]
-  kinds:
-    - kind: light
+  roles:
+    - type: light
       config:
         name: Living Room MTR-1 RGB
         entity: rgb_light
-    - kind: presence
+      capabilities: [brightness, rgb]
+    - type: presence
       config:
         name: Living Room Motion
         motion_entity:
           [ld2450_presence, ld2450_moving_target, ld2450_still_target]
-    - kind: environment
+    - type: environment
       config:
         id: living-room-mtr-1
         name: Living Room
@@ -95,22 +101,22 @@
           temperature: dps310_temperature
           pressure: dps310_pressure
           lux: ltr390_light
+      capabilities: [temperature, pressure, lux]
 
 - id: closet-presence
   room: bedroom
   transport: zigbee
   address: "0x54ef441000dbc81c"
-  kinds:
-    - kind: presence
+  roles:
+    - type: presence
       config: { name: Closet Presence Sensor }
 
 - id: hallway-plant
   room: hallway
   transport: esphome
   address: apollo-plt-1-hallway
-  capabilities: [temperature, humidity, lux, uv_index]
-  kinds:
-    - kind: environment
+  roles:
+    - type: environment
       config:
         id: hallway-plant
         name: Hallway Plant
@@ -119,54 +125,57 @@
           humidity: air_humidity
           lux: ltr390_light
           uv_index: ltr390_uv_index
-    - kind: plant
+      capabilities: [temperature, humidity, lux, uv_index]
+    - type: plant
       config: { id: hallway-plant, entities: [soil_moisture] }
 
 - id: closet-light
   room: bedroom
   transport: zigbee
   address: "0x54ef441000d4f05c"
-  capabilities: [brightness, colour_temp]
-  kinds:
-    - kind: light
+  roles:
+    - type: light
       config: { name: Closet Light }
+      capabilities: [brightness, colour_temp]
 
 - id: table-lamp-bedroom
   room: bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
-  capabilities: [brightness, colour_temp, rgb]
-  kinds:
-    - kind: light
+  roles:
+    - type: light
       config: { name: Bedroom Table Lamp }
+      capabilities: [brightness, colour_temp, rgb]
 
 - id: floor-lamp-living-room
   room: living-room
   transport: zigbee
   address: "0x94a081fffe2eedc0"
-  capabilities: [brightness, colour_temp]
-  kinds:
-    - kind: light
+  roles:
+    - type: light
       config: { name: Living Room Floor Lamp }
+      capabilities: [brightness, colour_temp]
 
 - id: control-switch
   transport: zigbee
   address: "0x64028ffffe638218"
-  kinds:
-    - kind: control_switch
+  roles:
+    - type: control_switch
+    - type: battery
 
 - id: small-switch
   transport: zigbee
   address: "0x00158d008bbe0316"
-  kinds:
-    - kind: control_switch
+  roles:
+    - type: control_switch
+    - type: battery
 
 - id: living-room-epd
   room: living-room
   transport: eink_display_firmware
   address: "94a990cf8384"
-  kinds:
-    - kind: eink_display_firmware
+  roles:
+    - type: eink_display_firmware
       config:
         name: Living Room Display
         orientation: portrait
@@ -178,22 +187,24 @@
         sleep:
           start: "00:00"
           end: "08:00"
+    - type: battery
 
 - id: fridge-trmnl
   room: kitchen
   transport: trmnl
   address: "653VZN"
-  kinds:
-    - kind: trmnl
+  roles:
+    - type: trmnl
       config:
         name: Fridge TRMNL
+    - type: battery
 
 - id: roborock
   room: dining-room
   transport: home_assistant
   address: vacuum.robot
-  kinds:
-    - kind: roborock
+  roles:
+    - type: roborock
       config:
         name: Roborock
         status_entity: sensor.robot_status
@@ -203,12 +214,14 @@
         start_service: vacuum.start
         stop_service: vacuum.stop
         dock_service: vacuum.return_to_base
+    - type: battery
 
 - id: valetudo
   room: spare-room
   transport: valetudo
   address: rockrobo
-  kinds:
-    - kind: valetudo
+  roles:
+    - type: valetudo
       config:
         name: Vacuum
+    - type: battery

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_robot_vacuum_state (device_id, source, state, battery_level, fan_speed) VALUES ($1, 'valetudo', $2, $3, $4) ON CONFLICT (device_id) DO UPDATE SET source = EXCLUDED.source, state = COALESCE(EXCLUDED.state, latest_robot_vacuum_state.state), battery_level = COALESCE(EXCLUDED.battery_level, latest_robot_vacuum_state.battery_level), fan_speed = COALESCE(EXCLUDED.fan_speed, latest_robot_vacuum_state.fan_speed), updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7eeeec41c098fd3c80efba315bfb128a42bf2f0c9f7fbfcbf8e9d6696ec18139"
+}

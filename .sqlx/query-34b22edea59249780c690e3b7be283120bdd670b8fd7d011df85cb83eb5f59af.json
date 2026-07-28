@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO robot_vacuum_events (event_id, device_id, source, state, battery_level) VALUES ($1, $2, 'valetudo', $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "34b22edea59249780c690e3b7be283120bdd670b8fd7d011df85cb83eb5f59af"
+}

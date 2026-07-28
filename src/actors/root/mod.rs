@@ -1,7 +1,7 @@
 use crate::{
     actors::{
-        eink_display::EInkDisplayActor, solar::SolarIngestActor, sun::SunActor, trmnl::TrmnlActor,
-        watchdog::WatchdogActor, woolworths::WoolworthsActor,
+        battery::BatteryActor, eink_display::EInkDisplayActor, solar::SolarIngestActor,
+        sun::SunActor, trmnl::TrmnlActor, watchdog::WatchdogActor, woolworths::WoolworthsActor,
     },
     trmnl::Trmnl,
     types::SharedActorState,
@@ -35,6 +35,23 @@ impl RootSupervisor {
             .spawn_linked(
                 Some(EInkDisplayActor::NAME.to_owned()),
                 EInkDisplayActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_battery_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        myself
+            .spawn_linked(
+                Some(BatteryActor::NAME.to_owned()),
+                BatteryActor {
                     shared_actor_state: self.shared_actor_state.clone(),
                 },
                 (),
@@ -280,7 +297,7 @@ impl Actor for RootSupervisor {
         plant_sensor::spawn::spawn_plant_sensor_handler(&myself, shared_actor_state.clone())
             .await?;
 
-        crate::actors::devices::valetudo::spawn::spawn_valetudo_handler(
+        crate::actors::devices::robot_vacuum::spawn::spawn_robot_vacuum_handler(
             &myself,
             shared_actor_state.clone(),
         )
@@ -304,6 +321,7 @@ impl Actor for RootSupervisor {
         self.start_alarm_actor(&myself).await?;
         self.start_home_assistant_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
+        self.start_battery_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
         self.start_sun_actor(&myself).await?;
         self.start_watchdog_actor(&myself).await?;
@@ -365,6 +383,11 @@ impl Actor for RootSupervisor {
                     EInkDisplayActor::NAME => {
                         tracing::info!("restarting eink display actor");
                         self.start_eink_display_actor(&myself).await?;
+                    }
+
+                    BatteryActor::NAME => {
+                        tracing::info!("restarting battery actor");
+                        self.start_battery_actor(&myself).await?;
                     }
 
                     HomeAssistantActor::NAME => {

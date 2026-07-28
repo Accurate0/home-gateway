@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_robot_vacuum_state (device_id, source, current_clean_area, clean_count, attributes) VALUES ($1, 'valetudo', $2, $3, $4) ON CONFLICT (device_id) DO UPDATE SET current_clean_area = COALESCE(EXCLUDED.current_clean_area, latest_robot_vacuum_state.current_clean_area), clean_count = COALESCE(EXCLUDED.clean_count, latest_robot_vacuum_state.clean_count), attributes = EXCLUDED.attributes, updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8",
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "818cfc4edf4efe0d88daa735c340cfc7ba76d43618192c4277ea84b9b618b853"
+}

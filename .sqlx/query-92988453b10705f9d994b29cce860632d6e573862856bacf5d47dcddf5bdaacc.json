@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_robot_vacuum_state (device_id, source, state) VALUES ($1, 'roborock', $2) ON CONFLICT (device_id) DO UPDATE SET source = EXCLUDED.source, state = EXCLUDED.state, updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "92988453b10705f9d994b29cce860632d6e573862856bacf5d47dcddf5bdaacc"
+}

@@ -1,12 +1,12 @@
 use crate::types::SharedActorState;
 
-use super::{Message, ValetudoHandler, ValetudoHandlerBuilder};
+use super::{Message, RobotVacuumHandler, RobotVacuumHandlerBuilder};
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, queues, routing},
 };
 
-pub async fn spawn_valetudo_handler(
+pub async fn spawn_robot_vacuum_handler(
     root_supervisor_ref: &ActorRef<()>,
     shared_actor_state: SharedActorState,
 ) -> anyhow::Result<()> {
@@ -14,13 +14,13 @@ pub async fn spawn_valetudo_handler(
         (),
         Message,
         (),
-        ValetudoHandler,
+        RobotVacuumHandler,
         routing::QueuerRouting<(), Message>,
         queues::DefaultQueue<(), Message>,
     >::default();
 
     let factory_args = FactoryArguments::builder()
-        .worker_builder(Box::new(ValetudoHandlerBuilder { shared_actor_state }))
+        .worker_builder(Box::new(RobotVacuumHandlerBuilder { shared_actor_state }))
         .queue(Default::default())
         .router(Default::default())
         .num_initial_workers(2)
@@ -28,7 +28,7 @@ pub async fn spawn_valetudo_handler(
 
     let (_, _) = root_supervisor_ref
         .spawn_linked(
-            Some(ValetudoHandler::NAME.to_string()),
+            Some(RobotVacuumHandler::NAME.to_string()),
             factory_def,
             factory_args,
         )

@@ -21,8 +21,8 @@ use graphql::{
     dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
+    dataloader::robot_vacuum_state::RobotVacuumStateDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
-    dataloader::valetudo_state::ValetudoStateDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
     mutations::MutationRoot,
 };
@@ -211,7 +211,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn,
     ))
     .data(DataLoader::new(
-        ValetudoStateDataLoader {
+        RobotVacuumStateDataLoader {
             database: pool.clone(),
         },
         tokio::spawn,

@@ -148,10 +148,10 @@
         "address": {
           "type": "string"
         },
-        "kinds": {
+        "roles": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/DeviceConfig"
+            "$ref": "#/$defs/RawRole"
           }
         },
         "watchdog": {
@@ -163,12 +163,6 @@
               "type": "null"
             }
           ]
-        },
-        "capabilities": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Capability"
-          }
         },
         "room": {
           "type": [
@@ -182,7 +176,7 @@
         "id",
         "transport",
         "address",
-        "kinds"
+        "roles"
       ]
     },
     "Transport": {
@@ -216,12 +210,21 @@
         }
       ]
     },
-    "DeviceConfig": {
+    "RawRole": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Capability"
+          }
+        }
+      },
       "oneOf": [
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "door"
             },
@@ -230,14 +233,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "presence"
             },
@@ -246,14 +249,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "environment"
             },
@@ -262,14 +265,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "plant"
             },
@@ -278,14 +281,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "light"
             },
@@ -294,26 +297,26 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "control_switch"
             }
           },
           "required": [
-            "kind"
+            "type"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "smart_switch"
             },
@@ -322,14 +325,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "eink_display_firmware"
             },
@@ -338,14 +341,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "trmnl"
             },
@@ -354,14 +357,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "roborock"
             },
@@ -370,14 +373,14 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "valetudo"
             },
@@ -386,8 +389,20 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "battery"
+            }
+          },
+          "required": [
+            "type"
           ]
         }
       ]
@@ -782,6 +797,19 @@
         "name"
       ]
     },
+    "Capability": {
+      "type": "string",
+      "enum": [
+        "brightness",
+        "colour_temp",
+        "rgb",
+        "temperature",
+        "humidity",
+        "pressure",
+        "lux",
+        "uv_index"
+      ]
+    },
     "RawDeviceWatchdog": {
       "type": "object",
       "properties": {
@@ -799,19 +827,6 @@
           }
         }
       }
-    },
-    "Capability": {
-      "type": "string",
-      "enum": [
-        "brightness",
-        "colour_temp",
-        "rgb",
-        "temperature",
-        "humidity",
-        "pressure",
-        "lux",
-        "uv_index"
-      ]
     },
     "RawWorkflow": {
       "type": "object",
@@ -2069,6 +2084,12 @@
           "additionalProperties": {
             "$ref": "#/$defs/RawAlbum"
           }
+        },
+        "palette": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/RawPaletteColor"
+          }
         }
       }
     },
@@ -2095,6 +2116,28 @@
           "default": null
         }
       }
+    },
+    "RawPaletteColor": {
+      "type": "object",
+      "properties": {
+        "r": {
+          "type": "number",
+          "format": "float"
+        },
+        "g": {
+          "type": "number",
+          "format": "float"
+        },
+        "b": {
+          "type": "number",
+          "format": "float"
+        }
+      },
+      "required": [
+        "r",
+        "g",
+        "b"
+      ]
     }
   }
 }

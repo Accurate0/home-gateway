@@ -155,12 +155,14 @@ impl WorkflowDispatcher {
                     device_id: id,
                     kind: k,
                     battery_voltage,
+                    battery_percent,
                     ..
                 },
             ) => {
+                let level = battery_percent.or(*battery_voltage);
                 device_id.as_ref().is_none_or(|d| d == id)
                     && kind.as_ref().is_none_or(|want| want == k)
-                    && below.is_none_or(|threshold| *battery_voltage < threshold)
+                    && below.is_none_or(|threshold| level.is_some_and(|l| l < threshold))
             }
             _ => false,
         }

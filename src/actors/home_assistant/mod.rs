@@ -5,12 +5,16 @@ use std::{
 
 use futures_util::{SinkExt, StreamExt};
 use ractor::Actor;
+use ractor::factory::{FactoryMessage, Job, JobOptions};
 use serde_json::{Value, json};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use uuid::Uuid;
 
 use crate::{
-    event_bus::EventBusMessage, home_assistant::HomeAssistant, settings::EntitySettings,
+    actors::devices::robot_vacuum::{self, RobotVacuumHandler},
+    event_bus::EventBusMessage,
+    home_assistant::HomeAssistant,
+    settings::EntitySettings,
     types::SharedActorState,
 };
 
@@ -127,6 +131,8 @@ impl HomeAssistantActor {
             last_latest_state_write.insert(entity_id.to_owned(), Instant::now());
         }
 
+        self.forward_roborock(event_id, entity_id, &state);
+
         self.shared_actor_state
             .event_bus
             .publish(EventBusMessage::HomeAssistant {
@@ -134,6 +140,34 @@ impl HomeAssistantActor {
                 entity_id: entity_id.to_owned(),
                 state,
             });
+    }
+
+    fn forward_roborock(&self, event_id: Uuid, entity_id: &str, state: &str) {
+        let Some((device_id, field)) = self.shared_actor_state.devices.roborock_entity(entity_id)
+        else {
+            return;
+        };
+
+        let Some(actor) = ractor::registry::where_is(RobotVacuumHandler::NAME.to_owned()) else {
+            tracing::error!("no robot vacuum actor found for roborock update");
+            return;
+        };
+
+        let job = FactoryMessage::Dispatch(Job {
+            key: (),
+            msg: robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
+                event_id,
+                device_id: device_id.to_owned(),
+                field,
+                value: state.to_owned(),
+            }),
+            options: JobOptions::default(),
+            accepted: None,
+        });
+
+        if let Err(e) = actor.send_message(job) {
+            tracing::error!("failed to forward roborock update: {e}");
+        }
     }
 
     async fn save_to_db(

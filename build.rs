@@ -33,7 +33,13 @@ fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
         "mode" => vec!["mode", "active"],
         "home_assistant" => vec!["entity_id", "state"],
         "woolworths" => vec!["product_id", "name", "old_price", "new_price", "drop"],
-        "device_battery" => vec!["device_id", "kind", "name", "battery_voltage"],
+        "device_battery" => vec![
+            "device_id",
+            "kind",
+            "name",
+            "battery_voltage",
+            "battery_percent",
+        ],
         _ => return None,
     })
 }

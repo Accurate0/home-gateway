@@ -185,9 +185,13 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => {
                 strs(&["product_id", "name", "old_price", "new_price", "drop"])
             }
-            TriggerMatcher::DeviceBattery { .. } => {
-                strs(&["device_id", "kind", "name", "battery_voltage"])
-            }
+            TriggerMatcher::DeviceBattery { .. } => strs(&[
+                "device_id",
+                "kind",
+                "name",
+                "battery_voltage",
+                "battery_percent",
+            ]),
         }
     }
 

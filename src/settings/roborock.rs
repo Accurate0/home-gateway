@@ -13,6 +13,13 @@ pub struct RawRoborockBlock {
     pub dock_service: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoborockField {
+    Status,
+    Battery,
+    Room,
+}
+
 #[derive(Debug, Clone)]
 pub struct RoborockSettings {
     pub name: String,

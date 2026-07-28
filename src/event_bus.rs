@@ -204,7 +204,8 @@ pub enum EventBusMessage {
         device_id: String,
         kind: String,
         name: String,
-        battery_voltage: f64,
+        battery_voltage: Option<f64>,
+        battery_percent: Option<f64>,
     },
 }
 
@@ -365,6 +366,7 @@ impl EventBusMessage {
                 kind,
                 name,
                 battery_voltage,
+                battery_percent,
                 ..
             } => HashMap::from([
                 ("device_id".to_owned(), device_id.clone()),
@@ -372,7 +374,11 @@ impl EventBusMessage {
                 ("name".to_owned(), name.clone()),
                 (
                     "battery_voltage".to_owned(),
-                    format!("{battery_voltage:.3}"),
+                    battery_voltage.map_or_else(String::new, |v| format!("{v:.3}")),
+                ),
+                (
+                    "battery_percent".to_owned(),
+                    battery_percent.map_or_else(String::new, |v| format!("{v:.0}")),
                 ),
             ]),
         }

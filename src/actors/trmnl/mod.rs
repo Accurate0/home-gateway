@@ -1,10 +1,9 @@
 use crate::{
-    device_registry::TrmnlDeviceSettings, event_bus::EventBusMessage, trmnl::Trmnl,
-    trmnl::types::TrmnlDevice, types::SharedActorState,
+    device_registry::TrmnlDeviceSettings, trmnl::Trmnl, trmnl::types::TrmnlDevice,
+    types::SharedActorState,
 };
 use ractor::Actor;
 use std::time::Duration;
-use uuid::Uuid;
 
 pub enum TrmnlMessage {
     CheckBattery,
@@ -87,18 +86,7 @@ impl Actor for TrmnlActor {
 
                     let device_id = settings.id.clone();
                     let name = settings.name.clone();
-                    let event_id = Uuid::new_v4();
                     let kind = "trmnl";
-
-                    sqlx::query!(
-                        "INSERT INTO device_battery (event_id, device_id, kind, battery_voltage) VALUES ($1, $2, $3, $4)",
-                        event_id,
-                        device_id,
-                        kind,
-                        voltage,
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
 
                     sqlx::query!(
                         "INSERT INTO eink_display (device_id, name, battery_voltage, updated_at) VALUES ($1, $2, $3, now()) \
@@ -110,21 +98,13 @@ impl Actor for TrmnlActor {
                     .execute(&self.shared_actor_state.db)
                     .await?;
 
-                    crate::metrics::record_device_battery_voltage(
-                        device_id.clone(),
+                    crate::actors::battery::BatteryActor::report(
+                        device_id,
+                        name,
                         kind.to_owned(),
-                        voltage,
+                        Some(voltage),
+                        None,
                     );
-
-                    self.shared_actor_state
-                        .event_bus
-                        .publish(EventBusMessage::DeviceBattery {
-                            event_id,
-                            device_id,
-                            kind: kind.to_owned(),
-                            name,
-                            battery_voltage: voltage,
-                        });
                 }
             }
         }

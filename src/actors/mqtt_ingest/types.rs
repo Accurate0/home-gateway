@@ -143,6 +143,22 @@ impl GenericZigbee2MqttMessage {
         }
     }
 
+    pub fn battery(&self) -> Option<f64> {
+        match self {
+            GenericZigbee2MqttMessage::AquaraDoorSensor(msg) => Some(msg.battery as f64),
+            GenericZigbee2MqttMessage::AqaraTemperatureSensor(msg) => Some(msg.battery as f64),
+            GenericZigbee2MqttMessage::LumiTemperatureSensor(msg) => Some(msg.battery as f64),
+            GenericZigbee2MqttMessage::AqaraSingleButtonSwitch(msg) => Some(msg.battery as f64),
+            GenericZigbee2MqttMessage::IKEASwitch(msg) => msg.battery.as_f64(),
+            GenericZigbee2MqttMessage::TS011FSmartSwitch(_)
+            | GenericZigbee2MqttMessage::AqaraPresenceSensor(_)
+            | GenericZigbee2MqttMessage::AqaraWhiteLight(_)
+            | GenericZigbee2MqttMessage::PhillipsLight(_)
+            | GenericZigbee2MqttMessage::IKEATemperatureSensor(_)
+            | GenericZigbee2MqttMessage::IKEALight(_) => None,
+        }
+    }
+
     pub fn to_actor_name(&self) -> TypedActorName {
         match self {
             GenericZigbee2MqttMessage::TS011FSmartSwitch(_) => TypedActorName::SmartSwitch,

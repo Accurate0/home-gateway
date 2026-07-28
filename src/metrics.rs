@@ -27,6 +27,7 @@ struct Instruments {
     step_duration: Histogram<f64>,
     /// Latest reported device battery voltage, labelled by device id and kind.
     device_battery_voltage: Gauge<f64>,
+    device_battery_percent: Gauge<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -60,8 +61,22 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .f64_gauge("home_gateway_device_battery_voltage")
             .with_description("Latest reported device battery voltage")
             .build(),
+        device_battery_percent: meter
+            .f64_gauge("home_gateway_device_battery_percent")
+            .with_description("Latest reported device battery percentage")
+            .build(),
     }
 });
+
+pub fn record_device_battery_percent(device_id: String, kind: String, percent: f64) {
+    INSTRUMENTS.device_battery_percent.record(
+        percent,
+        &[
+            KeyValue::new("device_id", device_id),
+            KeyValue::new("kind", kind),
+        ],
+    );
+}
 
 /// Record the latest battery voltage reported by a poll-transport device.
 pub fn record_device_battery_voltage(device_id: String, kind: String, voltage: f64) {

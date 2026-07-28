@@ -33,7 +33,7 @@ pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::PlantSensorSettings;
 pub use presence::{PresenceSensorType, PresenceSettings};
-pub use roborock::{RawRoborockBlock, RoborockSettings};
+pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
@@ -472,8 +472,8 @@ mod tests {
 - id: living-room-table-lamp
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
-  kinds:
-    - kind: smart_switch
+  roles:
+    - type: smart_switch
       config: { name: Living Room Table Lamp, as: light }
 "#,
         )
@@ -489,8 +489,8 @@ mod tests {
 - id: living-room-mtr-1
   transport: esphome
   address: apollo-mtr-1-livingroom
-  kinds:
-    - kind: light
+  roles:
+    - type: light
       config: { name: Living Room MTR-1 RGB }
 "#,
         )
@@ -605,6 +605,36 @@ android_app_webhook_secret: x
         assert_eq!(valetudo.command_topic, "valetudo/rockrobo/command");
         assert_eq!(valetudo.dock_payload, "return_to_base");
 
+        assert!(
+            registry
+                .battery(registry.address_or_self("front-door"))
+                .is_some(),
+            "front-door has a battery kind"
+        );
+        assert!(
+            registry.battery(roborock_address).is_some(),
+            "roborock has a battery kind"
+        );
+        assert!(
+            registry.battery(valetudo_address).is_some(),
+            "valetudo has a battery kind"
+        );
+        assert!(
+            registry
+                .battery(registry.address_or_self("closet-light"))
+                .is_none(),
+            "mains-powered light has no battery kind"
+        );
+
+        assert_eq!(
+            registry.roborock_entity("sensor.robot_battery"),
+            Some(("roborock", RoborockField::Battery))
+        );
+        assert_eq!(
+            registry.roborock_entity("sensor.robot_status"),
+            Some(("roborock", RoborockField::Status))
+        );
+
         let mut seen = HashSet::new();
         for wf in settings.workflows.values() {
             assert!(
@@ -670,7 +700,7 @@ android_app_webhook_secret: x
         );
         assert!(registry.environment("apollo-mtr-1-livingroom").is_some());
 
-        // a single device definition can carry multiple kinds: the hallway plant
+        // a single device definition can carry multiple roles: the hallway plant
         // is registered as both an environment and a plant sensor at one address
         assert_eq!(
             registry
@@ -775,8 +805,8 @@ devices:
   - id: epd
     transport: eink_display_firmware
     address: "abc123"
-    kinds:
-      - kind: eink_display_firmware
+    roles:
+      - type: eink_display_firmware
         config:
           name: Test Display
           orientation: landscape
@@ -828,8 +858,8 @@ devices:
   - id: epd
     transport: eink_display_firmware
     address: "abc123"
-    kinds:
-      - kind: eink_display_firmware
+    roles:
+      - type: eink_display_firmware
         config:
           name: Test Display
 "#,

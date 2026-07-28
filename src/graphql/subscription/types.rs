@@ -125,13 +125,17 @@ pub struct DeviceBatteryUpdate {
     pub id: ID,
     pub name: String,
     pub kind: String,
-    pub battery_voltage: f64,
+    pub battery_voltage: Option<f64>,
+    pub battery_percent: Option<f64>,
 }
 
 #[ComplexObject]
 impl DeviceBatteryUpdate {
-    async fn battery_percentage(&self) -> f64 {
-        crate::battery::voltage_to_percentage(self.battery_voltage)
+    async fn battery_percentage(&self) -> Option<f64> {
+        self.battery_percent.or_else(|| {
+            self.battery_voltage
+                .map(crate::battery::voltage_to_percentage)
+        })
     }
 }
 
@@ -321,12 +325,14 @@ impl EventUpdate {
                 kind,
                 name,
                 battery_voltage,
+                battery_percent,
             } => EventUpdate::DeviceBattery(DeviceBatteryUpdate {
                 event_id,
                 id: ID(slug(&device_id)),
                 name,
                 kind,
                 battery_voltage,
+                battery_percent,
             }),
         }
     }

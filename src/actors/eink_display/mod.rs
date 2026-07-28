@@ -394,8 +394,9 @@ impl Actor for EInkDisplayActor {
                                 .and_then(|s| s.to_std().ok())
                                 .unwrap_or(Duration::from_secs(10));
                             let view = flag.resolve_view(global, &display);
-                            let view_name =
-                                view.map(|v| v.name.clone()).unwrap_or_else(|| "default".to_owned());
+                            let view_name = view
+                                .map(|v| v.name.clone())
+                                .unwrap_or_else(|| "default".to_owned());
                             let query = view.and_then(|v| v.query.clone());
                             let image =
                                 match self.render_web(state, settle, query.as_deref()).await? {
@@ -442,18 +443,7 @@ impl Actor for EInkDisplayActor {
                     return Ok(());
                 };
                 let name = display.name.clone();
-                let event_id = uuid::Uuid::new_v4();
                 let kind = "eink_display_firmware";
-
-                sqlx::query!(
-                    "INSERT INTO device_battery (event_id, device_id, kind, battery_voltage) VALUES ($1, $2, $3, $4)",
-                    event_id,
-                    device_id,
-                    kind,
-                    battery_voltage,
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
 
                 sqlx::query!(
                     "INSERT INTO eink_display (device_id, name, battery_voltage, updated_at) VALUES ($1, $2, $3, now()) \
@@ -465,20 +455,12 @@ impl Actor for EInkDisplayActor {
                 .execute(&self.shared_actor_state.db)
                 .await?;
 
-                crate::metrics::record_device_battery_voltage(
-                    device_id.clone(),
+                crate::actors::battery::BatteryActor::report(
+                    device_id,
+                    name,
                     kind.to_owned(),
-                    battery_voltage,
-                );
-
-                self.shared_actor_state.event_bus.publish(
-                    crate::event_bus::EventBusMessage::DeviceBattery {
-                        event_id,
-                        device_id,
-                        kind: kind.to_owned(),
-                        name,
-                        battery_voltage,
-                    },
+                    Some(battery_voltage),
+                    None,
                 );
             }
             EInkDisplayMessage::ConfigRequest { device_id } => {

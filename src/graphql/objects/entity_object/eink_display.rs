@@ -41,9 +41,7 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
             orientation: settings.orientation,
             refresh: settings.refresh.map(humanize),
             settle: settings.settle.map(humanize),
-            sleep_start: settings
-                .sleep
-                .map(|s| s.start.format("%H:%M").to_string()),
+            sleep_start: settings.sleep.map(|s| s.start.format("%H:%M").to_string()),
             sleep_end: settings.sleep.map(|s| s.end.format("%H:%M").to_string()),
         }
     }
@@ -52,14 +50,16 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
 #[derive(SimpleObject)]
 #[graphql(rename_fields = "camelCase", complex)]
 pub struct BatteryPoint {
-    pub battery_voltage: f64,
+    pub battery_voltage: Option<f64>,
+    pub battery_percent: Option<f64>,
     pub time: DateTime<Utc>,
 }
 
 #[ComplexObject]
 impl BatteryPoint {
-    async fn battery_percentage(&self) -> f64 {
-        voltage_to_percentage(self.battery_voltage)
+    async fn battery_percentage(&self) -> Option<f64> {
+        self.battery_percent
+            .or_else(|| self.battery_voltage.map(voltage_to_percentage))
     }
 }
 
@@ -75,7 +75,10 @@ pub struct EinkDisplayEntity {
 impl EinkDisplayEntity {
     pub fn from_firmware(registry: &DeviceRegistry, address: &str) -> Option<Self> {
         let settings = registry.eink_display(address)?;
-        let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+        let id = registry
+            .id_for_address(address)
+            .unwrap_or(address)
+            .to_owned();
         Some(Self {
             id,
             name: settings.name.clone(),
@@ -186,7 +189,7 @@ impl EinkDisplayEntity {
         let db = ctx.data::<Pool<Postgres>>()?;
 
         Ok(sqlx::query!(
-            r#"SELECT battery_voltage, "time"
+            r#"SELECT battery_voltage, battery_percent, "time"
                FROM device_battery
                WHERE device_id = $1 AND "time" >= $2
                ORDER BY "time" ASC"#,
@@ -198,6 +201,7 @@ impl EinkDisplayEntity {
         .into_iter()
         .map(|r| BatteryPoint {
             battery_voltage: r.battery_voltage,
+            battery_percent: r.battery_percent,
             time: r.time,
         })
         .collect_vec())

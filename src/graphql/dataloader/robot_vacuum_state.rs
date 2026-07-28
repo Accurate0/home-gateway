@@ -4,42 +4,41 @@ use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, sync::Arc};
 use tracing::Instrument;
 
-pub struct ValetudoStateDataLoader {
+pub struct RobotVacuumStateDataLoader {
     pub database: Pool<Postgres>,
 }
 
 #[derive(Clone)]
-pub struct ValetudoStateModel {
-    pub identifier: String,
+pub struct RobotVacuumStateModel {
+    pub device_id: String,
+    pub source: String,
     pub state: Option<String>,
     pub battery_level: Option<i32>,
     pub fan_speed: Option<String>,
     pub current_clean_area: Option<f64>,
     pub clean_count: Option<i32>,
+    pub room: Option<String>,
     pub updated_at: DateTime<Utc>,
 }
 
-impl Loader<String> for ValetudoStateDataLoader {
-    type Value = ValetudoStateModel;
+impl Loader<String> for RobotVacuumStateDataLoader {
+    type Value = RobotVacuumStateModel;
     type Error = Arc<sqlx::Error>;
 
     async fn load(&self, keys: &[String]) -> Result<HashMap<String, Self::Value>, Self::Error> {
         let rows = sqlx::query_as!(
-            ValetudoStateModel,
+            RobotVacuumStateModel,
             r#"
-            SELECT identifier, state, battery_level, fan_speed, current_clean_area, clean_count, updated_at
-            FROM latest_valetudo_state
-            WHERE identifier = ANY($1)
+            SELECT device_id, source, state, battery_level, fan_speed, current_clean_area, clean_count, room, updated_at
+            FROM latest_robot_vacuum_state
+            WHERE device_id = ANY($1)
             "#,
             keys
         )
         .fetch_all(&self.database)
-        .instrument(tracing::info_span!("bulk-get-valetudo-state"))
+        .instrument(tracing::info_span!("bulk-get-robot-vacuum-state"))
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| (r.identifier.clone(), r))
-            .collect())
+        Ok(rows.into_iter().map(|r| (r.device_id.clone(), r)).collect())
     }
 }

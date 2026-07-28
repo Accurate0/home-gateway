@@ -13,7 +13,7 @@ use crate::settings::plant::default_plant_entities;
 use crate::settings::{
     DeviceAliases, DoorSettings, EinkModeConfig, EnvironmentSensorSettings, EnvironmentSensorType,
     IEEEAddress, Orientation, PlantSensorSettings, PresenceSensorType, PresenceSettings,
-    RawRoborockBlock, RawValetudoBlock, RoborockSettings, ValetudoSettings,
+    RawRoborockBlock, RawValetudoBlock, RoborockField, RoborockSettings, ValetudoSettings,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
@@ -78,13 +78,19 @@ pub struct RawSensor {
     pub id: String,
     pub transport: Transport,
     pub address: String,
-    pub kinds: Vec<DeviceConfig>,
+    pub roles: Vec<RawRole>,
     #[serde(default)]
     pub watchdog: Option<RawDeviceWatchdog>,
     #[serde(default)]
-    pub capabilities: Vec<Capability>,
-    #[serde(default)]
     pub room: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawRole {
+    #[serde(flatten)]
+    pub config: DeviceConfig,
+    #[serde(default)]
+    pub capabilities: Vec<Capability>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum, JsonSchema)]
@@ -116,7 +122,7 @@ pub struct DeviceWatchdog {
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-#[serde(tag = "kind", content = "config", rename_all = "snake_case")]
+#[serde(tag = "type", content = "config", rename_all = "snake_case")]
 pub enum DeviceConfig {
     Door(RawDoorSettings),
     Presence(RawPresenceBlock),
@@ -129,6 +135,12 @@ pub enum DeviceConfig {
     Trmnl(RawTrmnlBlock),
     Roborock(RawRoborockBlock),
     Valetudo(RawValetudoBlock),
+    Battery,
+}
+
+#[derive(Debug, Clone)]
+pub struct BatterySettings {
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -326,7 +338,9 @@ pub struct DeviceRegistryInner {
     eink_displays: HashMap<String, EinkDisplaySettings>,
     trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
     roborocks: HashMap<String, RoborockSettings>,
+    roborock_entities: HashMap<String, (String, RoborockField)>,
     valetudos: HashMap<String, ValetudoSettings>,
+    battery: HashMap<String, BatterySettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
@@ -356,18 +370,13 @@ impl DeviceRegistry {
                 id,
                 transport,
                 address,
-                kinds,
+                roles,
                 watchdog,
-                capabilities,
                 room,
             } = sensor;
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
                 return Err(format!("duplicate sensor id: {id}"));
-            }
-
-            if !capabilities.is_empty() {
-                reg.capabilities.insert(address.clone(), capabilities);
             }
 
             if let Some(room) = room {
@@ -384,8 +393,20 @@ impl DeviceRegistry {
                 );
             }
 
-            for config in kinds {
-                reg.add_kind(&id, transport, &address, config, notify)?;
+            for role in roles {
+                let RawRole {
+                    config,
+                    capabilities,
+                } = role;
+
+                if !capabilities.is_empty() {
+                    reg.capabilities
+                        .entry(address.clone())
+                        .or_default()
+                        .extend(capabilities);
+                }
+
+                reg.add_role(&id, transport, &address, config, notify)?;
             }
         }
 
@@ -396,7 +417,7 @@ impl DeviceRegistry {
 }
 
 impl DeviceRegistryInner {
-    fn add_kind(
+    fn add_role(
         &mut self,
         id: &str,
         transport: Transport,
@@ -404,6 +425,17 @@ impl DeviceRegistryInner {
         config: DeviceConfig,
         notify: &NotifyTargets,
     ) -> Result<(), String> {
+        if matches!(config, DeviceConfig::Battery) {
+            self.battery.insert(
+                address.to_owned(),
+                BatterySettings {
+                    name: id.to_owned(),
+                },
+            );
+
+            return Ok(());
+        }
+
         let is_eink = matches!(config, DeviceConfig::EinkDisplayFirmware(_));
         if (transport == Transport::EinkDisplayFirmware) != is_eink {
             return Err(format!(
@@ -543,13 +575,28 @@ impl DeviceRegistryInner {
                 );
             }
             DeviceConfig::Roborock(roborock) => {
-                self.roborocks
-                    .insert(address.to_owned(), roborock.resolve());
+                let settings = roborock.resolve();
+
+                self.roborock_entities.insert(
+                    settings.status_entity.clone(),
+                    (id.to_owned(), RoborockField::Status),
+                );
+                self.roborock_entities.insert(
+                    settings.battery_entity.clone(),
+                    (id.to_owned(), RoborockField::Battery),
+                );
+                self.roborock_entities.insert(
+                    settings.room_entity.clone(),
+                    (id.to_owned(), RoborockField::Room),
+                );
+
+                self.roborocks.insert(address.to_owned(), settings);
             }
             DeviceConfig::Valetudo(valetudo) => {
                 self.valetudos
                     .insert(address.to_owned(), valetudo.resolve(address));
             }
+            DeviceConfig::Battery => unreachable!("battery kind handled before transport guards"),
         }
         Ok(())
     }
@@ -568,6 +615,12 @@ impl DeviceRegistryInner {
 
     pub fn roborock(&self, address: &str) -> Option<&RoborockSettings> {
         self.roborocks.get(address)
+    }
+
+    pub fn roborock_entity(&self, entity_id: &str) -> Option<(&str, RoborockField)> {
+        self.roborock_entities
+            .get(entity_id)
+            .map(|(device_id, field)| (device_id.as_str(), *field))
     }
 
     pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
@@ -667,6 +720,10 @@ impl DeviceRegistryInner {
 
     pub fn plant(&self, address: &str) -> Option<&PlantSensorSettings> {
         self.plant.get(address)
+    }
+
+    pub fn battery(&self, address: &str) -> Option<&BatterySettings> {
+        self.battery.get(address)
     }
 
     pub fn light(&self, address: &str) -> Option<&String> {

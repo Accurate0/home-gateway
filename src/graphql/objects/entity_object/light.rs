@@ -24,7 +24,10 @@ pub struct LightEntity {
 impl LightEntity {
     pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
         let name = registry.light(address)?.clone();
-        let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+        let id = registry
+            .id_for_address(address)
+            .unwrap_or(address)
+            .to_owned();
         Some(Self {
             id,
             name,

@@ -1,4 +1,5 @@
 pub mod alarm;
+pub mod battery;
 pub mod cron;
 pub mod devices;
 pub mod eink_display;

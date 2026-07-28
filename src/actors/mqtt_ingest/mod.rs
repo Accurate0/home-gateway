@@ -1,4 +1,4 @@
-use super::devices::{control_switch, plant_sensor, presence_sensor, valetudo};
+use super::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
 use crate::{
     actors::{door_sensor, environment_sensor, light, smart_switch},
     types::SharedActorState,
@@ -41,7 +41,7 @@ enum MqttTopic {
     /// state report.
     Valetudo {
         identifier: String,
-        leaf: valetudo::Leaf,
+        leaf: robot_vacuum::Leaf,
     },
     /// Anything else — resolved against the esphome subscription registry, since
     /// the only other topics we subscribe to are esphome state topics we chose.
@@ -65,8 +65,8 @@ impl MqttTopic {
         if let Some(rest) = topic.strip_prefix("valetudo/") {
             if let Some((identifier, leaf)) = rest.split_once('/') {
                 let leaf = match leaf {
-                    "state" => Some(valetudo::Leaf::State),
-                    "attributes" => Some(valetudo::Leaf::Attributes),
+                    "state" => Some(robot_vacuum::Leaf::State),
+                    "attributes" => Some(robot_vacuum::Leaf::Attributes),
                     _ => None,
                 };
                 if let Some(leaf) = leaf {
@@ -432,6 +432,32 @@ impl MqttIngest {
         Ok(())
     }
 
+    fn record_battery(&self, message: &GenericZigbee2MqttMessage) {
+        let Some(percent) = message.battery() else {
+            return;
+        };
+
+        let address = message.to_ieee_addr();
+        let devices = &self.shared_actor_state.devices;
+
+        let Some(settings) = devices.battery(address) else {
+            return;
+        };
+
+        let device_id = devices
+            .id_for_address(address)
+            .unwrap_or(address)
+            .to_owned();
+
+        crate::actors::battery::BatteryActor::report(
+            device_id,
+            settings.name.clone(),
+            "battery".to_owned(),
+            None,
+            Some(percent),
+        );
+    }
+
     async fn record_last_seen(&self, device_key: &str) {
         if let Err(e) = sqlx::query!(
             "INSERT INTO device_last_seen (device_key, last_seen) VALUES ($1, now()) \
@@ -523,17 +549,24 @@ impl MqttIngest {
                 self.record_last_seen(&identifier).await;
 
                 let Some(actor_cell) =
-                    ractor::registry::where_is(valetudo::ValetudoHandler::NAME.to_string())
+                    ractor::registry::where_is(robot_vacuum::RobotVacuumHandler::NAME.to_string())
                 else {
-                    tracing::error!("no valetudo actor found");
+                    tracing::error!("no robot vacuum actor found");
                     return Ok(());
                 };
 
+                let device_id = self
+                    .shared_actor_state
+                    .devices
+                    .id_for_address(&identifier)
+                    .unwrap_or(&identifier)
+                    .to_owned();
+
                 actor_cell.send_message(FactoryMessage::Dispatch(Job {
                     key: (),
-                    msg: valetudo::Message::NewEvent(valetudo::NewEvent {
+                    msg: robot_vacuum::Message::Valetudo(robot_vacuum::ValetudoEvent {
                         event_id: uuid::Uuid::new_v4(),
-                        identifier,
+                        device_id,
                         leaf,
                         payload,
                     }),
@@ -554,6 +587,8 @@ impl MqttIngest {
                             return Err(e.into());
                         }
                     };
+
+                self.record_battery(&generic_message);
 
                 let actor_type = generic_message.to_actor_name();
                 let actor_name = actor_type.to_string();
@@ -683,14 +718,14 @@ mod tests {
         assert!(matches!(
             MqttTopic::classify("valetudo/rockrobo/state"),
             MqttTopic::Valetudo {
-                leaf: valetudo::Leaf::State,
+                leaf: robot_vacuum::Leaf::State,
                 ..
             }
         ));
         assert!(matches!(
             MqttTopic::classify("valetudo/rockrobo/attributes"),
             MqttTopic::Valetudo {
-                leaf: valetudo::Leaf::Attributes,
+                leaf: robot_vacuum::Leaf::Attributes,
                 ..
             }
         ));

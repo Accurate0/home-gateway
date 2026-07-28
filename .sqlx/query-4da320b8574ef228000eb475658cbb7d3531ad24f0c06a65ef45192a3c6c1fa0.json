@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT battery_voltage, \"time\"\n               FROM device_battery\n               WHERE device_id = $1 AND \"time\" >= $2\n               ORDER BY \"time\" ASC",
+  "query": "SELECT battery_voltage, battery_percent, \"time\"\n               FROM device_battery\n               WHERE device_id = $1 AND \"time\" >= $2\n               ORDER BY \"time\" ASC",
   "describe": {
     "columns": [
       {
@@ -10,6 +10,11 @@
       },
       {
         "ordinal": 1,
+        "name": "battery_percent",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
         "name": "time",
         "type_info": "Timestamptz"
       }
@@ -21,9 +26,10 @@
       ]
     },
     "nullable": [
-      false,
+      true,
+      true,
       false
     ]
   },
-  "hash": "599e209c75a284d15fe1b91b2fa3691f5c75cd6dea002457d485b41b3a1014fa"
+  "hash": "4da320b8574ef228000eb475658cbb7d3531ad24f0c06a65ef45192a3c6c1fa0"
 }

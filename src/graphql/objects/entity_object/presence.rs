@@ -24,7 +24,10 @@ pub struct PresenceEntity {
 impl PresenceEntity {
     pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
         let settings = registry.presence(address)?;
-        let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+        let id = registry
+            .id_for_address(address)
+            .unwrap_or(address)
+            .to_owned();
         let name = if settings.name.is_empty() {
             id.clone()
         } else {

@@ -1,40 +1,50 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT identifier, state, battery_level, fan_speed, current_clean_area, clean_count, updated_at\n            FROM latest_valetudo_state\n            WHERE identifier = ANY($1)\n            ",
+  "query": "\n            SELECT device_id, source, state, battery_level, fan_speed, current_clean_area, clean_count, room, updated_at\n            FROM latest_robot_vacuum_state\n            WHERE device_id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "identifier",
+        "name": "device_id",
         "type_info": "Text"
       },
       {
         "ordinal": 1,
-        "name": "state",
+        "name": "source",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "battery_level",
         "type_info": "Int4"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "fan_speed",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "current_clean_area",
         "type_info": "Float8"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "clean_count",
         "type_info": "Int4"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
+        "name": "room",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -46,6 +56,8 @@
     },
     "nullable": [
       false,
+      false,
+      true,
       true,
       true,
       true,
@@ -54,5 +66,5 @@
       false
     ]
   },
-  "hash": "3064a93edf8512bbe62bcd274c7c715b2f438af0b94919b588aeca22d7c6e141"
+  "hash": "725cf7223884f94dd50f279fb96a7b381ca3b1358329ab4127bd282234c79e49"
 }
