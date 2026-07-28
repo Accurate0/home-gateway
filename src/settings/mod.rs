@@ -24,7 +24,9 @@ pub mod valetudo;
 pub mod workflow;
 
 pub use door::{ArmedDoorStates, DoorSettings};
-pub use eink::{Album, DashboardView, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation};
+pub use eink::{
+    Album, DashboardView, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation, PaletteColor,
+};
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use location::LocationSettings;

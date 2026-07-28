@@ -81,6 +81,7 @@ const EntitiesQuery = graphql`
         category
         id
         name
+        einkKind: kind
         room
         batteryVoltage
         batteryPercentage
@@ -274,10 +275,16 @@ function seedEntities(
       "kind" in e && (e.kind === "ROBOROCK" || e.kind === "VALETUDO")
         ? e.kind
         : undefined;
+    const einkKind =
+      "einkKind" in e &&
+      (e.einkKind === "TRMNL" || e.einkKind === "EINK_DISPLAY_FIRMWARE")
+        ? e.einkKind
+        : undefined;
     map.set(entityKey(kind, e.id), {
       ...e,
       kind,
       vacuumKind,
+      einkKind,
       key: entityKey(kind, e.id),
     });
   }

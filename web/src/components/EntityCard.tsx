@@ -646,6 +646,43 @@ function EinkDisplayTile({
       : percentage >= 25
         ? BatteryMedium
         : BatteryLow;
+
+  const body = (
+    <>
+      <div className="flex items-start justify-between">
+        <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
+          <MonitorSmartphone className="size-5" strokeWidth={1.5} />
+        </div>
+        <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
+          <BatteryIcon className="size-4" strokeWidth={1.75} />
+          <div className="flex flex-col items-end leading-tight">
+            <span className="text-sm">
+              {percentage == null ? "—" : `${Math.round(percentage)}%`}
+            </span>
+            {voltage != null && (
+              <span className="text-muted-foreground/70 text-xs">
+                {fmt(voltage, " V", 2)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+      </div>
+    </>
+  );
+
+  if (entity.einkKind === "TRMNL") {
+    return (
+      <Tile className="col-span-1 justify-between gap-3">{body}</Tile>
+    );
+  }
+
   return (
     <Dialog.Root
       onOpenChange={(open) => {
@@ -658,31 +695,7 @@ function EinkDisplayTile({
           tabIndex={0}
           className="col-span-1 cursor-pointer justify-between gap-3 transition-all select-none hover:-translate-y-0.5 hover:border-foreground/20 active:translate-y-0"
         >
-          <div className="flex items-start justify-between">
-            <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
-              <MonitorSmartphone className="size-5" strokeWidth={1.5} />
-            </div>
-            <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
-              <BatteryIcon className="size-4" strokeWidth={1.75} />
-              <div className="flex flex-col items-end leading-tight">
-                <span className="text-sm">
-                  {percentage == null ? "—" : `${Math.round(percentage)}%`}
-                </span>
-                {voltage != null && (
-                  <span className="text-muted-foreground/70 text-xs">
-                    {fmt(voltage, " V", 2)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div>
-            <div className="leading-tight font-medium">{entity.name}</div>
-            <div className="text-muted-foreground flex items-center gap-1 text-xs">
-              <span>{entity.id}</span>
-              <LastSeen entity={entity} now={now} />
-            </div>
-          </div>
+          {body}
         </Tile>
       </Dialog.Trigger>
       <EinkDisplayConfigDetails entity={entity} actions={actions} now={now} />

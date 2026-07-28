@@ -3,7 +3,7 @@ use crate::{
     auth::{Auth, scope::required},
     device_registry::{DeviceRegistry, EinkDisplaySettings, SleepWindow},
     feature_flag::FeatureFlagClient,
-    settings::{Album, DashboardView, EinkGlobalSettings, EinkMode},
+    settings::{Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor},
     types::{ApiState, AppError},
 };
 use ab_glyph::{FontRef, PxScale};
@@ -24,15 +24,6 @@ const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.tt
 const EPD_FLAG: &str = "home-gateway-epd";
 const EPD_NEW_DITHERING_FLAG: &str = "home-gateway-epd-new-dithering";
 const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
-
-const DEFAULT_PALETTE: [(&str, f32, f32, f32, u8); 6] = [
-    ("black", 0.0, 0.0, 0.0, 0),
-    ("white", 255.0, 255.0, 255.0, 1),
-    ("yellow", 255.0, 255.0, 0.0, 2),
-    ("red", 255.0, 0.0, 0.0, 3),
-    ("blue", 0.0, 0.0, 255.0, 5),
-    ("green", 0.0, 255.0, 0.0, 6),
-];
 
 #[derive(Debug, Clone)]
 pub(crate) struct EpdFlagConfig {
@@ -186,6 +177,7 @@ pub(crate) async fn epd_new_dithering_enabled(
 pub(crate) async fn epd_palette(
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
+    base: &[PaletteColor],
     device_id: &str,
 ) -> Vec<(f32, f32, f32, u8)> {
     let mut context =
@@ -199,25 +191,32 @@ pub(crate) async fn epd_palette(
         .await
         .ok();
 
-    DEFAULT_PALETTE
-        .iter()
-        .map(|&(name, dr, dg, db, idx)| {
+    base.iter()
+        .map(|color| {
             let (r, g, b) = config
                 .as_ref()
-                .and_then(|c| c.fields.get(name))
+                .and_then(|c| c.fields.get(color.name))
                 .and_then(|v| v.as_struct())
                 .map(|s| {
                     let channel = |key: &str, default: f32| {
                         s.fields
                             .get(key)
-                            .and_then(|v| v.as_i64().map(|n| n as f32).or_else(|| v.as_f64().map(|f| f as f32)))
+                            .and_then(|v| {
+                                v.as_i64()
+                                    .map(|n| n as f32)
+                                    .or_else(|| v.as_f64().map(|f| f as f32))
+                            })
                             .map(|n| n.clamp(0.0, 255.0))
                             .unwrap_or(default)
                     };
-                    (channel("r", dr), channel("g", dg), channel("b", db))
+                    (
+                        channel("r", color.r),
+                        channel("g", color.g),
+                        channel("b", color.b),
+                    )
                 })
-                .unwrap_or((dr, dg, db));
-            (r, g, b, idx)
+                .unwrap_or((color.r, color.g, color.b));
+            (r, g, b, color.index)
         })
         .collect()
 }
@@ -364,6 +363,7 @@ pub async fn latest(
         db,
         feature_flag_client,
         devices,
+        settings,
         ..
     }): State<ApiState>,
     Auth(auth): Auth,
@@ -399,7 +399,13 @@ pub async fn latest(
 
     let new_dithering =
         epd_new_dithering_enabled(&feature_flag_client, &devices, &params.device_id).await;
-    let palette = epd_palette(&feature_flag_client, &devices, &params.device_id).await;
+    let palette = epd_palette(
+        &feature_flag_client,
+        &devices,
+        &settings.eink_display.palette,
+        &params.device_id,
+    )
+    .await;
 
     let output_packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();

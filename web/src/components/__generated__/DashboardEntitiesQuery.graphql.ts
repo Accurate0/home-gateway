@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3e31d917e2d4e66f043d530dbdf0f77c>>
+ * @generated SignedSource<<26e406e9596ccab4ba444968974032c2>>
  * @lightSyntaxTransform
  */
 
@@ -9,6 +9,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "%future added value";
+export type EinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
 export type EinkMode = "ALBUM" | "DASHBOARD" | "%future added value";
 export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "PRESENCE" | "VACUUMS" | "%future added value";
 export type Orientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
@@ -38,6 +39,7 @@ export type DashboardEntitiesQuery$data = {
       readonly sleepStart: string | null | undefined;
       readonly view: string | null | undefined;
     } | null | undefined;
+    readonly einkKind: EinkDisplayKind;
     readonly id: string;
     readonly lastSeen: any | null | undefined;
     readonly name: string;
@@ -307,6 +309,13 @@ v7 = [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
           (v2/*:: as any*/),
+          {
+            "alias": "einkKind",
+            "args": null,
+            "kind": "ScalarField",
+            "name": "kind",
+            "storageKey": null
+          },
           (v3/*:: as any*/),
           {
             "alias": null,
@@ -466,16 +475,16 @@ return {
     "selections": (v7/*:: as any*/)
   },
   "params": {
-    "cacheID": "b466cba0c20a27e4c894d1122eb4c1aa",
+    "cacheID": "43c480f79aacd08a9a2604b5dd368250",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "247ddac14ecdd8f51264fed3cc9c1e28";
+(node as any).hash = "8b9a088b5ede22ed21e9fe25ee9d591e";
 
 export default node;

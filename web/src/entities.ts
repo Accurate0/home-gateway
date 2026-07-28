@@ -19,6 +19,8 @@ export type EntityKind =
 
 export type VacuumKind = "ROBOROCK" | "VALETUDO";
 
+export type EinkKind = "TRMNL" | "EINK_DISPLAY_FIRMWARE";
+
 export interface EinkDisplayConfig {
   mode: string;
   view?: string | null;
@@ -59,6 +61,7 @@ export interface Entity {
   config?: EinkDisplayConfig | null;
   deviceConfig?: EinkDeviceConfig | null;
   vacuumKind?: VacuumKind | null;
+  einkKind?: EinkKind | null;
   status?: string | null;
   currentRoom?: string | null;
   fanSpeed?: string | null;
