@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dd2bdf5707f042781494d136281512c2>>
+ * @generated SignedSource<<3e31d917e2d4e66f043d530dbdf0f77c>>
  * @lightSyntaxTransform
  */
 
@@ -8,10 +8,11 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type Capability = "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "%future added value";
+export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "%future added value";
 export type EinkMode = "ALBUM" | "DASHBOARD" | "%future added value";
 export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "PRESENCE" | "VACUUMS" | "%future added value";
 export type Orientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
+export type RobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
 export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
 export type DashboardEntitiesQuery$data = {
   readonly entities: ReadonlyArray<{
@@ -73,25 +74,16 @@ export type DashboardEntitiesQuery$data = {
     readonly present: boolean | null | undefined;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "RoborockEntity";
-    readonly batteryPercentage: number | null | undefined;
-    readonly capabilities: ReadonlyArray<Capability>;
-    readonly category: EntityCategory;
-    readonly currentRoom: string | null | undefined;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly room: string | null | undefined;
-    readonly status: string | null | undefined;
-  } | {
-    readonly __typename: "ValetudoEntity";
+    readonly __typename: "RobotVacuumEntity";
     readonly batteryPercentage: number | null | undefined;
     readonly capabilities: ReadonlyArray<Capability>;
     readonly category: EntityCategory;
     readonly cleanCount: number | null | undefined;
     readonly currentCleanArea: number | null | undefined;
+    readonly currentRoom: string | null | undefined;
     readonly fanSpeed: string | null | undefined;
     readonly id: string;
+    readonly kind: RobotVacuumKind;
     readonly lastSeen: any | null | undefined;
     readonly name: string;
     readonly room: string | null | undefined;
@@ -161,14 +153,7 @@ v6 = {
   "name": "batteryPercentage",
   "storageKey": null
 },
-v7 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "status",
-  "storageKey": null
-},
-v8 = [
+v7 = [
   {
     "alias": null,
     "args": null,
@@ -411,7 +396,20 @@ v8 = [
           (v2/*:: as any*/),
           (v3/*:: as any*/),
           (v4/*:: as any*/),
-          (v7/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "kind",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "status",
+            "storageKey": null
+          },
           (v6/*:: as any*/),
           {
             "alias": null,
@@ -420,21 +418,6 @@ v8 = [
             "name": "currentRoom",
             "storageKey": null
           },
-          (v5/*:: as any*/)
-        ],
-        "type": "RoborockEntity",
-        "abstractKey": null
-      },
-      {
-        "kind": "InlineFragment",
-        "selections": [
-          (v0/*:: as any*/),
-          (v1/*:: as any*/),
-          (v2/*:: as any*/),
-          (v3/*:: as any*/),
-          (v4/*:: as any*/),
-          (v7/*:: as any*/),
-          (v6/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -458,7 +441,7 @@ v8 = [
           },
           (v5/*:: as any*/)
         ],
-        "type": "ValetudoEntity",
+        "type": "RobotVacuumEntity",
         "abstractKey": null
       }
     ],
@@ -471,7 +454,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "DashboardEntitiesQuery",
-    "selections": (v8/*:: as any*/),
+    "selections": (v7/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -480,19 +463,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "DashboardEntitiesQuery",
-    "selections": (v8/*:: as any*/)
+    "selections": (v7/*:: as any*/)
   },
   "params": {
-    "cacheID": "90428043002fc555aff64c534e638ec5",
+    "cacheID": "b466cba0c20a27e4c894d1122eb4c1aa",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on RoborockEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      status\n      batteryPercentage\n      currentRoom\n      lastSeen\n    }\n    ... on ValetudoEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      status\n      batteryPercentage\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3f80f6892087d21f3c7fc8543830c711";
+(node as any).hash = "247ddac14ecdd8f51264fed3cc9c1e28";
 
 export default node;

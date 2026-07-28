@@ -6,7 +6,7 @@ use crate::{
         events::door_events::{DerivedDoorEvents, DoorEventsMessage},
         rpc,
     },
-    device_registry::Capability,
+    device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
     types::db::DoorState,
 };
@@ -19,6 +19,19 @@ pub struct DoorEntity {
     pub address: String,
     pub capabilities: Vec<Capability>,
     pub room: Option<String>,
+}
+
+impl DoorEntity {
+    pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let settings = registry.door(address)?;
+        Some(Self {
+            id: settings.id.clone(),
+            name: settings.name.clone(),
+            address: address.to_owned(),
+            capabilities: registry.capabilities(address).to_vec(),
+            room: registry.room(address).map(str::to_owned),
+        })
+    }
 }
 
 #[Object]

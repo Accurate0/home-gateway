@@ -15,8 +15,9 @@ export type EntityKind =
   | "presence"
   | "environment"
   | "einkDisplay"
-  | "roborock"
-  | "valetudo";
+  | "robotVacuum";
+
+export type VacuumKind = "ROBOROCK" | "VALETUDO";
 
 export interface EinkDisplayConfig {
   mode: string;
@@ -27,6 +28,12 @@ export interface EinkDisplayConfig {
   settle?: string | null;
   sleepStart?: string | null;
   sleepEnd?: string | null;
+}
+
+export interface EinkDeviceConfig {
+  refreshIntervalMins?: number | null;
+  imageUrl?: string | null;
+  clearScreen?: boolean | null;
 }
 
 export interface Entity {
@@ -50,6 +57,8 @@ export interface Entity {
   batteryVoltage?: number | null;
   batteryPercentage?: number | null;
   config?: EinkDisplayConfig | null;
+  deviceConfig?: EinkDeviceConfig | null;
+  vacuumKind?: VacuumKind | null;
   status?: string | null;
   currentRoom?: string | null;
   fanSpeed?: string | null;
@@ -97,8 +106,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   PresenceEntity: "presence",
   EnvironmentEntity: "environment",
   EinkDisplayEntity: "einkDisplay",
-  RoborockEntity: "roborock",
-  ValetudoEntity: "valetudo",
+  RobotVacuumEntity: "robotVacuum",
   LightUpdate: "light",
   DoorUpdate: "door",
   PresenceUpdate: "presence",

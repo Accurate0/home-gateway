@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<999e4b8b01af0e0663d21b51aea2da30>>
+ * @generated SignedSource<<8c9271bbbeaa725608b05a5a800b2fa7>>
  * @lightSyntaxTransform
  */
 
@@ -10,13 +10,15 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type HomeAssistantPageQuery$variables = Record<PropertyKey, never>;
 export type HomeAssistantPageQuery$data = {
-  readonly homeAssistantEntities: ReadonlyArray<{
-    readonly entityId: string;
-    readonly eventId: any;
-    readonly id: string;
-    readonly state: string;
-    readonly time: any;
-  }>;
+  readonly homeAssistant: {
+    readonly entities: ReadonlyArray<{
+      readonly entityId: string;
+      readonly eventId: any;
+      readonly id: string;
+      readonly state: string;
+      readonly time: any;
+    }>;
+  };
 };
 export type HomeAssistantPageQuery = {
   response: HomeAssistantPageQuery$data;
@@ -28,44 +30,55 @@ var v0 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "HomeAssistantEvent",
+    "concreteType": "HomeAssistantObject",
     "kind": "LinkedField",
-    "name": "homeAssistantEntities",
-    "plural": true,
+    "name": "homeAssistant",
+    "plural": false,
     "selections": [
       {
         "alias": null,
         "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "eventId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "entityId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "state",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "time",
+        "concreteType": "HomeAssistantEvent",
+        "kind": "LinkedField",
+        "name": "entities",
+        "plural": true,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "id",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "eventId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "entityId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "state",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "time",
+            "storageKey": null
+          }
+        ],
         "storageKey": null
       }
     ],
@@ -90,16 +103,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "85701966556480e6272528ff2bf7f376",
+    "cacheID": "5f027317b9aa6d8f3c2dffef86176a15",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageQuery",
     "operationKind": "query",
-    "text": "query HomeAssistantPageQuery {\n  homeAssistantEntities {\n    id\n    eventId\n    entityId\n    state\n    time\n  }\n}\n"
+    "text": "query HomeAssistantPageQuery {\n  homeAssistant {\n    entities {\n      id\n      eventId\n      entityId\n      state\n      time\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c35856b8e0a09cef3017fd73a398958b";
+(node as any).hash = "9bf17dc61fa0afbd79998fac4ddea39a";
 
 export default node;

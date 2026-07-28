@@ -2,7 +2,7 @@ use async_graphql::{Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
 use crate::{
-    device_registry::Capability,
+    device_registry::{Capability, DeviceRegistry},
     graphql::{
         dataloader::temperature::{LatestTemperatureDataLoader, TemperatureModel},
         objects::entity_object::last_seen_for,
@@ -21,6 +21,17 @@ pub struct EnvironmentEntity {
 }
 
 impl EnvironmentEntity {
+    pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let settings = registry.environment(address)?;
+        Some(Self {
+            id: settings.id.clone(),
+            name: settings.name.clone(),
+            address: address.to_owned(),
+            capabilities: registry.capabilities(address).to_vec(),
+            room: registry.room(address).map(str::to_owned),
+        })
+    }
+
     async fn load<T, F>(
         &self,
         context: &async_graphql::Context<'_>,

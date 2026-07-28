@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f32fa218f9ce34e9dfa4a877f3253331>>
+ * @generated SignedSource<<7370e77356988de182ac67e933d08c02>>
  * @lightSyntaxTransform
  */
 
@@ -14,11 +14,9 @@ export type AppQuery$variables = {
   since: any;
 };
 export type AppQuery$data = {
-  readonly environment: {
-    readonly outdoor: {
-      readonly humidity: number | null | undefined;
-      readonly temperature: number;
-    };
+  readonly outdoor: {
+    readonly humidity: number | null | undefined;
+    readonly temperature: number | null | undefined;
   };
   readonly solar: {
     readonly current: {
@@ -188,9 +186,15 @@ v5 = [
   }
 ],
 v6 = {
-  "alias": null,
-  "args": null,
-  "concreteType": "EnvironmentObject",
+  "alias": "outdoor",
+  "args": [
+    {
+      "kind": "Literal",
+      "name": "id",
+      "value": "outdoor"
+    }
+  ],
+  "concreteType": "EnvironmentEntity",
   "kind": "LinkedField",
   "name": "environment",
   "plural": false,
@@ -198,30 +202,19 @@ v6 = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "EnvironmentDetails",
-      "kind": "LinkedField",
-      "name": "outdoor",
-      "plural": false,
-      "selections": [
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "temperature",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "humidity",
-          "storageKey": null
-        }
-      ],
+      "kind": "ScalarField",
+      "name": "temperature",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "humidity",
       "storageKey": null
     }
   ],
-  "storageKey": null
+  "storageKey": "environment(id:\"outdoor\")"
 };
 return {
   "fragment": {
@@ -413,16 +406,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "a6898ca52a62084c44fe3cddbd650d41",
+    "cacheID": "28dd634b9441a33138288f2dbce3f43e",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  woolworths {\n    products {\n      name\n      price\n    }\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  environment {\n    outdoor {\n      temperature\n      humidity\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  woolworths {\n    products {\n      name\n      price\n    }\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  outdoor: environment(id: \"outdoor\") {\n    temperature\n    humidity\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "38ec654bdcd876350914127e92e32a96";
+(node as any).hash = "81167fc2a4961045d742b635d05bbd0a";
 
 export default node;

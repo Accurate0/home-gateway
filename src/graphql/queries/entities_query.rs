@@ -3,9 +3,10 @@ use async_graphql::Object;
 use crate::auth::context::AuthContext;
 use crate::auth::scope::required;
 use crate::device_registry::DeviceRegistry;
+use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::entity_object::{
-    DoorEntity, EinkDisplayEntity, EinkDisplayKind, Entity, EntitySection, EnvironmentEntity,
-    LightEntity, PresenceEntity, RoborockEntity, ValetudoEntity,
+    DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, LightEntity,
+    PresenceEntity, RobotVacuumEntity,
 };
 
 #[derive(Default)]
@@ -33,128 +34,147 @@ impl EntitiesQuery {
         let mut out = Vec::new();
 
         if auth.has(&required::GRAPHQL_LIGHT_READ) {
-            out.extend(registry.lights().map(|(address, name)| {
-                let id = registry
-                    .id_for_address(address)
-                    .unwrap_or(address)
-                    .to_owned();
-                Entity::Light(LightEntity {
-                    id,
-                    name: name.clone(),
-                    address: address.clone(),
-                    capabilities: registry.capabilities(address).to_vec(),
-                    room: registry.room(address).map(str::to_owned),
-                })
-            }));
+            out.extend(
+                registry
+                    .lights()
+                    .filter_map(|(address, _)| LightEntity::from_registry(registry, address))
+                    .map(Entity::Light),
+            );
         }
 
         if auth.has(&required::GRAPHQL_DOOR_READ) {
-            out.extend(registry.doors().map(|(address, settings)| {
-                Entity::Door(DoorEntity {
-                    id: settings.id.clone(),
-                    name: settings.name.clone(),
-                    address: address.clone(),
-                    capabilities: registry.capabilities(address).to_vec(),
-                    room: registry.room(address).map(str::to_owned),
-                })
-            }));
+            out.extend(
+                registry
+                    .doors()
+                    .filter_map(|(address, _)| DoorEntity::from_registry(registry, address))
+                    .map(Entity::Door),
+            );
         }
 
         if auth.has(&required::GRAPHQL_PRESENCE_READ) {
-            out.extend(registry.presence_devices().map(|(address, settings)| {
-                let id = registry
-                    .id_for_address(address)
-                    .unwrap_or(address)
-                    .to_owned();
-                let name = if settings.name.is_empty() {
-                    id.clone()
-                } else {
-                    settings.name.clone()
-                };
-                Entity::Presence(PresenceEntity {
-                    id,
-                    name,
-                    address: address.clone(),
-                    capabilities: registry.capabilities(address).to_vec(),
-                    room: registry.room(address).map(str::to_owned),
-                })
-            }));
+            out.extend(
+                registry
+                    .presence_devices()
+                    .filter_map(|(address, _)| PresenceEntity::from_registry(registry, address))
+                    .map(Entity::Presence),
+            );
         }
 
         if auth.has(&required::GRAPHQL_ENVIRONMENT_READ) {
-            out.extend(registry.environment_devices().map(|(address, settings)| {
-                Entity::Environment(EnvironmentEntity {
-                    id: settings.id.clone(),
-                    name: settings.name.clone(),
-                    address: address.clone(),
-                    capabilities: registry.capabilities(address).to_vec(),
-                    room: registry.room(address).map(str::to_owned),
-                })
-            }));
+            out.extend(
+                registry
+                    .environment_devices()
+                    .filter_map(|(address, _)| EnvironmentEntity::from_registry(registry, address))
+                    .map(Entity::Environment),
+            );
         }
 
         if auth.has(&required::GRAPHQL_EPD_READ) {
-            out.extend(registry.eink_displays().iter().map(|(address, settings)| {
-                let id = registry
-                    .id_for_address(address)
-                    .unwrap_or(address)
-                    .to_owned();
-                Entity::EinkDisplay(EinkDisplayEntity {
-                    id,
-                    name: settings.name.clone(),
-                    address: address.clone(),
-                    kind: EinkDisplayKind::EinkDisplayFirmware,
-                    capabilities: registry.capabilities(address).to_vec(),
-                    room: registry.room(address).map(str::to_owned),
-                })
-            }));
-
-            out.extend(registry.trmnl_devices().iter().map(|(address, settings)| {
-                Entity::EinkDisplay(EinkDisplayEntity {
-                    id: settings.id.clone(),
-                    name: settings.name.clone(),
-                    address: settings.id.clone(),
-                    kind: EinkDisplayKind::Trmnl,
-                    capabilities: registry.capabilities(address).to_vec(),
-                    room: registry.room(address).map(str::to_owned),
-                })
-            }));
+            out.extend(
+                registry
+                    .eink_displays()
+                    .keys()
+                    .filter_map(|address| EinkDisplayEntity::from_firmware(registry, address))
+                    .map(Entity::EinkDisplay),
+            );
+            out.extend(
+                registry
+                    .trmnl_devices()
+                    .keys()
+                    .filter_map(|address| EinkDisplayEntity::from_trmnl(registry, address))
+                    .map(Entity::EinkDisplay),
+            );
         }
 
-        if auth.has(&required::GRAPHQL_ROBOROCK_READ) {
-            out.extend(registry.roborocks().map(|(address, settings)| {
-                let id = registry
-                    .id_for_address(address)
-                    .unwrap_or(address)
-                    .to_owned();
-                Entity::Roborock(RoborockEntity {
-                    id,
-                    name: settings.name.clone(),
-                    room: registry.room(address).map(str::to_owned),
-                    capabilities: registry.capabilities(address).to_vec(),
-                    status_entity: settings.status_entity.clone(),
-                    battery_entity: settings.battery_entity.clone(),
-                    room_entity: settings.room_entity.clone(),
-                })
-            }));
-        }
-
-        if auth.has(&required::GRAPHQL_VALETUDO_READ) {
-            out.extend(registry.valetudos().map(|(address, settings)| {
-                let id = registry
-                    .id_for_address(address)
-                    .unwrap_or(address)
-                    .to_owned();
-                Entity::Valetudo(ValetudoEntity {
-                    id,
-                    name: settings.name.clone(),
-                    room: registry.room(address).map(str::to_owned),
-                    capabilities: registry.capabilities(address).to_vec(),
-                    identifier: address.clone(),
-                })
-            }));
+        if auth.has(&required::GRAPHQL_ROBOT_VACUUM_READ) {
+            out.extend(
+                registry
+                    .roborocks()
+                    .filter_map(|(address, _)| RobotVacuumEntity::from_roborock(registry, address))
+                    .map(Entity::RobotVacuum),
+            );
+            out.extend(
+                registry
+                    .valetudos()
+                    .filter_map(|(address, _)| RobotVacuumEntity::from_valetudo(registry, address))
+                    .map(Entity::RobotVacuum),
+            );
         }
 
         Ok(out)
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_READ))]
+    async fn light(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<LightEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        LightEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown light `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_DOOR_READ))]
+    async fn door(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<DoorEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        DoorEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown door `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_PRESENCE_READ))]
+    async fn presence(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<PresenceEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        PresenceEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown presence sensor `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_ENVIRONMENT_READ))]
+    async fn environment(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<EnvironmentEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        EnvironmentEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown environment sensor `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_EPD_READ))]
+    async fn eink_display(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<EinkDisplayEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        EinkDisplayEntity::from_firmware(registry, &address)
+            .or_else(|| EinkDisplayEntity::from_trmnl(registry, &address))
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown eink display `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOT_VACUUM_READ))]
+    async fn robot_vacuum(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<RobotVacuumEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        RobotVacuumEntity::from_roborock(registry, &address)
+            .or_else(|| RobotVacuumEntity::from_valetudo(registry, &address))
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown robot vacuum `{id}`")))
     }
 }

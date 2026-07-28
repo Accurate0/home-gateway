@@ -1,20 +1,13 @@
-type ApplianceEvent {
-	time: DateTime!
-	id: UUID!
-	entityId: String!
-	state: ApplianceStateType!
-	name: String!
-}
-
-enum ApplianceStateType {
-	ON
-	OFF
-}
-
 type AuthObject {
 	id: String
 	name: String
 	scopes: [String!]!
+}
+
+type BatteryPoint {
+	batteryVoltage: Float!
+	time: DateTime!
+	batteryPercentage: Float!
 }
 
 input BrightnessMoveInput {
@@ -23,6 +16,7 @@ input BrightnessMoveInput {
 }
 
 enum Capability {
+	BRIGHTNESS
 	COLOUR_TEMP
 	RGB
 	TEMPERATURE
@@ -48,6 +42,18 @@ The input/output is a string in RFC3339 format.
 """
 scalar DateTime
 
+type DeviceBatteryUpdate {
+	eventId: UUID!
+	"""
+	Config slug, matching the `id` from the `entities` query.
+	"""
+	id: ID!
+	name: String!
+	kind: String!
+	batteryVoltage: Float!
+	batteryPercentage: Float!
+}
+
 type DoorEntity {
 	category: EntityCategory!
 	id: String!
@@ -60,19 +66,6 @@ type DoorEntity {
 	"""
 	open: Boolean
 	lastSeen: DateTime
-}
-
-type DoorEvent {
-	time: DateTime!
-	state: DoorState!
-	name: String!
-	id: UUID!
-	entityId: String!
-}
-
-enum DoorState {
-	OPEN
-	CLOSED
 }
 
 type DoorUpdate {
@@ -92,37 +85,6 @@ type DoorUpdate {
 	open: Boolean!
 }
 
-type EnergyConsumption {
-	id: UUID!
-	used: Float!
-	solarExported: Float!
-	time: DateTime!
-}
-
-input EnergyHistoryInput {
-	since: DateTime!
-}
-
-type EnergyObject {
-	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
-}
-
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RoborockEntity | ValetudoEntity
-
-enum EntityCategory {
-	LIGHTS
-	DOORS
-	PRESENCE
-	ENVIRONMENT
-	DISPLAYS
-	VACUUMS
-}
-
-type EntitySection {
-	category: EntityCategory!
-	title: String!
-}
-
 type EinkDisplayConfig {
 	mode: EinkMode!
 	view: String
@@ -138,12 +100,20 @@ type EinkDisplayEntity {
 	category: EntityCategory!
 	id: String!
 	name: String!
+	kind: EinkDisplayKind!
 	capabilities: [Capability!]!
 	room: String
 	batteryVoltage: Float
 	batteryPercentage: Float
 	lastSeen: DateTime
 	config: EinkDisplayConfig
+	deviceConfig: EpdConfig!
+	batteryHistory(since: DateTime!): [BatteryPoint!]!
+}
+
+enum EinkDisplayKind {
+	TRMNL
+	EINK_DISPLAY_FIRMWARE
 }
 
 enum EinkMode {
@@ -151,20 +121,40 @@ enum EinkMode {
 	ALBUM
 }
 
-enum Orientation {
-	PORTRAIT
-	LANDSCAPE
+type EnergyConsumption {
+	id: UUID!
+	used: Float!
+	solarExported: Float!
+	time: DateTime!
 }
 
-type EnvironmentDetails {
-	id: String!
-	temperature: Float!
-	humidity: Float
-	pressure: Float
-	lux: Float
-	uvIndex: Float
-	time: DateTime!
-	name: String!
+input EnergyHistoryInput {
+	since: DateTime!
+}
+
+type EnergyObject {
+	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
+}
+
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity
+
+"""
+The dashboard section a device kind is displayed under. Owned by the backend
+so categorising a kind never requires a frontend change. Variants are declared
+in display order — see [`EntityCategory::ORDERED`].
+"""
+enum EntityCategory {
+	LIGHTS
+	DOORS
+	PRESENCE
+	ENVIRONMENT
+	DISPLAYS
+	VACUUMS
+}
+
+type EntitySection {
+	category: EntityCategory!
+	title: String!
 }
 
 type EnvironmentEntity {
@@ -190,23 +180,6 @@ type EnvironmentEntity {
 	lastSeen: DateTime
 }
 
-type EnvironmentObject {
-	"""
-	Every environment sensor in the device registry, so new sensors appear
-	without code changes.
-	"""
-	sensors: [EnvironmentDetails!]!
-	"""
-	Look up a single environment sensor by its configured id (e.g. `outdoor`).
-	"""
-	byId(id: String!): EnvironmentDetails!
-	outdoor: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	laundry: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	livingRoom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	bathroom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	bedroom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-}
-
 type EnvironmentUpdate {
 	eventId: UUID!
 	"""
@@ -224,18 +197,13 @@ type EnvironmentUpdate {
 	readings: [MetricReading!]!
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate
-
-input EventsInput {
-	since: DateTime!
+type EpdConfig {
+	refreshIntervalMins: Int
+	imageUrl: String
+	clearScreen: Boolean
 }
 
-type EventsObject {
-	doors: [DoorEvent!]!
-	wifi: [WifiEvent!]!
-	appliances: [ApplianceEvent!]!
-	homeAssistant: [HomeAssistantEvent!]!
-}
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -265,6 +233,10 @@ type HomeAssistantEvent {
 	state: String!
 	time: DateTime!
 	id: ID!
+}
+
+type HomeAssistantObject {
+	entities: [HomeAssistantEvent!]!
 }
 
 type HomeAssistantUpdate {
@@ -320,44 +292,6 @@ type MetricReading {
 	value: Float!
 }
 
-type RoborockEntity {
-	category: EntityCategory!
-	id: String!
-	name: String!
-	room: String
-	capabilities: [Capability!]!
-	status: String
-	batteryPercentage: Float
-	currentRoom: String
-	lastSeen: DateTime
-}
-
-type RoborockMutation {
-	start: Boolean!
-	stop: Boolean!
-	dock: Boolean!
-}
-
-type ValetudoEntity {
-	category: EntityCategory!
-	id: String!
-	name: String!
-	room: String
-	capabilities: [Capability!]!
-	status: String
-	batteryPercentage: Float
-	fanSpeed: String
-	currentCleanArea: Float
-	cleanCount: Int
-	lastSeen: DateTime
-}
-
-type ValetudoMutation {
-	start: Boolean!
-	stop: Boolean!
-	dock: Boolean!
-}
-
 enum Mode {
 	HOME
 	AWAY
@@ -375,8 +309,7 @@ type ModeUpdate {
 
 type MutationRoot {
 	light(id: String!): LightMutation!
-	roborock(id: String!): RoborockMutation!
-	valetudo(id: String!): ValetudoMutation!
+	robotVacuum(id: String!): RobotVacuumMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
@@ -390,6 +323,11 @@ ISO 8601 combined date and time without timezone.
 * `2015-07-01T08:59:60.123`,
 """
 scalar NaiveDateTime
+
+enum Orientation {
+	PORTRAIT
+	LANDSCAPE
+}
 
 type PresenceEntity {
 	category: EntityCategory!
@@ -424,16 +362,23 @@ type PresenceUpdate {
 
 type QueryRoot {
 	auth: AuthObject!
-	events(input: EventsInput!): EventsObject!
-	homeAssistantEntities: [HomeAssistantEvent!]!
-	environment: EnvironmentObject!
+	homeAssistant: HomeAssistantObject!
 	"""
 	Every configured entity and its current state. Entity types the caller
 	lacks a `graphql:<type>:read` scope for are silently omitted — this query
 	never errors on missing permissions.
+	The dashboard sections, in display order, with their titles. Categorising
+	a device kind is a backend concern — the frontend renders whatever order
+	and titles this returns.
 	"""
 	entitySections: [EntitySection!]!
 	entities: [Entity!]!
+	light(id: String!): LightEntity!
+	door(id: String!): DoorEntity!
+	presence(id: String!): PresenceEntity!
+	environment(id: String!): EnvironmentEntity!
+	einkDisplay(id: String!): EinkDisplayEntity!
+	robotVacuum(id: String!): RobotVacuumEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
@@ -442,6 +387,33 @@ type QueryRoot {
 	activeModes: [Mode!]!
 	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
 	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
+}
+
+type RobotVacuumEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	room: String
+	capabilities: [Capability!]!
+	kind: RobotVacuumKind!
+	status: String
+	batteryPercentage: Float
+	currentRoom: String
+	fanSpeed: String
+	currentCleanArea: Float
+	cleanCount: Int
+	lastSeen: DateTime
+}
+
+enum RobotVacuumKind {
+	ROBOROCK
+	VALETUDO
+}
+
+type RobotVacuumMutation {
+	start: Boolean!
+	stop: Boolean!
+	dock: Boolean!
 }
 
 input SetBrightnessInput {
@@ -509,11 +481,6 @@ entities without requiring a central allocating authority.
 """
 scalar UUID
 
-enum UnifiState {
-	CONNECTED
-	DISCONNECTED
-}
-
 type UnifiUpdate {
 	eventId: UUID!
 	macAddress: String!
@@ -529,20 +496,34 @@ type WeatherObject {
 	forecast: Forecast!
 }
 
-type WifiEvent {
-	name: String!
-	id: UUID!
-	time: DateTime!
-	state: UnifiState!
-}
-
 type WoolworthsObject {
 	products: [WoolworthsProducts!]!
+	priceHistory(input: WoolworthsPriceHistoryInput!): [WoolworthsPricePoint!]!
+}
+
+input WoolworthsPriceHistoryInput {
+	productId: Int!
+	since: DateTime!
+}
+
+type WoolworthsPricePoint {
+	productId: Int!
+	name: String!
+	price: Float!
+	time: DateTime!
 }
 
 type WoolworthsProducts {
 	name: String!
 	price: Float!
+}
+
+type WoolworthsUpdate {
+	eventId: UUID!
+	productId: Int!
+	name: String!
+	oldPrice: Float!
+	newPrice: Float!
 }
 
 type WorkflowRun {
@@ -562,6 +543,7 @@ type WorkflowStatus {
 	slug: String!
 	name: String!
 	group: String!
+	tags: [String!]!
 	enabled: Boolean!
 	configEnabled: Boolean!
 	dryRun: Boolean!

@@ -13,16 +13,14 @@ import type { DashboardSetOffMutation } from "./__generated__/DashboardSetOffMut
 import type { DashboardSetBrightnessMutation } from "./__generated__/DashboardSetBrightnessMutation.graphql";
 import type { DashboardColourMoveMutation } from "./__generated__/DashboardColourMoveMutation.graphql";
 import type { DashboardSetColourMutation } from "./__generated__/DashboardSetColourMutation.graphql";
-import type { DashboardRoborockStartMutation } from "./__generated__/DashboardRoborockStartMutation.graphql";
-import type { DashboardRoborockStopMutation } from "./__generated__/DashboardRoborockStopMutation.graphql";
-import type { DashboardRoborockDockMutation } from "./__generated__/DashboardRoborockDockMutation.graphql";
-import type { DashboardValetudoStartMutation } from "./__generated__/DashboardValetudoStartMutation.graphql";
-import type { DashboardValetudoStopMutation } from "./__generated__/DashboardValetudoStopMutation.graphql";
-import type { DashboardValetudoDockMutation } from "./__generated__/DashboardValetudoDockMutation.graphql";
+import type { DashboardVacuumStartMutation } from "./__generated__/DashboardVacuumStartMutation.graphql";
+import type { DashboardVacuumStopMutation } from "./__generated__/DashboardVacuumStopMutation.graphql";
+import type { DashboardVacuumDockMutation } from "./__generated__/DashboardVacuumDockMutation.graphql";
+import type { DashboardEinkConfigQuery } from "./__generated__/DashboardEinkConfigQuery.graphql";
 import EntityCard, {
   type EinkActions,
   type LightActions,
-  type RoborockActions,
+  type VacuumActions,
 } from "./EntityCard";
 import {
   applyReadings,
@@ -97,25 +95,16 @@ const EntitiesQuery = graphql`
           sleepEnd
         }
       }
-      ... on RoborockEntity {
+      ... on RobotVacuumEntity {
         category
         id
         name
         room
         capabilities
+        kind
         status
         batteryPercentage
         currentRoom
-        lastSeen
-      }
-      ... on ValetudoEntity {
-        category
-        id
-        name
-        room
-        capabilities
-        status
-        batteryPercentage
         fanSpeed
         currentCleanArea
         cleanCount
@@ -196,50 +185,38 @@ const SetColourMutation = graphql`
   }
 `;
 
-const RoborockStartMutation = graphql`
-  mutation DashboardRoborockStartMutation($id: String!) {
-    roborock(id: $id) {
+const VacuumStartMutation = graphql`
+  mutation DashboardVacuumStartMutation($id: String!) {
+    robotVacuum(id: $id) {
       start
     }
   }
 `;
 
-const RoborockStopMutation = graphql`
-  mutation DashboardRoborockStopMutation($id: String!) {
-    roborock(id: $id) {
+const VacuumStopMutation = graphql`
+  mutation DashboardVacuumStopMutation($id: String!) {
+    robotVacuum(id: $id) {
       stop
     }
   }
 `;
 
-const RoborockDockMutation = graphql`
-  mutation DashboardRoborockDockMutation($id: String!) {
-    roborock(id: $id) {
+const VacuumDockMutation = graphql`
+  mutation DashboardVacuumDockMutation($id: String!) {
+    robotVacuum(id: $id) {
       dock
     }
   }
 `;
 
-const ValetudoStartMutation = graphql`
-  mutation DashboardValetudoStartMutation($id: String!) {
-    valetudo(id: $id) {
-      start
-    }
-  }
-`;
-
-const ValetudoStopMutation = graphql`
-  mutation DashboardValetudoStopMutation($id: String!) {
-    valetudo(id: $id) {
-      stop
-    }
-  }
-`;
-
-const ValetudoDockMutation = graphql`
-  mutation DashboardValetudoDockMutation($id: String!) {
-    valetudo(id: $id) {
-      dock
+const EinkConfigQuery = graphql`
+  query DashboardEinkConfigQuery($id: String!) {
+    einkDisplay(id: $id) {
+      deviceConfig {
+        refreshIntervalMins
+        imageUrl
+        clearScreen
+      }
     }
   }
 `;
@@ -282,7 +259,18 @@ function seedEntities(
   for (const e of data.entities) {
     const kind = kindOf(e.__typename);
     if (!kind || !("id" in e)) continue;
-    map.set(entityKey(kind, e.id), { ...e, kind, key: entityKey(kind, e.id) });
+    // RobotVacuumEntity exposes a `kind` (ROBOROCK/VALETUDO) that our EntityKind
+    // `kind` shadows on spread, so lift it to `vacuumKind` before overwriting.
+    const vacuumKind =
+      "kind" in e && (e.kind === "ROBOROCK" || e.kind === "VALETUDO")
+        ? e.kind
+        : undefined;
+    map.set(entityKey(kind, e.id), {
+      ...e,
+      kind,
+      vacuumKind,
+      key: entityKey(kind, e.id),
+    });
   }
   return map;
 }
@@ -347,18 +335,12 @@ export default function Dashboard() {
   );
   const [commitColour] =
     useMutation<DashboardSetColourMutation>(SetColourMutation);
-  const [commitRoborockStart] =
-    useMutation<DashboardRoborockStartMutation>(RoborockStartMutation);
-  const [commitRoborockStop] =
-    useMutation<DashboardRoborockStopMutation>(RoborockStopMutation);
-  const [commitRoborockDock] =
-    useMutation<DashboardRoborockDockMutation>(RoborockDockMutation);
-  const [commitValetudoStart] =
-    useMutation<DashboardValetudoStartMutation>(ValetudoStartMutation);
-  const [commitValetudoStop] =
-    useMutation<DashboardValetudoStopMutation>(ValetudoStopMutation);
-  const [commitValetudoDock] =
-    useMutation<DashboardValetudoDockMutation>(ValetudoDockMutation);
+  const [commitVacuumStart] =
+    useMutation<DashboardVacuumStartMutation>(VacuumStartMutation);
+  const [commitVacuumStop] =
+    useMutation<DashboardVacuumStopMutation>(VacuumStopMutation);
+  const [commitVacuumDock] =
+    useMutation<DashboardVacuumDockMutation>(VacuumDockMutation);
 
   const flip = (key: string) =>
     setEntities((prev) => {
@@ -387,39 +369,28 @@ export default function Dashboard() {
     canSetColour: entity.capabilities?.includes("RGB") ?? false,
   });
 
-  const roborockActionsFor = (entity: Entity): RoborockActions => ({
-    onStart: () => commitRoborockStart({ variables: { id: entity.id } }),
-    onStop: () => commitRoborockStop({ variables: { id: entity.id } }),
-    onDock: () => commitRoborockDock({ variables: { id: entity.id } }),
-  });
-
-  const valetudoActionsFor = (entity: Entity): RoborockActions => ({
-    onStart: () => commitValetudoStart({ variables: { id: entity.id } }),
-    onStop: () => commitValetudoStop({ variables: { id: entity.id } }),
-    onDock: () => commitValetudoDock({ variables: { id: entity.id } }),
+  const vacuumActionsFor = (entity: Entity): VacuumActions => ({
+    onStart: () => commitVacuumStart({ variables: { id: entity.id } }),
+    onStop: () => commitVacuumStop({ variables: { id: entity.id } }),
+    onDock: () => commitVacuumDock({ variables: { id: entity.id } }),
   });
 
   const einkActionsFor = (entity: Entity): EinkActions => ({
     onReload: () => {
-      fetchQuery<DashboardEntitiesQuery>(
+      fetchQuery<DashboardEinkConfigQuery>(
         environment,
-        EntitiesQuery,
-        {},
+        EinkConfigQuery,
+        { id: entity.id },
         { fetchPolicy: "network-only" },
       ).subscribe({
         next: (response) => {
-          const match = response.entities.find(
-            (e) =>
-              e.__typename === "EinkDisplayEntity" &&
-              "id" in e &&
-              e.id === entity.id,
-          );
-          if (!match || !("config" in match)) return;
+          const deviceConfig = response.einkDisplay?.deviceConfig;
+          if (!deviceConfig) return;
           setEntities((prev) => {
             const existing = prev.get(entity.key);
             if (!existing) return prev;
             const next = new Map(prev);
-            next.set(entity.key, { ...existing, config: match.config ?? null });
+            next.set(entity.key, { ...existing, deviceConfig });
             return next;
           });
         },
@@ -500,14 +471,9 @@ export default function Dashboard() {
                       ? lightActionsFor(entity)
                       : undefined
                   }
-                  roborockActions={
-                    entity.kind === "roborock"
-                      ? roborockActionsFor(entity)
-                      : undefined
-                  }
-                  valetudoActions={
-                    entity.kind === "valetudo"
-                      ? valetudoActionsFor(entity)
+                  vacuumActions={
+                    entity.kind === "robotVacuum"
+                      ? vacuumActionsFor(entity)
                       : undefined
                   }
                   einkActions={

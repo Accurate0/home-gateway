@@ -8,12 +8,14 @@ import { cn } from "@/lib/utils";
 
 const HistoryQuery = graphql`
   query HomeAssistantPageQuery {
-    homeAssistantEntities {
-      id
-      eventId
-      entityId
-      state
-      time
+    homeAssistant {
+      entities {
+        id
+        eventId
+        entityId
+        state
+        time
+      }
     }
   }
 `;
@@ -79,7 +81,7 @@ export default function HomeAssistantPage() {
     ).subscribe({
       next: (data) => {
         setLatest((prev) =>
-          data.homeAssistantEntities.reduce(
+          data.homeAssistant.entities.reduce(
             (acc, e) =>
               upsert(acc, {
                 entityId: e.entityId,

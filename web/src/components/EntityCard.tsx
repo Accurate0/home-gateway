@@ -30,7 +30,7 @@ export interface LightActions {
   canSetColour: boolean;
 }
 
-export interface RoborockActions {
+export interface VacuumActions {
   onStart: () => void;
   onStop: () => void;
   onDock: () => void;
@@ -463,7 +463,7 @@ function EinkDisplayConfigDetails({
   entity: Entity;
   now: number;
 }) {
-  const config = entity.config;
+  const deviceConfig = entity.deviceConfig;
   return (
     <Popover.Portal>
       <Popover.Content
@@ -476,11 +476,11 @@ function EinkDisplayConfigDetails({
           <span className="font-medium">{entity.name}</span>
           <LastSeen entity={entity} now={now} />
         </div>
-        {config == null ? (
-          <div className="text-muted-foreground text-sm">No config</div>
+        {deviceConfig == null ? (
+          <div className="text-muted-foreground text-sm">Loading config…</div>
         ) : (
           <pre className="bg-muted text-muted-foreground overflow-x-auto rounded-lg p-3 text-xs leading-relaxed">
-            {JSON.stringify(config, null, 2)}
+            {JSON.stringify(deviceConfig, null, 2)}
           </pre>
         )}
       </Popover.Content>
@@ -549,13 +549,13 @@ function EinkDisplayTile({
   );
 }
 
-function RoborockTile({
+function RobotVacuumTile({
   entity,
   actions,
   now,
 }: {
   entity: Entity;
-  actions?: RoborockActions;
+  actions?: VacuumActions;
   now: number;
 }) {
   const percentage = entity.batteryPercentage;
@@ -565,6 +565,7 @@ function RoborockTile({
       : percentage >= 25
         ? BatteryMedium
         : BatteryLow;
+  const detail = entity.currentRoom ?? entity.fanSpeed;
   return (
     <Tile className="col-span-1 justify-between gap-3">
       <div className="flex items-start justify-between">
@@ -582,9 +583,9 @@ function RoborockTile({
         <StatePill tone={entity.status ? "on" : "unknown"}>
           {entity.status ?? "unknown"}
         </StatePill>
-        {entity.currentRoom && (
-          <span className="text-muted-foreground text-xs">
-            {entity.currentRoom}
+        {detail && (
+          <span className="text-muted-foreground text-xs capitalize">
+            {detail}
           </span>
         )}
       </div>
@@ -600,7 +601,7 @@ function RoborockTile({
   );
 }
 
-function VacuumControls({ actions }: { actions?: RoborockActions }) {
+function VacuumControls({ actions }: { actions?: VacuumActions }) {
   const cls =
     "border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-medium";
   return (
@@ -621,69 +622,16 @@ function VacuumControls({ actions }: { actions?: RoborockActions }) {
   );
 }
 
-function ValetudoTile({
-  entity,
-  actions,
-  now,
-}: {
-  entity: Entity;
-  actions?: RoborockActions;
-  now: number;
-}) {
-  const percentage = entity.batteryPercentage;
-  const BatteryIcon =
-    percentage == null || percentage >= 60
-      ? BatteryFull
-      : percentage >= 25
-        ? BatteryMedium
-        : BatteryLow;
-  return (
-    <Tile className="col-span-1 justify-between gap-3">
-      <div className="flex items-start justify-between">
-        <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
-          <Bot className="size-5" strokeWidth={1.5} />
-        </div>
-        <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
-          <BatteryIcon className="size-4" strokeWidth={1.75} />
-          <span className="text-sm">
-            {percentage == null ? "—" : `${Math.round(percentage)}%`}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <StatePill tone={entity.status ? "on" : "unknown"}>
-          {entity.status ?? "unknown"}
-        </StatePill>
-        {entity.fanSpeed && (
-          <span className="text-muted-foreground text-xs capitalize">
-            {entity.fanSpeed}
-          </span>
-        )}
-      </div>
-      <VacuumControls actions={actions} />
-      <div>
-        <div className="leading-tight font-medium">{entity.name}</div>
-        <div className="text-muted-foreground flex items-center gap-1 text-xs">
-          <span>{entity.id}</span>
-          <LastSeen entity={entity} now={now} />
-        </div>
-      </div>
-    </Tile>
-  );
-}
-
 export default function EntityCard({
   entity,
   lightActions,
-  roborockActions,
-  valetudoActions,
+  vacuumActions,
   einkActions,
   now,
 }: {
   entity: Entity;
   lightActions?: LightActions;
-  roborockActions?: RoborockActions;
-  valetudoActions?: RoborockActions;
+  vacuumActions?: VacuumActions;
   einkActions?: EinkActions;
   now: number;
 }) {
@@ -720,13 +668,9 @@ export default function EntityCard({
       return (
         <EinkDisplayTile entity={entity} actions={einkActions} now={now} />
       );
-    case "roborock":
+    case "robotVacuum":
       return (
-        <RoborockTile entity={entity} actions={roborockActions} now={now} />
-      );
-    case "valetudo":
-      return (
-        <ValetudoTile entity={entity} actions={valetudoActions} now={now} />
+        <RobotVacuumTile entity={entity} actions={vacuumActions} now={now} />
       );
   }
 }

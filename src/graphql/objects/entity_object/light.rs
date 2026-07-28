@@ -6,7 +6,7 @@ use crate::{
         light::{LightHandler, LightHandlerMessage},
         rpc,
     },
-    device_registry::Capability,
+    device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
 };
 
@@ -19,6 +19,20 @@ pub struct LightEntity {
     pub address: String,
     pub capabilities: Vec<Capability>,
     pub room: Option<String>,
+}
+
+impl LightEntity {
+    pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let name = registry.light(address)?.clone();
+        let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+        Some(Self {
+            id,
+            name,
+            address: address.to_owned(),
+            capabilities: registry.capabilities(address).to_vec(),
+            room: registry.room(address).map(str::to_owned),
+        })
+    }
 }
 
 #[Object]

@@ -2,8 +2,7 @@ use async_graphql::Object;
 
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::mutations::light_mutation::LightMutation;
-use crate::graphql::mutations::roborock_mutation::RoborockMutation;
-use crate::graphql::mutations::valetudo_mutation::ValetudoMutation;
+use crate::graphql::mutations::robot_vacuum_mutation::RobotVacuumMutation;
 
 #[derive(Default)]
 pub struct EntitiesMutation;
@@ -24,45 +23,24 @@ impl EntitiesMutation {
         })
     }
 
-    async fn roborock(
+    async fn robot_vacuum(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: String,
-    ) -> async_graphql::Result<RoborockMutation> {
+    ) -> async_graphql::Result<RobotVacuumMutation> {
         let registry = ctx.data::<DeviceRegistry>()?;
         let address = registry.address_or_self(&id).to_owned();
-        let Some(settings) = registry.roborock(&address) else {
-            return Err(async_graphql::Error::new(format!(
-                "unknown roborock `{id}`"
-            )));
-        };
 
-        Ok(RoborockMutation {
-            control_entity: settings.control_entity.clone(),
-            start_service: settings.start_service.clone(),
-            stop_service: settings.stop_service.clone(),
-            dock_service: settings.dock_service.clone(),
-        })
-    }
+        if let Some(settings) = registry.roborock(&address) {
+            return Ok(RobotVacuumMutation::roborock(settings));
+        }
 
-    async fn valetudo(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        id: String,
-    ) -> async_graphql::Result<ValetudoMutation> {
-        let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
-        let Some(settings) = registry.valetudo(&address) else {
-            return Err(async_graphql::Error::new(format!(
-                "unknown valetudo `{id}`"
-            )));
-        };
+        if let Some(settings) = registry.valetudo(&address) {
+            return Ok(RobotVacuumMutation::valetudo(settings));
+        }
 
-        Ok(ValetudoMutation {
-            command_topic: settings.command_topic.clone(),
-            start_payload: settings.start_payload.clone(),
-            stop_payload: settings.stop_payload.clone(),
-            dock_payload: settings.dock_payload.clone(),
-        })
+        Err(async_graphql::Error::new(format!(
+            "unknown robot vacuum `{id}`"
+        )))
     }
 }

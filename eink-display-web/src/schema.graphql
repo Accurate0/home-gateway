@@ -1,20 +1,33 @@
-type ApplianceEvent {
-	time: DateTime!
-	id: UUID!
-	entityId: String!
-	state: ApplianceStateType!
-	name: String!
-}
-
-enum ApplianceStateType {
-	ON
-	OFF
-}
-
 type AuthObject {
 	id: String
 	name: String
 	scopes: [String!]!
+}
+
+type BatteryPoint {
+	batteryVoltage: Float!
+	time: DateTime!
+	batteryPercentage: Float!
+}
+
+input BrightnessMoveInput {
+	value: Int!
+	onOff: Boolean!
+}
+
+enum Capability {
+	BRIGHTNESS
+	COLOUR_TEMP
+	RGB
+	TEMPERATURE
+	HUMIDITY
+	PRESSURE
+	LUX
+	UV_INDEX
+}
+
+input ColourTemperatureMoveInput {
+	value: Int!
 }
 
 type CronUpdate {
@@ -29,27 +42,30 @@ The input/output is a string in RFC3339 format.
 """
 scalar DateTime
 
+type DeviceBatteryUpdate {
+	eventId: UUID!
+	"""
+	Config slug, matching the `id` from the `entities` query.
+	"""
+	id: ID!
+	name: String!
+	kind: String!
+	batteryVoltage: Float!
+	batteryPercentage: Float!
+}
+
 type DoorEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
+	room: String
 	"""
 	Whether the door is open. Nullable so an unreachable door-events actor
 	reports the error against this field without nulling the whole entity.
 	"""
 	open: Boolean
-}
-
-type DoorEvent {
-	time: DateTime!
-	state: DoorState!
-	name: String!
-	id: UUID!
-	entityId: String!
-}
-
-enum DoorState {
-	OPEN
-	CLOSED
+	lastSeen: DateTime
 }
 
 type DoorUpdate {
@@ -57,7 +73,7 @@ type DoorUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -67,6 +83,42 @@ type DoorUpdate {
 	"""
 	device: String!
 	open: Boolean!
+}
+
+type EinkDisplayConfig {
+	mode: EinkMode!
+	view: String
+	album: String
+	orientation: Orientation!
+	refresh: String
+	settle: String
+	sleepStart: String
+	sleepEnd: String
+}
+
+type EinkDisplayEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	kind: EinkDisplayKind!
+	capabilities: [Capability!]!
+	room: String
+	batteryVoltage: Float
+	batteryPercentage: Float
+	lastSeen: DateTime
+	config: EinkDisplayConfig
+	deviceConfig: EpdConfig!
+	batteryHistory(since: DateTime!): [BatteryPoint!]!
+}
+
+enum EinkDisplayKind {
+	TRMNL
+	EINK_DISPLAY_FIRMWARE
+}
+
+enum EinkMode {
+	DASHBOARD
+	ALBUM
 }
 
 type EnergyConsumption {
@@ -84,22 +136,33 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity
 
-type EnvironmentDetails {
-	id: String!
-	temperature: Float!
-	humidity: Float
-	pressure: Float
-	lux: Float
-	uvIndex: Float
-	time: DateTime!
-	name: String!
+"""
+The dashboard section a device kind is displayed under. Owned by the backend
+so categorising a kind never requires a frontend change. Variants are declared
+in display order — see [`EntityCategory::ORDERED`].
+"""
+enum EntityCategory {
+	LIGHTS
+	DOORS
+	PRESENCE
+	ENVIRONMENT
+	DISPLAYS
+	VACUUMS
+}
+
+type EntitySection {
+	category: EntityCategory!
+	title: String!
 }
 
 type EnvironmentEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
+	room: String
 	"""
 	Nullable so a missing reading reports the error against this field
 	without nulling the whole entity.
@@ -114,23 +177,7 @@ type EnvironmentEntity {
 	without nulling the whole entity.
 	"""
 	time: DateTime
-}
-
-type EnvironmentObject {
-	"""
-	Every environment sensor in the device registry, so new sensors appear
-	without code changes.
-	"""
-	sensors: [EnvironmentDetails!]!
-	"""
-	Look up a single environment sensor by its configured id (e.g. `outdoor`).
-	"""
-	byId(id: String!): EnvironmentDetails!
-	outdoor: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	laundry: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	livingRoom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	bathroom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
-	bedroom: EnvironmentDetails! @deprecated(reason: "Use `sensors` (config-driven) or `byId` instead")
+	lastSeen: DateTime
 }
 
 type EnvironmentUpdate {
@@ -138,7 +185,7 @@ type EnvironmentUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -150,17 +197,13 @@ type EnvironmentUpdate {
 	readings: [MetricReading!]!
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | LightUpdate | UnifiUpdate
-
-input EventsInput {
-	since: DateTime!
+type EpdConfig {
+	refreshIntervalMins: Int
+	imageUrl: String
+	clearScreen: Boolean
 }
 
-type EventsObject {
-	doors: [DoorEvent!]!
-	wifi: [WifiEvent!]!
-	appliances: [ApplianceEvent!]!
-}
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -184,14 +227,47 @@ type GenerationHistory {
 	timestamp: Int!
 }
 
+type HomeAssistantEvent {
+	eventId: UUID!
+	entityId: String!
+	state: String!
+	time: DateTime!
+	id: ID!
+}
+
+type HomeAssistantObject {
+	entities: [HomeAssistantEvent!]!
+}
+
+type HomeAssistantUpdate {
+	eventId: UUID!
+	entityId: String!
+	state: String!
+	id: ID!
+}
+
 type LightEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
+	room: String
 	"""
 	Current power state. Nullable so an unreachable light actor reports the
 	error against this field without nulling the whole entity.
 	"""
 	on: Boolean
+	lastSeen: DateTime
+}
+
+type LightMutation {
+	on: Boolean!
+	off: Boolean!
+	toggle: Boolean!
+	setBrightness(input: SetBrightnessInput!): Boolean!
+	brightnessMove(input: BrightnessMoveInput!): Boolean!
+	setColour(input: SetColourInput!): Boolean!
+	colourTemperatureMove(input: ColourTemperatureMoveInput!): Boolean!
 }
 
 type LightUpdate {
@@ -199,7 +275,7 @@ type LightUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -216,6 +292,29 @@ type MetricReading {
 	value: Float!
 }
 
+enum Mode {
+	HOME
+	AWAY
+	VACATION
+	NIGHT
+	GUEST
+	PARTY
+}
+
+type ModeUpdate {
+	eventId: UUID!
+	mode: Mode!
+	active: Boolean!
+}
+
+type MutationRoot {
+	light(id: String!): LightMutation!
+	robotVacuum(id: String!): RobotVacuumMutation!
+	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
+	setMode(mode: Mode!, active: Boolean!): [Mode!]!
+	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
+}
+
 """
 ISO 8601 combined date and time without timezone.
 
@@ -225,14 +324,23 @@ ISO 8601 combined date and time without timezone.
 """
 scalar NaiveDateTime
 
+enum Orientation {
+	PORTRAIT
+	LANDSCAPE
+}
+
 type PresenceEntity {
+	category: EntityCategory!
 	id: String!
 	name: String!
+	capabilities: [Capability!]!
+	room: String
 	"""
 	Whether presence is detected. Nullable so an unreachable presence actor
 	reports the error against this field without nulling the whole entity.
 	"""
 	present: Boolean
+	lastSeen: DateTime
 }
 
 type PresenceUpdate {
@@ -240,7 +348,7 @@ type PresenceUpdate {
 	"""
 	Config slug, matching the `id` from the `entities` query.
 	"""
-	id: String!
+	id: ID!
 	"""
 	Human-friendly name, matching the `entities` query.
 	"""
@@ -254,18 +362,66 @@ type PresenceUpdate {
 
 type QueryRoot {
 	auth: AuthObject!
-	events(input: EventsInput!): EventsObject!
-	environment: EnvironmentObject!
+	homeAssistant: HomeAssistantObject!
 	"""
 	Every configured entity and its current state. Entity types the caller
 	lacks a `graphql:<type>:read` scope for are silently omitted — this query
 	never errors on missing permissions.
+	The dashboard sections, in display order, with their titles. Categorising
+	a device kind is a backend concern — the frontend renders whatever order
+	and titles this returns.
 	"""
+	entitySections: [EntitySection!]!
 	entities: [Entity!]!
+	light(id: String!): LightEntity!
+	door(id: String!): DoorEntity!
+	presence(id: String!): PresenceEntity!
+	environment(id: String!): EnvironmentEntity!
+	einkDisplay(id: String!): EinkDisplayEntity!
+	robotVacuum(id: String!): RobotVacuumEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
+	workflows: [WorkflowStatus!]!
+	activeModes: [Mode!]!
+	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
+	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
+}
+
+type RobotVacuumEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	room: String
+	capabilities: [Capability!]!
+	kind: RobotVacuumKind!
+	status: String
+	batteryPercentage: Float
+	currentRoom: String
+	fanSpeed: String
+	currentCleanArea: Float
+	cleanCount: Int
+	lastSeen: DateTime
+}
+
+enum RobotVacuumKind {
+	ROBOROCK
+	VALETUDO
+}
+
+type RobotVacuumMutation {
+	start: Boolean!
+	stop: Boolean!
+	dock: Boolean!
+}
+
+input SetBrightnessInput {
+	value: Int!
+}
+
+input SetColourInput {
+	hex: String!
 }
 
 type SolarCurrentResponse {
@@ -302,6 +458,11 @@ type SubscriptionRoot {
 	events(filter: String! = "*"): EventUpdate!
 }
 
+type SunUpdate {
+	eventId: UUID!
+	transition: String!
+}
+
 type SwitchUpdate {
 	eventId: UUID!
 	device: String!
@@ -320,11 +481,6 @@ entities without requiring a central allocating authority.
 """
 scalar UUID
 
-enum UnifiState {
-	CONNECTED
-	DISCONNECTED
-}
-
 type UnifiUpdate {
 	eventId: UUID!
 	macAddress: String!
@@ -340,20 +496,58 @@ type WeatherObject {
 	forecast: Forecast!
 }
 
-type WifiEvent {
-	name: String!
-	id: UUID!
-	time: DateTime!
-	state: UnifiState!
-}
-
 type WoolworthsObject {
 	products: [WoolworthsProducts!]!
+	priceHistory(input: WoolworthsPriceHistoryInput!): [WoolworthsPricePoint!]!
+}
+
+input WoolworthsPriceHistoryInput {
+	productId: Int!
+	since: DateTime!
+}
+
+type WoolworthsPricePoint {
+	productId: Int!
+	name: String!
+	price: Float!
+	time: DateTime!
 }
 
 type WoolworthsProducts {
 	name: String!
 	price: Float!
+}
+
+type WoolworthsUpdate {
+	eventId: UUID!
+	productId: Int!
+	name: String!
+	oldPrice: Float!
+	newPrice: Float!
+}
+
+type WorkflowRun {
+	id: ID!
+	slug: String!
+	name: String!
+	eventId: String!
+	outcome: String!
+	dryRun: Boolean!
+	durationMs: Int!
+	error: String
+	startedAt: DateTime!
+}
+
+type WorkflowStatus {
+	id: String!
+	slug: String!
+	name: String!
+	group: String!
+	tags: [String!]!
+	enabled: Boolean!
+	configEnabled: Boolean!
+	dryRun: Boolean!
+	reusable: Boolean!
 }
 
 """
@@ -374,5 +568,6 @@ Provides a scalar specification URL for specifying the behavior of custom scalar
 directive @specifiedBy(url: String!) on SCALAR
 schema {
 	query: QueryRoot
+	mutation: MutationRoot
 	subscription: SubscriptionRoot
 }

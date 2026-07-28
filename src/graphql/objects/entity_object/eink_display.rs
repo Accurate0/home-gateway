@@ -1,9 +1,14 @@
-use async_graphql::{Enum, Object, SimpleObject, dataloader::DataLoader};
+use async_graphql::{ComplexObject, Enum, Object, SimpleObject, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
+use sqlx::{Pool, Postgres};
 
 use crate::{
+    battery::voltage_to_percentage,
     device_registry::{Capability, DeviceRegistry, EinkDisplaySettings},
+    feature_flag::FeatureFlagClient,
     graphql::dataloader::eink_battery::EinkDisplayDataLoader,
+    routes::epd::{EpdConfig, build_epd_config},
     settings::{EinkMode, Orientation},
     timedelta_format::humanize,
 };
@@ -44,6 +49,20 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
     }
 }
 
+#[derive(SimpleObject)]
+#[graphql(rename_fields = "camelCase", complex)]
+pub struct BatteryPoint {
+    pub battery_voltage: f64,
+    pub time: DateTime<Utc>,
+}
+
+#[ComplexObject]
+impl BatteryPoint {
+    async fn battery_percentage(&self) -> f64 {
+        voltage_to_percentage(self.battery_voltage)
+    }
+}
+
 pub struct EinkDisplayEntity {
     pub id: String,
     pub name: String,
@@ -51,6 +70,33 @@ pub struct EinkDisplayEntity {
     pub kind: EinkDisplayKind,
     pub capabilities: Vec<Capability>,
     pub room: Option<String>,
+}
+
+impl EinkDisplayEntity {
+    pub fn from_firmware(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let settings = registry.eink_display(address)?;
+        let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+        Some(Self {
+            id,
+            name: settings.name.clone(),
+            address: address.to_owned(),
+            kind: EinkDisplayKind::EinkDisplayFirmware,
+            capabilities: registry.capabilities(address).to_vec(),
+            room: registry.room(address).map(str::to_owned),
+        })
+    }
+
+    pub fn from_trmnl(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let settings = registry.trmnl_devices().get(address)?;
+        Some(Self {
+            id: settings.id.clone(),
+            name: settings.name.clone(),
+            address: settings.id.clone(),
+            kind: EinkDisplayKind::Trmnl,
+            capabilities: registry.capabilities(address).to_vec(),
+            room: registry.room(address).map(str::to_owned),
+        })
+    }
 }
 
 #[Object]
@@ -121,5 +167,39 @@ impl EinkDisplayEntity {
         Ok(registry
             .eink_display(&self.address)
             .map(EinkDisplayConfig::from))
+    }
+
+    async fn device_config(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<EpdConfig> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let feature_flag_client = ctx.data::<FeatureFlagClient>()?;
+        Ok(build_epd_config(feature_flag_client, registry, &self.address).await)
+    }
+
+    async fn battery_history(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        since: DateTime<Utc>,
+    ) -> async_graphql::Result<Vec<BatteryPoint>> {
+        let db = ctx.data::<Pool<Postgres>>()?;
+
+        Ok(sqlx::query!(
+            r#"SELECT battery_voltage, "time"
+               FROM device_battery
+               WHERE device_id = $1 AND "time" >= $2
+               ORDER BY "time" ASC"#,
+            self.address,
+            since
+        )
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .map(|r| BatteryPoint {
+            battery_voltage: r.battery_voltage,
+            time: r.time,
+        })
+        .collect_vec())
     }
 }

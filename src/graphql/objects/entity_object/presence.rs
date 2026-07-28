@@ -6,7 +6,7 @@ use crate::{
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
         rpc,
     },
-    device_registry::Capability,
+    device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
 };
 
@@ -19,6 +19,25 @@ pub struct PresenceEntity {
     pub address: String,
     pub capabilities: Vec<Capability>,
     pub room: Option<String>,
+}
+
+impl PresenceEntity {
+    pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let settings = registry.presence(address)?;
+        let id = registry.id_for_address(address).unwrap_or(address).to_owned();
+        let name = if settings.name.is_empty() {
+            id.clone()
+        } else {
+            settings.name.clone()
+        };
+        Some(Self {
+            id,
+            name,
+            address: address.to_owned(),
+            capabilities: registry.capabilities(address).to_vec(),
+            room: registry.room(address).map(str::to_owned),
+        })
+    }
 }
 
 #[Object]

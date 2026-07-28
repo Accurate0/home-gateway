@@ -28,11 +28,9 @@ const AppQuery = graphql`
       }
       ...SolarChart_solar @arguments(since: $since)
     }
-    environment {
-      outdoor {
-        temperature
-        humidity
-      }
+    outdoor: environment(id: "outdoor") {
+      temperature
+      humidity
     }
   }
 `;
@@ -93,7 +91,7 @@ export default function App() {
   });
 
   const uvLevel = data?.solar?.current?.uvLevel ?? 0;
-  const outdoorTemp = data?.environment?.outdoor?.temperature ?? 20;
+  const outdoorTemp = data?.outdoor?.temperature ?? 20;
 
   const getUVColor = (uv: number) => {
     if (uv <= 2) return "#16a34a"; // Green
@@ -234,7 +232,7 @@ export default function App() {
                 letterSpacing: 1,
               }}
             >
-              {data?.environment?.outdoor?.humidity?.toFixed(0) ?? "--"}% HUM
+              {data?.outdoor?.humidity?.toFixed(0) ?? "--"}% HUM
             </div>
           </div>
         </div>

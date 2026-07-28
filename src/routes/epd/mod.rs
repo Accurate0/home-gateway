@@ -200,11 +200,40 @@ fn draw_sleep_label(img: &mut image::RgbImage, label: &str) {
     draw_text_mut(img, image::Rgb([0, 0, 0]), x, y, scale, &font, label);
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, async_graphql::SimpleObject)]
+#[graphql(rename_fields = "camelCase")]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u32>,
     pub image_url: Option<String>,
     pub clear_screen: Option<bool>,
+}
+
+pub(crate) async fn build_epd_config(
+    feature_flag_client: &FeatureFlagClient,
+    devices: &DeviceRegistry,
+    device_id: &str,
+) -> EpdConfig {
+    #[cfg(debug_assertions)]
+    let base = "http://192.168.0.149:8000/v1/epd/latest";
+    #[cfg(not(debug_assertions))]
+    let base = "https://home.anurag.sh/v1/epd/latest";
+
+    let flag = epd_flag_config(feature_flag_client, devices, device_id).await;
+
+    if let Some(sleep) = active_sleep(devices, device_id, flag.force_sleep) {
+        let now = chrono::Utc::now().with_timezone(&Perth).time();
+        return EpdConfig {
+            refresh_interval_mins: Some(sleep.minutes_until_end(now)),
+            image_url: Some(format!("{base}?device_id={device_id}")),
+            clear_screen: Some(false),
+        };
+    }
+
+    EpdConfig {
+        refresh_interval_mins: Some(flag.refresh_interval),
+        image_url: Some(format!("{base}?device_id={device_id}")),
+        clear_screen: Some(flag.clear_screen),
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -245,27 +274,9 @@ pub async fn config(
         tracing::warn!("eink display actor not found, dropping config request");
     }
 
-    #[cfg(debug_assertions)]
-    let base = "http://192.168.0.149:8000/v1/epd/latest";
-    #[cfg(not(debug_assertions))]
-    let base = "https://home.anurag.sh/v1/epd/latest";
-
-    let flag = epd_flag_config(&feature_flag_client, &devices, &request.device_id).await;
-
-    if let Some(sleep) = active_sleep(&devices, &request.device_id, flag.force_sleep) {
-        let now = chrono::Utc::now().with_timezone(&Perth).time();
-        return Ok(Json(EpdConfig {
-            refresh_interval_mins: Some(sleep.minutes_until_end(now)),
-            image_url: Some(format!("{base}?device_id={}", request.device_id)),
-            clear_screen: Some(false),
-        }));
-    }
-
-    Ok(Json(EpdConfig {
-        refresh_interval_mins: Some(flag.refresh_interval),
-        image_url: Some(format!("{base}?device_id={}", request.device_id)),
-        clear_screen: Some(flag.clear_screen),
-    }))
+    Ok(Json(
+        build_epd_config(&feature_flag_client, &devices, &request.device_id).await,
+    ))
 }
 
 pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {

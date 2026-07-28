@@ -11,7 +11,6 @@ pub enum Domain {
 pub enum Resource {
     Energy,
     Entity,
-    Events,
     Solar,
     Weather,
     Woolworths,
@@ -36,6 +35,7 @@ pub enum Resource {
     Battery,
     Roborock,
     Valetudo,
+    RobotVacuum,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,7 +63,6 @@ impl Resource {
         Some(match s {
             "energy" => Self::Energy,
             "entity" => Self::Entity,
-            "events" => Self::Events,
             "solar" => Self::Solar,
             "weather" => Self::Weather,
             "woolworths" => Self::Woolworths,
@@ -88,6 +87,7 @@ impl Resource {
             "battery" => Self::Battery,
             "roborock" => Self::Roborock,
             "valetudo" => Self::Valetudo,
+            "robot_vacuum" => Self::RobotVacuum,
             _ => return None,
         })
     }
@@ -121,7 +121,6 @@ impl Resource {
         match self {
             Self::Energy => "energy",
             Self::Entity => "entity",
-            Self::Events => "events",
             Self::Solar => "solar",
             Self::Weather => "weather",
             Self::Woolworths => "woolworths",
@@ -146,6 +145,7 @@ impl Resource {
             Self::Battery => "battery",
             Self::Roborock => "roborock",
             Self::Valetudo => "valetudo",
+            Self::RobotVacuum => "robot_vacuum",
         }
     }
 
@@ -301,8 +301,8 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::Energy, Action::Read);
     pub const GRAPHQL_ENTITY_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Entity, Action::Read);
-    pub const GRAPHQL_EVENTS_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Events, Action::Read);
+    pub const GRAPHQL_HOME_ASSISTANT_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::HomeAssistant, Action::Read);
     pub const GRAPHQL_LIGHT_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Read);
     pub const GRAPHQL_DOOR_READ: Scope = Scope::new(Domain::Graphql, Resource::Door, Action::Read);
@@ -319,17 +319,13 @@ pub mod required {
     pub const GRAPHQL_WORKFLOW_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Read);
     pub const GRAPHQL_EPD_READ: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Read);
-    pub const GRAPHQL_ROBOROCK_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Roborock, Action::Read);
-    pub const GRAPHQL_VALETUDO_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Valetudo, Action::Read);
+    pub const GRAPHQL_ROBOT_VACUUM_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Read);
 
     pub const GRAPHQL_LIGHT_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Write);
-    pub const GRAPHQL_ROBOROCK_WRITE: Scope =
-        Scope::new(Domain::Graphql, Resource::Roborock, Action::Write);
-    pub const GRAPHQL_VALETUDO_WRITE: Scope =
-        Scope::new(Domain::Graphql, Resource::Valetudo, Action::Write);
+    pub const GRAPHQL_ROBOT_VACUUM_WRITE: Scope =
+        Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Write);
     pub const GRAPHQL_WORKFLOW_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
 

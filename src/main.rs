@@ -221,6 +221,7 @@ async fn main() -> anyhow::Result<()> {
     .data(pool.clone())
     .data(settings_container.clone())
     .data(device_registry.clone())
+    .data(feature_flag_client.clone())
     .data(event_bus)
     .data(workflow_manager)
     .extension(home_gateway::graphql_tracing::Tracing)
