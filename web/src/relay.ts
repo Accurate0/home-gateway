@@ -19,7 +19,7 @@ function wsUrl(): string {
   return `${proto}://${window.location.host}/v1/graphql/ws`;
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   if (AUTH_DISABLED) {
     const key = getApiKey();
     return key ? { "X-Api-Key": key } : {};

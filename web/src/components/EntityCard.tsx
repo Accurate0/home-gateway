@@ -17,9 +17,10 @@ import {
   Thermometer,
   UserX,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Popover, Slider } from "radix-ui";
 import { cn } from "@/lib/utils";
+import { authHeaders } from "@/relay";
 import { formatLastSeen, type Entity } from "@/entities";
 
 export interface LightActions {
@@ -456,6 +457,102 @@ function StatusTile({
   );
 }
 
+const EPD_WIDTH = 1200;
+const EPD_HEIGHT = 1600;
+
+const EPD_PALETTE: Record<number, [number, number, number]> = {
+  0: [0, 0, 0],
+  1: [255, 255, 255],
+  2: [255, 255, 0],
+  3: [255, 0, 0],
+  5: [0, 0, 255],
+  6: [0, 255, 0],
+};
+
+function unpackEpd(bytes: Uint8Array, landscape: boolean): string | null {
+  if (bytes.length < (EPD_WIDTH * EPD_HEIGHT) / 2) return null;
+  const src = document.createElement("canvas");
+  src.width = EPD_WIDTH;
+  src.height = EPD_HEIGHT;
+  const srcCtx = src.getContext("2d");
+  if (!srcCtx) return null;
+  const image = srcCtx.createImageData(EPD_WIDTH, EPD_HEIGHT);
+  const data = image.data;
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i];
+    const idx1 = byte >> 4;
+    const idx2 = byte & 0x0f;
+    const [r1, g1, b1] = EPD_PALETTE[idx1] ?? [0, 0, 0];
+    const [r2, g2, b2] = EPD_PALETTE[idx2] ?? [0, 0, 0];
+    const p = i * 2 * 4;
+    data[p] = r1;
+    data[p + 1] = g1;
+    data[p + 2] = b1;
+    data[p + 3] = 255;
+    data[p + 4] = r2;
+    data[p + 5] = g2;
+    data[p + 6] = b2;
+    data[p + 7] = 255;
+  }
+  srcCtx.putImageData(image, 0, 0);
+
+  if (!landscape) return src.toDataURL("image/png");
+
+  const dest = document.createElement("canvas");
+  dest.width = EPD_HEIGHT;
+  dest.height = EPD_WIDTH;
+  const destCtx = dest.getContext("2d");
+  if (!destCtx) return null;
+  destCtx.translate(0, dest.height);
+  destCtx.rotate(-Math.PI / 2);
+  destCtx.drawImage(src, 0, 0);
+  return dest.toDataURL("image/png");
+}
+
+function useEinkPreview(
+  imageUrl: string | null | undefined,
+  landscape: boolean,
+) {
+  const [loaded, setLoaded] = useState<{ url: string; dataUrl: string } | null>(
+    null,
+  );
+  const [errored, setErrored] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!imageUrl) return;
+    let cancelled = false;
+    fetch(imageUrl, { headers: authHeaders() })
+      .then((resp) => {
+        if (!resp.ok) throw new Error(`status ${resp.status}`);
+        return resp.arrayBuffer();
+      })
+      .then((buffer) => {
+        if (cancelled) return;
+        const dataUrl = unpackEpd(new Uint8Array(buffer), landscape);
+        if (!dataUrl) throw new Error("unpack failed");
+        setLoaded({ url: imageUrl, dataUrl });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setErrored(imageUrl);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, landscape]);
+
+  const dataUrl = loaded && loaded.url === imageUrl ? loaded.dataUrl : null;
+  const status: "idle" | "loading" | "error" = !imageUrl
+    ? "idle"
+    : dataUrl
+      ? "idle"
+      : errored === imageUrl
+        ? "error"
+        : "loading";
+
+  return { dataUrl, status };
+}
+
 function EinkDisplayConfigDetails({
   entity,
   now,
@@ -464,17 +561,37 @@ function EinkDisplayConfigDetails({
   now: number;
 }) {
   const deviceConfig = entity.deviceConfig;
+  const landscape = entity.config?.orientation === "LANDSCAPE";
+  const { dataUrl, status } = useEinkPreview(deviceConfig?.imageUrl, landscape);
   return (
     <Popover.Portal>
       <Popover.Content
         align="end"
         sideOffset={8}
         onClick={(e) => e.stopPropagation()}
-        className="bg-popover text-popover-foreground border-border z-50 w-72 rounded-2xl border p-4 shadow-lg outline-none"
+        className="bg-popover text-popover-foreground border-border z-50 w-[min(90vw,40rem)] max-w-[90vw] rounded-2xl border p-4 shadow-lg outline-none"
       >
         <div className="mb-3 flex items-center justify-between">
           <span className="font-medium">{entity.name}</span>
           <LastSeen entity={entity} now={now} />
+        </div>
+        <div
+          className={cn(
+            "bg-muted border-border mx-auto mb-3 grid place-items-center overflow-hidden rounded-lg border",
+            landscape ? "aspect-[4/3] w-full" : "aspect-[3/4] h-[min(70vh,32rem)]",
+          )}
+        >
+          {dataUrl ? (
+            <img
+              src={dataUrl}
+              alt={`${entity.name} current display`}
+              className="h-full w-full object-contain"
+            />
+          ) : (
+            <span className="text-muted-foreground text-sm">
+              {status === "error" ? "Preview unavailable" : "Loading preview…"}
+            </span>
+          )}
         </div>
         {deviceConfig == null ? (
           <div className="text-muted-foreground text-sm">Loading config…</div>
