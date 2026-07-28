@@ -36,7 +36,7 @@ export default function GraphiqlPage() {
   );
 
   return (
-    <div className="graphiql-container h-[calc(100vh-11rem)] min-h-[600px] w-full overflow-hidden rounded-xl">
+    <div className="h-[calc(100vh-11rem)] min-h-[600px] w-full overflow-hidden rounded-xl [&_.graphiql-container]:h-full">
       <GraphiQL fetcher={fetcher} />
     </div>
   );
