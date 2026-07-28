@@ -81,6 +81,13 @@ impl RobotVacuumEntity {
         self.room.as_deref()
     }
 
+    async fn battery(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<super::DeviceBattery>> {
+        super::battery_for(ctx, &self.id).await
+    }
+
     async fn capabilities(&self) -> &[Capability] {
         &self.capabilities
     }

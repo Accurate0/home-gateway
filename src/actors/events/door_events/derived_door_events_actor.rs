@@ -67,10 +67,9 @@ impl Actor for DerivedDoorEvents {
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let last_state = sqlx::query!(
             r#"
-        SELECT derived_door_events.id, derived_door_events.name, derived_door_events.ieee_addr, state as "state: DoorState"
-        FROM
-            (SELECT id, max(time) FROM derived_door_events GROUP BY id) AS latest_state
-            INNER JOIN derived_door_events ON derived_door_events.id = latest_state.id
+        SELECT DISTINCT ON (id) id, name, ieee_addr, state as "state: DoorState"
+        FROM derived_door_events
+        ORDER BY id, "time" DESC
         "#
         )
         .fetch_all(&self.shared_actor_state.db)

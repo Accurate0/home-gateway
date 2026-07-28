@@ -12,6 +12,7 @@ use chrono::{DateTime, Utc};
 
 use crate::graphql::dataloader::last_seen::LastSeenDataLoader;
 
+pub mod battery;
 pub mod door;
 pub mod eink_display;
 pub mod environment;
@@ -19,6 +20,7 @@ pub mod light;
 pub mod presence;
 pub mod robot_vacuum;
 
+pub use battery::{BatteryPoint, DeviceBattery, battery_for};
 pub use door::DoorEntity;
 pub use eink_display::EinkDisplayEntity;
 pub use environment::EnvironmentEntity;

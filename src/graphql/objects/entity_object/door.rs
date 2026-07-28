@@ -56,6 +56,13 @@ impl DoorEntity {
         self.room.as_deref()
     }
 
+    async fn battery(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<super::DeviceBattery>> {
+        super::battery_for(ctx, &self.id).await
+    }
+
     /// Whether the door is open. Nullable so an unreachable door-events actor
     /// reports the error against this field without nulling the whole entity.
     async fn open(&self) -> async_graphql::Result<Option<bool>> {

@@ -20,7 +20,6 @@ pub mod settings;
 pub mod timedelta_format;
 pub mod timer;
 pub mod tracing_setup;
-pub mod tracker;
 pub mod trmnl;
 pub mod types;
 pub mod utils;

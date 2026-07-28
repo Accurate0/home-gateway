@@ -18,6 +18,8 @@ use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
     QueryRoot,
+    dataloader::device_battery::DeviceBatteryDataLoader,
+    dataloader::device_battery_history::DeviceBatteryHistoryDataLoader,
     dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
@@ -168,6 +170,8 @@ async fn main() -> anyhow::Result<()> {
     let home_assistant = home_assistant::HomeAssistant::from_env();
     let graphql_home_assistant = home_assistant.clone();
 
+    let http_client = home_gateway::http::get_traced_http_client()?;
+
     let mqtt_ingest_actor = init_actors(
         settings_container.clone(),
         device_registry.clone(),
@@ -205,6 +209,18 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn,
     ))
     .data(DataLoader::new(
+        DeviceBatteryDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        DeviceBatteryHistoryDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
         HomeAssistantStateDataLoader {
             database: pool.clone(),
         },
@@ -217,6 +233,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn,
     ))
     .data(graphql_home_assistant)
+    .data(http_client)
     .data(mqtt_client)
     .data(pool.clone())
     .data(settings_container.clone())
@@ -313,8 +330,9 @@ async fn main() -> anyhow::Result<()> {
 
     let mqtt_cancellation_token = cancellation_token.child_token();
     let mqtt_ingest = mqtt_ingest_actor.clone();
+    let mqtt_devices = device_registry.clone();
     task_set.spawn(async move {
-        mqtt.process_events(mqtt_cancellation_token, mqtt_ingest)
+        mqtt.process_events(mqtt_cancellation_token, mqtt_ingest, mqtt_devices)
             .await?;
         Ok::<(), MainError>(())
     });

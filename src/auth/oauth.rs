@@ -1,9 +1,9 @@
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{collections::HashSet, str::FromStr, sync::Arc, time::Duration};
 
 use http::StatusCode;
 use jsonwebtoken::{
-    DecodingKey, Validation, decode, decode_header,
-    jwk::{Jwk, JwkSet},
+    Algorithm, DecodingKey, Validation, decode, decode_header,
+    jwk::{AlgorithmParameters, EllipticCurve, Jwk, JwkSet},
 };
 use moka::future::Cache;
 use reqwest_middleware::ClientWithMiddleware;
@@ -38,11 +38,16 @@ struct UserInfo {
     extra: serde_json::Map<String, serde_json::Value>,
 }
 
+pub struct VerifyingKey {
+    key: DecodingKey,
+    alg: Algorithm,
+}
+
 pub struct OAuthValidator {
     settings: OAuthSettings,
     http: ClientWithMiddleware,
-    // kid -> decoding key. Missing/rotated keys trigger a JWKS refetch.
-    keys: Cache<String, Arc<DecodingKey>>,
+    // kid -> verifying key. Missing/rotated keys trigger a JWKS refetch.
+    keys: Cache<String, Arc<VerifyingKey>>,
     // bearer token -> userinfo, to avoid a userinfo round-trip on every request.
     userinfo: Cache<String, Arc<UserInfo>>,
 }
@@ -94,7 +99,7 @@ impl OAuthValidator {
 
     /// Returns the decoding key for `kid`, refetching the JWKS once on a miss so
     /// key rotation is picked up without a restart.
-    async fn key_for(&self, kid: &str) -> Result<Arc<DecodingKey>, StatusCode> {
+    async fn key_for(&self, kid: &str) -> Result<Arc<VerifyingKey>, StatusCode> {
         if let Some(key) = self.keys.get(kid).await {
             return Ok(key);
         }
@@ -117,11 +122,20 @@ impl OAuthValidator {
         let kid = header.kid.ok_or(StatusCode::UNAUTHORIZED)?;
         let key = self.key_for(&kid).await?;
 
-        let mut validation = Validation::new(header.alg);
+        if header.alg != key.alg {
+            tracing::warn!(
+                "jwt for kid {kid} declares alg {:?} but the jwks key signs {:?}",
+                header.alg,
+                key.alg
+            );
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+
+        let mut validation = Validation::new(key.alg);
         validation.set_issuer(&[&self.settings.issuer]);
         validation.set_audience(&[&self.settings.audience]);
 
-        let claims = decode::<Claims>(token, &key, &validation)
+        let claims = decode::<Claims>(token, &key.key, &validation)
             .map_err(|e| {
                 tracing::error!("jwt validation failed: {e}");
                 StatusCode::UNAUTHORIZED
@@ -202,8 +216,30 @@ impl OAuthValidator {
 
 /// Kanidm uses RSA (RS256) signing keys by default but may rotate to EC; let
 /// `jsonwebtoken` derive the key from whatever the JWK declares.
-fn decoding_key(jwk: &Jwk) -> Result<DecodingKey, jsonwebtoken::errors::Error> {
-    DecodingKey::from_jwk(jwk)
+fn decoding_key(jwk: &Jwk) -> Result<VerifyingKey, jsonwebtoken::errors::Error> {
+    let key = DecodingKey::from_jwk(jwk)?;
+    let alg = jwk_algorithm(jwk)?;
+
+    Ok(VerifyingKey { key, alg })
+}
+
+fn jwk_algorithm(jwk: &Jwk) -> Result<Algorithm, jsonwebtoken::errors::Error> {
+    if let Some(declared) = jwk.common.key_algorithm {
+        return Algorithm::from_str(&declared.to_string());
+    }
+
+    match &jwk.algorithm {
+        AlgorithmParameters::RSA(_) => Ok(Algorithm::RS256),
+        AlgorithmParameters::EllipticCurve(ec) => match ec.curve {
+            EllipticCurve::P256 => Ok(Algorithm::ES256),
+            EllipticCurve::P384 => Ok(Algorithm::ES384),
+            _ => Err(jsonwebtoken::errors::ErrorKind::InvalidAlgorithm.into()),
+        },
+        AlgorithmParameters::OctetKeyPair(_) => Ok(Algorithm::EdDSA),
+        AlgorithmParameters::OctetKey(_) => {
+            Err(jsonwebtoken::errors::ErrorKind::InvalidAlgorithm.into())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -269,5 +305,54 @@ mod tests {
             vec!["*".to_owned()],
         )]));
         assert!(v.scopes_for(&userinfo(&["nobody@idm"])).is_empty());
+    }
+
+    fn jwk(value: serde_json::Value) -> Jwk {
+        serde_json::from_value(value).expect("jwk")
+    }
+
+    #[test]
+    fn declared_jwk_algorithm_wins() {
+        let jwk = jwk(serde_json::json!({
+            "kty": "RSA",
+            "alg": "PS512",
+            "n": "sXchYQ",
+            "e": "AQAB",
+        }));
+
+        assert_eq!(jwk_algorithm(&jwk).unwrap(), Algorithm::PS512);
+    }
+
+    #[test]
+    fn rsa_jwk_without_alg_defaults_to_rs256() {
+        let jwk = jwk(serde_json::json!({
+            "kty": "RSA",
+            "n": "sXchYQ",
+            "e": "AQAB",
+        }));
+
+        assert_eq!(jwk_algorithm(&jwk).unwrap(), Algorithm::RS256);
+    }
+
+    #[test]
+    fn ec_jwk_algorithm_follows_the_curve() {
+        let jwk = jwk(serde_json::json!({
+            "kty": "EC",
+            "crv": "P-384",
+            "x": "sXchYQ",
+            "y": "sXchYQ",
+        }));
+
+        assert_eq!(jwk_algorithm(&jwk).unwrap(), Algorithm::ES384);
+    }
+
+    #[test]
+    fn symmetric_jwk_is_rejected() {
+        let jwk = jwk(serde_json::json!({
+            "kty": "oct",
+            "k": "sXchYQ",
+        }));
+
+        assert!(jwk_algorithm(&jwk).is_err());
     }
 }

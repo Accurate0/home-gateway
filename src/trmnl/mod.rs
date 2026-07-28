@@ -26,7 +26,13 @@ impl Trmnl {
         Self {
             api_key,
             base_url,
-            client: wrap_client_in_middleware_no_tracing(reqwest::Client::new()).unwrap(),
+            client: wrap_client_in_middleware_no_tracing(
+                reqwest::ClientBuilder::new()
+                    .timeout(crate::http::REQUEST_TIMEOUT)
+                    .build()
+                    .unwrap(),
+            )
+            .unwrap(),
         }
     }
 

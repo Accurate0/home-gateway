@@ -1,13 +1,15 @@
-use async_graphql::{ComplexObject, Enum, Object, SimpleObject, dataloader::DataLoader};
+use async_graphql::{Enum, Object, SimpleObject, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use sqlx::{Pool, Postgres};
 
+use super::BatteryPoint;
 use crate::{
-    battery::voltage_to_percentage,
     device_registry::{Capability, DeviceRegistry, EinkDisplaySettings},
     feature_flag::FeatureFlagClient,
-    graphql::dataloader::eink_battery::EinkDisplayDataLoader,
+    graphql::dataloader::{
+        device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
+        eink_battery::EinkDisplayDataLoader,
+    },
     routes::epd::{EpdConfig, build_epd_config},
     settings::{EinkMode, Orientation},
     timedelta_format::humanize,
@@ -44,22 +46,6 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
             sleep_start: settings.sleep.map(|s| s.start.format("%H:%M").to_string()),
             sleep_end: settings.sleep.map(|s| s.end.format("%H:%M").to_string()),
         }
-    }
-}
-
-#[derive(SimpleObject)]
-#[graphql(rename_fields = "camelCase", complex)]
-pub struct BatteryPoint {
-    pub battery_voltage: Option<f64>,
-    pub battery_percent: Option<f64>,
-    pub time: DateTime<Utc>,
-}
-
-#[ComplexObject]
-impl BatteryPoint {
-    async fn battery_percentage(&self) -> Option<f64> {
-        self.battery_percent
-            .or_else(|| self.battery_voltage.map(voltage_to_percentage))
     }
 }
 
@@ -181,29 +167,31 @@ impl EinkDisplayEntity {
         Ok(build_epd_config(feature_flag_client, registry, &self.address).await)
     }
 
+    async fn battery(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<super::DeviceBattery>> {
+        super::battery_for(ctx, &self.address).await
+    }
+
     async fn battery_history(
         &self,
         ctx: &async_graphql::Context<'_>,
         since: DateTime<Utc>,
     ) -> async_graphql::Result<Vec<BatteryPoint>> {
-        let db = ctx.data::<Pool<Postgres>>()?;
+        let loader = ctx.data::<DataLoader<DeviceBatteryHistoryDataLoader>>()?;
+        let since = clamp_since(since, Utc::now());
 
-        Ok(sqlx::query!(
-            r#"SELECT battery_voltage, battery_percent, "time"
-               FROM device_battery
-               WHERE device_id = $1 AND "time" >= $2
-               ORDER BY "time" ASC"#,
-            self.address,
-            since
-        )
-        .fetch_all(db)
-        .await?
-        .into_iter()
-        .map(|r| BatteryPoint {
-            battery_voltage: r.battery_voltage,
-            battery_percent: r.battery_percent,
-            time: r.time,
-        })
-        .collect_vec())
+        Ok(loader
+            .load_one((self.address.clone(), since))
+            .await?
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| BatteryPoint {
+                battery_voltage: p.battery_voltage,
+                battery_percent: p.battery_percent,
+                time: p.time,
+            })
+            .collect_vec())
     }
 }

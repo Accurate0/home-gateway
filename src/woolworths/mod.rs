@@ -46,6 +46,7 @@ impl Woolworths {
                 reqwest::ClientBuilder::new()
                     .default_headers(headers)
                     .cookie_store(true)
+                    .timeout(crate::http::REQUEST_TIMEOUT)
                     .build()
                     .unwrap(),
             )

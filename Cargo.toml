@@ -41,14 +41,6 @@ tower = { version = "0.5.3", features = ["load-shed"] }
 uuid = { version = "1.23.2", features = ["v4"] }
 open-feature = "0.3"
 openfeature-provider = { git = "https://github.com/Accurate0/inf-k8s.git", branch = "main" }
-twilight-cache-inmemory = "0.17.1"
-twilight-gateway = "0.17.1"
-twilight-http = "0.17.1"
-twilight-interactions = "0.17.1"
-twilight-model = "0.17.1"
-twilight-util = { version = "0.17.0", features = ["builder"] }
-pgmq = "0.33.7"
-tower-service = "0.3.3"
 chrono-tz = "0.10.4"
 rust-s3 = { version = "0.37.2", default-features = false, features = ["tokio-rustls-tls", "tags"] }
 csv = "1.4.0"
@@ -65,7 +57,6 @@ opentelemetry-appender-tracing = "0.32.0"
 reqwest-middleware = { version = "0.5.2", features = ["json", "query"] }
 reqwest-tracing = { version = "0.7.1", features = ["opentelemetry_0_32"] }
 regex = "1.12.3"
-lazy_static = "1.5.0"
 chromiumoxide = "0.9.1"
 image = "0.25.10"
 imageproc = "0.27.0"

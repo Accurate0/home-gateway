@@ -1,7 +1,7 @@
-use crate::http::get_traced_http_client;
 use async_graphql::{InputObject, Object, SimpleObject};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use http::Method;
+use reqwest_middleware::ClientWithMiddleware;
 
 pub struct SolarObject {}
 
@@ -59,10 +59,10 @@ const SOLAR_API_URL: &str = "https://solar-panels.anurag.sh/api";
 impl SolarObject {
     pub async fn current(
         &self,
-        _ctx: &async_graphql::Context<'_>,
+        ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<SolarCurrentResponse> {
         let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
-        let client = get_traced_http_client()?;
+        let client = ctx.data::<ClientWithMiddleware>()?;
 
         let url = format!("{api_base}/current");
         let response = client
@@ -77,11 +77,11 @@ impl SolarObject {
     }
     pub async fn history(
         &self,
-        _ctx: &async_graphql::Context<'_>,
+        ctx: &async_graphql::Context<'_>,
         input: SolarHistoryInput,
     ) -> async_graphql::Result<Vec<GenerationHistory>> {
         let api_base = std::env::var("SOLAR_API_BASE").unwrap_or_else(|_| SOLAR_API_URL.to_owned());
-        let client = get_traced_http_client()?;
+        let client = ctx.data::<ClientWithMiddleware>()?;
 
         let url = format!("{api_base}/v2/history");
         let response = client

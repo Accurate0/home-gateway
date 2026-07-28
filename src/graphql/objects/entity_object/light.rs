@@ -60,6 +60,13 @@ impl LightEntity {
         self.room.as_deref()
     }
 
+    async fn battery(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<super::DeviceBattery>> {
+        super::battery_for(ctx, &self.id).await
+    }
+
     /// Current power state. Nullable so an unreachable light actor reports the
     /// error against this field without nulling the whole entity.
     async fn on(&self) -> async_graphql::Result<Option<bool>> {

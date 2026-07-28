@@ -681,6 +681,10 @@ impl DeviceRegistryInner {
         self.esphome_topics.get(topic)
     }
 
+    pub fn esphome_all_topics(&self) -> impl Iterator<Item = &String> {
+        self.esphome_topics.keys()
+    }
+
     pub fn esphome_topics_for<'a>(
         &'a self,
         node: &'a str,

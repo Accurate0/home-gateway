@@ -71,6 +71,13 @@ impl EnvironmentEntity {
         self.room.as_deref()
     }
 
+    async fn battery(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<super::DeviceBattery>> {
+        super::battery_for(ctx, &self.id).await
+    }
+
     /// Nullable so a missing reading reports the error against this field
     /// without nulling the whole entity.
     async fn temperature(

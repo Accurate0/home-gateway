@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT device_id, kind, battery_percent, battery_voltage, updated_at\n            FROM device_battery_latest\n            WHERE device_id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "battery_percent",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "battery_voltage",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "597b06f07449022a21ab3018e8f1cbf5f2f991fc2fdea1b28ff8ea20e960b7ac"
+}

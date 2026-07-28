@@ -1,4 +1,5 @@
 use crate::actors::mqtt_ingest;
+use crate::device_registry::DeviceRegistry;
 use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, JobOptions},
@@ -9,6 +10,17 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 pub const ZIGBEE2MQTT_BASE: &str = "zigbee2mqtt";
+
+const STATIC_TOPICS: [&str; 5] = [
+    "zigbee2mqtt/+",
+    "zigbee2mqtt/bridge/devices",
+    "esphome/discover/+",
+    "valetudo/+/state",
+    "valetudo/+/attributes",
+];
+
+const RECONNECT_BACKOFF_MIN: Duration = Duration::from_secs(1);
+const RECONNECT_BACKOFF_MAX: Duration = Duration::from_secs(60);
 
 pub struct Mqtt {
     client: rumqttc::AsyncClient,
@@ -105,32 +117,31 @@ impl Mqtt {
         &mut self,
         cancellation_token: CancellationToken,
         actor: ActorRef<FactoryMessage<(), mqtt_ingest::Message>>,
+        devices: DeviceRegistry,
     ) -> Result<(), MqttError> {
+        let mut backoff = RECONNECT_BACKOFF_MIN;
+
         loop {
             tokio::select! {
                 event = self.connection.poll() => {
                     match event {
                         Ok(event) => match event {
                             rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_)) => {
-                                self.client
-                                    .subscribe("zigbee2mqtt/+", rumqttc::QoS::ExactlyOnce)
-                                    .await?;
+                                backoff = RECONNECT_BACKOFF_MIN;
 
-                                self.client
-                                    .subscribe("zigbee2mqtt/bridge/devices", rumqttc::QoS::ExactlyOnce)
-                                    .await?;
+                                for topic in STATIC_TOPICS {
+                                    tracing::info!("subscribing to topic: {topic}");
+                                    self.client
+                                        .subscribe(topic, rumqttc::QoS::ExactlyOnce)
+                                        .await?;
+                                }
 
-                                self.client
-                                    .subscribe("esphome/discover/+", rumqttc::QoS::ExactlyOnce)
-                                    .await?;
-
-                                self.client
-                                    .subscribe("valetudo/+/state", rumqttc::QoS::ExactlyOnce)
-                                    .await?;
-
-                                self.client
-                                    .subscribe("valetudo/+/attributes", rumqttc::QoS::ExactlyOnce)
-                                    .await?;
+                                for topic in devices.esphome_all_topics().cloned().collect::<Vec<_>>() {
+                                    tracing::info!("subscribing to esphome state topic: {topic}");
+                                    self.client
+                                        .subscribe(topic, rumqttc::QoS::ExactlyOnce)
+                                        .await?;
+                                }
                             },
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {
                                 let response = actor.send_message(FactoryMessage::Dispatch(Job {
@@ -150,7 +161,11 @@ impl Mqtt {
                             }
                             rumqttc::Event::Outgoing(_) => {}
                         }
-                        Err(e) => tracing::error!("error with event: {e}"),
+                        Err(e) => {
+                            tracing::error!("error with event, reconnecting in {backoff:?}: {e}");
+                            tokio::time::sleep(backoff).await;
+                            backoff = (backoff * 2).min(RECONNECT_BACKOFF_MAX);
+                        }
                     };
                 }
                 _ = cancellation_token.cancelled() => {

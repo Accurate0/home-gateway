@@ -1,6 +1,6 @@
-use crate::http::get_traced_http_client;
 use async_graphql::{Object, SimpleObject};
 use http::Method;
+use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 
 pub struct WeatherObject {
@@ -27,10 +27,10 @@ pub struct Forecast {
 impl WeatherObject {
     pub async fn forecast(
         &self,
-        _ctx: &async_graphql::Context<'_>,
+        ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Forecast> {
         let api_base = std::env::var("BOM_API_BASE").unwrap();
-        let client = get_traced_http_client()?;
+        let client = ctx.data::<ClientWithMiddleware>()?;
 
         let url = format!("{api_base}/forecast");
         let response = client

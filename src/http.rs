@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
 
+pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+
 use reqwest::{Request, Response};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Extension};
 use reqwest_tracing::{
@@ -53,7 +55,7 @@ pub fn wrap_client_in_middleware_no_tracing(
 pub fn get_traced_http_client() -> Result<ClientWithMiddleware, HttpCreationError> {
     Ok(ClientBuilder::new(
         reqwest::ClientBuilder::new()
-            .timeout(Duration::from_secs(30))
+            .timeout(REQUEST_TIMEOUT)
             .build()?,
     )
     .with(TracingMiddleware::<TimeTrace>::new())
