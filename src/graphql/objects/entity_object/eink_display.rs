@@ -118,6 +118,8 @@ impl EinkDisplayEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<EinkDisplayConfig>> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        Ok(registry.eink_display(&self.id).map(EinkDisplayConfig::from))
+        Ok(registry
+            .eink_display(&self.address)
+            .map(EinkDisplayConfig::from))
     }
 }
