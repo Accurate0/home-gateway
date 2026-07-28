@@ -15,11 +15,13 @@
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/hanken-grotesk": "^5.2.8",
+    "@graphiql/toolkit": "^0.12.1",
     "@home-gateway/shared": "workspace:*",
     "@tailwindcss/vite": "^4.3.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "graphiql": "^5.2.4",
     "graphql-ws": "^6.0.8",
     "lucide-react": "^1.23.0",
     "oidc-client-ts": "^3.5.0",
