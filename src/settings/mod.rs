@@ -10,6 +10,7 @@ use std::{
 };
 
 pub mod door;
+pub mod eink;
 pub mod environment;
 pub mod home_assistant;
 pub mod location;
@@ -23,6 +24,7 @@ pub mod valetudo;
 pub mod workflow;
 
 pub use door::{ArmedDoorStates, DoorSettings};
+pub use eink::{Album, DashboardView, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation};
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use location::LocationSettings;
@@ -222,6 +224,7 @@ pub struct Settings {
     pub trmnl: TrmnlSettings,
     pub trmnl_api_key: Option<String>,
     pub home_assistant: HomeAssistantSettings,
+    pub eink_display: EinkGlobalSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -265,6 +268,8 @@ pub struct RawSettings {
     trmnl_api_key: Option<String>,
     #[serde(default)]
     home_assistant: HomeAssistantSettings,
+    #[serde(default)]
+    eink_display: eink::RawEinkGlobal,
 }
 
 impl RawSettings {
@@ -293,6 +298,7 @@ impl RawSettings {
             trmnl,
             trmnl_api_key,
             home_assistant,
+            eink_display,
         } = self;
 
         let mut seen_key_names = HashSet::new();
@@ -363,6 +369,7 @@ impl RawSettings {
                 trmnl,
                 trmnl_api_key,
                 home_assistant,
+                eink_display: eink_display.resolve(),
             },
             registry,
         ))
@@ -740,6 +747,103 @@ api_keys:
 
         let err = raw.resolve().unwrap_err();
         assert!(err.contains("invalid scope"), "{err}");
+    }
+
+    #[test]
+    fn eink_display_modes_resolve() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+location: { latitude: 0.0, longitude: 0.0 }
+eink_display:
+  views:
+    home: { query: "view=home" }
+  albums:
+    family: { prefix: "eink-display/album/family/" }
+    art: {}
+devices:
+  - id: epd
+    transport: eink_display_firmware
+    address: "abc123"
+    kinds:
+      - kind: eink_display_firmware
+        config:
+          name: Test Display
+          orientation: landscape
+          mode:
+            name: album
+            album: family
+"#,
+        )
+        .unwrap();
+
+        let (settings, registry) = raw.resolve().unwrap();
+        let display = registry.eink_display("abc123").expect("display resolved");
+
+        assert_eq!(display.mode.name(), crate::settings::EinkMode::Album);
+        assert_eq!(display.target_dims(), (1600, 1200));
+        assert_eq!(display.orientation_str(), "landscape");
+        assert_eq!(display.mode.album(), Some("family"));
+
+        let global = &settings.eink_display;
+        assert_eq!(
+            global.view("home").unwrap().query.as_deref(),
+            Some("view=home")
+        );
+        assert_eq!(
+            global.album("family").unwrap().prefix,
+            "eink-display/album/family/"
+        );
+        assert_eq!(
+            global.album("art").unwrap().prefix,
+            "eink-display/album/art/"
+        );
+    }
+
+    #[test]
+    fn eink_display_defaults_resolve() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+location: { latitude: 0.0, longitude: 0.0 }
+devices:
+  - id: epd
+    transport: eink_display_firmware
+    address: "abc123"
+    kinds:
+      - kind: eink_display_firmware
+        config:
+          name: Test Display
+"#,
+        )
+        .unwrap();
+
+        let (settings, registry) = raw.resolve().unwrap();
+        let display = registry.eink_display("abc123").expect("display resolved");
+
+        assert_eq!(display.mode.name(), crate::settings::EinkMode::Dashboard);
+        assert_eq!(display.target_dims(), (1200, 1600));
+        assert!(display.mode.view().is_none());
+        assert_eq!(
+            settings.eink_display.default_album().prefix,
+            "eink-display/album/"
+        );
     }
 
     #[test]

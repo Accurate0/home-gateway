@@ -123,6 +123,17 @@ type EntitySection {
 	title: String!
 }
 
+type EinkDisplayConfig {
+	mode: EinkMode!
+	view: String
+	album: String
+	orientation: Orientation!
+	refresh: String
+	settle: String
+	sleepStart: String
+	sleepEnd: String
+}
+
 type EinkDisplayEntity {
 	category: EntityCategory!
 	id: String!
@@ -132,6 +143,17 @@ type EinkDisplayEntity {
 	batteryVoltage: Float
 	batteryPercentage: Float
 	lastSeen: DateTime
+	config: EinkDisplayConfig
+}
+
+enum EinkMode {
+	DASHBOARD
+	ALBUM
+}
+
+enum Orientation {
+	PORTRAIT
+	LANDSCAPE
 }
 
 type EnvironmentDetails {

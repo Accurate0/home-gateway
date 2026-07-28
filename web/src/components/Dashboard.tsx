@@ -85,6 +85,16 @@ const EntitiesQuery = graphql`
         batteryVoltage
         batteryPercentage
         lastSeen
+        config {
+          mode
+          view
+          album
+          orientation
+          refresh
+          settle
+          sleepStart
+          sleepEnd
+        }
       }
       ... on RoborockEntity {
         category

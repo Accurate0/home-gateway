@@ -452,6 +452,62 @@ function StatusTile({
   );
 }
 
+function EinkDisplayConfigDetails({
+  entity,
+  now,
+}: {
+  entity: Entity;
+  now: number;
+}) {
+  const config = entity.config;
+  const rows: { label: string; value: string | null | undefined }[] = config
+    ? [
+        { label: "Mode", value: config.mode },
+        { label: "View", value: config.view },
+        { label: "Album", value: config.album },
+        { label: "Orientation", value: config.orientation },
+        { label: "Refresh", value: config.refresh },
+        { label: "Settle", value: config.settle },
+        {
+          label: "Sleep",
+          value:
+            config.sleepStart && config.sleepEnd
+              ? `${config.sleepStart}–${config.sleepEnd}`
+              : null,
+        },
+      ].filter((r) => r.value != null)
+    : [];
+  return (
+    <Popover.Portal>
+      <Popover.Content
+        align="end"
+        sideOffset={8}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-popover text-popover-foreground border-border z-50 w-64 rounded-2xl border p-4 shadow-lg outline-none"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <span className="font-medium">{entity.name}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+        {config == null ? (
+          <div className="text-muted-foreground text-sm">No config</div>
+        ) : (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            {rows.map(({ label, value }) => (
+              <div key={label} className="flex flex-col">
+                <dt className="text-muted-foreground text-xs uppercase tracking-wide">
+                  {label}
+                </dt>
+                <dd className="tabular-nums capitalize">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </Popover.Content>
+    </Popover.Portal>
+  );
+}
+
 function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
   const voltage = entity.batteryVoltage;
   const percentage = entity.batteryPercentage;
@@ -462,33 +518,42 @@ function EinkDisplayTile({ entity, now }: { entity: Entity; now: number }) {
         ? BatteryMedium
         : BatteryLow;
   return (
-    <Tile className="col-span-1 justify-between gap-3">
-      <div className="flex items-start justify-between">
-        <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
-          <MonitorSmartphone className="size-5" strokeWidth={1.5} />
-        </div>
-        <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
-          <BatteryIcon className="size-4" strokeWidth={1.75} />
-          <div className="flex flex-col items-end leading-tight">
-            <span className="text-sm">
-              {percentage == null ? "—" : `${Math.round(percentage)}%`}
-            </span>
-            {voltage != null && (
-              <span className="text-muted-foreground/70 text-xs">
-                {fmt(voltage, " V", 2)}
-              </span>
-            )}
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <Tile
+          role="button"
+          tabIndex={0}
+          className="col-span-1 cursor-pointer justify-between gap-3 transition-all select-none hover:-translate-y-0.5 hover:border-foreground/20 active:translate-y-0"
+        >
+          <div className="flex items-start justify-between">
+            <div className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-xl">
+              <MonitorSmartphone className="size-5" strokeWidth={1.5} />
+            </div>
+            <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
+              <BatteryIcon className="size-4" strokeWidth={1.75} />
+              <div className="flex flex-col items-end leading-tight">
+                <span className="text-sm">
+                  {percentage == null ? "—" : `${Math.round(percentage)}%`}
+                </span>
+                {voltage != null && (
+                  <span className="text-muted-foreground/70 text-xs">
+                    {fmt(voltage, " V", 2)}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div>
-        <div className="leading-tight font-medium">{entity.name}</div>
-        <div className="text-muted-foreground flex items-center gap-1 text-xs">
-          <span>{entity.id}</span>
-          <LastSeen entity={entity} now={now} />
-        </div>
-      </div>
-    </Tile>
+          <div>
+            <div className="leading-tight font-medium">{entity.name}</div>
+            <div className="text-muted-foreground flex items-center gap-1 text-xs">
+              <span>{entity.id}</span>
+              <LastSeen entity={entity} now={now} />
+            </div>
+          </div>
+        </Tile>
+      </Popover.Trigger>
+      <EinkDisplayConfigDetails entity={entity} now={now} />
+    </Popover.Root>
   );
 }
 

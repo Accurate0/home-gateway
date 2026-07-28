@@ -21,7 +21,10 @@ impl RoborockEntity {
         entity_id: &str,
     ) -> async_graphql::Result<Option<String>> {
         let loader = ctx.data::<DataLoader<HomeAssistantStateDataLoader>>()?;
-        Ok(loader.load_one(entity_id.to_owned()).await?.map(|s| s.state))
+        Ok(loader
+            .load_one(entity_id.to_owned())
+            .await?
+            .map(|s| s.state))
     }
 }
 

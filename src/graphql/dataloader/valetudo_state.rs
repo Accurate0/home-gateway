@@ -37,6 +37,9 @@ impl Loader<String> for ValetudoStateDataLoader {
         .instrument(tracing::info_span!("bulk-get-valetudo-state"))
         .await?;
 
-        Ok(rows.into_iter().map(|r| (r.identifier.clone(), r)).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.identifier.clone(), r))
+            .collect())
     }
 }

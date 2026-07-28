@@ -20,7 +20,9 @@ impl RoborockMutation {
     ) -> async_graphql::Result<bool> {
         let home_assistant = ctx.data::<Option<HomeAssistant>>()?;
         let Some(home_assistant) = home_assistant else {
-            return Err(async_graphql::Error::new("home assistant is not configured"));
+            return Err(async_graphql::Error::new(
+                "home assistant is not configured",
+            ));
         };
 
         let Some((domain, service)) = service.split_once('.') else {

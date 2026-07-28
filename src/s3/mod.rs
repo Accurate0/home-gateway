@@ -1,6 +1,7 @@
 use anyhow::Context;
-use http::HeaderMap;
+use http::{HeaderMap, HeaderName, HeaderValue};
 use s3::{Bucket, Region, creds::Credentials};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct S3 {
@@ -107,6 +108,47 @@ impl S3 {
         let response = self
             .bucket
             .put_object_with_content_type(key, payload, content_type)
+            .await?;
+        let status = response.status_code();
+        if !(200..300).contains(&status) {
+            anyhow::bail!("unexpected status {status} putting object {key}");
+        }
+        Ok(())
+    }
+
+    /// Returns the object's user metadata (the `x-amz-meta-*` values) via a HEAD
+    /// request, or `None` when the object does not exist (404).
+    pub async fn get_object_metadata(
+        &self,
+        key: &str,
+    ) -> anyhow::Result<Option<HashMap<String, String>>> {
+        let (result, status) = self.bucket.head_object(key).await?;
+        match status {
+            200 => Ok(Some(result.metadata.unwrap_or_default())),
+            404 => Ok(None),
+            status => anyhow::bail!("unexpected status {status} heading object {key}"),
+        }
+    }
+
+    pub async fn put_object_with_metadata(
+        &self,
+        key: &str,
+        payload: &[u8],
+        content_type: Option<&str>,
+        metadata: &HashMap<String, String>,
+    ) -> anyhow::Result<()> {
+        let content_type = content_type.unwrap_or("application/octet-stream");
+        let mut headers = HeaderMap::new();
+        for (name, value) in metadata {
+            let header_name = HeaderName::try_from(format!("x-amz-meta-{name}"))
+                .with_context(|| format!("invalid metadata key `{name}`"))?;
+            let header_value = HeaderValue::from_str(value)
+                .with_context(|| format!("invalid metadata value for `{name}`"))?;
+            headers.insert(header_name, header_value);
+        }
+        let response = self
+            .bucket
+            .put_object_with_content_type_and_headers(key, payload, content_type, Some(headers))
             .await?;
         let status = response.status_code();
         if !(200..300).contains(&status) {

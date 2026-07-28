@@ -11,9 +11,9 @@ use crate::settings::environment::Metric;
 use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 use crate::settings::plant::default_plant_entities;
 use crate::settings::{
-    DeviceAliases, DoorSettings, EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress,
-    PlantSensorSettings, PresenceSensorType, PresenceSettings, RawRoborockBlock, RawValetudoBlock,
-    RoborockSettings, ValetudoSettings,
+    DeviceAliases, DoorSettings, EinkModeConfig, EnvironmentSensorSettings, EnvironmentSensorType,
+    IEEEAddress, Orientation, PlantSensorSettings, PresenceSensorType, PresenceSettings,
+    RawRoborockBlock, RawValetudoBlock, RoborockSettings, ValetudoSettings,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
@@ -143,16 +143,40 @@ pub struct TrmnlDeviceSettings {
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(tag = "name", rename_all = "snake_case")]
+pub enum RawEinkMode {
+    Dashboard {
+        #[serde(default)]
+        view: Option<String>,
+    },
+    Album {
+        #[serde(default)]
+        album: Option<String>,
+    },
+}
+
+impl RawEinkMode {
+    fn resolve(self) -> EinkModeConfig {
+        match self {
+            RawEinkMode::Dashboard { view } => EinkModeConfig::Dashboard { view },
+            RawEinkMode::Album { album } => EinkModeConfig::Album { album },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawEinkDisplayBlock {
     name: String,
+    #[serde(default)]
+    mode: Option<RawEinkMode>,
+    #[serde(default)]
+    orientation: Option<Orientation>,
     #[serde(default, with = "option_time_delta_from_str")]
     #[schemars(with = "Option<String>")]
     refresh: Option<TimeDelta>,
     #[serde(default, with = "option_time_delta_from_str")]
     #[schemars(with = "Option<String>")]
     settle: Option<TimeDelta>,
-    #[serde(default)]
-    s3_key: Option<String>,
     #[serde(default)]
     sleep: Option<RawSleepWindow>,
 }
@@ -206,10 +230,21 @@ impl SleepWindow {
 #[derive(Debug, Clone)]
 pub struct EinkDisplaySettings {
     pub name: String,
+    pub mode: EinkModeConfig,
+    pub orientation: Orientation,
     pub refresh: Option<TimeDelta>,
     pub settle: Option<TimeDelta>,
-    pub s3_key: Option<String>,
     pub sleep: Option<SleepWindow>,
+}
+
+impl EinkDisplaySettings {
+    pub fn target_dims(&self) -> (u32, u32) {
+        self.orientation.target_dims()
+    }
+
+    pub fn orientation_str(&self) -> &'static str {
+        self.orientation.as_str()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -490,9 +525,10 @@ impl DeviceRegistryInner {
                     address.to_owned(),
                     EinkDisplaySettings {
                         name: display.name,
+                        mode: display.mode.map(|m| m.resolve()).unwrap_or_default(),
+                        orientation: display.orientation.unwrap_or(Orientation::Portrait),
                         refresh: display.refresh,
                         settle: display.settle,
-                        s3_key: display.s3_key,
                         sleep,
                     },
                 );

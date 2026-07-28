@@ -682,11 +682,17 @@ mod tests {
         ));
         assert!(matches!(
             MqttTopic::classify("valetudo/rockrobo/state"),
-            MqttTopic::Valetudo { leaf: valetudo::Leaf::State, .. }
+            MqttTopic::Valetudo {
+                leaf: valetudo::Leaf::State,
+                ..
+            }
         ));
         assert!(matches!(
             MqttTopic::classify("valetudo/rockrobo/attributes"),
-            MqttTopic::Valetudo { leaf: valetudo::Leaf::Attributes, .. }
+            MqttTopic::Valetudo {
+                leaf: valetudo::Leaf::Attributes,
+                ..
+            }
         ));
         assert!(matches!(
             MqttTopic::classify("valetudo/rockrobo/map_data"),

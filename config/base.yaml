@@ -52,5 +52,16 @@ home_assistant:
       log: false
       throttle: 30s
 
+eink_display:
+  views:
+    home:
+      query: view=home
+    weather:
+      query: view=weather
+  albums:
+    family:
+      prefix: eink-display/album/family/
+    art: {}
+
 devices: !include devices.yaml
 workflows: !include workflows/index.yaml

@@ -1,4 +1,6 @@
+use crate::device_registry::EinkDisplaySettings;
 use crate::s3::OptionalObjectResponse;
+use crate::settings::{Album, EinkMode};
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
@@ -8,10 +10,15 @@ use chromiumoxide::{
 };
 use futures::StreamExt;
 use ractor::Actor;
+use rand::seq::IndexedRandom;
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::task::JoinHandle;
+
+const CACHE_PREFIX: &str = "eink-display/cache/";
 
 pub mod types;
 
@@ -83,6 +90,7 @@ impl EInkDisplayActor {
         &self,
         state: &mut EInkActorState,
         settle: Duration,
+        query: Option<&str>,
     ) -> Result<Option<Vec<u8>>, ractor::ActorProcessingErr> {
         if !cfg!(debug_assertions) {
             self.save_index_if_new(state).await?;
@@ -92,7 +100,11 @@ impl EInkDisplayActor {
             tracing::warn!("skipping screenshot: chromium not available");
             return Ok(None);
         };
-        let original_page = browser.new_page(Self::INDEX_PATH).await?;
+        let url = match query {
+            Some(query) if !query.is_empty() => format!("{}?{query}", Self::INDEX_PATH),
+            _ => Self::INDEX_PATH.to_owned(),
+        };
+        let original_page = browser.new_page(url).await?;
         tracing::info!("navigating to page");
 
         tracing::info!("setting locale and timezone");
@@ -118,6 +130,132 @@ impl EInkDisplayActor {
 
         Ok(Some(image))
     }
+
+    async fn render_album(
+        &self,
+        display: &EinkDisplaySettings,
+        album: &Album,
+    ) -> Result<Option<String>, ractor::ActorProcessingErr> {
+        let s3 = &self.shared_actor_state.s3;
+
+        let images = s3.list_objects(&album.prefix).await?;
+        let images: Vec<String> = images
+            .into_iter()
+            .filter(|key| !key.starts_with(CACHE_PREFIX))
+            .collect();
+        let Some(source_key) = images.choose(&mut rand::rng()).cloned() else {
+            tracing::warn!(
+                "album `{}` at `{}` has no images, skipping render",
+                album.name,
+                album.prefix
+            );
+            return Ok(None);
+        };
+
+        let source = s3.get_object(&source_key).await?;
+
+        let hash = match s3
+            .get_object_metadata(&source_key)
+            .await?
+            .and_then(|mut m| m.remove("hash"))
+        {
+            Some(hash) => hash,
+            None => {
+                let hash = content_hash(&source);
+                let mut metadata = HashMap::new();
+                metadata.insert("hash".to_owned(), hash.clone());
+                let content_type = content_type_for(&source_key);
+                s3.put_object_with_metadata(&source_key, &source, content_type, &metadata)
+                    .await?;
+                tracing::info!("backfilled hash metadata on {source_key}");
+                hash
+            }
+        };
+
+        let (target_w, target_h) = display.target_dims();
+        let cache_key = format!("{CACHE_PREFIX}{hash}-{}.png", display.orientation_str());
+
+        if s3.get_object_metadata(&cache_key).await?.is_some() {
+            tracing::info!("album cache hit for {source_key} -> {cache_key}");
+            return Ok(Some(cache_key));
+        }
+
+        let processed = tokio::task::spawn_blocking(move || {
+            let img = image::load_from_memory(&source)?.to_rgb8();
+            let cropped = center_crop_cover(&img, target_w, target_h);
+            let mut out = Vec::new();
+            image::DynamicImage::ImageRgb8(cropped)
+                .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)?;
+            Ok::<_, anyhow::Error>(out)
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("join error: {e}"))??;
+
+        let mut metadata = HashMap::new();
+        metadata.insert("source_hash".to_owned(), hash);
+        s3.put_object_with_metadata(&cache_key, &processed, Some("image/png"), &metadata)
+            .await?;
+        tracing::info!("album image cached {source_key} -> {cache_key}");
+
+        Ok(Some(cache_key))
+    }
+}
+
+fn content_hash(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    hex::encode(hasher.finalize())
+}
+
+fn content_type_for(key: &str) -> Option<&'static str> {
+    let lower = key.to_ascii_lowercase();
+    if lower.ends_with(".png") {
+        Some("image/png")
+    } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
+        Some("image/jpeg")
+    } else if lower.ends_with(".webp") {
+        Some("image/webp")
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn center_crop_cover_matches_target_dims() {
+        let src = image::RgbImage::from_pixel(800, 400, image::Rgb([10, 20, 30]));
+        let out = center_crop_cover(&src, 1200, 1600);
+        assert_eq!(out.dimensions(), (1200, 1600));
+
+        let out = center_crop_cover(&src, 1600, 1200);
+        assert_eq!(out.dimensions(), (1600, 1200));
+    }
+
+    #[test]
+    fn content_hash_is_stable() {
+        assert_eq!(content_hash(b"hello"), content_hash(b"hello"));
+        assert_ne!(content_hash(b"hello"), content_hash(b"world"));
+    }
+}
+
+fn center_crop_cover(img: &image::RgbImage, target_w: u32, target_h: u32) -> image::RgbImage {
+    let (w, h) = img.dimensions();
+    let scale = (target_w as f32 / w as f32).max(target_h as f32 / h as f32);
+    let scaled_w = (w as f32 * scale).ceil() as u32;
+    let scaled_h = (h as f32 * scale).ceil() as u32;
+    let scaled = image::imageops::resize(
+        img,
+        scaled_w.max(target_w),
+        scaled_h.max(target_h),
+        image::imageops::FilterType::Lanczos3,
+    );
+    let (sw, sh) = scaled.dimensions();
+    let x = (sw - target_w) / 2;
+    let y = (sh - target_h) / 2;
+    image::imageops::crop_imm(&scaled, x, y, target_w, target_h).to_image()
 }
 
 impl Actor for EInkDisplayActor {
@@ -219,54 +357,78 @@ impl Actor for EInkDisplayActor {
         match message {
             EInkDisplayMessage::TakeScreenshot { device_id } => {
                 let all = self.shared_actor_state.devices.eink_displays();
-                let targets: Vec<(String, String)> = match &device_id {
-                    Some(id) => match all.get(id) {
-                        Some(display) => vec![(id.clone(), display.name.clone())],
-                        None => {
+                let target_ids: Vec<String> = match &device_id {
+                    Some(id) => {
+                        if all.contains_key(id) {
+                            vec![id.clone()]
+                        } else {
                             tracing::warn!("render requested for unknown eink display '{id}'");
                             return Ok(());
                         }
-                    },
-                    None => all
-                        .iter()
-                        .map(|(id, display)| (id.clone(), display.name.clone()))
-                        .collect(),
+                    }
+                    None => all.keys().cloned().collect(),
                 };
-                if targets.is_empty() {
+                if target_ids.is_empty() {
                     tracing::debug!("no registered eink displays, skipping render");
                     return Ok(());
                 }
 
-                let settle = device_id
-                    .as_ref()
-                    .and_then(|id| all.get(id))
-                    .and_then(|display| display.settle)
-                    .and_then(|s| s.to_std().ok())
-                    .unwrap_or(Duration::from_secs(10));
+                for device_id in target_ids {
+                    let display = match self.shared_actor_state.devices.eink_display(&device_id) {
+                        Some(display) => display.clone(),
+                        None => continue,
+                    };
 
-                let image = match self.render_web(state, settle).await? {
-                    Some(image) => image,
-                    None => return Ok(()),
-                };
+                    let flag = crate::routes::epd::epd_flag_config(
+                        &self.shared_actor_state.feature_flag_client,
+                        &self.shared_actor_state.devices,
+                        &device_id,
+                    )
+                    .await;
 
-                for (device_id, name) in targets {
-                    let key = format!("eink-display/image-{device_id}.png");
-                    self.shared_actor_state
-                        .s3
-                        .put_object(&key, &image, None)
-                        .await?;
+                    let global = &self.shared_actor_state.settings.eink_display;
+                    let image_key = match flag.resolve_mode(&display) {
+                        EinkMode::Dashboard => {
+                            let settle = display
+                                .settle
+                                .and_then(|s| s.to_std().ok())
+                                .unwrap_or(Duration::from_secs(10));
+                            let view = flag.resolve_view(global, &display);
+                            let view_name =
+                                view.map(|v| v.name.clone()).unwrap_or_else(|| "default".to_owned());
+                            let query = view.and_then(|v| v.query.clone());
+                            let image =
+                                match self.render_web(state, settle, query.as_deref()).await? {
+                                    Some(image) => image,
+                                    None => continue,
+                                };
+                            let key = format!("eink-display/dashboard/{view_name}.png");
+                            self.shared_actor_state
+                                .s3
+                                .put_object(&key, &image, Some("image/png"))
+                                .await?;
+                            key
+                        }
+                        EinkMode::Album => {
+                            let album = flag.resolve_album(global, &display);
+                            match self.render_album(&display, &album).await? {
+                                Some(key) => key,
+                                None => continue,
+                            }
+                        }
+                    };
 
                     sqlx::query!(
                         "INSERT INTO eink_display (device_id, name, image_key) VALUES ($1, $2, $3) \
                          ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key",
                         device_id,
-                        name,
-                        key,
+                        display.name,
+                        image_key,
                     )
                     .execute(&self.shared_actor_state.db)
                     .await?;
 
-                    tracing::info!("eink display image uploaded for {device_id} -> {key}");
+                    tracing::info!("eink display image updated for {device_id} -> {image_key}");
                 }
             }
             EInkDisplayMessage::BatteryReport {

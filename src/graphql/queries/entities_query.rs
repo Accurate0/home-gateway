@@ -4,8 +4,8 @@ use crate::auth::context::AuthContext;
 use crate::auth::scope::required;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::objects::entity_object::{
-    DoorEntity, EinkDisplayEntity, EinkDisplayKind, Entity, EnvironmentEntity, LightEntity,
-    EntitySection, PresenceEntity, RoborockEntity, ValetudoEntity,
+    DoorEntity, EinkDisplayEntity, EinkDisplayKind, Entity, EntitySection, EnvironmentEntity,
+    LightEntity, PresenceEntity, RoborockEntity, ValetudoEntity,
 };
 
 #[derive(Default)]

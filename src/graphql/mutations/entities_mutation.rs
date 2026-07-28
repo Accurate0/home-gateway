@@ -32,7 +32,9 @@ impl EntitiesMutation {
         let registry = ctx.data::<DeviceRegistry>()?;
         let address = registry.address_or_self(&id).to_owned();
         let Some(settings) = registry.roborock(&address) else {
-            return Err(async_graphql::Error::new(format!("unknown roborock `{id}`")));
+            return Err(async_graphql::Error::new(format!(
+                "unknown roborock `{id}`"
+            )));
         };
 
         Ok(RoborockMutation {
@@ -51,7 +53,9 @@ impl EntitiesMutation {
         let registry = ctx.data::<DeviceRegistry>()?;
         let address = registry.address_or_self(&id).to_owned();
         let Some(settings) = registry.valetudo(&address) else {
-            return Err(async_graphql::Error::new(format!("unknown valetudo `{id}`")));
+            return Err(async_graphql::Error::new(format!(
+                "unknown valetudo `{id}`"
+            )));
         };
 
         Ok(ValetudoMutation {

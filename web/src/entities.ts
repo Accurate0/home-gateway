@@ -18,6 +18,17 @@ export type EntityKind =
   | "roborock"
   | "valetudo";
 
+export interface EinkDisplayConfig {
+  mode: string;
+  view?: string | null;
+  album?: string | null;
+  orientation: string;
+  refresh?: string | null;
+  settle?: string | null;
+  sleepStart?: string | null;
+  sleepEnd?: string | null;
+}
+
 export interface Entity {
   key: string;
   kind: EntityKind;
@@ -38,6 +49,7 @@ export interface Entity {
   lastSeen?: string | null;
   batteryVoltage?: number | null;
   batteryPercentage?: number | null;
+  config?: EinkDisplayConfig | null;
   status?: string | null;
   currentRoom?: string | null;
   fanSpeed?: string | null;

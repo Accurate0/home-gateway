@@ -85,7 +85,8 @@
     - kind: presence
       config:
         name: Living Room Motion
-        motion_entity: [ld2450_presence, ld2450_moving_target, ld2450_still_target]
+        motion_entity:
+          [ld2450_presence, ld2450_moving_target, ld2450_still_target]
     - kind: environment
       config:
         id: living-room-mtr-1
@@ -168,9 +169,12 @@
     - kind: eink_display_firmware
       config:
         name: Living Room Display
+        orientation: portrait
         refresh: 1h
         settle: 10s
-        s3_key: eink-display-screenshot.png
+        mode:
+          name: dashboard
+          view: home
         sleep:
           start: "00:00"
           end: "08:00"
@@ -183,7 +187,6 @@
     - kind: trmnl
       config:
         name: Fridge TRMNL
-
 
 - id: roborock
   room: dining-room
@@ -200,7 +203,6 @@
         start_service: vacuum.start
         stop_service: vacuum.stop
         dock_service: vacuum.return_to_base
-
 
 - id: valetudo
   room: spare-room

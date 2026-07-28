@@ -1,8 +1,9 @@
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
-    device_registry::{DeviceRegistry, SleepWindow},
+    device_registry::{DeviceRegistry, EinkDisplaySettings, SleepWindow},
     feature_flag::FeatureFlagClient,
+    settings::{Album, DashboardView, EinkGlobalSettings, EinkMode},
     types::{ApiState, AppError},
 };
 use ab_glyph::{FontRef, PxScale};
@@ -23,10 +24,13 @@ const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.tt
 const EPD_FLAG: &str = "home-gateway-epd";
 
 #[derive(Debug, Clone)]
-struct EpdFlagConfig {
+pub(crate) struct EpdFlagConfig {
     clear_screen: bool,
     force_sleep: bool,
     refresh_interval: u32,
+    mode: Option<EinkMode>,
+    dashboard_view: Option<String>,
+    album: Option<String>,
 }
 
 impl Default for EpdFlagConfig {
@@ -35,6 +39,9 @@ impl Default for EpdFlagConfig {
             clear_screen: false,
             force_sleep: false,
             refresh_interval: 15,
+            mode: None,
+            dashboard_view: None,
+            album: None,
         }
     }
 }
@@ -42,6 +49,13 @@ impl Default for EpdFlagConfig {
 impl From<open_feature::StructValue> for EpdFlagConfig {
     fn from(value: open_feature::StructValue) -> Self {
         let default = EpdFlagConfig::default();
+        let string_field = |key: &str| {
+            value
+                .fields
+                .get(key)
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_owned())
+        };
         Self {
             clear_screen: value
                 .fields
@@ -59,11 +73,63 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
                 .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
                 .map(|n| n.max(0) as u32)
                 .unwrap_or(default.refresh_interval),
+            mode: string_field("mode").and_then(|s| match s.as_str() {
+                "dashboard" => Some(EinkMode::Dashboard),
+                "album" => Some(EinkMode::Album),
+                other => {
+                    tracing::warn!("unknown epd mode `{other}` in flag, ignoring");
+                    None
+                }
+            }),
+            dashboard_view: string_field("dashboard_view"),
+            album: string_field("album"),
         }
     }
 }
 
-async fn epd_flag_config(
+impl EpdFlagConfig {
+    pub(crate) fn resolve_mode(&self, display: &EinkDisplaySettings) -> EinkMode {
+        self.mode.unwrap_or_else(|| display.mode.name())
+    }
+
+    pub(crate) fn resolve_view<'a>(
+        &self,
+        global: &'a EinkGlobalSettings,
+        display: &EinkDisplaySettings,
+    ) -> Option<&'a DashboardView> {
+        let name = self
+            .dashboard_view
+            .clone()
+            .or_else(|| display.mode.view().map(|v| v.to_owned()));
+        match name {
+            Some(name) => global.view(&name).or_else(|| {
+                tracing::warn!("dashboard view `{name}` not configured, ignoring");
+                None
+            }),
+            None => None,
+        }
+    }
+
+    pub(crate) fn resolve_album(
+        &self,
+        global: &EinkGlobalSettings,
+        display: &EinkDisplaySettings,
+    ) -> Album {
+        let name = self
+            .album
+            .clone()
+            .or_else(|| display.mode.album().map(|a| a.to_owned()));
+        match name {
+            Some(name) => global.album(&name).cloned().unwrap_or_else(|| {
+                tracing::warn!("album `{name}` not configured, using default prefix");
+                global.default_album()
+            }),
+            None => global.default_album(),
+        }
+    }
+}
+
+pub(crate) async fn epd_flag_config(
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     device_id: &str,
