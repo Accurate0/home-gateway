@@ -97,7 +97,7 @@ fn validate_schema(config_dir: &Path, mut value: serde_json::Value) {
     let validator = jsonschema::validator_for(&schema).expect("config.schema.json is not valid");
     let errors: Vec<String> = validator
         .iter_errors(&value)
-        .map(|e| format!("  at {}: {}", e.instance_path, e))
+        .map(|e| format!("  at {}: {}", e.instance_path(), e))
         .collect();
     if !errors.is_empty() {
         panic!("config failed schema validation:\n{}", errors.join("\n"));
