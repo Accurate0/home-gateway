@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7370e77356988de182ac67e933d08c02>>
+ * @generated SignedSource<<1ffb388f62ffbf2f58fea158f641b2e9>>
  * @lightSyntaxTransform
  */
 
@@ -191,7 +191,7 @@ v6 = {
     {
       "kind": "Literal",
       "name": "id",
-      "value": "outdoor"
+      "value": "env-outdoor"
     }
   ],
   "concreteType": "EnvironmentEntity",
@@ -214,7 +214,7 @@ v6 = {
       "storageKey": null
     }
   ],
-  "storageKey": "environment(id:\"outdoor\")"
+  "storageKey": "environment(id:\"env-outdoor\")"
 };
 return {
   "fragment": {
@@ -406,16 +406,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "28dd634b9441a33138288f2dbce3f43e",
+    "cacheID": "bdba8bcf3d78ac97e79ad752615cc4b7",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  woolworths {\n    products {\n      name\n      price\n    }\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  outdoor: environment(id: \"outdoor\") {\n    temperature\n    humidity\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  woolworths {\n    products {\n      name\n      price\n    }\n  }\n  solar {\n    current {\n      todayProductionKwh\n      currentProductionWh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      emoji\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "81167fc2a4961045d742b635d05bbd0a";
+(node as any).hash = "7cadd3947d4f0098e82f6126a1147d7d";
 
 export default node;

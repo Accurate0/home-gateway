@@ -28,7 +28,7 @@ const AppQuery = graphql`
       }
       ...SolarChart_solar @arguments(since: $since)
     }
-    outdoor: environment(id: "outdoor") {
+    outdoor: environment(id: "env-outdoor") {
       temperature
       humidity
     }
