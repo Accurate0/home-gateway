@@ -103,7 +103,7 @@ impl Mqtt {
         mqttoptions.set_max_packet_size(100_000, 100_000);
         mqttoptions.set_credentials(username, password);
 
-        let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 10);
+        let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 100);
 
         Ok((
             MqttClient {
@@ -129,19 +129,30 @@ impl Mqtt {
                             rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_)) => {
                                 backoff = RECONNECT_BACKOFF_MIN;
 
-                                for topic in STATIC_TOPICS {
-                                    tracing::info!("subscribing to topic: {topic}");
-                                    self.client
-                                        .subscribe(topic, rumqttc::QoS::ExactlyOnce)
-                                        .await?;
-                                }
+                                let topics: Vec<(&'static str, String)> = STATIC_TOPICS
+                                    .iter()
+                                    .map(|topic| ("topic", (*topic).to_owned()))
+                                    .chain(
+                                        devices
+                                            .esphome_all_topics()
+                                            .map(|topic| ("esphome state topic", topic.clone())),
+                                    )
+                                    .collect();
 
-                                for topic in devices.esphome_all_topics().cloned().collect::<Vec<_>>() {
-                                    tracing::info!("subscribing to esphome state topic: {topic}");
-                                    self.client
-                                        .subscribe(topic, rumqttc::QoS::ExactlyOnce)
-                                        .await?;
-                                }
+                                let client = self.client.clone();
+
+                                tokio::spawn(async move {
+                                    for (label, topic) in topics {
+                                        tracing::info!("subscribing to {label}: {topic}");
+
+                                        if let Err(e) = client
+                                            .subscribe(&topic, rumqttc::QoS::ExactlyOnce)
+                                            .await
+                                        {
+                                            tracing::error!("failed to subscribe to {topic}: {e}");
+                                        }
+                                    }
+                                });
                             },
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {
                                 let response = actor.send_message(FactoryMessage::Dispatch(Job {
