@@ -26,8 +26,10 @@ fn sun_times(loc: LocationSettings, date: chrono::NaiveDate) -> (DateTime<Utc>, 
         Coordinates::new(loc.latitude, loc.longitude).expect("invalid location coordinates");
     let day = SolarDay::new(coord, date);
     (
-        day.event_time(SolarEvent::Sunrise),
-        day.event_time(SolarEvent::Sunset),
+        day.event_time(SolarEvent::Sunrise)
+            .expect("no sunrise at configured location"),
+        day.event_time(SolarEvent::Sunset)
+            .expect("no sunset at configured location"),
     )
 }
 

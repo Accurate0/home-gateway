@@ -236,9 +236,7 @@ fn jwk_algorithm(jwk: &Jwk) -> Result<Algorithm, jsonwebtoken::errors::Error> {
             _ => Err(jsonwebtoken::errors::ErrorKind::InvalidAlgorithm.into()),
         },
         AlgorithmParameters::OctetKeyPair(_) => Ok(Algorithm::EdDSA),
-        AlgorithmParameters::OctetKey(_) => {
-            Err(jsonwebtoken::errors::ErrorKind::InvalidAlgorithm.into())
-        }
+        _ => Err(jsonwebtoken::errors::ErrorKind::InvalidAlgorithm.into()),
     }
 }
 
