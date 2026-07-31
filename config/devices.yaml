@@ -189,6 +189,25 @@
           end: "08:00"
     - type: battery
 
+- id: hallway-epd
+  room: hallway
+  transport: eink_display_firmware
+  address: "e83dc1fb1c98"
+  roles:
+    - type: eink_display_firmware
+      config:
+        name: Hallway Display
+        orientation: portrait
+        refresh: 1h
+        settle: 10s
+        mode:
+          name: dashboard
+          view: home
+        sleep:
+          start: "00:00"
+          end: "08:00"
+    - type: battery
+
 - id: fridge-trmnl
   room: kitchen
   transport: trmnl
