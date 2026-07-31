@@ -328,6 +328,25 @@ pub async fn config(
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
 
+    let registered = devices.eink_display(&request.device_id).is_some();
+
+    tracing::info!(
+        device_id = %request.device_id,
+        registered,
+        battery_voltage = ?request.battery_voltage,
+        is_charging = ?request.is_charging,
+        battery_chemistry = ?request.battery_chemistry,
+        battery_kind = ?request.battery_kind,
+        "epd config requested"
+    );
+
+    if !registered {
+        tracing::warn!(
+            device_id = %request.device_id,
+            "epd config request from unregistered display, add it to devices.yaml"
+        );
+    }
+
     if let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) {
         actor.send_message(EInkDisplayMessage::ConfigRequest {
             device_id: request.device_id.clone(),
@@ -341,6 +360,11 @@ pub async fn config(
                 battery_chemistry: request.battery_chemistry,
                 battery_kind: request.battery_kind.clone(),
             })?;
+        } else {
+            tracing::warn!(
+                device_id = %request.device_id,
+                "epd config request without a battery voltage, skipping battery report"
+            );
         }
     } else {
         tracing::warn!("eink display actor not found, dropping config request");

@@ -527,6 +527,31 @@ mod tests {
     }
 
     #[test]
+    fn tmp_hallway_epd_registers_battery() {
+        let secrets = r#"
+api_key: x
+database_url: x
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+"#;
+        let config = SettingsContainer::config_sources(Path::new("./config"))
+            .unwrap()
+            .add_source(File::from_str(secrets, FileFormat::Yaml))
+            .build()
+            .unwrap();
+
+        let (_settings, registry) = SettingsContainer::build(config).unwrap();
+
+        assert!(registry.eink_display("e83dc1fb1c98").is_some(), "eink");
+        assert!(registry.battery("e83dc1fb1c98").is_some(), "battery");
+        assert_eq!(registry.address_or_self("e83dc1fb1c98"), "e83dc1fb1c98");
+        assert_eq!(registry.address_or_self("hallway-epd"), "e83dc1fb1c98");
+    }
+
+    #[test]
     fn config_yaml_parses_and_resolves() {
         // secrets normally come from the environment; supply dummies for the test
         let secrets = r#"
