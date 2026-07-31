@@ -8,7 +8,15 @@ use esp_idf_hal::gpio::{Gpio1, Gpio6, Output, PinDriver};
 use esp_idf_hal::peripheral::Peripheral;
 
 const DIVIDER_RATIO: f32 = 2.0;
-const SAMPLES: u32 = 10;
+const SAMPLES: u32 = 8;
+const SETTLE_MS: u32 = 10;
+
+pub const CHEMISTRY: &str = "lipo";
+pub const KIND: &str = "eink_display_firmware";
+
+pub fn is_charging() -> bool {
+    unsafe { esp_idf_sys::usb_serial_jtag_is_connected() }
+}
 
 pub fn read_voltage(
     adc1: impl Peripheral<P = ADC1> + 'static,
@@ -17,7 +25,7 @@ pub fn read_voltage(
 ) -> Result<f32> {
     let mut enable: PinDriver<'_, Gpio6, Output> = PinDriver::output(enable_pin)?;
     enable.set_high()?;
-    FreeRtos::delay_ms(10);
+    FreeRtos::delay_ms(SETTLE_MS);
 
     let adc = AdcDriver::new(adc1)?;
     let config = AdcChannelConfig {

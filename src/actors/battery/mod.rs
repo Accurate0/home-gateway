@@ -1,4 +1,4 @@
-use crate::{event_bus::EventBusMessage, types::SharedActorState};
+use crate::{battery::BatteryChemistry, event_bus::EventBusMessage, types::SharedActorState};
 use ractor::Actor;
 use uuid::Uuid;
 
@@ -9,6 +9,7 @@ pub enum BatteryMessage {
         kind: String,
         battery_voltage: Option<f64>,
         battery_percent: Option<f64>,
+        battery_chemistry: Option<BatteryChemistry>,
     },
 }
 
@@ -25,6 +26,7 @@ impl BatteryActor {
         kind: String,
         battery_voltage: Option<f64>,
         battery_percent: Option<f64>,
+        battery_chemistry: Option<BatteryChemistry>,
     ) {
         let Some(actor) = ractor::registry::where_is(Self::NAME.to_owned()) else {
             tracing::error!("battery actor not found, dropping report for {device_id}");
@@ -37,6 +39,7 @@ impl BatteryActor {
             kind,
             battery_voltage,
             battery_percent,
+            battery_chemistry,
         }) {
             tracing::error!("failed to send battery report: {e}");
         }
@@ -68,6 +71,7 @@ impl Actor for BatteryActor {
             kind,
             battery_voltage,
             battery_percent,
+            battery_chemistry,
         } = message;
         let devices = &self.shared_actor_state.devices;
         let address = devices.address_or_self(&device_id);
@@ -91,13 +95,14 @@ impl Actor for BatteryActor {
         .await?;
 
         sqlx::query!(
-            "INSERT INTO device_battery_latest (device_id, name, kind, battery_voltage, battery_percent, updated_at) VALUES ($1, $2, $3, $4, $5, now()) \
-             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, kind = EXCLUDED.kind, battery_voltage = EXCLUDED.battery_voltage, battery_percent = EXCLUDED.battery_percent, updated_at = EXCLUDED.updated_at",
+            "INSERT INTO device_battery_latest (device_id, name, kind, battery_voltage, battery_percent, battery_chemistry, updated_at) VALUES ($1, $2, $3, $4, $5, $6, now()) \
+             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, kind = EXCLUDED.kind, battery_voltage = EXCLUDED.battery_voltage, battery_percent = EXCLUDED.battery_percent, battery_chemistry = COALESCE(EXCLUDED.battery_chemistry, device_battery_latest.battery_chemistry), updated_at = EXCLUDED.updated_at",
             device_id,
             name,
             kind,
             battery_voltage,
             battery_percent,
+            battery_chemistry as Option<BatteryChemistry>,
         )
         .execute(&self.shared_actor_state.db)
         .await?;

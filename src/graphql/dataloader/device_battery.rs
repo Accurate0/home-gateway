@@ -1,3 +1,4 @@
+use crate::battery::BatteryChemistry;
 use async_graphql::dataloader::Loader;
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
@@ -14,6 +15,7 @@ pub struct DeviceBatteryModel {
     pub kind: String,
     pub battery_percent: Option<f64>,
     pub battery_voltage: Option<f64>,
+    pub battery_chemistry: Option<BatteryChemistry>,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -25,7 +27,7 @@ impl Loader<String> for DeviceBatteryDataLoader {
         let rows = sqlx::query_as!(
             DeviceBatteryModel,
             r#"
-            SELECT device_id, kind, battery_percent, battery_voltage, updated_at
+            SELECT device_id, kind, battery_percent, battery_voltage, battery_chemistry as "battery_chemistry: BatteryChemistry", updated_at
             FROM device_battery_latest
             WHERE device_id = ANY($1)
             "#,

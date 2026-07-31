@@ -455,6 +455,7 @@ impl MqttIngest {
             "battery".to_owned(),
             None,
             Some(percent),
+            None,
         );
     }
 

@@ -133,8 +133,9 @@ pub struct DeviceBatteryUpdate {
 impl DeviceBatteryUpdate {
     async fn battery_percentage(&self) -> Option<f64> {
         self.battery_percent.or_else(|| {
-            self.battery_voltage
-                .map(crate::battery::voltage_to_percentage)
+            self.battery_voltage.and_then(|v| {
+                crate::battery::voltage_to_percentage(crate::battery::BatteryChemistry::Unknown, v)
+            })
         })
     }
 }

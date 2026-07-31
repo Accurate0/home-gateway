@@ -12,6 +12,7 @@ pub struct EinkDisplayDataLoader {
 pub struct EinkDisplayModel {
     pub device_id: String,
     pub battery_voltage: Option<f64>,
+    pub is_charging: Option<bool>,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -23,7 +24,7 @@ impl Loader<String> for EinkDisplayDataLoader {
         let rows = sqlx::query_as!(
             EinkDisplayModel,
             r#"
-            SELECT device_id, battery_voltage, updated_at
+            SELECT device_id, battery_voltage, is_charging, updated_at
             FROM eink_display
             WHERE device_id = ANY($1)
             "#,

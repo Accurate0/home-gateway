@@ -1,3 +1,4 @@
+use crate::battery::{BatteryChemistry, voltage_to_percentage};
 use crate::device_registry::EinkDisplaySettings;
 use crate::s3::OptionalObjectResponse;
 use crate::settings::{Album, EinkMode};
@@ -29,6 +30,9 @@ pub enum EInkDisplayMessage {
     BatteryReport {
         device_id: String,
         battery_voltage: f64,
+        is_charging: Option<bool>,
+        battery_chemistry: Option<BatteryChemistry>,
+        battery_kind: Option<String>,
     },
     ConfigRequest {
         device_id: String,
@@ -435,6 +439,9 @@ impl Actor for EInkDisplayActor {
             EInkDisplayMessage::BatteryReport {
                 device_id,
                 battery_voltage,
+                is_charging,
+                battery_chemistry,
+                battery_kind,
             } => {
                 let Some(display) = self.shared_actor_state.devices.eink_display(&device_id) else {
                     tracing::warn!(
@@ -443,14 +450,16 @@ impl Actor for EInkDisplayActor {
                     return Ok(());
                 };
                 let name = display.name.clone();
-                let kind = "eink_display_firmware";
+                let kind = battery_kind.unwrap_or_else(|| "eink_display_firmware".to_owned());
+                let chemistry = battery_chemistry.unwrap_or(BatteryChemistry::Unknown);
 
                 sqlx::query!(
-                    "INSERT INTO eink_display (device_id, name, battery_voltage, updated_at) VALUES ($1, $2, $3, now()) \
-                     ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, battery_voltage = EXCLUDED.battery_voltage, updated_at = EXCLUDED.updated_at",
+                    "INSERT INTO eink_display (device_id, name, battery_voltage, is_charging, updated_at) VALUES ($1, $2, $3, $4, now()) \
+                     ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, battery_voltage = EXCLUDED.battery_voltage, is_charging = EXCLUDED.is_charging, updated_at = EXCLUDED.updated_at",
                     device_id,
                     name,
                     battery_voltage,
+                    is_charging,
                 )
                 .execute(&self.shared_actor_state.db)
                 .await?;
@@ -458,9 +467,10 @@ impl Actor for EInkDisplayActor {
                 crate::actors::battery::BatteryActor::report(
                     device_id,
                     name,
-                    kind.to_owned(),
+                    kind,
                     Some(battery_voltage),
-                    None,
+                    voltage_to_percentage(chemistry, battery_voltage),
+                    Some(chemistry),
                 );
             }
             EInkDisplayMessage::ConfigRequest { device_id } => {

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT device_id, kind, battery_percent, battery_voltage, updated_at\n            FROM device_battery_latest\n            WHERE device_id = ANY($1)\n            ",
+  "query": "\n            SELECT device_id, kind, battery_percent, battery_voltage, battery_chemistry as \"battery_chemistry: BatteryChemistry\", updated_at\n            FROM device_battery_latest\n            WHERE device_id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
@@ -25,6 +25,11 @@
       },
       {
         "ordinal": 4,
+        "name": "battery_chemistry: BatteryChemistry",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -39,8 +44,9 @@
       false,
       true,
       true,
+      true,
       false
     ]
   },
-  "hash": "597b06f07449022a21ab3018e8f1cbf5f2f991fc2fdea1b28ff8ea20e960b7ac"
+  "hash": "1f63afc84f2e72f767cbed1baa69489683e9bdd411a1fde2857d018b05721b87"
 }

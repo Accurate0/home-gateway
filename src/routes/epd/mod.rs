@@ -1,6 +1,7 @@
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
+    battery::BatteryChemistry,
     device_registry::{DeviceRegistry, EinkDisplaySettings, SleepWindow},
     feature_flag::FeatureFlagClient,
     settings::{Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor},
@@ -305,6 +306,9 @@ pub(crate) async fn build_epd_config(
 pub struct EpdConfigRequest {
     pub device_id: String,
     pub battery_voltage: Option<f32>,
+    pub is_charging: Option<bool>,
+    pub battery_chemistry: Option<BatteryChemistry>,
+    pub battery_kind: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -333,6 +337,9 @@ pub async fn config(
             actor.send_message(EInkDisplayMessage::BatteryReport {
                 device_id: request.device_id.clone(),
                 battery_voltage: voltage as f64,
+                is_charging: request.is_charging,
+                battery_chemistry: request.battery_chemistry,
+                battery_kind: request.battery_kind.clone(),
             })?;
         }
     } else {

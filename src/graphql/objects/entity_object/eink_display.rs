@@ -134,7 +134,20 @@ impl EinkDisplayEntity {
             .load_one(self.address.clone())
             .await?
             .and_then(|d| d.battery_voltage)
-            .map(crate::battery::voltage_to_percentage))
+            .and_then(|v| {
+                crate::battery::voltage_to_percentage(crate::battery::BatteryChemistry::Lipo, v)
+            }))
+    }
+
+    async fn is_charging(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<bool>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.is_charging))
     }
 
     async fn last_seen(
@@ -191,6 +204,7 @@ impl EinkDisplayEntity {
                 battery_voltage: p.battery_voltage,
                 battery_percent: p.battery_percent,
                 time: p.time,
+                battery_chemistry: Some(crate::battery::BatteryChemistry::Lipo),
             })
             .collect_vec())
     }

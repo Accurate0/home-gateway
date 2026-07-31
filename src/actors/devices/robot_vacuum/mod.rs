@@ -246,6 +246,7 @@ impl RobotVacuumHandler {
             Self::NAME.to_owned(),
             None,
             Some(level as f64),
+            None,
         );
     }
 

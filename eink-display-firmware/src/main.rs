@@ -57,6 +57,9 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     };
 
+    let is_charging = battery::is_charging();
+    log::info!("Charging: {is_charging}");
+
     let mut epd_buffer = vec![0u8; EPD_IMAGE_FULL_BUFFER_SIZE];
 
     let mut display = Gdep133c02::new(
@@ -77,7 +80,7 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
     if wifi.is_connected()? {
         log::info!("Wifi connected, fetching config...");
-        let config = http_client::fetch_config(battery_voltage)?;
+        let config = http_client::fetch_config(battery_voltage, is_charging)?;
         log::info!("Config: {:?}", config);
 
         if let Some(refresh_time) = config.refresh_interval_mins {

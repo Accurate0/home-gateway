@@ -20,6 +20,9 @@ pub struct EpdConfig {
 struct ConfigRequest {
     device_id: String,
     battery_voltage: Option<f32>,
+    is_charging: bool,
+    battery_chemistry: &'static str,
+    battery_kind: &'static str,
 }
 
 fn device_id() -> String {
@@ -38,7 +41,7 @@ fn device_id() -> String {
     id
 }
 
-pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
+pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<EpdConfig> {
     #[cfg(not(debug_assertions))]
     let url = "https://home.anurag.sh/v1/epd/config";
     #[cfg(debug_assertions)]
@@ -57,6 +60,9 @@ pub fn fetch_config(battery_voltage: Option<f32>) -> Result<EpdConfig> {
     let payload = serde_json::to_vec(&ConfigRequest {
         device_id: device_id(),
         battery_voltage,
+        is_charging,
+        battery_chemistry: crate::battery::CHEMISTRY,
+        battery_kind: crate::battery::KIND,
     })?;
     let content_length = payload.len().to_string();
 

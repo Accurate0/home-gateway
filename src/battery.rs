@@ -1,60 +1,100 @@
-const LIPO_CURVE: [(f64, f64); 21] = [
-    (4.20, 100.0),
-    (4.15, 95.0),
-    (4.11, 90.0),
-    (4.08, 85.0),
-    (4.02, 80.0),
-    (3.98, 75.0),
-    (3.95, 70.0),
-    (3.91, 65.0),
-    (3.87, 60.0),
-    (3.85, 55.0),
-    (3.84, 50.0),
-    (3.82, 45.0),
-    (3.80, 40.0),
-    (3.79, 35.0),
-    (3.77, 30.0),
-    (3.75, 25.0),
-    (3.73, 20.0),
-    (3.71, 15.0),
-    (3.69, 10.0),
-    (3.61, 5.0),
-    (3.27, 0.0),
-];
+use serde::{Deserialize, Serialize};
 
-pub fn voltage_to_percentage(voltage: f64) -> f64 {
-    let (max_v, _) = LIPO_CURVE[0];
-    let (min_v, _) = LIPO_CURVE[LIPO_CURVE.len() - 1];
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, async_graphql::Enum, sqlx::Type,
+)]
+#[serde(rename_all = "snake_case")]
+#[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
+pub enum BatteryChemistry {
+    Unknown,
+    Lipo,
+    LiIon,
+    Alkaline,
+    Cr2032,
+}
 
-    if voltage >= max_v {
-        return 100.0;
-    }
-    if voltage <= min_v {
-        return 0.0;
-    }
-
-    for window in LIPO_CURVE.windows(2) {
-        let (high_v, high_p) = window[0];
-        let (low_v, low_p) = window[1];
-        if voltage <= high_v && voltage >= low_v {
-            let t = (voltage - low_v) / (high_v - low_v);
-            return low_p + t * (high_p - low_p);
+impl BatteryChemistry {
+    fn range(self) -> Option<(f64, f64)> {
+        match self {
+            Self::Unknown => None,
+            Self::Lipo => Some((3.3, 4.2)),
+            Self::LiIon => Some((3.0, 4.2)),
+            Self::Alkaline => Some((0.9, 1.5)),
+            Self::Cr2032 => Some((2.0, 3.0)),
         }
     }
+}
 
-    0.0
+pub fn voltage_to_percentage(chemistry: BatteryChemistry, voltage: f64) -> Option<f64> {
+    let (min_v, max_v) = chemistry.range()?;
+
+    Some(((voltage - min_v) * 100.0 / (max_v - min_v)).clamp(0.0, 100.0))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn approx(chemistry: BatteryChemistry, voltage: f64, expected: f64) {
+        let p = voltage_to_percentage(chemistry, voltage).unwrap();
+        assert!(
+            (p - expected).abs() < 1e-6,
+            "{chemistry:?} {voltage} -> {p}"
+        );
+    }
+
     #[test]
-    fn clamps_and_interpolates() {
-        assert_eq!(voltage_to_percentage(4.30), 100.0);
-        assert_eq!(voltage_to_percentage(3.20), 0.0);
-        assert_eq!(voltage_to_percentage(3.84), 50.0);
-        let mid = voltage_to_percentage(4.175);
-        assert!((mid - 97.5).abs() < 0.001, "got {mid}");
+    fn maps_endpoints_and_midpoint() {
+        approx(BatteryChemistry::Lipo, 3.3, 0.0);
+        approx(BatteryChemistry::Lipo, 4.2, 100.0);
+        approx(BatteryChemistry::Lipo, 3.75, 50.0);
+
+        approx(BatteryChemistry::LiIon, 3.6, 50.0);
+        approx(BatteryChemistry::Alkaline, 1.2, 50.0);
+        approx(BatteryChemistry::Cr2032, 2.5, 50.0);
+    }
+
+    #[test]
+    fn clamps_outside_range() {
+        assert_eq!(
+            voltage_to_percentage(BatteryChemistry::Lipo, 4.30),
+            Some(100.0)
+        );
+        assert_eq!(
+            voltage_to_percentage(BatteryChemistry::Lipo, 3.20),
+            Some(0.0)
+        );
+        assert_eq!(
+            voltage_to_percentage(BatteryChemistry::Cr2032, 0.0),
+            Some(0.0)
+        );
+        assert_eq!(
+            voltage_to_percentage(BatteryChemistry::Alkaline, 9.0),
+            Some(100.0)
+        );
+    }
+
+    #[test]
+    fn unknown_chemistry_has_no_percentage() {
+        assert_eq!(voltage_to_percentage(BatteryChemistry::Unknown, 3.75), None);
+    }
+
+    #[test]
+    fn interpolates_linearly() {
+        let p = voltage_to_percentage(BatteryChemistry::Lipo, 3.95).unwrap();
+        assert!((p - 72.222).abs() < 0.001, "got {p}");
+    }
+
+    #[test]
+    fn deserializes_firmware_chemistry_strings() {
+        let parsed: BatteryChemistry = serde_json::from_str("\"lipo\"").unwrap();
+        assert_eq!(parsed, BatteryChemistry::Lipo);
+
+        let parsed: BatteryChemistry = serde_json::from_str("\"li_ion\"").unwrap();
+        assert_eq!(parsed, BatteryChemistry::LiIon);
+
+        let parsed: BatteryChemistry = serde_json::from_str("\"unknown\"").unwrap();
+        assert_eq!(parsed, BatteryChemistry::Unknown);
     }
 }
