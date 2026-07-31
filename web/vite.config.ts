@@ -16,6 +16,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ["graphiql", "@graphiql/react", "monaco-editor", "monaco-graphql"],
+  },
   server: {
     proxy: {
       "/v1": {

@@ -4,6 +4,7 @@ import Dashboard from "./components/Dashboard";
 import WorkflowsPage from "./components/WorkflowsPage";
 import RunsPage from "./components/RunsPage";
 import HomeAssistantPage from "./components/HomeAssistantPage";
+import BatteryPage from "./components/BatteryPage";
 import { cn } from "@/lib/utils";
 
 const GraphiqlPage = lazy(() => import("./components/GraphiqlPage"));
@@ -12,6 +13,7 @@ const TABS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/workflows", label: "Workflows" },
   { to: "/runs", label: "Runs" },
+  { to: "/batteries", label: "Batteries" },
   { to: "/home-assistant", label: "Home Assistant" },
   { to: "/graphql", label: "GraphQL" },
 ];
@@ -54,6 +56,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/workflows" element={<WorkflowsPage />} />
           <Route path="/runs" element={<RunsPage />} />
+          <Route path="/batteries" element={<BatteryPage />} />
           <Route path="/home-assistant" element={<HomeAssistantPage />} />
           <Route path="/graphql" element={<GraphiqlPage />} />
         </Routes>
