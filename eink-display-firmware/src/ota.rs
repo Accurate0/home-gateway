@@ -41,7 +41,11 @@ impl AttemptTracker {
             return true;
         }
 
-        let count = self.nvs.get_u8(ATTEMPT_COUNT_KEY).unwrap_or(None).unwrap_or(0);
+        let count = self
+            .nvs
+            .get_u8(ATTEMPT_COUNT_KEY)
+            .unwrap_or(None)
+            .unwrap_or(0);
 
         if count >= MAX_ATTEMPTS {
             log::error!("giving up on firmware {version} after {count} failed attempts");
@@ -55,7 +59,11 @@ impl AttemptTracker {
         let mut buffer = [0u8; VERSION_BUFFER_SIZE];
 
         let count = if self.attempted_version(&mut buffer).as_deref() == Some(version) {
-            self.nvs.get_u8(ATTEMPT_COUNT_KEY).unwrap_or(None).unwrap_or(0) + 1
+            self.nvs
+                .get_u8(ATTEMPT_COUNT_KEY)
+                .unwrap_or(None)
+                .unwrap_or(0)
+                + 1
         } else {
             1
         };
