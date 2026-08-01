@@ -13,6 +13,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -84,3 +87,83 @@ jobs:
             eink-display-firmware/firmware_${{ steps.version.outputs.version }}.bin \
             s3://home-gateway-bucket/eink-display/firmware/firmware_${{ steps.version.outputs.version }}.bin \
             --content-type application/octet-stream
+
+  propose-rollout:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "ci-image-updater"
+          git config --global user.email "ci-image-updater@git.anurag.sh"
+
+      - name: Clone Config Repo
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
+        run: |
+          git clone https://x-access-token:${FORGEJO_TOKEN}@git.anurag.sh/anurag/home-gateway.git config-repo
+
+      - name: Update device firmware versions
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cd config-repo
+          pip install --quiet ruamel.yaml
+          python3 scripts/set-eink-firmware-version.py config/devices.yaml
+          pnpx prettier@3 --write config/devices.yaml
+
+      - name: Commit and Raise PR
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
+        run: |
+          cd config-repo
+          PR_BRANCH="ci/update-eink-firmware-${VERSION}"
+          TITLE_AND_COMMIT="chore(deploy): update eink-display-firmware to ${VERSION} [skip ci]"
+
+          git checkout -b ${PR_BRANCH}
+          git add config/devices.yaml
+          git commit -m "${TITLE_AND_COMMIT}" || { echo "No changes to commit"; exit 0; }
+          git push -f origin ${PR_BRANCH}
+
+          BODY=$(cat <<PREOF
+          ## Firmware Rollout
+
+          | Field | Value |
+          |-------|-------|
+          | **Version** | \`${VERSION}\` |
+          | **Artifact** | \`eink-display/firmware/firmware_${VERSION}.bin\` |
+
+          Merging this points every eink display at the new firmware. Each device picks it up on
+          its next wake cycle, flashes to the inactive OTA slot, and reboots.
+
+          **Triggered by:** [${{ github.repository }}@${{ github.ref_name }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          PREOF
+          )
+          PAYLOAD=$(jq -n \
+            --arg title "${TITLE_AND_COMMIT}" \
+            --arg head "${PR_BRANCH}" \
+            --arg base "main" \
+            --arg body "${BODY}" \
+            '{title: $title, head: $head, base: $base, body: $body}')
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: token ${FORGEJO_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "${PAYLOAD}" \
+            https://git.anurag.sh/api/v1/repos/anurag/home-gateway/pulls)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "PR created successfully"
+            echo "$RESPONSE_BODY" | jq -r '.html_url'
+          elif [ "$HTTP_CODE" -eq 409 ]; then
+            echo "PR already exists for branch ${PR_BRANCH}"
+          else
+            echo "Failed to create PR (HTTP ${HTTP_CODE}):"
+            echo "$RESPONSE_BODY"
+            exit 1
+          fi

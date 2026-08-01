@@ -44,7 +44,7 @@
   address: "0x00158d008b8798a7"
   roles:
     - type: environment
-      config: { id: living-room, name: Living Room }
+      config: {id: living-room, name: Living Room}
       capabilities: [temperature, humidity, pressure]
     - type: battery
 
@@ -54,7 +54,7 @@
   address: "0x00158d008b879b53"
   roles:
     - type: environment
-      config: { id: bathroom, name: Bathroom }
+      config: {id: bathroom, name: Bathroom}
       capabilities: [temperature, humidity, pressure]
     - type: battery
 
@@ -64,7 +64,7 @@
   address: "0xb0c7defffef6a9be"
   roles:
     - type: environment
-      config: { id: bedroom, name: Bedroom }
+      config: {id: bedroom, name: Bedroom}
       capabilities: [temperature, humidity, pressure]
     - type: battery
 
@@ -74,7 +74,7 @@
   address: "0x54ef441000ee2ca3"
   roles:
     - type: environment
-      config: { id: outdoor, name: Outdoor }
+      config: {id: outdoor, name: Outdoor}
       capabilities: [temperature, humidity, pressure]
     - type: battery
 
@@ -91,8 +91,7 @@
     - type: presence
       config:
         name: Living Room Motion
-        motion_entity:
-          [ld2450_presence, ld2450_moving_target, ld2450_still_target]
+        motion_entity: [ld2450_presence, ld2450_moving_target, ld2450_still_target]
     - type: environment
       config:
         id: living-room-mtr-1
@@ -109,7 +108,7 @@
   address: "0x54ef441000dbc81c"
   roles:
     - type: presence
-      config: { name: Closet Presence Sensor }
+      config: {name: Closet Presence Sensor}
 
 - id: hallway-plant
   room: hallway
@@ -127,7 +126,7 @@
           uv_index: ltr390_uv_index
       capabilities: [temperature, humidity, lux, uv_index]
     - type: plant
-      config: { id: hallway-plant, entities: [soil_moisture] }
+      config: {id: hallway-plant, entities: [soil_moisture]}
 
 - id: closet-light
   room: bedroom
@@ -135,7 +134,7 @@
   address: "0x54ef441000d4f05c"
   roles:
     - type: light
-      config: { name: Closet Light }
+      config: {name: Closet Light}
       capabilities: [brightness, colour_temp]
 
 - id: table-lamp-bedroom
@@ -144,7 +143,7 @@
   address: "0x001788010381ef5d"
   roles:
     - type: light
-      config: { name: Bedroom Table Lamp }
+      config: {name: Bedroom Table Lamp}
       capabilities: [brightness, colour_temp, rgb]
 
 - id: floor-lamp-living-room
@@ -153,7 +152,7 @@
   address: "0x94a081fffe2eedc0"
   roles:
     - type: light
-      config: { name: Living Room Floor Lamp }
+      config: {name: Living Room Floor Lamp}
       capabilities: [brightness, colour_temp]
 
 - id: control-switch
@@ -178,7 +177,7 @@
     - type: eink_display_firmware
       config:
         name: Living Room Display
-        firmware_version: v0.1.0-a02b6a0
+        firmware_version: v0.2.0-abc1234
         orientation: portrait
         refresh: 1h
         settle: 10s
@@ -198,7 +197,7 @@
     - type: eink_display_firmware
       config:
         name: Hallway Display
-        firmware_version: v0.1.0-a02b6a0
+        firmware_version: v0.2.0-abc1234
         orientation: portrait
         refresh: 1h
         settle: 10s
