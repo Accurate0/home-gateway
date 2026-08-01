@@ -88,7 +88,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
     let (refresh, refresh_time_in_mins) = if wifi.is_connected()? {
         log::info!("wifi connected, fetching config...");
         let config = http_client::fetch_config(battery_voltage, is_charging)?;
-        log::info!("config: {:?}", config);
 
         if let Err(e) = ota::mark_valid() {
             log::warn!("failed to mark running slot valid: {e}");
