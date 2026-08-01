@@ -834,6 +834,7 @@ devices:
       - type: eink_display_firmware
         config:
           name: Test Display
+          firmware_version: v0.1.0
           orientation: landscape
           mode:
             name: album
@@ -887,6 +888,7 @@ devices:
       - type: eink_display_firmware
         config:
           name: Test Display
+          firmware_version: v0.1.0
 "#,
         )
         .unwrap();
