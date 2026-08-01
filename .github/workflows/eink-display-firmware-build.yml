@@ -22,6 +22,30 @@ jobs:
           buildtargets: esp32s3
           ldproxy: true
 
+      - name: Cache esp-idf
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            eink-display-firmware/.embuild/espressif/dist
+            eink-display-firmware/.embuild/espressif/esp-idf
+            eink-display-firmware/.embuild/espressif/python_env
+          key: ${{ runner.os }}-espidf-${{ hashFiles('eink-display-firmware/sdkconfig.defaults', 'eink-display-firmware/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-espidf-
+
+      - name: Cache cargo build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            eink-display-firmware/target/release
+            eink-display-firmware/target/xtensa-esp32s3-espidf
+          key: ${{ runner.os }}-firmware-cargo-${{ hashFiles('eink-display-firmware/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-firmware-cargo-${{ hashFiles('eink-display-firmware/Cargo.lock') }}-
+            ${{ runner.os }}-firmware-cargo-
+
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
 
