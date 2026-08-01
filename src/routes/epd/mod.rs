@@ -20,6 +20,7 @@ use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
 
 const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
+const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
 
 const EPD_FLAG: &str = "home-gateway-epd";
@@ -34,6 +35,7 @@ pub(crate) struct EpdFlagConfig {
     mode: Option<EinkMode>,
     dashboard_view: Option<String>,
     album: Option<String>,
+    firmware_version: Option<String>,
 }
 
 impl Default for EpdFlagConfig {
@@ -45,6 +47,7 @@ impl Default for EpdFlagConfig {
             mode: None,
             dashboard_view: None,
             album: None,
+            firmware_version: None,
         }
     }
 }
@@ -86,6 +89,7 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
             }),
             dashboard_view: string_field("dashboard_view"),
             album: string_field("album"),
+            firmware_version: string_field("firmware_version"),
         }
     }
 }
@@ -272,17 +276,22 @@ pub struct EpdConfig {
     pub refresh_interval_mins: Option<u32>,
     pub image_url: Option<String>,
     pub clear_screen: Option<bool>,
+    pub firmware_url: Option<String>,
+    pub firmware_version: Option<String>,
 }
 
 pub(crate) async fn build_epd_config(
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     device_id: &str,
+    running_firmware_version: Option<&str>,
 ) -> EpdConfig {
     #[cfg(debug_assertions)]
-    let base = "http://192.168.0.149:8000/v1/epd/latest";
+    let host = "http://192.168.0.149:8000/v1/epd";
     #[cfg(not(debug_assertions))]
-    let base = "https://home.anurag.sh/v1/epd/latest";
+    let host = "https://home.anurag.sh/v1/epd";
+
+    let base = format!("{host}/latest");
 
     let flag = epd_flag_config(feature_flag_client, devices, device_id).await;
 
@@ -292,13 +301,22 @@ pub(crate) async fn build_epd_config(
             refresh_interval_mins: Some(sleep.minutes_until_end(now)),
             image_url: Some(format!("{base}?device_id={device_id}")),
             clear_screen: Some(false),
+            firmware_url: None,
+            firmware_version: None,
         };
     }
+
+    let firmware_update = flag
+        .firmware_version
+        .as_deref()
+        .filter(|target| Some(*target) != running_firmware_version);
 
     EpdConfig {
         refresh_interval_mins: Some(flag.refresh_interval),
         image_url: Some(format!("{base}?device_id={device_id}")),
         clear_screen: Some(flag.clear_screen),
+        firmware_url: firmware_update.map(|_| format!("{host}/firmware?device_id={device_id}")),
+        firmware_version: firmware_update.map(|v| v.to_owned()),
     }
 }
 
@@ -309,6 +327,7 @@ pub struct EpdConfigRequest {
     pub is_charging: Option<bool>,
     pub battery_chemistry: Option<BatteryChemistry>,
     pub battery_kind: Option<String>,
+    pub firmware_version: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -337,6 +356,7 @@ pub async fn config(
         is_charging = ?request.is_charging,
         battery_chemistry = ?request.battery_chemistry,
         battery_kind = ?request.battery_kind,
+        firmware_version = ?request.firmware_version,
         "epd config requested"
     );
 
@@ -371,8 +391,49 @@ pub async fn config(
     }
 
     Ok(Json(
-        build_epd_config(&feature_flag_client, &devices, &request.device_id).await,
+        build_epd_config(
+            &feature_flag_client,
+            &devices,
+            &request.device_id,
+            request.firmware_version.as_deref(),
+        )
+        .await,
     ))
+}
+
+pub async fn firmware(
+    State(ApiState {
+        s3,
+        feature_flag_client,
+        devices,
+        ..
+    }): State<ApiState>,
+    Auth(auth): Auth,
+    Query(params): Query<LatestParams>,
+) -> Result<Vec<u8>, AppError> {
+    auth.require(&required::REST_EPD_READ)
+        .map_err(AppError::StatusCode)?;
+
+    let flag = epd_flag_config(&feature_flag_client, &devices, &params.device_id).await;
+
+    let Some(version) = flag.firmware_version else {
+        tracing::warn!(
+            device_id = %params.device_id,
+            "firmware requested but no firmware_version set in flag"
+        );
+        return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
+    };
+
+    let key = format!("{FIRMWARE_KEY_PREFIX}firmware_v{version}.bin");
+
+    tracing::info!(
+        device_id = %params.device_id,
+        version = %version,
+        key = %key,
+        "serving firmware"
+    );
+
+    Ok(s3.get_object(&key).await?)
 }
 
 pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {

@@ -8,12 +8,15 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
+pub const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u64>,
     pub image_url: Option<String>,
     pub clear_screen: Option<bool>,
+    pub firmware_url: Option<String>,
+    pub firmware_version: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -23,6 +26,23 @@ struct ConfigRequest {
     is_charging: bool,
     battery_chemistry: &'static str,
     battery_kind: &'static str,
+    firmware_version: &'static str,
+}
+
+pub fn client() -> Result<embedded_svc::http::client::Client<EspHttpConnection>> {
+    let config = Configuration {
+        use_global_ca_store: true,
+        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+        ..Default::default()
+    };
+
+    let connection = EspHttpConnection::new(&config)?;
+
+    Ok(embedded_svc::http::client::Client::wrap(connection))
+}
+
+pub fn api_key() -> &'static str {
+    API_KEY
 }
 
 fn device_id() -> String {
@@ -46,16 +66,9 @@ pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<E
     let url = "https://home.anurag.sh/v1/epd/config";
     #[cfg(debug_assertions)]
     let url = "http://192.168.0.149:8000/v1/epd/config";
-    info!("Fetching config from {}...", url);
+    info!("fetching config from {}...", url);
 
-    let config = Configuration {
-        use_global_ca_store: true,
-        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-        ..Default::default()
-    };
-
-    let connection = EspHttpConnection::new(&config)?;
-    let mut client = embedded_svc::http::client::Client::wrap(connection);
+    let mut client = client()?;
 
     let payload = serde_json::to_vec(&ConfigRequest {
         device_id: device_id(),
@@ -63,6 +76,7 @@ pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<E
         is_charging,
         battery_chemistry: crate::battery::CHEMISTRY,
         battery_kind: crate::battery::KIND,
+        firmware_version: FIRMWARE_VERSION,
     })?;
     let content_length = payload.len().to_string();
 
@@ -77,7 +91,7 @@ pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<E
     let response = request.submit()?;
 
     let status = response.status();
-    info!("Response status: {}", status);
+    info!("response status: {}", status);
 
     let mut body = Vec::new();
     let mut buffer = [0u8; 1024];
@@ -103,29 +117,22 @@ pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<E
     }
 
     let config: EpdConfig = serde_json::from_slice(&body)?;
-    info!("Fetched config: {:?}", config);
+    info!("fetched config: {:?}", config);
 
     Ok(config)
 }
 
 pub fn fetch_image(url: &str, buffer: &mut [u8]) -> Result<()> {
-    info!("Fetching image from {}...", url);
+    info!("fetching image from {}...", url);
 
-    let config = Configuration {
-        use_global_ca_store: true,
-        crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
-        ..Default::default()
-    };
-
-    let connection = EspHttpConnection::new(&config)?;
-    let mut client = embedded_svc::http::client::Client::wrap(connection);
+    let mut client = client()?;
 
     let headers = vec![("X-Api-Key", API_KEY)];
     let request = client.request(Method::Get, url, &headers)?;
     let response = request.submit()?;
 
     let status = response.status();
-    info!("Response status: {}", status);
+    info!("response status: {}", status);
 
     if status != 200 {
         let mut body = Vec::new();
@@ -161,11 +168,11 @@ pub fn fetch_image(url: &str, buffer: &mut [u8]) -> Result<()> {
         total_bytes += n;
     }
 
-    info!("Fetched {} bytes of image data", total_bytes);
+    info!("fetched {} bytes of image data", total_bytes);
 
     if total_bytes < buffer.len() {
         log::warn!(
-            "Image data size ({}) is smaller than buffer size ({})",
+            "image data size ({}) is smaller than buffer size ({})",
             total_bytes,
             buffer.len()
         );

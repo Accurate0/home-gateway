@@ -1,0 +1,59 @@
+name: Eink Display Firmware Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "eink-display-firmware/**"
+      - ".github/workflows/eink-display-firmware-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7
+        with:
+          buildtargets: esp32s3
+          ldproxy: true
+
+      - name: Install cargo-espflash
+        run: cargo install cargo-espflash --locked
+
+      - name: Resolve version
+        id: version
+        run: |
+          VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        working-directory: eink-display-firmware
+
+      - name: Build and save flashable image
+        run: |
+          cargo espflash save-image \
+            --release \
+            --chip esp32s3 \
+            firmware_v${{ steps.version.outputs.version }}.bin
+        working-directory: eink-display-firmware
+        env:
+          HOME_GATEWAY_API_KEY: ${{ secrets.HOME_GATEWAY_API_KEY }}
+          WIFI_SSID: ${{ secrets.WIFI_SSID }}
+          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+
+      - name: Publish firmware
+        run: |
+          aws s3 cp \
+            eink-display-firmware/firmware_v${{ steps.version.outputs.version }}.bin \
+            s3://home-gateway-bucket/eink-display/firmware/firmware_v${{ steps.version.outputs.version }}.bin \
+            --content-type application/octet-stream

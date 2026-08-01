@@ -37,6 +37,9 @@ const EPD_CCSET: u8 = 0xE0;
 const EPD_PWS: u8 = 0xE3;
 const EPD_CMD66: u8 = 0xF0;
 
+const BUSY_POLL_MS: u32 = 10;
+const BUSY_TIMEOUT_MS: u32 = 60_000;
+
 pub const EPD_IMAGE_FULL_BUFFER_SIZE: usize = 960000;
 pub const EPD_WIDTH: u32 = 1200;
 pub const EPD_HEIGHT: u32 = 1600;
@@ -107,7 +110,7 @@ impl<'a> Gdep133c02<'a> {
 
         let rst = PinDriver::output(rst)?;
         let mut busy = PinDriver::input(busy)?;
-        busy.set_pull(Pull::Floating)?;
+        busy.set_pull(Pull::Down)?;
 
         Ok(Self {
             spi: spi_driver,
@@ -144,10 +147,19 @@ impl<'a> Gdep133c02<'a> {
         Ok(())
     }
 
-    fn check_busy_high(&self) {
+    fn check_busy_high(&self) -> Result<()> {
+        let mut waited_ms = 0;
+
         while !self.busy.is_high() {
-            self.delay_ms(10);
+            if waited_ms >= BUSY_TIMEOUT_MS {
+                anyhow::bail!("timed out after {BUSY_TIMEOUT_MS}ms waiting for busy; panel may not be connected");
+            }
+
+            self.delay_ms(BUSY_POLL_MS);
+            waited_ms += BUSY_POLL_MS;
         }
+
+        Ok(())
     }
 
     fn write_command(&mut self, cmd: u8) -> Result<()> {
@@ -198,7 +210,7 @@ impl<'a> Gdep133c02<'a> {
 
     pub fn init_epd(&mut self) -> Result<()> {
         self.hardware_reset()?;
-        self.check_busy_high();
+        self.check_busy_high()?;
 
         self.set_cs(0, false)?;
         self.write_epd(EPD_AN_TM, &AN_TM_V)?;
@@ -279,16 +291,16 @@ impl<'a> Gdep133c02<'a> {
             self.set_cs(i, true)?;
 
             log::info!(
-                "Driver IC [{}] = {:02X} {:02X} {:02X}",
+                "driver IC [{}] = {:02X} {:02X} {:02X}",
                 i,
                 data_buf[0],
                 data_buf[1],
                 data_buf[2]
             );
             if (data_buf[0] & 0x01) == 0x01 {
-                log::info!("Driver IC [{}] is ready.", i);
+                log::info!("driver ic [{}] is ready", i);
             } else {
-                log::warn!("Driver IC [{}] did not reply.", i);
+                log::warn!("driver ic [{}] did not reply", i);
                 status = false;
             }
         }
@@ -296,26 +308,26 @@ impl<'a> Gdep133c02<'a> {
     }
 
     pub fn display(&mut self) -> Result<()> {
-        log::info!("Write PON");
+        log::info!("write PON");
         self.set_cs_all(false)?;
         self.write_command(EPD_PON)?;
-        self.check_busy_high();
+        self.check_busy_high()?;
         self.set_cs_all(true)?;
 
-        log::info!("Write DRF");
+        log::info!("write DRF");
         self.set_cs_all(false)?;
         self.delay_ms(30);
         self.write_epd(EPD_DRF, &DRF_V)?;
-        self.check_busy_high();
+        self.check_busy_high()?;
         self.set_cs_all(true)?;
 
-        log::info!("Write POF");
+        log::info!("write POF");
         self.set_cs_all(false)?;
         self.write_epd(EPD_POF, &POF_V)?;
-        self.check_busy_high();
+        self.check_busy_high()?;
         self.set_cs_all(true)?;
 
-        log::info!("Display Done!!");
+        log::info!("display done");
         Ok(())
     }
 
@@ -340,7 +352,7 @@ impl<'a> Gdep133c02<'a> {
 
         self.set_cs_all(true)?;
         self.display()?;
-        log::info!("Display color complete.");
+        log::info!("display color complete");
         Ok(())
     }
 
@@ -369,13 +381,13 @@ impl<'a> Gdep133c02<'a> {
 
         self.set_cs_all(true)?;
         self.display()?;
-        log::info!("Display color bar complete.");
+        log::info!("display color bar complete");
         Ok(())
     }
 
     pub fn display_buffer(&mut self, image: &[u8]) -> Result<()> {
         if image.len() != 960000 {
-            log::error!("Image size mismatch: expected 960000, got {}", image.len());
+            log::error!("image size mismatch: expected 960000, got {}", image.len());
             return Ok(());
         }
 
@@ -415,7 +427,7 @@ impl<'a> Gdep133c02<'a> {
 
         self.display()?;
         self.delay_ms(10);
-        log::info!("Rendering completed");
+        log::info!("rendering completed");
         Ok(())
     }
 

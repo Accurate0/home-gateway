@@ -177,7 +177,7 @@ impl EinkDisplayEntity {
     ) -> async_graphql::Result<EpdConfig> {
         let registry = ctx.data::<DeviceRegistry>()?;
         let feature_flag_client = ctx.data::<FeatureFlagClient>()?;
-        Ok(build_epd_config(feature_flag_client, registry, &self.address).await)
+        Ok(build_epd_config(feature_flag_client, registry, &self.address, None).await)
     }
 
     async fn battery(

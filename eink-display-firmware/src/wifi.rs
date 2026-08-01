@@ -26,24 +26,21 @@ pub fn try_connect(
         ..Default::default()
     }))?;
 
-    info!("Starting wifi...");
+    info!("starting wifi...");
     wifi.start()?;
 
-    info!("Connecting wifi...");
+    info!("connecting wifi...");
     wifi.wifi_mut().connect()?;
     wifi.wifi_wait_while(
         || wifi.wifi().is_connected().map(|connected| !connected),
         Some(CONNECT_TIMEOUT),
     )?;
 
-    info!("Waiting for DHCP lease...");
-    wifi.ip_wait_while(
-        || wifi.is_up().map(|up| !up),
-        Some(CONNECT_TIMEOUT),
-    )?;
+    info!("waiting for DHCP lease...");
+    wifi.ip_wait_while(|| wifi.is_up().map(|up| !up), Some(CONNECT_TIMEOUT))?;
 
     let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
-    info!("Wifi DHCP info: {:?}", ip_info);
+    info!("wifi DHCP info: {:?}", ip_info);
 
     Ok(wifi)
 }

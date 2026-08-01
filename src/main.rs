@@ -288,6 +288,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/solar", post(solar))
         .route("/epd/config", post(epd::config))
         .route("/epd/latest", get(epd::latest))
+        .route("/epd/firmware", get(epd::firmware))
         .route("/epd/take-screenshot", post(epd::take_screenshot))
         .route("/push/notify", post(push_notify))
         .route("/ingest/home/alarm", post(alarm))
