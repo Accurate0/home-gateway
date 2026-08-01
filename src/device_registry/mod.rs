@@ -179,6 +179,7 @@ impl RawEinkMode {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawEinkDisplayBlock {
     name: String,
+    firmware_version: String,
     #[serde(default)]
     mode: Option<RawEinkMode>,
     #[serde(default)]
@@ -242,6 +243,7 @@ impl SleepWindow {
 #[derive(Debug, Clone)]
 pub struct EinkDisplaySettings {
     pub name: String,
+    pub firmware_version: String,
     pub mode: EinkModeConfig,
     pub orientation: Orientation,
     pub refresh: Option<TimeDelta>,
@@ -557,6 +559,7 @@ impl DeviceRegistryInner {
                     address.to_owned(),
                     EinkDisplaySettings {
                         name: display.name,
+                        firmware_version: display.firmware_version,
                         mode: display.mode.map(|m| m.resolve()).unwrap_or_default(),
                         orientation: display.orientation.unwrap_or(Orientation::Portrait),
                         refresh: display.refresh,

@@ -178,6 +178,7 @@
     - type: eink_display_firmware
       config:
         name: Living Room Display
+        firmware_version: v0.1.0
         orientation: portrait
         refresh: 1h
         settle: 10s
@@ -197,6 +198,7 @@
     - type: eink_display_firmware
       config:
         name: Hallway Display
+        firmware_version: v0.1.0
         orientation: portrait
         refresh: 1h
         settle: 10s

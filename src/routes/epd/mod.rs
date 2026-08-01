@@ -306,18 +306,32 @@ pub(crate) async fn build_epd_config(
         };
     }
 
-    let firmware_update = flag
-        .firmware_version
-        .as_deref()
-        .filter(|target| Some(*target) != running_firmware_version);
+    let firmware_update = target_firmware_version(&flag, devices, device_id)
+        .filter(|target| Some(target.as_str()) != running_firmware_version);
 
     EpdConfig {
         refresh_interval_mins: Some(flag.refresh_interval),
         image_url: Some(format!("{base}?device_id={device_id}")),
         clear_screen: Some(flag.clear_screen),
-        firmware_url: firmware_update.map(|_| format!("{host}/firmware?device_id={device_id}")),
-        firmware_version: firmware_update.map(|v| v.to_owned()),
+        firmware_url: firmware_update
+            .as_ref()
+            .map(|_| format!("{host}/firmware?device_id={device_id}")),
+        firmware_version: firmware_update,
     }
+}
+
+fn target_firmware_version(
+    flag: &EpdFlagConfig,
+    devices: &DeviceRegistry,
+    device_id: &str,
+) -> Option<String> {
+    if let Some(override_version) = &flag.firmware_version {
+        return Some(override_version.clone());
+    }
+
+    devices
+        .eink_display(device_id)
+        .map(|display| display.firmware_version.clone())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -416,15 +430,15 @@ pub async fn firmware(
 
     let flag = epd_flag_config(&feature_flag_client, &devices, &params.device_id).await;
 
-    let Some(version) = flag.firmware_version else {
+    let Some(version) = target_firmware_version(&flag, &devices, &params.device_id) else {
         tracing::warn!(
             device_id = %params.device_id,
-            "firmware requested but no firmware_version set in flag"
+            "firmware requested by an unregistered display"
         );
         return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
     };
 
-    let key = format!("{FIRMWARE_KEY_PREFIX}firmware_v{version}.bin");
+    let key = format!("{FIRMWARE_KEY_PREFIX}firmware_{version}.bin");
 
     tracing::info!(
         device_id = %params.device_id,

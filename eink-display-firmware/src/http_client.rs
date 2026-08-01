@@ -8,7 +8,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
-pub const FIRMWARE_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const FIRMWARE_VERSION: &str = env!("FIRMWARE_VERSION");
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
