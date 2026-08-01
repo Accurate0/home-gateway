@@ -93,9 +93,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install pnpm
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-
       - name: Configure Git
         run: |
           git config --global user.name "ci-image-updater"
@@ -106,6 +103,11 @@ jobs:
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
         run: |
           git clone https://x-access-token:${FORGEJO_TOKEN}@git.anurag.sh/anurag/home-gateway.git config-repo
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+        with:
+          package_json_file: config-repo/package.json
 
       - name: Update device firmware versions
         env:
