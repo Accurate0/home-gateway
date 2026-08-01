@@ -13,6 +13,7 @@ mod http_client;
 mod ota;
 mod panel_power;
 mod refresh;
+mod watchdog;
 mod wifi;
 use driver::Gdep133c02;
 use panel_power::PanelPower;
@@ -21,20 +22,50 @@ use refresh::Refresh;
 use crate::driver::EPD_IMAGE_FULL_BUFFER_SIZE;
 
 const DEFAULT_REFRESH_MINS: u64 = 15;
+const MIN_REFRESH_MINS: u64 = 1;
+const MAX_REFRESH_MINS: u64 = 1440;
+const LOW_BATTERY_SLEEP_MINS: u64 = 360;
+const CRITICAL_BATTERY_SLEEP_MINS: u64 = 1440;
+const MAX_BACKOFF_SHIFT: u32 = 3;
+
+#[link_section = ".rtc.data"]
+static mut CONSECUTIVE_FAILURES: u32 = 0;
 
 fn main() -> Result<()> {
     esp_idf_sys::link_patches();
     EspLogger::initialize_default();
 
-    match run_task() {
-        Ok(time_to_sleep) => deep_sleep(time_to_sleep),
+    watchdog::start();
+
+    let time_to_sleep = match run_task() {
+        Ok(time_to_sleep) => {
+            unsafe { CONSECUTIVE_FAILURES = 0 };
+            time_to_sleep
+        }
         Err(e) => {
             log::error!("error in task: {e}");
-            deep_sleep(DEFAULT_REFRESH_MINS);
+            backoff_mins()
         }
-    }
+    };
+
+    watchdog::stop();
+    deep_sleep(time_to_sleep);
 
     Ok(())
+}
+
+fn backoff_mins() -> u64 {
+    let failures = unsafe {
+        CONSECUTIVE_FAILURES = CONSECUTIVE_FAILURES.saturating_add(1);
+        CONSECUTIVE_FAILURES
+    };
+
+    let shift = (failures - 1).min(MAX_BACKOFF_SHIFT);
+    let mins = DEFAULT_REFRESH_MINS << shift;
+
+    log::warn!("{failures} consecutive failures, backing off to {mins} mins");
+
+    mins
 }
 
 fn deep_sleep(mins: u64) {
@@ -53,7 +84,7 @@ fn run_task() -> Result<u64, anyhow::Error> {
     let sys_loop = esp_idf_svc::eventloop::EspSystemEventLoop::take()?;
     let nvs = esp_idf_svc::nvs::EspDefaultNvsPartition::take()?;
 
-    let _panel_power = PanelPower::enable(pins.gpio43.downgrade())?;
+    let panel_power = PanelPower::enable(pins.gpio43.downgrade())?;
 
     let battery_voltage = match battery::read_voltage(peripherals.adc1, pins.gpio1, pins.gpio6) {
         Ok(v) => {
@@ -69,6 +100,22 @@ fn run_task() -> Result<u64, anyhow::Error> {
     let is_charging = battery::is_charging();
     log::info!("charging: {is_charging}");
 
+    if let (Some(voltage), false) = (battery_voltage, is_charging) {
+        if voltage < battery::CRITICAL_VOLTAGE_CUTOFF {
+            log::warn!(
+                "battery critically low ({voltage:.2}V), skipping cycle for {CRITICAL_BATTERY_SLEEP_MINS} mins"
+            );
+            return Ok(CRITICAL_BATTERY_SLEEP_MINS);
+        }
+
+        if voltage < battery::LOW_VOLTAGE_CUTOFF {
+            log::warn!(
+                "battery low ({voltage:.2}V), skipping cycle for {LOW_BATTERY_SLEEP_MINS} mins"
+            );
+            return Ok(LOW_BATTERY_SLEEP_MINS);
+        }
+    }
+
     let mut epd_buffer = vec![0u8; EPD_IMAGE_FULL_BUFFER_SIZE];
 
     let mut display = Gdep133c02::new(
@@ -83,57 +130,96 @@ fn run_task() -> Result<u64, anyhow::Error> {
         pins.gpio4.downgrade(),
     )?;
 
+    let mut ota_attempts = match ota::AttemptTracker::new(nvs.clone()) {
+        Ok(tracker) => Some(tracker),
+        Err(e) => {
+            log::warn!("failed to open ota attempt store: {e}");
+            None
+        }
+    };
+
     let mut wifi = wifi::try_connect(peripherals.modem, sys_loop, Some(nvs))?;
 
-    let (refresh, refresh_time_in_mins) = if wifi.is_connected()? {
-        log::info!("wifi connected, fetching config...");
-        let config = http_client::fetch_config(battery_voltage, is_charging)?;
+    if !wifi.is_connected()? {
+        anyhow::bail!("wifi did not connect");
+    }
 
-        if let Err(e) = ota::mark_valid() {
-            log::warn!("failed to mark running slot valid: {e}");
-        }
+    watchdog::feed();
 
-        if let Some(url) = &config.firmware_url {
-            log::info!(
-                "firmware update available: {} -> {}",
-                http_client::FIRMWARE_VERSION,
-                config.firmware_version.as_deref().unwrap_or("unknown")
-            );
+    log::info!("wifi connected, fetching config...");
+    let config = http_client::fetch_config(battery_voltage, is_charging)?;
+
+    watchdog::feed();
+
+    if let Err(e) = ota::mark_valid() {
+        log::warn!("failed to mark running slot valid: {e}");
+    } else if let Some(tracker) = ota_attempts.as_mut() {
+        tracker.confirm(http_client::FIRMWARE_VERSION);
+    }
+
+    if let Some(url) = &config.firmware_url {
+        let target = config.firmware_version.as_deref().unwrap_or("unknown");
+
+        log::info!(
+            "firmware update available: {} -> {}",
+            http_client::FIRMWARE_VERSION,
+            target
+        );
+
+        let allowed = ota_attempts
+            .as_ref()
+            .map(|tracker| tracker.should_attempt(target))
+            .unwrap_or(true);
+
+        if allowed {
+            if let Some(tracker) = ota_attempts.as_mut() {
+                tracker.record_attempt(target);
+            }
 
             match ota::apply(url) {
-                Ok(_) => unsafe { esp_restart() },
+                Ok(_) => {
+                    if let Err(e) = display.power_off() {
+                        log::warn!("failed to power off panel before restart: {e}");
+                    }
+
+                    drop(panel_power);
+
+                    unsafe { esp_restart() }
+                }
                 Err(e) => log::error!("firmware update failed: {:?}", e),
             }
         }
+    }
 
-        let refresh = if config.clear_screen == Some(true) {
-            Refresh::Clear
-        } else if let Some(url) = config.image_url {
-            match http_client::fetch_image(&url, &mut epd_buffer) {
-                Ok(_) => {
-                    log::info!("image fetched successfully");
-                    Refresh::Image
-                }
-                Err(e) => {
-                    log::error!("failed to fetch image: {:?}", e);
-                    Refresh::None
-                }
+    let refresh = if config.clear_screen == Some(true) {
+        Refresh::Clear
+    } else if let Some(url) = config.image_url {
+        match http_client::fetch_image(&url, &mut epd_buffer) {
+            Ok(_) => {
+                log::info!("image fetched successfully");
+                Refresh::Image
             }
-        } else {
-            Refresh::None
-        };
-
-        (
-            refresh,
-            config.refresh_interval_mins.unwrap_or(DEFAULT_REFRESH_MINS),
-        )
+            Err(e) => {
+                log::error!("failed to fetch image: {:?}", e);
+                Refresh::None
+            }
+        }
     } else {
-        (Refresh::None, DEFAULT_REFRESH_MINS)
+        Refresh::None
     };
+
+    watchdog::feed();
+
+    let refresh_time_in_mins = config
+        .refresh_interval_mins
+        .unwrap_or(DEFAULT_REFRESH_MINS)
+        .clamp(MIN_REFRESH_MINS, MAX_REFRESH_MINS);
 
     wifi.stop()?;
     drop(wifi);
     log::info!("wifi stopped");
+
+    watchdog::feed();
 
     match refresh {
         Refresh::None => {

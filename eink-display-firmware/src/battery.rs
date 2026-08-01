@@ -14,6 +14,9 @@ const SETTLE_MS: u32 = 10;
 pub const CHEMISTRY: &str = "lipo";
 pub const KIND: &str = "eink_display_firmware";
 
+pub const LOW_VOLTAGE_CUTOFF: f32 = 3.40;
+pub const CRITICAL_VOLTAGE_CUTOFF: f32 = 3.20;
+
 pub fn is_charging() -> bool {
     unsafe { esp_idf_sys::usb_serial_jtag_is_connected() }
 }

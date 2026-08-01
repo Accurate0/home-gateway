@@ -6,8 +6,10 @@ use esp_idf_svc::http::{
 };
 use log::info;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
+const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 pub const FIRMWARE_VERSION: &str = env!("FIRMWARE_VERSION");
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,6 +35,7 @@ pub fn client() -> Result<embedded_svc::http::client::Client<EspHttpConnection>>
     let config = Configuration {
         use_global_ca_store: true,
         crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+        timeout: Some(HTTP_TIMEOUT),
         ..Default::default()
     };
 
@@ -170,9 +173,9 @@ pub fn fetch_image(url: &str, buffer: &mut [u8]) -> Result<()> {
 
     info!("fetched {} bytes of image data", total_bytes);
 
-    if total_bytes < buffer.len() {
-        log::warn!(
-            "image data size ({}) is smaller than buffer size ({})",
+    if total_bytes != buffer.len() {
+        anyhow::bail!(
+            "incomplete image: got {} bytes, expected {}",
             total_bytes,
             buffer.len()
         );

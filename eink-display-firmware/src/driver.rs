@@ -71,6 +71,7 @@ pub struct Gdep133c02<'a> {
     rst: PinDriver<'a, AnyIOPin, Output>,
     busy: PinDriver<'a, AnyIOPin, Input>,
     delay: Delay,
+    powered: bool,
 }
 
 impl<'a> Gdep133c02<'a> {
@@ -120,6 +121,7 @@ impl<'a> Gdep133c02<'a> {
             rst,
             busy,
             delay: Delay::new_default(),
+            powered: false,
         })
     }
 
@@ -309,6 +311,7 @@ impl<'a> Gdep133c02<'a> {
 
     pub fn display(&mut self) -> Result<()> {
         log::info!("write PON");
+        self.powered = true;
         self.set_cs_all(false)?;
         self.write_command(EPD_PON)?;
         self.check_busy_high()?;
@@ -321,13 +324,25 @@ impl<'a> Gdep133c02<'a> {
         self.check_busy_high()?;
         self.set_cs_all(true)?;
 
+        self.power_off()?;
+
+        log::info!("display done");
+        Ok(())
+    }
+
+    pub fn power_off(&mut self) -> Result<()> {
+        if !self.powered {
+            return Ok(());
+        }
+
         log::info!("write POF");
         self.set_cs_all(false)?;
         self.write_epd(EPD_POF, &POF_V)?;
         self.check_busy_high()?;
         self.set_cs_all(true)?;
 
-        log::info!("display done");
+        self.powered = false;
+
         Ok(())
     }
 
@@ -469,5 +484,13 @@ impl<'a> Gdep133c02<'a> {
 
         self.display_buffer(&num)?;
         Ok(())
+    }
+}
+
+impl Drop for Gdep133c02<'_> {
+    fn drop(&mut self) {
+        if let Err(e) = self.power_off() {
+            log::error!("failed to power off panel: {e}");
+        }
     }
 }
