@@ -8,6 +8,7 @@ configMapGenerator:
     files:
       - base.yaml
       - devices.yaml
+      - zigbee_models.yaml
   - name: home-gateway-config-workflows
     files:
       - workflows/index.yaml
