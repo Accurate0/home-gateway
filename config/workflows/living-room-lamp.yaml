@@ -35,7 +35,7 @@
   slug: living-room-lamp-on-sunset
   group: Living Room
   tags: [living-room]
-  on: { type: sun, transition: sunset }
+  on: { type: sun, transition: sunset, offset: -15m }
   when: { type: presence, sensor: livingroom-motion, present: true }
   run:
     - type: scene
