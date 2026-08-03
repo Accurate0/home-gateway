@@ -1,0 +1,55 @@
+aqara_mccgq12lm:
+  battery: battery
+  door: [contact]
+  metrics:
+    device_temperature: { key: device_temperature, type: float }
+    voltage: { key: voltage, type: int }
+
+aqara_wsdcgq12lm:
+  battery: battery
+  environment: [temperature, humidity, pressure]
+
+lumi_wsdcgq11lm:
+  battery: battery
+  environment: [temperature, humidity, pressure]
+
+ikea_e2112:
+  environment: [temperature, humidity, pm25, voc_index]
+
+aqara_fp1e:
+  presence: [presence]
+  metrics:
+    target_distance: { key: target_distance, type: float }
+    device_temperature: { key: device_temperature, type: float }
+    movement: { key: movement, type: string }
+
+aqara_t1:
+  light: [state]
+  metrics:
+    brightness: { key: brightness, type: int }
+    color_temp: { key: color_temp, type: int }
+
+ikea_led2201g8:
+  light: [state]
+  metrics:
+    brightness: { key: brightness, type: int }
+    color_temp: { key: color_temp, type: int }
+
+phillips_9290012573a:
+  light: [state]
+  metrics:
+    brightness: { key: brightness, type: int }
+    color_temp: { key: color_temp, type: int }
+
+ts011f_plug:
+  smart_switch: [state, voltage, power, current, energy]
+
+aqara_wxkg11lm:
+  battery: battery
+  control_switch: [action]
+  metrics:
+    voltage: { key: voltage, type: int }
+
+ikea_e2001:
+  battery: battery
+  control_switch: [action]

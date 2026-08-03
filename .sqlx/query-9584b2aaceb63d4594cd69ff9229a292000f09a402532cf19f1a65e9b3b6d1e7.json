@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_device_metric (address, metric, device_id, value, text_value, updated_at) VALUES ($1, $2, $3, $4, $5, now()) ON CONFLICT (address, metric) DO UPDATE SET device_id = EXCLUDED.device_id, value = EXCLUDED.value, text_value = EXCLUDED.text_value, updated_at = EXCLUDED.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Float8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9584b2aaceb63d4594cd69ff9229a292000f09a402532cf19f1a65e9b3b6d1e7"
+}

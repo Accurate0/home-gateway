@@ -49,6 +49,12 @@
         "$ref": "#/$defs/RawSensor"
       }
     },
+    "zigbee_models": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/RawZigbeeModelProfile"
+      }
+    },
     "workflows": {
       "type": "array",
       "items": {
@@ -114,6 +120,7 @@
     "mqtt_password",
     "unifi_webhook_secret",
     "android_app_webhook_secret",
+    "zigbee_models",
     "s3",
     "watchdog",
     "location"
@@ -147,6 +154,13 @@
         },
         "address": {
           "type": "string"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "roles": {
           "type": "array",
@@ -507,6 +521,9 @@
             "lux": {
               "type": "string"
             },
+            "pm25": {
+              "type": "string"
+            },
             "pressure": {
               "type": "string"
             },
@@ -514,6 +531,9 @@
               "type": "string"
             },
             "uv_index": {
+              "type": "string"
+            },
+            "voc_index": {
               "type": "string"
             }
           },
@@ -595,6 +615,9 @@
         "name": {
           "type": "string"
         },
+        "firmware_version": {
+          "type": "string"
+        },
         "mode": {
           "anyOf": [
             {
@@ -641,7 +664,8 @@
         }
       },
       "required": [
-        "name"
+        "name",
+        "firmware_version"
       ]
     },
     "RawEinkMode": {
@@ -807,7 +831,9 @@
         "humidity",
         "pressure",
         "lux",
-        "uv_index"
+        "uv_index",
+        "pm25",
+        "voc_index"
       ]
     },
     "RawDeviceWatchdog": {
@@ -827,6 +853,126 @@
           }
         }
       }
+    },
+    "RawZigbeeModelProfile": {
+      "type": "object",
+      "properties": {
+        "battery": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "door": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "light": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "smart_switch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "presence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "control_switch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ZigbeeField"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RawFieldBlock": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "ZigbeeField": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ZigbeeFieldType"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "type"
+      ]
+    },
+    "ZigbeeFieldType": {
+      "type": "string",
+      "enum": [
+        "bool",
+        "int",
+        "float",
+        "string"
+      ]
     },
     "RawWorkflow": {
       "type": "object",

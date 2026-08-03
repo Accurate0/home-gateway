@@ -18,6 +18,8 @@ pub enum Metric {
     Pressure,
     Lux,
     UvIndex,
+    Pm25,
+    VocIndex,
 }
 
 #[cfg(test)]

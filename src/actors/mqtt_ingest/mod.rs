@@ -1,18 +1,22 @@
 use super::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
 use crate::{
-    actors::{door_sensor, environment_sensor, light, smart_switch},
+    actors::{
+        devices::presence_sensor::PresenceSensorHandler, door_sensor, environment_sensor,
+        environment_sensor::EnvironmentSensorHandler, light, smart_switch,
+    },
+    device_metric::DeviceMetric,
+    device_registry::ZigbeeDevice,
     types::SharedActorState,
-    zigbee2mqtt::devices::BridgeDevices,
+    zigbee2mqtt::{devices::BridgeDevices, role},
 };
 use ractor::{
-    ActorCell, ActorProcessingErr, ActorRef,
+    ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
 };
-use types::{GenericZigbee2MqttMessage, TypedActorName};
+use serde_json::{Map, Value};
 use uuid::Uuid;
 
 pub mod spawn;
-mod types;
 
 /// Messages handled by the MQTT router worker. The worker's sole job is to
 /// decode an incoming MQTT packet and forward a typed event to the device actor
@@ -89,232 +93,6 @@ pub struct MqttIngest {
 impl MqttIngest {
     pub const NAME: &str = "mqtt-ingest";
 
-    fn handle_control_switch(
-        event_id: Uuid,
-        actor_type: TypedActorName,
-        actor_cell: ActorCell,
-        generic_message: GenericZigbee2MqttMessage,
-    ) -> Result<(), anyhow::Error> {
-        match generic_message {
-            GenericZigbee2MqttMessage::AqaraSingleButtonSwitch(aqara) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
-                        event_id,
-                        entity: control_switch::Entity::AqaraSingleButton(aqara),
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            GenericZigbee2MqttMessage::IKEASwitch(ikea_e2001) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
-                        event_id,
-                        entity: control_switch::Entity::IKEASwitch(ikea_e2001),
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            _ => {
-                tracing::warn!(
-                    "actor name ({actor_type}) does not match message for control switch"
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_presence_sensor(
-        event_id: Uuid,
-        actor_type: TypedActorName,
-        actor_cell: ActorCell,
-        generic_message: GenericZigbee2MqttMessage,
-    ) -> Result<(), anyhow::Error> {
-        match generic_message {
-            GenericZigbee2MqttMessage::AqaraPresenceSensor(aqara_presence) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
-                        event_id,
-                        entity: presence_sensor::Entity::AqaraFP1E(Box::new(aqara_presence)),
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            _ => {
-                tracing::warn!("actor name ({actor_type}) does not match message for smart switch");
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_smart_switch(
-        event_id: Uuid,
-        actor_type: TypedActorName,
-        actor_cell: ActorCell,
-        generic_message: GenericZigbee2MqttMessage,
-    ) -> Result<(), anyhow::Error> {
-        match generic_message {
-            GenericZigbee2MqttMessage::TS011FSmartSwitch(ts011f_plug1) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: smart_switch::Message::NewEvent(smart_switch::NewEvent {
-                        event_id,
-                        entity: smart_switch::Entity::TS011FSmartSwitch(ts011f_plug1),
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            _ => {
-                tracing::warn!("actor name ({actor_type}) does not match message for smart switch");
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_environment_sensor(
-        event_id: Uuid,
-        actor_type: TypedActorName,
-        actor_cell: ActorCell,
-        generic_message: GenericZigbee2MqttMessage,
-    ) -> Result<(), anyhow::Error> {
-        match generic_message {
-            GenericZigbee2MqttMessage::IKEATemperatureSensor(ikea_temperature_sensor) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: environment_sensor::Message::NewEvent(Box::new(
-                        environment_sensor::NewEvent {
-                            event_id,
-                            entity: environment_sensor::Entity::IKEAE2112(ikea_temperature_sensor),
-                        },
-                    )),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            GenericZigbee2MqttMessage::AqaraTemperatureSensor(aqara_temperature_sensor) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: environment_sensor::Message::NewEvent(Box::new(
-                        environment_sensor::NewEvent {
-                            event_id,
-                            entity: environment_sensor::Entity::AqaraWSDCGQ12LM(
-                                aqara_temperature_sensor,
-                            ),
-                        },
-                    )),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-
-            GenericZigbee2MqttMessage::LumiTemperatureSensor(lumi_temperature_sensor) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: environment_sensor::Message::NewEvent(Box::new(
-                        environment_sensor::NewEvent {
-                            event_id,
-                            entity: environment_sensor::Entity::LumiWSDCGQ11LM(
-                                lumi_temperature_sensor,
-                            ),
-                        },
-                    )),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            _ => {
-                tracing::warn!(
-                    "actor name ({actor_type}) does not match message for temperature sensor"
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_door_sensor(
-        event_id: Uuid,
-        actor_type: TypedActorName,
-        actor_cell: ActorCell,
-        generic_message: GenericZigbee2MqttMessage,
-    ) -> Result<(), anyhow::Error> {
-        match generic_message {
-            GenericZigbee2MqttMessage::AquaraDoorSensor(aqara_mccgq12_lm) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: door_sensor::Message::NewEvent(door_sensor::NewEvent {
-                        event_id,
-                        entity: door_sensor::Entity::AqaraMCCGQ12LM(aqara_mccgq12_lm),
-                    }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            _ => {
-                tracing::warn!("actor name ({actor_type}) does not match message for door sensor");
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_light(
-        event_id: Uuid,
-        actor_type: TypedActorName,
-        actor_cell: ActorCell,
-        generic_message: GenericZigbee2MqttMessage,
-    ) -> Result<(), anyhow::Error> {
-        match generic_message {
-            GenericZigbee2MqttMessage::PhillipsLight(phillips_light) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
-                        event_id,
-                        entity: light::Entity::Phillips9290012573A(phillips_light),
-                    })),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            GenericZigbee2MqttMessage::IKEALight(ikea_light) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
-                        event_id,
-                        entity: light::Entity::IKEALED2201G8(ikea_light),
-                    })),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            GenericZigbee2MqttMessage::AqaraWhiteLight(aqara_light) => {
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
-                        event_id,
-                        entity: light::Entity::AqaraT1(aqara_light),
-                    })),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
-            }
-            _ => {
-                tracing::warn!("actor name ({actor_type}) does not match message for light");
-            }
-        }
-
-        Ok(())
-    }
-
     /// Route an esphome motion (`binary_sensor`) reading to the presence actor.
     async fn dispatch_esphome_light(
         &self,
@@ -348,7 +126,7 @@ impl MqttIngest {
 
         let event_id = uuid::Uuid::new_v4();
         let Some(actor_cell) =
-            ractor::registry::where_is(TypedActorName::PresenceSensor.to_string())
+            ractor::registry::where_is(PresenceSensorHandler::NAME)
         else {
             tracing::error!("no presence sensor actor found for esphome motion");
             return Ok(());
@@ -407,7 +185,7 @@ impl MqttIngest {
         }
 
         if self.shared_actor_state.devices.environment(node).is_some() {
-            match ractor::registry::where_is(TypedActorName::EnvironmentSensor.to_string()) {
+            match ractor::registry::where_is(EnvironmentSensorHandler::NAME) {
                 Some(actor_cell) => {
                     actor_cell.send_message(FactoryMessage::Dispatch(Job {
                         key: (),
@@ -432,12 +210,7 @@ impl MqttIngest {
         Ok(())
     }
 
-    fn record_battery(&self, message: &GenericZigbee2MqttMessage) {
-        let Some(percent) = message.battery() else {
-            return;
-        };
-
-        let address = message.to_ieee_addr();
+    fn record_battery(&self, address: &str, percent: f64) {
         let devices = &self.shared_actor_state.devices;
 
         let Some(settings) = devices.battery(address) else {
@@ -457,6 +230,46 @@ impl MqttIngest {
             Some(percent),
             None,
         );
+    }
+
+    async fn dispatch_zigbee(
+        &self,
+        event_id: Uuid,
+        device: &ZigbeeDevice,
+        friendly_name: &str,
+        payload: &Map<String, Value>,
+    ) -> Result<(), anyhow::Error> {
+        let address = device.address.clone();
+        let devices = &self.shared_actor_state.devices;
+
+        if devices.battery(&address).is_some() && let Some(percent) = role::battery(device, payload) {
+            self.record_battery(&address, percent as f64);
+        }
+
+        role::run::<door_sensor::Entity>(event_id, devices, device, friendly_name, payload);
+        role::run::<environment_sensor::Entity>(event_id, devices, device, friendly_name, payload);
+        role::run::<light::Entity>(event_id, devices, device, friendly_name, payload);
+        role::run::<smart_switch::Entity>(event_id, devices, device, friendly_name, payload);
+        role::run::<presence_sensor::Entity>(event_id, devices, device, friendly_name, payload);
+        role::run::<control_switch::Entity>(event_id, devices, device, friendly_name, payload);
+
+        let device_id = devices.id_for_address(&address).map(str::to_owned);
+
+        for (metric, value) in role::metrics(device, payload) {
+            let record = DeviceMetric {
+                event_id,
+                address: address.clone(),
+                device_id: device_id.clone(),
+                metric,
+                value,
+            };
+
+            if let Err(e) = record.save(&self.shared_actor_state.db).await {
+                tracing::error!("failed to save device metric for {address}: {e}");
+            }
+        }
+
+        Ok(())
     }
 
     async fn record_last_seen(&self, device_key: &str) {
@@ -576,67 +389,47 @@ impl MqttIngest {
                 }))?;
             }
             MqttTopic::Zigbee2MqttDevice => {
-                if let Some(friendly_name) = topic.strip_prefix("zigbee2mqtt/") {
-                    self.record_last_seen(friendly_name).await;
-                }
+                let friendly_name = topic
+                    .strip_prefix("zigbee2mqtt/")
+                    .unwrap_or(&topic)
+                    .to_owned();
 
-                let generic_message =
-                    match serde_json::from_slice::<GenericZigbee2MqttMessage>(&payload) {
-                        Ok(payload) => payload,
-                        Err(e) => {
-                            tracing::warn!("unrecognised payload: {payload:?}");
-                            return Err(e.into());
-                        }
-                    };
+                self.record_last_seen(&friendly_name).await;
 
-                self.record_battery(&generic_message);
+                let value = serde_json::from_slice::<Value>(&payload)?;
+                let Some(object) = value.as_object() else {
+                    tracing::warn!("ignoring non-object zigbee payload on {topic}");
+                    return Ok(());
+                };
 
-                let actor_type = generic_message.to_actor_name();
-                let actor_name = actor_type.to_string();
-                let maybe_actor = ractor::registry::where_is(actor_name);
-                let event_id = uuid::Uuid::new_v4();
-                tracing::info!("received message for {actor_type}, {generic_message}");
+                let devices = &self.shared_actor_state.devices;
+                let address = match object
+                    .get("device")
+                    .and_then(|device| device.get("ieee_addr"))
+                    .and_then(Value::as_str)
+                {
+                    Some(address) => address.to_owned(),
+                    None => devices
+                        .address_for_friendly_name(&friendly_name)
+                        .await
+                        .unwrap_or_else(|| friendly_name.clone()),
+                };
 
-                match maybe_actor {
-                    Some(actor_cell) => match actor_type {
-                        types::TypedActorName::PresenceSensor => Self::handle_presence_sensor(
-                            event_id,
-                            actor_type,
-                            actor_cell,
-                            generic_message,
-                        )?,
-                        types::TypedActorName::SmartSwitch => Self::handle_smart_switch(
-                            event_id,
-                            actor_type,
-                            actor_cell,
-                            generic_message,
-                        )?,
-                        types::TypedActorName::EnvironmentSensor => {
-                            Self::handle_environment_sensor(
-                                event_id,
-                                actor_type,
-                                actor_cell,
-                                generic_message,
-                            )?
-                        }
-                        types::TypedActorName::DoorSensor => Self::handle_door_sensor(
-                            event_id,
-                            actor_type,
-                            actor_cell,
-                            generic_message,
-                        )?,
-                        types::TypedActorName::Light => {
-                            Self::handle_light(event_id, actor_type, actor_cell, generic_message)?
-                        }
-                        types::TypedActorName::ControlSwitch => Self::handle_control_switch(
-                            event_id,
-                            actor_type,
-                            actor_cell,
-                            generic_message,
-                        )?,
-                    },
-                    None => tracing::error!("no actor found for {actor_type}"),
-                }
+                let Some(device) = devices.zigbee_device(&address).cloned() else {
+                    tracing::warn!(
+                        "unregistered zigbee device {address} ({friendly_name}); add it to devices.yaml"
+                    );
+                    return Ok(());
+                };
+
+                tracing::info!(
+                    "received zigbee message for {friendly_name} ({}, model {})",
+                    address,
+                    device.profile.slug
+                );
+
+                self.dispatch_zigbee(Uuid::new_v4(), &device, &friendly_name, object)
+                    .await?;
             }
         }
 

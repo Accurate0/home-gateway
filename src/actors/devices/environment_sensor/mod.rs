@@ -2,7 +2,6 @@ use crate::{
     event_bus::{EventBusMessage, SensorReading},
     settings::Metric,
     types::SharedActorState,
-    zigbee2mqtt::{Aqara_WSDCGQ12LM, IKEA_E2112, Lumi_WSDCGQ11LM},
 };
 use chrono::Utc;
 use ractor::{
@@ -15,9 +14,12 @@ use uuid::Uuid;
 pub mod spawn;
 
 pub enum Entity {
-    AqaraWSDCGQ12LM(Aqara_WSDCGQ12LM::AqaraWSDCGQ12LM),
-    LumiWSDCGQ11LM(Lumi_WSDCGQ11LM::LumiWSDCGQ11LM),
-    IKEAE2112(IKEA_E2112::IKEAE2112),
+    Zigbee {
+        address: String,
+        friendly_name: String,
+        readings: Vec<(Metric, f64)>,
+        battery: Option<i64>,
+    },
     Esphome {
         node: String,
         object_id: String,
@@ -32,6 +34,8 @@ struct EsphomeReadings {
     pressure: Option<f64>,
     lux: Option<f64>,
     uv_index: Option<f64>,
+    pm25: Option<f64>,
+    voc_index: Option<f64>,
 }
 
 #[derive(Default)]
@@ -96,51 +100,36 @@ impl EnvironmentSensorHandler {
                 return Ok(());
             }
             Message::NewEvent(event) => match event.entity {
-                Entity::AqaraWSDCGQ12LM(aqara_wsdcgq12_lm) => {
+                Entity::Zigbee {
+                    address,
+                    friendly_name,
+                    readings,
+                    battery,
+                } => {
+                    let reading = |wanted: Metric| {
+                        readings
+                            .iter()
+                            .find(|(metric, _)| *metric == wanted)
+                            .map(|(_, value)| *value)
+                    };
+
+                    let Some(temperature) = reading(Metric::Temperature) else {
+                        tracing::debug!("ignoring zigbee environment payload without temperature: {address}");
+                        return Ok(());
+                    };
+
                     self.save_environment_details(
                         event.event_id,
-                        aqara_wsdcgq12_lm.device.friendly_name,
-                        aqara_wsdcgq12_lm.device.ieee_addr,
-                        aqara_wsdcgq12_lm.temperature,
-                        Some(aqara_wsdcgq12_lm.battery),
-                        Some(aqara_wsdcgq12_lm.humidity),
-                        Some(aqara_wsdcgq12_lm.pressure),
-                        None,
-                        None,
-                        None,
-                        None,
-                    )
-                    .await?;
-                }
-                Entity::LumiWSDCGQ11LM(lumi_wsdcgq11_lm) => {
-                    self.save_environment_details(
-                        event.event_id,
-                        lumi_wsdcgq11_lm.device.friendly_name,
-                        lumi_wsdcgq11_lm.device.ieee_addr,
-                        lumi_wsdcgq11_lm.temperature,
-                        Some(lumi_wsdcgq11_lm.battery),
-                        Some(lumi_wsdcgq11_lm.humidity),
-                        Some(lumi_wsdcgq11_lm.pressure),
-                        None,
-                        None,
-                        None,
-                        None,
-                    )
-                    .await?;
-                }
-                Entity::IKEAE2112(ikea_e2112) => {
-                    self.save_environment_details(
-                        event.event_id,
-                        ikea_e2112.device.friendly_name,
-                        ikea_e2112.device.ieee_addr,
-                        ikea_e2112.temperature as f64,
-                        None,
-                        Some(ikea_e2112.humidity as f64),
-                        None,
-                        Some(ikea_e2112.pm25),
-                        Some(ikea_e2112.voc_index),
-                        None,
-                        None,
+                        friendly_name,
+                        address,
+                        temperature,
+                        battery,
+                        reading(Metric::Humidity),
+                        reading(Metric::Pressure),
+                        reading(Metric::Pm25).map(|v| v.round() as i64),
+                        reading(Metric::VocIndex).map(|v| v.round() as i64),
+                        reading(Metric::Lux),
+                        reading(Metric::UvIndex),
                     )
                     .await?;
                 }
@@ -166,6 +155,8 @@ impl EnvironmentSensorHandler {
                         Metric::Pressure => readings.pressure = Some(value),
                         Metric::Lux => readings.lux = Some(value),
                         Metric::UvIndex => readings.uv_index = Some(value),
+                        Metric::Pm25 => readings.pm25 = Some(value),
+                        Metric::VocIndex => readings.voc_index = Some(value),
                     }
 
                     // temperature is the required column; without it there is nothing to store yet
@@ -176,6 +167,8 @@ impl EnvironmentSensorHandler {
                     let pressure = readings.pressure;
                     let lux = readings.lux;
                     let uv_index = readings.uv_index;
+                    let pm25 = readings.pm25.map(|v| v.round() as i64);
+                    let voc_index = readings.voc_index.map(|v| v.round() as i64);
 
                     let friendly_name = self
                         .shared_actor_state
@@ -192,8 +185,8 @@ impl EnvironmentSensorHandler {
                         None,
                         humidity,
                         pressure,
-                        None,
-                        None,
+                        pm25,
+                        voc_index,
                         lux,
                         uv_index,
                     )

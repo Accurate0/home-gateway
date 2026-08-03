@@ -22,6 +22,7 @@ pub mod template;
 pub mod trigger;
 pub mod valetudo;
 pub mod workflow;
+pub mod zigbee_model;
 
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
@@ -38,6 +39,7 @@ pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use workflow::Workflow;
+pub use zigbee_model::{RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile};
 
 use crate::auth::scope::ScopePattern;
 use crate::device_registry::{DeviceRegistry, RawSensor};
@@ -251,6 +253,7 @@ pub struct RawSettings {
     notify_targets: NotifyTargets,
     #[serde(default)]
     devices: Vec<RawSensor>,
+    zigbee_models: HashMap<String, RawZigbeeModelProfile>,
     #[serde(default)]
     workflows: Vec<Vec<Workflow>>,
     s3: S3Settings,
@@ -289,6 +292,7 @@ impl RawSettings {
             android_app_webhook_secret,
             notify_targets,
             devices,
+            zigbee_models,
             workflows,
             s3,
             watchdog,
@@ -315,7 +319,7 @@ impl RawSettings {
             }
         }
 
-        let registry = DeviceRegistry::build(devices, &notify_targets)?;
+        let registry = DeviceRegistry::build(devices, &notify_targets, zigbee_models)?;
         let aliases = registry.aliases();
 
         let mut resolved = HashMap::new();
@@ -471,6 +475,7 @@ mod tests {
             r#"
 - id: living-room-table-lamp
   transport: zigbee
+  model: ts011f_plug
   address: "0xa4c1389fe5cea26e"
   roles:
     - type: smart_switch
@@ -479,7 +484,96 @@ mod tests {
         )
         .unwrap();
 
-        DeviceRegistry::build(devices, &NotifyTargets::default()).unwrap()
+        DeviceRegistry::build(devices, &NotifyTargets::default(), test_models()).unwrap()
+    }
+
+    fn test_models() -> HashMap<String, RawZigbeeModelProfile> {
+        serde_yaml::from_str(
+            r#"
+ts011f_plug:
+  smart_switch: [state, voltage, power, current, energy]
+"#,
+        )
+        .unwrap()
+    }
+
+    fn build_devices(yaml: &str) -> Result<DeviceRegistry, String> {
+        let devices: Vec<RawSensor> = serde_yaml::from_str(yaml).unwrap();
+
+        DeviceRegistry::build(devices, &NotifyTargets::default(), test_models())
+    }
+
+    #[test]
+    fn a_zigbee_device_without_a_model_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: mystery
+  transport: zigbee
+  address: "0xdeadbeef"
+  roles:
+    - type: control_switch
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("requires a `model:`"), "{err}");
+    }
+
+    #[test]
+    fn an_unknown_model_slug_is_rejected_and_lists_known_models() {
+        let err = build_devices(
+            r#"
+- id: mystery
+  transport: zigbee
+  model: not_a_real_model
+  address: "0xdeadbeef"
+  roles:
+    - type: control_switch
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("unknown zigbee model `not_a_real_model`"), "{err}");
+        assert!(err.contains("ts011f_plug"), "{err}");
+    }
+
+    #[test]
+    fn a_role_the_model_does_not_map_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: mystery
+  transport: zigbee
+  model: ts011f_plug
+  address: "0xdeadbeef"
+  roles:
+    - type: door
+      config: { name: Mystery Door, id: mystery, state: armed, timeout: 3m }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("has no `door` mapping"), "{err}");
+    }
+
+    #[test]
+    fn a_model_on_a_non_zigbee_transport_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: living-room-mtr-1
+  transport: esphome
+  model: ts011f_plug
+  address: apollo-mtr-1-livingroom
+  roles:
+    - type: presence
+      config: { name: Living Room, motion_entity: [ld2450_presence] }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.contains("only valid with the `zigbee` transport"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -496,7 +590,8 @@ mod tests {
         )
         .unwrap();
 
-        let err = DeviceRegistry::build(devices, &NotifyTargets::default()).unwrap_err();
+        let err =
+            DeviceRegistry::build(devices, &NotifyTargets::default(), test_models()).unwrap_err();
         assert!(err.contains("has no `entity` object_id"), "{err}");
     }
 
@@ -752,6 +847,43 @@ android_app_webhook_secret: x
                 .esphome_target("apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state")
                 .is_some()
         );
+
+        // every zigbee device resolves to a model profile covering its roles
+        let front = registry
+            .zigbee_device(registry.address_or_self("front-door"))
+            .expect("front-door is a zigbee device");
+        assert_eq!(front.profile.slug, "aqara_mccgq12lm");
+        let front_address = registry.address_or_self("front-door");
+        assert!(registry.door(front_address).is_some() && registry.battery(front_address).is_some());
+        assert_eq!(front.profile.battery.as_deref(), Some("battery"));
+        assert_eq!(
+            front.profile.door.as_ref().map(|d| d.contact.as_str()),
+            Some("contact")
+        );
+
+        let outdoor = registry
+            .zigbee_device(registry.address_or_self("env-outdoor"))
+            .expect("env-outdoor is a zigbee device");
+        assert!(
+            outdoor
+                .profile
+                .environment
+                .as_ref()
+                .expect("environment mapping")
+                .iter()
+                .any(|(metric, key)| *metric == Metric::Temperature && key == "temperature")
+        );
+
+        // the free-form metrics escape hatch carries its declared type
+        let presence = registry
+            .zigbee_device("0x54ef441000dbc81c")
+            .expect("closet presence is a zigbee device");
+        assert!(presence.profile.metrics.iter().any(|(name, field)| {
+            name == "movement" && field.field_type == ZigbeeFieldType::String
+        }));
+
+        // esphome devices are not in the zigbee table
+        assert!(registry.zigbee_device("apollo-mtr-1-livingroom").is_none());
     }
 
     #[test]
@@ -787,6 +919,7 @@ android_app_webhook_secret: x
             r#"
 api_key: x
 database_url: x
+zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
@@ -812,6 +945,7 @@ api_keys:
             r#"
 api_key: x
 database_url: x
+zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
@@ -872,6 +1006,7 @@ devices:
             r#"
 api_key: x
 database_url: x
+zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x

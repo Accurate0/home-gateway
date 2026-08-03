@@ -1,6 +1,4 @@
-use crate::{
-    actors::light::record_light_state, types::SharedActorState, zigbee2mqtt::TS011F_plug_1,
-};
+use crate::{actors::light::record_light_state, types::SharedActorState};
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -10,7 +8,15 @@ use uuid::Uuid;
 pub mod spawn;
 
 pub enum Entity {
-    TS011FSmartSwitch(TS011F_plug_1::Ts011fPlug1),
+    Zigbee {
+        address: String,
+        friendly_name: String,
+        voltage: i64,
+        power: i64,
+        current: f64,
+        energy: f64,
+        state: Option<String>,
+    },
 }
 
 pub struct NewEvent {
@@ -57,31 +63,42 @@ impl SmartSwitchHandler {
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
-                Entity::TS011FSmartSwitch(ts011f_plug1) => {
+                Entity::Zigbee {
+                    address,
+                    friendly_name,
+                    voltage,
+                    power,
+                    current,
+                    energy,
+                    state,
+                } => {
                     self.save_values_to_db(
                         event.event_id,
-                        &ts011f_plug1.device.friendly_name,
-                        &ts011f_plug1.device.ieee_addr,
-                        ts011f_plug1.voltage,
-                        ts011f_plug1.power,
-                        ts011f_plug1.current,
-                        ts011f_plug1.energy,
+                        &friendly_name,
+                        &address,
+                        voltage,
+                        power,
+                        current,
+                        energy,
                     )
                     .await?;
 
-                    if self
-                        .shared_actor_state
-                        .devices
-                        .light(&ts011f_plug1.device.ieee_addr)
-                        .is_some()
-                    {
-                        record_light_state(
-                            &self.shared_actor_state,
-                            event.event_id,
-                            ts011f_plug1.device.ieee_addr,
-                            ts011f_plug1.state,
-                        )
-                        .await?;
+                    let is_light = self.shared_actor_state.devices.light(&address).is_some();
+
+                    match (is_light, state) {
+                        (true, Some(state)) => {
+                            record_light_state(
+                                &self.shared_actor_state,
+                                event.event_id,
+                                address,
+                                state,
+                            )
+                            .await?;
+                        }
+                        (true, None) => {
+                            tracing::debug!("smart switch {address} acts as a light but reported no state");
+                        }
+                        (false, _) => {}
                     }
                 }
             },

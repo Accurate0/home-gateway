@@ -5,11 +5,6 @@ use crate::{
     mqtt::ZIGBEE2MQTT_BASE,
     settings::IEEEAddress,
     types::SharedActorState,
-    zigbee2mqtt::{
-        Aqara_T1,
-        IKEA_LED2201G8::{self},
-        Phillips_9290012573A,
-    },
 };
 use ractor::{
     ActorProcessingErr, ActorRef, RpcReplyPort,
@@ -20,9 +15,7 @@ use uuid::Uuid;
 pub mod spawn;
 
 pub enum Entity {
-    Phillips9290012573A(Phillips_9290012573A::Phillips9290012573A),
-    IKEALED2201G8(IKEA_LED2201G8::IKEALED2201G8),
-    AqaraT1(Aqara_T1::AqaraT1),
+    Zigbee { address: String, state: String },
 }
 
 pub struct NewEvent {
@@ -165,25 +158,8 @@ impl LightHandler {
             LightHandlerMessage::NewEvent(event) => {
                 let event_id = event.event_id;
                 match event.entity {
-                    Entity::Phillips9290012573A(phillips_9290012573_a) => {
-                        self.update_light_state(
-                            event_id,
-                            phillips_9290012573_a.device.ieee_addr,
-                            phillips_9290012573_a.state,
-                        )
-                        .await?
-                    }
-                    Entity::IKEALED2201G8(ikealed2201_g8) => {
-                        self.update_light_state(
-                            event_id,
-                            ikealed2201_g8.device.ieee_addr,
-                            ikealed2201_g8.state,
-                        )
-                        .await?
-                    }
-                    Entity::AqaraT1(aqara_t1) => {
-                        self.update_light_state(event_id, aqara_t1.device.ieee_addr, aqara_t1.state)
-                            .await?
+                    Entity::Zigbee { address, state } => {
+                        self.update_light_state(event_id, address, state).await?
                     }
                 }
             }

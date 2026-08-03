@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{event_bus::EventBusMessage, types::SharedActorState, zigbee2mqtt::Aqara_FP1E};
+use crate::{event_bus::EventBusMessage, types::SharedActorState};
 use ractor::{
     ActorProcessingErr, ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
@@ -10,7 +10,10 @@ use uuid::Uuid;
 pub mod spawn;
 
 pub enum Entity {
-    AqaraFP1E(Box<Aqara_FP1E::AqaraFP1E>),
+    Zigbee {
+        address: String,
+        presence: bool,
+    },
     Esphome {
         node: String,
         object_id: String,
@@ -90,12 +93,9 @@ impl PresenceSensorHandler {
                 reply.send(state.last_presence.get(&sensor).copied())?;
             }
             Message::NewEvent(event) => match event.entity {
-                Entity::AqaraFP1E(aqara_fp1_e) => self.process_presence(
-                    event.event_id,
-                    aqara_fp1_e.device.ieee_addr,
-                    aqara_fp1_e.presence,
-                    state,
-                )?,
+                Entity::Zigbee { address, presence } => {
+                    self.process_presence(event.event_id, address, presence, state)?
+                }
                 Entity::Esphome {
                     node,
                     object_id,

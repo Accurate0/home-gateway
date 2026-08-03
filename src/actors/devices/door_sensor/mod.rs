@@ -3,7 +3,6 @@ use crate::{
         DoorEvents, DoorEventsMessage, DoorEventsSupervisor, DoorEventsType,
     },
     types::SharedActorState,
-    zigbee2mqtt::Aqara_MCCGQ12LM,
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -14,7 +13,12 @@ use uuid::Uuid;
 pub mod spawn;
 
 pub enum Entity {
-    AqaraMCCGQ12LM(Aqara_MCCGQ12LM::AqaraMCCGQ12LM),
+    Zigbee {
+        address: String,
+        friendly_name: String,
+        contact: bool,
+        battery: i64,
+    },
 }
 
 pub struct NewEvent {
@@ -81,21 +85,22 @@ impl DoorSensorHandler {
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
-                Entity::AqaraMCCGQ12LM(aqara_mccgq12_lm) => {
+                Entity::Zigbee {
+                    address,
+                    friendly_name,
+                    contact,
+                    battery,
+                } => {
                     self.save_values_to_db(
                         event.event_id,
-                        aqara_mccgq12_lm.device.friendly_name,
-                        aqara_mccgq12_lm.device.ieee_addr.clone(),
-                        aqara_mccgq12_lm.contact,
-                        aqara_mccgq12_lm.battery,
+                        friendly_name,
+                        address.clone(),
+                        contact,
+                        battery,
                     )
                     .await?;
 
-                    Self::send_to_all_listeners(
-                        event.event_id,
-                        aqara_mccgq12_lm.device.ieee_addr.clone(),
-                        aqara_mccgq12_lm.contact,
-                    )?
+                    Self::send_to_all_listeners(event.event_id, address, contact)?
                 }
             },
         }

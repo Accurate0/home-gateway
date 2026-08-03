@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use schemars::JsonSchema;
@@ -13,7 +13,8 @@ use crate::settings::plant::default_plant_entities;
 use crate::settings::{
     DeviceAliases, DoorSettings, EinkModeConfig, EnvironmentSensorSettings, EnvironmentSensorType,
     IEEEAddress, Orientation, PlantSensorSettings, PresenceSensorType, PresenceSettings,
-    RawRoborockBlock, RawValetudoBlock, RoborockField, RoborockSettings, ValetudoSettings,
+    RawRoborockBlock, RawValetudoBlock, RawZigbeeModelProfile, RoborockField, RoborockSettings,
+    ValetudoSettings, ZigbeeModelProfile,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
@@ -78,6 +79,8 @@ pub struct RawSensor {
     pub id: String,
     pub transport: Transport,
     pub address: String,
+    #[serde(default)]
+    pub model: Option<String>,
     pub roles: Vec<RawRole>,
     #[serde(default)]
     pub watchdog: Option<RawDeviceWatchdog>,
@@ -104,6 +107,8 @@ pub enum Capability {
     Pressure,
     Lux,
     UvIndex,
+    Pm25,
+    VocIndex,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -324,12 +329,21 @@ pub struct RawPlantBlock {
     entities: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ZigbeeDevice {
+    pub id: String,
+    pub address: String,
+    pub profile: Arc<ZigbeeModelProfile>,
+}
+
 #[derive(Debug, Default)]
 pub struct DeviceRegistryInner {
     aliases: DeviceAliases,
     esphome_topics: HashMap<String, EsphomeTarget>,
+    zigbee_devices: HashMap<String, ZigbeeDevice>,
     doors: HashMap<String, DoorSettings>,
     smart_switches: HashMap<String, String>,
+    control_switches: HashSet<String>,
     environment: HashMap<String, EnvironmentSensorSettings>,
     presence: HashMap<String, PresenceSettings>,
     lights: HashMap<String, String>,
@@ -364,14 +378,26 @@ impl std::ops::Deref for DeviceRegistry {
 }
 
 impl DeviceRegistry {
-    pub fn build(raw: Vec<RawSensor>, notify: &NotifyTargets) -> Result<Self, String> {
+    pub fn build(
+        raw: Vec<RawSensor>,
+        notify: &NotifyTargets,
+        zigbee_models: HashMap<String, RawZigbeeModelProfile>,
+    ) -> Result<Self, String> {
         let mut reg = DeviceRegistryInner::default();
+
+        let mut profiles = HashMap::new();
+        for (slug, raw_profile) in zigbee_models {
+            let profile = ZigbeeModelProfile::resolve(slug.clone(), raw_profile)?;
+
+            profiles.insert(slug, Arc::new(profile));
+        }
 
         for sensor in raw {
             let RawSensor {
                 id,
                 transport,
                 address,
+                model,
                 roles,
                 watchdog,
                 room,
@@ -379,6 +405,22 @@ impl DeviceRegistry {
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
                 return Err(format!("duplicate sensor id: {id}"));
+            }
+
+            let profile = resolve_model(&id, transport, model, &profiles)?;
+
+            if let Some(profile) = profile {
+                validate_zigbee_roles(&id, &profile, &roles)?;
+
+                let device = ZigbeeDevice {
+                    id: id.clone(),
+                    address: address.clone(),
+                    profile,
+                };
+
+                if reg.zigbee_devices.insert(address.clone(), device).is_some() {
+                    return Err(format!("duplicate zigbee address: {address}"));
+                }
             }
 
             if let Some(room) = room {
@@ -416,6 +458,75 @@ impl DeviceRegistry {
             inner: Arc::new(reg),
         })
     }
+}
+
+fn validate_zigbee_roles(
+    id: &str,
+    profile: &ZigbeeModelProfile,
+    roles: &[RawRole],
+) -> Result<(), String> {
+    let slug = &profile.slug;
+
+    for role in roles {
+        let (name, mapped) = match &role.config {
+            DeviceConfig::Door(_) => ("door", profile.door.is_some()),
+            DeviceConfig::Environment(_) => ("environment", profile.environment.is_some()),
+            DeviceConfig::Light(_) => ("light", profile.light.is_some()),
+            DeviceConfig::SmartSwitch(_) => ("smart_switch", profile.smart_switch.is_some()),
+            DeviceConfig::Presence(_) => ("presence", profile.presence.is_some()),
+            DeviceConfig::ControlSwitch => ("control_switch", profile.control_switch.is_some()),
+            DeviceConfig::Battery => ("battery", profile.battery.is_some()),
+            _ => continue,
+        };
+
+        if !mapped {
+            return Err(format!(
+                "device {id}: model `{slug}` has no `{name}` mapping but the device declares a `{name}` role"
+            ));
+        }
+
+        if matches!(role.config, DeviceConfig::Door(_)) && profile.battery.is_none() {
+            return Err(format!(
+                "device {id}: model `{slug}` must map `battery` because `door_sensor.battery` is not nullable"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn resolve_model(
+    id: &str,
+    transport: Transport,
+    model: Option<String>,
+    profiles: &HashMap<String, Arc<ZigbeeModelProfile>>,
+) -> Result<Option<Arc<ZigbeeModelProfile>>, String> {
+    if transport != Transport::Zigbee {
+        return match model {
+            Some(_) => Err(format!(
+                "device {id}: `model:` is only valid with the `zigbee` transport"
+            )),
+            None => Ok(None),
+        };
+    }
+
+    let Some(slug) = model else {
+        return Err(format!(
+            "device {id}: zigbee transport requires a `model:`"
+        ));
+    };
+
+    let Some(profile) = profiles.get(&slug) else {
+        let mut known: Vec<_> = profiles.keys().map(String::as_str).collect();
+        known.sort_unstable();
+
+        return Err(format!(
+            "device {id}: unknown zigbee model `{slug}`; known models are {}",
+            known.join(", ")
+        ));
+    };
+
+    Ok(Some(profile.clone()))
 }
 
 impl DeviceRegistryInner {
@@ -552,7 +663,9 @@ impl DeviceRegistryInner {
                     self.lights.insert(address.to_owned(), switch.name);
                 }
             }
-            DeviceConfig::ControlSwitch => {}
+            DeviceConfig::ControlSwitch => {
+                self.control_switches.insert(address.to_owned());
+            }
             DeviceConfig::EinkDisplayFirmware(display) => {
                 let sleep = display.sleep.map(|s| s.resolve(id)).transpose()?;
                 self.eink_displays.insert(
@@ -680,6 +793,19 @@ impl DeviceRegistryInner {
         self.known_devices.read().await.get(address).cloned()
     }
 
+    pub async fn address_for_friendly_name(&self, name: &str) -> Option<String> {
+        self.known_devices
+            .read()
+            .await
+            .iter()
+            .find(|(_, known)| known.as_str() == name)
+            .map(|(address, _)| address.clone())
+    }
+
+    pub fn zigbee_device(&self, address: &str) -> Option<&ZigbeeDevice> {
+        self.zigbee_devices.get(address)
+    }
+
     pub fn esphome_target(&self, topic: &str) -> Option<&EsphomeTarget> {
         self.esphome_topics.get(topic)
     }
@@ -707,6 +833,10 @@ impl DeviceRegistryInner {
     }
 
     #[allow(unused)]
+    pub fn control_switch(&self, address: &str) -> bool {
+        self.control_switches.contains(address)
+    }
+
     pub fn smart_switch(&self, address: &str) -> Option<&String> {
         self.smart_switches.get(address)
     }

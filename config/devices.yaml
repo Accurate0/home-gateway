@@ -2,6 +2,7 @@
   room: entry
   transport: zigbee
   address: "0x54ef441000d2b0b0"
+  model: aqara_mccgq12lm
   watchdog:
     timeout: 1h
     notify: [android_app]
@@ -19,6 +20,7 @@
   room: garage
   transport: zigbee
   address: "0x54ef441000d2b1ba"
+  model: aqara_mccgq12lm
   roles:
     - type: door
       config:
@@ -32,6 +34,7 @@
   room: living-room
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
+  model: ts011f_plug
   roles:
     - type: smart_switch
       config:
@@ -42,6 +45,7 @@
   room: living-room
   transport: zigbee
   address: "0x00158d008b8798a7"
+  model: lumi_wsdcgq11lm
   roles:
     - type: environment
       config: { id: living-room, name: Living Room }
@@ -52,6 +56,7 @@
   room: bathroom
   transport: zigbee
   address: "0x00158d008b879b53"
+  model: lumi_wsdcgq11lm
   roles:
     - type: environment
       config: { id: bathroom, name: Bathroom }
@@ -62,16 +67,17 @@
   room: bedroom
   transport: zigbee
   address: "0xb0c7defffef6a9be"
+  model: ikea_e2112
   roles:
     - type: environment
       config: { id: bedroom, name: Bedroom }
-      capabilities: [temperature, humidity, pressure]
-    - type: battery
+      capabilities: [temperature, humidity, pm25, voc_index]
 
 - id: env-outdoor
   room: outdoor
   transport: zigbee
   address: "0x54ef441000ee2ca3"
+  model: aqara_wsdcgq12lm
   roles:
     - type: environment
       config: { id: outdoor, name: Outdoor }
@@ -107,6 +113,7 @@
   room: bedroom
   transport: zigbee
   address: "0x54ef441000dbc81c"
+  model: aqara_fp1e
   roles:
     - type: presence
       config: { name: Closet Presence Sensor }
@@ -133,6 +140,7 @@
   room: bedroom
   transport: zigbee
   address: "0x54ef441000d4f05c"
+  model: aqara_t1
   roles:
     - type: light
       config: { name: Closet Light }
@@ -142,6 +150,7 @@
   room: bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
+  model: phillips_9290012573a
   roles:
     - type: light
       config: { name: Bedroom Table Lamp }
@@ -151,6 +160,7 @@
   room: living-room
   transport: zigbee
   address: "0x94a081fffe2eedc0"
+  model: ikea_led2201g8
   roles:
     - type: light
       config: { name: Living Room Floor Lamp }
@@ -159,6 +169,7 @@
 - id: control-switch
   transport: zigbee
   address: "0x64028ffffe638218"
+  model: ikea_e2001
   roles:
     - type: control_switch
     - type: battery
@@ -166,6 +177,7 @@
 - id: small-switch
   transport: zigbee
   address: "0x00158d008bbe0316"
+  model: aqara_wxkg11lm
   roles:
     - type: control_switch
     - type: battery
