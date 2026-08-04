@@ -49,5 +49,5 @@ jobs:
       - name: Publish index.html
         run: |
           aws s3 cp eink-display-web/dist/index.html \
-            s3://home-gateway-bucket/index.html \
+            s3://home-gateway-bucket/eink-display/web/index.html \
             --content-type text/html

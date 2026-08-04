@@ -75,7 +75,7 @@ impl EInkDisplayActor {
         let optional_index = self
             .shared_actor_state
             .s3
-            .get_object_optional("index.html", etag)
+            .get_object_optional("eink-display/web/index.html", etag)
             .await?;
 
         match optional_index {
