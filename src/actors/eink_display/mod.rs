@@ -5,7 +5,10 @@ use crate::settings::{Album, EinkMode};
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
-    cdp::browser_protocol::{emulation::SetLocaleOverrideParams, page::CaptureScreenshotFormat},
+    cdp::browser_protocol::{
+        emulation::{SetDeviceMetricsOverrideParams, SetLocaleOverrideParams},
+        page::CaptureScreenshotFormat,
+    },
     handler::viewport::Viewport,
     page::ScreenshotParams,
 };
@@ -93,6 +96,7 @@ impl EInkDisplayActor {
     async fn render_web(
         &self,
         state: &mut EInkActorState,
+        display: &EinkDisplaySettings,
         settle: Duration,
         query: Option<&str>,
     ) -> Result<Option<Vec<u8>>, ractor::ActorProcessingErr> {
@@ -104,12 +108,28 @@ impl EInkDisplayActor {
             tracing::warn!("skipping screenshot: chromium not available");
             return Ok(None);
         };
-        let url = match query {
-            Some(query) if !query.is_empty() => format!("{}?{query}", Self::INDEX_PATH),
-            _ => Self::INDEX_PATH.to_owned(),
+
+        let orientation_param = format!("orientation={}", display.orientation_str());
+        let query = match query {
+            Some(query) if !query.is_empty() => format!("{query}&{orientation_param}"),
+            _ => orientation_param,
         };
+        let url = format!("{}?{query}", Self::INDEX_PATH);
+
         let original_page = browser.new_page(url).await?;
         tracing::info!("navigating to page");
+
+        let (width, height) = display.target_dims();
+        original_page
+            .execute(
+                SetDeviceMetricsOverrideParams::builder()
+                    .width(width as i64)
+                    .height(height as i64)
+                    .device_scale_factor(1.0)
+                    .mobile(false)
+                    .build()?,
+            )
+            .await?;
 
         tracing::info!("setting locale and timezone");
         let page = original_page.emulate_timezone("Australia/Perth").await?;
@@ -300,8 +320,8 @@ impl Actor for EInkDisplayActor {
                 width: 1600,
                 height: 1200,
                 device_scale_factor: None,
-                emulating_mobile: true,
-                is_landscape: true,
+                emulating_mobile: false,
+                is_landscape: false,
                 has_touch: false,
             }))
             .build()
@@ -402,12 +422,17 @@ impl Actor for EInkDisplayActor {
                                 .map(|v| v.name.clone())
                                 .unwrap_or_else(|| "default".to_owned());
                             let query = view.and_then(|v| v.query.clone());
-                            let image =
-                                match self.render_web(state, settle, query.as_deref()).await? {
-                                    Some(image) => image,
-                                    None => continue,
-                                };
-                            let key = format!("eink-display/dashboard/{view_name}.png");
+                            let image = match self
+                                .render_web(state, &display, settle, query.as_deref())
+                                .await?
+                            {
+                                Some(image) => image,
+                                None => continue,
+                            };
+                            let key = format!(
+                                "eink-display/dashboard/{view_name}-{}.png",
+                                display.orientation_str()
+                            );
                             self.shared_actor_state
                                 .s3
                                 .put_object(&key, &image, Some("image/png"))

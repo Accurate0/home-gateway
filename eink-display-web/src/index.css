@@ -122,11 +122,12 @@
   }
 }
 
-/* Fixed-size app container: center the 1600x1200 UI in the viewport */
+/* Panel-sized app container: the viewport is the panel, never scroll */
 html,
 body {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow: hidden;
   background-color: white;
 }

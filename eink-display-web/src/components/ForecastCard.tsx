@@ -49,8 +49,10 @@ function WeatherIcon({ code, size = 80 }: { code: string; size?: number }) {
 
 export default function ForecastCard({
   weatherRef,
+  dense = false,
 }: {
   weatherRef: ForecastCard_weather$key;
+  dense?: boolean;
 }) {
   const data = useFragment(ForecastFragment, weatherRef);
 
@@ -60,12 +62,14 @@ export default function ForecastCard({
   const days = (data?.forecast?.days ?? []) as DayType[];
   const upcoming = days.slice(0, 6); // Show 6 days
 
+  const iconSize = dense ? 48 : 72;
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 24,
+        gap: dense ? 4 : 24,
       }}
     >
       {upcoming.map((d, i) => (
@@ -75,15 +79,19 @@ export default function ForecastCard({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "20px 0",
+            padding: dense ? "4px 0" : "20px 0",
             borderBottom: i === upcoming.length - 1 ? "none" : "3px solid #eee",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <div
-              style={{ width: 80, display: "flex", justifyContent: "center" }}
+              style={{
+                width: iconSize + 8,
+                display: "flex",
+                justifyContent: "center",
+              }}
             >
-              <WeatherIcon code={d.code} size={72} />
+              <WeatherIcon code={d.code} size={iconSize} />
             </div>
             <div
               style={{
@@ -93,16 +101,22 @@ export default function ForecastCard({
                 lineHeight: 1.1,
               }}
             >
-              <div style={{ fontSize: 36, fontWeight: 800 }}>
+              <div style={{ fontSize: dense ? 30 : 36, fontWeight: 800 }}>
                 {formatForecastDate(d.dateTime)}
               </div>
-              <div style={{ fontSize: 28, fontWeight: 500, color: "#4b5563" }}>
+              <div
+                style={{
+                  fontSize: dense ? 24 : 28,
+                  fontWeight: 500,
+                  color: "#4b5563",
+                }}
+              >
                 {d.description}
               </div>
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 36, fontWeight: 800 }}>
+            <div style={{ fontSize: dense ? 30 : 36, fontWeight: 800 }}>
               {d.max}°{" "}
               <span style={{ color: "#6b7280", fontWeight: 500 }}>
                 {d.min}°
@@ -111,7 +125,7 @@ export default function ForecastCard({
             {d.uv != null && (
               <div
                 style={{
-                  fontSize: 22,
+                  fontSize: dense ? 20 : 22,
                   color: "#dc2626",
                   fontWeight: 800,
                   marginTop: 4,

@@ -44,6 +44,7 @@ export default function SolarChart({
     <div style={{ width: width ?? 740, height: height ?? 600 }}>
       <ChartContainer
         id="solar"
+        className="aspect-auto h-full w-full"
         config={{
           wh: { label: "Wh", color: "#0000ff" },
           uv: { label: "UV", color: "#dc2626" },
