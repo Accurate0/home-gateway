@@ -185,7 +185,7 @@
 - id: living-room-epd
   room: living-room
   transport: eink_display_firmware
-  address: "94a990cf8384"
+  address: "e83dc1fb1c98"
   roles:
     - type: eink_display_firmware
       config:
@@ -205,7 +205,7 @@
 - id: hallway-epd
   room: hallway
   transport: eink_display_firmware
-  address: "e83dc1fb1c98"
+  address: "94a990cf8384"
   roles:
     - type: eink_display_firmware
       config:
