@@ -25,37 +25,24 @@ const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
 const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
 
-const RENDER_PIPELINE_VERSION: u32 = 1;
+const RENDER_PIPELINE_VERSION: u32 = 2;
+
+const PREPARE_RENDER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 const EPD_FLAG: &str = "home-gateway-epd";
 const EPD_NEW_DITHERING_FLAG: &str = "home-gateway-epd-new-dithering";
 const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct EpdFlagConfig {
     clear_screen: bool,
     force_sleep: bool,
-    refresh_interval: u32,
+    refresh_interval: Option<u32>,
     mode: Option<EinkMode>,
     dashboard_view: Option<String>,
     album: Option<String>,
     firmware_version: Option<String>,
     partial_refresh: Option<bool>,
-}
-
-impl Default for EpdFlagConfig {
-    fn default() -> Self {
-        Self {
-            clear_screen: false,
-            force_sleep: false,
-            refresh_interval: 15,
-            mode: None,
-            dashboard_view: None,
-            album: None,
-            firmware_version: None,
-            partial_refresh: None,
-        }
-    }
 }
 
 impl From<open_feature::StructValue> for EpdFlagConfig {
@@ -83,8 +70,7 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
                 .fields
                 .get("refresh_interval")
                 .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
-                .map(|n| n.max(0) as u32)
-                .unwrap_or(default.refresh_interval),
+                .map(|n| n.max(1) as u32),
             mode: string_field("mode").and_then(|s| match s.as_str() {
                 "dashboard" => Some(EinkMode::Dashboard),
                 "album" => Some(EinkMode::Album),
@@ -104,7 +90,20 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
     }
 }
 
+const DEFAULT_REFRESH_INTERVAL_MINS: u32 = 15;
+
 impl EpdFlagConfig {
+    pub(crate) fn resolve_refresh_interval(&self, display: Option<&EinkDisplaySettings>) -> u32 {
+        if let Some(interval) = self.refresh_interval {
+            return interval;
+        }
+
+        display
+            .and_then(|display| display.refresh)
+            .map(|refresh| refresh.num_minutes().max(1) as u32)
+            .unwrap_or(DEFAULT_REFRESH_INTERVAL_MINS)
+    }
+
     pub(crate) fn resolve_mode(&self, display: &EinkDisplaySettings) -> EinkMode {
         self.mode.unwrap_or_else(|| display.mode.name())
     }
@@ -554,6 +553,7 @@ pub(crate) async fn build_epd_config(
     let host = "https://home.anurag.sh/v1/epd";
 
     let flag = epd_flag_config(feature_flag_client, devices, device_id).await;
+    let configured_refresh = flag.resolve_refresh_interval(devices.eink_display(device_id));
 
     let Some(plan) = render_plan(
         db,
@@ -568,7 +568,7 @@ pub(crate) async fn build_epd_config(
     else {
         tracing::warn!(device_id = %device_id, "no image to serve, skipping this cycle");
         return EpdConfig {
-            refresh_interval_mins: Some(flag.refresh_interval),
+            refresh_interval_mins: Some(configured_refresh),
             image_url: None,
             image_hash: None,
             clear_screen: Some(flag.clear_screen),
@@ -583,7 +583,7 @@ pub(crate) async fn build_epd_config(
             let now = chrono::Utc::now().with_timezone(&Perth).time();
             sleep.minutes_until_end(now)
         }
-        None => flag.refresh_interval,
+        None => configured_refresh,
     };
 
     let firmware_update = match plan.sleep {
@@ -914,11 +914,15 @@ pub async fn config(
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
 
-    let registered = devices.eink_display(&request.device_id).is_some();
+    let display = devices.eink_display(&request.device_id);
+    let registered = display.is_some();
+    let configured_mode = display.map(|display| display.mode.name());
 
     tracing::info!(
         device_id = %request.device_id,
         registered,
+        ?configured_mode,
+        current_image_hash = ?request.current_image_hash,
         battery_voltage = ?request.battery_voltage,
         is_charging = ?request.is_charging,
         battery_chemistry = ?request.battery_chemistry,
@@ -955,6 +959,22 @@ pub async fn config(
         }
     } else {
         tracing::warn!("eink display actor not found, dropping config request");
+    }
+
+    let prepared =
+        crate::actors::rpc::query(EInkDisplayActor::NAME, PREPARE_RENDER_TIMEOUT, |reply| {
+            EInkDisplayMessage::PrepareRender {
+                device_id: request.device_id.clone(),
+                reply,
+            }
+        })
+        .await;
+
+    if let Err(e) = prepared {
+        tracing::warn!(
+            device_id = %request.device_id,
+            "could not prepare a fresh render ({e}), serving the last one"
+        );
     }
 
     Ok(Json(
@@ -1087,17 +1107,16 @@ async fn render_packed(
 
         let (width, height) = img.dimensions();
 
-        // Convert to floating point for error diffusion
-        let mut buffer: Vec<f32> = Vec::with_capacity((width * height * 3) as usize);
-        for pixel in img.pixels() {
-            buffer.push(pixel[0] as f32);
-            buffer.push(pixel[1] as f32);
-            buffer.push(pixel[2] as f32);
-        }
-
         let indices = if new_dithering {
-            dither_improved(&buffer, width, height, &palette)
+            dither_to_palette(&mut img, &palette)
         } else {
+            let mut buffer: Vec<f32> = Vec::with_capacity((width * height * 3) as usize);
+            for pixel in img.pixels() {
+                buffer.push(pixel[0] as f32);
+                buffer.push(pixel[1] as f32);
+                buffer.push(pixel[2] as f32);
+            }
+
             let mut indices = vec![0u8; (width * height) as usize];
             for y in 0..height {
                 for x in 0..width {
@@ -1124,109 +1143,62 @@ async fn render_packed(
     Ok(packed)
 }
 
-fn srgb_to_linear(c: f32) -> f32 {
-    let c = c / 255.0;
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
+struct PanelPalette {
+    colors: Vec<(f32, f32, f32, u8)>,
 }
 
-fn linear_to_srgb(c: f32) -> f32 {
-    let c = c.clamp(0.0, 1.0);
-    if c <= 0.0031308 {
-        c * 12.92
-    } else {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
-    }
-}
+impl image::imageops::ColorMap for PanelPalette {
+    type Color = image::Rgb<u8>;
 
-fn dither_improved(
-    buffer: &[f32],
-    width: u32,
-    height: u32,
-    palette: &[(f32, f32, f32, u8)],
-) -> Vec<u8> {
-    let w = width as usize;
-    let h = height as usize;
+    fn index_of(&self, color: &Self::Color) -> usize {
+        let [r, g, b] = color.0;
+        let (r, g, b) = (r as f32, g as f32, b as f32);
 
-    let mut lin: Vec<f32> = Vec::with_capacity(w * h * 3);
-    for &v in buffer.iter() {
-        lin.push(srgb_to_linear(v));
-    }
+        let mut closest = 0;
+        let mut min_dist = f32::MAX;
 
-    let palette_lin: Vec<(f32, f32, f32, u8)> = palette
-        .iter()
-        .map(|&(r, g, b, idx)| (srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b), idx))
-        .collect();
-
-    let palette_srgb: Vec<(f32, f32, f32)> = palette
-        .iter()
-        .map(|&(r, g, b, _)| (r / 255.0, g / 255.0, b / 255.0))
-        .collect();
-
-    let mut indices = vec![0u8; w * h];
-
-    for y in 0..h {
-        let left_to_right = y % 2 == 0;
-        let xs: Vec<usize> = if left_to_right {
-            (0..w).collect()
-        } else {
-            (0..w).rev().collect()
-        };
-        let dir: isize = if left_to_right { 1 } else { -1 };
-
-        for &x in &xs {
-            let base = (y * w + x) * 3;
-            let r = lin[base];
-            let g = lin[base + 1];
-            let b = lin[base + 2];
-
-            let sr = linear_to_srgb(r);
-            let sg = linear_to_srgb(g);
-            let sb = linear_to_srgb(b);
-
-            let mut min_dist = f32::MAX;
-            let mut closest = 0usize;
-            for (i, &(pr, pg, pb)) in palette_srgb.iter().enumerate() {
-                let dr = sr - pr;
-                let dg = sg - pg;
-                let db = sb - pb;
-                let dist = dr * dr + dg * dg + db * db;
-                if dist < min_dist {
-                    min_dist = dist;
-                    closest = i;
-                }
+        for (i, &(pr, pg, pb, _)) in self.colors.iter().enumerate() {
+            let dist = (r - pr).powi(2) + (g - pg).powi(2) + (b - pb).powi(2);
+            if dist < min_dist {
+                min_dist = dist;
+                closest = i;
             }
+        }
 
-            let (lr, lg, lb, pidx) = palette_lin[closest];
-            indices[y * w + x] = pidx;
+        closest
+    }
 
-            let er = r - lr;
-            let eg = g - lg;
-            let eb = b - lb;
+    fn lookup(&self, index: usize) -> Option<Self::Color> {
+        self.colors
+            .get(index)
+            .map(|&(r, g, b, _)| image::Rgb([r as u8, g as u8, b as u8]))
+    }
 
-            let mut spread = |nx: isize, ny: isize, factor: f32| {
-                if nx < 0 || nx >= width as isize || ny < 0 || ny >= height as isize {
-                    return;
-                }
-                let nbase = ((ny as usize) * w + nx as usize) * 3;
-                lin[nbase] = (lin[nbase] + er * factor).clamp(0.0, 1.0);
-                lin[nbase + 1] = (lin[nbase + 1] + eg * factor).clamp(0.0, 1.0);
-                lin[nbase + 2] = (lin[nbase + 2] + eb * factor).clamp(0.0, 1.0);
-            };
+    fn has_lookup(&self) -> bool {
+        true
+    }
 
-            let xi = x as isize;
-            let yi = y as isize;
-            spread(xi + dir, yi, 7.0 / 16.0);
-            spread(xi - dir, yi + 1, 3.0 / 16.0);
-            spread(xi, yi + 1, 5.0 / 16.0);
-            spread(xi + dir, yi + 1, 1.0 / 16.0);
+    fn map_color(&self, color: &mut Self::Color) {
+        let index = self.index_of(color);
+        if let Some(mapped) = self.lookup(index) {
+            *color = mapped;
         }
     }
+}
 
-    indices
+fn dither_to_palette(img: &mut image::RgbImage, palette: &[(f32, f32, f32, u8)]) -> Vec<u8> {
+    let map = PanelPalette {
+        colors: palette.to_vec(),
+    };
+
+    image::imageops::dither(img, &map);
+
+    img.pixels()
+        .map(|pixel| {
+            let (_, _, _, index) = map.colors[image::imageops::ColorMap::index_of(&map, pixel)];
+            index
+        })
+        .collect()
 }
 
 fn process_pixel(
@@ -1305,6 +1277,91 @@ fn add_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn display_with_refresh(refresh: Option<chrono::TimeDelta>) -> EinkDisplaySettings {
+        EinkDisplaySettings {
+            name: "Test Display".to_owned(),
+            firmware_version: "v0.0.0".to_owned(),
+            mode: crate::settings::EinkModeConfig::default(),
+            orientation: crate::settings::Orientation::Portrait,
+            refresh,
+            settle: None,
+            sleep: None,
+            partial: crate::device_registry::PartialRefresh {
+                enabled: false,
+                max_area_pct: 30,
+                max_consecutive: 5,
+            },
+        }
+    }
+
+    #[test]
+    fn dither_maps_flat_colours_to_their_palette_index() {
+        let palette = vec![
+            (0.0, 0.0, 0.0, 0u8),
+            (255.0, 255.0, 255.0, 1u8),
+            (255.0, 0.0, 0.0, 3u8),
+        ];
+
+        let mut img = image::RgbImage::from_pixel(8, 8, image::Rgb([250, 10, 8]));
+        let indices = dither_to_palette(&mut img, &palette);
+
+        assert_eq!(indices.len(), 64);
+        assert!(indices.iter().all(|&index| index == 3));
+        assert!(img.pixels().all(|pixel| pixel.0 == [255, 0, 0]));
+    }
+
+    #[test]
+    fn dither_only_emits_palette_indices() {
+        let palette = vec![(0.0, 0.0, 0.0, 0u8), (255.0, 255.0, 255.0, 1u8)];
+
+        let mut img = image::RgbImage::from_pixel(16, 16, image::Rgb([128, 128, 128]));
+        let indices = dither_to_palette(&mut img, &palette);
+
+        assert!(indices.iter().all(|index| [0, 1].contains(index)));
+        assert!(indices.iter().any(|&index| index == 0));
+        assert!(indices.iter().any(|&index| index == 1));
+    }
+
+    #[test]
+    fn refresh_interval_prefers_the_flag() {
+        let flag = EpdFlagConfig {
+            refresh_interval: Some(5),
+            ..EpdFlagConfig::default()
+        };
+        let display = display_with_refresh(Some(chrono::TimeDelta::hours(1)));
+
+        assert_eq!(flag.resolve_refresh_interval(Some(&display)), 5);
+    }
+
+    #[test]
+    fn refresh_interval_falls_back_to_the_display() {
+        let flag = EpdFlagConfig::default();
+
+        assert_eq!(
+            flag.resolve_refresh_interval(Some(&display_with_refresh(Some(
+                chrono::TimeDelta::hours(1)
+            )))),
+            60
+        );
+
+        assert_eq!(
+            flag.resolve_refresh_interval(Some(&display_with_refresh(Some(
+                chrono::TimeDelta::seconds(30)
+            )))),
+            1
+        );
+
+        assert_eq!(
+            flag.resolve_refresh_interval(Some(&display_with_refresh(None))),
+            DEFAULT_REFRESH_INTERVAL_MINS
+        );
+
+        assert_eq!(
+            flag.resolve_refresh_interval(None),
+            DEFAULT_REFRESH_INTERVAL_MINS
+        );
+    }
 
     #[test]
     fn render_hash_is_stable() {

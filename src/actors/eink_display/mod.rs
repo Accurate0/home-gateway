@@ -13,7 +13,7 @@ use chromiumoxide::{
     page::ScreenshotParams,
 };
 use futures::StreamExt;
-use ractor::Actor;
+use ractor::{Actor, RpcReplyPort};
 use rand::seq::IndexedRandom;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -29,6 +29,10 @@ pub mod types;
 pub enum EInkDisplayMessage {
     TakeScreenshot {
         device_id: Option<String>,
+    },
+    PrepareRender {
+        device_id: String,
+        reply: RpcReplyPort<()>,
     },
     BatteryReport {
         device_id: String,
@@ -159,7 +163,7 @@ impl EInkDisplayActor {
         &self,
         display: &EinkDisplaySettings,
         album: &Album,
-    ) -> Result<Option<String>, ractor::ActorProcessingErr> {
+    ) -> Result<Option<(String, String)>, ractor::ActorProcessingErr> {
         let s3 = &self.shared_actor_state.s3;
 
         let images = s3.list_objects(&album.prefix).await?;
@@ -201,7 +205,7 @@ impl EInkDisplayActor {
 
         if s3.get_object_metadata(&cache_key).await?.is_some() {
             tracing::info!("album cache hit for {source_key} -> {cache_key}");
-            return Ok(Some(cache_key));
+            return Ok(Some((cache_key, hash)));
         }
 
         let processed = tokio::task::spawn_blocking(move || {
@@ -216,12 +220,125 @@ impl EInkDisplayActor {
         .map_err(|e| anyhow::anyhow!("join error: {e}"))??;
 
         let mut metadata = HashMap::new();
-        metadata.insert("source_hash".to_owned(), hash);
+        metadata.insert("source_hash".to_owned(), hash.clone());
         s3.put_object_with_metadata(&cache_key, &processed, Some("image/png"), &metadata)
             .await?;
         tracing::info!("album image cached {source_key} -> {cache_key}");
 
-        Ok(Some(cache_key))
+        Ok(Some((cache_key, hash)))
+    }
+
+    fn dashboard_key(view_name: &str, orientation: &str) -> String {
+        format!("eink-display/dashboard/{view_name}-{orientation}.png")
+    }
+
+    async fn store_render(
+        &self,
+        device_id: &str,
+        name: &str,
+        image_key: &str,
+        image_content_hash: &str,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        sqlx::query!(
+            "INSERT INTO eink_display (device_id, name, image_key, image_content_hash) VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key, image_content_hash = EXCLUDED.image_content_hash",
+            device_id,
+            name,
+            image_key,
+            image_content_hash,
+        )
+        .execute(&self.shared_actor_state.db)
+        .await?;
+
+        tracing::info!("eink display image updated for {device_id} -> {image_key}");
+
+        Ok(())
+    }
+
+    async fn stored_image_key(
+        &self,
+        device_id: &str,
+    ) -> Result<Option<String>, ractor::ActorProcessingErr> {
+        let row = sqlx::query!(
+            "SELECT image_key, image_content_hash FROM eink_display WHERE device_id = $1",
+            device_id
+        )
+        .fetch_optional(&self.shared_actor_state.db)
+        .await?;
+
+        Ok(row.and_then(|row| row.image_key))
+    }
+
+    async fn adopt_last_dashboard(
+        &self,
+        device_id: &str,
+        display: &EinkDisplaySettings,
+        image_key: &str,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        if self.stored_image_key(device_id).await?.as_deref() == Some(image_key) {
+            return Ok(());
+        }
+
+        let image = match self.shared_actor_state.s3.get_object(image_key).await {
+            Ok(image) => image,
+            Err(e) => {
+                tracing::warn!(
+                    "no previous dashboard render at {image_key} for {device_id} ({e}), \
+                     serving the current frame until the screenshot lands"
+                );
+                return Ok(());
+            }
+        };
+
+        self.store_render(device_id, &display.name, image_key, &content_hash(&image))
+            .await
+    }
+
+    async fn prepare_render(
+        &self,
+        myself: &ractor::ActorRef<EInkDisplayMessage>,
+        device_id: &str,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let Some(display) = self.shared_actor_state.devices.eink_display(device_id) else {
+            tracing::warn!("render requested for unregistered eink display '{device_id}'");
+            return Ok(());
+        };
+        let display = display.clone();
+
+        let flag = crate::routes::epd::epd_flag_config(
+            &self.shared_actor_state.feature_flag_client,
+            &self.shared_actor_state.devices,
+            device_id,
+        )
+        .await;
+
+        let global = &self.shared_actor_state.settings.eink_display;
+
+        match flag.resolve_mode(&display) {
+            EinkMode::Album => {
+                let album = flag.resolve_album(global, &display);
+                if let Some((image_key, hash)) = self.render_album(&display, &album).await? {
+                    self.store_render(device_id, &display.name, &image_key, &hash)
+                        .await?;
+                }
+            }
+            EinkMode::Dashboard => {
+                let view_name = flag
+                    .resolve_view(global, &display)
+                    .map(|view| view.name.clone())
+                    .unwrap_or_else(|| "default".to_owned());
+                let image_key = Self::dashboard_key(&view_name, display.orientation_str());
+
+                self.adopt_last_dashboard(device_id, &display, &image_key)
+                    .await?;
+
+                myself.send_message(EInkDisplayMessage::TakeScreenshot {
+                    device_id: Some(device_id.to_owned()),
+                })?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -292,20 +409,6 @@ impl Actor for EInkDisplayActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let default_refresh = Duration::from_secs(3600);
-
-        for (device_id, display) in self.shared_actor_state.devices.eink_displays() {
-            let refresh = display
-                .refresh
-                .and_then(|r| r.to_std().ok())
-                .unwrap_or(default_refresh);
-            let device_id = device_id.clone();
-            let _join_handle =
-                myself.send_interval(refresh, move || EInkDisplayMessage::TakeScreenshot {
-                    device_id: Some(device_id.clone()),
-                });
-        }
-
         let launch = BrowserConfig::builder()
             .new_headless_mode()
             .arg("--disable-crash-reporter")
@@ -374,7 +477,7 @@ impl Actor for EInkDisplayActor {
 
     async fn handle(
         &self,
-        _myself: ractor::ActorRef<Self::Msg>,
+        myself: ractor::ActorRef<Self::Msg>,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
@@ -429,10 +532,7 @@ impl Actor for EInkDisplayActor {
                                 Some(image) => image,
                                 None => continue,
                             };
-                            let key = format!(
-                                "eink-display/dashboard/{view_name}-{}.png",
-                                display.orientation_str()
-                            );
+                            let key = Self::dashboard_key(&view_name, display.orientation_str());
                             self.shared_actor_state
                                 .s3
                                 .put_object(&key, &image, Some("image/png"))
@@ -442,31 +542,27 @@ impl Actor for EInkDisplayActor {
 
                             (key, hash)
                         }
-                        EinkMode::Album => {
-                            let album = flag.resolve_album(global, &display);
-                            match self.render_album(&display, &album).await? {
-                                Some(key) => {
-                                    let hash = content_hash(key.as_bytes());
-                                    (key, hash)
-                                }
-                                None => continue,
-                            }
-                        }
+                        EinkMode::Album => match self
+                            .render_album(&display, &flag.resolve_album(global, &display))
+                            .await?
+                        {
+                            Some(rendered) => rendered,
+                            None => continue,
+                        },
                     };
 
-                    sqlx::query!(
-                        "INSERT INTO eink_display (device_id, name, image_key, image_content_hash) VALUES ($1, $2, $3, $4) \
-                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key, image_content_hash = EXCLUDED.image_content_hash",
-                        device_id,
-                        display.name,
-                        image_key,
-                        image_content_hash,
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
-
-                    tracing::info!("eink display image updated for {device_id} -> {image_key}");
+                    self.store_render(&device_id, &display.name, &image_key, &image_content_hash)
+                        .await?;
                 }
+            }
+            EInkDisplayMessage::PrepareRender { device_id, reply } => {
+                let result = self.prepare_render(&myself, &device_id).await;
+
+                if reply.send(()).is_err() {
+                    tracing::warn!("prepare render reply dropped for {device_id}");
+                }
+
+                result?;
             }
             EInkDisplayMessage::BatteryReport {
                 device_id,
