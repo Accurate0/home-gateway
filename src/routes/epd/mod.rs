@@ -30,7 +30,6 @@ const RENDER_PIPELINE_VERSION: u32 = 2;
 const PREPARE_RENDER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 const EPD_FLAG: &str = "home-gateway-epd";
-const EPD_NEW_DITHERING_FLAG: &str = "home-gateway-epd-new-dithering";
 const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
 
 #[derive(Debug, Clone, Default)]
@@ -170,22 +169,6 @@ pub(crate) async fn epd_flag_config(
             fallback
         }
     }
-}
-
-pub(crate) async fn epd_new_dithering_enabled(
-    feature_flag_client: &FeatureFlagClient,
-    devices: &DeviceRegistry,
-    device_id: &str,
-) -> bool {
-    let mut context =
-        EvaluationContext::default().with_custom_field("device_id", device_id.to_string());
-    if let Some(display) = devices.eink_display(device_id) {
-        context = context.with_custom_field("device_name", display.name.clone());
-    }
-
-    feature_flag_client
-        .is_feature_enabled(EPD_NEW_DITHERING_FLAG, false, context)
-        .await
 }
 
 pub(crate) async fn epd_palette(
@@ -425,7 +408,6 @@ struct RenderPlan {
     image_key: String,
     sleep: Option<SleepWindow>,
     sleep_label: Option<String>,
-    new_dithering: bool,
     palette: Vec<(f32, f32, f32, u8)>,
     hash: String,
 }
@@ -461,7 +443,6 @@ async fn render_plan(
     flag: &EpdFlagConfig,
     device_id: &str,
 ) -> Option<RenderPlan> {
-    let new_dithering = epd_new_dithering_enabled(feature_flag_client, devices, device_id).await;
     let palette = epd_palette(
         feature_flag_client,
         devices,
@@ -511,7 +492,6 @@ async fn render_plan(
         &RENDER_PIPELINE_VERSION.to_string(),
         &image_key,
         &content_hash,
-        &new_dithering.to_string(),
         &palette_hash,
         &flag.clear_screen.to_string(),
         sleep_label.as_deref().unwrap_or(""),
@@ -521,7 +501,6 @@ async fn render_plan(
         image_key,
         sleep,
         sleep_label,
-        new_dithering,
         palette,
         hash,
     })
@@ -659,7 +638,6 @@ async fn ensure_packed_cached(s3: &crate::s3::S3, plan: &RenderPlan) -> bool {
         s3,
         &plan.image_key,
         plan.sleep_label.clone(),
-        plan.new_dithering,
         &plan.palette,
         &key,
     )
@@ -1055,13 +1033,11 @@ async fn render_and_cache(
     s3: &crate::s3::S3,
     image_key: &str,
     sleep_label: Option<String>,
-    new_dithering: bool,
     palette: &[(f32, f32, f32, u8)],
     cache_key: &str,
 ) -> Result<Vec<u8>, AppError> {
     let image_response = s3.get_object(image_key).await?;
-    let packed =
-        render_packed(image_response, sleep_label, new_dithering, palette.to_vec()).await?;
+    let packed = render_packed(image_response, sleep_label, palette.to_vec()).await?;
 
     if let Err(e) = s3.put_object(cache_key, &packed, None).await {
         tracing::warn!(key = %cache_key, "failed to cache packed frame: {e}");
@@ -1086,7 +1062,6 @@ fn crop_packed(packed: &[u8], window: PartialWindow) -> Vec<u8> {
 async fn render_packed(
     image_response: Vec<u8>,
     sleep_label: Option<String>,
-    new_dithering: bool,
     palette: Vec<(f32, f32, f32, u8)>,
 ) -> Result<Vec<u8>, AppError> {
     let packed = tokio::task::spawn_blocking(move || {
@@ -1107,25 +1082,7 @@ async fn render_packed(
 
         let (width, height) = img.dimensions();
 
-        let indices = if new_dithering {
-            dither_to_palette(&mut img, &palette)
-        } else {
-            let mut buffer: Vec<f32> = Vec::with_capacity((width * height * 3) as usize);
-            for pixel in img.pixels() {
-                buffer.push(pixel[0] as f32);
-                buffer.push(pixel[1] as f32);
-                buffer.push(pixel[2] as f32);
-            }
-
-            let mut indices = vec![0u8; (width * height) as usize];
-            for y in 0..height {
-                for x in 0..width {
-                    indices[(y * width + x) as usize] =
-                        process_pixel(&mut buffer, width, height, x, y, &palette);
-                }
-            }
-            indices
-        };
+        let indices = dither_to_palette(&mut img, &palette);
 
         let mut output_packed = Vec::with_capacity((width * height / 2) as usize);
         for y in 0..height {
@@ -1201,79 +1158,6 @@ fn dither_to_palette(img: &mut image::RgbImage, palette: &[(f32, f32, f32, u8)])
         .collect()
 }
 
-fn process_pixel(
-    buffer: &mut [f32],
-    width: u32,
-    height: u32,
-    x: u32,
-    y: u32,
-    palette: &[(f32, f32, f32, u8)],
-) -> u8 {
-    let index = ((y * width + x) * 3) as usize;
-    let r = buffer[index];
-    let g = buffer[index + 1];
-    let b = buffer[index + 2];
-
-    // Find closest color
-    let mut min_dist = f32::MAX;
-    let mut closest_idx = 0;
-    let mut closest_color = (0.0, 0.0, 0.0);
-
-    for &(pr, pg, pb, pidx) in palette {
-        let dr = r - pr;
-        let dg = g - pg;
-        let db = b - pb;
-        let dist = dr * dr + dg * dg + db * db;
-        if dist < min_dist {
-            min_dist = dist;
-            closest_idx = pidx;
-            closest_color = (pr, pg, pb);
-        }
-    }
-
-    let (pr, pg, pb) = closest_color;
-    let err_r = r - pr;
-    let err_g = g - pg;
-    let err_b = b - pb;
-
-    // Distribute error
-    // (x+1, y) 7/16
-    if x + 1 < width {
-        add_error(buffer, width, x + 1, y, err_r, err_g, err_b, 7.0 / 16.0);
-    }
-    // (x-1, y+1) 3/16
-    if x > 0 && y + 1 < height {
-        add_error(buffer, width, x - 1, y + 1, err_r, err_g, err_b, 3.0 / 16.0);
-    }
-    // (x, y+1) 5/16
-    if y + 1 < height {
-        add_error(buffer, width, x, y + 1, err_r, err_g, err_b, 5.0 / 16.0);
-    }
-    // (x+1, y+1) 1/16
-    if x + 1 < width && y + 1 < height {
-        add_error(buffer, width, x + 1, y + 1, err_r, err_g, err_b, 1.0 / 16.0);
-    }
-
-    closest_idx
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_error(
-    buffer: &mut [f32],
-    width: u32,
-    x: u32,
-    y: u32,
-    er: f32,
-    eg: f32,
-    eb: f32,
-    factor: f32,
-) {
-    let index = ((y * width + x) * 3) as usize;
-    buffer[index] += er * factor;
-    buffer[index + 1] += eg * factor;
-    buffer[index + 2] += eb * factor;
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1319,8 +1203,8 @@ mod tests {
         let indices = dither_to_palette(&mut img, &palette);
 
         assert!(indices.iter().all(|index| [0, 1].contains(index)));
-        assert!(indices.iter().any(|&index| index == 0));
-        assert!(indices.iter().any(|&index| index == 1));
+        assert!(indices.contains(&0));
+        assert!(indices.contains(&1));
     }
 
     #[test]
