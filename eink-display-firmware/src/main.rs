@@ -10,12 +10,14 @@ use esp_idf_sys::{
 mod battery;
 mod driver;
 mod http_client;
+mod image_hash;
 mod ota;
 mod panel_power;
 mod refresh;
 mod watchdog;
 mod wifi;
 use driver::Gdep133c02;
+use image_hash::ImageHashStore;
 use panel_power::PanelPower;
 use refresh::Refresh;
 
@@ -138,6 +140,14 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     };
 
+    let mut image_hashes = match ImageHashStore::new(nvs.clone()) {
+        Ok(store) => Some(store),
+        Err(e) => {
+            log::warn!("failed to open image hash store: {e}");
+            None
+        }
+    };
+
     let mut wifi = wifi::try_connect(peripherals.modem, sys_loop, Some(nvs))?;
 
     if !wifi.is_connected()? {
@@ -191,13 +201,22 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     }
 
+    let stored_hash = image_hashes.as_ref().and_then(|store| store.stored());
+    let unchanged = match (&config.image_hash, &stored_hash) {
+        (Some(hash), Some(stored)) => hash == stored,
+        _ => false,
+    };
+
     let refresh = if config.clear_screen == Some(true) {
         Refresh::Clear
+    } else if unchanged {
+        log::info!("image unchanged, skipping download and refresh");
+        Refresh::None
     } else if let Some(url) = config.image_url {
         match http_client::fetch_image(&url, &mut epd_buffer) {
             Ok(_) => {
                 log::info!("image fetched successfully");
-                Refresh::Image
+                Refresh::Image(config.image_hash)
             }
             Err(e) => {
                 log::error!("failed to fetch image: {:?}", e);
@@ -236,9 +255,13 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
             display.init_epd()?;
             display.display_color(driver::EPD_WHITE, &mut epd_buffer)?;
+
+            if let Some(store) = image_hashes.as_mut() {
+                store.clear();
+            }
         }
 
-        Refresh::Image => {
+        Refresh::Image(hash) => {
             log::info!("rendering image to display");
 
             display.init_epd()?;
@@ -248,6 +271,10 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
             display.init_epd()?;
             display.display_buffer(&epd_buffer)?;
+
+            if let (Some(store), Some(hash)) = (image_hashes.as_mut(), hash) {
+                store.store(&hash);
+            }
         }
     }
 

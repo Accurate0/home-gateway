@@ -4,7 +4,9 @@ use crate::{
     battery::BatteryChemistry,
     device_registry::{DeviceRegistry, EinkDisplaySettings, SleepWindow},
     feature_flag::FeatureFlagClient,
-    settings::{Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor},
+    settings::{
+        Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor, SettingsContainer,
+    },
     types::{ApiState, AppError},
 };
 use ab_glyph::{FontRef, PxScale};
@@ -18,10 +20,13 @@ use imageproc::drawing::{draw_text_mut, text_size};
 use open_feature::EvaluationContext;
 use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
 const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
+
+const RENDER_PIPELINE_VERSION: u32 = 1;
 
 const EPD_FLAG: &str = "home-gateway-epd";
 const EPD_NEW_DITHERING_FLAG: &str = "home-gateway-epd-new-dithering";
@@ -275,14 +280,64 @@ fn draw_sleep_label(img: &mut image::RgbImage, label: &str) {
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u32>,
     pub image_url: Option<String>,
+    pub image_hash: Option<String>,
     pub clear_screen: Option<bool>,
     pub firmware_url: Option<String>,
     pub firmware_version: Option<String>,
 }
 
-pub(crate) async fn build_epd_config(
+fn render_hash(parts: &[&str]) -> String {
+    let mut hasher = Sha256::new();
+    for part in parts {
+        hasher.update(part.as_bytes());
+        hasher.update([0u8]);
+    }
+
+    hex::encode(hasher.finalize())
+}
+
+async fn image_hash(
+    db: &sqlx::Pool<sqlx::Postgres>,
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
+    settings: &SettingsContainer,
+    flag: &EpdFlagConfig,
+    device_id: &str,
+) -> Option<String> {
+    let Ok(image_key) = latest_image_key(db, device_id).await else {
+        tracing::warn!("no image key for {device_id}, skipping image hash");
+        return None;
+    };
+
+    let new_dithering = epd_new_dithering_enabled(feature_flag_client, devices, device_id).await;
+    let palette = epd_palette(
+        feature_flag_client,
+        devices,
+        &settings.eink_display.palette,
+        device_id,
+    )
+    .await;
+
+    let palette = palette
+        .iter()
+        .map(|(r, g, b, index)| format!("{r}:{g}:{b}:{index}"))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    Some(render_hash(&[
+        &RENDER_PIPELINE_VERSION.to_string(),
+        &image_key,
+        &new_dithering.to_string(),
+        &palette,
+        &flag.clear_screen.to_string(),
+    ]))
+}
+
+pub(crate) async fn build_epd_config(
+    db: &sqlx::Pool<sqlx::Postgres>,
+    feature_flag_client: &FeatureFlagClient,
+    devices: &DeviceRegistry,
+    settings: &SettingsContainer,
     device_id: &str,
     running_firmware_version: Option<&str>,
 ) -> EpdConfig {
@@ -300,6 +355,11 @@ pub(crate) async fn build_epd_config(
         return EpdConfig {
             refresh_interval_mins: Some(sleep.minutes_until_end(now)),
             image_url: Some(format!("{base}?device_id={device_id}")),
+            image_hash: Some(render_hash(&[
+                &RENDER_PIPELINE_VERSION.to_string(),
+                "sleep",
+                &sleep.end.to_string(),
+            ])),
             clear_screen: Some(false),
             firmware_url: None,
             firmware_version: None,
@@ -312,6 +372,15 @@ pub(crate) async fn build_epd_config(
     EpdConfig {
         refresh_interval_mins: Some(flag.refresh_interval),
         image_url: Some(format!("{base}?device_id={device_id}")),
+        image_hash: image_hash(
+            db,
+            feature_flag_client,
+            devices,
+            settings,
+            &flag,
+            device_id,
+        )
+        .await,
         clear_screen: Some(flag.clear_screen),
         firmware_url: firmware_update
             .as_ref()
@@ -353,6 +422,8 @@ pub async fn config(
     State(ApiState {
         feature_flag_client,
         devices,
+        db,
+        settings,
         ..
     }): State<ApiState>,
     Auth(auth): Auth,
@@ -406,8 +477,10 @@ pub async fn config(
 
     Ok(Json(
         build_epd_config(
+            &db,
             &feature_flag_client,
             &devices,
+            &settings,
             &request.device_id,
             request.firmware_version.as_deref(),
         )
@@ -744,4 +817,28 @@ fn add_error(
     buffer[index] += er * factor;
     buffer[index + 1] += eg * factor;
     buffer[index + 2] += eb * factor;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_hash_is_stable() {
+        assert_eq!(render_hash(&["1", "key.png"]), render_hash(&["1", "key.png"]));
+    }
+
+    #[test]
+    fn render_hash_changes_with_inputs() {
+        let base = render_hash(&["1", "key.png", "false"]);
+
+        assert_ne!(base, render_hash(&["2", "key.png", "false"]));
+        assert_ne!(base, render_hash(&["1", "other.png", "false"]));
+        assert_ne!(base, render_hash(&["1", "key.png", "true"]));
+    }
+
+    #[test]
+    fn render_hash_separates_parts() {
+        assert_ne!(render_hash(&["ab", "c"]), render_hash(&["a", "bc"]));
+    }
 }

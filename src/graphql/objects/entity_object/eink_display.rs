@@ -11,9 +11,10 @@ use crate::{
         eink_battery::EinkDisplayDataLoader,
     },
     routes::epd::{EpdConfig, build_epd_config},
-    settings::{EinkMode, Orientation},
+    settings::{EinkMode, Orientation, SettingsContainer},
     timedelta_format::humanize,
 };
+use sqlx::{Pool, Postgres};
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum EinkDisplayKind {
@@ -177,7 +178,9 @@ impl EinkDisplayEntity {
     ) -> async_graphql::Result<EpdConfig> {
         let registry = ctx.data::<DeviceRegistry>()?;
         let feature_flag_client = ctx.data::<FeatureFlagClient>()?;
-        Ok(build_epd_config(feature_flag_client, registry, &self.address, None).await)
+        let db = ctx.data::<Pool<Postgres>>()?;
+        let settings = ctx.data::<SettingsContainer>()?;
+        Ok(build_epd_config(db, feature_flag_client, registry, settings, &self.address, None).await)
     }
 
     async fn battery(

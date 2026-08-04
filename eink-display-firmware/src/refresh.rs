@@ -1,5 +1,5 @@
 pub enum Refresh {
     None,
     Clear,
-    Image,
+    Image(Option<String>),
 }

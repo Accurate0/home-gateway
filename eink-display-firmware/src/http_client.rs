@@ -16,6 +16,7 @@ pub const FIRMWARE_VERSION: &str = env!("FIRMWARE_VERSION");
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u64>,
     pub image_url: Option<String>,
+    pub image_hash: Option<String>,
     pub clear_screen: Option<bool>,
     pub firmware_url: Option<String>,
     pub firmware_version: Option<String>,
