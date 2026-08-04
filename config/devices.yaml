@@ -192,14 +192,11 @@
         name: Living Room Display
         firmware_version: v0.1.0-e921311
         orientation: portrait
-        refresh: 1h
+        refresh: 12h
         settle: 10s
         mode:
           name: album
           album: world
-        sleep:
-          start: "00:00"
-          end: "08:00"
         partial:
           enabled: true
           max_area_pct: 45
