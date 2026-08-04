@@ -195,8 +195,8 @@
         refresh: 1h
         settle: 10s
         mode:
-          name: album
-          album: world
+          name: dashboard
+          view: home
         sleep:
           start: "00:00"
           end: "08:00"
