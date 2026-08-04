@@ -27,6 +27,11 @@ const EPD_TCON: u8 = 0x60;
 const EPD_TRES: u8 = 0x61;
 #[allow(dead_code)]
 const EPD_PTLW: u8 = 0x83;
+const PTLW_ENABLE: u8 = 0x01;
+const PTLW_DISABLE: u8 = 0x00;
+
+const PTLW_X_ALIGN: u32 = 4;
+const PTLW_MIN_WIDTH: u32 = 16;
 const EPD_AN_TM: u8 = 0x74;
 const EPD_AGID: u8 = 0x86;
 const EPD_BUCK_BOOST_VDDN: u8 = 0xB0;
@@ -43,6 +48,7 @@ const BUSY_TIMEOUT_MS: u32 = 60_000;
 pub const EPD_IMAGE_FULL_BUFFER_SIZE: usize = 960000;
 pub const EPD_WIDTH: u32 = 1200;
 pub const EPD_HEIGHT: u32 = 1600;
+pub const EPD_HALF_WIDTH: u32 = EPD_WIDTH / 2;
 
 const PSR_V: [u8; 2] = [0xDF, 0x69];
 const PWR_V: [u8; 6] = [0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38];
@@ -62,6 +68,88 @@ const BOOST_VDDP_EN_V: [u8; 1] = [0x01];
 const BTST_N_V: [u8; 2] = [0xE8, 0x28];
 const BUCK_BOOST_VDDN_V: [u8; 1] = [0x01];
 const TFT_VCOM_POWER_V: [u8; 1] = [0x02];
+
+#[derive(Debug, Clone, Copy)]
+pub struct PartialRegion {
+    pub cs_index: u8,
+    pub x_start: u32,
+    pub y_start: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl PartialRegion {
+    fn build(cs_index: u8, x: u32, y: u32, width: u32, height: u32) -> Option<Self> {
+        if width == 0 || height == 0 || cs_index > 1 {
+            return None;
+        }
+
+        let clipped_x0 = x;
+        let clipped_y0 = y;
+        let clipped_x1 = (x + width).min(EPD_WIDTH);
+        let clipped_y1 = (y + height).min(EPD_HEIGHT);
+
+        if clipped_x0 >= clipped_x1 || clipped_y0 >= clipped_y1 {
+            return None;
+        }
+
+        let half_start = if cs_index == 0 { 0 } else { EPD_HALF_WIDTH };
+        let half_end = if cs_index == 0 {
+            EPD_HALF_WIDTH
+        } else {
+            EPD_WIDTH
+        };
+
+        let overlap_x0 = clipped_x0.max(half_start);
+        let overlap_x1 = clipped_x1.min(half_end);
+
+        if overlap_x0 >= overlap_x1 {
+            return None;
+        }
+
+        let mut aligned_x0 = (overlap_x0 - half_start) / PTLW_X_ALIGN * PTLW_X_ALIGN;
+        let mut aligned_x1 = (overlap_x1 - half_start).div_ceil(PTLW_X_ALIGN) * PTLW_X_ALIGN;
+
+        if aligned_x1 - aligned_x0 < PTLW_MIN_WIDTH {
+            aligned_x1 = aligned_x0 + PTLW_MIN_WIDTH;
+        }
+
+        if aligned_x1 > EPD_HALF_WIDTH {
+            aligned_x0 = aligned_x0.saturating_sub(aligned_x1 - EPD_HALF_WIDTH);
+            aligned_x1 = EPD_HALF_WIDTH;
+        }
+
+        if aligned_x1 <= aligned_x0 {
+            return None;
+        }
+
+        let aligned_y0 = clipped_y0 & !1;
+        let aligned_y1 = if (clipped_y1 - aligned_y0) % 2 == 0 {
+            clipped_y1
+        } else {
+            (clipped_y1 + 1).min(EPD_HEIGHT)
+        };
+
+        if aligned_y0 >= aligned_y1 || (aligned_y1 - aligned_y0) % 2 != 0 {
+            return None;
+        }
+
+        Some(Self {
+            cs_index,
+            x_start: half_start + aligned_x0,
+            y_start: aligned_y0,
+            width: aligned_x1 - aligned_x0,
+            height: aligned_y1 - aligned_y0,
+        })
+    }
+
+    fn contained_in(&self, x: u32, y: u32, width: u32, height: u32) -> bool {
+        self.x_start >= x
+            && self.x_start + self.width <= x + width
+            && self.y_start >= y
+            && self.y_start + self.height <= y + height
+    }
+}
 
 pub struct Gdep133c02<'a> {
     spi: SpiDeviceDriver<'a, SpiDriver<'a>>,
@@ -443,6 +531,139 @@ impl<'a> Gdep133c02<'a> {
         self.display()?;
         self.delay_ms(10);
         log::info!("rendering completed");
+        Ok(())
+    }
+
+    fn enable_partial_region(&mut self, region: &PartialRegion) -> Result<()> {
+        let half_start = if region.cs_index == 0 {
+            0
+        } else {
+            EPD_HALF_WIDTH
+        };
+
+        let x_start = region.x_start - half_start;
+        let horizontal_start = (x_start * 2) as u16;
+        let horizontal_end = ((x_start + region.width) * 2 - 1) as u16;
+        let vertical_start = (region.y_start / 2) as u16;
+        let vertical_end = ((region.y_start + region.height) / 2 - 1) as u16;
+
+        let window = [
+            (horizontal_start >> 8) as u8,
+            (horizontal_start & 0xFF) as u8,
+            (horizontal_end >> 8) as u8,
+            (horizontal_end & 0xFF) as u8,
+            (vertical_start >> 8) as u8,
+            (vertical_start & 0xFF) as u8,
+            (vertical_end >> 8) as u8,
+            (vertical_end & 0xFF) as u8,
+            PTLW_ENABLE,
+        ];
+
+        self.set_cs(region.cs_index, false)?;
+        self.write_epd(EPD_CMD66, &CMD66_V)?;
+        self.set_cs_all(true)?;
+
+        self.set_cs(region.cs_index, false)?;
+        self.write_epd(EPD_PTLW, &window)?;
+        self.set_cs_all(true)?;
+
+        Ok(())
+    }
+
+    fn arm_dummy_region(&mut self, cs_index: u8) -> Result<()> {
+        let half_start = if cs_index == 0 { 0 } else { EPD_HALF_WIDTH };
+
+        let dummy = PartialRegion {
+            cs_index,
+            x_start: half_start,
+            y_start: 0,
+            width: PTLW_MIN_WIDTH,
+            height: 2,
+        };
+
+        self.enable_partial_region(&dummy)
+    }
+
+    fn disable_partial_regions(&mut self) -> Result<()> {
+        let window = [0, 0, 0, 0, 0, 0, 0, 0, PTLW_DISABLE];
+
+        self.set_cs_all(false)?;
+        self.write_epd(EPD_PTLW, &window)?;
+        self.set_cs_all(true)?;
+
+        Ok(())
+    }
+
+    pub fn display_partial(
+        &mut self,
+        region_buffer: &[u8],
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> Result<()> {
+        if width % 2 != 0 || x % 2 != 0 {
+            anyhow::bail!("partial window x={x} width={width} must be even");
+        }
+
+        let stride = (width / 2) as usize;
+        let expected = stride * height as usize;
+
+        if region_buffer.len() != expected {
+            anyhow::bail!(
+                "partial buffer size mismatch: expected {expected}, got {}",
+                region_buffer.len()
+            );
+        }
+
+        let regions = [
+            PartialRegion::build(0, x, y, width, height),
+            PartialRegion::build(1, x, y, width, height),
+        ];
+
+        if regions.iter().all(|region| region.is_none()) {
+            anyhow::bail!("partial window x={x} y={y} w={width} h={height} is outside the panel");
+        }
+
+        for region in regions.iter().flatten() {
+            if !region.contained_in(x, y, width, height) {
+                anyhow::bail!(
+                    "partial window x={x} y={y} w={width} h={height} did not survive controller alignment"
+                );
+            }
+        }
+
+        self.set_cs_all(true)?;
+
+        for region in regions.iter().flatten() {
+            self.enable_partial_region(region)?;
+
+            self.set_cs(region.cs_index, false)?;
+            self.write_command(EPD_DTM)?;
+
+            let row_offset = ((region.x_start - x) / 2) as usize;
+            let row_count = (region.width / 2) as usize;
+
+            for row in 0..region.height {
+                let start = (region.y_start + row - y) as usize * stride + row_offset;
+                self.write_data(&region_buffer[start..start + row_count])?;
+            }
+
+            self.set_cs_all(true)?;
+        }
+
+        for (index, region) in regions.iter().enumerate() {
+            if region.is_none() {
+                self.arm_dummy_region(index as u8)?;
+            }
+        }
+
+        self.display()?;
+        self.delay_ms(300);
+        self.disable_partial_regions()?;
+
+        log::info!("partial rendering completed");
+
         Ok(())
     }
 

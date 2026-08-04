@@ -12,6 +12,20 @@ const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
 const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 pub const FIRMWARE_VERSION: &str = env!("FIRMWARE_VERSION");
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct PartialWindow {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl PartialWindow {
+    pub fn buffer_size(&self) -> usize {
+        (self.width / 2) as usize * self.height as usize
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u64>,
@@ -20,6 +34,7 @@ pub struct EpdConfig {
     pub clear_screen: Option<bool>,
     pub firmware_url: Option<String>,
     pub firmware_version: Option<String>,
+    pub partial: Option<PartialWindow>,
 }
 
 #[derive(Debug, Serialize)]
@@ -30,6 +45,7 @@ struct ConfigRequest {
     battery_chemistry: &'static str,
     battery_kind: &'static str,
     firmware_version: &'static str,
+    current_image_hash: Option<String>,
 }
 
 pub fn client() -> Result<embedded_svc::http::client::Client<EspHttpConnection>> {
@@ -65,7 +81,11 @@ fn device_id() -> String {
     id
 }
 
-pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<EpdConfig> {
+pub fn fetch_config(
+    battery_voltage: Option<f32>,
+    is_charging: bool,
+    current_image_hash: Option<String>,
+) -> Result<EpdConfig> {
     #[cfg(not(debug_assertions))]
     let url = "https://home.anurag.sh/v1/epd/config";
     #[cfg(debug_assertions)]
@@ -81,6 +101,7 @@ pub fn fetch_config(battery_voltage: Option<f32>, is_charging: bool) -> Result<E
         battery_chemistry: crate::battery::CHEMISTRY,
         battery_kind: crate::battery::KIND,
         firmware_version: FIRMWARE_VERSION,
+        current_image_hash,
     })?;
     let content_length = payload.len().to_string();
 

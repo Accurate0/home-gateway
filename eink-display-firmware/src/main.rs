@@ -156,8 +156,10 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
     watchdog::feed();
 
+    let stored_hash = image_hashes.as_ref().and_then(|store| store.stored());
+
     log::info!("wifi connected, fetching config...");
-    let config = http_client::fetch_config(battery_voltage, is_charging)?;
+    let config = http_client::fetch_config(battery_voltage, is_charging, stored_hash.clone())?;
 
     watchdog::feed();
 
@@ -201,7 +203,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     }
 
-    let stored_hash = image_hashes.as_ref().and_then(|store| store.stored());
     let unchanged = match (&config.image_hash, &stored_hash) {
         (Some(hash), Some(stored)) => hash == stored,
         _ => false,
@@ -212,6 +213,32 @@ fn run_task() -> Result<u64, anyhow::Error> {
     } else if unchanged {
         log::info!("image unchanged, skipping download and refresh");
         Refresh::None
+    } else if let (Some(window), Some(url)) = (config.partial, config.image_url.as_ref()) {
+        log::info!(
+            "partial refresh requested: x={} y={} w={} h={}",
+            window.x,
+            window.y,
+            window.width,
+            window.height
+        );
+
+        let size = window.buffer_size();
+
+        if size > epd_buffer.len() {
+            log::error!("partial window {size} bytes exceeds the frame buffer");
+            Refresh::None
+        } else {
+            match http_client::fetch_image(url, &mut epd_buffer[..size]) {
+                Ok(_) => Refresh::Partial {
+                    hash: config.image_hash,
+                    window,
+                },
+                Err(e) => {
+                    log::error!("failed to fetch partial image: {:?}", e);
+                    Refresh::None
+                }
+            }
+        }
     } else if let Some(url) = config.image_url {
         match http_client::fetch_image(&url, &mut epd_buffer) {
             Ok(_) => {
@@ -274,6 +301,28 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
             if let (Some(store), Some(hash)) = (image_hashes.as_mut(), hash) {
                 store.store(&hash);
+            }
+        }
+
+        Refresh::Partial { hash, window } => {
+            log::info!("rendering partial window to display");
+
+            display.init_epd()?;
+
+            display.hardware_reset()?;
+            display.set_cs_all(true)?;
+
+            display.init_epd()?;
+
+            let region = &epd_buffer[..window.buffer_size()];
+
+            match display.display_partial(region, window.x, window.y, window.width, window.height) {
+                Ok(_) => {
+                    if let (Some(store), Some(hash)) = (image_hashes.as_mut(), hash) {
+                        store.store(&hash);
+                    }
+                }
+                Err(e) => log::error!("partial refresh failed: {:?}", e),
             }
         }
     }

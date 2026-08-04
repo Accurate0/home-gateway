@@ -197,6 +197,45 @@ pub struct RawEinkDisplayBlock {
     settle: Option<TimeDelta>,
     #[serde(default)]
     sleep: Option<RawSleepWindow>,
+    partial: RawPartialRefresh,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
+pub struct RawPartialRefresh {
+    enabled: bool,
+    max_area_pct: u32,
+    max_consecutive: i32,
+}
+
+impl RawPartialRefresh {
+    fn resolve(self, id: &str) -> Result<PartialRefresh, String> {
+        if self.max_area_pct == 0 || self.max_area_pct > 100 {
+            return Err(format!(
+                "eink display {id}: partial.max_area_pct must be between 1 and 100, got {}",
+                self.max_area_pct
+            ));
+        }
+
+        if self.max_consecutive < 1 {
+            return Err(format!(
+                "eink display {id}: partial.max_consecutive must be at least 1, got {}",
+                self.max_consecutive
+            ));
+        }
+
+        Ok(PartialRefresh {
+            enabled: self.enabled,
+            max_area_pct: self.max_area_pct,
+            max_consecutive: self.max_consecutive,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PartialRefresh {
+    pub enabled: bool,
+    pub max_area_pct: u32,
+    pub max_consecutive: i32,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -254,6 +293,7 @@ pub struct EinkDisplaySettings {
     pub refresh: Option<TimeDelta>,
     pub settle: Option<TimeDelta>,
     pub sleep: Option<SleepWindow>,
+    pub partial: PartialRefresh,
 }
 
 impl EinkDisplaySettings {
@@ -668,6 +708,8 @@ impl DeviceRegistryInner {
             }
             DeviceConfig::EinkDisplayFirmware(display) => {
                 let sleep = display.sleep.map(|s| s.resolve(id)).transpose()?;
+                let partial = display.partial.resolve(id)?;
+
                 self.eink_displays.insert(
                     address.to_owned(),
                     EinkDisplaySettings {
@@ -678,6 +720,7 @@ impl DeviceRegistryInner {
                         refresh: display.refresh,
                         settle: display.settle,
                         sleep,
+                        partial,
                     },
                 );
             }

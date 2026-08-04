@@ -10,7 +10,7 @@ use crate::{
         device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
         eink_battery::EinkDisplayDataLoader,
     },
-    routes::epd::{EpdConfig, build_epd_config},
+    routes::epd::{DeviceReport, EpdConfig, build_epd_config},
     settings::{EinkMode, Orientation, SettingsContainer},
     timedelta_format::humanize,
 };
@@ -180,7 +180,17 @@ impl EinkDisplayEntity {
         let feature_flag_client = ctx.data::<FeatureFlagClient>()?;
         let db = ctx.data::<Pool<Postgres>>()?;
         let settings = ctx.data::<SettingsContainer>()?;
-        Ok(build_epd_config(db, feature_flag_client, registry, settings, &self.address, None).await)
+        let s3 = ctx.data::<crate::s3::S3>()?;
+        Ok(build_epd_config(
+            db,
+            s3,
+            feature_flag_client,
+            registry,
+            settings,
+            &self.address,
+            DeviceReport::default(),
+        )
+        .await)
     }
 
     async fn battery(

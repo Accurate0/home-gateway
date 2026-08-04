@@ -233,6 +233,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn,
     ))
     .data(graphql_home_assistant)
+    .data(s3.clone())
     .data(http_client)
     .data(mqtt_client)
     .data(pool.clone())
@@ -287,7 +288,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ingest/synergy", post(synergy))
         .route("/ingest/solar", post(solar))
         .route("/epd/config", post(epd::config))
-        .route("/epd/latest", get(epd::latest))
+        .route("/epd/image/{hash}", get(epd::image))
         .route("/epd/firmware", get(epd::firmware))
         .route("/epd/take-screenshot", post(epd::take_screenshot))
         .route("/push/notify", post(push_notify))

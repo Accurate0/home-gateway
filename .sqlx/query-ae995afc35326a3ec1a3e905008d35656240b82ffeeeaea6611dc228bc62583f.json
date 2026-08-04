@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE eink_display SET partial_refresh_count = partial_refresh_count + 1 WHERE device_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ae995afc35326a3ec1a3e905008d35656240b82ffeeeaea6611dc228bc62583f"
+}

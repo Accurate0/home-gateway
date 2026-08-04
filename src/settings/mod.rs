@@ -640,10 +640,10 @@ android_app_webhook_secret: x
 
         let (_settings, registry) = SettingsContainer::build(config).unwrap();
 
-        assert!(registry.eink_display("e83dc1fb1c98").is_some(), "eink");
-        assert!(registry.battery("e83dc1fb1c98").is_some(), "battery");
-        assert_eq!(registry.address_or_self("e83dc1fb1c98"), "e83dc1fb1c98");
-        assert_eq!(registry.address_or_self("hallway-epd"), "e83dc1fb1c98");
+        assert!(registry.eink_display("94a990cf8384").is_some(), "eink");
+        assert!(registry.battery("94a990cf8384").is_some(), "battery");
+        assert_eq!(registry.address_or_self("94a990cf8384"), "94a990cf8384");
+        assert_eq!(registry.address_or_self("hallway-epd"), "94a990cf8384");
     }
 
     #[test]
@@ -970,6 +970,10 @@ devices:
           name: Test Display
           firmware_version: v0.1.0
           orientation: landscape
+          partial:
+            enabled: true
+            max_area_pct: 25
+            max_consecutive: 8
           mode:
             name: album
             album: family
@@ -981,6 +985,9 @@ devices:
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Album);
+        assert!(display.partial.enabled);
+        assert_eq!(display.partial.max_area_pct, 25);
+        assert_eq!(display.partial.max_consecutive, 8);
         assert_eq!(display.target_dims(), (1600, 1200));
         assert_eq!(display.orientation_str(), "landscape");
         assert_eq!(display.mode.album(), Some("family"));
@@ -1024,6 +1031,10 @@ devices:
         config:
           name: Test Display
           firmware_version: v0.1.0
+          partial:
+            enabled: false
+            max_area_pct: 30
+            max_consecutive: 12
 "#,
         )
         .unwrap();
