@@ -458,7 +458,7 @@ dependencies = [
  "attohttpc",
  "home",
  "log",
- "quick-xml",
+ "quick-xml 0.38.4",
  "rust-ini",
  "serde",
  "thiserror 2.0.19",
@@ -676,7 +676,7 @@ version = "3.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dee98b0db6a962de883bf5d20362dee4d7ca0d12fe39a7c6c73c844e1cd7c1f"
 dependencies = [
- "darling 0.20.11",
+ "darling 0.23.0",
  "ident_case",
  "prettyplease",
  "proc-macro2",
@@ -2201,6 +2201,7 @@ dependencies = [
  "phf 0.14.0",
  "pretty_assertions",
  "prometheus",
+ "quick-xml 0.41.0",
  "ractor",
  "rand 0.10.2",
  "regex",
@@ -4081,6 +4082,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4719,7 +4730,7 @@ dependencies = [
  "md5",
  "minidom",
  "percent-encoding",
- "quick-xml",
+ "quick-xml 0.38.4",
  "reqwest 0.12.28",
  "serde",
  "serde_derive",
@@ -6738,7 +6749,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

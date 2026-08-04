@@ -1,10 +1,11 @@
 use http::HeaderMap;
-use std::time::Duration;
+use regex::Regex;
+use std::{sync::LazyLock, time::Duration};
 use tracing::instrument;
 
 use crate::{
     http::wrap_client_in_middleware_no_tracing,
-    reddit::types::{RedditListingResponse, RedditPost},
+    reddit::types::{RedditFeedResponse, RedditPost},
     settings::RedditTimespan,
 };
 
@@ -20,6 +21,8 @@ pub enum RedditError {
     HttpMiddleware(#[from] reqwest_middleware::Error),
     #[error(transparent)]
     Http(#[from] reqwest::Error),
+    #[error(transparent)]
+    Feed(#[from] quick_xml::DeError),
     #[error("unsupported image content type: {0}")]
     ContentType(String),
     #[error("image too large: {0} bytes")]
@@ -34,8 +37,7 @@ impl Default for Reddit {
 
 impl Reddit {
     const BASE_URL: &str = "https://www.reddit.com";
-    const USER_AGENT: &str =
-        "home-gateway/1.0 (eink display; +https://github.com/anuraaga/home-gateway)";
+    pub const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
     const TIMEOUT: Duration = Duration::from_secs(10);
     const MAX_IMAGE_BYTES: usize = 20 * 1024 * 1024;
 
@@ -62,23 +64,25 @@ impl Reddit {
         timespan: RedditTimespan,
         limit: u32,
     ) -> Result<Vec<RedditPost>, RedditError> {
-        let url = format!("{}/r/{subreddit}/top.json", Self::BASE_URL);
+        let url = format!("{}/r/{subreddit}/top.rss", Self::BASE_URL);
         tracing::info!(
             "fetching top posts from r/{subreddit} over {}",
             timespan.as_str()
         );
 
-        let resp = self
+        let body = self
             .client
             .get(url)
             .query(&[("t", timespan.as_str()), ("limit", &limit.to_string())])
             .send()
             .await?
             .error_for_status()?
-            .json::<RedditListingResponse>()
+            .text()
             .await?;
 
-        Ok(resp.data.children.into_iter().map(|c| c.data).collect())
+        let feed = quick_xml::de::from_str::<RedditFeedResponse>(&body)?;
+
+        Ok(feed.entries)
     }
 
     #[instrument(skip(self))]
@@ -106,21 +110,16 @@ impl Reddit {
 
 const IMAGE_EXTENSIONS: [&str; 4] = [".jpg", ".jpeg", ".png", ".webp"];
 
+static LINK_ANCHOR: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"<a href="([^"]+)">\[link\]</a>"#).unwrap());
+
 pub fn image_url(post: &RedditPost) -> Option<String> {
-    if post.stickied || post.over_18 || post.is_self {
-        return None;
-    }
+    let content = unescape_html(&post.content.text);
+    let url = LINK_ANCHOR
+        .captures(&content)
+        .and_then(|captures| captures.get(1))?
+        .as_str();
 
-    let preview = post
-        .preview
-        .as_ref()
-        .and_then(|preview| preview.images.first())
-        .map(|image| unescape_html(&image.source.url));
-    if let Some(preview) = preview {
-        return Some(preview);
-    }
-
-    let url = post.url.as_deref()?;
     let path = url
         .split(['?', '#'])
         .next()
@@ -146,83 +145,72 @@ fn unescape_html(value: &str) -> String {
 mod tests {
     use super::*;
 
-    fn listing(json: &str) -> Vec<RedditPost> {
-        serde_json::from_str::<RedditListingResponse>(json)
+    fn feed(xml: &str) -> Vec<RedditPost> {
+        quick_xml::de::from_str::<RedditFeedResponse>(xml)
             .unwrap()
-            .data
-            .children
-            .into_iter()
-            .map(|c| c.data)
-            .collect()
+            .entries
     }
 
-    const FIXTURE: &str = r#"{
-      "data": { "children": [
-        { "data": {
-            "title": "Announcement",
-            "permalink": "/r/test/1",
-            "url": "https://reddit.com/r/test",
-            "stickied": true,
-            "preview": { "images": [ { "source": { "url": "https://preview.redd.it/a.jpg", "width": 10, "height": 10 } } ] }
-        } },
-        { "data": {
-            "title": "A discussion",
-            "permalink": "/r/test/2",
-            "url": "https://reddit.com/r/test/2",
-            "is_self": true
-        } },
-        { "data": {
-            "title": "Nsfw",
-            "permalink": "/r/test/3",
-            "url": "https://i.redd.it/nsfw.jpg",
-            "over_18": true
-        } },
-        { "data": {
-            "title": "A mountain",
-            "permalink": "/r/test/4",
-            "url": "https://i.redd.it/mountain.jpg",
-            "post_hint": "image",
-            "preview": { "images": [ { "source": { "url": "https://preview.redd.it/m.jpg?width=4000&amp;s=abc", "width": 4000, "height": 3000 } } ] }
-        } },
-        { "data": {
-            "title": "Direct link only",
-            "permalink": "/r/test/5",
-            "url": "https://i.redd.it/direct.PNG?x=1"
-        } },
-        { "data": {
-            "title": "A video",
-            "permalink": "/r/test/6",
-            "url": "https://v.redd.it/clip"
-        } }
-      ] }
-    }"#;
+    const FIXTURE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <entry>
+        <title>A discussion</title>
+        <link href="https://www.reddit.com/r/test/comments/2/" />
+        <content type="html">&lt;!-- SC_OFF --&gt;&lt;div&gt;some text&lt;/div&gt; &lt;a href="https://www.reddit.com/r/test/comments/2/"&gt;[comments]&lt;/a&gt;</content>
+      </entry>
+      <entry>
+        <title>A mountain</title>
+        <link href="https://www.reddit.com/r/test/comments/4/" />
+        <content type="html">&lt;a href="https://i.redd.it/mountain.jpg?width=4000&amp;amp;s=abc"&gt;[link]&lt;/a&gt; &lt;a href="https://www.reddit.com/r/test/comments/4/"&gt;[comments]&lt;/a&gt;</content>
+      </entry>
+      <entry>
+        <title>Upper case extension</title>
+        <link href="https://www.reddit.com/r/test/comments/5/" />
+        <content type="html">&lt;a href="https://i.redd.it/direct.PNG?x=1"&gt;[link]&lt;/a&gt;</content>
+      </entry>
+      <entry>
+        <title>A video</title>
+        <link href="https://www.reddit.com/r/test/comments/6/" />
+        <content type="html">&lt;a href="https://v.redd.it/clip"&gt;[link]&lt;/a&gt;</content>
+      </entry>
+    </feed>"#;
 
     #[test]
-    fn image_url_skips_unusable_posts() {
-        let posts = listing(FIXTURE);
+    fn feed_parses_entry_titles_and_links() {
+        let posts = feed(FIXTURE);
 
-        assert_eq!(image_url(&posts[0]), None);
-        assert_eq!(image_url(&posts[1]), None);
-        assert_eq!(image_url(&posts[2]), None);
-        assert_eq!(image_url(&posts[5]), None);
-    }
-
-    #[test]
-    fn image_url_prefers_the_unescaped_preview_source() {
-        let posts = listing(FIXTURE);
-
+        assert_eq!(posts.len(), 4);
+        assert_eq!(posts[0].title, "A discussion");
         assert_eq!(
-            image_url(&posts[3]).as_deref(),
-            Some("https://preview.redd.it/m.jpg?width=4000&s=abc")
+            posts[0].link.href,
+            "https://www.reddit.com/r/test/comments/2/"
         );
     }
 
     #[test]
-    fn image_url_falls_back_to_a_direct_image_link() {
-        let posts = listing(FIXTURE);
+    fn image_url_skips_unusable_posts() {
+        let posts = feed(FIXTURE);
+
+        assert_eq!(image_url(&posts[0]), None);
+        assert_eq!(image_url(&posts[3]), None);
+    }
+
+    #[test]
+    fn image_url_unescapes_the_link_target() {
+        let posts = feed(FIXTURE);
 
         assert_eq!(
-            image_url(&posts[4]).as_deref(),
+            image_url(&posts[1]).as_deref(),
+            Some("https://i.redd.it/mountain.jpg?width=4000&s=abc")
+        );
+    }
+
+    #[test]
+    fn image_url_matches_extensions_case_insensitively() {
+        let posts = feed(FIXTURE);
+
+        assert_eq!(
+            image_url(&posts[2]).as_deref(),
             Some("https://i.redd.it/direct.PNG?x=1")
         );
     }
