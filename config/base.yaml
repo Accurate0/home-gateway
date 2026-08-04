@@ -59,9 +59,10 @@ eink_display:
     weather:
       query: view=weather
   albums:
-    family:
-      prefix: eink-display/album/family/
-    art: {}
+    world:
+      prefix: eink-display/album/world/
+    cats:
+      prefix: eink-display/album/cats/
   palette:
     black: { r: 0, g: 0, b: 0 }
     white: { r: 255, g: 255, b: 255 }
