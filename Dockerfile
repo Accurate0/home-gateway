@@ -1,11 +1,10 @@
 ARG BINARY_NAME
 ARG HOME_GATEWAY_API_SECRET
 
-FROM rust:1.97.1-slim-bookworm AS chef
+FROM lukemathwalker/cargo-chef:0.1.77-rust-1.97.1-slim-bookworm@sha256:4356ad4a89cc603dd8925b9dca2075654479065ad42b019d0cc536d1ef2032e5 AS chef
 ARG BINARY_NAME
 
 RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc nasm protobuf-compiler libprotobuf-dev
-RUN cargo install cargo-chef --locked
 
 WORKDIR /app/${BINARY_NAME}-build
 

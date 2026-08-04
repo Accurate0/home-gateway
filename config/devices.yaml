@@ -202,7 +202,7 @@
           end: "08:00"
         partial:
           enabled: true
-          max_area_pct: 30
+          max_area_pct: 45
           max_consecutive: 12
     - type: battery
 

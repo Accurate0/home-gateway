@@ -532,7 +532,6 @@ async fn render_plan(
 pub(crate) struct DeviceReport<'a> {
     pub running_firmware_version: Option<&'a str>,
     pub current_image_hash: Option<&'a str>,
-    pub prepare_render: bool,
 }
 
 pub(crate) async fn build_epd_config(
@@ -547,7 +546,6 @@ pub(crate) async fn build_epd_config(
     let DeviceReport {
         running_firmware_version,
         current_image_hash,
-        prepare_render,
     } = report;
 
     #[cfg(debug_assertions)]
@@ -594,9 +592,7 @@ pub(crate) async fn build_epd_config(
             .filter(|target| Some(target.as_str()) != running_firmware_version),
     };
 
-    let prepared = !prepare_render || ensure_packed_cached(s3, &plan).await;
-
-    if !prepared {
+    if !ensure_packed_cached(s3, &plan).await {
         return EpdConfig {
             refresh_interval_mins: Some(refresh_interval_mins),
             image_url: None,
@@ -972,7 +968,6 @@ pub async fn config(
             DeviceReport {
                 running_firmware_version: request.firmware_version.as_deref(),
                 current_image_hash: request.current_image_hash.as_deref(),
-                prepare_render: true,
             },
         )
         .await,
