@@ -249,18 +249,29 @@ fn active_sleep(
     None
 }
 
-async fn latest_image_key(
+async fn latest_image(
     db: &sqlx::Pool<sqlx::Postgres>,
     device_id: &str,
-) -> Result<String, AppError> {
-    sqlx::query_scalar!(
-        "SELECT image_key FROM eink_display WHERE device_id = $1",
+) -> Result<(String, String), AppError> {
+    let row = sqlx::query!(
+        "SELECT image_key, image_content_hash FROM eink_display WHERE device_id = $1",
         device_id
     )
     .fetch_optional(db)
-    .await?
-    .flatten()
-    .ok_or_else(|| AppError::Error(anyhow::anyhow!("no rendered image for device {device_id}")))
+    .await?;
+
+    let image_key = row
+        .as_ref()
+        .and_then(|row| row.image_key.clone())
+        .ok_or_else(|| {
+            AppError::Error(anyhow::anyhow!("no rendered image for device {device_id}"))
+        })?;
+
+    let content_hash = row
+        .and_then(|row| row.image_content_hash)
+        .unwrap_or_default();
+
+    Ok((image_key, content_hash))
 }
 
 fn draw_sleep_label(img: &mut image::RgbImage, label: &str) {
@@ -469,30 +480,38 @@ async fn render_plan(
     let sleep = active_sleep(devices, device_id, flag.force_sleep);
     let now = chrono::Utc::now().with_timezone(&Perth).naive_local();
 
-    let (image_key, sleep_label) = match sleep {
+    let (image_key, content_hash, sleep_label) = match sleep {
         Some(sleep) => {
-            let images = s3.list_objects(SLEEP_IMAGE_PREFIX).await.unwrap_or_default();
+            let images = s3
+                .list_objects(SLEEP_IMAGE_PREFIX)
+                .await
+                .unwrap_or_default();
             let seed = format!("{}/{}", sleep.end, window_start_date(&sleep, now));
 
             match pick_sleep_image(&images, &seed) {
-                Some(image_key) => (
-                    image_key,
-                    Some(format!("zzz till {}", sleep.end.format("%H:%M"))),
-                ),
+                Some(image_key) => {
+                    let label = format!("zzz till {}", sleep.end.format("%H:%M"));
+                    (image_key.clone(), image_key, Some(label))
+                }
                 None => {
                     tracing::warn!(
                         "no sleep images under {SLEEP_IMAGE_PREFIX}, serving the latest render"
                     );
-                    (latest_image_key(db, device_id).await.ok()?, None)
+                    let (image_key, content_hash) = latest_image(db, device_id).await.ok()?;
+                    (image_key, content_hash, None)
                 }
             }
         }
-        None => (latest_image_key(db, device_id).await.ok()?, None),
+        None => {
+            let (image_key, content_hash) = latest_image(db, device_id).await.ok()?;
+            (image_key, content_hash, None)
+        }
     };
 
     let hash = render_hash(&[
         &RENDER_PIPELINE_VERSION.to_string(),
         &image_key,
+        &content_hash,
         &new_dithering.to_string(),
         &palette_hash,
         &flag.clear_screen.to_string(),
@@ -594,8 +613,16 @@ pub(crate) async fn build_epd_config(
     let partial = if flag.clear_screen || plan.sleep.is_some() {
         None
     } else {
-        resolve_partial_window(db, s3, devices, &flag, device_id, current_image_hash, &plan.hash)
-            .await
+        resolve_partial_window(
+            db,
+            s3,
+            devices,
+            &flag,
+            device_id,
+            current_image_hash,
+            &plan.hash,
+        )
+        .await
     };
 
     let mut url = format!("{host}/image/{}?device_id={device_id}", plan.hash);

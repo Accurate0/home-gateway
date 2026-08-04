@@ -551,9 +551,7 @@ fn resolve_model(
     }
 
     let Some(slug) = model else {
-        return Err(format!(
-            "device {id}: zigbee transport requires a `model:`"
-        ));
+        return Err(format!("device {id}: zigbee transport requires a `model:`"));
     };
 
     let Some(profile) = profiles.get(&slug) else {

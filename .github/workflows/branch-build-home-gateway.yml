@@ -28,3 +28,4 @@ jobs:
           push: false
           build-args: |
             BINARY_NAME=home-gateway
+          cache-from: type=gha,scope=home-gateway

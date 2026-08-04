@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT image_key, image_content_hash FROM eink_display WHERE device_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "image_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "image_content_hash",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "62ac32232f966e2d398baf08df25291a6461872408a9ca16d682d7e46ac450be"
+}

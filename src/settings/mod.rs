@@ -533,7 +533,10 @@ ts011f_plug:
         )
         .unwrap_err();
 
-        assert!(err.contains("unknown zigbee model `not_a_real_model`"), "{err}");
+        assert!(
+            err.contains("unknown zigbee model `not_a_real_model`"),
+            "{err}"
+        );
         assert!(err.contains("ts011f_plug"), "{err}");
     }
 
@@ -854,7 +857,9 @@ android_app_webhook_secret: x
             .expect("front-door is a zigbee device");
         assert_eq!(front.profile.slug, "aqara_mccgq12lm");
         let front_address = registry.address_or_self("front-door");
-        assert!(registry.door(front_address).is_some() && registry.battery(front_address).is_some());
+        assert!(
+            registry.door(front_address).is_some() && registry.battery(front_address).is_some()
+        );
         assert_eq!(front.profile.battery.as_deref(), Some("battery"));
         assert_eq!(
             front.profile.door.as_ref().map(|d| d.contact.as_str()),

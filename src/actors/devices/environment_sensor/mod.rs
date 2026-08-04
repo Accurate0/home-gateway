@@ -114,7 +114,9 @@ impl EnvironmentSensorHandler {
                     };
 
                     let Some(temperature) = reading(Metric::Temperature) else {
-                        tracing::debug!("ignoring zigbee environment payload without temperature: {address}");
+                        tracing::debug!(
+                            "ignoring zigbee environment payload without temperature: {address}"
+                        );
                         return Ok(());
                     };
 

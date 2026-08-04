@@ -411,7 +411,7 @@ impl Actor for EInkDisplayActor {
                     .await;
 
                     let global = &self.shared_actor_state.settings.eink_display;
-                    let image_key = match flag.resolve_mode(&display) {
+                    let (image_key, image_content_hash) = match flag.resolve_mode(&display) {
                         EinkMode::Dashboard => {
                             let settle = display
                                 .settle
@@ -437,23 +437,30 @@ impl Actor for EInkDisplayActor {
                                 .s3
                                 .put_object(&key, &image, Some("image/png"))
                                 .await?;
-                            key
+
+                            let hash = content_hash(&image);
+
+                            (key, hash)
                         }
                         EinkMode::Album => {
                             let album = flag.resolve_album(global, &display);
                             match self.render_album(&display, &album).await? {
-                                Some(key) => key,
+                                Some(key) => {
+                                    let hash = content_hash(key.as_bytes());
+                                    (key, hash)
+                                }
                                 None => continue,
                             }
                         }
                     };
 
                     sqlx::query!(
-                        "INSERT INTO eink_display (device_id, name, image_key) VALUES ($1, $2, $3) \
-                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key",
+                        "INSERT INTO eink_display (device_id, name, image_key, image_content_hash) VALUES ($1, $2, $3, $4) \
+                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, image_key = EXCLUDED.image_key, image_content_hash = EXCLUDED.image_content_hash",
                         device_id,
                         display.name,
                         image_key,
+                        image_content_hash,
                     )
                     .execute(&self.shared_actor_state.db)
                     .await?;

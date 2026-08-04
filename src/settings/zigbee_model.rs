@@ -244,9 +244,9 @@ fn take_required(
     block: &str,
     logical: &str,
 ) -> Result<String, String> {
-    fields.remove(logical).ok_or_else(|| {
-        format!("zigbee model {slug}: `{block}` must define `{logical}`")
-    })
+    fields
+        .remove(logical)
+        .ok_or_else(|| format!("zigbee model {slug}: `{block}` must define `{logical}`"))
 }
 
 fn reject_unknown(

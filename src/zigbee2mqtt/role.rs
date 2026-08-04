@@ -401,13 +401,15 @@ mod tests {
 
     #[test]
     fn a_door_payload_without_contact_yields_nothing() {
-        let device = device(
-            "aqara_mccgq12lm",
-            "battery: battery\ndoor: [contact]",
-        );
+        let device = device("aqara_mccgq12lm", "battery: battery\ndoor: [contact]");
 
         assert!(
-            <door_sensor::Entity as ZigbeeRole>::extract(&device, "front-door", &payload(r#"{"battery":97}"#)).is_none(),
+            <door_sensor::Entity as ZigbeeRole>::extract(
+                &device,
+                "front-door",
+                &payload(r#"{"battery":97}"#)
+            )
+            .is_none(),
             "a payload without contact is not a door event"
         );
     }
@@ -526,15 +528,16 @@ mod tests {
             "an empty action is not an event"
         );
 
-        let Some(control_switch::Entity::Zigbee { action, .. }) = <control_switch::Entity as ZigbeeRole>::extract(
-            &device,
-            "small-switch",
-            &payload(r#"{"action":"single","battery":91}"#),
-        ) else {
+        let Some(control_switch::Entity::Zigbee { action, .. }) =
+            <control_switch::Entity as ZigbeeRole>::extract(
+                &device,
+                "small-switch",
+                &payload(r#"{"action":"single","battery":91}"#),
+            )
+        else {
             panic!("expected a control switch reading");
         };
 
         assert_eq!(action, "single");
     }
-
 }

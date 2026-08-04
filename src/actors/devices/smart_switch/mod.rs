@@ -96,7 +96,9 @@ impl SmartSwitchHandler {
                             .await?;
                         }
                         (true, None) => {
-                            tracing::debug!("smart switch {address} acts as a light but reported no state");
+                            tracing::debug!(
+                                "smart switch {address} acts as a light but reported no state"
+                            );
                         }
                         (false, _) => {}
                     }

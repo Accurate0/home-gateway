@@ -125,9 +125,7 @@ impl MqttIngest {
         };
 
         let event_id = uuid::Uuid::new_v4();
-        let Some(actor_cell) =
-            ractor::registry::where_is(PresenceSensorHandler::NAME)
-        else {
+        let Some(actor_cell) = ractor::registry::where_is(PresenceSensorHandler::NAME) else {
             tracing::error!("no presence sensor actor found for esphome motion");
             return Ok(());
         };
@@ -242,7 +240,9 @@ impl MqttIngest {
         let address = device.address.clone();
         let devices = &self.shared_actor_state.devices;
 
-        if devices.battery(&address).is_some() && let Some(percent) = role::battery(device, payload) {
+        if devices.battery(&address).is_some()
+            && let Some(percent) = role::battery(device, payload)
+        {
             self.record_battery(&address, percent as f64);
         }
 

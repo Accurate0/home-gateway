@@ -1,20 +1,30 @@
 ARG BINARY_NAME
 ARG HOME_GATEWAY_API_SECRET
 
-FROM rust:1.97.1-slim-bookworm AS builder
+FROM rust:1.97.1-slim-bookworm AS chef
 ARG BINARY_NAME
 
 RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc nasm protobuf-compiler libprotobuf-dev
+RUN cargo install cargo-chef --locked
 
 WORKDIR /app/${BINARY_NAME}-build
 
+FROM chef AS planner
+ARG BINARY_NAME
+
 COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+ARG BINARY_NAME
 
 ENV SQLX_OFFLINE=true
-RUN \
-    --mount=type=cache,target=/app/${BINARY_NAME}-build/target/ \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
-    cargo build --locked --release --bin ${BINARY_NAME} -p ${BINARY_NAME} && \
+
+COPY --from=planner /app/${BINARY_NAME}-build/recipe.json recipe.json
+RUN SKIP_SCHEMA_VALIDATION=1 cargo chef cook --locked --release --recipe-path recipe.json
+
+COPY . .
+RUN cargo build --locked --release --bin ${BINARY_NAME} -p ${BINARY_NAME} && \
     cp ./target/release/${BINARY_NAME} /app
 
 FROM debian:bookworm-slim AS final
