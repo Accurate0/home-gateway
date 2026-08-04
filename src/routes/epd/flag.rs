@@ -1,7 +1,10 @@
 use crate::{
     device_registry::{DeviceRegistry, EinkDisplaySettings},
     feature_flag::FeatureFlagClient,
-    settings::{Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor},
+    settings::{
+        Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor, RedditFeed,
+        RedditTimespan,
+    },
 };
 use open_feature::EvaluationContext;
 
@@ -9,6 +12,8 @@ const EPD_FLAG: &str = "home-gateway-epd";
 const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
 
 const DEFAULT_REFRESH_INTERVAL_MINS: u32 = 15;
+const DEFAULT_REDDIT_TIMESPAN: RedditTimespan = RedditTimespan::Day;
+const DEFAULT_REDDIT_LIMIT: u32 = 25;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct EpdFlagConfig {
@@ -18,6 +23,9 @@ pub(crate) struct EpdFlagConfig {
     mode: Option<EinkMode>,
     dashboard_view: Option<String>,
     album: Option<String>,
+    subreddit: Option<String>,
+    timespan: Option<RedditTimespan>,
+    limit: Option<u32>,
     firmware_version: Option<String>,
     pub(super) partial_refresh: Option<bool>,
 }
@@ -51,6 +59,7 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
             mode: string_field("mode").and_then(|s| match s.as_str() {
                 "dashboard" => Some(EinkMode::Dashboard),
                 "album" => Some(EinkMode::Album),
+                "reddit" => Some(EinkMode::Reddit),
                 other => {
                     tracing::warn!("unknown epd mode `{other}` in flag, ignoring");
                     None
@@ -58,6 +67,24 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
             }),
             dashboard_view: string_field("dashboard_view"),
             album: string_field("album"),
+            subreddit: string_field("subreddit"),
+            timespan: string_field("timespan").and_then(|s| match s.as_str() {
+                "hour" => Some(RedditTimespan::Hour),
+                "day" => Some(RedditTimespan::Day),
+                "week" => Some(RedditTimespan::Week),
+                "month" => Some(RedditTimespan::Month),
+                "year" => Some(RedditTimespan::Year),
+                "all" => Some(RedditTimespan::All),
+                other => {
+                    tracing::warn!("unknown reddit timespan `{other}` in flag, ignoring");
+                    None
+                }
+            }),
+            limit: value
+                .fields
+                .get("limit")
+                .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
+                .map(|n| n.clamp(1, 100) as u32),
             firmware_version: string_field("firmware_version"),
             partial_refresh: value
                 .fields
@@ -101,6 +128,34 @@ impl EpdFlagConfig {
         }
     }
 
+    pub(crate) fn resolve_reddit_feed(&self, display: &EinkDisplaySettings) -> Option<RedditFeed> {
+        let configured = display.mode.feed();
+
+        let subreddit = self
+            .subreddit
+            .clone()
+            .or_else(|| configured.map(|feed| feed.subreddit.clone()));
+        let Some(subreddit) = subreddit else {
+            let name = &display.name;
+            tracing::warn!(
+                "reddit mode selected for `{name}` but no subreddit is configured, skipping render"
+            );
+            return None;
+        };
+
+        Some(RedditFeed {
+            subreddit,
+            timespan: self
+                .timespan
+                .or_else(|| configured.map(|feed| feed.timespan))
+                .unwrap_or(DEFAULT_REDDIT_TIMESPAN),
+            limit: self
+                .limit
+                .or_else(|| configured.map(|feed| feed.limit))
+                .unwrap_or(DEFAULT_REDDIT_LIMIT),
+        })
+    }
+
     pub(crate) fn resolve_album(
         &self,
         global: &EinkGlobalSettings,
@@ -121,7 +176,8 @@ impl EpdFlagConfig {
 }
 
 fn evaluation_context(devices: &DeviceRegistry, device_id: &str) -> EvaluationContext {
-    let context = EvaluationContext::default().with_custom_field("device_id", device_id.to_string());
+    let context =
+        EvaluationContext::default().with_custom_field("device_id", device_id.to_string());
 
     match devices.eink_display(device_id) {
         Some(display) => context.with_custom_field("device_name", display.name.clone()),
@@ -230,6 +286,75 @@ mod tests {
                 max_consecutive: 5,
             },
         }
+    }
+
+    fn display_with_feed(feed: RedditFeed) -> EinkDisplaySettings {
+        EinkDisplaySettings {
+            mode: crate::settings::EinkModeConfig::Reddit { feed },
+            ..display_with_refresh(None)
+        }
+    }
+
+    #[test]
+    fn reddit_feed_falls_back_to_the_display() {
+        let feed = RedditFeed {
+            subreddit: "EarthPorn".to_owned(),
+            timespan: RedditTimespan::Week,
+            limit: 40,
+        };
+
+        assert_eq!(
+            EpdFlagConfig::default().resolve_reddit_feed(&display_with_feed(feed.clone())),
+            Some(feed)
+        );
+    }
+
+    #[test]
+    fn reddit_feed_prefers_the_flag_per_field() {
+        let flag = EpdFlagConfig {
+            subreddit: Some("ImaginaryLandscapes".to_owned()),
+            timespan: Some(RedditTimespan::Day),
+            ..EpdFlagConfig::default()
+        };
+        let display = display_with_feed(RedditFeed {
+            subreddit: "EarthPorn".to_owned(),
+            timespan: RedditTimespan::Week,
+            limit: 40,
+        });
+
+        assert_eq!(
+            flag.resolve_reddit_feed(&display),
+            Some(RedditFeed {
+                subreddit: "ImaginaryLandscapes".to_owned(),
+                timespan: RedditTimespan::Day,
+                limit: 40,
+            })
+        );
+    }
+
+    #[test]
+    fn reddit_feed_without_a_subreddit_is_skipped() {
+        assert_eq!(
+            EpdFlagConfig::default().resolve_reddit_feed(&display_with_refresh(None)),
+            None
+        );
+    }
+
+    #[test]
+    fn reddit_feed_from_the_flag_alone_uses_defaults() {
+        let flag = EpdFlagConfig {
+            subreddit: Some("EarthPorn".to_owned()),
+            ..EpdFlagConfig::default()
+        };
+
+        assert_eq!(
+            flag.resolve_reddit_feed(&display_with_refresh(None)),
+            Some(RedditFeed {
+                subreddit: "EarthPorn".to_owned(),
+                timespan: DEFAULT_REDDIT_TIMESPAN,
+                limit: DEFAULT_REDDIT_LIMIT,
+            })
+        );
     }
 
     #[test]

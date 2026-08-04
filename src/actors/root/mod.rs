@@ -3,6 +3,7 @@ use crate::{
         battery::BatteryActor, eink_display::EInkDisplayActor, solar::SolarIngestActor,
         sun::SunActor, trmnl::TrmnlActor, watchdog::WatchdogActor, woolworths::WoolworthsActor,
     },
+    reddit::Reddit,
     trmnl::Trmnl,
     types::SharedActorState,
     woolworths::Woolworths,
@@ -36,6 +37,7 @@ impl RootSupervisor {
                 Some(EInkDisplayActor::NAME.to_owned()),
                 EInkDisplayActor {
                     shared_actor_state: self.shared_actor_state.clone(),
+                    reddit: Reddit::new(),
                 },
                 (),
             )

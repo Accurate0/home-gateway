@@ -10,6 +10,7 @@ pub const DEFAULT_ALBUM_PREFIX: &str = "eink-display/album/";
 pub enum EinkMode {
     Dashboard,
     Album,
+    Reddit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
@@ -23,6 +24,7 @@ pub enum Orientation {
 pub enum EinkModeConfig {
     Dashboard { view: Option<String> },
     Album { album: Option<String> },
+    Reddit { feed: RedditFeed },
 }
 
 impl Default for EinkModeConfig {
@@ -36,20 +38,28 @@ impl EinkModeConfig {
         match self {
             EinkModeConfig::Dashboard { .. } => EinkMode::Dashboard,
             EinkModeConfig::Album { .. } => EinkMode::Album,
+            EinkModeConfig::Reddit { .. } => EinkMode::Reddit,
         }
     }
 
     pub fn view(&self) -> Option<&str> {
         match self {
             EinkModeConfig::Dashboard { view } => view.as_deref(),
-            EinkModeConfig::Album { .. } => None,
+            EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
         }
     }
 
     pub fn album(&self) -> Option<&str> {
         match self {
             EinkModeConfig::Album { album } => album.as_deref(),
-            EinkModeConfig::Dashboard { .. } => None,
+            EinkModeConfig::Dashboard { .. } | EinkModeConfig::Reddit { .. } => None,
+        }
+    }
+
+    pub fn feed(&self) -> Option<&RedditFeed> {
+        match self {
+            EinkModeConfig::Reddit { feed } => Some(feed),
+            EinkModeConfig::Dashboard { .. } | EinkModeConfig::Album { .. } => None,
         }
     }
 }
@@ -80,6 +90,37 @@ pub struct DashboardView {
 pub struct Album {
     pub name: String,
     pub prefix: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
+#[serde(rename_all = "snake_case")]
+pub enum RedditTimespan {
+    Hour,
+    Day,
+    Week,
+    Month,
+    Year,
+    All,
+}
+
+impl RedditTimespan {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RedditTimespan::Hour => "hour",
+            RedditTimespan::Day => "day",
+            RedditTimespan::Week => "week",
+            RedditTimespan::Month => "month",
+            RedditTimespan::Year => "year",
+            RedditTimespan::All => "all",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+pub struct RedditFeed {
+    pub subreddit: String,
+    pub timespan: RedditTimespan,
+    pub limit: u32,
 }
 
 pub const PALETTE_COLORS: [(&str, f32, f32, f32, u8); 6] = [

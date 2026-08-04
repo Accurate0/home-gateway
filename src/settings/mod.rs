@@ -27,6 +27,7 @@ pub mod zigbee_model;
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
     Album, DashboardView, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation, PaletteColor,
+    RedditFeed, RedditTimespan,
 };
 pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
@@ -1010,6 +1011,57 @@ devices:
             global.album("art").unwrap().prefix,
             "eink-display/album/art/"
         );
+    }
+
+    #[test]
+    fn eink_display_reddit_mode_resolves() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+location: { latitude: 0.0, longitude: 0.0 }
+devices:
+  - id: epd
+    transport: eink_display_firmware
+    address: "abc123"
+    roles:
+      - type: eink_display_firmware
+        config:
+          name: Test Display
+          firmware_version: v0.1.0
+          orientation: portrait
+          partial:
+            enabled: false
+            max_area_pct: 30
+            max_consecutive: 5
+          mode:
+            name: reddit
+            subreddit: EarthPorn
+            timespan: week
+            limit: 40
+"#,
+        )
+        .unwrap();
+
+        let (_, registry) = raw.resolve().unwrap();
+        let display = registry.eink_display("abc123").expect("display resolved");
+
+        assert_eq!(display.mode.name(), crate::settings::EinkMode::Reddit);
+
+        let feed = display.mode.feed().expect("reddit feed resolved");
+        assert_eq!(feed.subreddit, "EarthPorn");
+        assert_eq!(feed.timespan, crate::settings::RedditTimespan::Week);
+        assert_eq!(feed.limit, 40);
+        assert_eq!(display.mode.album(), None);
+        assert_eq!(display.mode.view(), None);
     }
 
     #[test]

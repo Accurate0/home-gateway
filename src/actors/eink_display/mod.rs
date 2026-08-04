@@ -1,7 +1,8 @@
 use crate::battery::{BatteryChemistry, voltage_to_percentage};
 use crate::device_registry::EinkDisplaySettings;
+use crate::reddit::{Reddit, image_url};
 use crate::s3::OptionalObjectResponse;
-use crate::settings::{Album, EinkMode};
+use crate::settings::{Album, EinkMode, RedditFeed};
 use crate::types::SharedActorState;
 use chromiumoxide::{
     Browser, BrowserConfig,
@@ -48,6 +49,7 @@ pub enum EInkDisplayMessage {
 
 pub struct EInkDisplayActor {
     pub shared_actor_state: SharedActorState,
+    pub reddit: Reddit,
 }
 
 impl EInkDisplayActor {
@@ -200,12 +202,28 @@ impl EInkDisplayActor {
             }
         };
 
+        let cache_key = self
+            .cache_processed_image(display, source, &hash, &source_key)
+            .await?;
+
+        Ok(Some((cache_key, hash)))
+    }
+
+    async fn cache_processed_image(
+        &self,
+        display: &EinkDisplaySettings,
+        source: Vec<u8>,
+        hash: &str,
+        source_label: &str,
+    ) -> Result<String, ractor::ActorProcessingErr> {
+        let s3 = &self.shared_actor_state.s3;
+
         let (target_w, target_h) = display.target_dims();
         let cache_key = format!("{CACHE_PREFIX}{hash}-{}.png", display.orientation_str());
 
         if s3.get_object_metadata(&cache_key).await?.is_some() {
-            tracing::info!("album cache hit for {source_key} -> {cache_key}");
-            return Ok(Some((cache_key, hash)));
+            tracing::info!("image cache hit for {source_label} -> {cache_key}");
+            return Ok(cache_key);
         }
 
         let processed = tokio::task::spawn_blocking(move || {
@@ -220,10 +238,41 @@ impl EInkDisplayActor {
         .map_err(|e| anyhow::anyhow!("join error: {e}"))??;
 
         let mut metadata = HashMap::new();
-        metadata.insert("source_hash".to_owned(), hash.clone());
+        metadata.insert("source_hash".to_owned(), hash.to_owned());
         s3.put_object_with_metadata(&cache_key, &processed, Some("image/png"), &metadata)
             .await?;
-        tracing::info!("album image cached {source_key} -> {cache_key}");
+        tracing::info!("image cached {source_label} -> {cache_key}");
+
+        Ok(cache_key)
+    }
+
+    async fn render_reddit(
+        &self,
+        display: &EinkDisplaySettings,
+        feed: &RedditFeed,
+    ) -> Result<Option<(String, String)>, ractor::ActorProcessingErr> {
+        let posts = self
+            .reddit
+            .top_posts(&feed.subreddit, feed.timespan, feed.limit)
+            .await?;
+
+        let candidates: Vec<String> = posts.iter().filter_map(image_url).collect();
+        let Some(url) = candidates.choose(&mut rand::rng()).cloned() else {
+            tracing::warn!(
+                "no usable image posts in r/{} over {}, skipping render",
+                feed.subreddit,
+                feed.timespan.as_str()
+            );
+            return Ok(None);
+        };
+
+        tracing::info!("selected reddit image {url} from r/{}", feed.subreddit);
+        let source = self.reddit.download_image(&url).await?;
+        let hash = content_hash(&source);
+
+        let cache_key = self
+            .cache_processed_image(display, source, &hash, &url)
+            .await?;
 
         Ok(Some((cache_key, hash)))
     }
@@ -318,6 +367,14 @@ impl EInkDisplayActor {
             EinkMode::Album => {
                 let album = flag.resolve_album(global, &display);
                 if let Some((image_key, hash)) = self.render_album(&display, &album).await? {
+                    self.store_render(device_id, &display.name, &image_key, &hash)
+                        .await?;
+                }
+            }
+            EinkMode::Reddit => {
+                if let Some(feed) = flag.resolve_reddit_feed(&display)
+                    && let Some((image_key, hash)) = self.render_reddit(&display, &feed).await?
+                {
                     self.store_render(device_id, &display.name, &image_key, &hash)
                         .await?;
                 }
@@ -549,6 +606,15 @@ impl Actor for EInkDisplayActor {
                             Some(rendered) => rendered,
                             None => continue,
                         },
+                        EinkMode::Reddit => {
+                            let Some(feed) = flag.resolve_reddit_feed(&display) else {
+                                continue;
+                            };
+                            match self.render_reddit(&display, &feed).await? {
+                                Some(rendered) => rendered,
+                                None => continue,
+                            }
+                        }
                     };
 
                     self.store_render(&device_id, &display.name, &image_key, &image_content_hash)

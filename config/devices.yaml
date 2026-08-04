@@ -195,8 +195,10 @@
         refresh: 12h
         settle: 10s
         mode:
-          name: album
-          album: world
+          name: reddit
+          subreddit: EarthPorn
+          timespan: day
+          limit: 25
         partial:
           enabled: true
           max_area_pct: 45

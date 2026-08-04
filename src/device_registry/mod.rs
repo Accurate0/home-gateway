@@ -13,8 +13,8 @@ use crate::settings::plant::default_plant_entities;
 use crate::settings::{
     DeviceAliases, DoorSettings, EinkModeConfig, EnvironmentSensorSettings, EnvironmentSensorType,
     IEEEAddress, Orientation, PlantSensorSettings, PresenceSensorType, PresenceSettings,
-    RawRoborockBlock, RawValetudoBlock, RawZigbeeModelProfile, RoborockField, RoborockSettings,
-    ValetudoSettings, ZigbeeModelProfile,
+    RawRoborockBlock, RawValetudoBlock, RawZigbeeModelProfile, RedditFeed, RedditTimespan,
+    RoborockField, RoborockSettings, ValetudoSettings, ZigbeeModelProfile,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
@@ -170,6 +170,11 @@ pub enum RawEinkMode {
         #[serde(default)]
         album: Option<String>,
     },
+    Reddit {
+        subreddit: String,
+        timespan: RedditTimespan,
+        limit: u32,
+    },
 }
 
 impl RawEinkMode {
@@ -177,6 +182,17 @@ impl RawEinkMode {
         match self {
             RawEinkMode::Dashboard { view } => EinkModeConfig::Dashboard { view },
             RawEinkMode::Album { album } => EinkModeConfig::Album { album },
+            RawEinkMode::Reddit {
+                subreddit,
+                timespan,
+                limit,
+            } => EinkModeConfig::Reddit {
+                feed: RedditFeed {
+                    subreddit,
+                    timespan,
+                    limit,
+                },
+            },
         }
     }
 }

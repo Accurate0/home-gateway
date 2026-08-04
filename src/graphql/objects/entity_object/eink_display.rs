@@ -11,7 +11,7 @@ use crate::{
         eink_battery::EinkDisplayDataLoader,
     },
     routes::epd::{DeviceReport, EpdConfig, build_epd_config},
-    settings::{EinkMode, Orientation, SettingsContainer},
+    settings::{EinkMode, Orientation, RedditTimespan, SettingsContainer},
     timedelta_format::humanize,
 };
 use sqlx::{Pool, Postgres};
@@ -28,6 +28,9 @@ pub struct EinkDisplayConfig {
     mode: EinkMode,
     view: Option<String>,
     album: Option<String>,
+    subreddit: Option<String>,
+    timespan: Option<RedditTimespan>,
+    limit: Option<u32>,
     orientation: Orientation,
     refresh: Option<String>,
     settle: Option<String>,
@@ -41,6 +44,9 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
             mode: settings.mode.name(),
             view: settings.mode.view().map(|v| v.to_owned()),
             album: settings.mode.album().map(|a| a.to_owned()),
+            subreddit: settings.mode.feed().map(|f| f.subreddit.clone()),
+            timespan: settings.mode.feed().map(|f| f.timespan),
+            limit: settings.mode.feed().map(|f| f.limit),
             orientation: settings.orientation,
             refresh: settings.refresh.map(humanize),
             settle: settings.settle.map(humanize),

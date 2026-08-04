@@ -15,6 +15,7 @@ pub mod metrics;
 pub mod mode;
 pub mod mqtt;
 pub mod notify;
+pub mod reddit;
 pub mod routes;
 pub mod s3;
 pub mod settings;
