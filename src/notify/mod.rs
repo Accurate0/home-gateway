@@ -2,7 +2,7 @@ use ractor::factory::{FactoryMessage, Job, JobOptions};
 use tracing::instrument;
 
 use crate::{
-    actors::push::{self, PushWorker},
+    actors::system::push::{self, PushWorker},
     settings::NotifySource,
 };
 

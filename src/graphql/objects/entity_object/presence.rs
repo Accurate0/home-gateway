@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use crate::{
     actors::{
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
-        rpc,
+        system::rpc,
     },
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},

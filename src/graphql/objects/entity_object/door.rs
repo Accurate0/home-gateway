@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use crate::{
     actors::{
         events::door_events::{DerivedDoorEvents, DoorEventsMessage},
-        rpc,
+        system::rpc,
     },
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},

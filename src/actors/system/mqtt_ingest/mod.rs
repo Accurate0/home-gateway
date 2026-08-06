@@ -1,4 +1,4 @@
-use super::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
+use crate::actors::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
 use crate::{
     actors::devices::{
         door_sensor, environment_sensor, environment_sensor::EnvironmentSensorHandler, light,
@@ -220,7 +220,7 @@ impl MqttIngest {
             .unwrap_or(address)
             .to_owned();
 
-        crate::actors::battery::BatteryActor::report(
+        crate::actors::system::battery::BatteryActor::report(
             device_id,
             settings.name.clone(),
             "battery".to_owned(),

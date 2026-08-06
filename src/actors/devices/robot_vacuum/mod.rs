@@ -1,4 +1,4 @@
-use crate::actors::battery::BatteryActor;
+use crate::actors::system::battery::BatteryActor;
 use crate::settings::RoborockField;
 use crate::state::SharedActorState;
 use ractor::{

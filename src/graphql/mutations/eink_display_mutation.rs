@@ -1,6 +1,6 @@
 use async_graphql::Object;
 
-use crate::actors::eink_display::{EInkDisplayActor, EInkDisplayMessage};
+use crate::actors::home::eink_display::{EInkDisplayActor, EInkDisplayMessage};
 use crate::auth::scope::required;
 use crate::graphql::guard::ScopeGuard;
 

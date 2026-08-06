@@ -1,9 +1,6 @@
 use ::http::Method;
 use actors::workflows::manager::WorkflowManager;
-use actors::{
-    mqtt_ingest::{self},
-    root::RootSupervisor,
-};
+use actors::{root::RootSupervisor, system::mqtt_ingest};
 use async_graphql::{Schema, dataloader::DataLoader};
 use auth::{AuthManager, OAuthValidator, auth_middleware};
 use axum::{

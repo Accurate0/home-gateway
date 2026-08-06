@@ -4,7 +4,7 @@ use tracing::instrument;
 use types::WoolworthsTrackedProduct;
 
 use crate::{
-    actors::woolworths::WoolworthsMessage, http::wrap_client_in_middleware_no_tracing,
+    actors::integrations::woolworths::WoolworthsMessage, http::wrap_client_in_middleware_no_tracing,
     woolworths::types::WoolworthsProductResponse,
 };
 

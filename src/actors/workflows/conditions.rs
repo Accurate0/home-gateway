@@ -7,7 +7,7 @@
 //! [`SharedActorState`] rather than being tied to the workflow worker.
 
 use super::WorkflowError;
-use crate::actors::sun::calc;
+use crate::actors::home::sun::calc;
 use crate::{
     actors::{
         devices::environment_sensor::{
@@ -16,7 +16,7 @@ use crate::{
         devices::light::{LightHandler, LightHandlerMessage},
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
         events::door_events::{DerivedDoorEvents, DoorEventsMessage},
-        rpc::{self, RpcError},
+        system::rpc::{self, RpcError},
     },
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
     state::SharedActorState,

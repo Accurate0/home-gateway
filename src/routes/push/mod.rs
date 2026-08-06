@@ -3,7 +3,7 @@ use http::StatusCode;
 use ractor::factory::{FactoryMessage, Job, JobOptions};
 use serde::Deserialize;
 
-use crate::actors::push::{self, PushWorker};
+use crate::actors::system::push::{self, PushWorker};
 use crate::auth::{Auth, scope::required};
 
 #[derive(Deserialize)]

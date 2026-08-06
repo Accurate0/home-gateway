@@ -1,5 +1,5 @@
 use crate::{
-    actors::solar::{SolarIngestActor, SolarMessage},
+    actors::integrations::solar::{SolarIngestActor, SolarMessage},
     auth::{Auth, scope::required},
     state::ApiState,
 };

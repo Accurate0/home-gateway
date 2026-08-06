@@ -5,7 +5,7 @@
 //! occurrence (the sun time shifted by the offset). On firing it publishes an
 //! [`EventBusMessage::Sun`](crate::event_bus::EventBusMessage::Sun) and re-arms,
 //! so dusk/dawn is just another event source with no special-casing in the
-//! workflow machinery. Mirrors the [`crate::actors::cron::CronActor`] model.
+//! workflow machinery. Mirrors the [`crate::actors::system::cron::CronActor`] model.
 
 use chrono::{TimeDelta, Utc};
 use ractor::Actor;

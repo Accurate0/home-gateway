@@ -98,7 +98,7 @@ impl Actor for TrmnlActor {
                     .execute(&self.shared_actor_state.db)
                     .await?;
 
-                    crate::actors::battery::BatteryActor::report(
+                    crate::actors::system::battery::BatteryActor::report(
                         device_id,
                         name,
                         kind.to_owned(),

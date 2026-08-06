@@ -1,5 +1,5 @@
 use crate::{
-    actors::synergy::{SynergyActor, SynergyMessage},
+    actors::integrations::synergy::{SynergyActor, SynergyMessage},
     auth::{Auth, scope::required},
     error::AppError,
 };

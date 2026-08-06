@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::reading::{SensorReading, metric_var_name};
-use crate::actors::sun::calc::SunTransition;
+use crate::actors::home::sun::calc::SunTransition;
 use crate::mode::Mode;
 use crate::settings::IEEEAddress;
 
@@ -41,10 +41,10 @@ pub enum EventBusMessage {
     },
     /// A scheduled `Cron` trigger came due. `name` identifies the trigger so the
     /// dispatcher can match it; the schedule itself lives in the trigger config
-    /// and is owned by the [`crate::actors::cron::CronActor`] producer.
+    /// and is owned by the [`crate::actors::system::cron::CronActor`] producer.
     Cron { event_id: Uuid, name: String },
     /// A sun transition (sunrise/sunset) came due, published by the
-    /// [`crate::actors::sun::SunActor`] producer so workflows can trigger on dusk/dawn.
+    /// [`crate::actors::home::sun::SunActor`] producer so workflows can trigger on dusk/dawn.
     Sun {
         event_id: Uuid,
         transition: SunTransition,
@@ -73,14 +73,14 @@ pub enum EventBusMessage {
         active: bool,
     },
     /// A Home Assistant entity changed state, forwarded from HA's WebSocket
-    /// `state_changed` stream by the [`crate::actors::home_assistant`] producer.
+    /// `state_changed` stream by the [`crate::actors::integrations::home_assistant`] producer.
     HomeAssistant {
         event_id: Uuid,
         entity_id: String,
         state: String,
     },
     /// A tracked Woolworths product dropped in price, published by the
-    /// [`crate::actors::woolworths`] producer so workflows can trigger on it.
+    /// [`crate::actors::integrations::woolworths`] producer so workflows can trigger on it.
     Woolworths {
         event_id: Uuid,
         product_id: i64,

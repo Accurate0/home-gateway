@@ -1,4 +1,4 @@
-use crate::actors::mqtt_ingest;
+use crate::actors::system::mqtt_ingest;
 use crate::device_registry::DeviceRegistry;
 use ractor::{
     ActorRef,

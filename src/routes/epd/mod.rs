@@ -1,6 +1,6 @@
 
 use crate::{
-    actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
+    actors::home::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
     battery::BatteryChemistry,
     device_registry::DeviceRegistry,
@@ -287,7 +287,7 @@ pub async fn config(
     report_to_actor(&request)?;
 
     let prepared =
-        crate::actors::rpc::query(EInkDisplayActor::NAME, PREPARE_RENDER_TIMEOUT, |reply| {
+        crate::actors::system::rpc::query(EInkDisplayActor::NAME, PREPARE_RENDER_TIMEOUT, |reply| {
             EInkDisplayMessage::PrepareRender {
                 device_id: request.device_id.clone(),
                 reply,
