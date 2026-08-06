@@ -22,12 +22,14 @@ docker compose up                               # run the gateway + TimescaleDB 
 This is a home-automation gateway: it ingests device events (Zigbee via zigbee2mqtt, ESPHome, plus HTTP webhooks from UniFi/solar/etc.), runs rule-based **workflows**, and exposes a GraphQL + REST API. It is built on the **`ractor` actor framework** — almost all runtime logic lives in supervised actors, not in request handlers.
 
 ### Actor tree
+Actors are grouped by role under `src/actors/`: `devices/` (per-device-kind handlers), `integrations/` (unifi, solar, synergy, woolworths, trmnl, home_assistant), `system/` (watchdog, cron, battery, push, mqtt_ingest, rpc), `home/` (alarm, sun, eink_display), plus `workflows/`, `events/` and `root/`. Modules that talk to an external service live under `src/integrations/`.
+
 `main.rs` builds a `SharedActorState` (DB pool, MQTT client, event bus, device registry, settings) and starts `RootSupervisor` (`src/actors/root/`), which spawns and links every long-lived actor (device handlers, workflow dispatcher, watchdog, cron, unifi, solar, eink display, woolworths, etc.). Actors are looked up by name string via `ractor::registry::where_is`, so an actor's `NAME` const is effectively its address. Many device actors are `ractor` **factories** (worker pools) that take `FactoryMessage::Dispatch(Job { .. })`.
 
 ### Inbound event flow (the important path)
-1. `Mqtt` (`src/mqtt/`) holds the broker connection and forwards every packet to the `MqttIngest` actor (`src/actors/mqtt_ingest/`).
+1. `Mqtt` (`src/integrations/mqtt/`) holds the broker connection and forwards every packet to the `MqttIngest` actor (`src/actors/system/mqtt_ingest/`).
 2. `MqttIngest::classify` routes each topic: `zigbee2mqtt/bridge/devices` (device list), `zigbee2mqtt/<name>` (a device state report — looked up in the registry by the payload's `device.ieee_addr`, then read field-by-field through its **model profile**), `esphome/discover/<node>` (discovery → subscribe to that node's registered state topics), or `Other` (an esphome state topic resolved by exact lookup in the device registry).
-3. The ingest actor forwards a typed event to the owning **device actor** under `src/actors/devices/` (presence, environment, door, light, smart_switch, control_switch, plant). Each device actor persists to the DB and, on a meaningful state change, publishes an `EventBusMessage` onto the in-memory **event bus** (`src/event_bus.rs`).
+3. The ingest actor forwards a typed event to the owning **device actor** under `src/actors/devices/` (presence, environment, door, light, smart_switch, control_switch, plant). Each device actor persists to the DB and, on a meaningful state change, publishes an `EventBusMessage` onto the in-memory **event bus** (`src/event_bus/`).
 4. The **workflow dispatcher** (`src/actors/workflows/dispatcher.rs`) subscribes to the event bus, matches messages against configured `triggers`, and dispatches to the parallel workflow factory (`src/actors/workflows/`), which executes `run:` steps (light control, notify, run another workflow, …) recursively.
 
 The event bus does no matching — it is a thin `tokio::broadcast` fan-out. Producers publish without knowing which workflows (if any) consume.
