@@ -12,6 +12,13 @@ const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
 const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 pub const FIRMWARE_VERSION: &str = env!("FIRMWARE_VERSION");
 
+#[cfg(not(debug_assertions))]
+const HOST: &str = "https://home.anurag.sh";
+#[cfg(debug_assertions)]
+const HOST: &str = "http://192.168.0.149:8000";
+
+pub type HttpClient = embedded_svc::http::client::Client<EspHttpConnection>;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PartialWindow {
     pub x: u32,
@@ -29,6 +36,7 @@ impl PartialWindow {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u64>,
+    pub refresh_interval_secs: Option<u64>,
     pub image_url: Option<String>,
     pub image_hash: Option<String>,
     pub clear_screen: Option<bool>,
@@ -48,7 +56,7 @@ struct ConfigRequest {
     current_image_hash: Option<String>,
 }
 
-pub fn client() -> Result<embedded_svc::http::client::Client<EspHttpConnection>> {
+pub fn client() -> Result<HttpClient> {
     let config = Configuration {
         use_global_ca_store: true,
         crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
@@ -82,17 +90,13 @@ fn device_id() -> String {
 }
 
 pub fn fetch_config(
+    client: &mut HttpClient,
     battery_voltage: Option<f32>,
     is_charging: bool,
     current_image_hash: Option<String>,
 ) -> Result<EpdConfig> {
-    #[cfg(not(debug_assertions))]
-    let url = "https://home.anurag.sh/v1/epd/config";
-    #[cfg(debug_assertions)]
-    let url = "http://192.168.0.149:8000/v1/epd/config";
+    let url = format!("{HOST}/v1/epd/config");
     info!("fetching config from {}...", url);
-
-    let mut client = client()?;
 
     let payload = serde_json::to_vec(&ConfigRequest {
         device_id: device_id(),
@@ -110,7 +114,7 @@ pub fn fetch_config(
         ("Content-Type", "application/json"),
         ("Content-Length", content_length.as_str()),
     ];
-    let mut request = client.request(Method::Post, url, &headers)?;
+    let mut request = client.request(Method::Post, &url, &headers)?;
     request.write_all(&payload)?;
     request.flush()?;
     let response = request.submit()?;
@@ -147,10 +151,8 @@ pub fn fetch_config(
     Ok(config)
 }
 
-pub fn fetch_image(url: &str, buffer: &mut [u8]) -> Result<()> {
+pub fn fetch_image(client: &mut HttpClient, url: &str, buffer: &mut [u8]) -> Result<()> {
     info!("fetching image from {}...", url);
-
-    let mut client = client()?;
 
     let headers = vec![("X-Api-Key", API_KEY)];
     let request = client.request(Method::Get, url, &headers)?;

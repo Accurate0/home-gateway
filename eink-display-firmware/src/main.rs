@@ -11,6 +11,7 @@ mod battery;
 mod driver;
 mod http_client;
 mod image_hash;
+mod net_cache;
 mod ota;
 mod panel_power;
 mod refresh;
@@ -24,8 +25,8 @@ use refresh::Refresh;
 use crate::driver::EPD_IMAGE_FULL_BUFFER_SIZE;
 
 const DEFAULT_REFRESH_MINS: u64 = 15;
-const MIN_REFRESH_MINS: u64 = 1;
-const MAX_REFRESH_MINS: u64 = 1440;
+const MIN_REFRESH_SECS: u64 = 60;
+const MAX_REFRESH_SECS: u64 = 1440 * 60;
 const LOW_BATTERY_SLEEP_MINS: u64 = 360;
 const CRITICAL_BATTERY_SLEEP_MINS: u64 = 1440;
 const MAX_BACKOFF_SHIFT: u32 = 3;
@@ -46,7 +47,7 @@ fn main() -> Result<()> {
         }
         Err(e) => {
             log::error!("error in task: {e}");
-            backoff_mins()
+            backoff_secs()
         }
     };
 
@@ -56,7 +57,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn backoff_mins() -> u64 {
+fn backoff_secs() -> u64 {
     let failures = unsafe {
         CONSECUTIVE_FAILURES = CONSECUTIVE_FAILURES.saturating_add(1);
         CONSECUTIVE_FAILURES
@@ -67,14 +68,14 @@ fn backoff_mins() -> u64 {
 
     log::warn!("{failures} consecutive failures, backing off to {mins} mins");
 
-    mins
+    mins * 60
 }
 
-fn deep_sleep(mins: u64) {
-    log::info!("sleeping for {mins} mins");
+fn deep_sleep(secs: u64) {
+    log::info!("sleeping for {secs} secs");
     unsafe {
         gpio_deep_sleep_hold_en();
-        esp_sleep_enable_timer_wakeup(mins * 60 * 1_000_000);
+        esp_sleep_enable_timer_wakeup(secs * 1_000_000);
         esp_deep_sleep_start();
     }
 }
@@ -85,8 +86,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
     let sys_loop = esp_idf_svc::eventloop::EspSystemEventLoop::take()?;
     let nvs = esp_idf_svc::nvs::EspDefaultNvsPartition::take()?;
-
-    let panel_power = PanelPower::enable(pins.gpio43.downgrade())?;
 
     let battery_voltage = match battery::read_voltage(peripherals.adc1, pins.gpio1, pins.gpio6) {
         Ok(v) => {
@@ -107,30 +106,18 @@ fn run_task() -> Result<u64, anyhow::Error> {
             log::warn!(
                 "battery critically low ({voltage:.2}V), skipping cycle for {CRITICAL_BATTERY_SLEEP_MINS} mins"
             );
-            return Ok(CRITICAL_BATTERY_SLEEP_MINS);
+            return Ok(CRITICAL_BATTERY_SLEEP_MINS * 60);
         }
 
         if voltage < battery::LOW_VOLTAGE_CUTOFF {
             log::warn!(
                 "battery low ({voltage:.2}V), skipping cycle for {LOW_BATTERY_SLEEP_MINS} mins"
             );
-            return Ok(LOW_BATTERY_SLEEP_MINS);
+            return Ok(LOW_BATTERY_SLEEP_MINS * 60);
         }
     }
 
     let mut epd_buffer = vec![0u8; EPD_IMAGE_FULL_BUFFER_SIZE];
-
-    let mut display = Gdep133c02::new(
-        peripherals.spi3,
-        pins.gpio7,
-        pins.gpio9,
-        Option::<AnyIOPin>::None,
-        pins.gpio44.downgrade(),
-        pins.gpio41.downgrade(),
-        pins.gpio10.downgrade(),
-        pins.gpio38.downgrade(),
-        pins.gpio4.downgrade(),
-    )?;
 
     let mut ota_attempts = match ota::AttemptTracker::new(nvs.clone()) {
         Ok(tracker) => Some(tracker),
@@ -148,18 +135,37 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     };
 
-    let mut wifi = wifi::try_connect(peripherals.modem, sys_loop, Some(nvs))?;
-
-    if !wifi.is_connected()? {
-        anyhow::bail!("wifi did not connect");
-    }
+    let mut wifi = wifi::connect(peripherals.modem, sys_loop, Some(nvs))?;
 
     watchdog::feed();
 
     let stored_hash = image_hashes.as_ref().and_then(|store| store.stored());
 
     log::info!("wifi connected, fetching config...");
-    let config = http_client::fetch_config(battery_voltage, is_charging, stored_hash.clone())?;
+    let mut client = http_client::client()?;
+
+    let config = match http_client::fetch_config(
+        &mut client,
+        battery_voltage,
+        is_charging,
+        stored_hash.clone(),
+    ) {
+        Ok(config) => config,
+        Err(e) if wifi.cached() => {
+            log::warn!("config fetch failed on the cached lease, retrying over dhcp: {e:?}");
+
+            wifi::reassociate_with_dhcp(&mut wifi)?;
+            client = http_client::client()?;
+
+            http_client::fetch_config(
+                &mut client,
+                battery_voltage,
+                is_charging,
+                stored_hash.clone(),
+            )?
+        }
+        Err(e) => return Err(e),
+    };
 
     watchdog::feed();
 
@@ -188,16 +194,8 @@ fn run_task() -> Result<u64, anyhow::Error> {
                 tracker.record_attempt(target);
             }
 
-            match ota::apply(url) {
-                Ok(_) => {
-                    if let Err(e) = display.power_off() {
-                        log::warn!("failed to power off panel before restart: {e}");
-                    }
-
-                    drop(panel_power);
-
-                    unsafe { esp_restart() }
-                }
+            match ota::apply(&mut client, url) {
+                Ok(_) => unsafe { esp_restart() },
                 Err(e) => log::error!("firmware update failed: {:?}", e),
             }
         }
@@ -209,10 +207,10 @@ fn run_task() -> Result<u64, anyhow::Error> {
     };
 
     let refresh = if config.clear_screen == Some(true) {
-        Refresh::Clear
+        Some(Refresh::Clear)
     } else if unchanged {
         log::info!("image unchanged, skipping download and refresh");
-        Refresh::None
+        None
     } else if let (Some(window), Some(url)) = (config.partial, config.image_url.as_ref()) {
         log::info!(
             "partial refresh requested: x={} y={} w={} h={}",
@@ -226,40 +224,41 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
         if size > epd_buffer.len() {
             log::error!("partial window {size} bytes exceeds the frame buffer");
-            Refresh::None
+            None
         } else {
-            match http_client::fetch_image(url, &mut epd_buffer[..size]) {
-                Ok(_) => Refresh::Partial {
+            match http_client::fetch_image(&mut client, url, &mut epd_buffer[..size]) {
+                Ok(_) => Some(Refresh::Partial {
                     hash: config.image_hash,
                     window,
-                },
+                }),
                 Err(e) => {
                     log::error!("failed to fetch partial image: {:?}", e);
-                    Refresh::None
+                    None
                 }
             }
         }
     } else if let Some(url) = config.image_url {
-        match http_client::fetch_image(&url, &mut epd_buffer) {
+        match http_client::fetch_image(&mut client, &url, &mut epd_buffer) {
             Ok(_) => {
                 log::info!("image fetched successfully");
-                Refresh::Image(config.image_hash)
+                Some(Refresh::Image(config.image_hash))
             }
             Err(e) => {
                 log::error!("failed to fetch image: {:?}", e);
-                Refresh::None
+                None
             }
         }
     } else {
-        Refresh::None
+        None
     };
 
     watchdog::feed();
 
-    let refresh_time_in_mins = config
-        .refresh_interval_mins
-        .unwrap_or(DEFAULT_REFRESH_MINS)
-        .clamp(MIN_REFRESH_MINS, MAX_REFRESH_MINS);
+    let refresh_time_in_secs = config
+        .refresh_interval_secs
+        .or_else(|| config.refresh_interval_mins.map(|mins| mins * 60))
+        .unwrap_or(DEFAULT_REFRESH_MINS * 60)
+        .clamp(MIN_REFRESH_SECS, MAX_REFRESH_SECS);
 
     wifi.stop()?;
     drop(wifi);
@@ -267,20 +266,37 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
     watchdog::feed();
 
-    match refresh {
-        Refresh::None => {
-            log::info!("nothing to refresh, skipping display");
-        }
+    let Some(refresh) = refresh else {
+        log::info!("nothing to refresh, leaving the panel unpowered");
 
+        return Ok(refresh_time_in_secs);
+    };
+
+    let _panel_power = PanelPower::enable(pins.gpio43.downgrade())?;
+
+    let mut display = Gdep133c02::new(
+        peripherals.spi3,
+        pins.gpio7,
+        pins.gpio9,
+        Option::<AnyIOPin>::None,
+        pins.gpio44.downgrade(),
+        pins.gpio41.downgrade(),
+        pins.gpio10.downgrade(),
+        pins.gpio38.downgrade(),
+        pins.gpio4.downgrade(),
+    )?;
+
+    display.init_epd()?;
+
+    display.hardware_reset()?;
+    display.set_cs_all(true)?;
+
+    display.init_epd()?;
+
+    match refresh {
         Refresh::Clear => {
             log::info!("clearing display to white");
 
-            display.init_epd()?;
-
-            display.hardware_reset()?;
-            display.set_cs_all(true)?;
-
-            display.init_epd()?;
             display.display_color(driver::EPD_WHITE, &mut epd_buffer)?;
 
             if let Some(store) = image_hashes.as_mut() {
@@ -291,12 +307,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
         Refresh::Image(hash) => {
             log::info!("rendering image to display");
 
-            display.init_epd()?;
-
-            display.hardware_reset()?;
-            display.set_cs_all(true)?;
-
-            display.init_epd()?;
             display.display_buffer(&epd_buffer)?;
 
             if let (Some(store), Some(hash)) = (image_hashes.as_mut(), hash) {
@@ -306,13 +316,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
         Refresh::Partial { hash, window } => {
             log::info!("rendering partial window to display");
-
-            display.init_epd()?;
-
-            display.hardware_reset()?;
-            display.set_cs_all(true)?;
-
-            display.init_epd()?;
 
             let region = &epd_buffer[..window.buffer_size()];
 
@@ -327,7 +330,7 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     }
 
-    Ok(refresh_time_in_mins)
+    Ok(refresh_time_in_secs)
 }
 
 #[allow(unused)]

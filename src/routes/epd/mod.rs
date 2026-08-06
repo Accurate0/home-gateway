@@ -12,6 +12,7 @@ use axum::{
     Json,
     extract::{Query, State},
 };
+use chrono::Timelike;
 use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -31,6 +32,7 @@ const PREPARE_RENDER_TIMEOUT: std::time::Duration = std::time::Duration::from_se
 #[graphql(rename_fields = "camelCase")]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u32>,
+    pub refresh_interval_secs: Option<u32>,
     pub image_url: Option<String>,
     pub image_hash: Option<String>,
     pub clear_screen: Option<bool>,
@@ -97,6 +99,19 @@ impl ImageParams {
     }
 }
 
+fn aligned_refresh_secs(mins: u32) -> u32 {
+    let period = mins * 60;
+
+    if period == 0 || 3600 % period != 0 {
+        return period;
+    }
+
+    let now = chrono::Utc::now().with_timezone(&Perth).time();
+    let secs_into_hour = now.minute() * 60 + now.second();
+
+    period - (secs_into_hour % period)
+}
+
 pub(crate) async fn build_epd_config(
     db: &sqlx::Pool<sqlx::Postgres>,
     s3: &crate::integrations::s3::S3,
@@ -133,6 +148,7 @@ pub(crate) async fn build_epd_config(
         tracing::warn!(device_id = %device_id, "no image to serve, skipping this cycle");
         return EpdConfig {
             refresh_interval_mins: Some(configured_refresh),
+            refresh_interval_secs: Some(aligned_refresh_secs(configured_refresh)),
             image_url: None,
             image_hash: None,
             clear_screen: Some(flag.clear_screen),
@@ -163,6 +179,7 @@ pub(crate) async fn build_epd_config(
     if !ensure_packed_cached(s3, &plan).await {
         return EpdConfig {
             refresh_interval_mins: Some(refresh_interval_mins),
+            refresh_interval_secs: Some(aligned_refresh_secs(refresh_interval_mins)),
             image_url: None,
             image_hash: None,
             clear_screen: Some(flag.clear_screen),
@@ -198,6 +215,7 @@ pub(crate) async fn build_epd_config(
 
     EpdConfig {
         refresh_interval_mins: Some(refresh_interval_mins),
+        refresh_interval_secs: Some(aligned_refresh_secs(refresh_interval_mins)),
         image_url: Some(url),
         image_hash: Some(plan.hash),
         clear_screen: Some(flag.clear_screen),

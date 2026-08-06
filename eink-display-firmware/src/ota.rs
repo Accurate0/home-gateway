@@ -105,10 +105,9 @@ pub fn mark_valid() -> Result<()> {
     Ok(())
 }
 
-pub fn apply(url: &str) -> Result<()> {
+pub fn apply(client: &mut http_client::HttpClient, url: &str) -> Result<()> {
     info!("downloading firmware from {}...", url);
 
-    let mut client = http_client::client()?;
     let headers = [("X-Api-Key", http_client::api_key())];
     let request = client.request(Method::Get, url, &headers)?;
     let mut response = request.submit()?;
