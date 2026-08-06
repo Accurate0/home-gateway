@@ -190,7 +190,7 @@
     - type: eink_display_firmware
       config:
         name: Living Room Display
-        firmware_version: v0.1.0-e921311
+        firmware_version: v0.1.0-b8c1588
         orientation: portrait
         refresh: 12h
         mode:
@@ -212,7 +212,7 @@
     - type: eink_display_firmware
       config:
         name: Hallway Display
-        firmware_version: v0.1.0-e921311
+        firmware_version: v0.1.0-b8c1588
         orientation: portrait
         refresh: 1h
         mode:
