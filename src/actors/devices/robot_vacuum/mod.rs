@@ -1,6 +1,6 @@
 use crate::actors::battery::BatteryActor;
 use crate::settings::RoborockField;
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},

@@ -1,5 +1,5 @@
 use super::{EnvironmentSensorHandler, EnvironmentSensorHandlerBuilder, Message};
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, queues, routing},

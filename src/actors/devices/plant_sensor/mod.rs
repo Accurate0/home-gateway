@@ -1,6 +1,6 @@
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use ractor::{
     ActorProcessingErr, ActorRef,

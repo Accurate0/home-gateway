@@ -1,7 +1,7 @@
 use crate::{
     actors::synergy::{SynergyActor, SynergyMessage},
     auth::{Auth, scope::required},
-    types::AppError,
+    error::AppError,
 };
 use bytes::Bytes;
 use http::StatusCode;

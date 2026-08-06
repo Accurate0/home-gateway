@@ -1,6 +1,6 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use ractor::{

@@ -1,45 +1,8 @@
-use crate::{
-    actors::workflows::manager::WorkflowManager,
-    auth::AuthManager,
-    device_registry::DeviceRegistry,
-    event_bus::EventBus,
-    feature_flag::FeatureFlagClient,
-    graphql::FinalSchema,
-    home_assistant::HomeAssistant,
-    mqtt::{MqttClient, MqttError},
-    s3::S3,
-    settings::SettingsContainer,
-    woolworths::WoolworthsError,
-};
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
-use sqlx::{Pool, Postgres};
 
-pub mod db;
-
-#[derive(Clone)]
-pub struct SharedActorState {
-    pub db: Pool<Postgres>,
-    pub mqtt: MqttClient,
-    pub settings: SettingsContainer,
-    pub devices: DeviceRegistry,
-    pub feature_flag_client: FeatureFlagClient,
-    pub s3: S3,
-    pub event_bus: EventBus,
-    pub workflows: WorkflowManager,
-    pub home_assistant: Option<HomeAssistant>,
-}
-
-#[derive(Clone)]
-pub struct ApiState {
-    pub feature_flag_client: FeatureFlagClient,
-    pub schema: FinalSchema,
-    pub settings: SettingsContainer,
-    pub db: Pool<Postgres>,
-    pub s3: S3,
-    pub auth: AuthManager,
-    pub devices: DeviceRegistry,
-}
+use crate::mqtt::MqttError;
+use crate::woolworths::WoolworthsError;
 
 pub enum AppError {
     Error(anyhow::Error),

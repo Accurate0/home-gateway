@@ -9,7 +9,7 @@
 use ractor::Actor;
 use uuid::Uuid;
 
-use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, types::SharedActorState};
+use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::SharedActorState};
 
 use schedule::CronSchedule;
 

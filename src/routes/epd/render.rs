@@ -1,4 +1,4 @@
-use crate::types::AppError;
+use crate::error::AppError;
 use ab_glyph::{FontRef, PxScale};
 use imageproc::drawing::{draw_text_mut, text_size};
 

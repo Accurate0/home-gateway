@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{event_bus::EventBusMessage, types::SharedActorState};
+use crate::{event_bus::EventBusMessage, state::SharedActorState};
 use ractor::{
     ActorProcessingErr, ActorRef, RpcReplyPort,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},

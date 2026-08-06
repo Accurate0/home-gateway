@@ -9,7 +9,7 @@ use ractor::{
 };
 use types::{FcmMessage, FcmNotification, FcmSendRequest};
 
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 
 pub mod spawn;
 pub mod types;

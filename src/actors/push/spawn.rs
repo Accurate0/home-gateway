@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{http::get_traced_http_client, types::SharedActorState};
+use crate::{http::get_traced_http_client, state::SharedActorState};
 use gcp_auth::{CustomServiceAccount, TokenProvider};
 use ractor::{
     ActorRef,

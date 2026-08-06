@@ -2,7 +2,7 @@ use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::{
     notify::notify,
     settings::{ArmedDoorStates, IEEEAddress},
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use chrono::{DateTime, Utc};
 use ractor::Actor;

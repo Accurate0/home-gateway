@@ -1,7 +1,7 @@
 use crate::battery::{BatteryChemistry, voltage_to_percentage};
 use crate::reddit::Reddit;
 use crate::settings::EinkMode;
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 use chromiumoxide::{Browser, BrowserConfig, handler::viewport::Viewport};
 use futures::StreamExt;
 use ractor::{Actor, RpcReplyPort};

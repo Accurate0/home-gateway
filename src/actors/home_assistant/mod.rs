@@ -15,7 +15,7 @@ use crate::{
     event_bus::EventBusMessage,
     home_assistant::HomeAssistant,
     settings::EntitySettings,
-    types::SharedActorState,
+    state::SharedActorState,
 };
 
 pub struct HomeAssistantActor {

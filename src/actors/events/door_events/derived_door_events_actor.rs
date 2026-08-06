@@ -1,9 +1,9 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::event_bus::EventBusMessage;
-use crate::types::db::DoorState;
+use crate::db::DoorState;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use chrono::{DateTime, Utc};
 use ractor::Actor;

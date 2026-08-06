@@ -5,7 +5,7 @@ use crate::{
     },
     reddit::Reddit,
     trmnl::Trmnl,
-    types::SharedActorState,
+    state::SharedActorState,
     woolworths::Woolworths,
 };
 use ractor::Actor;

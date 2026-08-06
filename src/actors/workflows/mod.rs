@@ -5,7 +5,7 @@ use crate::{
     notify::notify,
     settings::workflow::{EnableState, LightState, Step, Workflow},
     timer::timed_async,
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use ractor::{
     ActorRef,

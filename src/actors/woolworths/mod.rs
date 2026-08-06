@@ -1,6 +1,6 @@
 use crate::{
     event_bus::EventBusMessage,
-    types::SharedActorState,
+    state::SharedActorState,
     woolworths::{
         Woolworths,
         types::{WoolworthsProductResponse, WoolworthsTrackedProduct},

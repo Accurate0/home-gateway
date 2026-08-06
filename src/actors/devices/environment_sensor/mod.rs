@@ -1,7 +1,7 @@
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
     settings::Metric,
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use chrono::Utc;
 use ractor::{

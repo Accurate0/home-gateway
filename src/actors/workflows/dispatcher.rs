@@ -21,7 +21,7 @@ use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage, conditions},
     event_bus::{EventBusMessage, SensorMetric},
     settings::{TriggerMatcher, Workflow},
-    types::SharedActorState,
+    state::SharedActorState,
 };
 
 pub struct WorkflowDispatcher {

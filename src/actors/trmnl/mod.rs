@@ -1,6 +1,6 @@
 use crate::{
     settings::TrmnlDeviceSettings, trmnl::Trmnl, trmnl::types::TrmnlDevice,
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use ractor::Actor;
 use std::time::Duration;

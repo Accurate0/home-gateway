@@ -30,7 +30,7 @@ use graphql::{
 };
 use home_gateway::{
     actors, auth, device_registry, event_bus, feature_flag, graphql, home_assistant, mqtt, routes,
-    s3, settings, tracing_setup, types, utils,
+    error, s3, settings, state, tracing_setup, utils,
 };
 use home_gateway::{
     graphql::subscription::SubscriptionRoot,
@@ -64,7 +64,8 @@ use std::{net::SocketAddr, time::Duration};
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
-use types::{ApiState, MainError, SharedActorState};
+use error::MainError;
+use state::{ApiState, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
 
 async fn log_request(req: Request, next: Next) -> Response {

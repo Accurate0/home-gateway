@@ -1,4 +1,4 @@
-use crate::{battery::BatteryChemistry, event_bus::EventBusMessage, types::SharedActorState};
+use crate::{battery::BatteryChemistry, event_bus::EventBusMessage, state::SharedActorState};
 use ractor::Actor;
 use uuid::Uuid;
 

@@ -1,6 +1,6 @@
 use crate::{
     device_registry::Capability, esphome::light_command_topic, event_bus::EventBusMessage,
-    mqtt::ZIGBEE2MQTT_BASE, settings::IEEEAddress, types::SharedActorState,
+    mqtt::ZIGBEE2MQTT_BASE, settings::IEEEAddress, state::SharedActorState,
 };
 use ractor::{
     ActorProcessingErr, ActorRef, RpcReplyPort,

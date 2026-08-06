@@ -10,7 +10,8 @@ use crate::{
     device_registry::DeviceRegistry,
     feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
-    types::{ApiState, AppError},
+    error::AppError,
+    state::ApiState,
 };
 use axum::{
     Json,

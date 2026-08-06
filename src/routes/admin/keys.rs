@@ -1,4 +1,4 @@
-use crate::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
+use crate::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use axum::{
     Json,
     extract::{Path, State},
@@ -8,7 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     auth::{Auth, scope::required},
-    types::{ApiState, AppError},
+    error::AppError,
+    state::ApiState,
 };
 
 pub async fn create_key(

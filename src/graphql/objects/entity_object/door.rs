@@ -8,7 +8,7 @@ use crate::{
     },
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
-    types::db::DoorState,
+    db::DoorState,
 };
 
 pub struct DoorEntity {

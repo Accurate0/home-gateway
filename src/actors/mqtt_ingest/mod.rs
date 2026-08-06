@@ -6,7 +6,7 @@ use crate::{
     },
     device_metric::DeviceMetric,
     device_registry::ZigbeeDevice,
-    types::SharedActorState,
+    state::SharedActorState,
     zigbee2mqtt::{devices::BridgeDevices, role},
 };
 use ractor::{

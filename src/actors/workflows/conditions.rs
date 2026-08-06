@@ -19,8 +19,8 @@ use crate::{
         rpc::{self, RpcError},
     },
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
-    types::SharedActorState,
-    types::db::DoorState,
+    state::SharedActorState,
+    db::DoorState,
 };
 use chrono::{Local, Utc};
 use std::time::Duration;

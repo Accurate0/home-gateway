@@ -1,5 +1,5 @@
 use crate::event_bus::EventBusMessage;
-use crate::types::{SharedActorState, db::UnifiState};
+use crate::{db::UnifiState, state::SharedActorState};
 use ractor::Actor;
 use tracing::instrument;
 use types::{Parameters, UnifiWebhookEvent};

@@ -1,4 +1,4 @@
-use crate::{routes::ingest::solar::SolarIngestPayload, types::SharedActorState};
+use crate::{routes::ingest::solar::SolarIngestPayload, state::SharedActorState};
 use ractor::Actor;
 use tracing::Level;
 

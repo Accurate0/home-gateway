@@ -5,7 +5,7 @@ use crate::{
     settings::SleepWindow,
     feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
-    types::AppError,
+    error::AppError,
 };
 use chrono_tz::Australia::Perth;
 use sha2::{Digest, Sha256};

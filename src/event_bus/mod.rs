@@ -5,7 +5,7 @@
 //! actor subscribes, matches the message against the configured `triggers:`, and
 //! forwards work to the parallel workflow factory. The bus itself does no
 //! matching or execution — it is a thin fan-out wrapper around a tokio broadcast
-//! channel, cloned onto [`crate::types::SharedActorState`].
+//! channel, cloned onto [`crate::state::SharedActorState`].
 
 pub mod bus;
 pub mod filter;

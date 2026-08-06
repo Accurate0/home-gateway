@@ -1,4 +1,4 @@
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 use bytes::Bytes;
 use chrono::DateTime;
 use ractor::Actor;
