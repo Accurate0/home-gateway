@@ -1,5 +1,5 @@
 use crate::{
-    actors::events::door_events::{
+    actors::devices::door_events::{
         DoorEvents, DoorEventsMessage, DoorEventsSupervisor, DoorEventsType,
     },
     state::SharedActorState,

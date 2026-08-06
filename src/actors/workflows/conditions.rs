@@ -10,12 +10,12 @@ use super::WorkflowError;
 use crate::actors::sun::calc;
 use crate::{
     actors::{
+        devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
         devices::environment_sensor::{
             EnvironmentSensorHandler, LatestReading, Message as EnvironmentMessage,
         },
         devices::light::{LightHandler, LightHandlerMessage},
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
-        events::door_events::{DerivedDoorEvents, DoorEventsMessage},
         system::rpc::{self, RpcError},
     },
     db::DoorState,

@@ -1,7 +1,6 @@
 pub mod alarm;
 pub mod devices;
 pub mod eink_display;
-pub mod events;
 pub mod integrations;
 pub mod root;
 pub mod sun;

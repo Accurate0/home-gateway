@@ -13,10 +13,9 @@ use ractor::Actor;
 use super::{
     alarm::AlarmActor,
     devices::{
-        control_switch, door_sensor, environment_sensor, light, plant_sensor, presence_sensor,
-        smart_switch,
+        control_switch, door_events::DoorEventsSupervisor, door_sensor, environment_sensor, light,
+        plant_sensor, presence_sensor, smart_switch,
     },
-    events::door_events::DoorEventsSupervisor,
     integrations::{
         home_assistant::HomeAssistantActor, synergy::SynergyActor,
         unifi::UnifiConnectedClientHandler,

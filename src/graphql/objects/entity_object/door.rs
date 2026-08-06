@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     actors::{
-        events::door_events::{DerivedDoorEvents, DoorEventsMessage},
+        devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
         system::rpc,
     },
     db::DoorState,
