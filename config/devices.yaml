@@ -193,7 +193,6 @@
         firmware_version: v0.1.0-e921311
         orientation: portrait
         refresh: 12h
-        settle: 10s
         mode:
           name: reddit
           subreddit: EarthPorn
@@ -216,10 +215,11 @@
         firmware_version: v0.1.0-e921311
         orientation: portrait
         refresh: 1h
-        settle: 10s
         mode:
           name: dashboard
           view: home
+          settle: 10s
+          lead: 15m
         sleep:
           start: "00:00"
           end: "08:00"

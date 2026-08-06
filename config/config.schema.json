@@ -619,14 +619,7 @@
           "type": "string"
         },
         "mode": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RawEinkMode"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/RawEinkMode"
         },
         "orientation": {
           "anyOf": [
@@ -639,13 +632,6 @@
           ]
         },
         "refresh": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "settle": {
           "type": [
             "string",
             "null"
@@ -669,6 +655,7 @@
       "required": [
         "name",
         "firmware_version",
+        "mode",
         "partial"
       ]
     },
@@ -684,13 +671,21 @@
               ],
               "default": null
             },
+            "settle": {
+              "type": "string"
+            },
+            "lead": {
+              "type": "string"
+            },
             "name": {
               "type": "string",
               "const": "dashboard"
             }
           },
           "required": [
-            "name"
+            "name",
+            "settle",
+            "lead"
           ]
         },
         {

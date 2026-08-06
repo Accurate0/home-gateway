@@ -1,0 +1,1 @@
+ALTER TABLE eink_display ADD COLUMN next_wake_at TIMESTAMP WITH TIME ZONE;

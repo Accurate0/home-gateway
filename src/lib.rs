@@ -4,6 +4,7 @@ pub mod auth;
 pub mod battery;
 pub mod device_metric;
 pub mod device_registry;
+pub mod epd;
 pub mod esphome;
 pub mod event_bus;
 pub mod feature_flag;

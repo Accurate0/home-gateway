@@ -1092,6 +1092,10 @@ devices:
             enabled: false
             max_area_pct: 30
             max_consecutive: 12
+          mode:
+            name: dashboard
+            settle: 10s
+            lead: 15m
 "#,
         )
         .unwrap();

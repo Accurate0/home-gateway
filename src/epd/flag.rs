@@ -17,8 +17,8 @@ const DEFAULT_REDDIT_LIMIT: u32 = 25;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct EpdFlagConfig {
-    pub(super) clear_screen: bool,
-    pub(super) force_sleep: bool,
+    pub(crate) clear_screen: bool,
+    pub(crate) force_sleep: bool,
     refresh_interval: Option<u32>,
     mode: Option<EinkMode>,
     dashboard_view: Option<String>,
@@ -27,7 +27,7 @@ pub(crate) struct EpdFlagConfig {
     timespan: Option<RedditTimespan>,
     limit: Option<u32>,
     firmware_version: Option<String>,
-    pub(super) partial_refresh: Option<bool>,
+    pub(crate) partial_refresh: Option<bool>,
 }
 
 impl From<open_feature::StructValue> for EpdFlagConfig {
@@ -253,7 +253,7 @@ pub(crate) async fn epd_palette(
         .collect()
 }
 
-pub(super) fn target_firmware_version(
+pub(crate) fn target_firmware_version(
     flag: &EpdFlagConfig,
     devices: &DeviceRegistry,
     device_id: &str,
@@ -275,10 +275,13 @@ mod tests {
         EinkDisplaySettings {
             name: "Test Display".to_owned(),
             firmware_version: "v0.0.0".to_owned(),
-            mode: crate::settings::EinkModeConfig::default(),
+            mode: crate::settings::EinkModeConfig::Dashboard {
+                view: None,
+                settle: chrono::TimeDelta::seconds(10),
+                lead: chrono::TimeDelta::minutes(15),
+            },
             orientation: crate::settings::Orientation::Portrait,
             refresh,
-            settle: None,
             sleep: None,
             partial: crate::device_registry::PartialRefresh {
                 enabled: false,

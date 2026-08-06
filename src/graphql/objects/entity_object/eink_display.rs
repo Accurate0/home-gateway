@@ -34,6 +34,7 @@ pub struct EinkDisplayConfig {
     orientation: Orientation,
     refresh: Option<String>,
     settle: Option<String>,
+    lead: Option<String>,
     sleep_start: Option<String>,
     sleep_end: Option<String>,
 }
@@ -49,7 +50,8 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
             limit: settings.mode.feed().map(|f| f.limit),
             orientation: settings.orientation,
             refresh: settings.refresh.map(humanize),
-            settle: settings.settle.map(humanize),
+            settle: settings.mode.settle().map(humanize),
+            lead: settings.mode.lead().map(humanize),
             sleep_start: settings.sleep.map(|s| s.start.format("%H:%M").to_string()),
             sleep_end: settings.sleep.map(|s| s.end.format("%H:%M").to_string()),
         }

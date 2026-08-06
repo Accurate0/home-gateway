@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO eink_display (device_id, name, next_wake_at) VALUES ($1, $2, $3) ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, next_wake_at = EXCLUDED.next_wake_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "27dac94f5fd1071576a54a64ad03ccd89d894908a8ec8494ca19b9e3c839ae6b"
+}

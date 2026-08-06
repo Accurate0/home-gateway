@@ -16,7 +16,7 @@ use crate::settings::{
     RawRoborockBlock, RawValetudoBlock, RawZigbeeModelProfile, RedditFeed, RedditTimespan,
     RoborockField, RoborockSettings, ValetudoSettings, ZigbeeModelProfile,
 };
-use crate::timedelta_format::option_time_delta_from_str;
+use crate::timedelta_format::{option_time_delta_from_str, time_delta_from_str};
 use chrono::{NaiveTime, TimeDelta};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -165,6 +165,12 @@ pub enum RawEinkMode {
     Dashboard {
         #[serde(default)]
         view: Option<String>,
+        #[serde(with = "time_delta_from_str")]
+        #[schemars(with = "String")]
+        settle: TimeDelta,
+        #[serde(with = "time_delta_from_str")]
+        #[schemars(with = "String")]
+        lead: TimeDelta,
     },
     Album {
         #[serde(default)]
@@ -180,7 +186,9 @@ pub enum RawEinkMode {
 impl RawEinkMode {
     fn resolve(self) -> EinkModeConfig {
         match self {
-            RawEinkMode::Dashboard { view } => EinkModeConfig::Dashboard { view },
+            RawEinkMode::Dashboard { view, settle, lead } => {
+                EinkModeConfig::Dashboard { view, settle, lead }
+            }
             RawEinkMode::Album { album } => EinkModeConfig::Album { album },
             RawEinkMode::Reddit {
                 subreddit,
@@ -201,16 +209,12 @@ impl RawEinkMode {
 pub struct RawEinkDisplayBlock {
     name: String,
     firmware_version: String,
-    #[serde(default)]
-    mode: Option<RawEinkMode>,
+    mode: RawEinkMode,
     #[serde(default)]
     orientation: Option<Orientation>,
     #[serde(default, with = "option_time_delta_from_str")]
     #[schemars(with = "Option<String>")]
     refresh: Option<TimeDelta>,
-    #[serde(default, with = "option_time_delta_from_str")]
-    #[schemars(with = "Option<String>")]
-    settle: Option<TimeDelta>,
     #[serde(default)]
     sleep: Option<RawSleepWindow>,
     partial: RawPartialRefresh,
@@ -307,7 +311,6 @@ pub struct EinkDisplaySettings {
     pub mode: EinkModeConfig,
     pub orientation: Orientation,
     pub refresh: Option<TimeDelta>,
-    pub settle: Option<TimeDelta>,
     pub sleep: Option<SleepWindow>,
     pub partial: PartialRefresh,
 }
@@ -729,10 +732,9 @@ impl DeviceRegistryInner {
                     EinkDisplaySettings {
                         name: display.name,
                         firmware_version: display.firmware_version,
-                        mode: display.mode.map(|m| m.resolve()).unwrap_or_default(),
+                        mode: display.mode.resolve(),
                         orientation: display.orientation.unwrap_or(Orientation::Portrait),
                         refresh: display.refresh,
-                        settle: display.settle,
                         sleep,
                         partial,
                     },

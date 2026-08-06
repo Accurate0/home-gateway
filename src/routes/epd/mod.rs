@@ -1,4 +1,3 @@
-mod flag;
 mod panel;
 mod partial;
 mod plan;
@@ -21,12 +20,11 @@ use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use flag::target_firmware_version;
+use crate::epd::{epd_flag_config, target_firmware_version};
 use panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
 use partial::resolve_partial_window;
 use plan::{ensure_packed_cached, render_plan};
 
-pub(crate) use flag::epd_flag_config;
 pub use panel::PartialWindow;
 
 const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
@@ -307,21 +305,39 @@ pub async fn config(
         );
     }
 
-    Ok(Json(
-        build_epd_config(
-            &db,
-            &s3,
-            &feature_flag_client,
-            &devices,
-            &settings,
-            &request.device_id,
-            DeviceReport {
-                running_firmware_version: request.firmware_version.as_deref(),
-                current_image_hash: request.current_image_hash.as_deref(),
-            },
-        )
-        .await,
-    ))
+    let config = build_epd_config(
+        &db,
+        &s3,
+        &feature_flag_client,
+        &devices,
+        &settings,
+        &request.device_id,
+        DeviceReport {
+            running_firmware_version: request.firmware_version.as_deref(),
+            current_image_hash: request.current_image_hash.as_deref(),
+        },
+    )
+    .await;
+
+    if let Some(wake_in_mins) = config.refresh_interval_mins {
+        schedule_next_render(&request.device_id, wake_in_mins)?;
+    }
+
+    Ok(Json(config))
+}
+
+fn schedule_next_render(device_id: &str, wake_in_mins: u32) -> Result<(), AppError> {
+    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) else {
+        tracing::warn!("eink display actor not found, not scheduling the next render");
+        return Ok(());
+    };
+
+    actor.send_message(EInkDisplayMessage::ScheduleNextRender {
+        device_id: device_id.to_owned(),
+        wake_in_mins,
+    })?;
+
+    Ok(())
 }
 
 fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {

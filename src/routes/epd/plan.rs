@@ -1,8 +1,5 @@
-use super::{
-    flag::{EpdFlagConfig, epd_palette},
-    panel::packed_cache_key,
-    render::render_and_cache,
-};
+use super::{panel::packed_cache_key, render::render_and_cache};
+use crate::epd::{EpdFlagConfig, epd_palette};
 use crate::{
     device_registry::{DeviceRegistry, SleepWindow},
     feature_flag::FeatureFlagClient,

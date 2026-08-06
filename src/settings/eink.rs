@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -22,15 +23,17 @@ pub enum Orientation {
 
 #[derive(Debug, Clone)]
 pub enum EinkModeConfig {
-    Dashboard { view: Option<String> },
-    Album { album: Option<String> },
-    Reddit { feed: RedditFeed },
-}
-
-impl Default for EinkModeConfig {
-    fn default() -> Self {
-        EinkModeConfig::Dashboard { view: None }
-    }
+    Dashboard {
+        view: Option<String>,
+        settle: TimeDelta,
+        lead: TimeDelta,
+    },
+    Album {
+        album: Option<String>,
+    },
+    Reddit {
+        feed: RedditFeed,
+    },
 }
 
 impl EinkModeConfig {
@@ -44,7 +47,21 @@ impl EinkModeConfig {
 
     pub fn view(&self) -> Option<&str> {
         match self {
-            EinkModeConfig::Dashboard { view } => view.as_deref(),
+            EinkModeConfig::Dashboard { view, .. } => view.as_deref(),
+            EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
+        }
+    }
+
+    pub fn settle(&self) -> Option<TimeDelta> {
+        match self {
+            EinkModeConfig::Dashboard { settle, .. } => Some(*settle),
+            EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
+        }
+    }
+
+    pub fn lead(&self) -> Option<TimeDelta> {
+        match self {
+            EinkModeConfig::Dashboard { lead, .. } => Some(*lead),
             EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
         }
     }
