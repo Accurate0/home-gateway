@@ -1,8 +1,8 @@
 use super::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
 use crate::{
-    actors::{
-        devices::presence_sensor::PresenceSensorHandler, door_sensor, environment_sensor,
-        environment_sensor::EnvironmentSensorHandler, light, smart_switch,
+    actors::devices::{
+        door_sensor, environment_sensor, environment_sensor::EnvironmentSensorHandler, light,
+        presence_sensor::PresenceSensorHandler, smart_switch,
     },
     device_metric::DeviceMetric,
     device_registry::ZigbeeDevice,

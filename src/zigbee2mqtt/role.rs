@@ -1,17 +1,12 @@
 use crate::{
     actors::{
         devices::{
-            control_switch, control_switch::ControlSwitchHandler, presence_sensor,
-            presence_sensor::PresenceSensorHandler,
+            control_switch, control_switch::ControlSwitchHandler, door_sensor,
+            door_sensor::DoorSensorHandler, environment_sensor,
+            environment_sensor::EnvironmentSensorHandler, light, light::LightHandler,
+            presence_sensor, presence_sensor::PresenceSensorHandler, smart_switch,
+            smart_switch::SmartSwitchHandler,
         },
-        door_sensor,
-        door_sensor::DoorSensorHandler,
-        environment_sensor,
-        environment_sensor::EnvironmentSensorHandler,
-        light,
-        light::LightHandler,
-        smart_switch,
-        smart_switch::SmartSwitchHandler,
     },
     device_registry::{DeviceRegistry, ZigbeeDevice},
     settings::zigbee_model::{payload_bool, payload_f64, payload_i64, payload_string},

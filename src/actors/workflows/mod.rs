@@ -1,5 +1,5 @@
 use crate::{
-    actors::light::{LightHandler, LightHandlerMessage},
+    actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
     notify::notify,

@@ -1,5 +1,5 @@
 use crate::{
-    actors::light::{LightHandler, LightHandlerMessage},
+    actors::devices::light::{LightHandler, LightHandlerMessage},
     auth::{Auth, scope::required},
     settings::IEEEAddress,
     error::AppError,

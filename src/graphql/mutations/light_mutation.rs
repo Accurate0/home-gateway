@@ -1,7 +1,7 @@
 use async_graphql::{InputObject, Object};
 use ractor::factory::{FactoryMessage, Job, JobOptions};
 
-use crate::actors::light::{LightHandler, LightHandlerMessage};
+use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
 use crate::auth::scope::required;
 use crate::device_registry::Capability;
 use crate::graphql::guard::ScopeGuard;

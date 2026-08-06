@@ -17,8 +17,3 @@ pub mod unifi;
 pub mod watchdog;
 pub mod woolworths;
 pub mod workflows;
-
-pub use devices::door_sensor;
-pub use devices::environment_sensor;
-pub use devices::light;
-pub use devices::smart_switch;

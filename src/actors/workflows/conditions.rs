@@ -13,9 +13,9 @@ use crate::{
         devices::environment_sensor::{
             EnvironmentSensorHandler, LatestReading, Message as EnvironmentMessage,
         },
+        devices::light::{LightHandler, LightHandlerMessage},
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
         events::door_events::{DerivedDoorEvents, DoorEventsMessage},
-        light::{LightHandler, LightHandlerMessage},
         rpc::{self, RpcError},
     },
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},

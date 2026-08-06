@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     actors::{
-        light::{LightHandler, LightHandlerMessage},
+        devices::light::{LightHandler, LightHandlerMessage},
         rpc,
     },
     device_registry::{Capability, DeviceRegistry},
