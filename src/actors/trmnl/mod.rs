@@ -1,5 +1,5 @@
 use crate::{
-    device_registry::TrmnlDeviceSettings, trmnl::Trmnl, trmnl::types::TrmnlDevice,
+    settings::TrmnlDeviceSettings, trmnl::Trmnl, trmnl::types::TrmnlDevice,
     types::SharedActorState,
 };
 use ractor::Actor;

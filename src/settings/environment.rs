@@ -50,3 +50,12 @@ pub struct EnvironmentSensorSettings {
     /// typed device structs, not by object_id).
     pub entities: HashMap<String, Metric>,
 }
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawEnvironmentBlock {
+    pub(crate) id: String,
+    #[serde(default)]
+    pub(crate) name: Option<String>,
+    #[serde(default)]
+    pub(crate) entities: HashMap<Metric, String>,
+}

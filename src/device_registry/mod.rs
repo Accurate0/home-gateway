@@ -7,17 +7,15 @@ use tokio::sync::RwLock;
 
 use crate::esphome::{EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic};
 use crate::settings::door::RawDoorSettings;
-use crate::settings::environment::Metric;
-use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
-use crate::settings::plant::default_plant_entities;
+use crate::settings::notify::NotifyTargets;
 use crate::settings::{
-    DeviceAliases, DoorSettings, EinkModeConfig, EnvironmentSensorSettings, EnvironmentSensorType,
-    IEEEAddress, Orientation, PlantSensorSettings, PresenceSensorType, PresenceSettings,
-    RawRoborockBlock, RawValetudoBlock, RawZigbeeModelProfile, RedditFeed, RedditTimespan,
-    RoborockField, RoborockSettings, ValetudoSettings, ZigbeeModelProfile,
+    BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
+    EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress, PlantSensorSettings,
+    PresenceSensorType, PresenceSettings, RawDeviceWatchdog, RawEinkDisplayBlock,
+    RawEnvironmentBlock, RawLightBlock, RawPlantBlock, RawPresenceBlock, RawRoborockBlock,
+    RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock, RawZigbeeModelProfile, RoborockField,
+    RoborockSettings, SwitchRole, TrmnlDeviceSettings, ValetudoSettings, ZigbeeModelProfile,
 };
-use crate::timedelta_format::{option_time_delta_from_str, time_delta_from_str};
-use chrono::{NaiveTime, TimeDelta};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -112,21 +110,6 @@ pub enum Capability {
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawDeviceWatchdog {
-    #[serde(default, with = "option_time_delta_from_str")]
-    #[schemars(with = "Option<String>")]
-    timeout: Option<TimeDelta>,
-    #[serde(default)]
-    notify: Vec<NotifyRef>,
-}
-
-#[derive(Debug, Clone)]
-pub struct DeviceWatchdog {
-    pub timeout: Option<TimeDelta>,
-    pub notify: Vec<NotifySource>,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(tag = "type", content = "config", rename_all = "snake_case")]
 pub enum DeviceConfig {
     Door(RawDoorSettings),
@@ -141,251 +124,6 @@ pub enum DeviceConfig {
     Roborock(RawRoborockBlock),
     Valetudo(RawValetudoBlock),
     Battery,
-}
-
-#[derive(Debug, Clone)]
-pub struct BatterySettings {
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawTrmnlBlock {
-    name: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct TrmnlDeviceSettings {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-#[serde(tag = "name", rename_all = "snake_case")]
-pub enum RawEinkMode {
-    Dashboard {
-        #[serde(default)]
-        view: Option<String>,
-        #[serde(with = "time_delta_from_str")]
-        #[schemars(with = "String")]
-        settle: TimeDelta,
-        #[serde(with = "time_delta_from_str")]
-        #[schemars(with = "String")]
-        lead: TimeDelta,
-    },
-    Album {
-        #[serde(default)]
-        album: Option<String>,
-    },
-    Reddit {
-        subreddit: String,
-        timespan: RedditTimespan,
-        limit: u32,
-    },
-}
-
-impl RawEinkMode {
-    fn resolve(self) -> EinkModeConfig {
-        match self {
-            RawEinkMode::Dashboard { view, settle, lead } => {
-                EinkModeConfig::Dashboard { view, settle, lead }
-            }
-            RawEinkMode::Album { album } => EinkModeConfig::Album { album },
-            RawEinkMode::Reddit {
-                subreddit,
-                timespan,
-                limit,
-            } => EinkModeConfig::Reddit {
-                feed: RedditFeed {
-                    subreddit,
-                    timespan,
-                    limit,
-                },
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawEinkDisplayBlock {
-    name: String,
-    firmware_version: String,
-    mode: RawEinkMode,
-    #[serde(default)]
-    orientation: Option<Orientation>,
-    #[serde(default, with = "option_time_delta_from_str")]
-    #[schemars(with = "Option<String>")]
-    refresh: Option<TimeDelta>,
-    #[serde(default)]
-    sleep: Option<RawSleepWindow>,
-    partial: RawPartialRefresh,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
-pub struct RawPartialRefresh {
-    enabled: bool,
-    max_area_pct: u32,
-    max_consecutive: i32,
-}
-
-impl RawPartialRefresh {
-    fn resolve(self, id: &str) -> Result<PartialRefresh, String> {
-        if self.max_area_pct == 0 || self.max_area_pct > 100 {
-            return Err(format!(
-                "eink display {id}: partial.max_area_pct must be between 1 and 100, got {}",
-                self.max_area_pct
-            ));
-        }
-
-        if self.max_consecutive < 1 {
-            return Err(format!(
-                "eink display {id}: partial.max_consecutive must be at least 1, got {}",
-                self.max_consecutive
-            ));
-        }
-
-        Ok(PartialRefresh {
-            enabled: self.enabled,
-            max_area_pct: self.max_area_pct,
-            max_consecutive: self.max_consecutive,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PartialRefresh {
-    pub enabled: bool,
-    pub max_area_pct: u32,
-    pub max_consecutive: i32,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawSleepWindow {
-    start: String,
-    end: String,
-}
-
-impl RawSleepWindow {
-    fn resolve(self, id: &str) -> Result<SleepWindow, String> {
-        let parse = |value: &str| {
-            NaiveTime::parse_from_str(value, "%H:%M:%S")
-                .or_else(|_| NaiveTime::parse_from_str(value, "%H:%M"))
-                .map_err(|_| {
-                    format!("eink display {id}: invalid sleep time `{value}`, expected HH:MM")
-                })
-        };
-        Ok(SleepWindow {
-            start: parse(&self.start)?,
-            end: parse(&self.end)?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct SleepWindow {
-    pub start: NaiveTime,
-    pub end: NaiveTime,
-}
-
-impl SleepWindow {
-    pub fn contains(&self, now: NaiveTime) -> bool {
-        if self.start <= self.end {
-            now >= self.start && now < self.end
-        } else {
-            now >= self.start || now < self.end
-        }
-    }
-
-    pub fn minutes_until_end(&self, now: NaiveTime) -> u32 {
-        let mut delta = (self.end - now).num_minutes();
-        if delta <= 0 {
-            delta += 24 * 60;
-        }
-        delta as u32
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct EinkDisplaySettings {
-    pub name: String,
-    pub firmware_version: String,
-    pub mode: EinkModeConfig,
-    pub orientation: Orientation,
-    pub refresh: Option<TimeDelta>,
-    pub sleep: Option<SleepWindow>,
-    pub partial: PartialRefresh,
-}
-
-impl EinkDisplaySettings {
-    pub fn target_dims(&self) -> (u32, u32) {
-        self.orientation.target_dims()
-    }
-
-    pub fn orientation_str(&self) -> &'static str {
-        self.orientation.as_str()
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawLightBlock {
-    name: String,
-    #[serde(default)]
-    entity: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawSmartSwitchBlock {
-    name: String,
-    #[serde(default, rename = "as")]
-    role: Option<SwitchRole>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum SwitchRole {
-    Light,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawPresenceBlock {
-    #[serde(default)]
-    name: String,
-    #[serde(default, deserialize_with = "de_string_or_vec")]
-    #[schemars(with = "Vec<String>")]
-    motion_entity: Vec<String>,
-}
-
-fn de_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        One(String),
-        Many(Vec<String>),
-    }
-
-    Ok(match Option::<OneOrMany>::deserialize(deserializer)? {
-        None => Vec::new(),
-        Some(OneOrMany::One(entity)) => vec![entity],
-        Some(OneOrMany::Many(entities)) => entities,
-    })
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawEnvironmentBlock {
-    id: String,
-    #[serde(default)]
-    name: Option<String>,
-    #[serde(default)]
-    entities: HashMap<Metric, String>,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawPlantBlock {
-    id: String,
-    #[serde(default = "default_plant_entities")]
-    entities: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -487,13 +225,8 @@ impl DeviceRegistry {
             }
 
             if let Some(watchdog) = watchdog {
-                reg.watchdog.insert(
-                    address.clone(),
-                    DeviceWatchdog {
-                        timeout: watchdog.timeout,
-                        notify: resolve_notify(watchdog.notify, notify)?,
-                    },
-                );
+                reg.watchdog
+                    .insert(address.clone(), watchdog.resolve(notify)?);
             }
 
             for role in roles {
@@ -724,21 +457,8 @@ impl DeviceRegistryInner {
                 self.control_switches.insert(address.to_owned());
             }
             DeviceConfig::EinkDisplayFirmware(display) => {
-                let sleep = display.sleep.map(|s| s.resolve(id)).transpose()?;
-                let partial = display.partial.resolve(id)?;
-
-                self.eink_displays.insert(
-                    address.to_owned(),
-                    EinkDisplaySettings {
-                        name: display.name,
-                        firmware_version: display.firmware_version,
-                        mode: display.mode.resolve(),
-                        orientation: display.orientation.unwrap_or(Orientation::Portrait),
-                        refresh: display.refresh,
-                        sleep,
-                        partial,
-                    },
-                );
+                self.eink_displays
+                    .insert(address.to_owned(), display.resolve(id)?);
             }
             DeviceConfig::Trmnl(trmnl) => {
                 self.trmnl_devices.insert(

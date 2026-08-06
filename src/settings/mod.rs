@@ -11,16 +11,20 @@ use std::{
 
 pub mod alarm;
 pub mod auth;
+pub mod de;
+pub mod device;
 pub mod door;
 pub mod eink;
 pub mod environment;
 pub mod home_assistant;
+pub mod light;
 pub mod location;
 pub mod notify;
 pub mod plant;
 pub mod presence;
 pub mod roborock;
 pub mod s3;
+pub mod switch;
 pub mod template;
 pub mod trigger;
 pub mod trmnl;
@@ -32,22 +36,28 @@ pub mod zigbee_model;
 
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
+pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
-    Album, DashboardView, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation, PaletteColor,
-    RedditFeed, RedditTimespan,
+    Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig,
+    Orientation, PaletteColor, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan,
+    SleepWindow,
 };
-pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
+pub use environment::{
+    EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
+};
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
+pub use light::RawLightBlock;
 pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
-pub use plant::PlantSensorSettings;
-pub use presence::{PresenceSensorType, PresenceSettings};
+pub use plant::{PlantSensorSettings, RawPlantBlock};
+pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use s3::S3Settings;
+pub use switch::{RawSmartSwitchBlock, SwitchRole};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
-pub use trmnl::TrmnlSettings;
+pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use watchdog::WatchdogSettings;
 pub use woolworths::WoolworthsSettings;

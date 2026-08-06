@@ -1,5 +1,5 @@
 use super::{CACHE_PREFIX, EInkActorState, EInkDisplayActor};
-use crate::device_registry::EinkDisplaySettings;
+use crate::settings::EinkDisplaySettings;
 use crate::reddit::image_url;
 use crate::s3::OptionalObjectResponse;
 use crate::settings::{Album, RedditFeed};

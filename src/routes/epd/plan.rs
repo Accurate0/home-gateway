@@ -1,7 +1,8 @@
 use super::{panel::packed_cache_key, render::render_and_cache};
 use crate::epd::{EpdFlagConfig, epd_palette};
 use crate::{
-    device_registry::{DeviceRegistry, SleepWindow},
+    device_registry::DeviceRegistry,
+    settings::SleepWindow,
     feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
     types::AppError,

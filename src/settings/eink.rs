@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use chrono::TimeDelta;
+use chrono::{NaiveTime, TimeDelta};
 use schemars::JsonSchema;
 use serde::Deserialize;
+
+use crate::timedelta_format::{option_time_delta_from_str, time_delta_from_str};
 
 pub const DEFAULT_ALBUM_PREFIX: &str = "eink-display/album/";
 
@@ -287,5 +289,188 @@ impl EinkGlobalSettings {
             name: "default".to_owned(),
             prefix: DEFAULT_ALBUM_PREFIX.to_owned(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(tag = "name", rename_all = "snake_case")]
+pub enum RawEinkMode {
+    Dashboard {
+        #[serde(default)]
+        view: Option<String>,
+        #[serde(with = "time_delta_from_str")]
+        #[schemars(with = "String")]
+        settle: TimeDelta,
+        #[serde(with = "time_delta_from_str")]
+        #[schemars(with = "String")]
+        lead: TimeDelta,
+    },
+    Album {
+        #[serde(default)]
+        album: Option<String>,
+    },
+    Reddit {
+        subreddit: String,
+        timespan: RedditTimespan,
+        limit: u32,
+    },
+}
+
+impl RawEinkMode {
+    fn resolve(self) -> EinkModeConfig {
+        match self {
+            RawEinkMode::Dashboard { view, settle, lead } => {
+                EinkModeConfig::Dashboard { view, settle, lead }
+            }
+            RawEinkMode::Album { album } => EinkModeConfig::Album { album },
+            RawEinkMode::Reddit {
+                subreddit,
+                timespan,
+                limit,
+            } => EinkModeConfig::Reddit {
+                feed: RedditFeed {
+                    subreddit,
+                    timespan,
+                    limit,
+                },
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
+pub struct RawPartialRefresh {
+    enabled: bool,
+    max_area_pct: u32,
+    max_consecutive: i32,
+}
+
+impl RawPartialRefresh {
+    fn resolve(self, id: &str) -> Result<PartialRefresh, String> {
+        if self.max_area_pct == 0 || self.max_area_pct > 100 {
+            return Err(format!(
+                "eink display {id}: partial.max_area_pct must be between 1 and 100, got {}",
+                self.max_area_pct
+            ));
+        }
+
+        if self.max_consecutive < 1 {
+            return Err(format!(
+                "eink display {id}: partial.max_consecutive must be at least 1, got {}",
+                self.max_consecutive
+            ));
+        }
+
+        Ok(PartialRefresh {
+            enabled: self.enabled,
+            max_area_pct: self.max_area_pct,
+            max_consecutive: self.max_consecutive,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PartialRefresh {
+    pub enabled: bool,
+    pub max_area_pct: u32,
+    pub max_consecutive: i32,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawSleepWindow {
+    start: String,
+    end: String,
+}
+
+impl RawSleepWindow {
+    fn resolve(self, id: &str) -> Result<SleepWindow, String> {
+        let parse = |value: &str| {
+            NaiveTime::parse_from_str(value, "%H:%M:%S")
+                .or_else(|_| NaiveTime::parse_from_str(value, "%H:%M"))
+                .map_err(|_| {
+                    format!("eink display {id}: invalid sleep time `{value}`, expected HH:MM")
+                })
+        };
+        Ok(SleepWindow {
+            start: parse(&self.start)?,
+            end: parse(&self.end)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SleepWindow {
+    pub start: NaiveTime,
+    pub end: NaiveTime,
+}
+
+impl SleepWindow {
+    pub fn contains(&self, now: NaiveTime) -> bool {
+        if self.start <= self.end {
+            now >= self.start && now < self.end
+        } else {
+            now >= self.start || now < self.end
+        }
+    }
+
+    pub fn minutes_until_end(&self, now: NaiveTime) -> u32 {
+        let mut delta = (self.end - now).num_minutes();
+        if delta <= 0 {
+            delta += 24 * 60;
+        }
+        delta as u32
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawEinkDisplayBlock {
+    name: String,
+    firmware_version: String,
+    mode: RawEinkMode,
+    #[serde(default)]
+    orientation: Option<Orientation>,
+    #[serde(default, with = "option_time_delta_from_str")]
+    #[schemars(with = "Option<String>")]
+    refresh: Option<TimeDelta>,
+    #[serde(default)]
+    sleep: Option<RawSleepWindow>,
+    partial: RawPartialRefresh,
+}
+
+impl RawEinkDisplayBlock {
+    pub(crate) fn resolve(self, id: &str) -> Result<EinkDisplaySettings, String> {
+        let sleep = self.sleep.map(|s| s.resolve(id)).transpose()?;
+        let partial = self.partial.resolve(id)?;
+
+        Ok(EinkDisplaySettings {
+            name: self.name,
+            firmware_version: self.firmware_version,
+            mode: self.mode.resolve(),
+            orientation: self.orientation.unwrap_or(Orientation::Portrait),
+            refresh: self.refresh,
+            sleep,
+            partial,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EinkDisplaySettings {
+    pub name: String,
+    pub firmware_version: String,
+    pub mode: EinkModeConfig,
+    pub orientation: Orientation,
+    pub refresh: Option<TimeDelta>,
+    pub sleep: Option<SleepWindow>,
+    pub partial: PartialRefresh,
+}
+
+impl EinkDisplaySettings {
+    pub fn target_dims(&self) -> (u32, u32) {
+        self.orientation.target_dims()
+    }
+
+    pub fn orientation_str(&self) -> &'static str {
+        self.orientation.as_str()
     }
 }

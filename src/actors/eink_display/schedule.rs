@@ -1,5 +1,5 @@
 use super::{EInkActorState, EInkDisplayActor, EInkDisplayMessage};
-use crate::device_registry::EinkDisplaySettings;
+use crate::settings::EinkDisplaySettings;
 use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq)]

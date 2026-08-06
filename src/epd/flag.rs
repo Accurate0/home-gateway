@@ -1,5 +1,6 @@
 use crate::{
-    device_registry::{DeviceRegistry, EinkDisplaySettings},
+    device_registry::DeviceRegistry,
+    settings::EinkDisplaySettings,
     feature_flag::FeatureFlagClient,
     settings::{
         Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor, RedditFeed,
@@ -283,7 +284,7 @@ mod tests {
             orientation: crate::settings::Orientation::Portrait,
             refresh,
             sleep: None,
-            partial: crate::device_registry::PartialRefresh {
+            partial: crate::settings::PartialRefresh {
                 enabled: false,
                 max_area_pct: 30,
                 max_consecutive: 5,

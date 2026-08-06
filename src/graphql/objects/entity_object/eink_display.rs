@@ -4,7 +4,8 @@ use itertools::Itertools;
 
 use super::BatteryPoint;
 use crate::{
-    device_registry::{Capability, DeviceRegistry, EinkDisplaySettings},
+    device_registry::{Capability, DeviceRegistry},
+    settings::EinkDisplaySettings,
     feature_flag::FeatureFlagClient,
     graphql::dataloader::{
         device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
