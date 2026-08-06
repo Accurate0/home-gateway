@@ -3,12 +3,12 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     actors::{
-        events::door_events::{DerivedDoorEvents, DoorEventsMessage},
-        rpc,
+        devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
+        system::rpc,
     },
+    db::DoorState,
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
-    types::db::DoorState,
 };
 
 pub struct DoorEntity {

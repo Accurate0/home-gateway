@@ -1,8 +1,8 @@
 use crate::{
-    actors::events::door_events::{
+    actors::devices::door_events::{
         DoorEvents, DoorEventsMessage, DoorEventsSupervisor, DoorEventsType,
     },
-    types::SharedActorState,
+    state::SharedActorState,
 };
 use ractor::{
     ActorProcessingErr, ActorRef,

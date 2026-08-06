@@ -1,16 +1,12 @@
-mod panel;
-mod partial;
-mod plan;
-mod render;
-
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
     battery::BatteryChemistry,
     device_registry::DeviceRegistry,
-    feature_flag::FeatureFlagClient,
+    error::AppError,
+    integrations::feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
-    types::{ApiState, AppError},
+    state::ApiState,
 };
 use axum::{
     Json,
@@ -20,12 +16,12 @@ use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::epd::{epd_flag_config, target_firmware_version};
-use panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
-use partial::resolve_partial_window;
-use plan::{ensure_packed_cached, render_plan};
+use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
+use crate::eink::partial::resolve_partial_window;
+use crate::eink::plan::{ensure_packed_cached, render_plan};
+use crate::eink::{epd_flag_config, target_firmware_version};
 
-pub use panel::PartialWindow;
+pub use crate::eink::panel::PartialWindow;
 
 const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 
@@ -103,7 +99,7 @@ impl ImageParams {
 
 pub(crate) async fn build_epd_config(
     db: &sqlx::Pool<sqlx::Postgres>,
-    s3: &crate::s3::S3,
+    s3: &crate::integrations::s3::S3,
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     settings: &SettingsContainer,
@@ -289,14 +285,15 @@ pub async fn config(
 
     report_to_actor(&request)?;
 
-    let prepared =
-        crate::actors::rpc::query(EInkDisplayActor::NAME, PREPARE_RENDER_TIMEOUT, |reply| {
-            EInkDisplayMessage::PrepareRender {
-                device_id: request.device_id.clone(),
-                reply,
-            }
-        })
-        .await;
+    let prepared = crate::actors::system::rpc::query(
+        EInkDisplayActor::NAME,
+        PREPARE_RENDER_TIMEOUT,
+        |reply| EInkDisplayMessage::PrepareRender {
+            device_id: request.device_id.clone(),
+            reply,
+        },
+    )
+    .await;
 
     if let Err(e) = prepared {
         tracing::warn!(

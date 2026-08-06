@@ -8,7 +8,8 @@ use serde_json::Value;
 
 use crate::{
     auth::{Auth, resolve_ws_auth},
-    types::{ApiState, AppError},
+    error::AppError,
+    state::ApiState,
 };
 
 fn token_from_payload(payload: &Value) -> Option<String> {

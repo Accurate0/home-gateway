@@ -1,25 +1,26 @@
 use crate::{
     actors::{
-        battery::BatteryActor, eink_display::EInkDisplayActor, solar::SolarIngestActor,
-        sun::SunActor, trmnl::TrmnlActor, watchdog::WatchdogActor, woolworths::WoolworthsActor,
+        eink_display::EInkDisplayActor,
+        integrations::{solar::SolarIngestActor, trmnl::TrmnlActor, woolworths::WoolworthsActor},
+        sun::SunActor,
+        system::{battery::BatteryActor, watchdog::WatchdogActor},
     },
-    reddit::Reddit,
-    trmnl::Trmnl,
-    types::SharedActorState,
-    woolworths::Woolworths,
+    integrations::{reddit::Reddit, trmnl::Trmnl, woolworths::Woolworths},
+    state::SharedActorState,
 };
 use ractor::Actor;
 
 use super::{
     alarm::AlarmActor,
-    cron::CronActor,
-    devices::{control_switch, plant_sensor, presence_sensor},
-    door_sensor, environment_sensor,
-    events::door_events::DoorEventsSupervisor,
-    home_assistant::HomeAssistantActor,
-    light, push, smart_switch,
-    synergy::SynergyActor,
-    unifi::UnifiConnectedClientHandler,
+    devices::{
+        control_switch, door_events::DoorEventsSupervisor, door_sensor, environment_sensor, light,
+        plant_sensor, presence_sensor, smart_switch,
+    },
+    integrations::{
+        home_assistant::HomeAssistantActor, synergy::SynergyActor,
+        unifi::UnifiConnectedClientHandler,
+    },
+    system::{cron::CronActor, push},
     workflows::{self, dispatcher::WorkflowDispatcher},
 };
 

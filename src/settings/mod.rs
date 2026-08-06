@@ -9,182 +9,65 @@ use std::{
     path::PathBuf,
 };
 
+pub mod alarm;
+pub mod auth;
+pub mod de;
+pub mod device;
 pub mod door;
 pub mod eink;
 pub mod environment;
 pub mod home_assistant;
+pub mod light;
 pub mod location;
 pub mod notify;
 pub mod plant;
 pub mod presence;
 pub mod roborock;
+pub mod s3;
+pub mod switch;
 pub mod template;
 pub mod trigger;
+pub mod trmnl;
 pub mod valetudo;
+pub mod watchdog;
+pub mod woolworths;
 pub mod workflow;
 pub mod zigbee_model;
 
+pub use alarm::AlarmSettings;
+pub use auth::{ApiKeySettings, OAuthSettings};
+pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
-    Album, DashboardView, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation, PaletteColor,
-    RedditFeed, RedditTimespan,
+    Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig,
+    Orientation, PaletteColor, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan,
+    SleepWindow,
 };
-pub use environment::{EnvironmentSensorSettings, EnvironmentSensorType, Metric};
+pub use environment::{
+    EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
+};
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
+pub use light::RawLightBlock;
 pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
-pub use plant::PlantSensorSettings;
-pub use presence::{PresenceSensorType, PresenceSettings};
+pub use plant::{PlantSensorSettings, RawPlantBlock};
+pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
+pub use s3::S3Settings;
+pub use switch::{RawSmartSwitchBlock, SwitchRole};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
+pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
+pub use watchdog::WatchdogSettings;
+pub use woolworths::WoolworthsSettings;
 pub use workflow::Workflow;
 pub use zigbee_model::{RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile};
 
 use crate::auth::scope::ScopePattern;
 use crate::device_registry::{DeviceRegistry, RawSensor};
-use crate::timedelta_format::time_delta_from_str;
-use chrono::{DateTime, TimeDelta, Utc};
 
 pub type IEEEAddress = String;
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct WatchdogSettings {
-    #[serde(default)]
-    pub enabled: bool,
-    #[serde(with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub timeout: TimeDelta,
-    #[serde(with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub check_interval: TimeDelta,
-    #[serde(with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub realert_after: TimeDelta,
-}
-
-pub(crate) fn default_alarm_offset() -> TimeDelta {
-    TimeDelta::minutes(5)
-}
-
-pub(crate) fn default_alarm_workflow() -> String {
-    "alarm-wakeup".to_owned()
-}
-
-pub(crate) fn default_alarm_poll_interval() -> TimeDelta {
-    TimeDelta::seconds(60)
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct AlarmSettings {
-    #[serde(default = "default_alarm_offset", with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub offset: TimeDelta,
-    #[serde(default = "default_alarm_workflow")]
-    pub workflow: String,
-    #[serde(default = "default_alarm_poll_interval", with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub poll_interval: TimeDelta,
-}
-
-impl Default for AlarmSettings {
-    fn default() -> Self {
-        Self {
-            offset: default_alarm_offset(),
-            workflow: default_alarm_workflow(),
-            poll_interval: default_alarm_poll_interval(),
-        }
-    }
-}
-
-pub(crate) fn default_woolworths_refresh() -> TimeDelta {
-    TimeDelta::hours(1)
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct WoolworthsSettings {
-    #[serde(default = "default_woolworths_refresh", with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub refresh: TimeDelta,
-}
-
-impl Default for WoolworthsSettings {
-    fn default() -> Self {
-        Self {
-            refresh: default_woolworths_refresh(),
-        }
-    }
-}
-
-pub(crate) fn default_trmnl_refresh() -> TimeDelta {
-    TimeDelta::hours(3)
-}
-
-pub(crate) fn default_trmnl_base_url() -> String {
-    "https://trmnl.com".to_owned()
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct TrmnlSettings {
-    #[serde(default = "default_trmnl_refresh", with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub refresh: TimeDelta,
-    #[serde(default = "default_trmnl_base_url")]
-    pub base_url: String,
-}
-
-impl Default for TrmnlSettings {
-    fn default() -> Self {
-        Self {
-            refresh: default_trmnl_refresh(),
-            base_url: default_trmnl_base_url(),
-        }
-    }
-}
-
-/// S3 / object-storage config. Credentials are taken from the standard AWS
-/// environment, never from this file. `endpoint` is only set for
-/// S3-compatible stores (MinIO/R2/…); omit it for plain AWS S3.
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct S3Settings {
-    pub bucket: String,
-    pub region: String,
-    #[serde(default)]
-    pub endpoint: Option<String>,
-}
-
-/// Default for the OAuth `groups` claim name.
-pub(crate) fn default_groups_claim() -> String {
-    "groups".to_owned()
-}
-
-/// OAuth (OIDC) settings. Access tokens are JWTs validated locally against the
-/// provider's JWKS — no client secret is needed. A caller's scopes are derived
-/// from their group memberships (the `groups_claim`) via `group_scopes`.
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct OAuthSettings {
-    pub issuer: String,
-    pub jwks_url: String,
-    pub userinfo_url: String,
-    pub audience: String,
-    #[serde(default = "default_groups_claim")]
-    pub groups_claim: String,
-    /// group SPN -> granted scope strings (`domain:resource:action`).
-    pub group_scopes: HashMap<String, Vec<String>>,
-}
-
-/// Declarative API key: config is the source of truth for a key's name + scope.
-/// Secret material is never here — the admin API mints/regenerates the token and
-/// startup reconciles these scopes onto the matching DB row by `name`.
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct ApiKeySettings {
-    pub name: String,
-    pub scopes: Vec<String>,
-    #[serde(default)]
-    #[schemars(with = "Option<String>")]
-    pub expires_at: Option<DateTime<Utc>>,
-}
 
 /// Named device aliases (`alias -> ieee address`) declared under the top-level
 /// `devices:` key. Referenced from workflow steps so addresses are written once.
@@ -799,7 +682,7 @@ android_app_webhook_secret: x
         );
         assert_eq!(
             registry.esphome_target("apollo-mtr-1-livingroom/light/rgb_light/state"),
-            Some(&crate::esphome::EsphomeTarget::Light {
+            Some(&crate::integrations::esphome::EsphomeTarget::Light {
                 node: mtr.to_owned(),
                 object_id: "rgb_light".to_owned(),
             })

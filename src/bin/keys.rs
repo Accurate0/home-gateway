@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
-use home_gateway::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
+use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use uuid::Uuid;
 
 #[derive(Parser)]

@@ -1,11 +1,11 @@
 use crate::{
-    actors::light::{LightHandler, LightHandlerMessage},
+    actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
-    notify::notify,
+    integrations::notify::notify,
     settings::workflow::{EnableState, LightState, Step, Workflow},
+    state::SharedActorState,
     timer::timed_async,
-    types::SharedActorState,
 };
 use ractor::{
     ActorRef,
@@ -39,7 +39,7 @@ pub enum WorkflowError {
     #[error("home assistant is not configured")]
     HomeAssistantNotConfigured,
     #[error(transparent)]
-    HomeAssistant(#[from] crate::home_assistant::HomeAssistantError),
+    HomeAssistant(#[from] crate::integrations::home_assistant::HomeAssistantError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -224,9 +224,11 @@ impl WorkflowWorker {
             .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
 
         let (domain, service) = call_service.split_once('.').ok_or_else(|| {
-            WorkflowError::HomeAssistant(crate::home_assistant::HomeAssistantError::InvalidService(
-                call_service.to_owned(),
-            ))
+            WorkflowError::HomeAssistant(
+                crate::integrations::home_assistant::HomeAssistantError::InvalidService(
+                    call_service.to_owned(),
+                ),
+            )
         })?;
 
         home_assistant.call_service(domain, service, data).await?;

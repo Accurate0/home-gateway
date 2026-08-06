@@ -4,17 +4,16 @@ use serde::Serialize;
 
 use crate::actors::{
     alarm::AlarmActor,
-    cron::CronActor,
-    devices::{control_switch, plant_sensor, presence_sensor},
-    door_sensor,
+    devices::{
+        control_switch, door_events::DoorEventsSupervisor, door_sensor, environment_sensor, light,
+        plant_sensor, presence_sensor, smart_switch,
+    },
     eink_display::EInkDisplayActor,
-    environment_sensor,
-    events::door_events::DoorEventsSupervisor,
-    light, push, smart_switch,
-    solar::SolarIngestActor,
-    synergy::SynergyActor,
-    unifi::UnifiConnectedClientHandler,
-    woolworths::WoolworthsActor,
+    integrations::{
+        solar::SolarIngestActor, synergy::SynergyActor, unifi::UnifiConnectedClientHandler,
+        woolworths::WoolworthsActor,
+    },
+    system::{cron::CronActor, push},
     workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher},
 };
 

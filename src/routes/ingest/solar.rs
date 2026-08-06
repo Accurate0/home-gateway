@@ -1,7 +1,7 @@
 use crate::{
-    actors::solar::{SolarIngestActor, SolarMessage},
+    actors::integrations::solar::{SolarIngestActor, SolarMessage},
     auth::{Auth, scope::required},
-    types::ApiState,
+    state::ApiState,
 };
 use axum::{Json, extract::State};
 use http::StatusCode;

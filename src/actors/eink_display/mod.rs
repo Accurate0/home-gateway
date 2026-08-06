@@ -1,11 +1,11 @@
 use crate::battery::{BatteryChemistry, voltage_to_percentage};
-use crate::reddit::Reddit;
+use crate::eink::image::content_hash;
+use crate::integrations::reddit::Reddit;
 use crate::settings::EinkMode;
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 use chromiumoxide::{Browser, BrowserConfig, handler::viewport::Viewport};
 use futures::StreamExt;
 use ractor::{Actor, RpcReplyPort};
-use render::content_hash;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::task::JoinHandle;
@@ -13,10 +13,11 @@ use tokio::task::JoinHandle;
 const CACHE_PREFIX: &str = "eink-display/cache/";
 const FLAG_OVERRIDE_SETTLE: Duration = Duration::from_secs(10);
 
+use crate::eink::epd_flag_config;
+
 mod render;
 mod schedule;
 mod store;
-pub mod types;
 
 pub enum EInkDisplayMessage {
     TakeScreenshot {
@@ -77,7 +78,7 @@ impl EInkDisplayActor {
         };
         let display = display.clone();
 
-        let flag = crate::epd::epd_flag_config(
+        let flag = epd_flag_config(
             &self.shared_actor_state.feature_flag_client,
             &self.shared_actor_state.devices,
             device_id,
@@ -201,7 +202,7 @@ impl Actor for EInkDisplayActor {
                 };
                 let display = display.clone();
 
-                let flag = crate::epd::epd_flag_config(
+                let flag = epd_flag_config(
                     &self.shared_actor_state.feature_flag_client,
                     &self.shared_actor_state.devices,
                     &device_id,
@@ -263,7 +264,7 @@ impl Actor for EInkDisplayActor {
                         None => continue,
                     };
 
-                    let flag = crate::epd::epd_flag_config(
+                    let flag = epd_flag_config(
                         &self.shared_actor_state.feature_flag_client,
                         &self.shared_actor_state.devices,
                         &device_id,
@@ -359,7 +360,7 @@ impl Actor for EInkDisplayActor {
                 .execute(&self.shared_actor_state.db)
                 .await?;
 
-                crate::actors::battery::BatteryActor::report(
+                crate::actors::system::battery::BatteryActor::report(
                     device_id,
                     name,
                     kind,
@@ -403,7 +404,7 @@ impl Actor for EInkDisplayActor {
                 self.store_next_wake(&device_id, &display.name, next_wake_at)
                     .await?;
 
-                let flag = crate::epd::epd_flag_config(
+                let flag = epd_flag_config(
                     &self.shared_actor_state.feature_flag_client,
                     &self.shared_actor_state.devices,
                     &device_id,

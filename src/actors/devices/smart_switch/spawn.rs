@@ -1,4 +1,4 @@
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 
 use super::{Message, SmartSwitchHandler, SmartSwitchHandlerBuilder};
 use ractor::{

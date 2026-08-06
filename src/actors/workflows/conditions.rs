@@ -10,17 +10,17 @@ use super::WorkflowError;
 use crate::actors::sun::calc;
 use crate::{
     actors::{
+        devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
         devices::environment_sensor::{
             EnvironmentSensorHandler, LatestReading, Message as EnvironmentMessage,
         },
+        devices::light::{LightHandler, LightHandlerMessage},
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
-        events::door_events::{DerivedDoorEvents, DoorEventsMessage},
-        light::{LightHandler, LightHandlerMessage},
-        rpc::{self, RpcError},
+        system::rpc::{self, RpcError},
     },
+    db::DoorState,
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
-    types::SharedActorState,
-    types::db::DoorState,
+    state::SharedActorState,
 };
 use chrono::{Local, Utc};
 use std::time::Duration;

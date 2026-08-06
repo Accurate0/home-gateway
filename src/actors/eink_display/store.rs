@@ -1,5 +1,6 @@
-use super::{EInkDisplayActor, render::content_hash};
-use crate::device_registry::EinkDisplaySettings;
+use super::EInkDisplayActor;
+use crate::eink::image::content_hash;
+use crate::settings::EinkDisplaySettings;
 
 impl EInkDisplayActor {
     pub(super) async fn store_render(

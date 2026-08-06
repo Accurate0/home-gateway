@@ -1204,7 +1204,7 @@
           ]
         },
         {
-          "description": "Fires on a recurring schedule. `schedule` is a standard 5-field cron\nexpression (e.g. `\"0 20 * * THU\"`), evaluated in local time. Driven by the\n[`crate::actors::cron::CronActor`] producer, which matches by trigger name.",
+          "description": "Fires on a recurring schedule. `schedule` is a standard 5-field cron\nexpression (e.g. `\"0 20 * * THU\"`), evaluated in local time. Driven by the\n[`crate::actors::system::cron::CronActor`] producer, which matches by trigger name.",
           "type": "object",
           "properties": {
             "schedule": {
@@ -1266,7 +1266,7 @@
           ]
         },
         {
-          "description": "Fires when a Home Assistant entity changes state, driven by the\n[`crate::actors::home_assistant`] producer. Optionally gate on the entity\nreaching a specific `state`.",
+          "description": "Fires when a Home Assistant entity changes state, driven by the\n[`crate::actors::integrations::home_assistant`] producer. Optionally gate on the entity\nreaching a specific `state`.",
           "type": "object",
           "properties": {
             "entity_id": {
@@ -1290,7 +1290,7 @@
           ]
         },
         {
-          "description": "Fires when a tracked Woolworths product drops in price, driven by the\n[`crate::actors::woolworths`] producer. Optionally gate on a specific\n`product_id` and/or a minimum drop amount (in dollars).",
+          "description": "Fires when a tracked Woolworths product drops in price, driven by the\n[`crate::actors::integrations::woolworths`] producer. Optionally gate on a specific\n`product_id` and/or a minimum drop amount (in dollars).",
           "type": "object",
           "properties": {
             "product_id": {

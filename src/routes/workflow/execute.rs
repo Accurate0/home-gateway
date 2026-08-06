@@ -1,8 +1,9 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     auth::{Auth, scope::required},
+    error::AppError,
     settings::workflow::Workflow,
-    types::{ApiState, AppError},
+    state::ApiState,
 };
 use axum::{Json, extract::State};
 use http::StatusCode;

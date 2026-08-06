@@ -1,3 +1,6 @@
+use schemars::JsonSchema;
+use serde::Deserialize;
+
 /// Default esphome sensor entity for a plant: the Apollo PLT-1 publishes soil
 /// moisture as a percentage on `<node>/sensor/soil_moisture/state`.
 pub(crate) fn default_plant_entities() -> Vec<String> {
@@ -10,4 +13,11 @@ pub struct PlantSensorSettings {
     pub id: String,
     #[allow(unused)]
     pub entities: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct RawPlantBlock {
+    pub(crate) id: String,
+    #[serde(default = "default_plant_entities")]
+    pub(crate) entities: Vec<String>,
 }

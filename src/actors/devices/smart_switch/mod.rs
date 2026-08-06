@@ -1,4 +1,4 @@
-use crate::{actors::light::record_light_state, types::SharedActorState};
+use crate::{actors::devices::light::record_light_state, state::SharedActorState};
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},

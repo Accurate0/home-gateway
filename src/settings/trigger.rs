@@ -3,8 +3,8 @@ use serde::Deserialize;
 
 use super::workflow::Comparison;
 use super::{DeviceAliases, IEEEAddress, validate_device};
-use crate::actors::cron::schedule::CronSchedule;
 use crate::actors::sun::calc::SunTransition;
+use crate::actors::system::cron::schedule::CronSchedule;
 use crate::event_bus::SensorMetric;
 use crate::mode::Mode;
 
@@ -38,7 +38,7 @@ pub enum TriggerMatcher {
     },
     /// Fires on a recurring schedule. `schedule` is a standard 5-field cron
     /// expression (e.g. `"0 20 * * THU"`), evaluated in local time. Driven by the
-    /// [`crate::actors::cron::CronActor`] producer, which matches by trigger name.
+    /// [`crate::actors::system::cron::CronActor`] producer, which matches by trigger name.
     Cron {
         schedule: Box<CronSchedule>,
     },
@@ -60,7 +60,7 @@ pub enum TriggerMatcher {
         active: bool,
     },
     /// Fires when a Home Assistant entity changes state, driven by the
-    /// [`crate::actors::home_assistant`] producer. Optionally gate on the entity
+    /// [`crate::actors::integrations::home_assistant`] producer. Optionally gate on the entity
     /// reaching a specific `state`.
     HomeAssistant {
         entity_id: String,
@@ -68,7 +68,7 @@ pub enum TriggerMatcher {
         state: Option<String>,
     },
     /// Fires when a tracked Woolworths product drops in price, driven by the
-    /// [`crate::actors::woolworths`] producer. Optionally gate on a specific
+    /// [`crate::actors::integrations::woolworths`] producer. Optionally gate on a specific
     /// `product_id` and/or a minimum drop amount (in dollars).
     Woolworths {
         #[serde(default)]

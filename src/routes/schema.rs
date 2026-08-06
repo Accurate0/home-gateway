@@ -1,6 +1,7 @@
 use crate::{
     auth::{Auth, scope::required},
-    types::{ApiState, AppError},
+    error::AppError,
+    state::ApiState,
 };
 use axum::extract::State;
 

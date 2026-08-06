@@ -1,9 +1,6 @@
 use ::http::Method;
 use actors::workflows::manager::WorkflowManager;
-use actors::{
-    mqtt_ingest::{self},
-    root::RootSupervisor,
-};
+use actors::{root::RootSupervisor, system::mqtt_ingest};
 use async_graphql::{Schema, dataloader::DataLoader};
 use auth::{AuthManager, OAuthValidator, auth_middleware};
 use axum::{
@@ -14,6 +11,7 @@ use axum::{
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
+use error::MainError;
 use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
@@ -29,8 +27,9 @@ use graphql::{
     mutations::MutationRoot,
 };
 use home_gateway::{
-    actors, auth, device_registry, event_bus, feature_flag, graphql, home_assistant, mqtt, routes,
-    s3, settings, tracing_setup, types, utils,
+    actors, auth, device_registry, error, event_bus, graphql,
+    integrations::{feature_flag, home_assistant, mqtt, s3},
+    routes, settings, state, tracing_setup, utils,
 };
 use home_gateway::{
     graphql::subscription::SubscriptionRoot,
@@ -60,11 +59,11 @@ use sqlx::{
     ConnectOptions, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
+use state::{ApiState, SharedActorState};
 use std::{net::SocketAddr, time::Duration};
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
-use types::{ApiState, MainError, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
 
 async fn log_request(req: Request, next: Next) -> Response {

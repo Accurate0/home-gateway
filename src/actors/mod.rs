@@ -1,24 +1,8 @@
 pub mod alarm;
-pub mod battery;
-pub mod cron;
 pub mod devices;
 pub mod eink_display;
-pub mod events;
-pub mod home_assistant;
-pub mod mqtt_ingest;
-pub mod push;
+pub mod integrations;
 pub mod root;
-pub mod rpc;
-pub mod solar;
 pub mod sun;
-pub mod synergy;
-pub mod trmnl;
-pub mod unifi;
-pub mod watchdog;
-pub mod woolworths;
+pub mod system;
 pub mod workflows;
-
-pub use devices::door_sensor;
-pub use devices::environment_sensor;
-pub use devices::light;
-pub use devices::smart_switch;

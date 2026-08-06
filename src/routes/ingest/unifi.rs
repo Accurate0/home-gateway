@@ -1,5 +1,7 @@
 use crate::{
-    actors::unifi::{UnifiConnectedClientHandler, UnifiMessage, types::UnifiWebhookEvent},
+    actors::integrations::unifi::{
+        UnifiConnectedClientHandler, UnifiMessage, types::UnifiWebhookEvent,
+    },
     auth::{Auth, scope::required},
 };
 use axum::Json;

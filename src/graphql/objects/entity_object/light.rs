@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     actors::{
-        light::{LightHandler, LightHandlerMessage},
-        rpc,
+        devices::light::{LightHandler, LightHandlerMessage},
+        system::rpc,
     },
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},

@@ -1,5 +1,5 @@
 use super::{WorkflowWorker, WorkflowWorkerBuilder, WorkflowWorkerMessage};
-use crate::types::SharedActorState;
+use crate::state::SharedActorState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, FactoryMessage, queues, routing},

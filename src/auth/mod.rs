@@ -1,3 +1,4 @@
+pub mod api_types;
 pub mod context;
 pub mod manager;
 pub mod oauth;
@@ -16,7 +17,7 @@ use chrono::Utc;
 use http::{HeaderMap, StatusCode, request::Parts};
 use sha2::{Digest, Sha256};
 
-use crate::types::ApiState;
+use crate::state::ApiState;
 
 pub fn hash_key(key: &str) -> String {
     let mut hasher = Sha256::new();

@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use crate::api_types::{ApiKeyInfo, CreatedKey};
+use crate::auth::api_types::{ApiKeyInfo, CreatedKey};
 use chrono::{DateTime, Utc};
 use moka::future::Cache;
 use rand::{RngExt, distr::Alphanumeric};

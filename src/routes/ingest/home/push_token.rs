@@ -1,6 +1,6 @@
 use crate::{
     auth::{Auth, scope::required},
-    types::ApiState,
+    state::ApiState,
 };
 use axum::{Json, extract::State};
 use http::StatusCode;
