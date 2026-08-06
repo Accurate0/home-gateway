@@ -1,12 +1,11 @@
-
 use crate::{
-    actors::home::eink_display::{EInkDisplayActor, EInkDisplayMessage},
+    actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
     battery::BatteryChemistry,
     device_registry::DeviceRegistry,
+    error::AppError,
     integrations::feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
-    error::AppError,
     state::ApiState,
 };
 use axum::{
@@ -17,10 +16,10 @@ use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::eink::{epd_flag_config, target_firmware_version};
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
 use crate::eink::partial::resolve_partial_window;
 use crate::eink::plan::{ensure_packed_cached, render_plan};
+use crate::eink::{epd_flag_config, target_firmware_version};
 
 pub use crate::eink::panel::PartialWindow;
 
@@ -286,14 +285,15 @@ pub async fn config(
 
     report_to_actor(&request)?;
 
-    let prepared =
-        crate::actors::system::rpc::query(EInkDisplayActor::NAME, PREPARE_RENDER_TIMEOUT, |reply| {
-            EInkDisplayMessage::PrepareRender {
-                device_id: request.device_id.clone(),
-                reply,
-            }
-        })
-        .await;
+    let prepared = crate::actors::system::rpc::query(
+        EInkDisplayActor::NAME,
+        PREPARE_RENDER_TIMEOUT,
+        |reply| EInkDisplayMessage::PrepareRender {
+            device_id: request.device_id.clone(),
+            reply,
+        },
+    )
+    .await;
 
     if let Err(e) = prepared {
         tracing::warn!(

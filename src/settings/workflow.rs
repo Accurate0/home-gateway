@@ -5,7 +5,7 @@ use crate::settings::trigger::TriggerMatcher;
 use crate::timedelta_format::option_time_delta_from_str;
 
 use super::{DeviceAliases, IEEEAddress, validate_device, yes};
-use crate::actors::home::sun::calc::SunPeriod;
+use crate::actors::sun::calc::SunPeriod;
 use crate::mode::Mode;
 use chrono::{NaiveTime, TimeDelta};
 use schemars::JsonSchema;

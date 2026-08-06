@@ -1,8 +1,8 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     auth::{Auth, scope::required},
-    settings::workflow::Workflow,
     error::AppError,
+    settings::workflow::Workflow,
     state::ApiState,
 };
 use axum::{Json, extract::State};

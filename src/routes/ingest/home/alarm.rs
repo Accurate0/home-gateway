@@ -1,5 +1,5 @@
 use crate::{
-    actors::home::alarm::{AlarmActor, AlarmMessage, types::AndroidAppAlarmPayload},
+    actors::alarm::{AlarmActor, AlarmMessage, types::AndroidAppAlarmPayload},
     auth::{Auth, scope::required},
 };
 use axum::Json;

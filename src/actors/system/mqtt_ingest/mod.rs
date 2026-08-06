@@ -6,8 +6,8 @@ use crate::{
     },
     device_metric::DeviceMetric,
     device_registry::ZigbeeDevice,
-    state::SharedActorState,
     integrations::zigbee2mqtt::{devices::BridgeDevices, role},
+    state::SharedActorState,
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -307,8 +307,9 @@ impl MqttIngest {
                 }
             }
             MqttTopic::EsphomeDiscovery => {
-                let discovery =
-                    serde_json::from_slice::<crate::integrations::esphome::EsphomeDiscovery>(&payload)?;
+                let discovery = serde_json::from_slice::<
+                    crate::integrations::esphome::EsphomeDiscovery,
+                >(&payload)?;
                 tracing::info!(
                     "discovered esphome device: {} ({})",
                     discovery.friendly_name,
@@ -342,11 +343,17 @@ impl MqttIngest {
                     .cloned();
 
                 match target {
-                    Some(crate::integrations::esphome::EsphomeTarget::Motion { node, object_id }) => {
+                    Some(crate::integrations::esphome::EsphomeTarget::Motion {
+                        node,
+                        object_id,
+                    }) => {
                         self.record_last_seen(&node).await;
                         self.dispatch_esphome_motion(&node, &object_id, &payload)?
                     }
-                    Some(crate::integrations::esphome::EsphomeTarget::Sensor { node, object_id }) => {
+                    Some(crate::integrations::esphome::EsphomeTarget::Sensor {
+                        node,
+                        object_id,
+                    }) => {
                         self.record_last_seen(&node).await;
                         self.dispatch_esphome_sensor(&node, &object_id, &payload)?
                     }

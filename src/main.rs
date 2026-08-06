@@ -11,6 +11,7 @@ use axum::{
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
+use error::MainError;
 use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
@@ -58,12 +59,11 @@ use sqlx::{
     ConnectOptions, Pool, Postgres,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
+use state::{ApiState, SharedActorState};
 use std::{net::SocketAddr, time::Duration};
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
-use error::MainError;
-use state::{ApiState, SharedActorState};
 use utils::{axum_shutdown_signal, handle_cancellation};
 
 async fn log_request(req: Request, next: Next) -> Response {

@@ -4,8 +4,8 @@ use crate::{
     event_bus::EventBusMessage,
     integrations::notify::notify,
     settings::workflow::{EnableState, LightState, Step, Workflow},
-    timer::timed_async,
     state::SharedActorState,
+    timer::timed_async,
 };
 use ractor::{
     ActorRef,
@@ -224,9 +224,11 @@ impl WorkflowWorker {
             .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
 
         let (domain, service) = call_service.split_once('.').ok_or_else(|| {
-            WorkflowError::HomeAssistant(crate::integrations::home_assistant::HomeAssistantError::InvalidService(
-                call_service.to_owned(),
-            ))
+            WorkflowError::HomeAssistant(
+                crate::integrations::home_assistant::HomeAssistantError::InvalidService(
+                    call_service.to_owned(),
+                ),
+            )
         })?;
 
         home_assistant.call_service(domain, service, data).await?;

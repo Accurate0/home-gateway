@@ -3,12 +3,13 @@ use http::StatusCode;
 use serde::Serialize;
 
 use crate::actors::{
+    alarm::AlarmActor,
     devices::{
         control_switch, door_sensor, environment_sensor, light, plant_sensor, presence_sensor,
         smart_switch,
     },
+    eink_display::EInkDisplayActor,
     events::door_events::DoorEventsSupervisor,
-    home::{alarm::AlarmActor, eink_display::EInkDisplayActor},
     integrations::{
         solar::SolarIngestActor, synergy::SynergyActor, unifi::UnifiConnectedClientHandler,
         woolworths::WoolworthsActor,

@@ -1,11 +1,11 @@
 use crate::battery::{BatteryChemistry, voltage_to_percentage};
+use crate::eink::image::content_hash;
 use crate::integrations::reddit::Reddit;
 use crate::settings::EinkMode;
 use crate::state::SharedActorState;
 use chromiumoxide::{Browser, BrowserConfig, handler::viewport::Viewport};
 use futures::StreamExt;
 use ractor::{Actor, RpcReplyPort};
-use crate::eink::image::content_hash;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::task::JoinHandle;

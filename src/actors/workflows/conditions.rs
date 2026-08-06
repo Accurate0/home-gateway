@@ -7,7 +7,7 @@
 //! [`SharedActorState`] rather than being tied to the workflow worker.
 
 use super::WorkflowError;
-use crate::actors::home::sun::calc;
+use crate::actors::sun::calc;
 use crate::{
     actors::{
         devices::environment_sensor::{
@@ -18,9 +18,9 @@ use crate::{
         events::door_events::{DerivedDoorEvents, DoorEventsMessage},
         system::rpc::{self, RpcError},
     },
+    db::DoorState,
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
     state::SharedActorState,
-    db::DoorState,
 };
 use chrono::{Local, Utc};
 use std::time::Duration;

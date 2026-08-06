@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::reading::{SensorReading, metric_var_name};
-use crate::actors::home::sun::calc::SunTransition;
+use crate::actors::sun::calc::SunTransition;
 use crate::mode::Mode;
 use crate::settings::IEEEAddress;
 
@@ -44,7 +44,7 @@ pub enum EventBusMessage {
     /// and is owned by the [`crate::actors::system::cron::CronActor`] producer.
     Cron { event_id: Uuid, name: String },
     /// A sun transition (sunrise/sunset) came due, published by the
-    /// [`crate::actors::home::sun::SunActor`] producer so workflows can trigger on dusk/dawn.
+    /// [`crate::actors::sun::SunActor`] producer so workflows can trigger on dusk/dawn.
     Sun {
         event_id: Uuid,
         transition: SunTransition,

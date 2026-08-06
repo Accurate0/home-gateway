@@ -3,8 +3,8 @@ use serde::Deserialize;
 
 use super::workflow::Comparison;
 use super::{DeviceAliases, IEEEAddress, validate_device};
+use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
-use crate::actors::home::sun::calc::SunTransition;
 use crate::event_bus::SensorMetric;
 use crate::mode::Mode;
 
@@ -43,7 +43,7 @@ pub enum TriggerMatcher {
         schedule: Box<CronSchedule>,
     },
     /// Fires at a sun transition (`sunrise`/`sunset`), driven by the
-    /// [`crate::actors::home::sun::SunActor`] producer.
+    /// [`crate::actors::sun::SunActor`] producer.
     Sun {
         transition: SunTransition,
         #[serde(

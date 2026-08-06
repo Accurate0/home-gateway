@@ -1,25 +1,22 @@
 use crate::{
     actors::{
-        home::{eink_display::EInkDisplayActor, sun::SunActor},
-        integrations::{
-            solar::SolarIngestActor, trmnl::TrmnlActor, woolworths::WoolworthsActor,
-        },
+        eink_display::EInkDisplayActor,
+        integrations::{solar::SolarIngestActor, trmnl::TrmnlActor, woolworths::WoolworthsActor},
+        sun::SunActor,
         system::{battery::BatteryActor, watchdog::WatchdogActor},
     },
-    integrations::reddit::Reddit,
-    integrations::trmnl::Trmnl,
+    integrations::{reddit::Reddit, trmnl::Trmnl, woolworths::Woolworths},
     state::SharedActorState,
-    integrations::woolworths::Woolworths,
 };
 use ractor::Actor;
 
 use super::{
+    alarm::AlarmActor,
     devices::{
         control_switch, door_sensor, environment_sensor, light, plant_sensor, presence_sensor,
         smart_switch,
     },
     events::door_events::DoorEventsSupervisor,
-    home::alarm::AlarmActor,
     integrations::{
         home_assistant::HomeAssistantActor, synergy::SynergyActor,
         unifi::UnifiConnectedClientHandler,

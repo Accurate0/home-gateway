@@ -1,8 +1,8 @@
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     auth::{Auth, scope::required},
-    settings::IEEEAddress,
     error::AppError,
+    settings::IEEEAddress,
     state::ApiState,
 };
 use axum::{Json, extract::State};

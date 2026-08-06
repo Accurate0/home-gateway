@@ -1221,7 +1221,7 @@
           ]
         },
         {
-          "description": "Fires at a sun transition (`sunrise`/`sunset`), driven by the\n[`crate::actors::home::sun::SunActor`] producer.",
+          "description": "Fires at a sun transition (`sunrise`/`sunset`), driven by the\n[`crate::actors::sun::SunActor`] producer.",
           "type": "object",
           "properties": {
             "transition": {

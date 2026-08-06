@@ -1,6 +1,6 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
-use crate::event_bus::EventBusMessage;
 use crate::db::DoorState;
+use crate::event_bus::EventBusMessage;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
     state::SharedActorState,

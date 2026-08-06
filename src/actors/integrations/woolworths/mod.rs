@@ -1,10 +1,10 @@
 use crate::{
     event_bus::EventBusMessage,
-    state::SharedActorState,
     integrations::woolworths::{
         Woolworths,
         types::{WoolworthsProductResponse, WoolworthsTrackedProduct},
     },
+    state::SharedActorState,
 };
 use ractor::Actor;
 use std::{collections::HashMap, time::Duration};

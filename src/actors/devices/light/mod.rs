@@ -1,7 +1,7 @@
 use crate::{
     device_registry::Capability, event_bus::EventBusMessage,
-    integrations::esphome::light_command_topic,
-    integrations::mqtt::ZIGBEE2MQTT_BASE, settings::IEEEAddress, state::SharedActorState,
+    integrations::esphome::light_command_topic, integrations::mqtt::ZIGBEE2MQTT_BASE,
+    settings::IEEEAddress, state::SharedActorState,
 };
 use ractor::{
     ActorProcessingErr, ActorRef, RpcReplyPort,

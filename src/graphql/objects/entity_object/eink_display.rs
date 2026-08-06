@@ -5,13 +5,13 @@ use itertools::Itertools;
 use super::BatteryPoint;
 use crate::{
     device_registry::{Capability, DeviceRegistry},
-    settings::EinkDisplaySettings,
-    integrations::feature_flag::FeatureFlagClient,
     graphql::dataloader::{
         device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
         eink_battery::EinkDisplayDataLoader,
     },
+    integrations::feature_flag::FeatureFlagClient,
     routes::epd::{DeviceReport, EpdConfig, build_epd_config},
+    settings::EinkDisplaySettings,
     settings::{EinkMode, Orientation, RedditTimespan, SettingsContainer},
     timedelta_format::humanize,
 };

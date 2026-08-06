@@ -1,12 +1,10 @@
 use super::encode::render_and_cache;
-use super::panel::packed_cache_key;
 use super::flag::{EpdFlagConfig, epd_palette};
+use super::panel::packed_cache_key;
 use crate::{
-    device_registry::DeviceRegistry,
+    device_registry::DeviceRegistry, error::AppError,
+    integrations::feature_flag::FeatureFlagClient, settings::SettingsContainer,
     settings::SleepWindow,
-    integrations::feature_flag::FeatureFlagClient,
-    settings::SettingsContainer,
-    error::AppError,
 };
 use chrono_tz::Australia::Perth;
 use sha2::{Digest, Sha256};
