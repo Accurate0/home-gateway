@@ -2,9 +2,9 @@ use crate::error::AppError;
 use ab_glyph::{FontRef, PxScale};
 use imageproc::drawing::{draw_text_mut, text_size};
 
-const LABEL_FONT: &[u8] = include_bytes!("../../../assets/LiberationSans-Bold.ttf");
+const LABEL_FONT: &[u8] = include_bytes!("../../assets/LiberationSans-Bold.ttf");
 
-pub(super) async fn render_and_cache(
+pub async fn render_and_cache(
     s3: &crate::s3::S3,
     image_key: &str,
     sleep_label: Option<String>,

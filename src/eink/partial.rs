@@ -1,8 +1,8 @@
 use super::panel::{PartialWindow, dirty_window, packed_cache_key};
 use crate::device_registry::DeviceRegistry;
-use crate::epd::EpdFlagConfig;
+use super::flag::EpdFlagConfig;
 
-pub(super) async fn resolve_partial_window(
+pub async fn resolve_partial_window(
     db: &sqlx::Pool<sqlx::Postgres>,
     s3: &crate::s3::S3,
     devices: &DeviceRegistry,

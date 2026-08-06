@@ -1,7 +1,3 @@
-mod panel;
-mod partial;
-mod plan;
-mod render;
 
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
@@ -21,12 +17,12 @@ use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::epd::{epd_flag_config, target_firmware_version};
-use panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
-use partial::resolve_partial_window;
-use plan::{ensure_packed_cached, render_plan};
+use crate::eink::{epd_flag_config, target_firmware_version};
+use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
+use crate::eink::partial::resolve_partial_window;
+use crate::eink::plan::{ensure_packed_cached, render_plan};
 
-pub use panel::PartialWindow;
+pub use crate::eink::panel::PartialWindow;
 
 const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 

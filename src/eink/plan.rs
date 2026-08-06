@@ -1,5 +1,6 @@
-use super::{panel::packed_cache_key, render::render_and_cache};
-use crate::epd::{EpdFlagConfig, epd_palette};
+use super::encode::render_and_cache;
+use super::panel::packed_cache_key;
+use super::flag::{EpdFlagConfig, epd_palette};
 use crate::{
     device_registry::DeviceRegistry,
     settings::SleepWindow,
@@ -13,15 +14,15 @@ use sha2::{Digest, Sha256};
 const SLEEP_IMAGE_PREFIX: &str = "eink-display/sleep/";
 const RENDER_PIPELINE_VERSION: u32 = 2;
 
-pub(super) struct RenderPlan {
+pub struct RenderPlan {
     image_key: String,
-    pub(super) sleep: Option<SleepWindow>,
+    pub sleep: Option<SleepWindow>,
     sleep_label: Option<String>,
     palette: Vec<(f32, f32, f32, u8)>,
-    pub(super) hash: String,
+    pub hash: String,
 }
 
-pub(super) async fn render_plan(
+pub async fn render_plan(
     db: &sqlx::Pool<sqlx::Postgres>,
     s3: &crate::s3::S3,
     feature_flag_client: &FeatureFlagClient,
@@ -93,7 +94,7 @@ pub(super) async fn render_plan(
     })
 }
 
-pub(super) async fn ensure_packed_cached(s3: &crate::s3::S3, plan: &RenderPlan) -> bool {
+pub async fn ensure_packed_cached(s3: &crate::s3::S3, plan: &RenderPlan) -> bool {
     let key = packed_cache_key(plan.hash.clone());
 
     match s3.get_object_metadata(&key).await {

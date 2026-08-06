@@ -17,9 +17,9 @@ const DEFAULT_REDDIT_TIMESPAN: RedditTimespan = RedditTimespan::Day;
 const DEFAULT_REDDIT_LIMIT: u32 = 25;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct EpdFlagConfig {
-    pub(crate) clear_screen: bool,
-    pub(crate) force_sleep: bool,
+pub struct EpdFlagConfig {
+    pub clear_screen: bool,
+    pub force_sleep: bool,
     refresh_interval: Option<u32>,
     mode: Option<EinkMode>,
     dashboard_view: Option<String>,
@@ -28,7 +28,7 @@ pub(crate) struct EpdFlagConfig {
     timespan: Option<RedditTimespan>,
     limit: Option<u32>,
     firmware_version: Option<String>,
-    pub(crate) partial_refresh: Option<bool>,
+    pub partial_refresh: Option<bool>,
 }
 
 impl From<open_feature::StructValue> for EpdFlagConfig {
@@ -96,7 +96,7 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
 }
 
 impl EpdFlagConfig {
-    pub(crate) fn resolve_refresh_interval(&self, display: Option<&EinkDisplaySettings>) -> u32 {
+    pub fn resolve_refresh_interval(&self, display: Option<&EinkDisplaySettings>) -> u32 {
         if let Some(interval) = self.refresh_interval {
             return interval;
         }
@@ -107,11 +107,11 @@ impl EpdFlagConfig {
             .unwrap_or(DEFAULT_REFRESH_INTERVAL_MINS)
     }
 
-    pub(crate) fn resolve_mode(&self, display: &EinkDisplaySettings) -> EinkMode {
+    pub fn resolve_mode(&self, display: &EinkDisplaySettings) -> EinkMode {
         self.mode.unwrap_or_else(|| display.mode.name())
     }
 
-    pub(crate) fn resolve_view<'a>(
+    pub fn resolve_view<'a>(
         &self,
         global: &'a EinkGlobalSettings,
         display: &EinkDisplaySettings,
@@ -129,7 +129,7 @@ impl EpdFlagConfig {
         }
     }
 
-    pub(crate) fn resolve_reddit_feed(&self, display: &EinkDisplaySettings) -> Option<RedditFeed> {
+    pub fn resolve_reddit_feed(&self, display: &EinkDisplaySettings) -> Option<RedditFeed> {
         let configured = display.mode.feed();
 
         let subreddit = self
@@ -157,7 +157,7 @@ impl EpdFlagConfig {
         })
     }
 
-    pub(crate) fn resolve_album(
+    pub fn resolve_album(
         &self,
         global: &EinkGlobalSettings,
         display: &EinkDisplaySettings,
@@ -186,7 +186,7 @@ fn evaluation_context(devices: &DeviceRegistry, device_id: &str) -> EvaluationCo
     }
 }
 
-pub(crate) async fn epd_flag_config(
+pub async fn epd_flag_config(
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     device_id: &str,
@@ -210,7 +210,7 @@ pub(crate) async fn epd_flag_config(
     }
 }
 
-pub(crate) async fn epd_palette(
+pub async fn epd_palette(
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     base: &[PaletteColor],
@@ -254,7 +254,7 @@ pub(crate) async fn epd_palette(
         .collect()
 }
 
-pub(crate) fn target_firmware_version(
+pub fn target_firmware_version(
     flag: &EpdFlagConfig,
     devices: &DeviceRegistry,
     device_id: &str,

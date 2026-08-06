@@ -1,4 +1,5 @@
-use super::{EInkDisplayActor, render::content_hash};
+use super::EInkDisplayActor;
+use crate::eink::image::content_hash;
 use crate::settings::EinkDisplaySettings;
 
 impl EInkDisplayActor {

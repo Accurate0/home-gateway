@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-pub(super) const PANEL_WIDTH: u32 = 1200;
-pub(super) const PANEL_HEIGHT: u32 = 1600;
+pub const PANEL_WIDTH: u32 = 1200;
+pub const PANEL_HEIGHT: u32 = 1600;
 const PANEL_HALF_WIDTH: u32 = PANEL_WIDTH / 2;
 const WINDOW_X_ALIGN: u32 = 4;
-pub(super) const WINDOW_MIN_WIDTH: u32 = 16;
+pub const WINDOW_MIN_WIDTH: u32 = 16;
 
 const PACKED_CACHE_PREFIX: &str = "eink-display/packed/";
 pub const PACKED_ROW_BYTES: usize = 600;
@@ -23,7 +23,7 @@ pub struct PartialWindow {
 }
 
 impl PartialWindow {
-    pub(super) fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         self.width >= WINDOW_MIN_WIDTH
             && self.height >= 2
             && self.x.is_multiple_of(WINDOW_X_ALIGN)
@@ -34,17 +34,17 @@ impl PartialWindow {
             && self.y + self.height <= PANEL_HEIGHT
     }
 
-    pub(super) fn area_pct(&self) -> u32 {
+    pub fn area_pct(&self) -> u32 {
         (self.width as u64 * self.height as u64 * 100 / (PANEL_WIDTH as u64 * PANEL_HEIGHT as u64))
             as u32
     }
 }
 
-pub(super) fn packed_cache_key(hash: String) -> String {
+pub fn packed_cache_key(hash: String) -> String {
     format!("{PACKED_CACHE_PREFIX}{hash}.bin")
 }
 
-pub(super) fn dirty_window(previous: &[u8], next: &[u8]) -> Option<PartialWindow> {
+pub fn dirty_window(previous: &[u8], next: &[u8]) -> Option<PartialWindow> {
     if previous.len() != PACKED_FRAME_SIZE || next.len() != PACKED_FRAME_SIZE {
         return None;
     }
@@ -118,7 +118,7 @@ pub(super) fn dirty_window(previous: &[u8], next: &[u8]) -> Option<PartialWindow
     window.is_valid().then_some(window)
 }
 
-pub(super) fn crop_packed(packed: &[u8], window: PartialWindow) -> Vec<u8> {
+pub fn crop_packed(packed: &[u8], window: PartialWindow) -> Vec<u8> {
     let row_offset = (window.x / 2) as usize;
     let row_count = (window.width / 2) as usize;
 

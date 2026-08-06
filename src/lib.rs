@@ -4,7 +4,7 @@ pub mod battery;
 pub mod db;
 pub mod device_metric;
 pub mod device_registry;
-pub mod epd;
+pub mod eink;
 pub mod esphome;
 pub mod error;
 pub mod event_bus;
