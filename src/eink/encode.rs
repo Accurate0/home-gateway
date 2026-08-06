@@ -1,3 +1,4 @@
+use crate::eink::image::center_crop_cover;
 use crate::error::AppError;
 use ab_glyph::{FontRef, PxScale};
 use imageproc::drawing::{draw_text_mut, text_size};
@@ -8,11 +9,12 @@ pub async fn render_and_cache(
     s3: &crate::integrations::s3::S3,
     image_key: &str,
     sleep_label: Option<String>,
+    crop_to: Option<(u32, u32)>,
     palette: &[(f32, f32, f32, u8)],
     cache_key: &str,
 ) -> Result<Vec<u8>, AppError> {
     let image_response = s3.get_object(image_key).await?;
-    let packed = render_packed(image_response, sleep_label, palette.to_vec()).await?;
+    let packed = render_packed(image_response, sleep_label, crop_to, palette.to_vec()).await?;
 
     if let Err(e) = s3.put_object(cache_key, &packed, None).await {
         tracing::warn!(key = %cache_key, "failed to cache packed frame: {e}");
@@ -24,10 +26,18 @@ pub async fn render_and_cache(
 async fn render_packed(
     image_response: Vec<u8>,
     sleep_label: Option<String>,
+    crop_to: Option<(u32, u32)>,
     palette: Vec<(f32, f32, f32, u8)>,
 ) -> Result<Vec<u8>, AppError> {
     let packed = tokio::task::spawn_blocking(move || {
         let mut img = image::load_from_memory(&image_response)?.to_rgb8();
+
+        if let Some((target_w, target_h)) = crop_to
+            && img.dimensions() != (target_w, target_h)
+        {
+            img = center_crop_cover(&img, target_w, target_h);
+        }
+
         let (width, height) = img.dimensions();
 
         if let Some(label) = &sleep_label {

@@ -16,6 +16,7 @@ pub struct RenderPlan {
     image_key: String,
     pub sleep: Option<SleepWindow>,
     sleep_label: Option<String>,
+    crop_to: Option<(u32, u32)>,
     palette: Vec<(f32, f32, f32, u8)>,
     pub hash: String,
 }
@@ -46,7 +47,7 @@ pub async fn render_plan(
     let sleep = active_sleep(devices, device_id, flag.force_sleep);
     let now = chrono::Utc::now().with_timezone(&Perth).naive_local();
 
-    let (image_key, content_hash, sleep_label) = match sleep {
+    let (image_key, content_hash, sleep_label, crop_to) = match sleep {
         Some(sleep) => {
             let images = s3
                 .list_objects(SLEEP_IMAGE_PREFIX)
@@ -57,20 +58,21 @@ pub async fn render_plan(
             match pick_sleep_image(&images, &seed) {
                 Some(image_key) => {
                     let label = format!("zzz till {}", sleep.end.format("%H:%M"));
-                    (image_key.clone(), image_key, Some(label))
+                    let crop_to = devices.eink_display(device_id).map(|d| d.target_dims());
+                    (image_key.clone(), image_key, Some(label), crop_to)
                 }
                 None => {
                     tracing::warn!(
                         "no sleep images under {SLEEP_IMAGE_PREFIX}, serving the latest render"
                     );
                     let (image_key, content_hash) = latest_image(db, device_id).await.ok()?;
-                    (image_key, content_hash, None)
+                    (image_key, content_hash, None, None)
                 }
             }
         }
         None => {
             let (image_key, content_hash) = latest_image(db, device_id).await.ok()?;
-            (image_key, content_hash, None)
+            (image_key, content_hash, None, None)
         }
     };
 
@@ -81,12 +83,14 @@ pub async fn render_plan(
         &palette_hash,
         &flag.clear_screen.to_string(),
         sleep_label.as_deref().unwrap_or(""),
+        &crop_to.map_or_else(String::new, |(w, h)| format!("{w}x{h}")),
     ]);
 
     Some(RenderPlan {
         image_key,
         sleep,
         sleep_label,
+        crop_to,
         palette,
         hash,
     })
@@ -108,6 +112,7 @@ pub async fn ensure_packed_cached(s3: &crate::integrations::s3::S3, plan: &Rende
         s3,
         &plan.image_key,
         plan.sleep_label.clone(),
+        plan.crop_to,
         &plan.palette,
         &key,
     )
