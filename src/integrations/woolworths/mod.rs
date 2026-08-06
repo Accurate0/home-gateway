@@ -5,7 +5,7 @@ use types::WoolworthsTrackedProduct;
 
 use crate::{
     actors::integrations::woolworths::WoolworthsMessage, http::wrap_client_in_middleware_no_tracing,
-    woolworths::types::WoolworthsProductResponse,
+    integrations::woolworths::types::WoolworthsProductResponse,
 };
 
 pub mod types;

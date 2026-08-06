@@ -4,7 +4,7 @@ use crate::{
     auth::{Auth, scope::required},
     battery::BatteryChemistry,
     device_registry::DeviceRegistry,
-    feature_flag::FeatureFlagClient,
+    integrations::feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
     error::AppError,
     state::ApiState,
@@ -100,7 +100,7 @@ impl ImageParams {
 
 pub(crate) async fn build_epd_config(
     db: &sqlx::Pool<sqlx::Postgres>,
-    s3: &crate::s3::S3,
+    s3: &crate::integrations::s3::S3,
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     settings: &SettingsContainer,

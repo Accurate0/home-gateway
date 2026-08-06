@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
-use crate::esphome::{EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic};
+use crate::integrations::esphome::{EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic};
 use crate::settings::door::RawDoorSettings;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{

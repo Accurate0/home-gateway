@@ -4,7 +4,7 @@ use super::flag::EpdFlagConfig;
 
 pub async fn resolve_partial_window(
     db: &sqlx::Pool<sqlx::Postgres>,
-    s3: &crate::s3::S3,
+    s3: &crate::integrations::s3::S3,
     devices: &DeviceRegistry,
     flag: &EpdFlagConfig,
     device_id: &str,

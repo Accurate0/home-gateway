@@ -2,7 +2,7 @@ use tracing::instrument;
 
 use crate::{
     http::wrap_client_in_middleware_no_tracing,
-    trmnl::types::{TrmnlDevice, TrmnlDevicesResponse},
+    integrations::trmnl::types::{TrmnlDevice, TrmnlDevicesResponse},
 };
 
 pub mod types;

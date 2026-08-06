@@ -6,7 +6,7 @@ use super::BatteryPoint;
 use crate::{
     device_registry::{Capability, DeviceRegistry},
     settings::EinkDisplaySettings,
-    feature_flag::FeatureFlagClient,
+    integrations::feature_flag::FeatureFlagClient,
     graphql::dataloader::{
         device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
         eink_battery::EinkDisplayDataLoader,
@@ -189,7 +189,7 @@ impl EinkDisplayEntity {
         let feature_flag_client = ctx.data::<FeatureFlagClient>()?;
         let db = ctx.data::<Pool<Postgres>>()?;
         let settings = ctx.data::<SettingsContainer>()?;
-        let s3 = ctx.data::<crate::s3::S3>()?;
+        let s3 = ctx.data::<crate::integrations::s3::S3>()?;
         Ok(build_epd_config(
             db,
             s3,

@@ -1,6 +1,6 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::{
-    notify::notify,
+    integrations::notify::notify,
     settings::{ArmedDoorStates, IEEEAddress},
     state::SharedActorState,
 };

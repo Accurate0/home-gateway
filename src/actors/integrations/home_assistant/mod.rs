@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     actors::devices::robot_vacuum::{self, RobotVacuumHandler},
     event_bus::EventBusMessage,
-    home_assistant::HomeAssistant,
+    integrations::home_assistant::HomeAssistant,
     settings::EntitySettings,
     state::SharedActorState,
 };

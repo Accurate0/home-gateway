@@ -26,8 +26,9 @@ use graphql::{
     mutations::MutationRoot,
 };
 use home_gateway::{
-    actors, auth, device_registry, event_bus, feature_flag, graphql, home_assistant, mqtt, routes,
-    error, s3, settings, state, tracing_setup, utils,
+    actors, auth, device_registry, error, event_bus, graphql,
+    integrations::{feature_flag, home_assistant, mqtt, s3},
+    routes, settings, state, tracing_setup, utils,
 };
 use home_gateway::{
     graphql::subscription::SubscriptionRoot,

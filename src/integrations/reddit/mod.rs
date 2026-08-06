@@ -5,7 +5,7 @@ use tracing::instrument;
 
 use crate::{
     http::wrap_client_in_middleware_no_tracing,
-    reddit::types::{RedditFeedResponse, RedditPost},
+    integrations::reddit::types::{RedditFeedResponse, RedditPost},
     settings::RedditTimespan,
 };
 

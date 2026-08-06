@@ -4,7 +4,7 @@ use super::flag::{EpdFlagConfig, epd_palette};
 use crate::{
     device_registry::DeviceRegistry,
     settings::SleepWindow,
-    feature_flag::FeatureFlagClient,
+    integrations::feature_flag::FeatureFlagClient,
     settings::SettingsContainer,
     error::AppError,
 };
@@ -24,7 +24,7 @@ pub struct RenderPlan {
 
 pub async fn render_plan(
     db: &sqlx::Pool<sqlx::Postgres>,
-    s3: &crate::s3::S3,
+    s3: &crate::integrations::s3::S3,
     feature_flag_client: &FeatureFlagClient,
     devices: &DeviceRegistry,
     settings: &SettingsContainer,
@@ -94,7 +94,7 @@ pub async fn render_plan(
     })
 }
 
-pub async fn ensure_packed_cached(s3: &crate::s3::S3, plan: &RenderPlan) -> bool {
+pub async fn ensure_packed_cached(s3: &crate::integrations::s3::S3, plan: &RenderPlan) -> bool {
     let key = packed_cache_key(plan.hash.clone());
 
     match s3.get_object_metadata(&key).await {

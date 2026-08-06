@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use ractor::Actor;
 use tracing::Level;
 
-use crate::{notify::notify, settings::NotifySource, state::SharedActorState};
+use crate::{integrations::notify::notify, settings::NotifySource, state::SharedActorState};
 
 struct LastSeen {
     last_seen: DateTime<Utc>,

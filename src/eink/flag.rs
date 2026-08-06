@@ -1,7 +1,7 @@
 use crate::{
     device_registry::DeviceRegistry,
     settings::EinkDisplaySettings,
-    feature_flag::FeatureFlagClient,
+    integrations::feature_flag::FeatureFlagClient,
     settings::{
         Album, DashboardView, EinkGlobalSettings, EinkMode, PaletteColor, RedditFeed,
         RedditTimespan,

@@ -5,7 +5,7 @@ use imageproc::drawing::{draw_text_mut, text_size};
 const LABEL_FONT: &[u8] = include_bytes!("../../assets/LiberationSans-Bold.ttf");
 
 pub async fn render_and_cache(
-    s3: &crate::s3::S3,
+    s3: &crate::integrations::s3::S3,
     image_key: &str,
     sleep_label: Option<String>,
     palette: &[(f32, f32, f32, u8)],

@@ -6,10 +6,10 @@ use crate::{
         },
         system::{battery::BatteryActor, watchdog::WatchdogActor},
     },
-    reddit::Reddit,
-    trmnl::Trmnl,
+    integrations::reddit::Reddit,
+    integrations::trmnl::Trmnl,
     state::SharedActorState,
-    woolworths::Woolworths,
+    integrations::woolworths::Woolworths,
 };
 use ractor::Actor;
 

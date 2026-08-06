@@ -3,8 +3,8 @@ use serde_json::json;
 
 use crate::auth::scope::required;
 use crate::graphql::guard::ScopeGuard;
-use crate::home_assistant::HomeAssistant;
-use crate::mqtt::MqttClient;
+use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::mqtt::MqttClient;
 use crate::settings::{RoborockSettings, ValetudoSettings};
 
 #[derive(Clone, Copy)]

@@ -4,11 +4,11 @@ use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::AuthManager;
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBus;
-use crate::feature_flag::FeatureFlagClient;
+use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::graphql::FinalSchema;
-use crate::home_assistant::HomeAssistant;
-use crate::mqtt::MqttClient;
-use crate::s3::S3;
+use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::mqtt::MqttClient;
+use crate::integrations::s3::S3;
 use crate::settings::SettingsContainer;
 
 #[derive(Clone)]

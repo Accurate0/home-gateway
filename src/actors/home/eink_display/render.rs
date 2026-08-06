@@ -1,7 +1,7 @@
 use super::{CACHE_PREFIX, EInkActorState, EInkDisplayActor};
 use crate::eink::image::{center_crop_cover, content_hash, content_type_for};
-use crate::reddit::image_url;
-use crate::s3::OptionalObjectResponse;
+use crate::integrations::reddit::image_url;
+use crate::integrations::s3::OptionalObjectResponse;
 use crate::settings::{Album, EinkDisplaySettings, RedditFeed};
 use chromiumoxide::{
     cdp::browser_protocol::{

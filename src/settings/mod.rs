@@ -682,7 +682,7 @@ android_app_webhook_secret: x
         );
         assert_eq!(
             registry.esphome_target("apollo-mtr-1-livingroom/light/rgb_light/state"),
-            Some(&crate::esphome::EsphomeTarget::Light {
+            Some(&crate::integrations::esphome::EsphomeTarget::Light {
                 node: mtr.to_owned(),
                 object_id: "rgb_light".to_owned(),
             })

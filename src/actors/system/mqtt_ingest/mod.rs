@@ -7,7 +7,7 @@ use crate::{
     device_metric::DeviceMetric,
     device_registry::ZigbeeDevice,
     state::SharedActorState,
-    zigbee2mqtt::{devices::BridgeDevices, role},
+    integrations::zigbee2mqtt::{devices::BridgeDevices, role},
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -99,7 +99,7 @@ impl MqttIngest {
         node: &str,
         payload: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let Some(on) = crate::esphome::parse_light_state(payload) else {
+        let Some(on) = crate::integrations::esphome::parse_light_state(payload) else {
             tracing::warn!("unrecognised esphome light state payload for {node}");
             return Ok(());
         };
@@ -119,7 +119,7 @@ impl MqttIngest {
         object_id: &str,
         payload: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let Some(motion) = crate::esphome::parse_binary_state(payload) else {
+        let Some(motion) = crate::integrations::esphome::parse_binary_state(payload) else {
             tracing::warn!("unrecognised esphome binary state payload for {node}");
             return Ok(());
         };
@@ -156,7 +156,7 @@ impl MqttIngest {
         object_id: &str,
         payload: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let Some(value) = crate::esphome::parse_sensor_state(payload) else {
+        let Some(value) = crate::integrations::esphome::parse_sensor_state(payload) else {
             tracing::warn!("unrecognised esphome sensor payload for {node}/{object_id}");
             return Ok(());
         };
@@ -308,7 +308,7 @@ impl MqttIngest {
             }
             MqttTopic::EsphomeDiscovery => {
                 let discovery =
-                    serde_json::from_slice::<crate::esphome::EsphomeDiscovery>(&payload)?;
+                    serde_json::from_slice::<crate::integrations::esphome::EsphomeDiscovery>(&payload)?;
                 tracing::info!(
                     "discovered esphome device: {} ({})",
                     discovery.friendly_name,
@@ -342,15 +342,15 @@ impl MqttIngest {
                     .cloned();
 
                 match target {
-                    Some(crate::esphome::EsphomeTarget::Motion { node, object_id }) => {
+                    Some(crate::integrations::esphome::EsphomeTarget::Motion { node, object_id }) => {
                         self.record_last_seen(&node).await;
                         self.dispatch_esphome_motion(&node, &object_id, &payload)?
                     }
-                    Some(crate::esphome::EsphomeTarget::Sensor { node, object_id }) => {
+                    Some(crate::integrations::esphome::EsphomeTarget::Sensor { node, object_id }) => {
                         self.record_last_seen(&node).await;
                         self.dispatch_esphome_sensor(&node, &object_id, &payload)?
                     }
-                    Some(crate::esphome::EsphomeTarget::Light { node, .. }) => {
+                    Some(crate::integrations::esphome::EsphomeTarget::Light { node, .. }) => {
                         self.record_last_seen(&node).await;
                         self.dispatch_esphome_light(&node, &payload).await?
                     }

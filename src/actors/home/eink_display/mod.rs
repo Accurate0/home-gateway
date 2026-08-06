@@ -1,5 +1,5 @@
 use crate::battery::{BatteryChemistry, voltage_to_percentage};
-use crate::reddit::Reddit;
+use crate::integrations::reddit::Reddit;
 use crate::settings::EinkMode;
 use crate::state::SharedActorState;
 use chromiumoxide::{Browser, BrowserConfig, handler::viewport::Viewport};

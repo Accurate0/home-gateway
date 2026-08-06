@@ -1,7 +1,7 @@
 use crate::{
     event_bus::EventBusMessage,
     state::SharedActorState,
-    woolworths::{
+    integrations::woolworths::{
         Woolworths,
         types::{WoolworthsProductResponse, WoolworthsTrackedProduct},
     },

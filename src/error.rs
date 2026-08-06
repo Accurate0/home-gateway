@@ -1,8 +1,8 @@
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 
-use crate::mqtt::MqttError;
-use crate::woolworths::WoolworthsError;
+use crate::integrations::mqtt::MqttError;
+use crate::integrations::woolworths::WoolworthsError;
 
 pub enum AppError {
     Error(anyhow::Error),
