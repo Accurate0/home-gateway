@@ -6,6 +6,7 @@ use esp_idf_svc::netif::{EspNetif, NetifConfiguration};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 use log::info;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 use crate::net_cache::{self, NetCache};
@@ -13,6 +14,8 @@ use crate::net_cache::{self, NetCache};
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASSWORD");
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
+
+static NETIF_SEQUENCE: AtomicU32 = AtomicU32::new(0);
 
 pub struct Session {
     wifi: BlockingWifi<EspWifi<'static>>,
@@ -91,7 +94,10 @@ fn associate(wifi: &mut BlockingWifi<EspWifi<'static>>, cache: Option<&NetCache>
         None => ipv4::Configuration::Client(ipv4::ClientConfiguration::DHCP(Default::default())),
     };
 
+    let key = format!("WIFI_STA_{}", NETIF_SEQUENCE.fetch_add(1, Ordering::Relaxed));
+
     let netif_configuration = NetifConfiguration {
+        key: key.as_str().try_into().unwrap(),
         ip_configuration: Some(ip_configuration),
         ..NetifConfiguration::wifi_default_client()
     };
