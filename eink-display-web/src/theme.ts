@@ -13,7 +13,7 @@ export const PANEL = {
 } as const;
 
 export const PAD_X = 40;
-export const PAD_Y = 32;
+export const PAD_Y = 24;
 
 export const SPLIT = 600;
 export const GUTTER = 8;
@@ -25,9 +25,9 @@ export const COLUMN_W = SPLIT - PAD_X - GUTTER / 2;
 export const RIGHT_COLUMN_X = SPLIT + GUTTER / 2;
 
 export const ROW = {
-  header: 180,
+  header: 148,
   climate: 156,
-  solar: 560,
+  solar: 608,
   forecast: 540,
   footer: 100,
 } as const;
