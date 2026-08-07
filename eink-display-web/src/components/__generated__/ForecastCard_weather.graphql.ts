@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<741cfc1df68bb4b05ff4a815b845a563>>
+ * @generated SignedSource<<c5d0775b4de408bb7314546bd858d1fc>>
  * @lightSyntaxTransform
  */
 
@@ -15,7 +15,6 @@ export type ForecastCard_weather$data = {
       readonly code: string;
       readonly dateTime: string;
       readonly description: string;
-      readonly emoji: string;
       readonly max: number;
       readonly min: number;
       readonly uv: number | null | undefined;
@@ -75,13 +74,6 @@ const node: ReaderFragment = {
               "alias": null,
               "args": null,
               "kind": "ScalarField",
-              "name": "emoji",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
               "name": "min",
               "storageKey": null
             },
@@ -110,6 +102,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "92b2fe34cd3b88ba5ba06f08a617c05f";
+(node as any).hash = "18a399ca3236bf4a97ad5fe822b71e19";
 
 export default node;

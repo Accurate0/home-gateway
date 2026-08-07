@@ -13,6 +13,9 @@ export default defineConfig({
     viteSingleFile(),
     tailwindcss(),
   ],
+  build: {
+    assetsInlineLimit: Number.MAX_SAFE_INTEGER,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

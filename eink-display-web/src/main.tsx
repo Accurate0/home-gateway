@@ -1,7 +1,9 @@
-import { StrictMode, Suspense } from "react";
+import { Component, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
+import StatusPanel from "./components/StatusPanel.tsx";
+import { formatUpdatedAt } from "./lib/time.ts";
 import { RelayEnvironmentProvider } from "react-relay";
 import { Environment, Network, type FetchFunction } from "relay-runtime";
 
@@ -26,12 +28,32 @@ const environment = new Environment({
   network: Network.create(fetchGraphQL),
 });
 
+class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) {
+      return <StatusPanel message="Data unavailable" updatedAt={formatUpdatedAt(new Date())} />;
+    }
+
+    return this.props.children;
+  }
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RelayEnvironmentProvider environment={environment}>
-      <Suspense fallback="Loading...">
-        <App />
-      </Suspense>
+      <PanelErrorBoundary>
+        <Suspense
+          fallback={<StatusPanel message="Loading" updatedAt={formatUpdatedAt(new Date())} />}
+        >
+          <App />
+        </Suspense>
+      </PanelErrorBoundary>
     </RelayEnvironmentProvider>
-  </StrictMode>
+  </StrictMode>,
 );

@@ -1,14 +1,7 @@
 import { graphql, useFragment } from "react-relay";
 import type { ForecastCard_weather$key } from "./__generated__/ForecastCard_weather.graphql";
-import {
-  Sun,
-  Cloud,
-  CloudRain,
-  CloudLightning,
-  CloudSnow,
-  CloudFog,
-  CloudSun,
-} from "lucide-react";
+import WeatherIcon from "./WeatherIcon";
+import { HIGH_UV, INK, PAPER, RED, TYPE } from "../theme";
 
 const ForecastFragment = graphql`
   fragment ForecastCard_weather on WeatherObject {
@@ -17,7 +10,6 @@ const ForecastFragment = graphql`
         dateTime
         code
         description
-        emoji
         min
         max
         uv
@@ -26,138 +18,83 @@ const ForecastFragment = graphql`
   }
 `;
 
-function WeatherIcon({ code, size = 80 }: { code: string; size?: number }) {
-  const c = code.toLowerCase();
-  const props = { size, strokeWidth: 2, fill: "currentColor" };
-
-  if (c.includes("sunny") || c.includes("clear"))
-    return <Sun {...props} color="#f59e0b" fill="#f59e0b" />;
-  if (c.includes("partly") || c.includes("mostly sunny"))
-    return <CloudSun {...props} color="#f59e0b" fill="#f59e0b" />;
-  if (c.includes("cloudy"))
-    return <Cloud {...props} color="#6b7280" fill="#6b7280" />;
-  if (c.includes("rain") || c.includes("shower"))
-    return <CloudRain {...props} color="#3b82f6" fill="#3b82f6" />;
-  if (c.includes("storm") || c.includes("thunder"))
-    return <CloudLightning {...props} color="#7c3aed" fill="#7c3aed" />;
-  if (c.includes("snow"))
-    return <CloudSnow {...props} color="#0ea5e9" fill="#0ea5e9" />;
-  if (c.includes("fog") || c.includes("mist"))
-    return <CloudFog {...props} color="#94a3b8" fill="#94a3b8" />;
-  return <Sun {...props} color="#f59e0b" fill="#f59e0b" />;
-}
-
 export default function ForecastCard({
   weatherRef,
-  dense = false,
+  height,
+  count = 6,
 }: {
   weatherRef: ForecastCard_weather$key;
-  dense?: boolean;
+  height: number;
+  count?: number;
 }) {
   const data = useFragment(ForecastFragment, weatherRef);
+  const days = (data?.forecast?.days ?? []).slice(0, count);
 
-  type ForecastObj = NonNullable<(typeof data)["forecast"]>;
-  type DayType = NonNullable<ForecastObj["days"]>[number];
-
-  const days = (data?.forecast?.days ?? []) as DayType[];
-  const upcoming = days.slice(0, 6); // Show 6 days
-
-  const iconSize = dense ? 48 : 72;
+  const rowHeight = height / count;
+  const iconSize = Math.min(80, rowHeight - 24);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: dense ? 4 : 24,
-      }}
-    >
-      {upcoming.map((d, i) => (
+    <section style={{ height }}>
+      {days.map((d, i) => (
         <div
           key={d.dateTime}
           style={{
+            height: rowHeight,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: dense ? "4px 0" : "20px 0",
-            borderBottom: i === upcoming.length - 1 ? "none" : "3px solid #eee",
+            borderBottom: i === days.length - 1 ? "none" : `2px solid ${INK}`,
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <div
-              style={{
-                width: iconSize + 8,
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <WeatherIcon code={d.code} size={iconSize} />
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                lineHeight: 1.1,
-              }}
-            >
-              <div style={{ fontSize: dense ? 30 : 36, fontWeight: 800 }}>
-                {formatForecastDate(d.dateTime)}
-              </div>
-              <div
-                style={{
-                  fontSize: dense ? 24 : 28,
-                  fontWeight: 500,
-                  color: "#4b5563",
-                }}
-              >
-                {d.description}
-              </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 24, flex: 1 }}>
+            <WeatherIcon code={d.code} size={iconSize} />
+            <div>
+              <div style={TYPE.body}>{formatForecastDate(d.dateTime)}</div>
+              <div style={{ fontSize: 24, fontWeight: 600, marginTop: 2 }}>{d.description}</div>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: dense ? 30 : 36, fontWeight: 800 }}>
-              {d.max}°{" "}
-              <span style={{ color: "#6b7280", fontWeight: 500 }}>
-                {d.min}°
-              </span>
+
+          {d.uv != null && (
+            <div
+              style={{
+                ...TYPE.label,
+                width: 150,
+                padding: "6px 0",
+                textAlign: "center",
+                boxSizing: "border-box",
+                color: d.uv > HIGH_UV ? PAPER : INK,
+                backgroundColor: d.uv > HIGH_UV ? RED : PAPER,
+                border: `3px solid ${INK}`,
+              }}
+            >
+              UV {d.uv.toFixed(1)}
             </div>
-            {d.uv != null && (
-              <div
-                style={{
-                  fontSize: dense ? 20 : 22,
-                  color: "#dc2626",
-                  fontWeight: 800,
-                  marginTop: 4,
-                }}
-              >
-                UV {d.uv.toFixed(1)}
-              </div>
-            )}
+          )}
+
+          <div style={{ ...TYPE.title, width: 210, textAlign: "right" }}>
+            {d.max}°<span style={{ fontSize: 30, fontWeight: 600 }}> / {d.min}°</span>
           </div>
         </div>
       ))}
-    </div>
+    </section>
   );
 }
 
 function formatForecastDate(dateTime: string) {
-  try {
-    const d = new Date(dateTime);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const d = new Date(dateTime);
+  if (Number.isNaN(d.getTime())) return dateTime;
 
-    const compareDate = new Date(d);
-    compareDate.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-    const diffTime = compareDate.getTime() - today.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  const compare = new Date(d);
+  compare.setHours(0, 0, 0, 0);
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Tomorrow";
+  const diffDays = Math.round((compare.getTime() - today.getTime()) / 86_400_000);
 
-    return d.toLocaleDateString([], { day: "numeric", month: "short" });
-  } catch {
-    return dateTime;
-  }
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+
+  return d.toLocaleDateString([], { weekday: "long" });
 }

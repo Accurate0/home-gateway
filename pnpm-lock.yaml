@@ -10,6 +10,9 @@ importers:
 
   eink-display-web:
     dependencies:
+      '@fontsource-variable/inter':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@home-gateway/shared':
         specifier: workspace:*
         version: link:../packages/shared
@@ -403,6 +406,9 @@ packages:
 
   '@fontsource-variable/hanken-grotesk@5.2.8':
     resolution: {integrity: sha512-K7hu09ZKReBc7EifRLeM4K94NZBrxFEg0nGcISmVwlFQOJo4EmYkLXTWEwr5JcNW4z2hr5zy8vLS2sxC8JDmrQ==}
+
+  '@fontsource-variable/inter@5.3.0':
+    resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
 
   '@graphiql/plugin-doc-explorer@0.4.2':
     resolution: {integrity: sha512-jqRUSaP9pq2JdoovKaiNQoV4ZVcDP5nn+QEa++vEYh0nCn76836SAde2/LkYMc9NnN8/PHMKqeUBnClZ+AUtVQ==}
@@ -3358,6 +3364,8 @@ snapshots:
   '@fontsource-variable/fraunces@5.2.9': {}
 
   '@fontsource-variable/hanken-grotesk@5.2.8': {}
+
+  '@fontsource-variable/inter@5.3.0': {}
 
   '@graphiql/plugin-doc-explorer@0.4.2(@graphiql/react@0.37.7(@types/node@25.9.5)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(graphql-ws@6.0.8(graphql@17.0.2))(graphql@17.0.2)(immer@11.1.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)))(@types/react@19.2.17)(graphql@17.0.2)(immer@11.1.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))':
     dependencies:
