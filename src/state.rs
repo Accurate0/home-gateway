@@ -3,6 +3,7 @@ use sqlx::{Pool, Postgres};
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::AuthManager;
 use crate::device_registry::DeviceRegistry;
+use crate::eink::EinkDisplayManager;
 use crate::event_bus::EventBus;
 use crate::graphql::FinalSchema;
 use crate::integrations::feature_flag::FeatureFlagClient;
@@ -22,6 +23,7 @@ pub struct SharedActorState {
     pub event_bus: EventBus,
     pub workflows: WorkflowManager,
     pub home_assistant: Option<HomeAssistant>,
+    pub eink: EinkDisplayManager,
 }
 
 #[derive(Clone)]
@@ -33,4 +35,5 @@ pub struct ApiState {
     pub s3: S3,
     pub auth: AuthManager,
     pub devices: DeviceRegistry,
+    pub eink: EinkDisplayManager,
 }

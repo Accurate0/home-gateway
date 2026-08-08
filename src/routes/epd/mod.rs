@@ -2,25 +2,17 @@ use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{Auth, scope::required},
     battery::BatteryChemistry,
-    device_registry::DeviceRegistry,
     error::AppError,
-    integrations::feature_flag::FeatureFlagClient,
-    settings::SettingsContainer,
     state::ApiState,
 };
 use axum::{
     Json,
     extract::{Query, State},
 };
-use chrono::Timelike;
-use chrono_tz::Australia::Perth;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
-use crate::eink::partial::resolve_partial_window;
-use crate::eink::plan::{ensure_packed_cached, render_plan};
-use crate::eink::{epd_flag_config, target_firmware_version};
 
 pub use crate::eink::panel::PartialWindow;
 
@@ -42,7 +34,7 @@ pub struct EpdConfig {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct DeviceReport<'a> {
+pub struct DeviceReport<'a> {
     pub running_firmware_version: Option<&'a str>,
     pub current_image_hash: Option<&'a str>,
 }
@@ -99,137 +91,6 @@ impl ImageParams {
     }
 }
 
-fn aligned_refresh_secs(mins: u32) -> u32 {
-    let period = mins * 60;
-
-    if period == 0 || 3600 % period != 0 {
-        return period;
-    }
-
-    let now = chrono::Utc::now().with_timezone(&Perth).time();
-    let secs_into_hour = now.minute() * 60 + now.second();
-
-    period - (secs_into_hour % period)
-}
-
-pub(crate) async fn build_epd_config(
-    db: &sqlx::Pool<sqlx::Postgres>,
-    s3: &crate::integrations::s3::S3,
-    feature_flag_client: &FeatureFlagClient,
-    devices: &DeviceRegistry,
-    settings: &SettingsContainer,
-    device_id: &str,
-    report: DeviceReport<'_>,
-) -> EpdConfig {
-    let DeviceReport {
-        running_firmware_version,
-        current_image_hash,
-    } = report;
-
-    #[cfg(debug_assertions)]
-    let host = "http://192.168.0.149:8000/v1/epd";
-    #[cfg(not(debug_assertions))]
-    let host = "https://home.anurag.sh/v1/epd";
-
-    let flag = epd_flag_config(feature_flag_client, devices, device_id).await;
-    let configured_refresh = flag.resolve_refresh_interval(devices.eink_display(device_id));
-
-    let Some(plan) = render_plan(
-        db,
-        s3,
-        feature_flag_client,
-        devices,
-        settings,
-        &flag,
-        device_id,
-    )
-    .await
-    else {
-        tracing::warn!(device_id = %device_id, "no image to serve, skipping this cycle");
-        return EpdConfig {
-            refresh_interval_mins: Some(configured_refresh),
-            refresh_interval_secs: Some(aligned_refresh_secs(configured_refresh)),
-            image_url: None,
-            image_hash: None,
-            clear_screen: Some(flag.clear_screen),
-            firmware_url: None,
-            firmware_version: None,
-            partial: None,
-        };
-    };
-
-    let refresh_interval_secs = match plan.sleep {
-        Some(sleep) => {
-            let now = chrono::Utc::now().with_timezone(&Perth).time();
-            sleep.secs_until_end(now)
-        }
-        None => aligned_refresh_secs(configured_refresh),
-    };
-
-    let refresh_interval_mins = match plan.sleep {
-        Some(_) => refresh_interval_secs.div_ceil(60),
-        None => configured_refresh,
-    };
-
-    let firmware_update = match plan.sleep {
-        Some(_) => None,
-        None => target_firmware_version(&flag, devices, device_id)
-            .filter(|target| Some(target.as_str()) != running_firmware_version),
-    };
-
-    let firmware_url = firmware_update
-        .as_ref()
-        .map(|_| format!("{host}/firmware?device_id={device_id}"));
-
-    if !ensure_packed_cached(s3, &plan).await {
-        return EpdConfig {
-            refresh_interval_mins: Some(refresh_interval_mins),
-            refresh_interval_secs: Some(refresh_interval_secs),
-            image_url: None,
-            image_hash: None,
-            clear_screen: Some(flag.clear_screen),
-            firmware_url,
-            firmware_version: firmware_update,
-            partial: None,
-        };
-    }
-
-    let partial = if flag.clear_screen || plan.sleep.is_some() {
-        None
-    } else {
-        resolve_partial_window(
-            db,
-            s3,
-            devices,
-            &flag,
-            device_id,
-            current_image_hash,
-            &plan.hash,
-        )
-        .await
-    };
-
-    let mut url = format!("{host}/image/{}?device_id={device_id}", plan.hash);
-
-    if let Some(window) = partial {
-        url.push_str(&format!(
-            "&x={}&y={}&width={}&height={}",
-            window.x, window.y, window.width, window.height
-        ));
-    }
-
-    EpdConfig {
-        refresh_interval_mins: Some(refresh_interval_mins),
-        refresh_interval_secs: Some(refresh_interval_secs),
-        image_url: Some(url),
-        image_hash: Some(plan.hash),
-        clear_screen: Some(flag.clear_screen),
-        firmware_url,
-        firmware_version: firmware_update,
-        partial,
-    }
-}
-
 pub async fn image(
     State(ApiState { s3, .. }): State<ApiState>,
     Auth(auth): Auth,
@@ -268,14 +129,7 @@ pub async fn image(
 }
 
 pub async fn config(
-    State(ApiState {
-        feature_flag_client,
-        devices,
-        db,
-        s3,
-        settings,
-        ..
-    }): State<ApiState>,
+    State(ApiState { eink, devices, .. }): State<ApiState>,
     Auth(auth): Auth,
     Json(request): Json<EpdConfigRequest>,
 ) -> Result<Json<EpdConfig>, AppError> {
@@ -325,19 +179,19 @@ pub async fn config(
         );
     }
 
-    let config = build_epd_config(
-        &db,
-        &s3,
-        &feature_flag_client,
-        &devices,
-        &settings,
-        &request.device_id,
-        DeviceReport {
-            running_firmware_version: request.firmware_version.as_deref(),
-            current_image_hash: request.current_image_hash.as_deref(),
-        },
-    )
-    .await;
+    let Some(resolved) = eink.resolve(&request.device_id).await else {
+        return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
+    };
+
+    let config = eink
+        .epd_config(
+            &resolved,
+            DeviceReport {
+                running_firmware_version: request.firmware_version.as_deref(),
+                current_image_hash: request.current_image_hash.as_deref(),
+            },
+        )
+        .await;
 
     if let Some(wake_in_mins) = config.refresh_interval_mins {
         schedule_next_render(&request.device_id, wake_in_mins)?;
@@ -390,21 +244,14 @@ fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
 }
 
 pub async fn firmware(
-    State(ApiState {
-        s3,
-        feature_flag_client,
-        devices,
-        ..
-    }): State<ApiState>,
+    State(ApiState { s3, eink, .. }): State<ApiState>,
     Auth(auth): Auth,
     Query(params): Query<DeviceParams>,
 ) -> Result<Vec<u8>, AppError> {
     auth.require(&required::REST_EPD_READ)
         .map_err(AppError::StatusCode)?;
 
-    let flag = epd_flag_config(&feature_flag_client, &devices, &params.device_id).await;
-
-    let Some(version) = target_firmware_version(&flag, &devices, &params.device_id) else {
+    let Some(display) = eink.resolve(&params.device_id).await else {
         tracing::warn!(
             device_id = %params.device_id,
             "firmware requested by an unregistered display"
@@ -412,6 +259,7 @@ pub async fn firmware(
         return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
     };
 
+    let version = display.firmware_version;
     let key = format!("{FIRMWARE_KEY_PREFIX}firmware_{version}.bin");
 
     tracing::info!(

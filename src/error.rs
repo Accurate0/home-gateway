@@ -10,6 +10,15 @@ pub enum AppError {
     StatusCode(StatusCode),
 }
 
+impl AppError {
+    pub fn message(self) -> anyhow::Error {
+        match self {
+            AppError::Error(e) => e,
+            AppError::StatusCode(status) => anyhow::anyhow!("{status}"),
+        }
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {

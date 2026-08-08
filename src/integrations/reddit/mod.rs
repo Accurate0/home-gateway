@@ -11,6 +11,7 @@ use crate::{
 
 pub mod types;
 
+#[derive(Clone)]
 pub struct Reddit {
     client: reqwest_middleware::ClientWithMiddleware,
 }

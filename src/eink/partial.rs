@@ -1,20 +1,17 @@
-use super::flag::EpdFlagConfig;
+use super::manager::resolve::ResolvedDisplay;
 use super::panel::{PartialWindow, dirty_window, packed_cache_key};
-use crate::device_registry::DeviceRegistry;
 
 pub async fn resolve_partial_window(
     db: &sqlx::Pool<sqlx::Postgres>,
     s3: &crate::integrations::s3::S3,
-    devices: &DeviceRegistry,
-    flag: &EpdFlagConfig,
-    device_id: &str,
+    display: &ResolvedDisplay,
     current_image_hash: Option<&str>,
     new_hash: &str,
 ) -> Option<PartialWindow> {
-    let display = devices.eink_display(device_id)?;
+    let device_id = display.device_id.as_str();
     let policy = display.partial;
 
-    if !flag.partial_refresh.unwrap_or(policy.enabled) {
+    if !display.partial_enabled {
         return None;
     }
 

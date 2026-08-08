@@ -5,7 +5,7 @@ use crate::{
         sun::SunActor,
         system::{battery::BatteryActor, watchdog::WatchdogActor},
     },
-    integrations::{reddit::Reddit, trmnl::Trmnl, woolworths::Woolworths},
+    integrations::{trmnl::Trmnl, woolworths::Woolworths},
     state::SharedActorState,
 };
 use ractor::Actor;
@@ -38,7 +38,6 @@ impl RootSupervisor {
                 Some(EInkDisplayActor::NAME.to_owned()),
                 EInkDisplayActor {
                     shared_actor_state: self.shared_actor_state.clone(),
-                    reddit: Reddit::new(),
                 },
                 (),
             )

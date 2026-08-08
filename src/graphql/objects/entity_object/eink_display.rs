@@ -5,17 +5,16 @@ use itertools::Itertools;
 use super::BatteryPoint;
 use crate::{
     device_registry::{Capability, DeviceRegistry},
+    eink::EinkDisplayManager,
     graphql::dataloader::{
         device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
         eink_battery::EinkDisplayDataLoader,
     },
-    integrations::feature_flag::FeatureFlagClient,
-    routes::epd::{DeviceReport, EpdConfig, build_epd_config},
+    routes::epd::{DeviceReport, EpdConfig},
     settings::EinkDisplaySettings,
-    settings::{EinkMode, Orientation, RedditTimespan, SettingsContainer},
+    settings::{EinkMode, Orientation, RedditTimespan},
     timedelta_format::humanize,
 };
-use sqlx::{Pool, Postgres};
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum EinkDisplayKind {
@@ -185,21 +184,16 @@ impl EinkDisplayEntity {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EpdConfig> {
-        let registry = ctx.data::<DeviceRegistry>()?;
-        let feature_flag_client = ctx.data::<FeatureFlagClient>()?;
-        let db = ctx.data::<Pool<Postgres>>()?;
-        let settings = ctx.data::<SettingsContainer>()?;
-        let s3 = ctx.data::<crate::integrations::s3::S3>()?;
-        Ok(build_epd_config(
-            db,
-            s3,
-            feature_flag_client,
-            registry,
-            settings,
-            &self.address,
-            DeviceReport::default(),
-        )
-        .await)
+        let eink = ctx.data::<EinkDisplayManager>()?;
+
+        let Some(display) = eink.resolve(&self.address).await else {
+            return Err(async_graphql::Error::new(format!(
+                "eink display {} is not registered",
+                self.address
+            )));
+        };
+
+        Ok(eink.epd_config(&display, DeviceReport::default()).await)
     }
 
     async fn battery(

@@ -1,5 +1,5 @@
 use super::{EInkActorState, EInkDisplayActor, EInkDisplayMessage};
-use crate::settings::EinkDisplaySettings;
+use crate::eink::manager::resolve::ResolvedDisplay;
 use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -34,10 +34,11 @@ impl EInkDisplayActor {
         &self,
         myself: &ractor::ActorRef<EInkDisplayMessage>,
         state: &mut EInkActorState,
-        device_id: &str,
-        display: &EinkDisplaySettings,
+        display: &ResolvedDisplay,
         next_wake_at: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<(), ractor::ActorProcessingErr> {
+        let device_id = display.device_id.as_str();
+
         Self::cancel_render(state, device_id);
 
         let render_now = || {
@@ -46,7 +47,7 @@ impl EInkDisplayActor {
             })
         };
 
-        let Some(lead) = display.mode.lead() else {
+        let Some(lead) = display.lead else {
             tracing::warn!(
                 device_id = %device_id,
                 "dashboard mode came from a flag override with no lead configured, rendering now"
