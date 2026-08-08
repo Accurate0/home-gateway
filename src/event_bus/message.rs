@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use super::playback::PlaybackState;
 use super::reading::{SensorReading, metric_var_name};
 use crate::actors::sun::calc::SunTransition;
 use crate::mode::Mode;
@@ -100,6 +101,27 @@ pub enum EventBusMessage {
         battery_voltage: Option<f64>,
         battery_percent: Option<f64>,
     },
+    /// A Jellyfin playback session started, stopped, paused or resumed, derived by
+    /// the [`crate::actors::integrations::jellyfin`] producer from the session
+    /// snapshots it receives over the WebSocket and the `/Sessions` poll. Progress
+    /// within an item is deliberately not published — only the edges are.
+    Jellyfin {
+        event_id: Uuid,
+        state: PlaybackState,
+        session_id: String,
+        user: String,
+        device: String,
+        client: String,
+        item_id: String,
+        item_name: String,
+        item_type: String,
+        series_name: Option<String>,
+        season: Option<i32>,
+        episode: Option<i32>,
+        position_seconds: Option<f64>,
+        runtime_seconds: Option<f64>,
+        play_method: Option<String>,
+    },
 }
 
 impl EventBusMessage {
@@ -118,7 +140,8 @@ impl EventBusMessage {
             | EventBusMessage::Mode { event_id, .. }
             | EventBusMessage::HomeAssistant { event_id, .. }
             | EventBusMessage::Woolworths { event_id, .. }
-            | EventBusMessage::DeviceBattery { event_id, .. } => *event_id,
+            | EventBusMessage::DeviceBattery { event_id, .. }
+            | EventBusMessage::Jellyfin { event_id, .. } => *event_id,
         }
     }
 
@@ -137,6 +160,7 @@ impl EventBusMessage {
             EventBusMessage::HomeAssistant { .. } => "home_assistant",
             EventBusMessage::Woolworths { .. } => "woolworths",
             EventBusMessage::DeviceBattery { .. } => "device_battery",
+            EventBusMessage::Jellyfin { .. } => "jellyfin",
         }
     }
 
@@ -153,6 +177,7 @@ impl EventBusMessage {
         "home_assistant",
         "woolworths",
         "device_battery",
+        "jellyfin",
     ];
 
     pub fn entity(&self) -> String {
@@ -172,6 +197,7 @@ impl EventBusMessage {
             EventBusMessage::HomeAssistant { entity_id, .. } => entity_id.clone(),
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
             EventBusMessage::DeviceBattery { device_id, .. } => device_id.clone(),
+            EventBusMessage::Jellyfin { user, .. } => user.clone(),
         }
     }
 
@@ -274,6 +300,44 @@ impl EventBusMessage {
                     battery_percent.map_or_else(String::new, |v| format!("{v:.0}")),
                 ),
             ]),
+            EventBusMessage::Jellyfin {
+                state,
+                session_id,
+                user,
+                device,
+                client,
+                item_name,
+                item_type,
+                series_name,
+                season,
+                episode,
+                position_seconds,
+                runtime_seconds,
+                play_method,
+                ..
+            } => {
+                let number = |n: &Option<i32>| n.map_or_else(String::new, |n| n.to_string());
+                let seconds = |s: &Option<f64>| s.map_or_else(String::new, |s| format!("{s:.0}"));
+
+                HashMap::from([
+                    ("state".to_owned(), state.as_str().to_owned()),
+                    ("session_id".to_owned(), session_id.clone()),
+                    ("user".to_owned(), user.clone()),
+                    ("device".to_owned(), device.clone()),
+                    ("client".to_owned(), client.clone()),
+                    ("item".to_owned(), item_name.clone()),
+                    ("item_type".to_owned(), item_type.clone()),
+                    ("series".to_owned(), series_name.clone().unwrap_or_default()),
+                    ("season".to_owned(), number(season)),
+                    ("episode".to_owned(), number(episode)),
+                    ("position".to_owned(), seconds(position_seconds)),
+                    ("runtime".to_owned(), seconds(runtime_seconds)),
+                    (
+                        "play_method".to_owned(),
+                        play_method.clone().unwrap_or_default(),
+                    ),
+                ])
+            }
         }
     }
 }

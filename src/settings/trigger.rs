@@ -5,7 +5,7 @@ use super::workflow::Comparison;
 use super::{DeviceAliases, IEEEAddress, validate_device};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
-use crate::event_bus::SensorMetric;
+use crate::event_bus::{PlaybackState, SensorMetric};
 use crate::mode::Mode;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
@@ -87,6 +87,21 @@ pub enum TriggerMatcher {
         #[serde(default)]
         below: Option<f64>,
     },
+    /// Fires on a Jellyfin playback edge, driven by the
+    /// [`crate::actors::integrations::jellyfin`] producer. Every field is an
+    /// optional gate: `state` (`started`/`stopped`/`paused`/`resumed`), the
+    /// Jellyfin `user`, the playing `device`, and the Jellyfin item `item_type`
+    /// (e.g. `Movie`, `Episode`, `Audio`).
+    Jellyfin {
+        #[serde(default)]
+        state: Option<PlaybackState>,
+        #[serde(default)]
+        user: Option<String>,
+        #[serde(default)]
+        device: Option<String>,
+        #[serde(default)]
+        item_type: Option<String>,
+    },
 }
 
 impl TriggerMatcher {
@@ -149,6 +164,22 @@ impl TriggerMatcher {
                     None => format!("device_battery({device})"),
                 }
             }
+            TriggerMatcher::Jellyfin {
+                state,
+                user,
+                device,
+                item_type,
+            } => {
+                let subject = user
+                    .clone()
+                    .or_else(|| device.clone())
+                    .or_else(|| item_type.clone())
+                    .unwrap_or_else(|| "*".to_owned());
+                match state {
+                    Some(state) => format!("jellyfin({subject}) -> {}", state.as_str()),
+                    None => format!("jellyfin({subject})"),
+                }
+            }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -192,6 +223,21 @@ impl TriggerMatcher {
                 "battery_voltage",
                 "battery_percent",
             ]),
+            TriggerMatcher::Jellyfin { .. } => strs(&[
+                "state",
+                "session_id",
+                "user",
+                "device",
+                "client",
+                "item",
+                "item_type",
+                "series",
+                "season",
+                "episode",
+                "position",
+                "runtime",
+                "play_method",
+            ]),
         }
     }
 
@@ -209,7 +255,8 @@ impl TriggerMatcher {
             | TriggerMatcher::Mode { .. }
             | TriggerMatcher::HomeAssistant { .. }
             | TriggerMatcher::Woolworths { .. }
-            | TriggerMatcher::DeviceBattery { .. } => {}
+            | TriggerMatcher::DeviceBattery { .. }
+            | TriggerMatcher::Jellyfin { .. } => {}
         }
         Ok(())
     }

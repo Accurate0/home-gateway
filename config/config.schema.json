@@ -108,6 +108,16 @@
     "home_assistant": {
       "$ref": "#/$defs/HomeAssistantSettings"
     },
+    "jellyfin": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JellyfinSettings"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
     }
@@ -1356,6 +1366,50 @@
           "required": [
             "type"
           ]
+        },
+        {
+          "description": "Fires on a Jellyfin playback edge, driven by the\n[`crate::actors::integrations::jellyfin`] producer. Every field is an\noptional gate: `state` (`started`/`stopped`/`paused`/`resumed`), the\nJellyfin `user`, the playing `device`, and the Jellyfin item `item_type`\n(e.g. `Movie`, `Episode`, `Audio`).",
+          "type": "object",
+          "properties": {
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlaybackState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "user": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "item_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "jellyfin"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },
@@ -1393,6 +1447,15 @@
         "night",
         "guest",
         "party"
+      ]
+    },
+    "PlaybackState": {
+      "type": "string",
+      "enum": [
+        "started",
+        "stopped",
+        "paused",
+        "resumed"
       ]
     },
     "Condition": {
@@ -2276,6 +2339,28 @@
       },
       "required": [
         "id"
+      ]
+    },
+    "JellyfinSettings": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "poll_interval": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "poll_interval"
       ]
     },
     "RawEinkGlobal": {

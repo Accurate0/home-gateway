@@ -17,6 +17,7 @@ pub mod door;
 pub mod eink;
 pub mod environment;
 pub mod home_assistant;
+pub mod jellyfin;
 pub mod light;
 pub mod location;
 pub mod notify;
@@ -47,6 +48,7 @@ pub use environment::{
     EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
 };
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
+pub use jellyfin::JellyfinSettings;
 pub use light::RawLightBlock;
 pub use location::LocationSettings;
 pub use notify::{NotifySource, NotifyTargets};
@@ -112,6 +114,7 @@ pub struct Settings {
     pub trmnl: TrmnlSettings,
     pub trmnl_api_key: Option<String>,
     pub home_assistant: HomeAssistantSettings,
+    pub jellyfin: Option<JellyfinSettings>,
     pub eink_display: EinkGlobalSettings,
 }
 
@@ -158,6 +161,8 @@ pub struct RawSettings {
     #[serde(default)]
     home_assistant: HomeAssistantSettings,
     #[serde(default)]
+    jellyfin: Option<JellyfinSettings>,
+    #[serde(default)]
     eink_display: eink::RawEinkGlobal,
 }
 
@@ -188,6 +193,7 @@ impl RawSettings {
             trmnl,
             trmnl_api_key,
             home_assistant,
+            jellyfin,
             eink_display,
         } = self;
 
@@ -259,6 +265,7 @@ impl RawSettings {
                 trmnl,
                 trmnl_api_key,
                 home_assistant,
+                jellyfin,
                 eink_display: eink_display.resolve(),
             },
             registry,

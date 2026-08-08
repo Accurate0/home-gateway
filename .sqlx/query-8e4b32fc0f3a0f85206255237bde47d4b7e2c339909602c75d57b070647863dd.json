@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO jellyfin_playback_events (\n                event_id, state, session_id, user_name, device_name, client,\n                item_id, item_name, item_type, series_name, season, episode,\n                position_seconds, runtime_seconds, play_method\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Float8",
+        "Float8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8e4b32fc0f3a0f85206255237bde47d4b7e2c339909602c75d57b070647863dd"
+}

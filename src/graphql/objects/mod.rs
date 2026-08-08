@@ -2,6 +2,7 @@ pub mod auth_object;
 pub mod energy_object;
 pub mod entity_object;
 pub mod home_assistant_object;
+pub mod jellyfin_object;
 pub mod solar_object;
 pub mod weather_object;
 pub mod woolworths_object;

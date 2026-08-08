@@ -1,7 +1,8 @@
 use async_graphql::{MergedObject, Schema};
 use queries::{
     auth_query::AuthQuery, energy_query::EnergyQuery, entities_query::EntitiesQuery,
-    home_assistant_query::HomeAssistantQuery, solar_query::SolarQuery, weather_query::WeatherQuery,
+    home_assistant_query::HomeAssistantQuery, jellyfin_query::JellyfinQuery,
+    solar_query::SolarQuery, weather_query::WeatherQuery,
 };
 
 use crate::graphql::mutations::MutationRoot;
@@ -27,6 +28,7 @@ pub struct QueryRoot(
     WeatherQuery,
     WoolworthsQuery,
     WorkflowsQuery,
+    JellyfinQuery,
 );
 
 pub type FinalSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;

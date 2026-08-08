@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT event_id, state, session_id, user_name, device_name, client, item_id,\n                      item_name, item_type, series_name, season, episode, position_seconds,\n                      runtime_seconds, play_method, \"time\"\n               FROM jellyfin_playback_events\n               WHERE \"time\" >= $1\n               ORDER BY \"time\" DESC\n               LIMIT $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "session_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "device_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "client",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "item_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "item_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "item_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "series_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "season",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "episode",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "position_seconds",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 13,
+        "name": "runtime_seconds",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 14,
+        "name": "play_method",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "56238c875c893333e8eafbc5a325af8d1881c89dd6c546e9b13a605f9293f00f"
+}

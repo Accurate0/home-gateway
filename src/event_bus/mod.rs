@@ -10,9 +10,11 @@
 pub mod bus;
 pub mod filter;
 pub mod message;
+pub mod playback;
 pub mod reading;
 
 pub use bus::EventBus;
 pub use filter::{EventFilter, FilterSegment};
 pub use message::EventBusMessage;
+pub use playback::PlaybackState;
 pub use reading::{SensorMetric, SensorReading, metric_var_name};

@@ -140,6 +140,33 @@ impl DeviceBatteryUpdate {
     }
 }
 
+#[derive(SimpleObject)]
+#[graphql(complex)]
+pub struct JellyfinUpdate {
+    pub event_id: Uuid,
+    pub state: String,
+    pub session_id: String,
+    pub user: String,
+    pub device: String,
+    pub client: String,
+    pub item_id: String,
+    pub item_name: String,
+    pub item_type: String,
+    pub series_name: Option<String>,
+    pub season: Option<i32>,
+    pub episode: Option<i32>,
+    pub position_seconds: Option<f64>,
+    pub runtime_seconds: Option<f64>,
+    pub play_method: Option<String>,
+}
+
+#[ComplexObject]
+impl JellyfinUpdate {
+    async fn id(&self) -> ID {
+        ID(self.session_id.clone())
+    }
+}
+
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
 pub enum EventUpdate {
@@ -155,6 +182,7 @@ pub enum EventUpdate {
     HomeAssistant(HomeAssistantUpdate),
     Woolworths(WoolworthsUpdate),
     DeviceBattery(DeviceBatteryUpdate),
+    Jellyfin(JellyfinUpdate),
 }
 
 impl EventUpdate {
@@ -334,6 +362,39 @@ impl EventUpdate {
                 kind,
                 battery_voltage,
                 battery_percent,
+            }),
+            EventBusMessage::Jellyfin {
+                event_id,
+                state,
+                session_id,
+                user,
+                device,
+                client,
+                item_id,
+                item_name,
+                item_type,
+                series_name,
+                season,
+                episode,
+                position_seconds,
+                runtime_seconds,
+                play_method,
+            } => EventUpdate::Jellyfin(JellyfinUpdate {
+                event_id,
+                state: state.as_str().to_owned(),
+                session_id,
+                user,
+                device,
+                client,
+                item_id,
+                item_name,
+                item_type,
+                series_name,
+                season,
+                episode,
+                position_seconds,
+                runtime_seconds,
+                play_method,
             }),
         }
     }

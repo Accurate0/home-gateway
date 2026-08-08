@@ -17,7 +17,7 @@ use super::{
         plant_sensor, presence_sensor, smart_switch,
     },
     integrations::{
-        home_assistant::HomeAssistantActor, synergy::SynergyActor,
+        home_assistant::HomeAssistantActor, jellyfin::JellyfinActor, synergy::SynergyActor,
         unifi::UnifiConnectedClientHandler,
     },
     system::{cron::CronActor, push},
@@ -76,6 +76,28 @@ impl RootSupervisor {
                 Some(HomeAssistantActor::NAME.to_owned()),
                 HomeAssistantActor {
                     shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_jellyfin_actor(
+        &self,
+        myself: &ractor::ActorRef<()>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let Some(jellyfin) = self.shared_actor_state.jellyfin.clone() else {
+            return Ok(());
+        };
+
+        myself
+            .spawn_linked(
+                Some(JellyfinActor::NAME.to_owned()),
+                JellyfinActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                    jellyfin,
                 },
                 (),
             )
@@ -322,6 +344,7 @@ impl Actor for RootSupervisor {
         self.start_trmnl_actor(&myself).await?;
         self.start_alarm_actor(&myself).await?;
         self.start_home_assistant_actor(&myself).await?;
+        self.start_jellyfin_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_battery_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;
@@ -395,6 +418,11 @@ impl Actor for RootSupervisor {
                     HomeAssistantActor::NAME => {
                         tracing::info!("restarting home assistant actor");
                         self.start_home_assistant_actor(&myself).await?;
+                    }
+
+                    JellyfinActor::NAME => {
+                        tracing::info!("restarting jellyfin actor");
+                        self.start_jellyfin_actor(&myself).await?;
                     }
 
                     SolarIngestActor::NAME => {

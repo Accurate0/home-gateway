@@ -12,7 +12,7 @@ use opentelemetry_semantic_conventions::resource::{
 };
 use prometheus::Registry;
 use std::time::Duration;
-use tracing::Level;
+use tracing::{Level, level_filters::LevelFilter};
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 
 fn telemetry_resource() -> Resource {
@@ -82,9 +82,16 @@ pub fn init_metrics() -> Registry {
 }
 
 pub fn init() {
+    let exporter_level = if cfg!(debug_assertions) {
+        LevelFilter::OFF
+    } else {
+        LevelFilter::from_level(Level::INFO)
+    };
+
     let filter = Targets::default()
         .with_target("otel::tracing", Level::TRACE)
         .with_target("sea_orm::database", Level::TRACE)
+        .with_target("opentelemetry_sdk", exporter_level)
         .with_default(Level::INFO);
 
     match std::env::var("OTEL_TRACING_URL") {

@@ -29,7 +29,7 @@ use graphql::{
 use home_gateway::eink::EinkDisplayManager;
 use home_gateway::{
     actors, auth, device_registry, error, event_bus, graphql,
-    integrations::{feature_flag, home_assistant, mqtt, s3},
+    integrations::{feature_flag, home_assistant, jellyfin, mqtt, s3},
     routes, settings, state, tracing_setup, utils,
 };
 use home_gateway::{
@@ -96,6 +96,7 @@ async fn init_actors(
     event_bus: EventBus,
     workflows: WorkflowManager,
     home_assistant: Option<home_assistant::HomeAssistant>,
+    jellyfin: Option<jellyfin::Jellyfin>,
     eink: EinkDisplayManager,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     let shared_actor_state = SharedActorState {
@@ -108,6 +109,7 @@ async fn init_actors(
         event_bus,
         workflows,
         home_assistant,
+        jellyfin,
         eink,
     };
 
@@ -181,6 +183,11 @@ async fn main() -> anyhow::Result<()> {
     let home_assistant = home_assistant::HomeAssistant::from_env();
     let graphql_home_assistant = home_assistant.clone();
 
+    let jellyfin = settings_container
+        .jellyfin
+        .as_ref()
+        .and_then(jellyfin::Jellyfin::new);
+
     let http_client = home_gateway::http::get_traced_http_client()?;
 
     let mqtt_ingest_actor = init_actors(
@@ -193,6 +200,7 @@ async fn main() -> anyhow::Result<()> {
         event_bus.clone(),
         workflow_manager.clone(),
         home_assistant,
+        jellyfin,
         eink.clone(),
     )
     .await?;

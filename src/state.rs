@@ -8,6 +8,7 @@ use crate::event_bus::EventBus;
 use crate::graphql::FinalSchema;
 use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
 use crate::settings::SettingsContainer;
@@ -23,6 +24,7 @@ pub struct SharedActorState {
     pub event_bus: EventBus,
     pub workflows: WorkflowManager,
     pub home_assistant: Option<HomeAssistant>,
+    pub jellyfin: Option<Jellyfin>,
     pub eink: EinkDisplayManager,
 }
 

@@ -52,6 +52,10 @@ home_assistant:
       log: false
       throttle: 30s
 
+jellyfin:
+  url: http://jellyfin.media.internal
+  poll_interval: 30s
+
 eink_display:
   views:
     home:

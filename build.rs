@@ -40,6 +40,21 @@ fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
             "battery_voltage",
             "battery_percent",
         ],
+        "jellyfin" => vec![
+            "state",
+            "session_id",
+            "user",
+            "device",
+            "client",
+            "item",
+            "item_type",
+            "series",
+            "season",
+            "episode",
+            "position",
+            "runtime",
+            "play_method",
+        ],
         _ => return None,
     })
 }

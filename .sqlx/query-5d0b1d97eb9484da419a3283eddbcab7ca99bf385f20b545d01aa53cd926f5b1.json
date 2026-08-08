@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT event_id, session_id, user_name, device_name, client, item_id, item_name,\n                      item_type, series_name, season, episode, position_seconds, runtime_seconds,\n                      play_method, paused, updated_at\n               FROM latest_jellyfin_session\n               WHERE item_id IS NOT NULL\n               ORDER BY updated_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "device_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "client",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "item_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "item_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "item_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "series_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "season",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "episode",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "position_seconds",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 12,
+        "name": "runtime_seconds",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 13,
+        "name": "play_method",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "paused",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5d0b1d97eb9484da419a3283eddbcab7ca99bf385f20b545d01aa53cd926f5b1"
+}

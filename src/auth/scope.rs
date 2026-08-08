@@ -36,6 +36,7 @@ pub enum Resource {
     Roborock,
     Valetudo,
     RobotVacuum,
+    Jellyfin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +89,7 @@ impl Resource {
             "roborock" => Self::Roborock,
             "valetudo" => Self::Valetudo,
             "robot_vacuum" => Self::RobotVacuum,
+            "jellyfin" => Self::Jellyfin,
             _ => return None,
         })
     }
@@ -146,6 +148,7 @@ impl Resource {
             Self::Roborock => "roborock",
             Self::Valetudo => "valetudo",
             Self::RobotVacuum => "robot_vacuum",
+            Self::Jellyfin => "jellyfin",
         }
     }
 
@@ -163,6 +166,7 @@ impl Resource {
             "home_assistant" => Self::HomeAssistant,
             "woolworths" => Self::Woolworths,
             "device_battery" => Self::Battery,
+            "jellyfin" => Self::Jellyfin,
             _ => return None,
         })
     }
@@ -321,6 +325,8 @@ pub mod required {
     pub const GRAPHQL_EPD_READ: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Read);
     pub const GRAPHQL_ROBOT_VACUUM_READ: Scope =
         Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Read);
+    pub const GRAPHQL_JELLYFIN_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Jellyfin, Action::Read);
 
     pub const GRAPHQL_LIGHT_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Write);
