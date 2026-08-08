@@ -406,6 +406,22 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "media_player"
+            },
+            "config": {
+              "$ref": "#/$defs/RawMediaPlayerBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "valetudo"
             },
             "config": {
@@ -852,6 +868,17 @@
         "start_service",
         "stop_service",
         "dock_service"
+      ]
+    },
+    "RawMediaPlayerBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
       ]
     },
     "RawValetudoBlock": {
@@ -1405,6 +1432,43 @@
             "type": {
               "type": "string",
               "const": "jellyfin"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fires on a `media_player` playback edge, driven by the\n[`crate::actors::devices::media_player`] handler. Every field is an optional\ngate: the configured `device` id, `state`\n(`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.\n`Jellyfin`, `YouTube`).",
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlaybackState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "app": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "media_player"
             }
           },
           "required": [

@@ -16,16 +16,20 @@ import type { DashboardSetColourMutation } from "./__generated__/DashboardSetCol
 import type { DashboardVacuumStartMutation } from "./__generated__/DashboardVacuumStartMutation.graphql";
 import type { DashboardVacuumStopMutation } from "./__generated__/DashboardVacuumStopMutation.graphql";
 import type { DashboardVacuumDockMutation } from "./__generated__/DashboardVacuumDockMutation.graphql";
+import type { DashboardMediaPlayPauseMutation } from "./__generated__/DashboardMediaPlayPauseMutation.graphql";
+import type { DashboardMediaStopMutation } from "./__generated__/DashboardMediaStopMutation.graphql";
 import type { DashboardEinkConfigQuery } from "./__generated__/DashboardEinkConfigQuery.graphql";
 import type { DashboardTakeScreenshotMutation } from "./__generated__/DashboardTakeScreenshotMutation.graphql";
 import EntityCard, {
   type EinkActions,
   type LightActions,
+  type MediaPlayerActions,
   type VacuumActions,
 } from "./EntityCard";
 import {
   applyReadings,
   entityKey,
+  isPlaying,
   kindOf,
   type Entity,
 } from "../entities";
@@ -97,6 +101,27 @@ const EntitiesQuery = graphql`
           sleepEnd
         }
       }
+      ... on MediaPlayerEntity {
+        category
+        id
+        name
+        room
+        state
+        appName
+        source
+        mediaTitle
+        mediaArtist
+        mediaSeriesTitle
+        season
+        episode
+        positionSeconds
+        durationSeconds
+        progress
+        volumeLevel
+        muted
+        artworkUrl
+        lastSeen
+      }
       ... on RobotVacuumEntity {
         category
         id
@@ -143,6 +168,23 @@ const EventsSubscription = graphql`
           value
         }
       }
+      ... on MediaPlayerUpdate {
+        id
+        name
+        room
+        state: entityState
+        appName
+        source
+        mediaTitle
+        mediaSeriesTitle
+        season
+        episode
+        positionSeconds
+        durationSeconds
+        volumeLevel
+        muted
+        artworkUrl
+      }
     }
   }
 `;
@@ -183,6 +225,22 @@ const SetColourMutation = graphql`
   mutation DashboardSetColourMutation($id: String!, $hex: String!) {
     light(id: $id) {
       setColour(input: { hex: $hex })
+    }
+  }
+`;
+
+const MediaPlayPauseMutation = graphql`
+  mutation DashboardMediaPlayPauseMutation($id: String!) {
+    mediaPlayer(id: $id) {
+      playPause
+    }
+  }
+`;
+
+const MediaStopMutation = graphql`
+  mutation DashboardMediaStopMutation($id: String!) {
+    mediaPlayer(id: $id) {
+      stop
     }
   }
 `;
@@ -346,9 +404,8 @@ export default function Dashboard() {
   const [commitBrightness] = useMutation<DashboardSetBrightnessMutation>(
     SetBrightnessMutation,
   );
-  const [commitColourMove] = useMutation<DashboardColourMoveMutation>(
-    ColourMoveMutation,
-  );
+  const [commitColourMove] =
+    useMutation<DashboardColourMoveMutation>(ColourMoveMutation);
   const [commitColour] =
     useMutation<DashboardSetColourMutation>(SetColourMutation);
   const [commitVacuumStart] =
@@ -357,6 +414,11 @@ export default function Dashboard() {
     useMutation<DashboardVacuumStopMutation>(VacuumStopMutation);
   const [commitVacuumDock] =
     useMutation<DashboardVacuumDockMutation>(VacuumDockMutation);
+  const [commitMediaPlayPause] = useMutation<DashboardMediaPlayPauseMutation>(
+    MediaPlayPauseMutation,
+  );
+  const [commitMediaStop] =
+    useMutation<DashboardMediaStopMutation>(MediaStopMutation);
   const [commitTakeScreenshot] = useMutation<DashboardTakeScreenshotMutation>(
     TakeScreenshotMutation,
   );
@@ -367,6 +429,15 @@ export default function Dashboard() {
       if (!existing || existing.kind !== "light") return prev;
       const next = new Map(prev);
       next.set(key, { ...existing, on: !existing.on });
+      return next;
+    });
+
+  const setMediaState = (key: string, state: string | null | undefined) =>
+    setEntities((prev) => {
+      const existing = prev.get(key);
+      if (!existing || existing.kind !== "mediaPlayer") return prev;
+      const next = new Map(prev);
+      next.set(key, { ...existing, state });
       return next;
     });
 
@@ -392,6 +463,18 @@ export default function Dashboard() {
     onStart: () => commitVacuumStart({ variables: { id: entity.id } }),
     onStop: () => commitVacuumStop({ variables: { id: entity.id } }),
     onDock: () => commitVacuumDock({ variables: { id: entity.id } }),
+  });
+
+  const mediaPlayerActionsFor = (entity: Entity): MediaPlayerActions => ({
+    onPlayPause: () => {
+      const desired = isPlaying(entity.state) ? "paused" : "playing";
+      setMediaState(entity.key, desired);
+      commitMediaPlayPause({
+        variables: { id: entity.id },
+        onError: () => setMediaState(entity.key, entity.state),
+      });
+    },
+    onStop: () => commitMediaStop({ variables: { id: entity.id } }),
   });
 
   const einkActionsFor = (entity: Entity): EinkActions => ({
@@ -484,34 +567,37 @@ export default function Dashboard() {
 
       {sections.map(([title, list]) => (
         <section key={title} className="mb-10">
-            <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-widest uppercase">
-              {title}
-            </h2>
-            <div className="grid auto-rows-[1fr] grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {list.map((entity) => (
-                <EntityCard
-                  key={entity.key}
-                  entity={entity}
-                  now={now}
-                  lightActions={
-                    entity.kind === "light"
-                      ? lightActionsFor(entity)
-                      : undefined
-                  }
-                  vacuumActions={
-                    entity.kind === "robotVacuum"
-                      ? vacuumActionsFor(entity)
-                      : undefined
-                  }
-                  einkActions={
-                    entity.kind === "einkDisplay"
-                      ? einkActionsFor(entity)
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          </section>
+          <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-widest uppercase">
+            {title}
+          </h2>
+          <div className="grid auto-rows-[1fr] grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {list.map((entity) => (
+              <EntityCard
+                key={entity.key}
+                entity={entity}
+                now={now}
+                lightActions={
+                  entity.kind === "light" ? lightActionsFor(entity) : undefined
+                }
+                vacuumActions={
+                  entity.kind === "robotVacuum"
+                    ? vacuumActionsFor(entity)
+                    : undefined
+                }
+                mediaPlayerActions={
+                  entity.kind === "mediaPlayer"
+                    ? mediaPlayerActionsFor(entity)
+                    : undefined
+                }
+                einkActions={
+                  entity.kind === "einkDisplay"
+                    ? einkActionsFor(entity)
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   );

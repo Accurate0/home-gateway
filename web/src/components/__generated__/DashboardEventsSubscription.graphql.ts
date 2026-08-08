@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c2c143d13691992a964eed6326719fd0>>
+ * @generated SignedSource<<70b1ddae247269ff3bdd8e0d4b9f2a50>>
  * @lightSyntaxTransform
  */
 
@@ -28,6 +28,23 @@ export type DashboardEventsSubscription$data = {
     readonly id: string;
     readonly name: string;
     readonly on: boolean;
+  } | {
+    readonly __typename: "MediaPlayerUpdate";
+    readonly appName: string | null | undefined;
+    readonly artworkUrl: string | null | undefined;
+    readonly durationSeconds: number | null | undefined;
+    readonly episode: number | null | undefined;
+    readonly id: string;
+    readonly mediaSeriesTitle: string | null | undefined;
+    readonly mediaTitle: string | null | undefined;
+    readonly muted: boolean | null | undefined;
+    readonly name: string;
+    readonly positionSeconds: number | null | undefined;
+    readonly room: string | null | undefined;
+    readonly season: number | null | undefined;
+    readonly source: string | null | undefined;
+    readonly state: string;
+    readonly volumeLevel: number | null | undefined;
   } | {
     readonly __typename: "PresenceUpdate";
     readonly id: string;
@@ -155,7 +172,107 @@ v7 = {
   "type": "EnvironmentUpdate",
   "abstractKey": null
 },
-v8 = [
+v8 = {
+  "kind": "InlineFragment",
+  "selections": [
+    (v2/*:: as any*/),
+    (v3/*:: as any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "room",
+      "storageKey": null
+    },
+    {
+      "alias": "state",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "entityState",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "appName",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "source",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaTitle",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mediaSeriesTitle",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "season",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "episode",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "positionSeconds",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "durationSeconds",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "volumeLevel",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "muted",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "artworkUrl",
+      "storageKey": null
+    }
+  ],
+  "type": "MediaPlayerUpdate",
+  "abstractKey": null
+},
+v9 = [
   (v2/*:: as any*/)
 ];
 return {
@@ -177,7 +294,8 @@ return {
           (v4/*:: as any*/),
           (v5/*:: as any*/),
           (v6/*:: as any*/),
-          (v7/*:: as any*/)
+          (v7/*:: as any*/),
+          (v8/*:: as any*/)
         ],
         "storageKey": "events(filter:\"*\")"
       }
@@ -204,15 +322,16 @@ return {
           (v5/*:: as any*/),
           (v6/*:: as any*/),
           (v7/*:: as any*/),
+          (v8/*:: as any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v8/*:: as any*/),
+            "selections": (v9/*:: as any*/),
             "type": "DeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v8/*:: as any*/),
+            "selections": (v9/*:: as any*/),
             "type": "HomeAssistantUpdate",
             "abstractKey": null
           }
@@ -222,16 +341,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e62d541d9a3d2805cb75cfb15ee6e973",
+    "cacheID": "f6db8d639be6810619ab366dbcf64f56",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d7b58500f402eaa2d07f5b7851b4542c";
+(node as any).hash = "7c486af8dd8c639e824611297fe5f59e";
 
 export default node;

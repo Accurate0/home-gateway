@@ -1,0 +1,22 @@
+CREATE TABLE media_player_state (
+  device_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL,
+  app_name TEXT,
+  source TEXT,
+  media_content_type TEXT,
+  media_title TEXT,
+  media_artist TEXT,
+  media_album_name TEXT,
+  media_series_title TEXT,
+  media_season INTEGER,
+  media_episode INTEGER,
+  position_seconds DOUBLE PRECISION,
+  duration_seconds DOUBLE PRECISION,
+  position_updated_at TIMESTAMPTZ,
+  volume_level DOUBLE PRECISION,
+  muted BOOLEAN,
+  artwork_url TEXT,
+  attributes JSONB,
+  event_id UUID NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

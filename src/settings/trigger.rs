@@ -102,6 +102,19 @@ pub enum TriggerMatcher {
         #[serde(default)]
         item_type: Option<String>,
     },
+    /// Fires on a `media_player` playback edge, driven by the
+    /// [`crate::actors::devices::media_player`] handler. Every field is an optional
+    /// gate: the configured `device` id, `state`
+    /// (`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.
+    /// `Jellyfin`, `YouTube`).
+    MediaPlayer {
+        #[serde(default)]
+        device: Option<String>,
+        #[serde(default)]
+        state: Option<PlaybackState>,
+        #[serde(default)]
+        app: Option<String>,
+    },
 }
 
 impl TriggerMatcher {
@@ -180,6 +193,16 @@ impl TriggerMatcher {
                     None => format!("jellyfin({subject})"),
                 }
             }
+            TriggerMatcher::MediaPlayer { device, state, app } => {
+                let subject = device
+                    .clone()
+                    .or_else(|| app.clone())
+                    .unwrap_or_else(|| "*".to_owned());
+                match state {
+                    Some(state) => format!("media_player({subject}) -> {}", state.as_str()),
+                    None => format!("media_player({subject})"),
+                }
+            }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -238,6 +261,24 @@ impl TriggerMatcher {
                 "runtime",
                 "play_method",
             ]),
+            TriggerMatcher::MediaPlayer { .. } => strs(&[
+                "device",
+                "name",
+                "room",
+                "state",
+                "entity_state",
+                "app",
+                "source",
+                "item",
+                "series",
+                "item_type",
+                "season",
+                "episode",
+                "position",
+                "duration",
+                "volume",
+                "muted",
+            ]),
         }
     }
 
@@ -256,7 +297,8 @@ impl TriggerMatcher {
             | TriggerMatcher::HomeAssistant { .. }
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::DeviceBattery { .. }
-            | TriggerMatcher::Jellyfin { .. } => {}
+            | TriggerMatcher::Jellyfin { .. }
+            | TriggerMatcher::MediaPlayer { .. } => {}
         }
         Ok(())
     }

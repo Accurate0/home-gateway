@@ -15,7 +15,8 @@ export type EntityKind =
   | "presence"
   | "environment"
   | "einkDisplay"
-  | "robotVacuum";
+  | "robotVacuum"
+  | "mediaPlayer";
 
 export type VacuumKind = "ROBOROCK" | "VALETUDO";
 
@@ -67,6 +68,20 @@ export interface Entity {
   fanSpeed?: string | null;
   currentCleanArea?: number | null;
   cleanCount?: number | null;
+  state?: string | null;
+  appName?: string | null;
+  source?: string | null;
+  mediaTitle?: string | null;
+  mediaArtist?: string | null;
+  mediaSeriesTitle?: string | null;
+  season?: number | null;
+  episode?: number | null;
+  positionSeconds?: number | null;
+  durationSeconds?: number | null;
+  progress?: number | null;
+  volumeLevel?: number | null;
+  muted?: boolean | null;
+  artworkUrl?: string | null;
 }
 
 const SHORT_UNITS: Record<string, string> = {
@@ -110,15 +125,23 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   EnvironmentEntity: "environment",
   EinkDisplayEntity: "einkDisplay",
   RobotVacuumEntity: "robotVacuum",
+  MediaPlayerEntity: "mediaPlayer",
   LightUpdate: "light",
   DoorUpdate: "door",
   PresenceUpdate: "presence",
   EnvironmentUpdate: "environment",
   DeviceBatteryUpdate: "einkDisplay",
+  MediaPlayerUpdate: "mediaPlayer",
 };
 
 export function kindOf(typename: string | undefined): EntityKind | null {
   return (typename && TYPENAME_TO_KIND[typename]) || null;
+}
+
+// Home Assistant media_player states that mean something is loaded and running.
+// Derived on the client so an `events` update flips the tile without a refetch.
+export function isPlaying(state: string | null | undefined): boolean {
+  return state === "playing" || state === "buffering";
 }
 
 export function entityKey(kind: EntityKind, id: string): string {

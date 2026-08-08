@@ -37,6 +37,7 @@ pub enum Resource {
     Valetudo,
     RobotVacuum,
     Jellyfin,
+    MediaPlayer,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,6 +91,7 @@ impl Resource {
             "valetudo" => Self::Valetudo,
             "robot_vacuum" => Self::RobotVacuum,
             "jellyfin" => Self::Jellyfin,
+            "media_player" => Self::MediaPlayer,
             _ => return None,
         })
     }
@@ -149,6 +151,7 @@ impl Resource {
             Self::Valetudo => "valetudo",
             Self::RobotVacuum => "robot_vacuum",
             Self::Jellyfin => "jellyfin",
+            Self::MediaPlayer => "media_player",
         }
     }
 
@@ -167,6 +170,7 @@ impl Resource {
             "woolworths" => Self::Woolworths,
             "device_battery" => Self::Battery,
             "jellyfin" => Self::Jellyfin,
+            "media_player" => Self::MediaPlayer,
             _ => return None,
         })
     }
@@ -327,11 +331,15 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Read);
     pub const GRAPHQL_JELLYFIN_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Jellyfin, Action::Read);
+    pub const GRAPHQL_MEDIA_PLAYER_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::MediaPlayer, Action::Read);
 
     pub const GRAPHQL_LIGHT_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Light, Action::Write);
     pub const GRAPHQL_ROBOT_VACUUM_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Write);
+    pub const GRAPHQL_MEDIA_PLAYER_WRITE: Scope =
+        Scope::new(Domain::Graphql, Resource::MediaPlayer, Action::Write);
     pub const GRAPHQL_WORKFLOW_WRITE: Scope =
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
     pub const GRAPHQL_EPD_WRITE: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Write);

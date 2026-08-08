@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT device_id, state, app_name, source, media_content_type, media_title,\n                   media_artist, media_album_name, media_series_title, media_season, media_episode,\n                   position_seconds, duration_seconds, position_updated_at, volume_level, muted,\n                   artwork_url, updated_at\n            FROM media_player_state\n            WHERE device_id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "app_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "media_content_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "media_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "media_artist",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "media_album_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "media_series_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "media_season",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "media_episode",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "position_seconds",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 12,
+        "name": "duration_seconds",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 13,
+        "name": "position_updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "volume_level",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 15,
+        "name": "muted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 16,
+        "name": "artwork_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "b67cccc12229e9c2c444338efe22ce8c7d34c742895e3686d423ba1c4a228df4"
+}

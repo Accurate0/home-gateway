@@ -11,6 +11,7 @@ use tokio_tungstenite::tungstenite::Message as WsMessage;
 use uuid::Uuid;
 
 use crate::{
+    actors::devices::media_player::{self, MediaPlayerHandler},
     actors::devices::robot_vacuum::{self, RobotVacuumHandler},
     event_bus::EventBusMessage,
     integrations::home_assistant::HomeAssistant,
@@ -26,6 +27,7 @@ impl HomeAssistantActor {
     pub const NAME: &str = "home-assistant";
 
     const SUBSCRIBE_ID: u64 = 1;
+    const GET_STATES_ID: u64 = 2;
 
     async fn run(&self, home_assistant: &HomeAssistant) -> Result<(), anyhow::Error> {
         let url = home_assistant.ws_url();
@@ -76,6 +78,12 @@ impl HomeAssistantActor {
                             .to_string(),
                         ))
                         .await?;
+
+                    socket
+                        .send(WsMessage::text(
+                            json!({ "id": Self::GET_STATES_ID, "type": "get_states" }).to_string(),
+                        ))
+                        .await?;
                 }
                 Some("auth_invalid") => {
                     return Err(anyhow::anyhow!("home assistant rejected the access token"));
@@ -83,6 +91,11 @@ impl HomeAssistantActor {
                 Some("event") => {
                     self.handle_event(&payload, &mut last_latest_state_write)
                         .await;
+                }
+                Some("result")
+                    if payload.get("id").and_then(Value::as_u64) == Some(Self::GET_STATES_ID) =>
+                {
+                    self.seed_media_players(&payload);
                 }
                 _ => {}
             }
@@ -132,6 +145,12 @@ impl HomeAssistantActor {
         }
 
         self.forward_roborock(event_id, entity_id, &state);
+        self.forward_media_player(
+            event_id,
+            entity_id,
+            &state,
+            &data["new_state"]["attributes"],
+        );
 
         self.shared_actor_state
             .event_bus
@@ -167,6 +186,77 @@ impl HomeAssistantActor {
 
         if let Err(e) = actor.send_message(job) {
             tracing::error!("failed to forward roborock update: {e}");
+        }
+    }
+
+    /// `state_changed` only fires on a transition, so a freshly connected gateway
+    /// knows nothing about what is already playing. The `get_states` reply fills
+    /// that gap for every registered media player.
+    fn seed_media_players(&self, payload: &Value) {
+        let Some(states) = payload.get("result").and_then(Value::as_array) else {
+            tracing::warn!("home assistant get_states reply carried no result array");
+            return;
+        };
+
+        for entity in states {
+            let Some(entity_id) = entity.get("entity_id").and_then(Value::as_str) else {
+                continue;
+            };
+
+            if self
+                .shared_actor_state
+                .devices
+                .media_player(entity_id)
+                .is_none()
+            {
+                continue;
+            }
+
+            let state = entity
+                .get("state")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+
+            tracing::info!("seeding media player {entity_id} from get_states ({state})");
+            self.forward_media_player(Uuid::new_v4(), entity_id, state, &entity["attributes"]);
+        }
+    }
+
+    fn forward_media_player(
+        &self,
+        event_id: Uuid,
+        entity_id: &str,
+        state: &str,
+        attributes: &Value,
+    ) {
+        if self
+            .shared_actor_state
+            .devices
+            .media_player(entity_id)
+            .is_none()
+        {
+            return;
+        }
+
+        let Some(actor) = ractor::registry::where_is(MediaPlayerHandler::NAME.to_owned()) else {
+            tracing::error!("no media player actor found for home assistant update");
+            return;
+        };
+
+        let job = FactoryMessage::Dispatch(Job {
+            key: (),
+            msg: media_player::Message::HomeAssistant(media_player::Update {
+                event_id,
+                address: entity_id.to_owned(),
+                state: state.to_owned(),
+                attributes: attributes.clone(),
+            }),
+            options: JobOptions::default(),
+            accepted: None,
+        });
+
+        if let Err(e) = actor.send_message(job) {
+            tracing::error!("failed to forward media player update: {e}");
         }
     }
 

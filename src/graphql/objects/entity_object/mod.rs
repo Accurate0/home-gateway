@@ -17,6 +17,7 @@ pub mod door;
 pub mod eink_display;
 pub mod environment;
 pub mod light;
+pub mod media_player;
 pub mod presence;
 pub mod robot_vacuum;
 
@@ -25,6 +26,7 @@ pub use door::DoorEntity;
 pub use eink_display::EinkDisplayEntity;
 pub use environment::EnvironmentEntity;
 pub use light::LightEntity;
+pub use media_player::MediaPlayerEntity;
 pub use presence::PresenceEntity;
 pub use robot_vacuum::RobotVacuumEntity;
 
@@ -52,17 +54,19 @@ pub enum EntityCategory {
     Environment,
     Displays,
     Vacuums,
+    Media,
 }
 
 impl EntityCategory {
     /// Every category in the order sections should render.
-    pub const ORDERED: [EntityCategory; 6] = [
+    pub const ORDERED: [EntityCategory; 7] = [
         EntityCategory::Lights,
         EntityCategory::Doors,
         EntityCategory::Presence,
         EntityCategory::Environment,
         EntityCategory::Displays,
         EntityCategory::Vacuums,
+        EntityCategory::Media,
     ];
 }
 
@@ -75,6 +79,7 @@ impl std::fmt::Display for EntityCategory {
             EntityCategory::Environment => "Environment",
             EntityCategory::Displays => "Displays",
             EntityCategory::Vacuums => "Vacuums",
+            EntityCategory::Media => "Media",
         })
     }
 }
@@ -105,4 +110,5 @@ pub enum Entity {
     Presence(PresenceEntity),
     EinkDisplay(EinkDisplayEntity),
     RobotVacuum(RobotVacuumEntity),
+    MediaPlayer(MediaPlayerEntity),
 }

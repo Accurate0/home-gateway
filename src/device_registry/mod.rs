@@ -12,11 +12,12 @@ use crate::settings::door::RawDoorSettings;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
-    EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress, PlantSensorSettings,
-    PresenceSensorType, PresenceSettings, RawDeviceWatchdog, RawEinkDisplayBlock,
-    RawEnvironmentBlock, RawLightBlock, RawPlantBlock, RawPresenceBlock, RawRoborockBlock,
-    RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock, RawZigbeeModelProfile, RoborockField,
-    RoborockSettings, SwitchRole, TrmnlDeviceSettings, ValetudoSettings, ZigbeeModelProfile,
+    EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress, MediaPlayerSettings,
+    PlantSensorSettings, PresenceSensorType, PresenceSettings, RawDeviceWatchdog,
+    RawEinkDisplayBlock, RawEnvironmentBlock, RawLightBlock, RawMediaPlayerBlock, RawPlantBlock,
+    RawPresenceBlock, RawRoborockBlock, RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock,
+    RawZigbeeModelProfile, RoborockField, RoborockSettings, SwitchRole, TrmnlDeviceSettings,
+    ValetudoSettings, ZigbeeModelProfile,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -124,6 +125,7 @@ pub enum DeviceConfig {
     EinkDisplayFirmware(RawEinkDisplayBlock),
     Trmnl(RawTrmnlBlock),
     Roborock(RawRoborockBlock),
+    MediaPlayer(RawMediaPlayerBlock),
     Valetudo(RawValetudoBlock),
     Battery,
 }
@@ -154,6 +156,7 @@ pub struct DeviceRegistryInner {
     trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
     roborocks: HashMap<String, RoborockSettings>,
     roborock_entities: HashMap<String, (String, RoborockField)>,
+    media_players: HashMap<String, MediaPlayerSettings>,
     valetudos: HashMap<String, ValetudoSettings>,
     battery: HashMap<String, BatterySettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
@@ -353,10 +356,13 @@ impl DeviceRegistryInner {
                 "device {id}: `trmnl` transport is only valid with the `trmnl` kind, and vice versa"
             ));
         }
-        let is_roborock = matches!(config, DeviceConfig::Roborock(_));
-        if (transport == Transport::HomeAssistant) != is_roborock {
+        let is_home_assistant = matches!(
+            config,
+            DeviceConfig::Roborock(_) | DeviceConfig::MediaPlayer(_)
+        );
+        if (transport == Transport::HomeAssistant) != is_home_assistant {
             return Err(format!(
-                "device {id}: `home_assistant` transport is only valid with the `roborock` kind, and vice versa"
+                "device {id}: `home_assistant` transport is only valid with the `roborock` and `media_player` kinds, and vice versa"
             ));
         }
         let is_valetudo = matches!(config, DeviceConfig::Valetudo(_));
@@ -489,6 +495,16 @@ impl DeviceRegistryInner {
 
                 self.roborocks.insert(address.to_owned(), settings);
             }
+            DeviceConfig::MediaPlayer(media_player) => {
+                if !address.starts_with("media_player.") {
+                    return Err(format!(
+                        "device {id}: `media_player` address `{address}` must be a home assistant `media_player.` entity id"
+                    ));
+                }
+
+                self.media_players
+                    .insert(address.to_owned(), media_player.resolve(id, address));
+            }
             DeviceConfig::Valetudo(valetudo) => {
                 self.valetudos
                     .insert(address.to_owned(), valetudo.resolve(address));
@@ -522,6 +538,14 @@ impl DeviceRegistryInner {
 
     pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
         self.roborocks.iter()
+    }
+
+    pub fn media_player(&self, address: &str) -> Option<&MediaPlayerSettings> {
+        self.media_players.get(address)
+    }
+
+    pub fn media_players(&self) -> impl Iterator<Item = (&String, &MediaPlayerSettings)> {
+        self.media_players.iter()
     }
 
     pub fn valetudo(&self, address: &str) -> Option<&ValetudoSettings> {

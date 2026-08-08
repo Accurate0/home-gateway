@@ -167,6 +167,36 @@ impl JellyfinUpdate {
     }
 }
 
+#[derive(SimpleObject)]
+#[graphql(complex)]
+pub struct MediaPlayerUpdate {
+    pub event_id: Uuid,
+    pub device_id: String,
+    pub name: String,
+    pub room: Option<String>,
+    pub state: String,
+    pub entity_state: String,
+    pub app_name: Option<String>,
+    pub source: Option<String>,
+    pub media_title: Option<String>,
+    pub media_series_title: Option<String>,
+    pub media_content_type: Option<String>,
+    pub season: Option<i32>,
+    pub episode: Option<i32>,
+    pub position_seconds: Option<f64>,
+    pub duration_seconds: Option<f64>,
+    pub volume_level: Option<f64>,
+    pub muted: Option<bool>,
+    pub artwork_url: Option<String>,
+}
+
+#[ComplexObject]
+impl MediaPlayerUpdate {
+    async fn id(&self) -> ID {
+        ID(self.device_id.clone())
+    }
+}
+
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
 pub enum EventUpdate {
@@ -183,6 +213,7 @@ pub enum EventUpdate {
     Woolworths(WoolworthsUpdate),
     DeviceBattery(DeviceBatteryUpdate),
     Jellyfin(JellyfinUpdate),
+    MediaPlayer(MediaPlayerUpdate),
 }
 
 impl EventUpdate {
@@ -395,6 +426,45 @@ impl EventUpdate {
                 position_seconds,
                 runtime_seconds,
                 play_method,
+            }),
+            EventBusMessage::MediaPlayer {
+                event_id,
+                device_id,
+                name,
+                room,
+                state,
+                entity_state,
+                app_name,
+                source,
+                media_title,
+                media_series_title,
+                media_content_type,
+                season,
+                episode,
+                position_seconds,
+                duration_seconds,
+                volume_level,
+                muted,
+                artwork_url,
+            } => EventUpdate::MediaPlayer(MediaPlayerUpdate {
+                event_id,
+                device_id,
+                name,
+                room,
+                state: state.as_str().to_owned(),
+                entity_state,
+                app_name,
+                source,
+                media_title,
+                media_series_title,
+                media_content_type,
+                season,
+                episode,
+                position_seconds,
+                duration_seconds,
+                volume_level,
+                muted,
+                artwork_url,
             }),
         }
     }

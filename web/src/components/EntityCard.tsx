@@ -10,19 +10,23 @@ import {
   Lightbulb,
   LightbulbOff,
   MonitorSmartphone,
+  Pause,
   Palette,
   PersonStanding,
   Play,
   SlidersHorizontal,
   Square,
   Thermometer,
+  Tv,
   UserX,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog, Popover, Slider } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { authHeaders } from "@/relay";
-import { formatLastSeen, type Entity } from "@/entities";
+import { formatLastSeen, isPlaying, type Entity } from "@/entities";
 
 export interface LightActions {
   onToggle: () => void;
@@ -36,6 +40,11 @@ export interface VacuumActions {
   onStart: () => void;
   onStop: () => void;
   onDock: () => void;
+}
+
+export interface MediaPlayerActions {
+  onPlayPause: () => void;
+  onStop: () => void;
 }
 
 export interface EinkActions {
@@ -110,10 +119,7 @@ function LastSeen({
   );
 }
 
-function Tile({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function Tile({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -312,10 +318,33 @@ const ENVIRONMENT_METRICS: {
   unit: string;
   digits?: number;
 }[] = [
-  { label: "Temperature", field: "temperature", capability: "TEMPERATURE", unit: "°C" },
-  { label: "Humidity", field: "humidity", capability: "HUMIDITY", unit: "%", digits: 0 },
-  { label: "Pressure", field: "pressure", capability: "PRESSURE", unit: " hPa", digits: 0 },
-  { label: "Illuminance", field: "lux", capability: "LUX", unit: " lx", digits: 0 },
+  {
+    label: "Temperature",
+    field: "temperature",
+    capability: "TEMPERATURE",
+    unit: "°C",
+  },
+  {
+    label: "Humidity",
+    field: "humidity",
+    capability: "HUMIDITY",
+    unit: "%",
+    digits: 0,
+  },
+  {
+    label: "Pressure",
+    field: "pressure",
+    capability: "PRESSURE",
+    unit: " hPa",
+    digits: 0,
+  },
+  {
+    label: "Illuminance",
+    field: "lux",
+    capability: "LUX",
+    unit: " lx",
+    digits: 0,
+  },
   { label: "UV index", field: "uvIndex", capability: "UV_INDEX", unit: "" },
 ];
 
@@ -404,8 +433,7 @@ function EnvironmentTile({ entity, now }: { entity: Entity; now: number }) {
 
 const STATUS_TONES = {
   present: {
-    active:
-      "border-state-present/40 bg-state-present/10",
+    active: "border-state-present/40 bg-state-present/10",
     iconActive: "bg-state-present text-state-present-foreground",
   },
   open: {
@@ -511,10 +539,7 @@ function unpackEpd(bytes: Uint8Array, rotate: boolean): string | null {
   return dest.toDataURL("image/png");
 }
 
-function useEinkPreview(
-  imageUrl: string | null | undefined,
-  rotate: boolean,
-) {
+function useEinkPreview(imageUrl: string | null | undefined, rotate: boolean) {
   const [loaded, setLoaded] = useState<{ url: string; dataUrl: string } | null>(
     null,
   );
@@ -678,9 +703,7 @@ function EinkDisplayTile({
   );
 
   if (entity.einkKind === "TRMNL") {
-    return (
-      <Tile className="col-span-1 justify-between gap-3">{body}</Tile>
-    );
+    return <Tile className="col-span-1 justify-between gap-3">{body}</Tile>;
   }
 
   return (
@@ -700,6 +723,131 @@ function EinkDisplayTile({
       </Dialog.Trigger>
       <EinkDisplayConfigDetails entity={entity} actions={actions} now={now} />
     </Dialog.Root>
+  );
+}
+
+function MediaPlayerTile({
+  entity,
+  actions,
+  now,
+}: {
+  entity: Entity;
+  actions?: MediaPlayerActions;
+  now: number;
+}) {
+  const playing = isPlaying(entity.state);
+  const title = entity.mediaTitle;
+  const subtitle = entity.mediaSeriesTitle ?? entity.mediaArtist;
+  const episode =
+    entity.season != null && entity.episode != null
+      ? `S${entity.season}E${entity.episode}`
+      : null;
+  const progress = entity.progress;
+  const VolumeIcon = entity.muted ? VolumeX : Volume2;
+
+  return (
+    <Tile className="col-span-1 justify-between gap-3">
+      <div className="flex items-start justify-between">
+        <div
+          className={cn(
+            "grid size-10 place-items-center overflow-hidden rounded-xl",
+            playing
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {entity.artworkUrl ? (
+            <img
+              src={entity.artworkUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            <Tv className="size-5" strokeWidth={1.5} />
+          )}
+        </div>
+        <div className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
+          <VolumeIcon className="size-4" strokeWidth={1.75} />
+          <span className="text-sm">
+            {entity.volumeLevel == null
+              ? "—"
+              : `${Math.round(entity.volumeLevel * 100)}%`}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <StatePill tone={playing ? "on" : "unknown"}>
+          {entity.state ?? "unknown"}
+        </StatePill>
+        {entity.appName && (
+          <span className="text-muted-foreground text-xs">
+            {entity.appName}
+          </span>
+        )}
+      </div>
+
+      <div className="min-h-8">
+        {title ? (
+          <>
+            <div className="truncate text-sm leading-tight font-medium">
+              {title}
+            </div>
+            <div className="text-muted-foreground truncate text-xs">
+              {[subtitle, episode].filter(Boolean).join(" · ")}
+            </div>
+          </>
+        ) : (
+          <div className="text-muted-foreground text-xs">nothing playing</div>
+        )}
+      </div>
+
+      {progress != null && (
+        <div className="bg-muted h-1 overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full"
+            style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+          />
+        </div>
+      )}
+
+      <MediaPlayerControls actions={actions} playing={playing} />
+
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+      </div>
+    </Tile>
+  );
+}
+
+function MediaPlayerControls({
+  actions,
+  playing,
+}: {
+  actions?: MediaPlayerActions;
+  playing: boolean;
+}) {
+  const cls =
+    "border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-medium";
+  return (
+    <div className="flex gap-2">
+      <button type="button" onClick={actions?.onPlayPause} className={cls}>
+        {playing ? (
+          <Pause className="size-3.5" strokeWidth={2} />
+        ) : (
+          <Play className="size-3.5" strokeWidth={2} />
+        )}
+        {playing ? "Pause" : "Play"}
+      </button>
+      <button type="button" onClick={actions?.onStop} className={cls}>
+        <Square className="size-3.5" strokeWidth={2} />
+        Stop
+      </button>
+    </div>
   );
 }
 
@@ -780,12 +928,14 @@ export default function EntityCard({
   entity,
   lightActions,
   vacuumActions,
+  mediaPlayerActions,
   einkActions,
   now,
 }: {
   entity: Entity;
   lightActions?: LightActions;
   vacuumActions?: VacuumActions;
+  mediaPlayerActions?: MediaPlayerActions;
   einkActions?: EinkActions;
   now: number;
 }) {
@@ -825,6 +975,14 @@ export default function EntityCard({
     case "robotVacuum":
       return (
         <RobotVacuumTile entity={entity} actions={vacuumActions} now={now} />
+      );
+    case "mediaPlayer":
+      return (
+        <MediaPlayerTile
+          entity={entity}
+          actions={mediaPlayerActions}
+          now={now}
+        />
       );
   }
 }

@@ -3,6 +3,7 @@ use async_graphql::Object;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::mutations::eink_display_mutation::EinkDisplayMutation;
 use crate::graphql::mutations::light_mutation::LightMutation;
+use crate::graphql::mutations::media_player_mutation::MediaPlayerMutation;
 use crate::graphql::mutations::robot_vacuum_mutation::RobotVacuumMutation;
 
 #[derive(Default)]
@@ -43,6 +44,23 @@ impl EntitiesMutation {
         Err(async_graphql::Error::new(format!(
             "unknown robot vacuum `{id}`"
         )))
+    }
+
+    async fn media_player(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<MediaPlayerMutation> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+
+        let Some(settings) = registry.media_player(&address) else {
+            return Err(async_graphql::Error::new(format!(
+                "unknown media player `{id}`"
+            )));
+        };
+
+        Ok(MediaPlayerMutation::new(settings))
     }
 
     async fn eink_display(

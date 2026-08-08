@@ -6,7 +6,7 @@ use crate::actors::{
     alarm::AlarmActor,
     devices::{
         control_switch, door_events::DoorEventsSupervisor, door_sensor, environment_sensor, light,
-        plant_sensor, presence_sensor, smart_switch,
+        media_player, plant_sensor, presence_sensor, smart_switch,
     },
     eink_display::EInkDisplayActor,
     integrations::{
@@ -40,6 +40,7 @@ const EXPECTED_ACTORS: &[&str] = &[
     environment_sensor::EnvironmentSensorHandler::NAME,
     presence_sensor::PresenceSensorHandler::NAME,
     plant_sensor::PlantSensorHandler::NAME,
+    media_player::MediaPlayerHandler::NAME,
 ];
 
 #[derive(Serialize)]

@@ -47,28 +47,14 @@ struct ValetudoState {
 
 #[derive(Debug, Deserialize)]
 struct ValetudoAttributes {
-    #[serde(default, rename = "currentCleanArea", deserialize_with = "de_opt_f64")]
+    #[serde(
+        default,
+        rename = "currentCleanArea",
+        deserialize_with = "crate::serde_lenient::opt_f64"
+    )]
     current_clean_area: Option<f64>,
     #[serde(default, rename = "cleanCount")]
     clean_count: Option<i32>,
-}
-
-fn de_opt_f64<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum NumOrString {
-        Num(f64),
-        Str(String),
-    }
-
-    Ok(match Option::<NumOrString>::deserialize(deserializer)? {
-        None => None,
-        Some(NumOrString::Num(n)) => Some(n),
-        Some(NumOrString::Str(s)) => s.parse::<f64>().ok(),
-    })
 }
 
 pub struct RobotVacuumHandler {

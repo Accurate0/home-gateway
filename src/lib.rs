@@ -14,6 +14,7 @@ pub mod integrations;
 pub mod metrics;
 pub mod mode;
 pub mod routes;
+pub mod serde_lenient;
 pub mod settings;
 pub mod state;
 pub mod timedelta_format;

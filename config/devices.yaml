@@ -257,6 +257,15 @@
         dock_service: vacuum.return_to_base
     - type: battery
 
+- id: living-room-tv
+  room: living-room
+  transport: home_assistant
+  address: media_player.living_room_tv
+  roles:
+    - type: media_player
+      config:
+        name: Living Room TV
+
 - id: valetudo
   room: spare-room
   transport: valetudo

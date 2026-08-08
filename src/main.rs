@@ -21,6 +21,7 @@ use graphql::{
     dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
+    dataloader::media_player_state::MediaPlayerStateDataLoader,
     dataloader::robot_vacuum_state::RobotVacuumStateDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
@@ -242,6 +243,12 @@ async fn main() -> anyhow::Result<()> {
     ))
     .data(DataLoader::new(
         HomeAssistantStateDataLoader {
+            database: pool.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        MediaPlayerStateDataLoader {
             database: pool.clone(),
         },
         tokio::spawn,

@@ -20,6 +20,7 @@ pub mod home_assistant;
 pub mod jellyfin;
 pub mod light;
 pub mod location;
+pub mod media_player;
 pub mod notify;
 pub mod plant;
 pub mod presence;
@@ -51,6 +52,7 @@ pub use home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use jellyfin::JellyfinSettings;
 pub use light::RawLightBlock;
 pub use location::LocationSettings;
+pub use media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use notify::{NotifySource, NotifyTargets};
 pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
@@ -411,6 +413,42 @@ ts011f_plug:
     }
 
     #[test]
+    fn a_media_player_on_the_wrong_transport_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: tv
+  transport: esphome
+  address: living-room-tv
+  roles:
+    - type: media_player
+      config:
+        name: TV
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("`home_assistant` transport"), "{err}");
+    }
+
+    #[test]
+    fn a_media_player_address_that_is_not_an_entity_id_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: tv
+  transport: home_assistant
+  address: living_room_tv
+  roles:
+    - type: media_player
+      config:
+        name: TV
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("must be a home assistant"), "{err}");
+    }
+
+    #[test]
     fn an_unknown_model_slug_is_rejected_and_lists_known_models() {
         let err = build_devices(
             r#"
@@ -618,6 +656,16 @@ android_app_webhook_secret: x
         assert_eq!(registry.room(valetudo_address), Some("spare-room"));
         assert_eq!(valetudo.command_topic, "valetudo/rockrobo/command");
         assert_eq!(valetudo.dock_payload, "return_to_base");
+
+        let tv_address = registry.address_or_self("living-room-tv");
+        let tv = registry
+            .media_player(tv_address)
+            .expect("living room tv resolves");
+        assert_eq!(tv_address, "media_player.living_room_tv");
+        assert_eq!(tv.id, "living-room-tv");
+        assert_eq!(tv.name, "Living Room TV");
+        assert_eq!(tv.entity_id, "media_player.living_room_tv");
+        assert_eq!(registry.room(tv_address), Some("living-room"));
 
         assert!(
             registry

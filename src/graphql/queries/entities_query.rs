@@ -6,7 +6,7 @@ use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::entity_object::{
     DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, LightEntity,
-    PresenceEntity, RobotVacuumEntity,
+    MediaPlayerEntity, PresenceEntity, RobotVacuumEntity,
 };
 
 #[derive(Default)]
@@ -101,7 +101,28 @@ impl EntitiesQuery {
             );
         }
 
+        if auth.has(&required::GRAPHQL_MEDIA_PLAYER_READ) {
+            out.extend(
+                registry
+                    .media_players()
+                    .filter_map(|(address, _)| MediaPlayerEntity::from_registry(registry, address))
+                    .map(Entity::MediaPlayer),
+            );
+        }
+
         Ok(out)
+    }
+
+    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_READ))]
+    async fn media_player(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<MediaPlayerEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        MediaPlayerEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown media player `{id}`")))
     }
 
     #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_READ))]

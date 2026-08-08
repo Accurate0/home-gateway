@@ -76,6 +76,20 @@ impl HomeAssistant {
         &self.token
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
+    /// Home Assistant hands out `entity_picture` as a signed, root-relative path;
+    /// make it absolute so consumers outside the HA origin can fetch it.
+    pub fn absolute_url(&self, path: &str) -> String {
+        if path.starts_with("http://") || path.starts_with("https://") {
+            return path.to_owned();
+        }
+
+        format!("{}/{}", self.base_url, path.trim_start_matches('/'))
+    }
+
     pub async fn call_service(
         &self,
         domain: &str,

@@ -122,6 +122,30 @@ pub enum EventBusMessage {
         runtime_seconds: Option<f64>,
         play_method: Option<String>,
     },
+    /// A Home Assistant `media_player` entity reached a playback edge, derived by
+    /// the [`crate::actors::devices::media_player`] handler from HA `state_changed`
+    /// events. As with [`EventBusMessage::Jellyfin`], progress within an item is
+    /// deliberately not published — only the edges are.
+    MediaPlayer {
+        event_id: Uuid,
+        device_id: String,
+        name: String,
+        room: Option<String>,
+        state: PlaybackState,
+        entity_state: String,
+        app_name: Option<String>,
+        source: Option<String>,
+        media_title: Option<String>,
+        media_series_title: Option<String>,
+        media_content_type: Option<String>,
+        season: Option<i32>,
+        episode: Option<i32>,
+        position_seconds: Option<f64>,
+        duration_seconds: Option<f64>,
+        volume_level: Option<f64>,
+        muted: Option<bool>,
+        artwork_url: Option<String>,
+    },
 }
 
 impl EventBusMessage {
@@ -141,7 +165,8 @@ impl EventBusMessage {
             | EventBusMessage::HomeAssistant { event_id, .. }
             | EventBusMessage::Woolworths { event_id, .. }
             | EventBusMessage::DeviceBattery { event_id, .. }
-            | EventBusMessage::Jellyfin { event_id, .. } => *event_id,
+            | EventBusMessage::Jellyfin { event_id, .. }
+            | EventBusMessage::MediaPlayer { event_id, .. } => *event_id,
         }
     }
 
@@ -161,6 +186,7 @@ impl EventBusMessage {
             EventBusMessage::Woolworths { .. } => "woolworths",
             EventBusMessage::DeviceBattery { .. } => "device_battery",
             EventBusMessage::Jellyfin { .. } => "jellyfin",
+            EventBusMessage::MediaPlayer { .. } => "media_player",
         }
     }
 
@@ -178,6 +204,7 @@ impl EventBusMessage {
         "woolworths",
         "device_battery",
         "jellyfin",
+        "media_player",
     ];
 
     pub fn entity(&self) -> String {
@@ -198,6 +225,7 @@ impl EventBusMessage {
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
             EventBusMessage::DeviceBattery { device_id, .. } => device_id.clone(),
             EventBusMessage::Jellyfin { user, .. } => user.clone(),
+            EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
         }
     }
 
@@ -335,6 +363,54 @@ impl EventBusMessage {
                     (
                         "play_method".to_owned(),
                         play_method.clone().unwrap_or_default(),
+                    ),
+                ])
+            }
+            EventBusMessage::MediaPlayer {
+                device_id,
+                name,
+                room,
+                state,
+                entity_state,
+                app_name,
+                source,
+                media_title,
+                media_series_title,
+                media_content_type,
+                season,
+                episode,
+                position_seconds,
+                duration_seconds,
+                volume_level,
+                muted,
+                ..
+            } => {
+                let number = |n: &Option<i32>| n.map_or_else(String::new, |n| n.to_string());
+                let seconds = |s: &Option<f64>| s.map_or_else(String::new, |s| format!("{s:.0}"));
+                let text = |t: &Option<String>| t.clone().unwrap_or_default();
+
+                HashMap::from([
+                    ("device".to_owned(), device_id.clone()),
+                    ("name".to_owned(), name.clone()),
+                    ("room".to_owned(), text(room)),
+                    ("state".to_owned(), state.as_str().to_owned()),
+                    ("entity_state".to_owned(), entity_state.clone()),
+                    ("app".to_owned(), text(app_name)),
+                    ("source".to_owned(), text(source)),
+                    ("item".to_owned(), text(media_title)),
+                    ("series".to_owned(), text(media_series_title)),
+                    ("item_type".to_owned(), text(media_content_type)),
+                    ("season".to_owned(), number(season)),
+                    ("episode".to_owned(), number(episode)),
+                    ("position".to_owned(), seconds(position_seconds)),
+                    ("duration".to_owned(), seconds(duration_seconds)),
+                    (
+                        "volume".to_owned(),
+                        volume_level.map_or_else(String::new, |v| format!("{v:.2}")),
+                    ),
+                    (
+                        "muted".to_owned(),
+                        muted.map_or_else(String::new, |m| m.to_string()),
                     ),
                 ])
             }

@@ -162,7 +162,7 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
 
 """
 The dashboard section a device kind is displayed under. Owned by the backend
@@ -176,6 +176,7 @@ enum EntityCategory {
 	ENVIRONMENT
 	DISPLAYS
 	VACUUMS
+	MEDIA
 }
 
 type EntitySection {
@@ -230,7 +231,7 @@ type EpdConfig {
 	clearScreen: Boolean
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | MediaPlayerUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -329,6 +330,70 @@ enum Mode {
 	PARTY
 }
 
+type MediaPlayerEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	room: String
+	state: String
+	playing: Boolean!
+	appName: String
+	source: String
+	mediaContentType: String
+	mediaTitle: String
+	mediaArtist: String
+	mediaAlbumName: String
+	mediaSeriesTitle: String
+	season: Int
+	episode: Int
+	durationSeconds: Float
+	"""
+	Where playback has reached now, extrapolated from the last reported
+	position: Home Assistant only republishes `media_position` on a seek, so a
+	stored value goes stale the moment it lands.
+	"""
+	positionSeconds: Float
+	progress: Float
+	volumeLevel: Float
+	muted: Boolean
+	artworkUrl: String
+	lastSeen: DateTime
+}
+
+type MediaPlayerMutation {
+	play: Boolean!
+	pause: Boolean!
+	playPause: Boolean!
+	stop: Boolean!
+	next: Boolean!
+	previous: Boolean!
+	volumeSet(level: Float!): Boolean!
+	mute(muted: Boolean!): Boolean!
+	turnOff: Boolean!
+}
+
+type MediaPlayerUpdate {
+	eventId: UUID!
+	deviceId: String!
+	name: String!
+	room: String
+	state: String!
+	entityState: String!
+	appName: String
+	source: String
+	mediaTitle: String
+	mediaSeriesTitle: String
+	mediaContentType: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	durationSeconds: Float
+	volumeLevel: Float
+	muted: Boolean
+	artworkUrl: String
+	id: ID!
+}
+
 type ModeUpdate {
 	eventId: UUID!
 	mode: Mode!
@@ -338,6 +403,7 @@ type ModeUpdate {
 type MutationRoot {
 	light(id: String!): LightMutation!
 	robotVacuum(id: String!): RobotVacuumMutation!
+	mediaPlayer(id: String!): MediaPlayerMutation!
 	einkDisplay(id: String!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
@@ -409,6 +475,7 @@ type QueryRoot {
 	environment(id: String!): EnvironmentEntity!
 	einkDisplay(id: String!): EinkDisplayEntity!
 	robotVacuum(id: String!): RobotVacuumEntity!
+	mediaPlayer(id: String!): MediaPlayerEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!

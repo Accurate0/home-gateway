@@ -184,6 +184,21 @@ impl WorkflowDispatcher {
                     && device.as_ref().is_none_or(|device| device == d)
                     && item_type.as_ref().is_none_or(|item_type| item_type == t)
             }
+            (
+                TriggerMatcher::MediaPlayer { device, state, app },
+                EventBusMessage::MediaPlayer {
+                    device_id: d,
+                    state: s,
+                    app_name: a,
+                    ..
+                },
+            ) => {
+                state.is_none_or(|state| state == *s)
+                    && device.as_ref().is_none_or(|device| device == d)
+                    && app
+                        .as_ref()
+                        .is_none_or(|app| a.as_ref().is_some_and(|actual| actual == app))
+            }
             _ => false,
         }
     }

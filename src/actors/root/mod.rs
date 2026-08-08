@@ -321,6 +321,12 @@ impl Actor for RootSupervisor {
         plant_sensor::spawn::spawn_plant_sensor_handler(&myself, shared_actor_state.clone())
             .await?;
 
+        crate::actors::devices::media_player::spawn::spawn_media_player_handler(
+            &myself,
+            shared_actor_state.clone(),
+        )
+        .await?;
+
         crate::actors::devices::robot_vacuum::spawn::spawn_robot_vacuum_handler(
             &myself,
             shared_actor_state.clone(),
