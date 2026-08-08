@@ -223,6 +223,7 @@
         sleep:
           start: "23:00"
           end: "08:00"
+          grace: 10m
         partial:
           enabled: true
           max_area_pct: 45

@@ -134,10 +134,25 @@ fn active_sleep(
 ) -> Option<SleepWindow> {
     let sleep = devices.eink_display(device_id).and_then(|d| d.sleep)?;
     let now = chrono::Utc::now().with_timezone(&Perth).time();
-    if sleep.contains(now) || force_sleep {
+
+    if force_sleep {
         return Some(sleep);
     }
-    None
+
+    if !sleep.contains(now) {
+        return None;
+    }
+
+    if sleep.ending_within_grace(now) {
+        tracing::info!(
+            device_id = %device_id,
+            remaining_secs = sleep.secs_until_end(now),
+            "woke inside the sleep grace, serving the dashboard instead of another sleep cycle"
+        );
+        return None;
+    }
+
+    Some(sleep)
 }
 
 async fn latest_image(
@@ -268,6 +283,7 @@ mod tests {
         let sleep = SleepWindow {
             start: chrono::NaiveTime::from_hms_opt(22, 0, 0).unwrap(),
             end: chrono::NaiveTime::from_hms_opt(6, 0, 0).unwrap(),
+            grace: chrono::TimeDelta::minutes(5),
         };
 
         let evening = chrono::NaiveDate::from_ymd_opt(2026, 8, 4)

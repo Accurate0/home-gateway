@@ -158,11 +158,16 @@ pub(crate) async fn build_epd_config(
         };
     };
 
-    let refresh_interval_mins = match plan.sleep {
+    let refresh_interval_secs = match plan.sleep {
         Some(sleep) => {
             let now = chrono::Utc::now().with_timezone(&Perth).time();
-            sleep.minutes_until_end(now)
+            sleep.secs_until_end(now)
         }
+        None => aligned_refresh_secs(configured_refresh),
+    };
+
+    let refresh_interval_mins = match plan.sleep {
+        Some(_) => refresh_interval_secs.div_ceil(60),
         None => configured_refresh,
     };
 
@@ -179,7 +184,7 @@ pub(crate) async fn build_epd_config(
     if !ensure_packed_cached(s3, &plan).await {
         return EpdConfig {
             refresh_interval_mins: Some(refresh_interval_mins),
-            refresh_interval_secs: Some(aligned_refresh_secs(refresh_interval_mins)),
+            refresh_interval_secs: Some(refresh_interval_secs),
             image_url: None,
             image_hash: None,
             clear_screen: Some(flag.clear_screen),
@@ -215,7 +220,7 @@ pub(crate) async fn build_epd_config(
 
     EpdConfig {
         refresh_interval_mins: Some(refresh_interval_mins),
-        refresh_interval_secs: Some(aligned_refresh_secs(refresh_interval_mins)),
+        refresh_interval_secs: Some(refresh_interval_secs),
         image_url: Some(url),
         image_hash: Some(plan.hash),
         clear_screen: Some(flag.clear_screen),

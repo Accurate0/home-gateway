@@ -761,11 +761,15 @@
         },
         "end": {
           "type": "string"
+        },
+        "grace": {
+          "type": "string"
         }
       },
       "required": [
         "start",
-        "end"
+        "end",
+        "grace"
       ]
     },
     "RawPartialRefresh": {
