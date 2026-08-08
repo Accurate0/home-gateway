@@ -254,21 +254,9 @@ impl JellyfinActor {
         }
 
         sqlx::query!(
-            r#"UPDATE latest_jellyfin_session
-            SET item_id = NULL,
-                item_name = NULL,
-                item_type = NULL,
-                series_name = NULL,
-                season = NULL,
-                episode = NULL,
-                position_seconds = NULL,
-                play_method = NULL,
-                paused = false,
-                event_id = $2,
-                updated_at = now()
-            WHERE session_id = $1"#,
+            r#"DELETE FROM jellyfin_state WHERE user_name = $1 AND session_id = $2"#,
+            playing.user,
             playing.session_id,
-            event_id,
         )
         .execute(&self.shared_actor_state.db)
         .await?;
@@ -278,14 +266,14 @@ impl JellyfinActor {
 
     async fn save_latest(&self, event_id: Uuid, playing: &Playing) -> Result<(), anyhow::Error> {
         sqlx::query!(
-            r#"INSERT INTO latest_jellyfin_session (
-                session_id, user_name, device_name, client, item_id, item_name,
+            r#"INSERT INTO jellyfin_state (
+                user_name, session_id, device_name, client, item_id, item_name,
                 item_type, series_name, season, episode, position_seconds,
                 runtime_seconds, play_method, paused, event_id, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
-            ON CONFLICT (session_id)
+            ON CONFLICT (user_name)
             DO UPDATE SET
-                user_name = EXCLUDED.user_name,
+                session_id = EXCLUDED.session_id,
                 device_name = EXCLUDED.device_name,
                 client = EXCLUDED.client,
                 item_id = EXCLUDED.item_id,
@@ -301,8 +289,8 @@ impl JellyfinActor {
                 event_id = EXCLUDED.event_id,
                 updated_at = EXCLUDED.updated_at
             "#,
-            playing.session_id,
             playing.user,
+            playing.session_id,
             playing.device,
             playing.client,
             playing.item_id,
@@ -325,9 +313,10 @@ impl JellyfinActor {
 
     async fn refresh_latest(&self, playing: &Playing) -> Result<(), anyhow::Error> {
         sqlx::query!(
-            r#"UPDATE latest_jellyfin_session
-            SET position_seconds = $2, paused = $3, updated_at = now()
-            WHERE session_id = $1"#,
+            r#"UPDATE jellyfin_state
+            SET position_seconds = $3, paused = $4, updated_at = now()
+            WHERE user_name = $1 AND session_id = $2"#,
+            playing.user,
             playing.session_id,
             playing.position_seconds,
             playing.paused,
@@ -357,6 +346,10 @@ impl Actor for JellyfinActor {
             .poll_interval
             .to_std()
             .map_err(|e| anyhow::anyhow!("invalid jellyfin poll_interval: {e}"))?;
+
+        sqlx::query!("DELETE FROM jellyfin_state")
+            .execute(&self.shared_actor_state.db)
+            .await?;
 
         myself.send_interval(poll_interval, || JellyfinMessage::Poll);
         myself.send_message(JellyfinMessage::Poll)?;

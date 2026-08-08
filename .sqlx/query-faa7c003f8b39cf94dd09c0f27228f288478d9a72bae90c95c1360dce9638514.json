@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT event_id, session_id, user_name, device_name, client, item_id, item_name,\n                      item_type, series_name, season, episode, position_seconds, runtime_seconds,\n                      play_method, paused, updated_at\n               FROM latest_jellyfin_session\n               WHERE item_id IS NOT NULL\n               ORDER BY updated_at DESC",
+  "query": "SELECT event_id, session_id, user_name, device_name, client, item_id, item_name,\n                      item_type, series_name, season, episode, position_seconds, runtime_seconds,\n                      play_method, paused, updated_at\n               FROM jellyfin_state\n               ORDER BY updated_at DESC",
   "describe": {
     "columns": [
       {
@@ -93,9 +93,9 @@
       false,
       false,
       false,
-      true,
-      true,
-      true,
+      false,
+      false,
+      false,
       true,
       true,
       true,
@@ -106,5 +106,5 @@
       false
     ]
   },
-  "hash": "5d0b1d97eb9484da419a3283eddbcab7ca99bf385f20b545d01aa53cd926f5b1"
+  "hash": "faa7c003f8b39cf94dd09c0f27228f288478d9a72bae90c95c1360dce9638514"
 }
