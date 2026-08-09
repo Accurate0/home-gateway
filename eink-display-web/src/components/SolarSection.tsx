@@ -7,6 +7,7 @@ import {
   CONTENT_W,
   HAIRLINE,
   ROW,
+  SOLAR_GAP,
   SOLAR_STATS_H,
   TYPE,
   uvInk,
@@ -29,6 +30,7 @@ export default function SolarSection({
     <section
       style={{
         height: ROW.solar,
+        paddingBottom: SOLAR_GAP,
         borderBottom: HAIRLINE,
         boxSizing: "border-box",
       }}

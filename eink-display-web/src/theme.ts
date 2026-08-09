@@ -33,7 +33,8 @@ export const ROW = {
 } as const;
 
 export const SOLAR_STATS_H = 170;
-export const CHART_H = ROW.solar - SOLAR_STATS_H;
+export const SOLAR_GAP = 32;
+export const CHART_H = ROW.solar - SOLAR_STATS_H - SOLAR_GAP;
 
 export const RULE = `4px solid ${INK}`;
 export const HAIRLINE = `3px solid ${INK}`;

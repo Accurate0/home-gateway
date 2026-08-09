@@ -1,6 +1,7 @@
 import { graphql, useFragment } from "react-relay";
 import type { ForecastCard_weather$key } from "./__generated__/ForecastCard_weather.graphql";
 import WeatherIcon from "./WeatherIcon";
+import { fromToday } from "../lib/time";
 import { HIGH_UV, INK, PAPER, RED, TYPE } from "../theme";
 
 const ForecastFragment = graphql`
@@ -21,14 +22,14 @@ const ForecastFragment = graphql`
 export default function ForecastCard({
   weatherRef,
   height,
-  count = 6,
+  count = 3,
 }: {
   weatherRef: ForecastCard_weather$key;
   height: number;
   count?: number;
 }) {
   const data = useFragment(ForecastFragment, weatherRef);
-  const days = (data?.forecast?.days ?? []).slice(0, count);
+  const days = fromToday(data?.forecast?.days ?? []).slice(1, 1 + count);
 
   const rowHeight = height / count;
   const iconSize = Math.min(80, rowHeight - 24);

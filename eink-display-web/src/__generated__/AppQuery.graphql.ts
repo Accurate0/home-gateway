@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<080df1f3305102e8b17636f20b08370a>>
+ * @generated SignedSource<<8fc88d36f536f3127aba5a43ecb8c6d3>>
  * @lightSyntaxTransform
  */
 
@@ -17,10 +17,6 @@ export type AppQuery$data = {
   readonly hallwayPanel: {
     readonly batteryPercentage: number | null | undefined;
     readonly name: string;
-  };
-  readonly indoor: {
-    readonly humidity: number | null | undefined;
-    readonly temperature: number | null | undefined;
   };
   readonly livingRoomPanel: {
     readonly batteryPercentage: number | null | undefined;
@@ -44,7 +40,7 @@ export type AppQuery$data = {
     readonly " $fragmentSpreads": FragmentRefs<"SolarChart_solar">;
   };
   readonly weather: {
-    readonly " $fragmentSpreads": FragmentRefs<"ForecastCard_weather">;
+    readonly " $fragmentSpreads": FragmentRefs<"ClimateBand_weather" | "ForecastCard_weather">;
   };
 };
 export type AppQuery = {
@@ -147,23 +143,7 @@ v4 = [
     "variableName": "since"
   }
 ],
-v5 = [
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "temperature",
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "humidity",
-    "storageKey": null
-  }
-],
-v6 = {
+v5 = {
   "alias": "outdoor",
   "args": [
     {
@@ -176,26 +156,25 @@ v6 = {
   "kind": "LinkedField",
   "name": "environment",
   "plural": false,
-  "selections": (v5/*:: as any*/),
-  "storageKey": "environment(id:\"env-outdoor\")"
-},
-v7 = {
-  "alias": "indoor",
-  "args": [
+  "selections": [
     {
-      "kind": "Literal",
-      "name": "id",
-      "value": "env-living-room"
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "temperature",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "humidity",
+      "storageKey": null
     }
   ],
-  "concreteType": "EnvironmentEntity",
-  "kind": "LinkedField",
-  "name": "environment",
-  "plural": false,
-  "selections": (v5/*:: as any*/),
-  "storageKey": "environment(id:\"env-living-room\")"
+  "storageKey": "environment(id:\"env-outdoor\")"
 },
-v8 = [
+v6 = [
   {
     "alias": null,
     "args": null,
@@ -211,7 +190,7 @@ v8 = [
     "storageKey": null
   }
 ],
-v9 = {
+v7 = {
   "alias": "hallwayPanel",
   "args": [
     {
@@ -224,10 +203,10 @@ v9 = {
   "kind": "LinkedField",
   "name": "einkDisplay",
   "plural": false,
-  "selections": (v8/*:: as any*/),
+  "selections": (v6/*:: as any*/),
   "storageKey": "einkDisplay(id:\"hallway-epd\")"
 },
-v10 = {
+v8 = {
   "alias": "livingRoomPanel",
   "args": [
     {
@@ -240,7 +219,7 @@ v10 = {
   "kind": "LinkedField",
   "name": "einkDisplay",
   "plural": false,
-  "selections": (v8/*:: as any*/),
+  "selections": (v6/*:: as any*/),
   "storageKey": "einkDisplay(id:\"living-room-epd\")"
 };
 return {
@@ -258,6 +237,11 @@ return {
         "name": "weather",
         "plural": false,
         "selections": [
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "ClimateBand_weather"
+          },
           {
             "args": null,
             "kind": "FragmentSpread",
@@ -283,10 +267,9 @@ return {
         ],
         "storageKey": null
       },
-      (v6/*:: as any*/),
+      (v5/*:: as any*/),
       (v7/*:: as any*/),
-      (v9/*:: as any*/),
-      (v10/*:: as any*/)
+      (v8/*:: as any*/)
     ],
     "type": "QueryRoot",
     "abstractKey": null
@@ -423,23 +406,22 @@ return {
         ],
         "storageKey": null
       },
-      (v6/*:: as any*/),
+      (v5/*:: as any*/),
       (v7/*:: as any*/),
-      (v9/*:: as any*/),
-      (v10/*:: as any*/)
+      (v8/*:: as any*/)
     ]
   },
   "params": {
-    "cacheID": "ce7fb9cf467702d9ca060788244a3fe6",
+    "cacheID": "9cbb31a79ea275bcc734d82ece00d100",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  indoor: environment(id: \"env-living-room\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "894d17a31554a353a39bca37b43db6b9";
+(node as any).hash = "edcd3565f79980d7aa865fa237e4a965";
 
 export default node;

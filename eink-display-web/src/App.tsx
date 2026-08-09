@@ -12,6 +12,7 @@ import { CONTENT_H, ROW } from "./theme";
 const AppQuery = graphql`
   query AppQuery($location: String!, $since: DateTime!) {
     weather(input: { location: $location }) {
+      ...ClimateBand_weather
       ...ForecastCard_weather
     }
     solar {
@@ -28,10 +29,6 @@ const AppQuery = graphql`
       ...SolarChart_solar @arguments(since: $since)
     }
     outdoor: environment(id: "env-outdoor") {
-      temperature
-      humidity
-    }
-    indoor: environment(id: "env-living-room") {
       temperature
       humidity
     }
@@ -65,7 +62,7 @@ export default function App() {
     <Frame>
       <Header updatedAt={formatUpdatedAt(new Date())} stale={false} />
 
-      <ClimateBand outdoor={data.outdoor} indoor={data.indoor} />
+      <ClimateBand outdoor={data.outdoor} weatherRef={data.weather} />
 
       {!weatherOnly && data.solar && (
         <SolarSection
@@ -81,7 +78,6 @@ export default function App() {
         <ForecastCard
           weatherRef={data.weather}
           height={weatherOnly ? WEATHER_FORECAST_H : ROW.forecast}
-          count={weatherOnly ? 7 : 6}
         />
       )}
 

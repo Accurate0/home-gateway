@@ -12,15 +12,24 @@ export function formatUpdatedAt(date: Date) {
   return updatedFormatter.format(date);
 }
 
+const dayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function perthDay(date: Date) {
+  return dayFormatter.format(date);
+}
+
 export function perthMidnightISO() {
-  const parts = new Intl.DateTimeFormat("en-AU", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
+  return new Date(`${perthDay(new Date())}T00:00:00+08:00`).toISOString();
+}
 
-  const part = (type: string) => parts.find((p) => p.type === type)?.value;
+export function fromToday<T extends { readonly dateTime: string }>(days: readonly T[]) {
+  const today = perthDay(new Date());
+  const start = days.findIndex((d) => perthDay(new Date(d.dateTime)) >= today);
 
-  return new Date(`${part("year")}-${part("month")}-${part("day")}T00:00:00+08:00`).toISOString();
+  return start === -1 ? [] : days.slice(start);
 }

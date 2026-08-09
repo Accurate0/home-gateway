@@ -99,7 +99,6 @@ export default function SolarChart({
           data={history}
           margin={{ top: 8, right: 8, left: 0, bottom: 24 }}
         >
-          <Recharts.CartesianGrid vertical={false} stroke={INK} strokeWidth={2} />
           <Recharts.XAxis
             dataKey="at"
             tick={{ ...TICK, fill: INK }}
