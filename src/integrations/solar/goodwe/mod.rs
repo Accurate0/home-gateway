@@ -117,7 +117,10 @@ impl GoodWeSemsAPI {
                 map.insert("powerStationId", &self.powerstation_id);
                 map
             })
-            .header("token", BASE64_STANDARD.encode(serde_json::to_string(&login)?))
+            .header(
+                "token",
+                BASE64_STANDARD.encode(serde_json::to_string(&login)?),
+            )
             .build()?;
 
         let response = self

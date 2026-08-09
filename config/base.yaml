@@ -14,6 +14,9 @@ location:
   latitude: -31.952429
   longitude: 115.842283
 
+sun:
+  catch_up_within: 2h
+
 watchdog:
   enabled: false
   timeout: 30m

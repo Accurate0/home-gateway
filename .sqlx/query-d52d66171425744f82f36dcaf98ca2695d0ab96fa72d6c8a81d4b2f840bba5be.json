@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT fired_at FROM sun_event_fired WHERE transition = $1 AND offset_seconds = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "fired_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d52d66171425744f82f36dcaf98ca2695d0ab96fa72d6c8a81d4b2f840bba5be"
+}

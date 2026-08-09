@@ -27,6 +27,7 @@ pub mod presence;
 pub mod roborock;
 pub mod s3;
 pub mod solar;
+pub mod sun;
 pub mod switch;
 pub mod template;
 pub mod trigger;
@@ -60,6 +61,7 @@ pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use s3::S3Settings;
 pub use solar::SolarSettings;
+pub use sun::SunSettings;
 pub use switch::{RawSmartSwitchBlock, SwitchRole};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
@@ -113,6 +115,7 @@ pub struct Settings {
     pub oauth: Option<OAuthSettings>,
     pub api_keys: Vec<ApiKeySettings>,
     pub location: LocationSettings,
+    pub sun: SunSettings,
     pub alarm: AlarmSettings,
     pub woolworths: WoolworthsSettings,
     pub trmnl: TrmnlSettings,
@@ -155,6 +158,7 @@ pub struct RawSettings {
     #[serde(default)]
     api_keys: Vec<ApiKeySettings>,
     location: LocationSettings,
+    sun: SunSettings,
     #[serde(default)]
     alarm: AlarmSettings,
     #[serde(default)]
@@ -195,6 +199,7 @@ impl RawSettings {
             oauth,
             api_keys,
             location,
+            sun,
             alarm,
             woolworths,
             trmnl,
@@ -268,6 +273,7 @@ impl RawSettings {
                 oauth,
                 api_keys,
                 location,
+                sun,
                 alarm,
                 woolworths,
                 trmnl,
@@ -879,6 +885,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
 api_keys:
   - name: bad-key
     scopes: ["graphql:bogus:read"]
@@ -905,6 +912,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
 eink_display:
   views:
     home: { query: "view=home" }
@@ -973,6 +981,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
 devices:
   - id: epd
     transport: eink_display_firmware
@@ -1024,6 +1033,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
 devices:
   - id: epd
     transport: eink_display_firmware

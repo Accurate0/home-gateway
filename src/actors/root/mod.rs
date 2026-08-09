@@ -230,9 +230,7 @@ impl RootSupervisor {
             return Ok(());
         };
 
-        let Some(goodwe) =
-            GoodWeSemsAPI::new(self.shared_actor_state.db.clone(), &settings)
-        else {
+        let Some(goodwe) = GoodWeSemsAPI::new(self.shared_actor_state.db.clone(), &settings) else {
             return Ok(());
         };
 

@@ -1,8 +1,7 @@
-use crate::integrations::solar::types::{
-    GenerationHistory, SolarCurrentResponse, SolarCurrentStatistics,
-    SolarCurrentStatisticsAverages,
-};
 use crate::integrations::solar::goodwe::types::PlantDetailsByPowerStationIdResponse;
+use crate::integrations::solar::types::{
+    GenerationHistory, SolarCurrentResponse, SolarCurrentStatistics, SolarCurrentStatisticsAverages,
+};
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use tracing::Instrument;
@@ -255,9 +254,6 @@ mod tests {
 
     #[sqlx::test]
     async fn current_reports_no_data_on_an_empty_table(db: Pool<Postgres>) {
-        assert!(matches!(
-            current(&db).await,
-            Err(SolarQueryError::NoData)
-        ));
+        assert!(matches!(current(&db).await, Err(SolarQueryError::NoData)));
     }
 }

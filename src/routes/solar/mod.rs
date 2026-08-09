@@ -1,7 +1,7 @@
+use crate::integrations::solar::queries::{self, SolarQueryError};
 use crate::integrations::solar::types::{
     SolarCurrentResponse, SolarHistoryResponse, SolarHistoryTwoDayResponse,
 };
-use crate::integrations::solar::queries::{self, SolarQueryError};
 use crate::state::ApiState;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Query, extract::State};

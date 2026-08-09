@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO sun_event_fired (transition, offset_seconds, fired_at) VALUES ($1, $2, $3) ON CONFLICT (transition, offset_seconds) DO UPDATE SET fired_at = EXCLUDED.fired_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "59a93f06d86cf12c7097cbf8c86648e70dea98ed96692f8a2a66690679403429"
+}

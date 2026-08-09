@@ -6,8 +6,12 @@
 //! [`EventBusMessage::Sun`](crate::event_bus::EventBusMessage::Sun) and re-arms,
 //! so dusk/dawn is just another event source with no special-casing in the
 //! workflow machinery. Mirrors the [`crate::actors::system::cron::CronActor`] model.
+//!
+//! Every firing is recorded in `sun_event_fired`, so on startup a transition that
+//! came due while the process was down is replayed once — provided it passed less
+//! than `sun.catch_up_within` ago.
 
-use chrono::{TimeDelta, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use ractor::Actor;
 use uuid::Uuid;
 
@@ -45,6 +49,80 @@ impl SunActor {
         );
         myself.send_after(delay, move || SunActorMessage::Fire { transition, offset });
     }
+
+    async fn publish(
+        &self,
+        transition: SunTransition,
+        offset: TimeDelta,
+        at: DateTime<Utc>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Sun {
+                event_id: Uuid::new_v4(),
+                transition,
+                offset,
+            });
+
+        sqlx::query!(
+            "INSERT INTO sun_event_fired (transition, offset_seconds, fired_at) VALUES ($1, $2, $3) \
+             ON CONFLICT (transition, offset_seconds) DO UPDATE SET fired_at = EXCLUDED.fired_at",
+            transition.as_str(),
+            offset.num_seconds(),
+            at
+        )
+        .execute(&self.shared_actor_state.db)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn last_fired(
+        &self,
+        transition: SunTransition,
+        offset: TimeDelta,
+    ) -> Result<Option<DateTime<Utc>>, ractor::ActorProcessingErr> {
+        let row = sqlx::query!(
+            "SELECT fired_at FROM sun_event_fired WHERE transition = $1 AND offset_seconds = $2",
+            transition.as_str(),
+            offset.num_seconds()
+        )
+        .fetch_optional(&self.shared_actor_state.db)
+        .await?;
+
+        Ok(row.map(|row| row.fired_at))
+    }
+
+    async fn catch_up(
+        &self,
+        transition: SunTransition,
+        offset: TimeDelta,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let now = Utc::now();
+        let previous = calc::previous_transition_at(
+            self.shared_actor_state.settings.location,
+            now,
+            transition,
+            offset,
+        );
+        let last_fired = self.last_fired(transition, offset).await?;
+        let grace = self.shared_actor_state.settings.sun.catch_up_within;
+
+        if calc::should_catch_up(previous, last_fired, now, grace) {
+            tracing::info!(
+                "catching up missed sun {transition:?} (offset {}) from {previous}",
+                crate::timedelta_format::humanize(offset)
+            );
+            self.publish(transition, offset, now).await?;
+        } else {
+            tracing::info!(
+                "no catch-up for sun {transition:?} (offset {}): previous {previous}, last fired {last_fired:?}",
+                crate::timedelta_format::humanize(offset)
+            );
+        }
+
+        Ok(())
+    }
 }
 
 impl Actor for SunActor {
@@ -66,6 +144,7 @@ impl Actor for SunActor {
                 let pair = (*transition, *offset);
                 if !scheduled.contains(&pair) {
                     scheduled.push(pair);
+                    self.catch_up(*transition, *offset).await?;
                     self.schedule(&myself, *transition, *offset);
                 }
             }
@@ -82,13 +161,7 @@ impl Actor for SunActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             SunActorMessage::Fire { transition, offset } => {
-                self.shared_actor_state
-                    .event_bus
-                    .publish(EventBusMessage::Sun {
-                        event_id: Uuid::new_v4(),
-                        transition,
-                        offset,
-                    });
+                self.publish(transition, offset, Utc::now()).await?;
                 self.schedule(&myself, transition, offset);
             }
         }

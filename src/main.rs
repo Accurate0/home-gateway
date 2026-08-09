@@ -35,11 +35,7 @@ use home_gateway::{
 };
 use home_gateway::{
     graphql::subscription::SubscriptionRoot,
-    routes::{
-        epd,
-        ingest::unifi::unifi,
-        workflow::execute::workflow_execute,
-    },
+    routes::{epd, ingest::unifi::unifi, workflow::execute::workflow_execute},
 };
 use mqtt::{Mqtt, MqttClient};
 use ractor::{Actor, ActorRef, factory::FactoryMessage};

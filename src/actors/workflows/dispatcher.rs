@@ -235,17 +235,16 @@ impl WorkflowDispatcher {
                         .as_ref()
                         .is_none_or(|app| a.as_ref().is_some_and(|actual| actual == app))
             }
-            (
-                TriggerMatcher::Solar { metric, cmp },
-                EventBusMessage::Solar { current_wh, .. },
-            ) => solar_fires(
-                &workflow.name,
-                *metric,
-                cmp,
-                *current_wh,
-                averages,
-                &mut state.last_solar_satisfied,
-            ),
+            (TriggerMatcher::Solar { metric, cmp }, EventBusMessage::Solar { current_wh, .. }) => {
+                solar_fires(
+                    &workflow.name,
+                    *metric,
+                    cmp,
+                    *current_wh,
+                    averages,
+                    &mut state.last_solar_satisfied,
+                )
+            }
             _ => false,
         }
     }
@@ -277,10 +276,7 @@ impl WorkflowDispatcher {
         match queries::statistics(&self.shared_actor_state.db).await {
             Ok(statistics) => Some(statistics.averages),
             Err(e) => {
-                tracing::error!(
-                    "[{}] error reading solar averages: {e}",
-                    msg.event_id()
-                );
+                tracing::error!("[{}] error reading solar averages: {e}", msg.event_id());
                 None
             }
         }
