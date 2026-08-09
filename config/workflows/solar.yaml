@@ -1,0 +1,9 @@
+- name: Solar Surplus
+  slug: solar-surplus
+  group: Energy
+  on: { type: solar, metric: avg_15m, op: gt, value: 3000 }
+  cooldown: 3h
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Solar averaging ${avg_15m}W over the last 15 minutes (now ${current}W)"

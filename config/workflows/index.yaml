@@ -6,3 +6,4 @@
 - !include living-room-lamp.yaml
 - !include alarm.yaml
 - !include woolworths.yaml
+- !include solar.yaml

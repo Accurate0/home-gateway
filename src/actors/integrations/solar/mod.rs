@@ -1,10 +1,12 @@
 use crate::{
+    event_bus::EventBusMessage,
     integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
     state::SharedActorState,
 };
 use ractor::Actor;
 use std::time::Duration;
 use tracing::Level;
+use uuid::Uuid;
 
 pub enum SolarMessage {
     Poll,
@@ -60,6 +62,13 @@ impl SolarActor {
         )
         .execute(&self.shared_actor_state.db)
         .await?;
+
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::Solar {
+                event_id: Uuid::new_v4(),
+                current_wh: current_kwh,
+            });
 
         Ok(())
     }

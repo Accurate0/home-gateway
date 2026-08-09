@@ -1484,6 +1484,32 @@
           "required": [
             "type"
           ]
+        },
+        {
+          "description": "Fires on a solar generation reading, driven by the\n[`crate::actors::integrations::solar`] producer's poll. `metric` picks the\nlive reading (`current`) or a rolling average (`avg_15m`, `avg_1h`,\n`avg_3h`); the flattened comparison is the threshold, in watts. As with\n[`TriggerMatcher::Environment`], the dispatcher fires on the rising edge.",
+          "type": "object",
+          "properties": {
+            "metric": {
+              "$ref": "#/$defs/SolarMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "solar"
+            }
+          },
+          "required": [
+            "type",
+            "metric",
+            "op",
+            "value"
+          ]
         }
       ]
     },
@@ -1530,6 +1556,15 @@
         "stopped",
         "paused",
         "resumed"
+      ]
+    },
+    "SolarMetric": {
+      "type": "string",
+      "enum": [
+        "current",
+        "avg_15m",
+        "avg_1h",
+        "avg_3h"
       ]
     },
     "Condition": {

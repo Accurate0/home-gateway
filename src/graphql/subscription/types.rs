@@ -118,6 +118,12 @@ pub struct WoolworthsUpdate {
 }
 
 #[derive(SimpleObject)]
+pub struct SolarUpdate {
+    pub event_id: Uuid,
+    pub current_wh: f64,
+}
+
+#[derive(SimpleObject)]
 #[graphql(complex)]
 pub struct DeviceBatteryUpdate {
     pub event_id: Uuid,
@@ -214,6 +220,7 @@ pub enum EventUpdate {
     DeviceBattery(DeviceBatteryUpdate),
     Jellyfin(JellyfinUpdate),
     MediaPlayer(MediaPlayerUpdate),
+    Solar(SolarUpdate),
 }
 
 impl EventUpdate {
@@ -378,6 +385,13 @@ impl EventUpdate {
                 name,
                 old_price,
                 new_price,
+            }),
+            EventBusMessage::Solar {
+                event_id,
+                current_wh,
+            } => EventUpdate::Solar(SolarUpdate {
+                event_id,
+                current_wh,
             }),
             EventBusMessage::DeviceBattery {
                 event_id,

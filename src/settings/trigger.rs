@@ -5,7 +5,7 @@ use super::workflow::Comparison;
 use super::{DeviceAliases, IEEEAddress, validate_device};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
-use crate::event_bus::{PlaybackState, SensorMetric};
+use crate::event_bus::{PlaybackState, SensorMetric, SolarMetric};
 use crate::mode::Mode;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
@@ -115,6 +115,16 @@ pub enum TriggerMatcher {
         #[serde(default)]
         app: Option<String>,
     },
+    /// Fires on a solar generation reading, driven by the
+    /// [`crate::actors::integrations::solar`] producer's poll. `metric` picks the
+    /// live reading (`current`) or a rolling average (`avg_15m`, `avg_1h`,
+    /// `avg_3h`); the flattened comparison is the threshold, in watts. As with
+    /// [`TriggerMatcher::Environment`], the dispatcher fires on the rising edge.
+    Solar {
+        metric: SolarMetric,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
 }
 
 impl TriggerMatcher {
@@ -203,6 +213,9 @@ impl TriggerMatcher {
                     None => format!("media_player({subject})"),
                 }
             }
+            TriggerMatcher::Solar { metric, cmp } => {
+                format!("solar.{} {:?} {}", metric.var_name(), cmp.op, cmp.value)
+            }
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -279,6 +292,7 @@ impl TriggerMatcher {
                 "volume",
                 "muted",
             ]),
+            TriggerMatcher::Solar { .. } => strs(&["current", "avg_15m", "avg_1h", "avg_3h"]),
         }
     }
 
@@ -298,7 +312,8 @@ impl TriggerMatcher {
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::Jellyfin { .. }
-            | TriggerMatcher::MediaPlayer { .. } => {}
+            | TriggerMatcher::MediaPlayer { .. }
+            | TriggerMatcher::Solar { .. } => {}
         }
         Ok(())
     }

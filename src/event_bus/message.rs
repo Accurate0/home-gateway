@@ -146,6 +146,13 @@ pub enum EventBusMessage {
         muted: Option<bool>,
         artwork_url: Option<String>,
     },
+    /// A solar generation reading, published by the
+    /// [`crate::actors::integrations::solar`] producer after each poll. Only the
+    /// live reading travels on the bus; the rolling averages are read from the DB
+    /// on demand by the dispatcher, and only when a solar trigger asks for one.
+    /// Threshold + rising-edge handling lives in the dispatcher, as it does for
+    /// [`EventBusMessage::Environment`].
+    Solar { event_id: Uuid, current_wh: f64 },
 }
 
 impl EventBusMessage {
@@ -166,7 +173,8 @@ impl EventBusMessage {
             | EventBusMessage::Woolworths { event_id, .. }
             | EventBusMessage::DeviceBattery { event_id, .. }
             | EventBusMessage::Jellyfin { event_id, .. }
-            | EventBusMessage::MediaPlayer { event_id, .. } => *event_id,
+            | EventBusMessage::MediaPlayer { event_id, .. }
+            | EventBusMessage::Solar { event_id, .. } => *event_id,
         }
     }
 
@@ -187,6 +195,7 @@ impl EventBusMessage {
             EventBusMessage::DeviceBattery { .. } => "device_battery",
             EventBusMessage::Jellyfin { .. } => "jellyfin",
             EventBusMessage::MediaPlayer { .. } => "media_player",
+            EventBusMessage::Solar { .. } => "solar",
         }
     }
 
@@ -205,6 +214,7 @@ impl EventBusMessage {
         "device_battery",
         "jellyfin",
         "media_player",
+        "solar",
     ];
 
     pub fn entity(&self) -> String {
@@ -226,6 +236,7 @@ impl EventBusMessage {
             EventBusMessage::DeviceBattery { device_id, .. } => device_id.clone(),
             EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
+            EventBusMessage::Solar { .. } => "solar".to_string(),
         }
     }
 
@@ -413,6 +424,9 @@ impl EventBusMessage {
                         muted.map_or_else(String::new, |m| m.to_string()),
                     ),
                 ])
+            }
+            EventBusMessage::Solar { current_wh, .. } => {
+                HashMap::from([("current".to_owned(), format!("{current_wh:.0}"))])
             }
         }
     }

@@ -73,6 +73,7 @@ fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
             "volume",
             "muted",
         ],
+        "solar" => vec!["current", "avg_15m", "avg_1h", "avg_3h"],
         _ => return None,
     })
 }

@@ -19,7 +19,8 @@ use tracing::Instrument;
 
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage, conditions},
-    event_bus::{EventBusMessage, SensorMetric},
+    event_bus::{EventBusMessage, SensorMetric, SolarMetric},
+    integrations::solar::{queries, types::SolarCurrentStatisticsAverages},
     settings::{TriggerMatcher, Workflow},
     state::SharedActorState,
 };
@@ -34,10 +35,44 @@ pub struct WorkflowDispatcherState {
     /// Lets environment triggers fire on the rising edge only, matching the old
     /// plant-sensor semantics.
     last_satisfied: HashMap<(String, String, SensorMetric), bool>,
+    /// `(trigger name, metric) -> comparison satisfied at last poll`, the solar
+    /// counterpart to `last_satisfied` (there is only one plant, so no subject).
+    last_solar_satisfied: HashMap<(String, SolarMetric), bool>,
     pending_delays: HashMap<(EventSubject, String), tokio::task::JoinHandle<()>>,
 }
 
 type EventSubject = (String, String);
+
+/// Whether a solar trigger fires for this reading: pick the metric's value
+/// (`None` when its average window is still empty, which never fires and leaves
+/// the edge state untouched), compare it, and gate on the rising edge so a value
+/// sitting past the threshold only fires once.
+fn solar_fires(
+    name: &str,
+    metric: SolarMetric,
+    cmp: &crate::settings::workflow::Comparison,
+    current_wh: f64,
+    averages: Option<&SolarCurrentStatisticsAverages>,
+    last_satisfied: &mut HashMap<(String, SolarMetric), bool>,
+) -> bool {
+    let value = match metric {
+        SolarMetric::Current => Some(current_wh),
+        SolarMetric::Avg15m => averages.and_then(|a| a.last_15_mins),
+        SolarMetric::Avg1h => averages.and_then(|a| a.last_1_hour),
+        SolarMetric::Avg3h => averages.and_then(|a| a.last_3_hours),
+    };
+
+    let Some(value) = value else {
+        return false;
+    };
+
+    let satisfied = cmp.matches(value);
+    let was_satisfied = last_satisfied
+        .insert((name.to_owned(), metric), satisfied)
+        .unwrap_or(false);
+
+    satisfied && !was_satisfied
+}
 
 impl WorkflowDispatcher {
     pub const NAME: &str = "workflow-dispatcher";
@@ -50,6 +85,7 @@ impl WorkflowDispatcher {
         &self,
         workflow: &Workflow,
         msg: &EventBusMessage,
+        averages: Option<&SolarCurrentStatisticsAverages>,
         state: &mut WorkflowDispatcherState,
     ) -> bool {
         let Some(on) = workflow.on() else {
@@ -199,7 +235,54 @@ impl WorkflowDispatcher {
                         .as_ref()
                         .is_none_or(|app| a.as_ref().is_some_and(|actual| actual == app))
             }
+            (
+                TriggerMatcher::Solar { metric, cmp },
+                EventBusMessage::Solar { current_wh, .. },
+            ) => solar_fires(
+                &workflow.name,
+                *metric,
+                cmp,
+                *current_wh,
+                averages,
+                &mut state.last_solar_satisfied,
+            ),
             _ => false,
+        }
+    }
+
+    /// Rolling solar averages, read from the DB only when a solar event arrives
+    /// and some configured trigger actually asks for an average — a `current`-only
+    /// setup never pays for the query. A failure is logged and treated as "no
+    /// averages", so an average trigger simply doesn't match this poll.
+    async fn solar_averages(
+        &self,
+        msg: &EventBusMessage,
+        settings: &crate::settings::Settings,
+    ) -> Option<SolarCurrentStatisticsAverages> {
+        if !matches!(msg, EventBusMessage::Solar { .. }) {
+            return None;
+        }
+
+        let wanted = settings.workflows.values().any(|workflow| {
+            matches!(
+                workflow.on(),
+                Some(TriggerMatcher::Solar { metric, .. }) if *metric != SolarMetric::Current
+            )
+        });
+
+        if !wanted {
+            return None;
+        }
+
+        match queries::statistics(&self.shared_actor_state.db).await {
+            Ok(statistics) => Some(statistics.averages),
+            Err(e) => {
+                tracing::error!(
+                    "[{}] error reading solar averages: {e}",
+                    msg.event_id()
+                );
+                None
+            }
         }
     }
 
@@ -211,7 +294,15 @@ impl WorkflowDispatcher {
         let event_id = msg.event_id();
         crate::metrics::record_event(msg.kind());
         let settings = self.shared_actor_state.settings.clone();
-        let vars = msg.vars();
+        let mut vars = msg.vars();
+
+        let averages = self.solar_averages(&msg, &settings).await;
+        if let Some(averages) = &averages {
+            let watts = |w: Option<f64>| w.map_or_else(String::new, |w| format!("{w:.0}"));
+            vars.insert("avg_15m".to_owned(), watts(averages.last_15_mins));
+            vars.insert("avg_1h".to_owned(), watts(averages.last_1_hour));
+            vars.insert("avg_3h".to_owned(), watts(averages.last_3_hours));
+        }
 
         let subject: EventSubject = (msg.kind().to_string(), msg.entity());
         state.pending_delays.retain(|(s, name), handle| {
@@ -225,7 +316,7 @@ impl WorkflowDispatcher {
         });
 
         for workflow in settings.workflows.values() {
-            if !self.matches(workflow, &msg, state) {
+            if !self.matches(workflow, &msg, averages.as_ref(), state) {
                 continue;
             }
             if !self
@@ -480,5 +571,89 @@ impl Actor for WorkflowDispatcher {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::workflow::{CompareOp, Comparison};
+
+    fn averages(last_15_mins: Option<f64>) -> SolarCurrentStatisticsAverages {
+        SolarCurrentStatisticsAverages {
+            last_15_mins,
+            last_1_hour: None,
+            last_3_hours: None,
+        }
+    }
+
+    #[test]
+    fn a_sustained_average_fires_once_and_rearms_after_dropping_back() {
+        let cmp = Comparison {
+            op: CompareOp::Gt,
+            value: 3000.0,
+        };
+        let mut last = HashMap::new();
+
+        let fires = |avg: f64, last: &mut HashMap<_, _>| {
+            solar_fires(
+                "solar surplus",
+                SolarMetric::Avg15m,
+                &cmp,
+                0.0,
+                Some(&averages(Some(avg))),
+                last,
+            )
+        };
+
+        assert!(fires(3500.0, &mut last), "expected the crossing to fire");
+        assert!(!fires(4000.0, &mut last), "expected no re-fire while past");
+        assert!(!fires(2000.0, &mut last), "expected no fire on the drop");
+        assert!(fires(3500.0, &mut last), "expected a re-arm and re-fire");
+    }
+
+    #[test]
+    fn an_empty_average_window_never_fires() {
+        let cmp = Comparison {
+            op: CompareOp::Lt,
+            value: 500.0,
+        };
+        let mut last = HashMap::new();
+
+        assert!(!solar_fires(
+            "low solar",
+            SolarMetric::Avg1h,
+            &cmp,
+            0.0,
+            Some(&averages(None)),
+            &mut last,
+        ));
+        assert!(!solar_fires(
+            "low solar",
+            SolarMetric::Avg1h,
+            &cmp,
+            0.0,
+            None,
+            &mut last,
+        ));
+        assert!(last.is_empty(), "edge state should be untouched");
+    }
+
+    #[test]
+    fn the_current_metric_reads_the_event_not_the_averages() {
+        let cmp = Comparison {
+            op: CompareOp::Gt,
+            value: 1000.0,
+        };
+        let mut last = HashMap::new();
+
+        assert!(solar_fires(
+            "solar on",
+            SolarMetric::Current,
+            &cmp,
+            1500.0,
+            None,
+            &mut last,
+        ));
     }
 }

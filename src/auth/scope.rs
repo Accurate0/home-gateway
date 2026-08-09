@@ -171,6 +171,7 @@ impl Resource {
             "device_battery" => Self::Battery,
             "jellyfin" => Self::Jellyfin,
             "media_player" => Self::MediaPlayer,
+            "solar" => Self::Solar,
             _ => return None,
         })
     }
