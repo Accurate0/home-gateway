@@ -1,11 +1,15 @@
 use crate::{
     actors::{
         eink_display::EInkDisplayActor,
-        integrations::{solar::SolarIngestActor, trmnl::TrmnlActor, woolworths::WoolworthsActor},
+        integrations::{solar::SolarActor, trmnl::TrmnlActor, woolworths::WoolworthsActor},
         sun::SunActor,
         system::{battery::BatteryActor, watchdog::WatchdogActor},
     },
-    integrations::{trmnl::Trmnl, woolworths::Woolworths},
+    integrations::{
+        solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
+        trmnl::Trmnl,
+        woolworths::Woolworths,
+    },
     state::SharedActorState,
 };
 use ractor::Actor;
@@ -221,11 +225,24 @@ impl RootSupervisor {
         &self,
         myself: &ractor::ActorRef<()>,
     ) -> Result<(), ractor::ActorProcessingErr> {
+        let Some(settings) = self.shared_actor_state.settings.solar.clone() else {
+            tracing::info!("no solar config; skipping solar actor");
+            return Ok(());
+        };
+
+        let Some(goodwe) =
+            GoodWeSemsAPI::new(self.shared_actor_state.db.clone(), &settings)
+        else {
+            return Ok(());
+        };
+
         myself
             .spawn_linked(
-                Some(SolarIngestActor::NAME.to_owned()),
-                SolarIngestActor {
+                Some(SolarActor::NAME.to_owned()),
+                SolarActor {
                     shared_actor_state: self.shared_actor_state.clone(),
+                    goodwe,
+                    weather: WeatherAPI::new()?,
                 },
                 (),
             )
@@ -431,8 +448,8 @@ impl Actor for RootSupervisor {
                         self.start_jellyfin_actor(&myself).await?;
                     }
 
-                    SolarIngestActor::NAME => {
-                        tracing::info!("restarting solar ingest actor");
+                    SolarActor::NAME => {
+                        tracing::info!("restarting solar actor");
                         self.start_solar_actor(&myself).await?;
                     }
 

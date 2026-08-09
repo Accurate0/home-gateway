@@ -10,7 +10,7 @@ use crate::actors::{
     },
     eink_display::EInkDisplayActor,
     integrations::{
-        solar::SolarIngestActor, synergy::SynergyActor, unifi::UnifiConnectedClientHandler,
+        solar::SolarActor, synergy::SynergyActor, unifi::UnifiConnectedClientHandler,
         woolworths::WoolworthsActor,
     },
     system::{cron::CronActor, push},
@@ -29,7 +29,7 @@ const EXPECTED_ACTORS: &[&str] = &[
     WoolworthsActor::NAME,
     AlarmActor::NAME,
     EInkDisplayActor::NAME,
-    SolarIngestActor::NAME,
+    SolarActor::NAME,
     DoorEventsSupervisor::NAME,
     WorkflowWorker::NAME,
     push::PushWorker::NAME,

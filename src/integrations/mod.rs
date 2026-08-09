@@ -6,6 +6,7 @@ pub mod mqtt;
 pub mod notify;
 pub mod reddit;
 pub mod s3;
+pub mod solar;
 pub mod trmnl;
 pub mod woolworths;
 pub mod zigbee2mqtt;

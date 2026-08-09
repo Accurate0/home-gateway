@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO solar_cached_token (login_data) VALUES ($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b6c24e95883ab183c1031f591dae46b4e3c365b6d49658d0bccd4c6ee0cbbcd4"
+}

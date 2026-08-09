@@ -1,7 +1,11 @@
 packages:
   - web
+  - solar-web
   - eink-display-web
   - packages/*
+
+allowBuilds:
+  '@swc/core': set this to true or false
 
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:

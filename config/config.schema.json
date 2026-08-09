@@ -118,6 +118,16 @@
         }
       ]
     },
+    "solar": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SolarSettings"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
     }
@@ -2425,6 +2435,38 @@
       "required": [
         "url",
         "poll_interval"
+      ]
+    },
+    "SolarSettings": {
+      "type": "object",
+      "properties": {
+        "refresh": {
+          "type": "string"
+        },
+        "goodwe_username": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "goodwe_password": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "goodwe_powerstation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "refresh"
       ]
     },
     "RawEinkGlobal": {

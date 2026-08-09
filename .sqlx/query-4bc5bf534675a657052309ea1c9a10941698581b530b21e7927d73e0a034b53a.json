@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT avg(current_kwh) AS avg_wh, avg(uv_level) AS avg_uv_level, avg(temperature) AS avg_temp, time_bucket('5 minutes', time) AS bucket_time FROM solar_data_tsdb WHERE (time AT TIME ZONE 'Australia/Perth')::date > ((now() AT TIME ZONE 'Australia/Perth')::date - 2) GROUP BY bucket_time ORDER BY bucket_time ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg_wh",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "avg_uv_level",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "avg_temp",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "bucket_time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4bc5bf534675a657052309ea1c9a10941698581b530b21e7927d73e0a034b53a"
+}

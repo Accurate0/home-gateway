@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT avg(current_kwh) AS avg FROM solar_data_tsdb WHERE time > now() - MAKE_INTERVAL(mins => $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a3a5dbdb0a08542f0a6dd8c08f1907675fd9e35c7524f791fbce83036f568423"
+}
