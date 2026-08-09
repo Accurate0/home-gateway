@@ -6,4 +6,5 @@ pub mod ingest;
 pub mod metrics;
 pub mod push;
 pub mod schema;
+pub mod solar;
 pub mod workflow;

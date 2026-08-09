@@ -26,6 +26,7 @@ pub mod plant;
 pub mod presence;
 pub mod roborock;
 pub mod s3;
+pub mod solar;
 pub mod switch;
 pub mod template;
 pub mod trigger;
@@ -58,6 +59,7 @@ pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use s3::S3Settings;
+pub use solar::SolarSettings;
 pub use switch::{RawSmartSwitchBlock, SwitchRole};
 pub use template::TemplateString;
 pub use trigger::TriggerMatcher;
@@ -117,6 +119,7 @@ pub struct Settings {
     pub trmnl_api_key: Option<String>,
     pub home_assistant: HomeAssistantSettings,
     pub jellyfin: Option<JellyfinSettings>,
+    pub solar: Option<SolarSettings>,
     pub eink_display: EinkGlobalSettings,
 }
 
@@ -165,6 +168,8 @@ pub struct RawSettings {
     #[serde(default)]
     jellyfin: Option<JellyfinSettings>,
     #[serde(default)]
+    solar: Option<SolarSettings>,
+    #[serde(default)]
     eink_display: eink::RawEinkGlobal,
 }
 
@@ -196,6 +201,7 @@ impl RawSettings {
             trmnl_api_key,
             home_assistant,
             jellyfin,
+            solar,
             eink_display,
         } = self;
 
@@ -268,6 +274,7 @@ impl RawSettings {
                 trmnl_api_key,
                 home_assistant,
                 jellyfin,
+                solar,
                 eink_display: eink_display.resolve(),
             },
             registry,

@@ -355,8 +355,6 @@ pub mod required {
 
     pub const INGEST_SYNERGY_WRITE: Scope =
         Scope::new(Domain::Ingest, Resource::Synergy, Action::Write);
-    pub const INGEST_SOLAR_WRITE: Scope =
-        Scope::new(Domain::Ingest, Resource::Solar, Action::Write);
     pub const INGEST_HOME_WRITE: Scope = Scope::new(Domain::Ingest, Resource::Home, Action::Write);
     pub const INGEST_UNIFI_WRITE: Scope =
         Scope::new(Domain::Ingest, Resource::Unifi, Action::Write);

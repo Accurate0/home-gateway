@@ -56,6 +56,9 @@ jellyfin:
   url: http://jellyfin.media.internal
   poll_interval: 30s
 
+solar:
+  refresh: 1m
+
 eink_display:
   views:
     home:

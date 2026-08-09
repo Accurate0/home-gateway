@@ -37,7 +37,7 @@ use home_gateway::{
     graphql::subscription::SubscriptionRoot,
     routes::{
         epd,
-        ingest::{solar::solar, unifi::unifi},
+        ingest::unifi::unifi,
         workflow::execute::workflow_execute,
     },
 };
@@ -315,7 +315,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/control/light", post(light_control))
         .route("/workflow/execute", post(workflow_execute))
         .route("/ingest/synergy", post(synergy))
-        .route("/ingest/solar", post(solar))
         .route("/epd/config", post(epd::config))
         .route("/epd/image/{hash}", get(epd::image))
         .route("/epd/firmware", get(epd::firmware))
@@ -329,6 +328,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/admin/keys/{id}/regenerate", post(regenerate_key))
         .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
+        .route("/solar/current", get(routes::solar::current))
+        .route("/solar/history", get(routes::solar::history))
+        .route("/solar/history/range", get(routes::solar::history_since))
+        .route("/solar/health", get(routes::solar::health))
         .route("/graphql/ws", get(graphql_ws_handler))
         .route("/health", get(health))
         .route("/health/actors", get(actor_health))
