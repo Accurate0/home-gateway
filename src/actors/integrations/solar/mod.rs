@@ -5,7 +5,6 @@ use crate::{
 };
 use ractor::Actor;
 use std::time::Duration;
-use tracing::Level;
 use uuid::Uuid;
 
 pub enum SolarMessage {
@@ -97,7 +96,7 @@ impl Actor for SolarActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "solar", skip(self, _myself, message, _state), level = Level::TRACE)]
+    #[tracing::instrument(name = "solar-actor", skip(self, _myself, message, _state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
