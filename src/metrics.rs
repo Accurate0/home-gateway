@@ -28,6 +28,8 @@ struct Instruments {
     /// Latest reported device battery voltage, labelled by device id and kind.
     device_battery_voltage: Gauge<f64>,
     device_battery_percent: Gauge<f64>,
+    /// Signed seconds between a display's intended wake and its actual poll.
+    eink_wake_drift: Histogram<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -65,8 +67,18 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .f64_gauge("home_gateway_device_battery_percent")
             .with_description("Latest reported device battery percentage")
             .build(),
+        eink_wake_drift: meter
+            .f64_histogram("home_gateway_eink_wake_drift_seconds")
+            .with_description("Seconds between an eink display's intended wake and its actual poll")
+            .build(),
     }
 });
+
+pub fn record_eink_wake_drift(device_id: String, drift_secs: f64) {
+    INSTRUMENTS
+        .eink_wake_drift
+        .record(drift_secs, &[KeyValue::new("device_id", device_id)]);
+}
 
 pub fn record_device_battery_percent(device_id: String, kind: String, percent: f64) {
     INSTRUMENTS.device_battery_percent.record(

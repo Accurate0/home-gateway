@@ -177,7 +177,8 @@ async fn main() -> anyhow::Result<()> {
         home_gateway::integrations::reddit::Reddit::new(),
     );
 
-    let home_assistant = home_assistant::HomeAssistant::from_env();
+    let home_assistant =
+        home_assistant::HomeAssistant::from_settings(&settings_container.home_assistant);
     let graphql_home_assistant = home_assistant.clone();
 
     let jellyfin = settings_container

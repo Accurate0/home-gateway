@@ -89,6 +89,9 @@
     "location": {
       "$ref": "#/$defs/LocationSettings"
     },
+    "sun": {
+      "$ref": "#/$defs/SunSettings"
+    },
     "alarm": {
       "$ref": "#/$defs/AlarmSettings"
     },
@@ -128,6 +131,9 @@
         }
       ]
     },
+    "bom": {
+      "$ref": "#/$defs/BomSettings"
+    },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
     }
@@ -143,7 +149,9 @@
     "zigbee_models",
     "s3",
     "watchdog",
-    "location"
+    "location",
+    "sun",
+    "bom"
   ],
   "$defs": {
     "NotifySource": {
@@ -668,11 +676,10 @@
           ]
         },
         "refresh": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "$ref": "#/$defs/CronSchedule"
+        },
+        "grace": {
+          "type": "string"
         },
         "sleep": {
           "anyOf": [
@@ -692,6 +699,8 @@
         "name",
         "firmware_version",
         "mode",
+        "refresh",
+        "grace",
         "partial"
       ]
     },
@@ -789,6 +798,10 @@
         "landscape"
       ]
     },
+    "CronSchedule": {
+      "description": "Deserialized straight from a cron string by croner's `serde` feature, so the\nconfig accepts the full readable syntax: day/month aliases (`THU`, `JAN`),\nnicknames (`@weekly`, `@daily`), ranges (`MON-FRI`) and steps (`*/15`).",
+      "type": "string"
+    },
     "RawSleepWindow": {
       "type": "object",
       "properties": {
@@ -797,15 +810,11 @@
         },
         "end": {
           "type": "string"
-        },
-        "grace": {
-          "type": "string"
         }
       },
       "required": [
         "start",
-        "end",
-        "grace"
+        "end"
       ]
     },
     "RawPartialRefresh": {
@@ -1526,10 +1535,6 @@
         "lte",
         "eq"
       ]
-    },
-    "CronSchedule": {
-      "description": "Deserialized straight from a cron string by croner's `serde` feature, so the\nconfig accepts the full readable syntax: day/month aliases (`THU`, `JAN`),\nnicknames (`@weekly`, `@daily`), ranges (`MON-FRI`) and steps (`*/15`).",
-      "type": "string"
     },
     "SunTransition": {
       "type": "string",
@@ -2377,6 +2382,17 @@
         "longitude"
       ]
     },
+    "SunSettings": {
+      "type": "object",
+      "properties": {
+        "catch_up_within": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "catch_up_within"
+      ]
+    },
     "AlarmSettings": {
       "type": "object",
       "properties": {
@@ -2419,6 +2435,20 @@
     "HomeAssistantSettings": {
       "type": "object",
       "properties": {
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "token": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
         "entities": {
           "type": "array",
           "items": {
@@ -2502,6 +2532,17 @@
       },
       "required": [
         "refresh"
+      ]
+    },
+    "BomSettings": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
       ]
     },
     "RawEinkGlobal": {

@@ -4,7 +4,8 @@ use chrono::{NaiveTime, TimeDelta};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::timedelta_format::{humanize, option_time_delta_from_str, time_delta_from_str};
+use crate::actors::system::cron::schedule::CronSchedule;
+use crate::timedelta_format::{humanize, time_delta_from_str};
 
 pub const DEFAULT_ALBUM_PREFIX: &str = "eink-display/album/";
 
@@ -380,13 +381,10 @@ pub struct PartialRefresh {
 pub struct RawSleepWindow {
     start: String,
     end: String,
-    #[serde(with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    grace: TimeDelta,
 }
 
 impl RawSleepWindow {
-    fn resolve(self, id: &str) -> Result<SleepWindow, String> {
+    fn resolve(self, id: &str, grace: TimeDelta) -> Result<SleepWindow, String> {
         let parse = |value: &str| {
             NaiveTime::parse_from_str(value, "%H:%M:%S")
                 .or_else(|_| NaiveTime::parse_from_str(value, "%H:%M"))
@@ -397,13 +395,12 @@ impl RawSleepWindow {
         let window = SleepWindow {
             start: parse(&self.start)?,
             end: parse(&self.end)?,
-            grace: self.grace,
         };
 
-        if self.grace >= window.duration() {
+        if grace >= window.duration() {
             return Err(format!(
-                "eink display {id}: sleep grace `{}` is not shorter than the {}-long window",
-                humanize(self.grace),
+                "eink display {id}: grace `{}` is not shorter than the {}-long sleep window",
+                humanize(grace),
                 humanize(window.duration())
             ));
         }
@@ -416,7 +413,6 @@ impl RawSleepWindow {
 pub struct SleepWindow {
     pub start: NaiveTime,
     pub end: NaiveTime,
-    pub grace: TimeDelta,
 }
 
 impl SleepWindow {
@@ -444,8 +440,8 @@ impl SleepWindow {
         delta as u32
     }
 
-    pub fn ending_within_grace(&self, now: NaiveTime) -> bool {
-        i64::from(self.secs_until_end(now)) <= self.grace.num_seconds()
+    pub fn ending_within(&self, now: NaiveTime, grace: TimeDelta) -> bool {
+        i64::from(self.secs_until_end(now)) <= grace.num_seconds()
     }
 }
 
@@ -456,9 +452,10 @@ pub struct RawEinkDisplayBlock {
     mode: RawEinkMode,
     #[serde(default)]
     orientation: Option<Orientation>,
-    #[serde(default, with = "option_time_delta_from_str")]
-    #[schemars(with = "Option<String>")]
-    refresh: Option<TimeDelta>,
+    refresh: CronSchedule,
+    #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    grace: TimeDelta,
     #[serde(default)]
     sleep: Option<RawSleepWindow>,
     partial: RawPartialRefresh,
@@ -466,17 +463,17 @@ pub struct RawEinkDisplayBlock {
 
 impl RawEinkDisplayBlock {
     pub(crate) fn resolve(self, id: &str) -> Result<EinkDisplaySettings, String> {
-        let sleep = self.sleep.map(|s| s.resolve(id)).transpose()?;
+        let sleep = self.sleep.map(|s| s.resolve(id, self.grace)).transpose()?;
         let partial = self.partial.resolve(id)?;
         let mode = self.mode.resolve();
 
-        if let (Some(sleep), Some(lead)) = (sleep, mode.lead())
-            && sleep.grace >= lead
+        if let Some(lead) = mode.lead()
+            && self.grace >= lead
         {
             return Err(format!(
-                "eink display {id}: sleep grace `{}` must be shorter than the dashboard lead `{}`, \
+                "eink display {id}: grace `{}` must be shorter than the dashboard lead `{}`, \
                  or a display waking inside the grace is served a pre-render that has not run yet",
-                humanize(sleep.grace),
+                humanize(self.grace),
                 humanize(lead)
             ));
         }
@@ -487,6 +484,7 @@ impl RawEinkDisplayBlock {
             mode,
             orientation: self.orientation.unwrap_or(Orientation::Portrait),
             refresh: self.refresh,
+            grace: self.grace,
             sleep,
             partial,
         })
@@ -499,7 +497,8 @@ pub struct EinkDisplaySettings {
     pub firmware_version: String,
     pub mode: EinkModeConfig,
     pub orientation: Orientation,
-    pub refresh: Option<TimeDelta>,
+    pub refresh: CronSchedule,
+    pub grace: TimeDelta,
     pub sleep: Option<SleepWindow>,
     pub partial: PartialRefresh,
 }
@@ -520,11 +519,10 @@ mod tests {
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
-    fn window(start: (u32, u32), end: (u32, u32), grace: TimeDelta) -> SleepWindow {
+    fn window(start: (u32, u32), end: (u32, u32)) -> SleepWindow {
         SleepWindow {
             start: NaiveTime::from_hms_opt(start.0, start.1, 0).unwrap(),
             end: NaiveTime::from_hms_opt(end.0, end.1, 0).unwrap(),
-            grace,
         }
     }
 
@@ -541,14 +539,14 @@ mod tests {
         #[case] now: NaiveTime,
         #[case] expected: u32,
     ) {
-        let sleep = window((23, 0), (8, 0), TimeDelta::minutes(5));
+        let sleep = window((23, 0), (8, 0));
 
         assert_eq!(sleep.secs_until_end(now), expected);
     }
 
     #[test]
     fn a_window_that_has_ended_rolls_forward_to_the_next_one() {
-        let sleep = window((23, 0), (8, 0), TimeDelta::minutes(5));
+        let sleep = window((23, 0), (8, 0));
 
         assert_eq!(sleep.secs_until_end(at(8, 0, 0)), 24 * 60 * 60);
         assert_eq!(sleep.secs_until_end(at(9, 0, 0)), 23 * 60 * 60);
@@ -556,7 +554,7 @@ mod tests {
 
     #[test]
     fn a_same_day_window_counts_down_to_its_end() {
-        let sleep = window((3, 0), (8, 0), TimeDelta::minutes(5));
+        let sleep = window((3, 0), (8, 0));
 
         assert_eq!(sleep.secs_until_end(at(3, 0, 0)), 5 * 60 * 60);
         assert_eq!(sleep.secs_until_end(at(7, 59, 23)), 37);
@@ -569,55 +567,79 @@ mod tests {
     #[case(at(7, 54, 59), false)]
     #[case(at(23, 30, 0), false)]
     fn the_grace_covers_only_the_end_of_the_window(#[case] now: NaiveTime, #[case] expected: bool) {
-        let sleep = window((23, 0), (8, 0), TimeDelta::minutes(5));
+        let sleep = window((23, 0), (8, 0));
 
-        assert_eq!(sleep.ending_within_grace(now), expected);
+        assert_eq!(sleep.ending_within(now, TimeDelta::minutes(5)), expected);
     }
 
     #[test]
     fn a_zero_grace_covers_nothing_inside_the_window() {
-        let sleep = window((23, 0), (8, 0), TimeDelta::zero());
+        let sleep = window((23, 0), (8, 0));
 
-        assert!(!sleep.ending_within_grace(at(7, 59, 59)));
-        assert!(!sleep.ending_within_grace(at(23, 0, 1)));
+        assert!(!sleep.ending_within(at(7, 59, 59), TimeDelta::zero()));
+        assert!(!sleep.ending_within(at(23, 0, 1), TimeDelta::zero()));
     }
 
     #[test]
     fn a_missing_grace_is_rejected() {
-        let raw = serde_yaml::from_str::<RawSleepWindow>("start: \"23:00\"\nend: \"08:00\"\n");
+        let block = serde_yaml::from_str::<RawEinkDisplayBlock>(&format!(
+            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: \"0 * * * *\"\n{}{}",
+            dashboard_mode("15m"),
+            PARTIAL
+        ));
 
-        assert!(raw.is_err());
+        assert!(block.is_err());
     }
 
     #[test]
-    fn a_grace_that_swallows_the_window_is_rejected() {
-        let raw = serde_yaml::from_str::<RawSleepWindow>(
-            "start: \"23:00\"\nend: \"08:00\"\ngrace: 10h\n",
-        )
-        .unwrap();
+    fn a_grace_that_swallows_the_sleep_window_is_rejected() {
+        let block = display_block(&dashboard_mode("15m"), "10h", true);
 
-        assert!(raw.resolve("hallway-epd").is_err());
+        assert!(block.resolve("hallway-epd").is_err());
     }
 
     #[test]
     fn a_grace_is_parsed_from_a_duration_string() {
-        let raw =
-            serde_yaml::from_str::<RawSleepWindow>("start: \"23:00\"\nend: \"08:00\"\ngrace: 5m\n")
-                .unwrap();
-        let sleep = raw.resolve("hallway-epd").unwrap();
+        let display = display_block(&dashboard_mode("15m"), "5m", true)
+            .resolve("hallway-epd")
+            .unwrap();
+        let sleep = display.sleep.unwrap();
 
-        assert_eq!(sleep.grace, TimeDelta::minutes(5));
+        assert_eq!(display.grace, TimeDelta::minutes(5));
         assert_eq!(sleep.start, at(23, 0, 0));
         assert_eq!(sleep.end, at(8, 0, 0));
     }
 
-    fn display_block(mode: &str, grace: Option<&str>) -> RawEinkDisplayBlock {
-        let sleep = grace.map_or_else(String::new, |grace| {
-            format!("sleep:\n  start: \"23:00\"\n  end: \"08:00\"\n  grace: {grace}\n")
-        });
+    #[test]
+    fn a_refresh_is_parsed_as_a_cron_expression() {
+        let display = display_block(&dashboard_mode("15m"), "5m", false)
+            .resolve("hallway-epd")
+            .unwrap();
+
+        assert_eq!(display.refresh.expression(), "0 * * * *");
+    }
+
+    #[test]
+    fn an_invalid_refresh_cron_is_rejected() {
+        let block = serde_yaml::from_str::<RawEinkDisplayBlock>(&format!(
+            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: every hour\ngrace: 5m\n{}{}",
+            dashboard_mode("15m"),
+            PARTIAL
+        ));
+
+        assert!(block.is_err());
+    }
+
+    const PARTIAL: &str = "partial:\n  enabled: true\n  max_area_pct: 45\n  max_consecutive: 12\n";
+
+    fn display_block(mode: &str, grace: &str, sleep: bool) -> RawEinkDisplayBlock {
+        let sleep = match sleep {
+            true => "sleep:\n  start: \"23:00\"\n  end: \"08:00\"\n",
+            false => "",
+        };
         let yaml = format!(
-            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: 1h\n{mode}{sleep}\
-             partial:\n  enabled: true\n  max_area_pct: 45\n  max_consecutive: 12\n"
+            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: \"0 * * * *\"\n\
+             grace: {grace}\n{mode}{sleep}{PARTIAL}"
         );
 
         serde_yaml::from_str(&yaml).unwrap()
@@ -637,22 +659,22 @@ mod tests {
         #[case] lead: &str,
         #[case] accepted: bool,
     ) {
-        let block = display_block(&dashboard_mode(lead), Some(grace));
+        let block = display_block(&dashboard_mode(lead), grace, true);
 
         assert_eq!(block.resolve("hallway-epd").is_ok(), accepted);
     }
 
     #[test]
-    fn a_lead_is_only_compared_when_a_window_is_configured() {
-        let block = display_block(&dashboard_mode("15m"), None);
+    fn a_lead_is_compared_even_without_a_sleep_window() {
+        let block = display_block(&dashboard_mode("15m"), "20m", false);
 
-        assert!(block.resolve("hallway-epd").is_ok());
+        assert!(block.resolve("hallway-epd").is_err());
     }
 
     #[test]
     fn a_mode_without_a_lead_skips_the_comparison() {
         let mode = "mode:\n  name: album\n  album: landscapes\n".to_owned();
-        let block = display_block(&mode, Some("20m"));
+        let block = display_block(&mode, "20m", true);
 
         assert!(block.resolve("hallway-epd").is_ok());
     }

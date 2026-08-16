@@ -11,6 +11,7 @@ use std::{
 
 pub mod alarm;
 pub mod auth;
+pub mod bom;
 pub mod de;
 pub mod device;
 pub mod door;
@@ -40,6 +41,7 @@ pub mod zigbee_model;
 
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
+pub use bom::BomSettings;
 pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
@@ -123,6 +125,7 @@ pub struct Settings {
     pub home_assistant: HomeAssistantSettings,
     pub jellyfin: Option<JellyfinSettings>,
     pub solar: Option<SolarSettings>,
+    pub bom: BomSettings,
     pub eink_display: EinkGlobalSettings,
 }
 
@@ -173,6 +176,7 @@ pub struct RawSettings {
     jellyfin: Option<JellyfinSettings>,
     #[serde(default)]
     solar: Option<SolarSettings>,
+    bom: BomSettings,
     #[serde(default)]
     eink_display: eink::RawEinkGlobal,
 }
@@ -207,6 +211,7 @@ impl RawSettings {
             home_assistant,
             jellyfin,
             solar,
+            bom,
             eink_display,
         } = self;
 
@@ -281,6 +286,7 @@ impl RawSettings {
                 home_assistant,
                 jellyfin,
                 solar,
+                bom,
                 eink_display: eink_display.resolve(),
             },
             registry,
@@ -886,6 +892,7 @@ s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
+bom: { url: "http://bom" }
 api_keys:
   - name: bad-key
     scopes: ["graphql:bogus:read"]
@@ -913,6 +920,7 @@ s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
+bom: { url: "http://bom" }
 eink_display:
   views:
     home: { query: "view=home" }
@@ -928,6 +936,8 @@ devices:
         config:
           name: Test Display
           firmware_version: v0.1.0
+          refresh: "0 * * * *"
+          grace: 10m
           orientation: landscape
           partial:
             enabled: true
@@ -982,6 +992,7 @@ s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
+bom: { url: "http://bom" }
 devices:
   - id: epd
     transport: eink_display_firmware
@@ -991,6 +1002,8 @@ devices:
         config:
           name: Test Display
           firmware_version: v0.1.0
+          refresh: "0 * * * *"
+          grace: 10m
           orientation: portrait
           partial:
             enabled: false
@@ -1034,6 +1047,7 @@ s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
+bom: { url: "http://bom" }
 devices:
   - id: epd
     transport: eink_display_firmware
@@ -1043,6 +1057,8 @@ devices:
         config:
           name: Test Display
           firmware_version: v0.1.0
+          refresh: "0 * * * *"
+          grace: 10m
           partial:
             enabled: false
             max_area_pct: 30

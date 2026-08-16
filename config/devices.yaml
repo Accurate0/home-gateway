@@ -192,7 +192,8 @@
         name: Living Room Display
         firmware_version: v0.1.0-e301ced
         orientation: portrait
-        refresh: 12h
+        refresh: "0 */12 * * *"
+        grace: 10m
         mode:
           name: reddit
           subreddit: EarthPorn
@@ -214,7 +215,8 @@
         name: Hallway Display
         firmware_version: v0.1.0-e301ced
         orientation: portrait
-        refresh: 1h
+        refresh: "0 * * * *"
+        grace: 10m
         mode:
           name: dashboard
           view: home
@@ -223,7 +225,6 @@
         sleep:
           start: "23:00"
           end: "08:00"
-          grace: 10m
         partial:
           enabled: true
           max_area_pct: 45

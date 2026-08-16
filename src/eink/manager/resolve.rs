@@ -1,3 +1,4 @@
+use crate::actors::system::cron::schedule::CronSchedule;
 use crate::eink::flag::EpdFlagConfig;
 use crate::settings::{
     Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, Orientation,
@@ -6,7 +7,6 @@ use crate::settings::{
 use chrono_tz::Australia::Perth;
 use std::time::Duration;
 
-const DEFAULT_REFRESH_INTERVAL_MINS: u32 = 15;
 const DEFAULT_REDDIT_TIMESPAN: RedditTimespan = RedditTimespan::Day;
 const DEFAULT_REDDIT_LIMIT: u32 = 25;
 const DEFAULT_SETTLE: Duration = Duration::from_secs(10);
@@ -16,7 +16,8 @@ pub struct ResolvedDisplay {
     pub device_id: String,
     pub name: String,
     pub mode: EinkMode,
-    pub refresh_mins: u32,
+    pub refresh: CronSchedule,
+    pub grace: chrono::TimeDelta,
     pub orientation: Orientation,
     pub view: Option<DashboardView>,
     pub album: Album,
@@ -45,7 +46,8 @@ impl ResolvedDisplay {
             device_id: device_id.to_owned(),
             name: display.name.clone(),
             mode,
-            refresh_mins: refresh_mins(flag, Some(display)),
+            refresh: refresh(flag, display),
+            grace: display.grace,
             orientation: display.orientation,
             view: view(flag, global, display).cloned(),
             album: album(flag, global, display),
@@ -82,15 +84,10 @@ impl ResolvedDisplay {
     }
 }
 
-pub fn refresh_mins(flag: &EpdFlagConfig, display: Option<&EinkDisplaySettings>) -> u32 {
-    if let Some(interval) = flag.refresh_interval {
-        return interval;
-    }
-
-    display
-        .and_then(|display| display.refresh)
-        .map(|refresh| refresh.num_minutes().max(1) as u32)
-        .unwrap_or(DEFAULT_REFRESH_INTERVAL_MINS)
+pub fn refresh(flag: &EpdFlagConfig, display: &EinkDisplaySettings) -> CronSchedule {
+    flag.refresh
+        .clone()
+        .unwrap_or_else(|| display.refresh.clone())
 }
 
 fn view<'a>(
@@ -167,7 +164,7 @@ fn active_sleep(
         return None;
     }
 
-    if sleep.ending_within_grace(now) {
+    if sleep.ending_within(now, display.grace) {
         tracing::info!(
             device_id = %device_id,
             remaining_secs = sleep.secs_until_end(now),
@@ -185,7 +182,9 @@ mod tests {
     use crate::settings::EinkModeConfig;
     use pretty_assertions::assert_eq;
 
-    fn display_with_refresh(refresh: Option<chrono::TimeDelta>) -> EinkDisplaySettings {
+    const HOURLY: &str = "0 * * * *";
+
+    fn display_with_refresh(refresh: &str) -> EinkDisplaySettings {
         EinkDisplaySettings {
             name: "Test Display".to_owned(),
             firmware_version: "v0.0.0".to_owned(),
@@ -195,7 +194,8 @@ mod tests {
                 lead: chrono::TimeDelta::minutes(15),
             },
             orientation: Orientation::Portrait,
-            refresh,
+            refresh: CronSchedule::parse(refresh).unwrap(),
+            grace: chrono::TimeDelta::minutes(10),
             sleep: None,
             partial: PartialRefresh {
                 enabled: false,
@@ -208,7 +208,7 @@ mod tests {
     fn display_with_feed(feed: RedditFeed) -> EinkDisplaySettings {
         EinkDisplaySettings {
             mode: EinkModeConfig::Reddit { feed },
-            ..display_with_refresh(None)
+            ..display_with_refresh(HOURLY)
         }
     }
 
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn reddit_feed_without_a_subreddit_is_skipped() {
         assert_eq!(
-            feed(&EpdFlagConfig::default(), &display_with_refresh(None)),
+            feed(&EpdFlagConfig::default(), &display_with_refresh(HOURLY)),
             None
         );
     }
@@ -268,7 +268,7 @@ mod tests {
         };
 
         assert_eq!(
-            feed(&flag, &display_with_refresh(None)),
+            feed(&flag, &display_with_refresh(HOURLY)),
             Some(RedditFeed {
                 subreddit: "EarthPorn".to_owned(),
                 timespan: DEFAULT_REDDIT_TIMESPAN,
@@ -278,41 +278,23 @@ mod tests {
     }
 
     #[test]
-    fn refresh_interval_prefers_the_flag() {
+    fn refresh_prefers_the_flag() {
         let flag = EpdFlagConfig {
-            refresh_interval: Some(5),
+            refresh: Some(CronSchedule::parse("*/5 * * * *").unwrap()),
             ..EpdFlagConfig::default()
         };
-        let display = display_with_refresh(Some(chrono::TimeDelta::hours(1)));
 
-        assert_eq!(refresh_mins(&flag, Some(&display)), 5);
+        assert_eq!(
+            refresh(&flag, &display_with_refresh(HOURLY)).expression(),
+            "*/5 * * * *"
+        );
     }
 
     #[test]
-    fn refresh_interval_falls_back_to_the_display() {
-        let flag = EpdFlagConfig::default();
-
+    fn refresh_falls_back_to_the_display() {
         assert_eq!(
-            refresh_mins(
-                &flag,
-                Some(&display_with_refresh(Some(chrono::TimeDelta::hours(1))))
-            ),
-            60
+            refresh(&EpdFlagConfig::default(), &display_with_refresh(HOURLY)).expression(),
+            HOURLY
         );
-
-        assert_eq!(
-            refresh_mins(
-                &flag,
-                Some(&display_with_refresh(Some(chrono::TimeDelta::seconds(30))))
-            ),
-            1
-        );
-
-        assert_eq!(
-            refresh_mins(&flag, Some(&display_with_refresh(None))),
-            DEFAULT_REFRESH_INTERVAL_MINS
-        );
-
-        assert_eq!(refresh_mins(&flag, None), DEFAULT_REFRESH_INTERVAL_MINS);
     }
 }

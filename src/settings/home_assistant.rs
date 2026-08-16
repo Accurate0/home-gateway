@@ -34,6 +34,10 @@ impl Default for EntitySettings {
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct HomeAssistantSettings {
     #[serde(default)]
+    pub url: Option<String>,
+    #[serde(default)]
+    pub token: Option<String>,
+    #[serde(default)]
     pub entities: Vec<EntitySettings>,
 }
 
@@ -64,6 +68,8 @@ mod tests {
 
     fn settings() -> HomeAssistantSettings {
         HomeAssistantSettings {
+            url: None,
+            token: None,
             entities: vec![
                 EntitySettings {
                     id: "sensor.apollo_mtr_1_living_room_target_*".to_owned(),

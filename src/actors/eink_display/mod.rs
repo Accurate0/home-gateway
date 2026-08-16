@@ -30,7 +30,7 @@ pub enum EInkDisplayMessage {
     },
     ScheduleNextRender {
         device_id: String,
-        wake_in_mins: u32,
+        wake_in_secs: u32,
     },
 }
 
@@ -229,7 +229,7 @@ impl Actor for EInkDisplayActor {
             }
             EInkDisplayMessage::ScheduleNextRender {
                 device_id,
-                wake_in_mins,
+                wake_in_secs,
             } => {
                 let Some(display) = self.manager().resolve(&device_id).await else {
                     tracing::warn!(
@@ -239,7 +239,7 @@ impl Actor for EInkDisplayActor {
                 };
 
                 let next_wake_at =
-                    chrono::Utc::now() + chrono::TimeDelta::minutes(wake_in_mins.into());
+                    chrono::Utc::now() + chrono::TimeDelta::seconds(wake_in_secs.into());
 
                 self.manager()
                     .store_next_wake(&device_id, &display.name, next_wake_at)

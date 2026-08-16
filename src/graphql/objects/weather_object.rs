@@ -3,6 +3,8 @@ use http::Method;
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 
+use crate::settings::SettingsContainer;
+
 pub struct WeatherObject {
     pub location: String,
 }
@@ -29,10 +31,10 @@ impl WeatherObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Forecast> {
-        let api_base = std::env::var("BOM_API_BASE").unwrap();
+        let settings = ctx.data::<SettingsContainer>()?;
         let client = ctx.data::<ClientWithMiddleware>()?;
 
-        let url = format!("{api_base}/forecast");
+        let url = format!("{}/forecast", settings.bom.url);
         let response = client
             .request(Method::GET, url)
             .query(&[("location", &self.location)])

@@ -2,9 +2,7 @@ use reqwest_middleware::ClientWithMiddleware;
 use serde_json::Value;
 
 use crate::http::get_traced_http_client;
-
-pub const URL_ENV: &str = "HOME_ASSISTANT_URL";
-pub const TOKEN_ENV: &str = "HOME_ASSISTANT_TOKEN";
+use crate::settings::HomeAssistantSettings;
 
 #[derive(thiserror::Error, Debug)]
 pub enum HomeAssistantError {
@@ -29,17 +27,17 @@ pub struct HomeAssistant {
 }
 
 impl HomeAssistant {
-    pub fn from_env() -> Option<Self> {
-        let base_url = match std::env::var(URL_ENV) {
-            Ok(url) if !url.trim().is_empty() => url.trim().trim_end_matches('/').to_owned(),
+    pub fn from_settings(settings: &HomeAssistantSettings) -> Option<Self> {
+        let base_url = match settings.url.as_deref() {
+            Some(url) if !url.trim().is_empty() => url.trim().trim_end_matches('/').to_owned(),
             _ => return None,
         };
 
-        let token = match std::env::var(TOKEN_ENV) {
-            Ok(token) if !token.trim().is_empty() => token,
+        let token = match settings.token.as_deref() {
+            Some(token) if !token.trim().is_empty() => token.to_owned(),
             _ => {
                 tracing::warn!(
-                    "{URL_ENV} is set but {TOKEN_ENV} is missing; disabling integration"
+                    "home_assistant.url is set but home_assistant.token is missing; disabling integration"
                 );
                 return None;
             }

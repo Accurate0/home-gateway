@@ -12,6 +12,7 @@ use axum::{
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
+use crate::eink::EinkDisplayManager;
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
 
 pub use crate::eink::panel::PartialWindow;
@@ -139,11 +140,13 @@ pub async fn config(
     let display = devices.eink_display(&request.device_id);
     let registered = display.is_some();
     let configured_mode = display.map(|display| display.mode.name());
+    let wake_drift_secs = wake_drift_secs(&eink, &request.device_id).await;
 
     tracing::info!(
         device_id = %request.device_id,
         registered,
         ?configured_mode,
+        ?wake_drift_secs,
         current_image_hash = ?request.current_image_hash,
         battery_voltage = ?request.battery_voltage,
         is_charging = ?request.is_charging,
@@ -193,14 +196,29 @@ pub async fn config(
         )
         .await;
 
-    if let Some(wake_in_mins) = config.refresh_interval_mins {
-        schedule_next_render(&request.device_id, wake_in_mins)?;
+    if let Some(wake_in_secs) = config.refresh_interval_secs {
+        schedule_next_render(&request.device_id, wake_in_secs)?;
     }
 
     Ok(Json(config))
 }
 
-fn schedule_next_render(device_id: &str, wake_in_mins: u32) -> Result<(), AppError> {
+async fn wake_drift_secs(eink: &EinkDisplayManager, device_id: &str) -> Option<i64> {
+    let next_wake_at = eink
+        .stored_next_wake(device_id)
+        .await
+        .inspect_err(|_| tracing::warn!(device_id, "could not read the stored wake"))
+        .ok()
+        .flatten()?;
+
+    let drift = (chrono::Utc::now() - next_wake_at).num_seconds();
+
+    crate::metrics::record_eink_wake_drift(device_id.to_owned(), drift as f64);
+
+    Some(drift)
+}
+
+fn schedule_next_render(device_id: &str, wake_in_secs: u32) -> Result<(), AppError> {
     let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) else {
         tracing::warn!("eink display actor not found, not scheduling the next render");
         return Ok(());
@@ -208,7 +226,7 @@ fn schedule_next_render(device_id: &str, wake_in_mins: u32) -> Result<(), AppErr
 
     actor.send_message(EInkDisplayMessage::ScheduleNextRender {
         device_id: device_id.to_owned(),
-        wake_in_mins,
+        wake_in_secs,
     })?;
 
     Ok(())

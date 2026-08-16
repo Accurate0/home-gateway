@@ -49,7 +49,11 @@ trmnl:
 alarm:
   poll_interval: 60s
 
+bom:
+  url: http://bom-api.bom.svc.cluster.local:8000
+
 home_assistant:
+  url: http://home-assistant.internal
   entities:
     - id: sensor.apollo_mtr_1_living_room_target_*
       log: false

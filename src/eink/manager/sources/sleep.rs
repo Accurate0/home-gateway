@@ -107,7 +107,6 @@ mod tests {
         let sleep = SleepWindow {
             start: chrono::NaiveTime::from_hms_opt(22, 0, 0).unwrap(),
             end: chrono::NaiveTime::from_hms_opt(6, 0, 0).unwrap(),
-            grace: chrono::TimeDelta::minutes(5),
         };
 
         let evening = chrono::NaiveDate::from_ymd_opt(2026, 8, 4)

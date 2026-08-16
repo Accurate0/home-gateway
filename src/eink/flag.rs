@@ -1,4 +1,5 @@
 use crate::{
+    actors::system::cron::schedule::CronSchedule,
     device_registry::DeviceRegistry,
     integrations::feature_flag::FeatureFlagClient,
     settings::{EinkMode, PaletteColor, RedditTimespan},
@@ -12,7 +13,7 @@ const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
 pub struct EpdFlagConfig {
     pub clear_screen: bool,
     pub force_sleep: bool,
-    pub refresh_interval: Option<u32>,
+    pub refresh: Option<CronSchedule>,
     pub mode: Option<EinkMode>,
     pub dashboard_view: Option<String>,
     pub album: Option<String>,
@@ -44,11 +45,13 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
                 .get("force_sleep")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(default.force_sleep),
-            refresh_interval: value
-                .fields
-                .get("refresh_interval")
-                .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
-                .map(|n| n.max(1) as u32),
+            refresh: string_field("refresh").and_then(|s| match CronSchedule::parse(&s) {
+                Ok(schedule) => Some(schedule),
+                Err(e) => {
+                    tracing::warn!("invalid epd refresh cron `{s}` in flag ({e}), ignoring");
+                    None
+                }
+            }),
             mode: string_field("mode").and_then(|s| match s.as_str() {
                 "dashboard" => Some(EinkMode::Dashboard),
                 "album" => Some(EinkMode::Album),
