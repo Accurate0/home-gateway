@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM workflow_runs\n            WHERE id IN (\n                SELECT id\n                FROM workflow_runs\n                WHERE started_at < now() - INTERVAL '90 days'\n                ORDER BY started_at\n                LIMIT $1\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3bcf74971f77b95db7e2a5ea1854af7195b3ed7b93529e706faee667f5850900"
+}

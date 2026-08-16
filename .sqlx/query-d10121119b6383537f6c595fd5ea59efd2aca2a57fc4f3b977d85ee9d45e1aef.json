@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO adhoc_cron_run (name, last_run_at, duration_ms, rows_affected, outcome) VALUES ($1, now(), $2, $3, $4) ON CONFLICT (name) DO UPDATE SET last_run_at = EXCLUDED.last_run_at, duration_ms = EXCLUDED.duration_ms, rows_affected = EXCLUDED.rows_affected, outcome = EXCLUDED.outcome",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d10121119b6383537f6c595fd5ea59efd2aca2a57fc4f3b977d85ee9d45e1aef"
+}

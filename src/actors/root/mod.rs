@@ -35,6 +35,7 @@ use super::{
         unifi::UnifiConnectedClientHandler,
     },
     system::{
+        adhoc::AdhocTaskActor,
         cron::CronActor,
         mqtt_ingest::{self, MqttIngest},
         push::{self, PushWorker},
@@ -85,6 +86,7 @@ impl RootSupervisor {
                 self.start_unifi_connected_clients_handler(myself).await?
             }
             CronActor::NAME => self.start_cron_actor(myself).await?,
+            AdhocTaskActor::NAME => self.start_adhoc_task_actor(myself).await,
             SynergyActor::NAME => self.start_synergy_actor(myself).await?,
             WoolworthsActor::NAME => self.start_woolworths_actor(myself).await?,
             TrmnlActor::NAME => self.start_trmnl_actor(myself).await?,
@@ -284,6 +286,25 @@ impl RootSupervisor {
             .await?;
 
         Ok(())
+    }
+
+    async fn start_adhoc_task_actor(&self, myself: &ractor::ActorRef<RootMessage>) {
+        let spawned = myself
+            .spawn_linked(
+                Some(AdhocTaskActor::NAME.to_owned()),
+                AdhocTaskActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await;
+
+        match spawned {
+            Ok(_) => tracing::debug!("adhoc task actor started"),
+            Err(e) => {
+                tracing::error!("failed to start adhoc task actor, continuing without it: {e}")
+            }
+        }
     }
 
     async fn start_woolworths_actor(
@@ -497,6 +518,7 @@ impl Actor for RootSupervisor {
         self.start_sun_actor(&myself).await?;
         self.start_watchdog_actor(&myself).await?;
         self.start_workflow_dispatcher(&myself).await?;
+        self.start_adhoc_task_actor(&myself).await;
 
         Ok(RootState::default())
     }

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drop_chunks('temperature_sensor', older_than => now() - INTERVAL '180 days')::text",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drop_chunks",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "03cd6f88d84260198cefd2b925b07d92e3dcba03a8087e340618caca5990275f"
+}

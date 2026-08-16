@@ -30,6 +30,8 @@ struct Instruments {
     device_battery_percent: Gauge<f64>,
     /// Signed seconds between a display's intended wake and its actual poll.
     eink_wake_drift: Histogram<f64>,
+    /// Ad-hoc task outcomes, labelled by task name and outcome.
+    adhoc_tasks_total: Counter<u64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -71,8 +73,22 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .f64_histogram("home_gateway_eink_wake_drift_seconds")
             .with_description("Seconds between an eink display's intended wake and its actual poll")
             .build(),
+        adhoc_tasks_total: meter
+            .u64_counter("home_gateway_adhoc_tasks_total")
+            .with_description("Ad-hoc task outcomes by task name and outcome")
+            .build(),
     }
 });
+
+pub fn record_adhoc_task(name: &'static str, outcome: &'static str) {
+    INSTRUMENTS.adhoc_tasks_total.add(
+        1,
+        &[
+            KeyValue::new("task", name),
+            KeyValue::new("outcome", outcome),
+        ],
+    );
+}
 
 pub fn record_eink_wake_drift(device_id: String, drift_secs: f64) {
     INSTRUMENTS

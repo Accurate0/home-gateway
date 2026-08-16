@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drop_chunks('derived_door_events', older_than => now() - INTERVAL '1 year')::text",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drop_chunks",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ac48efc62d1a98e365ae2e004c4995a7fc76e69f9f83f118451c2b956c69b148"
+}

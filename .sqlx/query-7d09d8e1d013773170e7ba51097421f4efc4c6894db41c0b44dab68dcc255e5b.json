@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drop_chunks('home_assistant_events', older_than => now() - INTERVAL '90 days')::text",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drop_chunks",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7d09d8e1d013773170e7ba51097421f4efc4c6894db41c0b44dab68dcc255e5b"
+}

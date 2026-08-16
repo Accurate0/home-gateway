@@ -70,6 +70,9 @@
     "watchdog": {
       "$ref": "#/$defs/WatchdogSettings"
     },
+    "workflow": {
+      "$ref": "#/$defs/WorkflowSettings"
+    },
     "oauth": {
       "anyOf": [
         {
@@ -136,6 +139,9 @@
     },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
+    },
+    "adhoc": {
+      "$ref": "#/$defs/AdhocSettings"
     }
   },
   "required": [
@@ -149,9 +155,11 @@
     "zigbee_models",
     "s3",
     "watchdog",
+    "workflow",
     "location",
     "sun",
-    "bom"
+    "bom",
+    "adhoc"
   ],
   "$defs": {
     "NotifySource": {
@@ -2300,6 +2308,19 @@
         "realert_after"
       ]
     },
+    "WorkflowSettings": {
+      "type": "object",
+      "properties": {
+        "workers": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "workers"
+      ]
+    },
     "OAuthSettings": {
       "description": "OAuth (OIDC) settings. Access tokens are JWTs validated locally against the\nprovider's JWKS — no client secret is needed. A caller's scopes are derived\nfrom their group memberships (the `groups_claim`) via `group_scopes`.",
       "type": "object",
@@ -2612,6 +2633,17 @@
         "r",
         "g",
         "b"
+      ]
+    },
+    "AdhocSettings": {
+      "type": "object",
+      "properties": {
+        "recheck_interval": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "recheck_interval"
       ]
     }
   }

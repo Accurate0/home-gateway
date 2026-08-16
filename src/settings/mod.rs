@@ -9,6 +9,7 @@ use std::{
     path::PathBuf,
 };
 
+pub mod adhoc;
 pub mod alarm;
 pub mod auth;
 pub mod bom;
@@ -39,6 +40,7 @@ pub mod woolworths;
 pub mod workflow;
 pub mod zigbee_model;
 
+pub use adhoc::AdhocSettings;
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
 pub use bom::BomSettings;
@@ -128,6 +130,7 @@ pub struct Settings {
     pub solar: Option<SolarSettings>,
     pub bom: BomSettings,
     pub eink_display: EinkGlobalSettings,
+    pub adhoc: AdhocSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -181,6 +184,7 @@ pub struct RawSettings {
     bom: BomSettings,
     #[serde(default)]
     eink_display: eink::RawEinkGlobal,
+    adhoc: AdhocSettings,
 }
 
 impl RawSettings {
@@ -216,6 +220,7 @@ impl RawSettings {
             solar,
             bom,
             eink_display,
+            adhoc,
         } = self;
 
         let mut seen_key_names = HashSet::new();
@@ -303,6 +308,7 @@ impl RawSettings {
                 solar,
                 bom,
                 eink_display: eink_display.resolve(),
+                adhoc,
             },
             registry,
         ))
@@ -909,6 +915,7 @@ workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
+adhoc: { recheck_interval: 15m }
 api_keys:
   - name: bad-key
     scopes: ["graphql:bogus:read"]
@@ -938,6 +945,7 @@ workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
+adhoc: { recheck_interval: 15m }
 workflows:
   - - name: Caller
       slug: caller
@@ -970,6 +978,7 @@ workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
+adhoc: { recheck_interval: 15m }
 workflows:
   - - name: Callee
       slug: callee
@@ -1004,6 +1013,7 @@ workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
+adhoc: { recheck_interval: 15m }
 eink_display:
   views:
     home: { query: "view=home" }
@@ -1077,6 +1087,7 @@ workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
+adhoc: { recheck_interval: 15m }
 devices:
   - id: epd
     transport: eink_display_firmware
@@ -1133,6 +1144,7 @@ workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
+adhoc: { recheck_interval: 15m }
 devices:
   - id: epd
     transport: eink_display_firmware

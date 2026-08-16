@@ -5,10 +5,14 @@ use open_feature::{
 };
 use openfeature_provider::{EvaluationMode, FeatureFlagProvider};
 
+pub use openfeature_provider::ProviderEvent;
+use tokio::sync::broadcast;
+
 #[derive(Clone)]
 pub struct FeatureFlagClient {
     client: Arc<open_feature::Client>,
     evaluation_context: EvaluationContext,
+    events: Option<Arc<broadcast::Receiver<ProviderEvent>>>,
 }
 
 impl FeatureFlagClient {
@@ -17,19 +21,28 @@ impl FeatureFlagClient {
 
         let mut client = OpenFeature::singleton_mut().await;
 
-        if let Some(url) = url {
+        let events = if let Some(url) = url {
             match FeatureFlagProvider::connect_with(url, "home-gateway", EvaluationMode::Local)
                 .await
             {
-                Ok(provider) => client.set_provider(provider).await,
+                Ok(provider) => {
+                    let events = provider.events();
+                    client.set_provider(provider).await;
+
+                    Some(Arc::new(events))
+                }
                 Err(e) => {
                     tracing::error!("error when connecting to feature-flags: {e}");
-                    client.set_provider(NoOpProvider::default()).await
+                    client.set_provider(NoOpProvider::default()).await;
+
+                    None
                 }
-            };
+            }
         } else {
             tracing::warn!("fallback to noop feature provider");
             client.set_provider(NoOpProvider::default()).await;
+
+            None
         };
 
         let client = client.create_client();
@@ -45,7 +58,16 @@ impl FeatureFlagClient {
         Self {
             client: Arc::new(client),
             evaluation_context,
+            events,
         }
+    }
+
+    pub fn has_live_provider(&self) -> bool {
+        self.events.is_some()
+    }
+
+    pub fn subscribe(&self) -> Option<broadcast::Receiver<ProviderEvent>> {
+        self.events.as_ref().map(|events| events.resubscribe())
     }
 
     pub async fn is_feature_enabled(

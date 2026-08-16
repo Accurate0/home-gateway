@@ -1,0 +1,5 @@
+---
+source: src/adhoc/mod.rs
+expression: manifest(&registry())
+---
+

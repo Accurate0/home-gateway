@@ -1,3 +1,4 @@
+pub mod adhoc;
 pub mod battery;
 pub mod cron;
 pub mod mqtt_ingest;

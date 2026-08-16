@@ -1,0 +1,14 @@
+---
+source: src/adhoc/mod.rs
+expression: cron_manifest(&cron_registry())
+---
+trim_derived_door_events  0 3 * * *  -
+trim_device_metric  15 3 * * *  -
+trim_door_sensor  5 3 * * *  -
+trim_home_assistant_events  25 3 * * *  -
+trim_jellyfin_playback_events  35 3 * * *  -
+trim_robot_vacuum_events  40 3 * * *  -
+trim_smart_switch  30 3 * * *  -
+trim_temperature_sensor  20 3 * * *  -
+trim_unifi_clients  10 3 * * *  -
+trim_workflow_runs  45 3 * * *  -

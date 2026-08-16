@@ -1,4 +1,5 @@
 pub mod actors;
+pub mod adhoc;
 pub mod auth;
 pub mod battery;
 pub mod db;

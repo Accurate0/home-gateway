@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drop_chunks('device_metric', older_than => now() - INTERVAL '180 days')::text",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drop_chunks",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6d1f7718c67da81d20eb18e54c6d61d68f8000d8a4a3431ce3909a3056fbc153"
+}
