@@ -38,6 +38,7 @@ pub enum Resource {
     RobotVacuum,
     Jellyfin,
     MediaPlayer,
+    AdhocTask,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,6 +93,7 @@ impl Resource {
             "robot_vacuum" => Self::RobotVacuum,
             "jellyfin" => Self::Jellyfin,
             "media_player" => Self::MediaPlayer,
+            "adhoc_task" => Self::AdhocTask,
             _ => return None,
         })
     }
@@ -152,6 +154,7 @@ impl Resource {
             Self::RobotVacuum => "robot_vacuum",
             Self::Jellyfin => "jellyfin",
             Self::MediaPlayer => "media_player",
+            Self::AdhocTask => "adhoc_task",
         }
     }
 
@@ -332,6 +335,8 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Read);
     pub const GRAPHQL_JELLYFIN_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Jellyfin, Action::Read);
+    pub const GRAPHQL_ADHOC_TASK_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::AdhocTask, Action::Read);
     pub const GRAPHQL_MEDIA_PLAYER_READ: Scope =
         Scope::new(Domain::Graphql, Resource::MediaPlayer, Action::Read);
 

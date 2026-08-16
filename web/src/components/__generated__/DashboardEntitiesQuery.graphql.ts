@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0a1b4b9d346c49172a3468fc4ed878d8>>
+ * @generated SignedSource<<41b44e7d68b190d455378768cbb94a68>>
  * @lightSyntaxTransform
  */
 
@@ -8,9 +8,9 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "%future added value";
+export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PM_25" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "VOC_INDEX" | "%future added value";
 export type EinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
-export type EinkMode = "ALBUM" | "DASHBOARD" | "%future added value";
+export type EinkMode = "ALBUM" | "DASHBOARD" | "REDDIT" | "%future added value";
 export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PRESENCE" | "VACUUMS" | "%future added value";
 export type Orientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
 export type RobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
@@ -33,7 +33,7 @@ export type DashboardEntitiesQuery$data = {
       readonly album: string | null | undefined;
       readonly mode: EinkMode;
       readonly orientation: Orientation;
-      readonly refresh: string | null | undefined;
+      readonly refresh: string;
       readonly settle: string | null | undefined;
       readonly sleepEnd: string | null | undefined;
       readonly sleepStart: string | null | undefined;

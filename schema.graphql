@@ -1,13 +1,45 @@
+type AdhocCronTaskStatus {
+	id: String!
+	name: String!
+	schedule: String!
+	flag: String
+	nextRunAt: DateTime
+	lastRunAt: DateTime
+	durationMs: Int
+	rowsAffected: Int
+	outcome: String
+}
+
+type AdhocTaskStatus {
+	id: String!
+	ordinal: Int!
+	name: String!
+	flag: String
+	completedAt: DateTime
+	durationMs: Int
+	pending: Boolean!
+	checksumDrifted: Boolean!
+}
+
 type AuthObject {
 	id: String
 	name: String
 	scopes: [String!]!
 }
 
+enum BatteryChemistry {
+	UNKNOWN
+	LIPO
+	LI_ION
+	ALKALINE
+	CR_2032
+}
+
 type BatteryPoint {
-	batteryVoltage: Float!
+	batteryVoltage: Float
+	batteryPercent: Float
 	time: DateTime!
-	batteryPercentage: Float!
+	batteryPercentage: Float
 }
 
 input BrightnessMoveInput {
@@ -24,6 +56,8 @@ enum Capability {
 	PRESSURE
 	LUX
 	UV_INDEX
+	PM_25
+	VOC_INDEX
 }
 
 input ColourTemperatureMoveInput {
@@ -42,6 +76,15 @@ The input/output is a string in RFC3339 format.
 """
 scalar DateTime
 
+type DeviceBattery {
+	kind: String!
+	voltage: Float
+	chemistry: BatteryChemistry!
+	percentage: Float
+	updatedAt: DateTime!
+	history(since: DateTime!): [BatteryPoint!]!
+}
+
 type DeviceBatteryUpdate {
 	eventId: UUID!
 	"""
@@ -50,8 +93,9 @@ type DeviceBatteryUpdate {
 	id: ID!
 	name: String!
 	kind: String!
-	batteryVoltage: Float!
-	batteryPercentage: Float!
+	batteryVoltage: Float
+	batteryPercent: Float
+	batteryPercentage: Float
 }
 
 type DoorEntity {
@@ -60,6 +104,7 @@ type DoorEntity {
 	name: String!
 	capabilities: [Capability!]!
 	room: String
+	battery: DeviceBattery
 	"""
 	Whether the door is open. Nullable so an unreachable door-events actor
 	reports the error against this field without nulling the whole entity.
@@ -89,9 +134,14 @@ type EinkDisplayConfig {
 	mode: EinkMode!
 	view: String
 	album: String
+	subreddit: String
+	timespan: RedditTimespan
+	limit: Int
 	orientation: Orientation!
-	refresh: String
+	refresh: String!
+	grace: String!
 	settle: String
+	lead: String
 	sleepStart: String
 	sleepEnd: String
 }
@@ -105,9 +155,11 @@ type EinkDisplayEntity {
 	room: String
 	batteryVoltage: Float
 	batteryPercentage: Float
+	isCharging: Boolean
 	lastSeen: DateTime
 	config: EinkDisplayConfig
 	deviceConfig: EpdConfig!
+	battery: DeviceBattery
 	batteryHistory(since: DateTime!): [BatteryPoint!]!
 }
 
@@ -116,9 +168,14 @@ enum EinkDisplayKind {
 	EINK_DISPLAY_FIRMWARE
 }
 
+type EinkDisplayMutation {
+	takeScreenshot: Boolean!
+}
+
 enum EinkMode {
 	DASHBOARD
 	ALBUM
+	REDDIT
 }
 
 type EnergyConsumption {
@@ -136,7 +193,7 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity
+union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
 
 """
 The dashboard section a device kind is displayed under. Owned by the backend
@@ -150,6 +207,7 @@ enum EntityCategory {
 	ENVIRONMENT
 	DISPLAYS
 	VACUUMS
+	MEDIA
 }
 
 type EntitySection {
@@ -163,6 +221,7 @@ type EnvironmentEntity {
 	name: String!
 	capabilities: [Capability!]!
 	room: String
+	battery: DeviceBattery
 	"""
 	Nullable so a missing reading reports the error against this field
 	without nulling the whole entity.
@@ -199,11 +258,16 @@ type EnvironmentUpdate {
 
 type EpdConfig {
 	refreshIntervalMins: Int
+	refreshIntervalSecs: Int
 	imageUrl: String
+	imageHash: String
 	clearScreen: Boolean
+	firmwareUrl: String
+	firmwareVersion: String
+	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -246,12 +310,57 @@ type HomeAssistantUpdate {
 	id: ID!
 }
 
+type JellyfinObject {
+	nowPlaying: [JellyfinSession!]!
+}
+
+type JellyfinSession {
+	eventId: UUID!
+	sessionId: String!
+	user: String!
+	device: String!
+	client: String!
+	itemId: String!
+	itemName: String!
+	itemType: String!
+	seriesName: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	runtimeSeconds: Float
+	playMethod: String
+	paused: Boolean!
+	updatedAt: DateTime!
+	id: ID!
+	progress: Float
+}
+
+type JellyfinUpdate {
+	eventId: UUID!
+	state: String!
+	sessionId: String!
+	user: String!
+	device: String!
+	client: String!
+	itemId: String!
+	itemName: String!
+	itemType: String!
+	seriesName: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	runtimeSeconds: Float
+	playMethod: String
+	id: ID!
+}
+
 type LightEntity {
 	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
 	room: String
+	battery: DeviceBattery
 	"""
 	Current power state. Nullable so an unreachable light actor reports the
 	error against this field without nulling the whole entity.
@@ -287,6 +396,70 @@ type LightUpdate {
 	on: Boolean!
 }
 
+type MediaPlayerEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	room: String
+	state: String
+	playing: Boolean!
+	appName: String
+	source: String
+	mediaContentType: String
+	mediaTitle: String
+	mediaArtist: String
+	mediaAlbumName: String
+	mediaSeriesTitle: String
+	season: Int
+	episode: Int
+	durationSeconds: Float
+	"""
+	Where playback has reached now, extrapolated from the last reported
+	position: Home Assistant only republishes `media_position` on a seek, so a
+	stored value goes stale the moment it lands.
+	"""
+	positionSeconds: Float
+	progress: Float
+	volumeLevel: Float
+	muted: Boolean
+	artworkUrl: String
+	lastSeen: DateTime
+}
+
+type MediaPlayerMutation {
+	play: Boolean!
+	pause: Boolean!
+	playPause: Boolean!
+	stop: Boolean!
+	next: Boolean!
+	previous: Boolean!
+	volumeSet(level: Float!): Boolean!
+	mute(muted: Boolean!): Boolean!
+	turnOff: Boolean!
+}
+
+type MediaPlayerUpdate {
+	eventId: UUID!
+	deviceId: String!
+	name: String!
+	room: String
+	state: String!
+	entityState: String!
+	appName: String
+	source: String
+	mediaTitle: String
+	mediaSeriesTitle: String
+	mediaContentType: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	durationSeconds: Float
+	volumeLevel: Float
+	muted: Boolean
+	artworkUrl: String
+	id: ID!
+}
+
 type MetricReading {
 	metric: String!
 	value: Float!
@@ -310,6 +483,8 @@ type ModeUpdate {
 type MutationRoot {
 	light(id: String!): LightMutation!
 	robotVacuum(id: String!): RobotVacuumMutation!
+	mediaPlayer(id: String!): MediaPlayerMutation!
+	einkDisplay(id: String!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
@@ -329,12 +504,20 @@ enum Orientation {
 	LANDSCAPE
 }
 
+type PartialWindow {
+	x: Int!
+	y: Int!
+	width: Int!
+	height: Int!
+}
+
 type PresenceEntity {
 	category: EntityCategory!
 	id: String!
 	name: String!
 	capabilities: [Capability!]!
 	room: String
+	battery: DeviceBattery
 	"""
 	Whether presence is detected. Nullable so an unreachable presence actor
 	reports the error against this field without nulling the whole entity.
@@ -373,6 +556,7 @@ type QueryRoot {
 	"""
 	entitySections: [EntitySection!]!
 	entities: [Entity!]!
+	mediaPlayer(id: String!): MediaPlayerEntity!
 	light(id: String!): LightEntity!
 	door(id: String!): DoorEntity!
 	presence(id: String!): PresenceEntity!
@@ -387,6 +571,18 @@ type QueryRoot {
 	activeModes: [Mode!]!
 	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
 	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
+	jellyfin: JellyfinObject!
+	adhocCronTasks: [AdhocCronTaskStatus!]!
+	adhocTasks: [AdhocTaskStatus!]!
+}
+
+enum RedditTimespan {
+	HOUR
+	DAY
+	WEEK
+	MONTH
+	YEAR
+	ALL
 }
 
 type RobotVacuumEntity {
@@ -394,6 +590,7 @@ type RobotVacuumEntity {
 	id: String!
 	name: String!
 	room: String
+	battery: DeviceBattery
 	capabilities: [Capability!]!
 	kind: RobotVacuumKind!
 	status: String
@@ -452,6 +649,11 @@ input SolarHistoryInput {
 type SolarObject {
 	current: SolarCurrentResponse!
 	history(input: SolarHistoryInput!): [GenerationHistory!]!
+}
+
+type SolarUpdate {
+	eventId: UUID!
+	currentWh: Float!
 }
 
 type SubscriptionRoot {

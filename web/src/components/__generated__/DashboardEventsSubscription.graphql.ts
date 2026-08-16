@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<70b1ddae247269ff3bdd8e0d4b9f2a50>>
+ * @generated SignedSource<<f5a5550b5e268b6ff0b5801fe2b8c076>>
  * @lightSyntaxTransform
  */
 
@@ -334,6 +334,12 @@ return {
             "selections": (v9/*:: as any*/),
             "type": "HomeAssistantUpdate",
             "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v9/*:: as any*/),
+            "type": "JellyfinUpdate",
+            "abstractKey": null
           }
         ],
         "storageKey": "events(filter:\"*\")"
@@ -341,12 +347,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f6db8d639be6810619ab366dbcf64f56",
+    "cacheID": "a7ba8920872eac4e7a054719a1eeac25",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();

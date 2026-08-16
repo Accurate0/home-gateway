@@ -10,6 +10,7 @@ COPY web/package.json ./web/
 RUN pnpm install --frozen-lockfile --filter web...
 
 COPY packages ./packages
+COPY schema.graphql ./
 COPY web ./web
 ARG VITE_AUTH_DISABLED
 ENV VITE_AUTH_DISABLED=${VITE_AUTH_DISABLED}

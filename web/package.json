@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "relay": "relay-compiler",
-    "update-schema": "curl http://localhost:8000/v1/schema --output src/schema.graphql"
+    "update-schema": "curl http://localhost:8000/v1/schema --output ../schema.graphql"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",

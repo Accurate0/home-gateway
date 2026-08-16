@@ -1,8 +1,8 @@
 use async_graphql::{MergedObject, Schema};
 use queries::{
-    auth_query::AuthQuery, energy_query::EnergyQuery, entities_query::EntitiesQuery,
-    home_assistant_query::HomeAssistantQuery, jellyfin_query::JellyfinQuery,
-    solar_query::SolarQuery, weather_query::WeatherQuery,
+    adhoc_query::AdhocQuery, auth_query::AuthQuery, energy_query::EnergyQuery,
+    entities_query::EntitiesQuery, home_assistant_query::HomeAssistantQuery,
+    jellyfin_query::JellyfinQuery, solar_query::SolarQuery, weather_query::WeatherQuery,
 };
 
 use crate::graphql::mutations::MutationRoot;
@@ -29,6 +29,36 @@ pub struct QueryRoot(
     WoolworthsQuery,
     WorkflowsQuery,
     JellyfinQuery,
+    AdhocQuery,
 );
 
 pub type FinalSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;
+
+pub fn sdl() -> String {
+    Schema::build(
+        QueryRoot::default(),
+        MutationRoot::default(),
+        SubscriptionRoot,
+    )
+    .finish()
+    .sdl()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn schema_is_reviewed() {
+        let sdl = sdl();
+
+        insta::assert_snapshot!("schema", &sdl);
+
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schema.graphql");
+        let current = std::fs::read_to_string(&path).unwrap_or_default();
+
+        if current != sdl {
+            std::fs::write(&path, &sdl).expect("write schema.graphql");
+        }
+    }
+}

@@ -1,3 +1,4 @@
+pub mod adhoc_query;
 pub mod auth_query;
 pub mod energy_query;
 pub mod entities_query;

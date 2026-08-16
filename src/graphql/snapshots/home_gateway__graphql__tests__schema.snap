@@ -1,3 +1,30 @@
+---
+source: src/graphql/mod.rs
+expression: "&sdl"
+---
+type AdhocCronTaskStatus {
+	id: String!
+	name: String!
+	schedule: String!
+	flag: String
+	nextRunAt: DateTime
+	lastRunAt: DateTime
+	durationMs: Int
+	rowsAffected: Int
+	outcome: String
+}
+
+type AdhocTaskStatus {
+	id: String!
+	ordinal: Int!
+	name: String!
+	flag: String
+	completedAt: DateTime
+	durationMs: Int
+	pending: Boolean!
+	checksumDrifted: Boolean!
+}
+
 type AuthObject {
 	id: String
 	name: String
@@ -33,6 +60,8 @@ enum Capability {
 	PRESSURE
 	LUX
 	UV_INDEX
+	PM_25
+	VOC_INDEX
 }
 
 input ColourTemperatureMoveInput {
@@ -109,9 +138,14 @@ type EinkDisplayConfig {
 	mode: EinkMode!
 	view: String
 	album: String
+	subreddit: String
+	timespan: RedditTimespan
+	limit: Int
 	orientation: Orientation!
-	refresh: String
+	refresh: String!
+	grace: String!
 	settle: String
+	lead: String
 	sleepStart: String
 	sleepEnd: String
 }
@@ -145,6 +179,7 @@ type EinkDisplayMutation {
 enum EinkMode {
 	DASHBOARD
 	ALBUM
+	REDDIT
 }
 
 type EnergyConsumption {
@@ -227,11 +262,16 @@ type EnvironmentUpdate {
 
 type EpdConfig {
 	refreshIntervalMins: Int
+	refreshIntervalSecs: Int
 	imageUrl: String
+	imageHash: String
 	clearScreen: Boolean
+	firmwareUrl: String
+	firmwareVersion: String
+	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | MediaPlayerUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -271,6 +311,50 @@ type HomeAssistantUpdate {
 	eventId: UUID!
 	entityId: String!
 	state: String!
+	id: ID!
+}
+
+type JellyfinObject {
+	nowPlaying: [JellyfinSession!]!
+}
+
+type JellyfinSession {
+	eventId: UUID!
+	sessionId: String!
+	user: String!
+	device: String!
+	client: String!
+	itemId: String!
+	itemName: String!
+	itemType: String!
+	seriesName: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	runtimeSeconds: Float
+	playMethod: String
+	paused: Boolean!
+	updatedAt: DateTime!
+	id: ID!
+	progress: Float
+}
+
+type JellyfinUpdate {
+	eventId: UUID!
+	state: String!
+	sessionId: String!
+	user: String!
+	device: String!
+	client: String!
+	itemId: String!
+	itemName: String!
+	itemType: String!
+	seriesName: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	runtimeSeconds: Float
+	playMethod: String
 	id: ID!
 }
 
@@ -314,20 +398,6 @@ type LightUpdate {
 	"""
 	device: String!
 	on: Boolean!
-}
-
-type MetricReading {
-	metric: String!
-	value: Float!
-}
-
-enum Mode {
-	HOME
-	AWAY
-	VACATION
-	NIGHT
-	GUEST
-	PARTY
 }
 
 type MediaPlayerEntity {
@@ -394,6 +464,20 @@ type MediaPlayerUpdate {
 	id: ID!
 }
 
+type MetricReading {
+	metric: String!
+	value: Float!
+}
+
+enum Mode {
+	HOME
+	AWAY
+	VACATION
+	NIGHT
+	GUEST
+	PARTY
+}
+
 type ModeUpdate {
 	eventId: UUID!
 	mode: Mode!
@@ -422,6 +506,13 @@ scalar NaiveDateTime
 enum Orientation {
 	PORTRAIT
 	LANDSCAPE
+}
+
+type PartialWindow {
+	x: Int!
+	y: Int!
+	width: Int!
+	height: Int!
 }
 
 type PresenceEntity {
@@ -469,13 +560,13 @@ type QueryRoot {
 	"""
 	entitySections: [EntitySection!]!
 	entities: [Entity!]!
+	mediaPlayer(id: String!): MediaPlayerEntity!
 	light(id: String!): LightEntity!
 	door(id: String!): DoorEntity!
 	presence(id: String!): PresenceEntity!
 	environment(id: String!): EnvironmentEntity!
 	einkDisplay(id: String!): EinkDisplayEntity!
 	robotVacuum(id: String!): RobotVacuumEntity!
-	mediaPlayer(id: String!): MediaPlayerEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
@@ -484,6 +575,18 @@ type QueryRoot {
 	activeModes: [Mode!]!
 	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
 	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
+	jellyfin: JellyfinObject!
+	adhocCronTasks: [AdhocCronTaskStatus!]!
+	adhocTasks: [AdhocTaskStatus!]!
+}
+
+enum RedditTimespan {
+	HOUR
+	DAY
+	WEEK
+	MONTH
+	YEAR
+	ALL
 }
 
 type RobotVacuumEntity {
@@ -550,6 +653,11 @@ input SolarHistoryInput {
 type SolarObject {
 	current: SolarCurrentResponse!
 	history(input: SolarHistoryInput!): [GenerationHistory!]!
+}
+
+type SolarUpdate {
+	eventId: UUID!
+	currentWh: Float!
 }
 
 type SubscriptionRoot {
