@@ -138,38 +138,40 @@ export default function AdhocTasksPage() {
                   </span>
                 </div>
 
-                <div className="flex shrink-0 flex-col items-end gap-1 text-right">
-                  {task.outcome ? (
-                    <span
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase",
-                        OUTCOME_STYLES[task.outcome] ??
-                          "text-muted-foreground border-border",
-                      )}
-                    >
-                      {task.outcome}
+                <div className="flex shrink-0 items-center gap-4">
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    {task.outcome ? (
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase",
+                          OUTCOME_STYLES[task.outcome] ??
+                            "text-muted-foreground border-border",
+                        )}
+                      >
+                        {task.outcome}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground border-border rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+                        never run
+                      </span>
+                    )}
+                    <span className="text-muted-foreground text-xs">
+                      {relative(task.lastRunAt)}
+                      {task.durationMs !== null && ` · ${task.durationMs}ms`}
+                      {task.rowsAffected !== null &&
+                        ` · ${task.rowsAffected} rows`}
                     </span>
-                  ) : (
-                    <span className="text-muted-foreground border-border rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
-                      never run
-                    </span>
-                  )}
-                  <span className="text-muted-foreground text-xs">
-                    {relative(task.lastRunAt)}
-                    {task.durationMs !== null && ` · ${task.durationMs}ms`}
-                    {task.rowsAffected !== null &&
-                      ` · ${task.rowsAffected} rows`}
-                  </span>
-                </div>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => runCron(task.name)}
-                  disabled={runningCron === task.name}
-                  className={cn(RUN_BUTTON, "shrink-0")}
-                >
-                  {runningCron === task.name ? "Running…" : "Run now"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => runCron(task.name)}
+                    disabled={runningCron === task.name}
+                    className={RUN_BUTTON}
+                  >
+                    {runningCron === task.name ? "Running…" : "Run now"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
