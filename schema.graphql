@@ -488,6 +488,8 @@ type MutationRoot {
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
+	runPendingAdhocTasks: Boolean!
+	runAdhocCronTask(name: String!): Boolean!
 }
 
 """

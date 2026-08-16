@@ -350,6 +350,9 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
     pub const GRAPHQL_EPD_WRITE: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Write);
 
+    pub const GRAPHQL_ADHOC_TASK_EXECUTE: Scope =
+        Scope::new(Domain::Graphql, Resource::AdhocTask, Action::Execute);
+
     pub const REST_CONTROL_WRITE: Scope =
         Scope::new(Domain::Rest, Resource::Control, Action::Write);
     pub const REST_WORKFLOW_EXECUTE: Scope =

@@ -1,6 +1,9 @@
-import { graphql, useLazyLoadQuery } from "react-relay";
+import { useState } from "react";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { formatDistanceToNow } from "date-fns";
 import type { AdhocTasksPageQuery } from "./__generated__/AdhocTasksPageQuery.graphql";
+import type { AdhocTasksPageRunCronMutation } from "./__generated__/AdhocTasksPageRunCronMutation.graphql";
+import type { AdhocTasksPageRunPendingMutation } from "./__generated__/AdhocTasksPageRunPendingMutation.graphql";
 import { cn } from "@/lib/utils";
 
 const AdhocTasksQuery = graphql`
@@ -29,6 +32,23 @@ const AdhocTasksQuery = graphql`
   }
 `;
 
+const RunCronMutation = graphql`
+  mutation AdhocTasksPageRunCronMutation($name: String!) {
+    runAdhocCronTask(name: $name)
+  }
+`;
+
+const RunPendingMutation = graphql`
+  mutation AdhocTasksPageRunPendingMutation {
+    runPendingAdhocTasks
+  }
+`;
+
+const REFRESH_DELAY_MS = 2000;
+
+const RUN_BUTTON =
+  "border-border text-muted-foreground hover:text-foreground cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors disabled:cursor-default disabled:opacity-50";
+
 const OUTCOME_STYLES: Record<string, string> = {
   success: "text-emerald-600 dark:text-emerald-400 border-emerald-500/40",
   error: "text-red-600 dark:text-red-400 border-red-500/40",
@@ -36,11 +56,53 @@ const OUTCOME_STYLES: Record<string, string> = {
 };
 
 function relative(value: string | null | undefined) {
-  return value ? formatDistanceToNow(new Date(value), { addSuffix: true }) : "never";
+  return value
+    ? formatDistanceToNow(new Date(value), { addSuffix: true })
+    : "never";
 }
 
 export default function AdhocTasksPage() {
-  const data = useLazyLoadQuery<AdhocTasksPageQuery>(AdhocTasksQuery, {});
+  const [fetchKey, setFetchKey] = useState(0);
+  const data = useLazyLoadQuery<AdhocTasksPageQuery>(
+    AdhocTasksQuery,
+    {},
+    { fetchKey, fetchPolicy: "store-and-network" },
+  );
+
+  const [runningCron, setRunningCron] = useState<string | null>(null);
+  const [runningPending, setRunningPending] = useState(false);
+
+  const [commitRunCron] =
+    useMutation<AdhocTasksPageRunCronMutation>(RunCronMutation);
+  const [commitRunPending] =
+    useMutation<AdhocTasksPageRunPendingMutation>(RunPendingMutation);
+
+  const refreshSoon = () =>
+    window.setTimeout(() => setFetchKey((key) => key + 1), REFRESH_DELAY_MS);
+
+  const runCron = (name: string) => {
+    setRunningCron(name);
+    commitRunCron({
+      variables: { name },
+      onCompleted: () => {
+        setRunningCron(null);
+        refreshSoon();
+      },
+      onError: () => setRunningCron(null),
+    });
+  };
+
+  const runPending = () => {
+    setRunningPending(true);
+    commitRunPending({
+      variables: {},
+      onCompleted: () => {
+        setRunningPending(false);
+        refreshSoon();
+      },
+      onError: () => setRunningPending(false),
+    });
+  };
 
   return (
     <div className="flex flex-col gap-10">
@@ -50,7 +112,9 @@ export default function AdhocTasksPage() {
         </h2>
 
         {data.adhocCronTasks.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No cron tasks registered.</p>
+          <p className="text-muted-foreground text-sm">
+            No cron tasks registered.
+          </p>
         ) : (
           <div className="flex flex-col gap-2">
             {data.adhocCronTasks.map((task) => (
@@ -93,9 +157,19 @@ export default function AdhocTasksPage() {
                   <span className="text-muted-foreground text-xs">
                     {relative(task.lastRunAt)}
                     {task.durationMs !== null && ` · ${task.durationMs}ms`}
-                    {task.rowsAffected !== null && ` · ${task.rowsAffected} rows`}
+                    {task.rowsAffected !== null &&
+                      ` · ${task.rowsAffected} rows`}
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => runCron(task.name)}
+                  disabled={runningCron === task.name}
+                  className={cn(RUN_BUTTON, "shrink-0")}
+                >
+                  {runningCron === task.name ? "Running…" : "Run now"}
+                </button>
               </div>
             ))}
           </div>
@@ -103,10 +177,25 @@ export default function AdhocTasksPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-sm font-medium tracking-wide uppercase">One-shot</h2>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-sm font-medium tracking-wide uppercase">
+            One-shot
+          </h2>
+
+          <button
+            type="button"
+            onClick={runPending}
+            disabled={runningPending}
+            className={RUN_BUTTON}
+          >
+            {runningPending ? "Running…" : "Run pending"}
+          </button>
+        </div>
 
         {data.adhocTasks.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No one-shot tasks registered.</p>
+          <p className="text-muted-foreground text-sm">
+            No one-shot tasks registered.
+          </p>
         ) : (
           <div className="flex flex-col gap-2">
             {data.adhocTasks.map((task) => (

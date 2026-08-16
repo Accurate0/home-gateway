@@ -16,6 +16,8 @@ const CRON_JITTER_SECS: u64 = 60;
 pub enum AdhocTaskActorMessage {
     Recheck,
     CronFire { name: &'static str },
+    RunPending,
+    RunCron { name: &'static str },
 }
 
 pub struct AdhocTaskActor {
@@ -156,16 +158,31 @@ impl Actor for AdhocTaskActor {
                 tracing::trace!("no adhoc tasks registered");
             }
             AdhocTaskActorMessage::Recheck => {
-                run_pending(&self.shared_actor_state).await;
+                run_pending(&self.shared_actor_state, false).await;
+            }
+            AdhocTaskActorMessage::RunPending => {
+                tracing::info!("draining the adhoc queue on demand");
+                run_pending(&self.shared_actor_state, true).await;
             }
             AdhocTaskActorMessage::CronFire { name } => {
                 match cron_registry().into_iter().find(|task| task.name() == name) {
                     Some(task) => {
-                        run_cron(&self.shared_actor_state, task).await;
+                        run_cron(&self.shared_actor_state, task, false).await;
                         Self::schedule_next(&myself, task);
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} fired but is no longer registered");
+                    }
+                }
+            }
+            AdhocTaskActorMessage::RunCron { name } => {
+                match cron_registry().into_iter().find(|task| task.name() == name) {
+                    Some(task) => {
+                        tracing::info!("running adhoc cron task {name} on demand");
+                        run_cron(&self.shared_actor_state, task, true).await;
+                    }
+                    None => {
+                        tracing::error!("adhoc cron task {name} is no longer registered");
                     }
                 }
             }

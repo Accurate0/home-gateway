@@ -36,9 +36,9 @@ fn classify(existing: Option<(&str, &str)>, name: &str, expected: &str) -> Ledge
     }
 }
 
-pub async fn run_pending(state: &SharedActorState) {
+pub async fn run_pending(state: &SharedActorState, force: bool) {
     for task in registry() {
-        match run_one(state, task).await {
+        match run_one(state, task, force).await {
             Step::Continue => continue,
             Step::Park => {
                 tracing::warn!(
@@ -55,7 +55,7 @@ pub async fn run_pending(state: &SharedActorState) {
     tracing::debug!("adhoc queue is fully drained");
 }
 
-async fn run_one(state: &SharedActorState, task: &'static dyn AdhocTask) -> Step {
+async fn run_one(state: &SharedActorState, task: &'static dyn AdhocTask, force: bool) -> Step {
     let expected = checksum(task.source());
 
     let row = match read_ledger(&state.db, task.ordinal()).await {
@@ -100,7 +100,7 @@ async fn run_one(state: &SharedActorState, task: &'static dyn AdhocTask) -> Step
         }
     }
 
-    if !is_released(state, task).await {
+    if !is_released(state, task, force).await {
         tracing::info!("adhoc task {} is held by its rollout flag", task.name());
         crate::metrics::record_adhoc_task(task.name(), "held");
 
@@ -127,15 +127,22 @@ async fn run_one(state: &SharedActorState, task: &'static dyn AdhocTask) -> Step
     }
 }
 
-async fn is_released(state: &SharedActorState, task: &'static dyn AdhocTask) -> bool {
-    flag_released(state, task.name(), task.flag()).await
+async fn is_released(state: &SharedActorState, task: &'static dyn AdhocTask, force: bool) -> bool {
+    flag_released(state, task.name(), task.flag(), force).await
 }
 
 async fn flag_released(
     state: &SharedActorState,
     name: &'static str,
     flag: Option<&'static str>,
+    force: bool,
 ) -> bool {
+    if force {
+        tracing::info!("adhoc task {name} was run manually, bypassing its rollout flag");
+
+        return true;
+    }
+
     let Some(flag) = flag else {
         tracing::trace!("adhoc task {name} has no rollout flag");
 
@@ -154,8 +161,8 @@ async fn flag_released(
         .await
 }
 
-pub async fn run_cron(state: &SharedActorState, task: &'static dyn AdhocCronTask) {
-    if !flag_released(state, task.name(), task.flag()).await {
+pub async fn run_cron(state: &SharedActorState, task: &'static dyn AdhocCronTask, force: bool) {
+    if !flag_released(state, task.name(), task.flag(), force).await {
         tracing::info!("adhoc cron task {} is held by its flag", task.name());
         crate::metrics::record_adhoc_task(task.name(), "held");
 
