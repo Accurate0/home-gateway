@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - src/**
+      - tests/**
       - migrations/**
       - .sqlx/**
       - Cargo.toml
@@ -17,6 +18,10 @@ on:
       - .github/workflows/branch-build-home-gateway.yml
 
 jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/build-test.yml
+
   build:
     name: Build
     runs-on: ubuntu-latest
