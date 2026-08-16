@@ -12,8 +12,7 @@ pub async fn unifi(Auth(auth): Auth, Json(unifi_event): Json<UnifiWebhookEvent>)
         return StatusCode::FORBIDDEN;
     }
 
-    let Some(actor) = ractor::registry::where_is(UnifiConnectedClientHandler::NAME.to_string())
-    else {
+    let Some(actor) = ractor::registry::where_is(UnifiConnectedClientHandler::NAME) else {
         tracing::warn!("unifi actor not found");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };

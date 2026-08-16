@@ -50,7 +50,7 @@ fn is_valid_hex(hex: &str) -> bool {
 }
 
 fn dispatch(message: LightHandlerMessage) -> async_graphql::Result<bool> {
-    let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(LightHandler::NAME) else {
         return Err(async_graphql::Error::new("light actor unavailable"));
     };
 

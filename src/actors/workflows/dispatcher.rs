@@ -43,6 +43,29 @@ pub struct WorkflowDispatcherState {
 
 type EventSubject = (String, String);
 
+impl WorkflowDispatcherState {
+    fn cancel_pending_for(&mut self, subject: &EventSubject) -> Vec<String> {
+        let mut cancelled = Vec::new();
+
+        self.pending_delays.retain(|(s, name), handle| {
+            if s == subject {
+                handle.abort();
+                cancelled.push(name.clone());
+                false
+            } else {
+                true
+            }
+        });
+
+        cancelled
+    }
+}
+
+enum PendingLatch {
+    Sensor((String, String, SensorMetric)),
+    Solar((String, SolarMetric)),
+}
+
 /// Whether a solar trigger fires for this reading: pick the metric's value
 /// (`None` when its average window is still empty, which never fires and leaves
 /// the edge state untouched), compare it, and gate on the rising edge so a value
@@ -54,6 +77,7 @@ fn solar_fires(
     current_wh: f64,
     averages: Option<&SolarCurrentStatisticsAverages>,
     last_satisfied: &mut HashMap<(String, SolarMetric), bool>,
+    pending: &mut Option<PendingLatch>,
 ) -> bool {
     let value = match metric {
         SolarMetric::Current => Some(current_wh),
@@ -67,11 +91,20 @@ fn solar_fires(
     };
 
     let satisfied = cmp.matches(value);
-    let was_satisfied = last_satisfied
-        .insert((name.to_owned(), metric), satisfied)
-        .unwrap_or(false);
+    let key = (name.to_owned(), metric);
 
-    satisfied && !was_satisfied
+    if !satisfied {
+        last_satisfied.insert(key, false);
+        return false;
+    }
+
+    if last_satisfied.get(&key).copied().unwrap_or(false) {
+        return false;
+    }
+
+    *pending = Some(PendingLatch::Solar(key));
+
+    true
 }
 
 impl WorkflowDispatcher {
@@ -87,6 +120,7 @@ impl WorkflowDispatcher {
         msg: &EventBusMessage,
         averages: Option<&SolarCurrentStatisticsAverages>,
         state: &mut WorkflowDispatcherState,
+        pending: &mut Option<PendingLatch>,
     ) -> bool {
         let Some(on) = workflow.on() else {
             return false;
@@ -137,9 +171,19 @@ impl WorkflowDispatcher {
                 };
                 let satisfied = cmp.matches(reading.value());
                 let key = (workflow.name.clone(), s.clone(), reading.metric());
-                let was_satisfied = state.last_satisfied.insert(key, satisfied).unwrap_or(false);
-                // rising edge only: fire when the threshold is newly crossed
-                satisfied && !was_satisfied
+
+                if !satisfied {
+                    state.last_satisfied.insert(key, false);
+                    return false;
+                }
+
+                if state.last_satisfied.get(&key).copied().unwrap_or(false) {
+                    return false;
+                }
+
+                *pending = Some(PendingLatch::Sensor(key));
+
+                true
             }
             (TriggerMatcher::Cron { .. }, EventBusMessage::Cron { name, .. }) => {
                 &workflow.name == name
@@ -243,6 +287,7 @@ impl WorkflowDispatcher {
                     *current_wh,
                     averages,
                     &mut state.last_solar_satisfied,
+                    pending,
                 )
             }
             _ => false,
@@ -301,18 +346,14 @@ impl WorkflowDispatcher {
         }
 
         let subject: EventSubject = (msg.kind().to_string(), msg.entity());
-        state.pending_delays.retain(|(s, name), handle| {
-            if s == &subject {
-                handle.abort();
-                tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
-                false
-            } else {
-                true
-            }
-        });
+        for name in state.cancel_pending_for(&subject) {
+            tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
+        }
 
         for workflow in settings.workflows.values() {
-            if !self.matches(workflow, &msg, averages.as_ref(), state) {
+            let mut pending = None;
+
+            if !self.matches(workflow, &msg, averages.as_ref(), state, &mut pending) {
                 continue;
             }
             if !self
@@ -330,7 +371,7 @@ impl WorkflowDispatcher {
                 trigger = workflow.name,
                 event_kind = msg.kind(),
             );
-            self.evaluate_trigger(event_id, workflow, &subject, &vars, state)
+            self.evaluate_trigger(event_id, workflow, &subject, &vars, state, pending)
                 .instrument(trigger_span)
                 .await?;
         }
@@ -348,6 +389,7 @@ impl WorkflowDispatcher {
         subject: &EventSubject,
         vars: &HashMap<String, String>,
         state: &mut WorkflowDispatcherState,
+        pending: Option<PendingLatch>,
     ) -> Result<(), ActorProcessingErr> {
         if let Some(when) = workflow.when() {
             match conditions::eval(&self.shared_actor_state, when).await {
@@ -389,6 +431,16 @@ impl WorkflowDispatcher {
                 crate::metrics::TriggerOutcome::CooldownSkipped,
             );
             return Ok(());
+        }
+
+        match pending {
+            Some(PendingLatch::Sensor(key)) => {
+                state.last_satisfied.insert(key, true);
+            }
+            Some(PendingLatch::Solar(key)) => {
+                state.last_solar_satisfied.insert(key, true);
+            }
+            None => {}
         }
 
         tracing::info!("[{event_id}] trigger '{}' fired", workflow.name);
@@ -490,7 +542,7 @@ impl WorkflowDispatcher {
         workflow: Workflow,
         vars: HashMap<String, String>,
     ) -> Result<(), ActorProcessingErr> {
-        let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
+        let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME) else {
             tracing::warn!("[{event_id}] workflow factory not found, dropping trigger");
             return Ok(());
         };
@@ -574,6 +626,7 @@ impl Actor for WorkflowDispatcher {
 mod tests {
     use super::*;
     use crate::settings::workflow::{CompareOp, Comparison};
+    use std::time::Duration;
 
     fn averages(last_15_mins: Option<f64>) -> SolarCurrentStatisticsAverages {
         SolarCurrentStatisticsAverages {
@@ -592,20 +645,119 @@ mod tests {
         let mut last = HashMap::new();
 
         let fires = |avg: f64, last: &mut HashMap<_, _>| {
-            solar_fires(
+            let mut pending = None;
+            let fired = solar_fires(
                 "solar surplus",
                 SolarMetric::Avg15m,
                 &cmp,
                 0.0,
                 Some(&averages(Some(avg))),
                 last,
-            )
+                &mut pending,
+            );
+
+            if let Some(PendingLatch::Solar(key)) = pending {
+                last.insert(key, true);
+            }
+
+            fired
         };
 
         assert!(fires(3500.0, &mut last), "expected the crossing to fire");
         assert!(!fires(4000.0, &mut last), "expected no re-fire while past");
         assert!(!fires(2000.0, &mut last), "expected no fire on the drop");
         assert!(fires(3500.0, &mut last), "expected a re-arm and re-fire");
+    }
+
+    fn armed(state: &mut WorkflowDispatcherState, subject: &EventSubject, name: &str) {
+        let handle = tokio::spawn(async { tokio::time::sleep(Duration::from_secs(3600)).await });
+        state
+            .pending_delays
+            .insert((subject.clone(), name.to_owned()), handle);
+    }
+
+    #[tokio::test]
+    async fn a_matching_subject_cancels_every_delay_armed_for_it() {
+        let mut state = WorkflowDispatcherState::default();
+        let presence: EventSubject = ("presence".to_owned(), "livingroom-motion".to_owned());
+        let door: EventSubject = ("door".to_owned(), "front-door".to_owned());
+
+        armed(&mut state, &presence, "lamp off");
+        armed(&mut state, &presence, "heater off");
+        armed(&mut state, &door, "porch light off");
+
+        let mut cancelled = state.cancel_pending_for(&presence);
+        cancelled.sort();
+
+        assert_eq!(cancelled, vec!["heater off", "lamp off"]);
+        assert_eq!(
+            state.pending_delays.len(),
+            1,
+            "a delay armed for a different subject survives"
+        );
+        assert!(
+            state
+                .pending_delays
+                .contains_key(&(door, "porch light off".to_owned())),
+            "the surviving delay is the door one"
+        );
+    }
+
+    #[tokio::test]
+    async fn cancelling_an_unarmed_subject_is_a_no_op() {
+        let mut state = WorkflowDispatcherState::default();
+        let presence: EventSubject = ("presence".to_owned(), "livingroom-motion".to_owned());
+
+        armed(&mut state, &presence, "lamp off");
+
+        let other: EventSubject = ("presence".to_owned(), "closet-presence".to_owned());
+
+        assert!(state.cancel_pending_for(&other).is_empty());
+        assert_eq!(state.pending_delays.len(), 1);
+    }
+
+    #[test]
+    fn a_crossing_rejected_by_a_guard_still_fires_when_the_guard_opens() {
+        let cmp = Comparison {
+            op: CompareOp::Gt,
+            value: 3000.0,
+        };
+        let mut last = HashMap::new();
+
+        let evaluate = |avg: f64, last: &mut HashMap<_, _>, guard_open: bool| {
+            let mut pending = None;
+            let fired = solar_fires(
+                "solar surplus",
+                SolarMetric::Avg15m,
+                &cmp,
+                0.0,
+                Some(&averages(Some(avg))),
+                last,
+                &mut pending,
+            );
+
+            if fired
+                && guard_open
+                && let Some(PendingLatch::Solar(key)) = pending
+            {
+                last.insert(key, true);
+            }
+
+            fired && guard_open
+        };
+
+        assert!(
+            !evaluate(3500.0, &mut last, false),
+            "the guard is shut, so nothing fires"
+        );
+        assert!(
+            evaluate(3500.0, &mut last, true),
+            "the edge was not consumed by the shut guard, so it fires now"
+        );
+        assert!(
+            !evaluate(3500.0, &mut last, true),
+            "the edge is consumed once it has fired"
+        );
     }
 
     #[test]
@@ -623,6 +775,7 @@ mod tests {
             0.0,
             Some(&averages(None)),
             &mut last,
+            &mut None,
         ));
         assert!(!solar_fires(
             "low solar",
@@ -631,6 +784,7 @@ mod tests {
             0.0,
             None,
             &mut last,
+            &mut None,
         ));
         assert!(last.is_empty(), "edge state should be untouched");
     }
@@ -650,6 +804,7 @@ mod tests {
             1500.0,
             None,
             &mut last,
+            &mut None,
         ));
     }
 }

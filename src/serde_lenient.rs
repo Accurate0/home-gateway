@@ -8,6 +8,7 @@ enum NumberOrString {
 }
 
 impl NumberOrString {
+    #[allow(clippy::wrong_self_convention)]
     fn as_f64(self) -> Option<f64> {
         match self {
             NumberOrString::Num(n) => Some(n),

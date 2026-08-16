@@ -40,8 +40,17 @@ impl PartialWindow {
     }
 }
 
-pub fn packed_cache_key(hash: String) -> String {
-    format!("{PACKED_CACHE_PREFIX}{hash}.bin")
+pub const FRAME_HASH_LEN: usize = 64;
+
+pub fn is_frame_hash(hash: &str) -> bool {
+    hash.len() == FRAME_HASH_LEN
+        && hash
+            .bytes()
+            .all(|b| b.is_ascii_digit() || b.is_ascii_lowercase() && b.is_ascii_hexdigit())
+}
+
+pub fn packed_cache_key(hash: &str) -> Option<String> {
+    is_frame_hash(hash).then(|| format!("{PACKED_CACHE_PREFIX}{hash}.bin"))
 }
 
 pub fn dirty_window(previous: &[u8], next: &[u8]) -> Option<PartialWindow> {
@@ -137,6 +146,32 @@ mod tests {
 
     fn blank_frame() -> Vec<u8> {
         vec![0x11; PACKED_FRAME_SIZE]
+    }
+
+    #[test]
+    fn packed_cache_key_accepts_a_render_hash() {
+        let hash = "a".repeat(FRAME_HASH_LEN);
+        let key = packed_cache_key(&hash).expect("a hex digest is a frame hash");
+
+        assert!(key.starts_with(PACKED_CACHE_PREFIX));
+        assert!(key.ends_with(".bin"));
+    }
+
+    #[test]
+    fn packed_cache_key_rejects_traversal_and_malformed_hashes() {
+        for hash in [
+            "../../firmware/firmware_x",
+            "../../../etc/passwd",
+            "a/b",
+            "",
+            &"a".repeat(FRAME_HASH_LEN - 1),
+            &"a".repeat(FRAME_HASH_LEN + 1),
+            &"A".repeat(FRAME_HASH_LEN),
+            &"g".repeat(FRAME_HASH_LEN),
+            &format!("{}/../x", "a".repeat(FRAME_HASH_LEN - 6)),
+        ] {
+            assert_eq!(packed_cache_key(hash), None, "should reject {hash:?}");
+        }
     }
 
     fn set_pixel(frame: &mut [u8], x: usize, y: usize) {

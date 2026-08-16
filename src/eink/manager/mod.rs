@@ -225,7 +225,10 @@ impl EinkDisplayManager {
     }
 
     pub async fn ensure_packed(&self, plan: &RenderPlan) -> bool {
-        let key = packed_cache_key(plan.hash.clone());
+        let Some(key) = packed_cache_key(&plan.hash) else {
+            tracing::error!(hash = %plan.hash, "render plan hash is not a frame hash");
+            return false;
+        };
 
         match self.s3.get_object_metadata(&key).await {
             Ok(Some(_)) => return true,

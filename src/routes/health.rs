@@ -61,7 +61,7 @@ pub async fn actor_health() -> (StatusCode, Json<ActorHealth>) {
         .iter()
         .map(|name| ActorStatus {
             name,
-            present: ractor::registry::where_is(name.to_string()).is_some(),
+            present: ractor::registry::where_is(name).is_some(),
         })
         .collect();
 

@@ -9,6 +9,10 @@ use serde::Serialize;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
+fn mqtt_ingest_actor() -> Option<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
+    ractor::registry::where_is(mqtt_ingest::MqttIngest::NAME).map(ActorRef::from)
+}
+
 pub const ZIGBEE2MQTT_BASE: &str = "zigbee2mqtt";
 
 const STATIC_TOPICS: [&str; 5] = [
@@ -116,7 +120,6 @@ impl Mqtt {
     pub async fn process_events(
         &mut self,
         cancellation_token: CancellationToken,
-        actor: ActorRef<FactoryMessage<(), mqtt_ingest::Message>>,
         devices: DeviceRegistry,
     ) -> Result<(), MqttError> {
         let mut backoff = RECONNECT_BACKOFF_MIN;
@@ -155,6 +158,11 @@ impl Mqtt {
                                 });
                             },
                             rumqttc::Event::Incoming(packet) => if let rumqttc::Packet::Publish(publish) = packet {
+                                let Some(actor) = mqtt_ingest_actor() else {
+                                    tracing::error!("mqtt ingest actor is not registered, dropping packet on {}", publish.topic);
+                                    continue;
+                                };
+
                                 let response = actor.send_message(FactoryMessage::Dispatch(Job {
                                     key: (),
                                     msg: mqtt_ingest::Message::MqttPacket {

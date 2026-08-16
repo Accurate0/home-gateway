@@ -33,13 +33,10 @@ pub async fn resolve_partial_window(
     }
 
     let previous = s3
-        .get_object(&packed_cache_key(current_image_hash.to_owned()))
+        .get_object(&packed_cache_key(current_image_hash)?)
         .await
         .ok();
-    let next = s3
-        .get_object(&packed_cache_key(new_hash.to_owned()))
-        .await
-        .ok();
+    let next = s3.get_object(&packed_cache_key(new_hash)?).await.ok();
 
     let window = match (previous.as_deref(), next.as_deref()) {
         (Some(previous), Some(next)) => dirty_window(previous, next),

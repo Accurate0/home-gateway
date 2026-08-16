@@ -23,12 +23,8 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
             AppError::Error(e) => {
-                tracing::error!("Something went wrong: {e}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Something went wrong: {}", e),
-                )
-                    .into_response()
+                tracing::error!("Something went wrong: {e:?}");
+                (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
             }
             AppError::StatusCode(s) => {
                 (s, s.canonical_reason().unwrap_or("").to_owned()).into_response()
@@ -54,6 +50,8 @@ pub enum MainError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Woolworths(#[from] WoolworthsError),
+    #[error(transparent)]
+    Join(#[from] tokio::task::JoinError),
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }

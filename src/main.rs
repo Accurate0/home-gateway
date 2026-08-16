@@ -12,6 +12,9 @@ use axum::{
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use device_registry::DeviceRegistry;
 use error::MainError;
+
+const GRAPHQL_MAX_DEPTH: usize = 20;
+const GRAPHQL_MAX_COMPLEXITY: usize = 5000;
 use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use graphql::{
@@ -38,7 +41,7 @@ use home_gateway::{
     routes::{epd, ingest::unifi::unifi, workflow::execute::workflow_execute},
 };
 use mqtt::{Mqtt, MqttClient};
-use ractor::{Actor, ActorRef, factory::FactoryMessage};
+use ractor::Actor;
 use routes::{
     admin::keys::{create_key, list_keys, regenerate_key, revoke_key, update_key},
     control::light::light_control,
@@ -83,6 +86,7 @@ async fn log_request(req: Request, next: Next) -> Response {
     response
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn init_actors(
     settings: SettingsContainer,
     devices: DeviceRegistry,
@@ -95,7 +99,7 @@ async fn init_actors(
     home_assistant: Option<home_assistant::HomeAssistant>,
     jellyfin: Option<jellyfin::Jellyfin>,
     eink: EinkDisplayManager,
-) -> anyhow::Result<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
+) -> anyhow::Result<tokio::task::JoinHandle<()>> {
     let shared_actor_state = SharedActorState {
         settings,
         devices,
@@ -110,7 +114,7 @@ async fn init_actors(
         eink,
     };
 
-    let (root_supervisor_ref, _) = Actor::spawn(
+    let (root_supervisor_ref, root_supervisor_handle) = Actor::spawn(
         None,
         RootSupervisor {
             shared_actor_state: shared_actor_state.clone(),
@@ -119,11 +123,9 @@ async fn init_actors(
     )
     .await?;
 
-    let mqtt_ingest_actor =
-        mqtt_ingest::spawn::spawn_mqtt_ingest(&root_supervisor_ref, shared_actor_state.clone())
-            .await?;
+    mqtt_ingest::spawn::spawn_mqtt_ingest(&root_supervisor_ref, shared_actor_state.clone()).await?;
 
-    Ok(mqtt_ingest_actor)
+    Ok(root_supervisor_handle)
 }
 
 #[tokio::main]
@@ -188,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
 
     let http_client = home_gateway::http::get_traced_http_client()?;
 
-    let mqtt_ingest_actor = init_actors(
+    let root_supervisor_handle = init_actors(
         settings_container.clone(),
         device_registry.clone(),
         feature_flag_client.clone(),
@@ -268,6 +270,8 @@ async fn main() -> anyhow::Result<()> {
     .data(event_bus)
     .data(workflow_manager)
     .extension(home_gateway::graphql_tracing::Tracing)
+    .limit_depth(GRAPHQL_MAX_DEPTH)
+    .limit_complexity(GRAPHQL_MAX_COMPLEXITY)
     .finish();
 
     let cors = CorsLayer::new()
@@ -360,11 +364,16 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let mqtt_cancellation_token = cancellation_token.child_token();
-    let mqtt_ingest = mqtt_ingest_actor.clone();
     let mqtt_devices = device_registry.clone();
     task_set.spawn(async move {
-        mqtt.process_events(mqtt_cancellation_token, mqtt_ingest, mqtt_devices)
+        mqtt.process_events(mqtt_cancellation_token, mqtt_devices)
             .await?;
+        Ok::<(), MainError>(())
+    });
+
+    task_set.spawn(async move {
+        root_supervisor_handle.await?;
+        tracing::error!("the root supervisor stopped, shutting down");
         Ok::<(), MainError>(())
     });
 

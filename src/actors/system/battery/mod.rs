@@ -28,7 +28,7 @@ impl BatteryActor {
         battery_percent: Option<f64>,
         battery_chemistry: Option<BatteryChemistry>,
     ) {
-        let Some(actor) = ractor::registry::where_is(Self::NAME.to_owned()) else {
+        let Some(actor) = ractor::registry::where_is(Self::NAME) else {
             tracing::error!("battery actor not found, dropping report for {device_id}");
             return;
         };

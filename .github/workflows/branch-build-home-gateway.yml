@@ -11,7 +11,8 @@ on:
       - .sqlx/**
       - Cargo.toml
       - Cargo.lock
-      - config.yaml
+      - config/**
+      - build.rs
       - Dockerfile
       - .github/workflows/branch-build-home-gateway.yml
 

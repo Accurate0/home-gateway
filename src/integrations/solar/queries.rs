@@ -2,7 +2,7 @@ use crate::integrations::solar::goodwe::types::PlantDetailsByPowerStationIdRespo
 use crate::integrations::solar::types::{
     GenerationHistory, SolarCurrentResponse, SolarCurrentStatistics, SolarCurrentStatisticsAverages,
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{Pool, Postgres};
 use tracing::Instrument;
 
@@ -95,6 +95,12 @@ pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQ
     })
 }
 
+pub const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(30);
+
+pub fn clamp_since(since: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
+    since.max(now - MAX_HISTORY_WINDOW)
+}
+
 pub async fn history_since(
     db: &Pool<Postgres>,
     since: DateTime<Utc>,
@@ -171,6 +177,22 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
     use serde_json::json;
+
+    #[test]
+    fn an_ancient_since_is_clamped_to_the_history_window() {
+        let now = Utc.with_ymd_and_hms(2026, 8, 16, 0, 0, 0).unwrap();
+        let epoch = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
+
+        assert_eq!(clamp_since(epoch, now), now - MAX_HISTORY_WINDOW);
+    }
+
+    #[test]
+    fn a_recent_since_is_left_alone() {
+        let now = Utc.with_ymd_and_hms(2026, 8, 16, 0, 0, 0).unwrap();
+        let recent = now - TimeDelta::days(1);
+
+        assert_eq!(clamp_since(recent, now), recent);
+    }
 
     async fn insert(db: &Pool<Postgres>, at: DateTime<Utc>, kwh: f64, uv: Option<f64>) {
         sqlx::query!(

@@ -114,6 +114,7 @@ pub enum Capability {
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(tag = "type", content = "config", rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
 pub enum DeviceConfig {
     Door(RawDoorSettings),
     Presence(RawPresenceBlock),

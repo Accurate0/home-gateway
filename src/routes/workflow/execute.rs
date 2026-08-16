@@ -24,7 +24,7 @@ pub async fn workflow_execute(
     auth.require(&required::REST_WORKFLOW_EXECUTE)
         .map_err(AppError::StatusCode)?;
 
-    let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME) else {
         tracing::warn!("could not find workflow actor");
         return Ok(StatusCode::INTERNAL_SERVER_ERROR);
     };

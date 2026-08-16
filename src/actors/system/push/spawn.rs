@@ -10,7 +10,7 @@ use ractor::{
 use super::{PushMessage, PushWorker, PushWorkerBuilder};
 
 pub async fn spawn_push(
-    root_supervisor_ref: &ActorRef<()>,
+    root_supervisor_ref: &ActorRef<crate::actors::root::RootMessage>,
     shared_actor_state: SharedActorState,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), PushMessage>>> {
     let push_factory_def = Factory::<

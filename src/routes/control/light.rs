@@ -32,7 +32,7 @@ pub async fn light_control(
     auth.require(&required::REST_CONTROL_WRITE)
         .map_err(AppError::StatusCode)?;
 
-    let Some(actor) = ractor::registry::where_is(LightHandler::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(LightHandler::NAME) else {
         tracing::warn!("could not find light actor");
         return Ok(StatusCode::INTERNAL_SERVER_ERROR);
     };

@@ -10,7 +10,7 @@ pub async fn synergy(Auth(auth): Auth, body: Bytes) -> Result<StatusCode, AppErr
     auth.require(&required::INGEST_SYNERGY_WRITE)
         .map_err(AppError::StatusCode)?;
 
-    let Some(actor) = ractor::registry::where_is(SynergyActor::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(SynergyActor::NAME) else {
         tracing::warn!("synergy actor not found");
         return Ok(StatusCode::INTERNAL_SERVER_ERROR);
     };

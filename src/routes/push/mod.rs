@@ -22,7 +22,7 @@ pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) ->
         return StatusCode::FORBIDDEN;
     }
 
-    let Some(actor) = ractor::registry::where_is(PushWorker::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(PushWorker::NAME) else {
         tracing::warn!("push worker not found, cannot send notification");
         return StatusCode::SERVICE_UNAVAILABLE;
     };

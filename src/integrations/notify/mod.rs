@@ -11,7 +11,7 @@ pub fn notify(notify_sources: &[NotifySource], message: String) {
     for notify in notify_sources {
         match notify {
             NotifySource::AndroidApp => {
-                let Some(actor) = ractor::registry::where_is(PushWorker::NAME.to_string()) else {
+                let Some(actor) = ractor::registry::where_is(PushWorker::NAME) else {
                     tracing::warn!("push worker not found, skipping android app notification");
                     continue;
                 };

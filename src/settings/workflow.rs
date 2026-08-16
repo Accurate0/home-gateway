@@ -542,6 +542,11 @@ impl From<RawWorkflow> for Workflow {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct WorkflowSettings {
+    pub workers: usize,
+}
+
 impl Workflow {
     pub fn on(&self) -> Option<&TriggerMatcher> {
         match &self.trigger {
@@ -557,6 +562,21 @@ impl Workflow {
                     Step::Notify { message, .. } => {
                         out.extend(message.placeholders().into_iter().map(str::to_owned));
                     }
+                    Step::Scene { run, .. } => collect(run, out),
+                    _ => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        collect(&self.run, &mut out);
+        out
+    }
+
+    pub fn run_workflow_targets(&self) -> Vec<&str> {
+        fn collect<'a>(steps: &'a [Step], out: &mut Vec<&'a str>) {
+            for step in steps {
+                match step {
+                    Step::RunWorkflow { workflow, .. } => out.push(workflow.as_str()),
                     Step::Scene { run, .. } => collect(run, out),
                     _ => {}
                 }

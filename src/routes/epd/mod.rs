@@ -102,7 +102,14 @@ pub async fn image(
         .map_err(AppError::StatusCode)?;
 
     let window = params.window()?;
-    let key = packed_cache_key(hash);
+
+    let Some(key) = packed_cache_key(&hash) else {
+        tracing::warn!(
+            device_id = %params.device_id,
+            "rejected a frame request whose hash is not a frame hash"
+        );
+        return Err(AppError::StatusCode(StatusCode::BAD_REQUEST));
+    };
 
     let Ok(packed) = s3.get_object(&key).await else {
         tracing::warn!(
@@ -219,7 +226,7 @@ async fn wake_drift_secs(eink: &EinkDisplayManager, device_id: &str) -> Option<i
 }
 
 fn schedule_next_render(device_id: &str, wake_in_secs: u32) -> Result<(), AppError> {
-    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME) else {
         tracing::warn!("eink display actor not found, not scheduling the next render");
         return Ok(());
     };
@@ -233,7 +240,7 @@ fn schedule_next_render(device_id: &str, wake_in_secs: u32) -> Result<(), AppErr
 }
 
 fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
-    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME) else {
         tracing::warn!("eink display actor not found, dropping config request");
         return Ok(());
     };
@@ -294,7 +301,7 @@ pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
     auth.require(&required::REST_EPD_WRITE)
         .map_err(AppError::StatusCode)?;
 
-    let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME.to_string());
+    let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME);
     if let Some(actor) = maybe_actor {
         actor.send_message(EInkDisplayMessage::TakeScreenshot { device_id: None })?;
         Ok(StatusCode::CREATED)

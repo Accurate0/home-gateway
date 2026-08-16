@@ -6,7 +6,7 @@ use ractor::{
 };
 
 pub async fn spawn_mqtt_ingest(
-    root_supervisor_ref: &ActorRef<()>,
+    root_supervisor_ref: &ActorRef<crate::actors::root::RootMessage>,
     shared_actor_state: SharedActorState,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), Message>>> {
     let door_handler_factory_def = Factory::<

@@ -357,7 +357,7 @@ impl WorkflowWorker {
     }
 
     async fn run_light(&self, device: String, state: LightState) -> Result<(), WorkflowError> {
-        let actor = ractor::registry::where_is(LightHandler::NAME.to_string())
+        let actor = ractor::registry::where_is(LightHandler::NAME)
             .ok_or(WorkflowError::ActorNotFound(LightHandler::NAME))?;
 
         let ieee_addr = self

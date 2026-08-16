@@ -1,0 +1,77 @@
+name: Build and test
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+      - migrations/**
+      - .sqlx/**
+      - config/**
+      - build.rs
+      - Cargo.toml
+      - Cargo.lock
+      - Dockerfile.postgres
+      - .github/workflows/build-test.yml
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: "true"
+
+jobs:
+  lint:
+    name: fmt + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://postgres:test@localhost:5432/home
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build the TimescaleDB image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: Dockerfile.postgres
+          push: false
+          load: true
+          tags: home-gateway-postgres:ci
+          cache-from: type=gha,scope=home-gateway-postgres
+          cache-to: type=gha,scope=home-gateway-postgres,mode=max
+
+      - name: Start the database
+        run: |
+          docker run -d --name postgres \
+            -p 5432:5432 \
+            -e POSTGRES_PASSWORD=test \
+            -e POSTGRES_DB=home \
+            home-gateway-postgres:ci \
+            postgres -c shared_preload_libraries=timescaledb
+
+          for _ in $(seq 1 60); do
+            docker exec postgres pg_isready -U postgres && exit 0
+            sleep 2
+          done
+
+          echo "database did not become ready" >&2
+          docker logs postgres >&2
+          exit 1
+
+      - run: cargo test --workspace

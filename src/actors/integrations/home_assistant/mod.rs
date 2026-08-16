@@ -29,18 +29,44 @@ impl HomeAssistantActor {
     const SUBSCRIBE_ID: u64 = 1;
     const GET_STATES_ID: u64 = 2;
 
+    const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(30);
+    const SILENCE_TIMEOUT: Duration = Duration::from_secs(90);
+
     async fn run(&self, home_assistant: &HomeAssistant) -> Result<(), anyhow::Error> {
         let url = home_assistant.ws_url();
         tracing::info!("connecting to home assistant websocket at {url}");
-        let (mut socket, _) = tokio_tungstenite::connect_async(&url).await?;
+        let (socket, _) = tokio_tungstenite::connect_async(&url).await?;
+        let (mut write, mut read) = socket.split();
         let mut last_latest_state_write: HashMap<String, Instant> = HashMap::new();
 
-        while let Some(message) = socket.next().await {
-            let message = message?;
+        let mut keep_alive = tokio::time::interval(Self::KEEP_ALIVE_INTERVAL);
+        keep_alive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        keep_alive.tick().await;
+
+        loop {
+            let message = tokio::select! {
+                _ = keep_alive.tick() => {
+                    write.send(WsMessage::Ping(Vec::new().into())).await?;
+                    continue;
+                }
+                message = tokio::time::timeout(Self::SILENCE_TIMEOUT, read.next()) => message,
+            };
+
+            let message = match message {
+                Ok(Some(message)) => message?,
+                Ok(None) => break,
+                Err(_) => {
+                    return Err(anyhow::anyhow!(
+                        "no home assistant message for {:?}, assuming the connection is dead",
+                        Self::SILENCE_TIMEOUT
+                    ));
+                }
+            };
+
             let text = match message {
                 WsMessage::Text(text) => text,
                 WsMessage::Ping(payload) => {
-                    socket.send(WsMessage::Pong(payload)).await?;
+                    write.send(WsMessage::Pong(payload)).await?;
                     continue;
                 }
                 WsMessage::Close(_) => {
@@ -59,7 +85,7 @@ impl HomeAssistantActor {
 
             match payload.get("type").and_then(Value::as_str) {
                 Some("auth_required") => {
-                    socket
+                    write
                         .send(WsMessage::text(
                             json!({ "type": "auth", "access_token": home_assistant.token() })
                                 .to_string(),
@@ -68,7 +94,7 @@ impl HomeAssistantActor {
                 }
                 Some("auth_ok") => {
                     tracing::info!("home assistant authenticated, subscribing to state changes");
-                    socket
+                    write
                         .send(WsMessage::text(
                             json!({
                                 "id": Self::SUBSCRIBE_ID,
@@ -79,7 +105,7 @@ impl HomeAssistantActor {
                         ))
                         .await?;
 
-                    socket
+                    write
                         .send(WsMessage::text(
                             json!({ "id": Self::GET_STATES_ID, "type": "get_states" }).to_string(),
                         ))
@@ -167,7 +193,7 @@ impl HomeAssistantActor {
             return;
         };
 
-        let Some(actor) = ractor::registry::where_is(RobotVacuumHandler::NAME.to_owned()) else {
+        let Some(actor) = ractor::registry::where_is(RobotVacuumHandler::NAME) else {
             tracing::error!("no robot vacuum actor found for roborock update");
             return;
         };
@@ -238,7 +264,7 @@ impl HomeAssistantActor {
             return;
         }
 
-        let Some(actor) = ractor::registry::where_is(MediaPlayerHandler::NAME.to_owned()) else {
+        let Some(actor) = ractor::registry::where_is(MediaPlayerHandler::NAME) else {
             tracing::error!("no media player actor found for home assistant update");
             return;
         };

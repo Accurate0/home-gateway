@@ -5,7 +5,7 @@ use crate::integrations::solar::types::{
 use crate::state::ApiState;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Query, extract::State};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, Utc};
 use http::StatusCode;
 use serde::Deserialize;
 
@@ -13,13 +13,9 @@ pub struct SolarError(SolarQueryError);
 
 impl IntoResponse for SolarError {
     fn into_response(self) -> Response {
-        tracing::error!("solar api error: {}", self.0);
+        tracing::error!("solar api error: {:?}", self.0);
 
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
+        (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
     }
 }
 
@@ -52,7 +48,8 @@ pub async fn history_since(
     State(ApiState { db, .. }): State<ApiState>,
     params: Query<SolarHistoryQueryParams>,
 ) -> Result<Json<SolarHistoryResponse>, SolarError> {
-    let history = queries::history_since(&db, params.since.and_utc()).await?;
+    let since = queries::clamp_since(params.since.and_utc(), Utc::now());
+    let history = queries::history_since(&db, since).await?;
 
     Ok(Json(SolarHistoryResponse { history }))
 }

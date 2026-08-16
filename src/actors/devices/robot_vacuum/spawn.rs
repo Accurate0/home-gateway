@@ -7,7 +7,7 @@ use ractor::{
 };
 
 pub async fn spawn_robot_vacuum_handler(
-    root_supervisor_ref: &ActorRef<()>,
+    root_supervisor_ref: &ActorRef<crate::actors::root::RootMessage>,
     shared_actor_state: SharedActorState,
 ) -> anyhow::Result<()> {
     let factory_def = Factory::<

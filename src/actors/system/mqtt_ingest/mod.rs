@@ -66,19 +66,19 @@ impl MqttTopic {
             return MqttTopic::EsphomeDiscovery;
         }
 
-        if let Some(rest) = topic.strip_prefix("valetudo/") {
-            if let Some((identifier, leaf)) = rest.split_once('/') {
-                let leaf = match leaf {
-                    "state" => Some(robot_vacuum::Leaf::State),
-                    "attributes" => Some(robot_vacuum::Leaf::Attributes),
-                    _ => None,
+        if let Some(rest) = topic.strip_prefix("valetudo/")
+            && let Some((identifier, leaf)) = rest.split_once('/')
+        {
+            let leaf = match leaf {
+                "state" => Some(robot_vacuum::Leaf::State),
+                "attributes" => Some(robot_vacuum::Leaf::Attributes),
+                _ => None,
+            };
+            if let Some(leaf) = leaf {
+                return MqttTopic::Valetudo {
+                    identifier: identifier.to_owned(),
+                    leaf,
                 };
-                if let Some(leaf) = leaf {
-                    return MqttTopic::Valetudo {
-                        identifier: identifier.to_owned(),
-                        leaf,
-                    };
-                }
             }
         }
 
@@ -164,7 +164,7 @@ impl MqttIngest {
         let event_id = uuid::Uuid::new_v4();
 
         if self.shared_actor_state.devices.plant(node).is_some() {
-            match ractor::registry::where_is(plant_sensor::PlantSensorHandler::NAME.to_string()) {
+            match ractor::registry::where_is(plant_sensor::PlantSensorHandler::NAME) {
                 Some(actor_cell) => {
                     actor_cell.send_message(FactoryMessage::Dispatch(Job {
                         key: (),
@@ -370,7 +370,7 @@ impl MqttIngest {
                 self.record_last_seen(&identifier).await;
 
                 let Some(actor_cell) =
-                    ractor::registry::where_is(robot_vacuum::RobotVacuumHandler::NAME.to_string())
+                    ractor::registry::where_is(robot_vacuum::RobotVacuumHandler::NAME)
                 else {
                     tracing::error!("no robot vacuum actor found");
                     return Ok(());

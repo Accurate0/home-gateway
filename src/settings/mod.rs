@@ -71,7 +71,7 @@ pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use watchdog::WatchdogSettings;
 pub use woolworths::WoolworthsSettings;
-pub use workflow::Workflow;
+pub use workflow::{Workflow, WorkflowSettings};
 pub use zigbee_model::{RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile};
 
 use crate::auth::scope::ScopePattern;
@@ -112,6 +112,7 @@ pub struct Settings {
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
     pub workflows: HashMap<String, Workflow>,
+    pub workflow: WorkflowSettings,
     pub s3: S3Settings,
     pub watchdog: WatchdogSettings,
     pub oauth: Option<OAuthSettings>,
@@ -156,6 +157,7 @@ pub struct RawSettings {
     workflows: Vec<Vec<Workflow>>,
     s3: S3Settings,
     watchdog: WatchdogSettings,
+    workflow: WorkflowSettings,
     #[serde(default)]
     oauth: Option<OAuthSettings>,
     #[serde(default)]
@@ -200,6 +202,7 @@ impl RawSettings {
             workflows,
             s3,
             watchdog,
+            workflow,
             oauth,
             api_keys,
             location,
@@ -260,6 +263,17 @@ impl RawSettings {
             }
         }
 
+        for workflow in resolved.values() {
+            for target in workflow.run_workflow_targets() {
+                if !resolved.contains_key(target) {
+                    return Err(format!(
+                        "workflow '{}': run_workflow references unknown workflow '{target}'",
+                        workflow.name
+                    ));
+                }
+            }
+        }
+
         Ok((
             Settings {
                 version,
@@ -275,6 +289,7 @@ impl RawSettings {
                 workflows: resolved,
                 s3,
                 watchdog,
+                workflow,
                 oauth,
                 api_keys,
                 location,
@@ -890,6 +905,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
@@ -902,6 +918,72 @@ api_keys:
 
         let err = raw.resolve().unwrap_err();
         assert!(err.contains("invalid scope"), "{err}");
+    }
+
+    #[test]
+    fn run_workflow_rejects_an_unknown_target() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+bom: { url: "http://bom" }
+workflows:
+  - - name: Caller
+      slug: caller
+      run:
+        - type: run_workflow
+          workflow: does-not-exist
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(err.contains("does-not-exist"), "{err}");
+    }
+
+    #[test]
+    fn run_workflow_accepts_a_known_target() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+bom: { url: "http://bom" }
+workflows:
+  - - name: Callee
+      slug: callee
+      run: []
+    - name: Caller
+      slug: caller
+      run:
+        - type: run_workflow
+          workflow: Callee
+"#,
+        )
+        .unwrap();
+
+        raw.resolve().expect("a known target resolves");
     }
 
     #[test]
@@ -918,6 +1000,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
@@ -990,6 +1073,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }
@@ -1045,6 +1129,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 bom: { url: "http://bom" }

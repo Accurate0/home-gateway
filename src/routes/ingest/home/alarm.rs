@@ -10,7 +10,7 @@ pub async fn alarm(Auth(auth): Auth, Json(payload): Json<AndroidAppAlarmPayload>
         return StatusCode::FORBIDDEN;
     }
 
-    let Some(actor) = ractor::registry::where_is(AlarmActor::NAME.to_string()) else {
+    let Some(actor) = ractor::registry::where_is(AlarmActor::NAME) else {
         tracing::warn!("alarm actor not found");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };

@@ -90,8 +90,7 @@ impl Actor for AlarmActor {
                     if should_trigger {
                         let workflow_name = &self.shared_actor_state.settings.alarm.workflow;
                         tracing::info!("triggering `{workflow_name}` workflow");
-                        let Some(workflow_actor) =
-                            ractor::registry::where_is(WorkflowWorker::NAME.to_owned())
+                        let Some(workflow_actor) = ractor::registry::where_is(WorkflowWorker::NAME)
                         else {
                             tracing::warn!("could not find workflow actor");
                             return Ok(());

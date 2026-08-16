@@ -17,6 +17,9 @@ location:
 sun:
   catch_up_within: 2h
 
+workflow:
+  workers: 12
+
 watchdog:
   enabled: false
   timeout: 30m

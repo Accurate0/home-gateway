@@ -12,7 +12,7 @@ pub struct EinkDisplayMutation {
 impl EinkDisplayMutation {
     #[graphql(guard = ScopeGuard(required::GRAPHQL_EPD_WRITE))]
     async fn take_screenshot(&self) -> async_graphql::Result<bool> {
-        let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME.to_string()) else {
+        let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME) else {
             return Err(async_graphql::Error::new("eink display actor unavailable"));
         };
 

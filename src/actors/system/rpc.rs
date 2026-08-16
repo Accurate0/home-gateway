@@ -35,8 +35,7 @@ where
     M: ractor::Message,
     T: Send + 'static,
 {
-    let actor =
-        ractor::registry::where_is(name.to_string()).ok_or(RpcError::ActorNotFound(name))?;
+    let actor = ractor::registry::where_is(name).ok_or(RpcError::ActorNotFound(name))?;
 
     let (tx, rx) = oneshot();
     let port: RpcReplyPort<T> = (tx, timeout).into();
@@ -58,8 +57,7 @@ where
     M: ractor::Message,
     T: Send + 'static,
 {
-    let actor =
-        ractor::registry::where_is(name.to_string()).ok_or(RpcError::ActorNotFound(name))?;
+    let actor = ractor::registry::where_is(name).ok_or(RpcError::ActorNotFound(name))?;
 
     let (tx, rx) = oneshot();
     let port: RpcReplyPort<T> = (tx, timeout).into();
