@@ -1,0 +1,58 @@
+- id: test-door
+  room: entry
+  transport: zigbee
+  address: "0x0000000000000001"
+  model: test_door
+  roles:
+    - type: door
+      config:
+        name: Test Door
+        id: test-door
+        state: unarmed
+        notify: [android_app]
+    - type: battery
+
+- id: test-environment
+  room: living-room
+  transport: zigbee
+  address: "0x0000000000000002"
+  model: test_environment
+  roles:
+    - type: environment
+      config: { id: test-room, name: Test Room }
+      capabilities: [temperature, humidity, pressure]
+    - type: battery
+
+- id: test-lamp
+  room: living-room
+  transport: zigbee
+  address: "0x0000000000000003"
+  model: test_plug
+  roles:
+    - type: smart_switch
+      config:
+        name: Test Lamp
+        as: light
+
+- id: test-presence
+  room: living-room
+  transport: zigbee
+  address: "0x0000000000000004"
+  model: test_presence
+  roles:
+    - type: presence
+      config: { id: test-motion, name: Test Motion }
+
+- id: test-esphome-environment
+  room: study
+  transport: esphome
+  address: test-node
+  roles:
+    - type: environment
+      config:
+        id: test-study
+        name: Test Study
+        entities:
+          temperature: test_node_temperature
+          humidity: test_node_humidity
+      capabilities: [temperature, humidity]

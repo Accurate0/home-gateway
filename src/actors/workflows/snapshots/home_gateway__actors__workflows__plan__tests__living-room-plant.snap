@@ -1,0 +1,9 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Living room plant moisture check  (on: cron(0 19 * * 3))
+  notify: notify(AndroidApp): Check the living room plant's soil moisture
+
+# Living room plant water and fertilise  (on: cron(0 9 * * 0))
+  notify: notify(AndroidApp): Water and fertilise the living room plant

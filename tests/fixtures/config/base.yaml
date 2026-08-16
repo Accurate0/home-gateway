@@ -1,0 +1,84 @@
+version: "1"
+
+# Real deployments inject these from the environment; the tests need the
+# settings to resolve without one.
+api_key: ""
+database_url: postgres://postgres:test@127.0.0.1:5432/home
+mqtt_url: 127.0.0.1
+mqtt_username: ""
+mqtt_password: ""
+unifi_webhook_secret: test-unifi-secret
+android_app_webhook_secret: test-android-secret
+
+s3:
+  bucket: home-gateway-bucket
+  region: ap-southeast-2
+
+notify_targets:
+  android_app:
+    type: android_app
+
+fcm_project_id: home-gateway-22
+
+location:
+  latitude: -31.952429
+  longitude: 115.842283
+
+sun:
+  catch_up_within: 2h
+
+workflow:
+  workers: 12
+
+watchdog:
+  enabled: false
+  timeout: 30m
+  check_interval: 5m
+  realert_after: 6h
+
+api_keys:
+  - name: test-reader
+    scopes: ["rest:epd:read"]
+  - name: test-admin
+    scopes: ["*"]
+
+woolworths:
+  refresh: 1h
+
+trmnl:
+  refresh: 3h
+
+alarm:
+  poll_interval: 60s
+
+bom:
+  url: http://bom-api.bom.svc.cluster.local:8000
+
+solar:
+  refresh: 1m
+
+eink_display:
+  views:
+    home:
+      query: view=home
+    weather:
+      query: view=weather
+  albums:
+    world:
+      prefix: eink-display/album/world/
+    cats:
+      prefix: eink-display/album/cats/
+  palette:
+    black: { r: 0, g: 0, b: 0 }
+    white: { r: 255, g: 255, b: 255 }
+    yellow: { r: 255, g: 255, b: 0 }
+    red: { r: 255, g: 0, b: 0 }
+    blue: { r: 0, g: 0, b: 255 }
+    green: { r: 0, g: 255, b: 0 }
+
+adhoc:
+  recheck_interval: 15m
+
+zigbee_models: !include zigbee_models.yaml
+devices: !include devices.yaml
+workflows: !include workflows/index.yaml

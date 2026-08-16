@@ -350,7 +350,7 @@ impl SettingsContainer {
         Ok(Config::builder().add_source(File::from_str(&merged, FileFormat::Yaml)))
     }
 
-    fn load_from_dir(dir: &Path) -> Result<(Settings, DeviceRegistry), ConfigError> {
+    pub fn load_from_dir(dir: &Path) -> Result<(Settings, DeviceRegistry), ConfigError> {
         let config = Self::config_sources(dir)?
             .add_source(Environment::default().separator("__"))
             .build()?;
@@ -387,6 +387,14 @@ impl SettingsContainer {
             },
             registry,
         ))
+    }
+}
+
+impl From<Settings> for SettingsContainer {
+    fn from(settings: Settings) -> Self {
+        Self {
+            inner: Arc::new(settings),
+        }
     }
 }
 

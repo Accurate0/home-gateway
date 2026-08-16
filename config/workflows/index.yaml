@@ -2,6 +2,7 @@
 - !include control-switch.yaml
 - !include closet-presence.yaml
 - !include hallway-plant.yaml
+- !include living-room-plant.yaml
 - !include bins.yaml
 - !include living-room-lamp.yaml
 - !include alarm.yaml

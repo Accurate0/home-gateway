@@ -1,0 +1,19 @@
+test_door:
+  battery: battery
+  door: [contact]
+  metrics:
+    device_temperature: { key: device_temperature, type: float }
+    voltage: { key: voltage, type: int }
+
+test_environment:
+  battery: battery
+  environment: [temperature, humidity, pressure]
+
+test_plug:
+  smart_switch: [state, voltage, power, current, energy]
+
+test_presence:
+  presence: [presence]
+  metrics:
+    target_distance: { key: target_distance, type: float }
+    movement: { key: movement, type: string }

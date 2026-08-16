@@ -1,0 +1,17 @@
+- name: Living room plant moisture check
+  slug: living-room-plant-moisture-check
+  group: Plants
+  on: { type: cron, schedule: "0 19 * * WED" }
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Check the living room plant's soil moisture"
+
+- name: Living room plant water and fertilise
+  slug: living-room-plant-water-fertilise
+  group: Plants
+  on: { type: cron, schedule: "0 9 * * SUN" }
+  run:
+    - type: notify
+      notify: { type: android_app }
+      message: "Water and fertilise the living room plant"

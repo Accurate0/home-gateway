@@ -1,0 +1,24 @@
+- name: test-lamp-on
+  slug: test-lamp-on
+  group: Test
+  run:
+    - type: light
+      device: test-lamp
+      state: ON
+
+- name: Test lamp on when door opens
+  slug: test-door-opens-lamp-on
+  group: Test
+  on: { type: door, device: test-door, open: true }
+  run:
+    - type: run_workflow
+      workflow: test-lamp-on
+
+- name: Test lamp off when motion clears
+  slug: test-motion-clear-lamp-off
+  group: Test
+  on: { type: presence, sensor: test-presence, present: false }
+  run:
+    - type: light
+      device: test-lamp
+      state: OFF

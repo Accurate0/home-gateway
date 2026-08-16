@@ -19,6 +19,10 @@ use sha2::{Digest, Sha256};
 
 use crate::state::ApiState;
 
+fn dev_bypass_enabled() -> bool {
+    std::env::var("AUTH_DEV_BYPASS").is_ok_and(|value| value == "1")
+}
+
 pub fn hash_key(key: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(key.as_bytes());
@@ -67,7 +71,7 @@ pub async fn resolve_ws_auth(
     token: Option<&str>,
     state: &ApiState,
 ) -> Result<AuthContext, StatusCode> {
-    if cfg!(debug_assertions) {
+    if dev_bypass_enabled() {
         return Ok(AuthContext::full_access(false));
     }
 
@@ -92,7 +96,7 @@ pub async fn resolve_auth(
     headers: &HeaderMap,
     state: &ApiState,
 ) -> Result<AuthContext, StatusCode> {
-    if cfg!(debug_assertions) {
+    if dev_bypass_enabled() {
         return Ok(AuthContext::full_access(false));
     }
 
