@@ -47,7 +47,7 @@ csv = "1.4.0"
 opentelemetry = { version = "0.32.0", features = ["metrics", "trace"] }
 opentelemetry-otlp = { version = "0.32.0", features = ["trace", "metrics", "grpc-tonic", "reqwest-blocking-client", "logs", "reqwest-rustls", "http-json"] }
 opentelemetry-semantic-conventions = { version = "0.32.0", features = ["semconv_experimental"] }
-opentelemetry-resource-detectors = { version = "0.11" }
+opentelemetry-resource-detectors = { version = "0.12" }
 opentelemetry-proto = { version = "0.32.0"}
 tonic = { version = "0.14.6", features = ["tls-native-roots"] }
 opentelemetry_sdk = "0.32.1"
@@ -64,7 +64,7 @@ ab_glyph = "0.2.31"
 futures.workspace = true
 serde_yaml = "0.9.34"
 rustls = { version = "0.23", features = ["aws-lc-rs"] }
-axum-tracing-opentelemetry = "0.38.0"
+axum-tracing-opentelemetry = "0.39.0"
 futures-util = "0.3.32"
 tracing-futures = "0.2.5"
 async-trait = "0.1.89"
@@ -72,7 +72,7 @@ yaml-include = "0.8.1"
 schemars = { version = "1", features = ["chrono04", "uuid1"] }
 opentelemetry-prometheus = "0.32"
 prometheus = "0.14.0"
-croner = { version = "3.0.1", features = ["serde"] }
+croner = { version = "4.0.0", features = ["serde"] }
 sha2 = "0.11"
 hex = "0.4"
 rand = "0.10"
@@ -80,14 +80,14 @@ moka = { version = "0.12", features = ["future"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 jsonwebtoken = { version = "11", features = ["aws_lc_rs"] }
 tokio-tungstenite = { version = "0.30", features = ["rustls-tls-native-roots"] }
-quick-xml = { version = "0.41.0", features = ["serialize"] }
+quick-xml = { version = "0.42.0", features = ["serialize"] }
 base64 = "0.23.0"
 
 [build-dependencies]
 serde_yaml = "0.9.34"
 serde_json = "1.0.150"
 yaml-include = "0.8"
-jsonschema = { version = "0.49", default-features = false }
+jsonschema = { version = "0.52", default-features = false }
 
 [[test]]
 name = "integration"
@@ -97,8 +97,8 @@ path = "tests/integration/main.rs"
 pretty_assertions = "1.4.1"
 rstest = "0.26.1"
 insta = "1"
-testcontainers = "0.26.3"
-testcontainers-modules = { version = "0.14.0", features = ["mosquitto"] }
+testcontainers = "0.27.3"
+testcontainers-modules = { version = "0.15.0", features = ["mosquitto"] }
 serial_test = "4.0.0"
 http-body-util = "0.1.3"
 url = "2.5.8"

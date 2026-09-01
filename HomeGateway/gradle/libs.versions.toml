@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.1"
+agp = "9.3.2"
 kotlin = "2.4.10"
 coreKtx = "1.19.0"
 junit = "4.13.2"
@@ -12,9 +12,9 @@ okhttp = "5.5.0"
 secretsGradlePlugin = "2.0.1"
 workVersion = "2.11.2"
 fragment = "1.9.0"
-firebaseBom = "34.17.0"
+firebaseBom = "34.18.0"
 googleServices = "4.5.0"
-apollo = "5.0.1"
+apollo = "5.1.0"
 lifecycleRuntimeCompose = "2.11.0"
 
 [libraries]
