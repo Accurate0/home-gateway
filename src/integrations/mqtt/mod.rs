@@ -34,7 +34,7 @@ pub struct Mqtt {
 #[derive(thiserror::Error, Debug)]
 pub enum MqttError {
     #[error("a mqtt connection error occurred: {0}")]
-    MqttConnection(#[from] rumqttc::ConnectionError),
+    MqttConnection(#[from] Box<rumqttc::ConnectionError>),
 
     #[error("a mqtt client error occurred: {0}")]
     Mqtt(#[from] rumqttc::ClientError),
