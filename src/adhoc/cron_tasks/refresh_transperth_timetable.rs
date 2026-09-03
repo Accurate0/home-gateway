@@ -92,10 +92,10 @@ impl AdhocCronTask for RefreshTransperthTimetable {
             .map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
 
         match ractor::registry::where_is(TransperthActor::NAME.to_owned()) {
-            Some(actor) => {
-                actor.send_message(TransperthMessage::LoadTimetable)?;
-                tracing::info!("transperth actor asked to reload the timetable");
-            }
+            Some(actor) => match actor.send_message(TransperthMessage::LoadTimetable) {
+                Ok(()) => tracing::info!("transperth actor asked to reload the timetable"),
+                Err(error) => tracing::warn!("transperth actor reload failed: {error}"),
+            },
             None => tracing::debug!("transperth actor not running, index will load on next start"),
         }
 
