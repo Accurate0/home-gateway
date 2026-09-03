@@ -173,7 +173,6 @@ impl Resource {
             "sun" => Self::Sun,
             "mode" => Self::Mode,
             "home_assistant" => Self::HomeAssistant,
-            "transperth" => Self::Transperth,
             "woolworths" => Self::Woolworths,
             "device_battery" => Self::Battery,
             "jellyfin" => Self::Jellyfin,
