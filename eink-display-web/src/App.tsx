@@ -3,7 +3,7 @@ import ForecastCard from "./components/ForecastCard";
 import ClimateBand from "./components/ClimateBand";
 import Header from "./components/Header";
 import PanelBattery from "./components/PanelBattery";
-import NextTrainTile from "./components/NextTrainTile";
+import TransitFuelRow from "./components/TransitFuelRow";
 import Frame from "./components/Frame";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import type { AppQuery } from "./__generated__/AppQuery.graphql";
@@ -31,7 +31,7 @@ const AppQuery = graphql`
     }
     transperth {
       route(id: $transitRoute) {
-        ...NextTrainTile_route
+        ...TransitFuelRow_route
       }
     }
     fuelwatch {
@@ -77,7 +77,7 @@ export default function App() {
       <ClimateBand outdoor={data.outdoor} weatherRef={data.weather} />
 
       {!weatherOnly && (
-        <NextTrainTile routeRef={data.transperth?.route} fuelRef={data.fuelwatch} />
+        <TransitFuelRow routeRef={data.transperth?.route} fuelRef={data.fuelwatch} />
       )}
 
       {!weatherOnly && data.solar && (

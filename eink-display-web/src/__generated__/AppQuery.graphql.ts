@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d493942b63788ab8935a5f8b32edf2c6>>
+ * @generated SignedSource<<4cc9e9beea43f09beaa6591e2e6df523>>
  * @lightSyntaxTransform
  */
 
@@ -45,7 +45,7 @@ export type AppQuery$data = {
   };
   readonly transperth: {
     readonly route: {
-      readonly " $fragmentSpreads": FragmentRefs<"NextTrainTile_route">;
+      readonly " $fragmentSpreads": FragmentRefs<"TransitFuelRow_route">;
     } | null | undefined;
   };
   readonly weather: {
@@ -308,7 +308,7 @@ return {
               {
                 "args": null,
                 "kind": "FragmentSpread",
-                "name": "NextTrainTile_route"
+                "name": "TransitFuelRow_route"
               }
             ],
             "storageKey": null
@@ -603,16 +603,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "c1dbe546986eace888dd84a879e7ce9b",
+    "cacheID": "7020e962e1d6e61e3fd661f4a860df47",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  transperth {\n    route(id: $transitRoute) {\n      ...NextTrainTile_route\n    }\n  }\n  fuelwatch {\n    ...FuelPrice_fuel\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment FuelPrice_fuel on FuelWatchObject {\n  cheapest {\n    name\n    suburb\n    price\n  }\n}\n\nfragment NextTrainTile_route on RouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  transperth {\n    route(id: $transitRoute) {\n      ...TransitFuelRow_route\n    }\n  }\n  fuelwatch {\n    ...FuelPrice_fuel\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment FuelPrice_fuel on FuelWatchObject {\n  cheapest {\n    name\n    suburb\n    price\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n\nfragment TransitFuelRow_route on RouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0c629f0a777440857f6d4f22c09db48c";
+(node as any).hash = "1a9a0cf45c0c875b8dfce66f4c74b055";
 
 export default node;

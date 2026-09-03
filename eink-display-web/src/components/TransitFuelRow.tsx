@@ -1,11 +1,11 @@
 import { graphql, useFragment } from "react-relay";
-import type { NextTrainTile_route$key } from "./__generated__/NextTrainTile_route.graphql";
+import type { TransitFuelRow_route$key } from "./__generated__/TransitFuelRow_route.graphql";
 import FuelPrice from "./FuelPrice";
 import type { FuelPrice_fuel$key } from "./__generated__/FuelPrice_fuel.graphql";
 import { HAIRLINE, INK, RED, ROW, TYPE } from "../theme";
 
 const RouteFragment = graphql`
-  fragment NextTrainTile_route on RouteDeparturesObject {
+  fragment TransitFuelRow_route on RouteDeparturesObject {
     origin
     destination
     departures {
@@ -25,16 +25,16 @@ function clockTime(value: string) {
   return new Date(value).toLocaleTimeString("en-AU", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
     timeZone: "Australia/Perth",
   });
 }
 
-export default function NextTrainTile({
+export default function TransitFuelRow({
   routeRef,
   fuelRef,
 }: {
-  routeRef: NextTrainTile_route$key | null | undefined;
+  routeRef: TransitFuelRow_route$key | null | undefined;
   fuelRef: FuelPrice_fuel$key | null | undefined;
 }) {
   const route = useFragment(RouteFragment, routeRef ?? null);
@@ -56,7 +56,7 @@ export default function NextTrainTile({
     >
       <div>
         <div style={{ ...TYPE.label, color: INK }}>
-          {route ? `${route.origin} \u2192 ${route.destination}` : "Next train"}
+          {route ? route.destination : "Next train"}
         </div>
 
         <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginTop: 6 }}>

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<67246c6b413aad0545bb58bf22955093>>
+ * @generated SignedSource<<b90f6b200aa1fd658cd7192b4bde1887>>
  * @lightSyntaxTransform
  */
 
@@ -9,7 +9,7 @@
 
 import { ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type NextTrainTile_route$data = {
+export type TransitFuelRow_route$data = {
   readonly departures: ReadonlyArray<{
     readonly delayMinutes: number | null | undefined;
     readonly line: string;
@@ -20,18 +20,18 @@ export type NextTrainTile_route$data = {
   }>;
   readonly destination: string;
   readonly origin: string;
-  readonly " $fragmentType": "NextTrainTile_route";
+  readonly " $fragmentType": "TransitFuelRow_route";
 };
-export type NextTrainTile_route$key = {
-  readonly " $data"?: NextTrainTile_route$data;
-  readonly " $fragmentSpreads": FragmentRefs<"NextTrainTile_route">;
+export type TransitFuelRow_route$key = {
+  readonly " $data"?: TransitFuelRow_route$data;
+  readonly " $fragmentSpreads": FragmentRefs<"TransitFuelRow_route">;
 };
 
 const node: ReaderFragment = {
   "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
-  "name": "NextTrainTile_route",
+  "name": "TransitFuelRow_route",
   "selections": [
     {
       "alias": null,
@@ -105,6 +105,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "a4b4d1ea516f41cf338a79fcd1dfe304";
+(node as any).hash = "c9725711c1bbbec7f8d26d0763c966bc";
 
 export default node;

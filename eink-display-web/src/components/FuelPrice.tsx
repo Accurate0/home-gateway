@@ -23,7 +23,7 @@ export default function FuelPrice({
 
   return (
     <div style={{ textAlign: "right" }}>
-      <div style={{ ...TYPE.label, color: INK }}>Cheapest ULP 91</div>
+      <div style={{ ...TYPE.label, color: INK }}>ULP 91</div>
 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: 12, marginTop: 6 }}>
         <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1 }}>

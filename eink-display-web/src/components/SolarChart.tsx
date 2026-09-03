@@ -23,7 +23,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: "Australia/Perth",
   hour: "2-digit",
   minute: "2-digit",
-  hour12: false,
+  hour12: true,
 });
 
 type Point = { wh: number; uv: number; at: number };
