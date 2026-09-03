@@ -289,6 +289,60 @@
      "instant": true
     }
    ]
+  },
+  {
+   "id": 14,
+   "type": "timeseries",
+   "title": "Integration poll outcomes",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (integration, outcome) (rate(home_gateway_integration_polls_total_total[15m]))",
+     "legendFormat": "{{integration}} ({{outcome}})"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "type": "timeseries",
+   "title": "Integration poll duration (p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+   "fieldConfig": {
+    "defaults": { "unit": "s" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, integration) (rate(home_gateway_integration_poll_duration_seconds_bucket[15m])))",
+     "legendFormat": "{{integration}}"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "type": "timeseries",
+   "title": "MQTT ingest by topic kind",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (topic_kind) (rate(home_gateway_mqtt_ingest_total_total[5m]))",
+     "legendFormat": "{{topic_kind}}"
+    }
+   ]
   }
  ]
 }

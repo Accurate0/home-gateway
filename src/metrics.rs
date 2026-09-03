@@ -32,6 +32,12 @@ struct Instruments {
     eink_wake_drift: Histogram<f64>,
     /// Ad-hoc task outcomes, labelled by task name and outcome.
     adhoc_tasks_total: Counter<u64>,
+    /// Integration poll outcomes, labelled by integration name and outcome.
+    integration_polls_total: Counter<u64>,
+    /// Wall-clock time for a single integration poll.
+    integration_poll_duration: Histogram<f64>,
+    /// MQTT messages ingested, labelled by classified topic kind.
+    mqtt_ingest_total: Counter<u64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -77,8 +83,37 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .u64_counter("home_gateway_adhoc_tasks_total")
             .with_description("Ad-hoc task outcomes by task name and outcome")
             .build(),
+        integration_polls_total: meter
+            .u64_counter("home_gateway_integration_polls_total")
+            .with_description("Integration poll outcomes by integration name and outcome")
+            .build(),
+        integration_poll_duration: meter
+            .f64_histogram("home_gateway_integration_poll_duration_seconds")
+            .with_description("Integration poll duration in seconds")
+            .build(),
+        mqtt_ingest_total: meter
+            .u64_counter("home_gateway_mqtt_ingest_total")
+            .with_description("MQTT messages ingested, labelled by classified topic kind")
+            .build(),
     }
 });
+
+pub fn record_integration_poll(name: &'static str, outcome: &'static str, elapsed: Duration) {
+    let labels = [
+        KeyValue::new("integration", name),
+        KeyValue::new("outcome", outcome),
+    ];
+    INSTRUMENTS.integration_polls_total.add(1, &labels);
+    INSTRUMENTS
+        .integration_poll_duration
+        .record(elapsed.as_secs_f64(), &labels);
+}
+
+pub fn record_mqtt_ingest(topic_kind: &'static str) {
+    INSTRUMENTS
+        .mqtt_ingest_total
+        .add(1, &[KeyValue::new("topic_kind", topic_kind)]);
+}
 
 pub fn record_adhoc_task(name: &'static str, outcome: &'static str) {
     INSTRUMENTS.adhoc_tasks_total.add(

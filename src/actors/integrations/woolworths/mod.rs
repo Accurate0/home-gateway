@@ -72,8 +72,21 @@ impl Actor for WoolworthsActor {
         match message {
             WoolworthsMessage::CheckProductPrices => {
                 tracing::info!("checking woolworths prices");
-                let tracked_products = self.woolworths.get_all_tracked_products().await?;
+                let started = std::time::Instant::now();
+                let tracked_products = match self.woolworths.get_all_tracked_products().await {
+                    Ok(tracked_products) => tracked_products,
+                    Err(e) => {
+                        crate::metrics::record_integration_poll(
+                            "woolworths",
+                            "error",
+                            started.elapsed(),
+                        );
+                        return Err(e.into());
+                    }
+                };
+
                 let mut tracked_map = HashMap::new();
+                let mut had_error = false;
                 for product_group in tracked_products {
                     let response = self.woolworths.get_product(product_group.product_id).await;
                     match response {
@@ -81,10 +94,17 @@ impl Actor for WoolworthsActor {
                             tracked_map.insert(product_group, resp);
                         }
                         Err(e) => {
+                            had_error = true;
                             tracing::error!("error fetching: {e}")
                         }
                     }
                 }
+
+                crate::metrics::record_integration_poll(
+                    "woolworths",
+                    if had_error { "partial_error" } else { "success" },
+                    started.elapsed(),
+                );
 
                 myself.send_message(WoolworthsMessage::TrackedProductGroup {
                     product_response_map: tracked_map,

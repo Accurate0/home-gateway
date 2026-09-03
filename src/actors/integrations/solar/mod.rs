@@ -105,8 +105,23 @@ impl Actor for SolarActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             SolarMessage::Poll => {
-                if let Err(e) = self.poll().await {
-                    tracing::error!("error polling solar data: {e}");
+                let started = std::time::Instant::now();
+                match self.poll().await {
+                    Ok(()) => {
+                        crate::metrics::record_integration_poll(
+                            "solar",
+                            "success",
+                            started.elapsed(),
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("error polling solar data: {e}");
+                        crate::metrics::record_integration_poll(
+                            "solar",
+                            "error",
+                            started.elapsed(),
+                        );
+                    }
                 }
             }
         }

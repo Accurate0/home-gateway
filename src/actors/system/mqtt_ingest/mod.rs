@@ -84,6 +84,16 @@ impl MqttTopic {
 
         MqttTopic::Other
     }
+
+    fn kind(&self) -> &'static str {
+        match self {
+            MqttTopic::Zigbee2MqttBridgeDevices => "zigbee2mqtt_bridge_devices",
+            MqttTopic::Zigbee2MqttDevice => "zigbee2mqtt_device",
+            MqttTopic::EsphomeDiscovery => "esphome_discovery",
+            MqttTopic::Valetudo { .. } => "valetudo",
+            MqttTopic::Other => "other",
+        }
+    }
 }
 
 pub struct MqttIngest {
@@ -287,7 +297,9 @@ impl MqttIngest {
 
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         let Message::MqttPacket { payload, topic } = message;
-        match MqttTopic::classify(&topic) {
+        let mqtt_topic = MqttTopic::classify(&topic);
+        crate::metrics::record_mqtt_ingest(mqtt_topic.kind());
+        match mqtt_topic {
             MqttTopic::Zigbee2MqttBridgeDevices => {
                 let devices_payload = serde_json::from_slice::<BridgeDevices>(&payload)?;
                 for device in devices_payload {

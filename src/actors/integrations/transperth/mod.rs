@@ -57,9 +57,20 @@ impl TransperthActor {
             return;
         }
 
+        let started = std::time::Instant::now();
         match self.transperth.refresh_routes(Utc::now()).await {
-            Ok(()) => tracing::debug!("transperth routes refreshed"),
-            Err(error) => tracing::warn!("transperth route refresh failed: {error}"),
+            Ok(()) => {
+                tracing::debug!("transperth routes refreshed");
+                crate::metrics::record_integration_poll(
+                    "transperth",
+                    "success",
+                    started.elapsed(),
+                );
+            }
+            Err(error) => {
+                tracing::warn!("transperth route refresh failed: {error}");
+                crate::metrics::record_integration_poll("transperth", "error", started.elapsed());
+            }
         }
     }
 
