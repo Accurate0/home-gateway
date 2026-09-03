@@ -1,5 +1,6 @@
 use super::cron_task::AdhocCronTask;
 
+pub mod refresh_transperth_timetable;
 pub mod trim_derived_door_events;
 pub mod trim_device_metric;
 pub mod trim_door_sensor;
@@ -13,6 +14,7 @@ pub mod trim_workflow_runs;
 
 pub fn all() -> Vec<&'static dyn AdhocCronTask> {
     vec![
+        &refresh_transperth_timetable::RefreshTransperthTimetable,
         &trim_derived_door_events::TrimDerivedDoorEvents,
         &trim_device_metric::TrimDeviceMetric,
         &trim_door_sensor::TrimDoorSensor,

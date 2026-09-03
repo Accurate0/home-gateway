@@ -134,6 +134,16 @@
         }
       ]
     },
+    "transperth": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RawTransperthSettings"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "willyweather": {
       "$ref": "#/$defs/WillyWeatherSettings"
     },
@@ -2553,6 +2563,99 @@
       },
       "required": [
         "refresh"
+      ]
+    },
+    "RawTransperthSettings": {
+      "type": "object",
+      "properties": {
+        "realtime_api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "reference_data_api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "refresh_peak": {
+          "type": "string"
+        },
+        "refresh_off_peak": {
+          "type": "string"
+        },
+        "horizon": {
+          "type": "string"
+        },
+        "peak": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RawPeakWindow"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TransperthRoute"
+          }
+        }
+      },
+      "required": [
+        "refresh_peak",
+        "refresh_off_peak",
+        "horizon",
+        "routes"
+      ]
+    },
+    "RawPeakWindow": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "TransperthRoute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "route_group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "limit"
       ]
     },
     "WillyWeatherSettings": {

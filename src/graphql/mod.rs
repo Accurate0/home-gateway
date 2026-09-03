@@ -6,6 +6,7 @@ use queries::{
 };
 
 use crate::graphql::mutations::MutationRoot;
+use crate::graphql::queries::transperth_query::TransperthQuery;
 use crate::graphql::queries::woolworths_query::WoolworthsQuery;
 use crate::graphql::queries::workflows_query::WorkflowsQuery;
 use crate::graphql::subscription::SubscriptionRoot;
@@ -27,6 +28,7 @@ pub struct QueryRoot(
     EnergyQuery,
     WeatherQuery,
     WoolworthsQuery,
+    TransperthQuery,
     WorkflowsQuery,
     JellyfinQuery,
     AdhocQuery,

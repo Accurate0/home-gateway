@@ -27,7 +27,8 @@ export const RIGHT_COLUMN_X = SPLIT + GUTTER / 2;
 export const ROW = {
   header: 148,
   climate: 156,
-  solar: 608,
+  transit: 150,
+  solar: 458,
   forecast: 540,
   footer: 100,
 } as const;

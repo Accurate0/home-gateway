@@ -9,6 +9,7 @@ use crate::graphql::FinalSchema;
 use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
+use crate::integrations::transperth::Transperth;
 use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
 use crate::integrations::willyweather::WillyWeather;
@@ -26,6 +27,7 @@ pub struct SharedActorState {
     pub workflows: WorkflowManager,
     pub home_assistant: Option<HomeAssistant>,
     pub jellyfin: Option<Jellyfin>,
+    pub transperth: Option<Transperth>,
     pub eink: EinkDisplayManager,
 }
 

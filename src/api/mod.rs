@@ -43,6 +43,7 @@ use crate::routes::{
     workflow::execute::workflow_execute,
 };
 use crate::integrations::willyweather::WillyWeather;
+use crate::integrations::transperth::Transperth;
 use crate::state::{ApiState, SharedActorState};
 
 const GRAPHQL_MAX_DEPTH: usize = 20;
@@ -71,6 +72,7 @@ pub fn build_schema(
     state: &SharedActorState,
     http_client: ClientWithMiddleware,
     willyweather: WillyWeather,
+    transperth: Option<Transperth>,
 ) -> FinalSchema {
     let db = &state.db;
 
@@ -132,6 +134,7 @@ pub fn build_schema(
     .data(state.s3.clone())
     .data(http_client)
     .data(willyweather)
+    .data(transperth)
     .data(state.mqtt.clone())
     .data(state.db.clone())
     .data(state.settings.clone())

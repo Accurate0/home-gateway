@@ -2,6 +2,7 @@
 source: src/adhoc/mod.rs
 expression: cron_manifest(&cron_registry())
 ---
+refresh_transperth_timetable  20 3 * * *  -
 trim_derived_door_events  0 3 * * *  -
 trim_device_metric  15 3 * * *  -
 trim_door_sensor  5 3 * * *  -

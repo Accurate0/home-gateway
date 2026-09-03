@@ -13,6 +13,7 @@ pub enum Resource {
     Entity,
     Solar,
     Weather,
+    Transperth,
     Woolworths,
     Control,
     Workflow,
@@ -68,6 +69,7 @@ impl Resource {
             "entity" => Self::Entity,
             "solar" => Self::Solar,
             "weather" => Self::Weather,
+            "transperth" => Self::Transperth,
             "woolworths" => Self::Woolworths,
             "control" => Self::Control,
             "workflow" => Self::Workflow,
@@ -129,6 +131,7 @@ impl Resource {
             Self::Entity => "entity",
             Self::Solar => "solar",
             Self::Weather => "weather",
+            Self::Transperth => "transperth",
             Self::Woolworths => "woolworths",
             Self::Control => "control",
             Self::Workflow => "workflow",
@@ -170,6 +173,7 @@ impl Resource {
             "sun" => Self::Sun,
             "mode" => Self::Mode,
             "home_assistant" => Self::HomeAssistant,
+            "transperth" => Self::Transperth,
             "woolworths" => Self::Woolworths,
             "device_battery" => Self::Battery,
             "jellyfin" => Self::Jellyfin,
@@ -326,6 +330,8 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::Solar, Action::Read);
     pub const GRAPHQL_WEATHER_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Weather, Action::Read);
+    pub const GRAPHQL_TRANSPERTH_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::Transperth, Action::Read);
     pub const GRAPHQL_WOOLWORTHS_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Woolworths, Action::Read);
     pub const GRAPHQL_WORKFLOW_READ: Scope =

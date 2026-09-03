@@ -32,7 +32,7 @@ use super::{
     },
     integrations::{
         home_assistant::HomeAssistantActor, jellyfin::JellyfinActor, synergy::SynergyActor,
-        unifi::UnifiConnectedClientHandler,
+        transperth::TransperthActor, unifi::UnifiConnectedClientHandler,
     },
     system::{
         adhoc::AdhocTaskActor,
@@ -95,6 +95,7 @@ impl RootSupervisor {
             BatteryActor::NAME => self.start_battery_actor(myself).await?,
             HomeAssistantActor::NAME => self.start_home_assistant_actor(myself).await?,
             JellyfinActor::NAME => self.start_jellyfin_actor(myself).await?,
+            TransperthActor::NAME => self.start_transperth_actor(myself).await?,
             SolarActor::NAME => self.start_solar_actor(myself).await?,
             SunActor::NAME => self.start_sun_actor(myself).await?,
             WatchdogActor::NAME => self.start_watchdog_actor(myself).await?,
@@ -207,6 +208,28 @@ impl RootSupervisor {
                 Some(HomeAssistantActor::NAME.to_owned()),
                 HomeAssistantActor {
                     shared_actor_state: self.shared_actor_state.clone(),
+                },
+                (),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn start_transperth_actor(
+        &self,
+        myself: &ractor::ActorRef<RootMessage>,
+    ) -> Result<(), ractor::ActorProcessingErr> {
+        let Some(transperth) = self.shared_actor_state.transperth.clone() else {
+            return Ok(());
+        };
+
+        myself
+            .spawn_linked(
+                Some(TransperthActor::NAME.to_owned()),
+                TransperthActor {
+                    shared_actor_state: self.shared_actor_state.clone(),
+                    transperth,
                 },
                 (),
             )
@@ -512,6 +535,7 @@ impl Actor for RootSupervisor {
         self.start_alarm_actor(&myself).await?;
         self.start_home_assistant_actor(&myself).await?;
         self.start_jellyfin_actor(&myself).await?;
+        self.start_transperth_actor(&myself).await?;
         self.start_eink_display_actor(&myself).await?;
         self.start_battery_actor(&myself).await?;
         self.start_solar_actor(&myself).await?;

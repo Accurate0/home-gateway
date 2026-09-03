@@ -91,6 +91,12 @@ async fn main() -> anyhow::Result<()> {
         .as_ref()
         .and_then(jellyfin::Jellyfin::new);
 
+    let transperth = settings_container
+        .transperth
+        .as_ref()
+        .map(home_gateway::integrations::transperth::Transperth::new)
+        .transpose()?;
+
     let http_client = home_gateway::http::get_traced_http_client()?;
 
     let shared_actor_state = SharedActorState {
@@ -104,12 +110,18 @@ async fn main() -> anyhow::Result<()> {
         workflows: workflow_manager,
         home_assistant,
         jellyfin,
+        transperth: transperth.clone(),
         eink: eink.clone(),
     };
 
     let willyweather = WillyWeather::new(&settings.willyweather)?;
 
-    let schema = build_schema(&shared_actor_state, http_client, willyweather.clone());
+    let schema = build_schema(
+        &shared_actor_state,
+        http_client,
+        willyweather.clone(),
+        transperth,
+    );
 
     let root_supervisor_handle = init_actors(shared_actor_state).await?;
 

@@ -63,6 +63,21 @@ willyweather:
   default_location: "14576"
   cache_ttl: 15m
 
+transperth:
+  refresh_peak: 3m
+  refresh_off_peak: 15m
+  horizon: 2h
+  peak:
+    - start: "06:00"
+      end: "09:30"
+    - start: "15:00"
+      end: "18:30"
+  routes:
+    - id: aubin-grove-to-perth
+      from: Aubin Grove Stn
+      to: Perth Underground Stn
+      limit: 3
+
 home_assistant:
   url: http://home-assistant.internal
   entities:

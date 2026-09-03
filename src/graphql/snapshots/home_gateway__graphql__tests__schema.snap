@@ -80,6 +80,17 @@ The input/output is a string in RFC3339 format.
 """
 scalar DateTime
 
+type DepartureObject {
+	line: String!
+	headsign: String!
+	platform: String
+	scheduledDeparture: DateTime!
+	liveDeparture: DateTime
+	delayMinutes: Int
+	minutesAway: Int!
+	live: Boolean!
+}
+
 type DeviceBattery {
 	kind: String!
 	voltage: Float
@@ -573,6 +584,7 @@ type QueryRoot {
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
+	transperth: TransperthObject!
 	workflows: [WorkflowStatus!]!
 	activeModes: [Mode!]!
 	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
@@ -617,6 +629,15 @@ type RobotVacuumMutation {
 	start: Boolean!
 	stop: Boolean!
 	dock: Boolean!
+}
+
+type RouteDeparturesObject {
+	id: String!
+	origin: String!
+	destination: String!
+	updatedAt: DateTime!
+	stale: Boolean!
+	departures: [DepartureObject!]!
 }
 
 input SetBrightnessInput {
@@ -675,6 +696,11 @@ type SwitchUpdate {
 	eventId: UUID!
 	device: String!
 	action: String!
+}
+
+type TransperthObject {
+	routes: [RouteDeparturesObject!]!
+	route(id: String!): RouteDeparturesObject
 }
 
 """

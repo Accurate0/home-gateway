@@ -107,6 +107,7 @@ impl Harness {
             workflows: WorkflowManager::new(db.clone()),
             home_assistant: None,
             jellyfin: None,
+            transperth: None,
             eink,
         };
 
@@ -136,7 +137,7 @@ impl Harness {
 
         ApiState {
             feature_flag_client: self.state.feature_flag_client.clone(),
-            schema: build_schema(&self.state, http_client, willyweather.clone()),
+            schema: build_schema(&self.state, http_client, willyweather.clone(), None),
             settings: self.settings.clone(),
             db: self.db.clone(),
             s3: self.state.s3.clone(),

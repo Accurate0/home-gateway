@@ -53,6 +53,8 @@ pub enum MainError {
     #[error(transparent)]
     WillyWeather(#[from] crate::integrations::willyweather::WillyWeatherError),
     #[error(transparent)]
+    Transperth(#[from] crate::integrations::transperth::TransperthError),
+    #[error(transparent)]
     Join(#[from] tokio::task::JoinError),
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),

@@ -3,6 +3,7 @@ import ForecastCard from "./components/ForecastCard";
 import ClimateBand from "./components/ClimateBand";
 import Header from "./components/Header";
 import PanelBattery from "./components/PanelBattery";
+import NextTrainTile from "./components/NextTrainTile";
 import Frame from "./components/Frame";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import type { AppQuery } from "./__generated__/AppQuery.graphql";
@@ -10,7 +11,7 @@ import { formatUpdatedAt, perthMidnightISO } from "./lib/time";
 import { CONTENT_H, ROW } from "./theme";
 
 const AppQuery = graphql`
-  query AppQuery($location: String!, $since: DateTime!) {
+  query AppQuery($location: String!, $since: DateTime!, $transitRoute: String!) {
     weather(input: { location: $location }) {
       ...ClimateBand_weather
       ...ForecastCard_weather
@@ -27,6 +28,11 @@ const AppQuery = graphql`
         }
       }
       ...SolarChart_solar @arguments(since: $since)
+    }
+    transperth {
+      route(id: $transitRoute) {
+        ...NextTrainTile_route
+      }
     }
     outdoor: environment(id: "env-outdoor") {
       temperature
@@ -45,6 +51,8 @@ const AppQuery = graphql`
 
 const LOCATION = "14576";
 
+const TRANSIT_ROUTE = "aubin-grove-to-perth";
+
 const view = new URLSearchParams(window.location.search).get("view") ?? "home";
 
 const WEATHER_FORECAST_H = CONTENT_H - ROW.header - ROW.climate - ROW.footer;
@@ -53,6 +61,7 @@ export default function App() {
   const data = useLazyLoadQuery<AppQuery>(AppQuery, {
     location: LOCATION,
     since: perthMidnightISO(),
+    transitRoute: TRANSIT_ROUTE,
   });
 
   const current = data.solar?.current;
@@ -63,6 +72,8 @@ export default function App() {
       <Header updatedAt={formatUpdatedAt(new Date())} stale={false} />
 
       <ClimateBand outdoor={data.outdoor} weatherRef={data.weather} />
+
+      {!weatherOnly && <NextTrainTile routeRef={data.transperth?.route} />}
 
       {!weatherOnly && data.solar && (
         <SolarSection

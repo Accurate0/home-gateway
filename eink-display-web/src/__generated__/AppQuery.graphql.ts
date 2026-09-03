@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8fc88d36f536f3127aba5a43ecb8c6d3>>
+ * @generated SignedSource<<853553c51090917dae750a628c57a5cc>>
  * @lightSyntaxTransform
  */
 
@@ -12,6 +12,7 @@ import { FragmentRefs } from "relay-runtime";
 export type AppQuery$variables = {
   location: string;
   since: any;
+  transitRoute: string;
 };
 export type AppQuery$data = {
   readonly hallwayPanel: {
@@ -39,6 +40,11 @@ export type AppQuery$data = {
     };
     readonly " $fragmentSpreads": FragmentRefs<"SolarChart_solar">;
   };
+  readonly transperth: {
+    readonly route: {
+      readonly " $fragmentSpreads": FragmentRefs<"NextTrainTile_route">;
+    } | null | undefined;
+  };
   readonly weather: {
     readonly " $fragmentSpreads": FragmentRefs<"ClimateBand_weather" | "ForecastCard_weather">;
   };
@@ -59,6 +65,11 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "since"
+  },
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "transitRoute"
   }
 ],
 v1 = [
@@ -143,7 +154,14 @@ v4 = [
     "variableName": "since"
   }
 ],
-v5 = {
+v5 = [
+  {
+    "kind": "Variable",
+    "name": "id",
+    "variableName": "transitRoute"
+  }
+],
+v6 = {
   "alias": "outdoor",
   "args": [
     {
@@ -174,7 +192,7 @@ v5 = {
   ],
   "storageKey": "environment(id:\"env-outdoor\")"
 },
-v6 = [
+v7 = [
   {
     "alias": null,
     "args": null,
@@ -190,7 +208,7 @@ v6 = [
     "storageKey": null
   }
 ],
-v7 = {
+v8 = {
   "alias": "hallwayPanel",
   "args": [
     {
@@ -203,10 +221,10 @@ v7 = {
   "kind": "LinkedField",
   "name": "einkDisplay",
   "plural": false,
-  "selections": (v6/*:: as any*/),
+  "selections": (v7/*:: as any*/),
   "storageKey": "einkDisplay(id:\"hallway-epd\")"
 },
-v8 = {
+v9 = {
   "alias": "livingRoomPanel",
   "args": [
     {
@@ -219,7 +237,7 @@ v8 = {
   "kind": "LinkedField",
   "name": "einkDisplay",
   "plural": false,
-  "selections": (v6/*:: as any*/),
+  "selections": (v7/*:: as any*/),
   "storageKey": "einkDisplay(id:\"living-room-epd\")"
 };
 return {
@@ -267,9 +285,36 @@ return {
         ],
         "storageKey": null
       },
-      (v5/*:: as any*/),
-      (v7/*:: as any*/),
-      (v8/*:: as any*/)
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "TransperthObject",
+        "kind": "LinkedField",
+        "name": "transperth",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": (v5/*:: as any*/),
+            "concreteType": "RouteDeparturesObject",
+            "kind": "LinkedField",
+            "name": "route",
+            "plural": false,
+            "selections": [
+              {
+                "args": null,
+                "kind": "FragmentSpread",
+                "name": "NextTrainTile_route"
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      (v6/*:: as any*/),
+      (v8/*:: as any*/),
+      (v9/*:: as any*/)
     ],
     "type": "QueryRoot",
     "abstractKey": null
@@ -406,22 +451,111 @@ return {
         ],
         "storageKey": null
       },
-      (v5/*:: as any*/),
-      (v7/*:: as any*/),
-      (v8/*:: as any*/)
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "TransperthObject",
+        "kind": "LinkedField",
+        "name": "transperth",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": (v5/*:: as any*/),
+            "concreteType": "RouteDeparturesObject",
+            "kind": "LinkedField",
+            "name": "route",
+            "plural": false,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "origin",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "destination",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "DepartureObject",
+                "kind": "LinkedField",
+                "name": "departures",
+                "plural": true,
+                "selections": [
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "line",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "platform",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "scheduledDeparture",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "delayMinutes",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "minutesAway",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "live",
+                    "storageKey": null
+                  }
+                ],
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      (v6/*:: as any*/),
+      (v8/*:: as any*/),
+      (v9/*:: as any*/)
     ]
   },
   "params": {
-    "cacheID": "9cbb31a79ea275bcc734d82ece00d100",
+    "cacheID": "a8f9ae0144a19389a15b7047a9039eb6",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  transperth {\n    route(id: $transitRoute) {\n      ...NextTrainTile_route\n    }\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment NextTrainTile_route on RouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "edcd3565f79980d7aa865fa237e4a965";
+(node as any).hash = "a3076a9e2b7bd74a8a1a5f4c3078c5f2";
 
 export default node;

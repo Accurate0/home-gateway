@@ -31,6 +31,7 @@ pub mod solar;
 pub mod sun;
 pub mod switch;
 pub mod template;
+pub mod transperth;
 pub mod trigger;
 pub mod trmnl;
 pub mod valetudo;
@@ -67,6 +68,9 @@ pub use solar::SolarSettings;
 pub use sun::SunSettings;
 pub use switch::{RawSmartSwitchBlock, SwitchRole};
 pub use template::TemplateString;
+pub use transperth::{
+    PeakWindow, RawTransperthSettings, TransperthSettings, TransperthRoute,
+};
 pub use trigger::TriggerMatcher;
 pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
@@ -128,6 +132,7 @@ pub struct Settings {
     pub home_assistant: HomeAssistantSettings,
     pub jellyfin: Option<JellyfinSettings>,
     pub solar: Option<SolarSettings>,
+    pub transperth: Option<TransperthSettings>,
     pub willyweather: WillyWeatherSettings,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
@@ -181,6 +186,8 @@ pub struct RawSettings {
     jellyfin: Option<JellyfinSettings>,
     #[serde(default)]
     solar: Option<SolarSettings>,
+    #[serde(default)]
+    transperth: Option<RawTransperthSettings>,
     willyweather: WillyWeatherSettings,
     #[serde(default)]
     eink_display: eink::RawEinkGlobal,
@@ -218,6 +225,7 @@ impl RawSettings {
             home_assistant,
             jellyfin,
             solar,
+            transperth,
             willyweather,
             eink_display,
             adhoc,
@@ -230,6 +238,43 @@ impl RawSettings {
             .is_none_or(str::is_empty)
         {
             return Err("willyweather.api_key is required (set WILLYWEATHER__API_KEY)".to_owned());
+        }
+
+        let transperth = transperth
+            .map(RawTransperthSettings::resolve)
+            .transpose()?;
+
+        if let Some(transperth) = &transperth {
+            if transperth
+                .reference_data_api_key
+                .as_deref()
+                .map(str::trim)
+                .is_none_or(str::is_empty)
+            {
+                return Err(
+                    "transperth.reference_data_api_key is required (set TRANSPERTH__REFERENCE_DATA_API_KEY)"
+                        .to_owned(),
+                );
+            }
+
+            if transperth.routes.is_empty() {
+                return Err("transperth.routes must not be empty".to_owned());
+            }
+
+            let mut seen_route_ids = HashSet::new();
+            for route in &transperth.routes {
+                if !seen_route_ids.insert(route.id.clone()) {
+                    return Err(format!("duplicate transperth route id: {}", route.id));
+                }
+
+                if route.from.trim().is_empty() || route.to.trim().is_empty() {
+                    return Err(format!("transperth route {} has an empty from/to", route.id));
+                }
+
+                if route.limit == 0 {
+                    return Err(format!("transperth route {} must have limit > 0", route.id));
+                }
+            }
         }
 
         let mut seen_key_names = HashSet::new();
@@ -315,6 +360,7 @@ impl RawSettings {
                 home_assistant,
                 jellyfin,
                 solar,
+                transperth,
                 willyweather,
                 eink_display: eink_display.resolve(),
                 adhoc,
@@ -622,6 +668,8 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 willyweather:
   api_key: x
+transperth:
+  reference_data_api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -650,6 +698,8 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 willyweather:
   api_key: x
+transperth:
+  reference_data_api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -903,6 +953,8 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 willyweather:
   api_key: x
+transperth:
+  reference_data_api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
