@@ -22,3 +22,9 @@ configMapGenerator:
       - workflows/small-switch.yaml
       - workflows/solar.yaml
       - workflows/woolworths.yaml
+  - name: home-gateway-dashboard
+    files:
+      - dashboards/home-gateway.json
+    options:
+      labels:
+        inf-k8s.net/grafana-dashboard: "true"
