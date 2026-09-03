@@ -37,11 +37,10 @@ public:
     const int prev = (cur - 1 + MENU_LIST_COUNT) % MENU_LIST_COUNT;
     const int nxt  = (cur + 1) % MENU_LIST_COUNT;
 
-    it->print(14,  19, icon_small, COLOR_ON, display::TextAlign::CENTER, MENU_LIST[prev].icon);
-    it->print(114, 19, icon_small, COLOR_ON, display::TextAlign::CENTER, MENU_LIST[nxt].icon);
-    it->print(64,  17, icon_big,   COLOR_ON, display::TextAlign::CENTER, MENU_LIST[cur].icon);
-    it->print(64,  43, font_base,  COLOR_ON, display::TextAlign::CENTER, MENU_LIST[cur].name);
-    draw_bottom_menu(it, font_small_f, "<", "OK", ">");
+    it->print(14,  16, icon_small, COLOR_ON, display::TextAlign::CENTER, MENU_LIST[prev].icon);
+    it->print(114, 16, icon_small, COLOR_ON, display::TextAlign::CENTER, MENU_LIST[nxt].icon);
+    it->print(64,  14, icon_big,   COLOR_ON, display::TextAlign::CENTER, MENU_LIST[cur].icon);
+    it->print(64,  40, font_base,  COLOR_ON, display::TextAlign::CENTER, MENU_LIST[cur].name);
 
     it->display();
   }

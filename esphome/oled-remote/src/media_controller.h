@@ -31,8 +31,7 @@ public:
 
     const int count = GatewayClient::media_count;
     if (count == 0) {
-      it->print(64, 26, font_small, COLOR_ON, display::TextAlign::CENTER, "NO PLAYERS");
-      draw_bottom_menu(it, font_small, "<", "OK", ">");
+      it->print(64, 24, font_small, COLOR_ON, display::TextAlign::CENTER, "NO PLAYERS");
       it->display();
       return;
     }
@@ -49,18 +48,17 @@ public:
     state[sizeof(state) - 1] = '\0';
     for (int k = 0; state[k]; k++) state[k] = toupper((unsigned char)state[k]);
 
-    it->print(64, 12, font_small, COLOR_ON, display::TextAlign::CENTER, name);
-    it->rectangle(0, 24, 128, 1);
-    it->print(64, 38, font_base, COLOR_ON, display::TextAlign::CENTER, state);
+    it->print(64, 10, font_small, COLOR_ON, display::TextAlign::CENTER, name);
+    it->rectangle(0, 20, 128, 1);
+    it->print(64, 36, font_base, COLOR_ON, display::TextAlign::CENTER, state);
 
     if (count > 1) {
       char pos[16];
       snprintf(pos, sizeof(pos), "%d/%d",
                (selected_idx + 1) % 100, count % 100);
-      it->print(124, 12, font_small, COLOR_ON, display::TextAlign::CENTER_RIGHT, pos);
+      it->print(124, 10, font_small, COLOR_ON, display::TextAlign::CENTER_RIGHT, pos);
     }
 
-    draw_bottom_menu(it, font_small, "<", "OK", ">");
     it->display();
   }
 };

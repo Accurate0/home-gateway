@@ -170,7 +170,6 @@ public:
       }
     }
 
-    draw_bottom_menu(it, font_small, "\u25b2", nullptr, "\u25bc");
     it->display();
   }
 

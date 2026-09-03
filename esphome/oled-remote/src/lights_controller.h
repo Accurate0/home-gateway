@@ -43,8 +43,7 @@ public:
 
     const int count = GatewayClient::light_count;
     if (count == 0) {
-      it->print(64, 26, font_small, COLOR_ON, display::TextAlign::CENTER, "NO LIGHTS");
-      draw_bottom_menu(it, font_small, "^", "", "v");
+      it->print(64, 24, font_small, COLOR_ON, display::TextAlign::CENTER, "NO LIGHTS");
       it->display();
       return;
     }
@@ -92,7 +91,6 @@ public:
       }
     }
 
-    draw_bottom_menu(it, font_small, "^", "", "v");
     it->display();
   }
 };

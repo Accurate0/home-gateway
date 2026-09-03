@@ -19,6 +19,12 @@ GPL-3.0 while the rest of home-gateway is MIT.
 
 Long-press the stop button (or press the menu button) for the mode carousel.
 
+## Display area
+
+The bottom rows of this unit's panel are physically damaged, so the UI draws
+nothing below y=52 and there is no bottom button-hint bar (upstream had one at
+y=53..63). Keep new drawing above that line.
+
 ## Talking to the gateway
 
 `packages/gateway.yaml` holds the whole client. State is one query, polled every

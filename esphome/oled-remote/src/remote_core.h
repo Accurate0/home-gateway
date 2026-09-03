@@ -15,8 +15,8 @@ public:
   template<class D, class F>
   static void drawBoot(D* it, F* icon_big, F* font_small) {
     it->clear();
-    it->print(64, 22, icon_big,   COLOR_ON, display::TextAlign::CENTER, "\ue88b");
-    it->print(64, 50, font_small, COLOR_ON, display::TextAlign::CENTER, "LOADING");
+    it->print(64, 18, icon_big,   COLOR_ON, display::TextAlign::CENTER, "\ue88b");
+    it->print(64, 44, font_small, COLOR_ON, display::TextAlign::CENTER, "LOADING");
     it->display();
   }
 
@@ -24,7 +24,7 @@ public:
   template<class D, class F>
   static void drawPowerOff(D* it, F* font_base) {
     it->clear();
-    it->print(64, 32, font_base, COLOR_ON, display::TextAlign::CENTER, "POWER OFF");
+    it->print(64, 26, font_base, COLOR_ON, display::TextAlign::CENTER, "POWER OFF");
     it->display();
   }
 
@@ -51,8 +51,8 @@ public:
     it->clear();
     it->print(64,  8, font_large, COLOR_ON, display::TextAlign::CENTER, title);
     it->rectangle(0, 20, 128, 1);
-    it->print(64, 36, font_small, COLOR_ON, display::TextAlign::CENTER, line1);
-    it->print(64, 49, font_small, COLOR_ON, display::TextAlign::CENTER, line2);
+    it->print(64, 33, font_small, COLOR_ON, display::TextAlign::CENTER, line1);
+    it->print(64, 45, font_small, COLOR_ON, display::TextAlign::CENTER, line2);
     it->display();
   }
 
