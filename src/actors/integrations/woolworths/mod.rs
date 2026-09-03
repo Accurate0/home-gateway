@@ -102,7 +102,11 @@ impl Actor for WoolworthsActor {
 
                 crate::metrics::record_integration_poll(
                     "woolworths",
-                    if had_error { "partial_error" } else { "success" },
+                    if had_error {
+                        "partial_error"
+                    } else {
+                        "success"
+                    },
                     started.elapsed(),
                 );
 

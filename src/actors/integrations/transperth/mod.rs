@@ -61,11 +61,7 @@ impl TransperthActor {
         match self.transperth.refresh_routes(Utc::now()).await {
             Ok(()) => {
                 tracing::debug!("transperth routes refreshed");
-                crate::metrics::record_integration_poll(
-                    "transperth",
-                    "success",
-                    started.elapsed(),
-                );
+                crate::metrics::record_integration_poll("transperth", "success", started.elapsed());
             }
             Err(error) => {
                 tracing::warn!("transperth route refresh failed: {error}");
