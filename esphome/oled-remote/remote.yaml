@@ -1,0 +1,297 @@
+substitutions:
+  BOARD: "esp32dev"
+  DEVICE_NAME: "oled-remote"
+  FRIENDLY_NAME: "OLED Remote"
+  PIN_WAKE: "0"
+  PIN_I2C_SDA: "27"
+  PIN_I2C_SCL: "25"
+  GATEWAY_URL: !secret gateway_url
+  GATEWAY_API_KEY: !secret gateway_api_key
+
+packages:
+  network:  !include ../common/network.yaml
+  gateway:  !include packages/gateway.yaml
+  menu:     !include packages/menu.yaml
+  lights:   !include packages/mode_lights.yaml
+  media:    !include packages/mode_media.yaml
+  settings: !include packages/mode_settings.yaml
+  buttons:  !include packages/buttons.yaml
+  layout:   !include packages/layouts/layout_v2.yaml
+
+font:
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: 700
+    id: font_base
+    size: 14
+    glyphs: "0123456789.%ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz _:/-"
+
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: 700
+    id: font_small
+    size: 10
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890.%- <>/:"
+
+esphome:
+  name: ${DEVICE_NAME}
+  friendly_name: ${FRIENDLY_NAME}
+  min_version: 2024.11.0
+  name_add_mac_suffix: false
+  includes:
+    - src/menu_entities.h
+    - src/remote_core.h
+    - src/wake_utils.h
+    - src/display_utils.h
+    - src/gateway_client.h
+    - src/menu_controller.h
+    - src/lights_controller.h
+    - src/media_controller.h
+    - src/settings_controller.h
+  on_boot:
+    - priority: 700
+      then:
+        - lambda: 'id(is_timer_wake) = is_timer_wakeup();'
+        - if:
+            condition: { lambda: 'return !id(is_timer_wake);' }
+            then:
+              - output.turn_on: oled_power
+              - delay: 10ms
+    - priority: 250
+      then:
+        - if:
+            condition: { lambda: 'return !id(is_timer_wake);' }
+            then:
+              - lambda: |-
+                  if (id(app_mode) >= MENU_LIST_COUNT) id(app_mode) = 0;
+                  RemoteCore::resetIdleTimer(id(last_active));
+                  id(is_booting) = true;
+    - priority: -200
+      then:
+        - if:
+            condition: { lambda: 'return id(is_timer_wake);' }
+            then:
+              # Timer wake exists only to refresh the battery reading before
+              # going straight back to sleep. Nothing is reported off-device.
+              - component.update: battery_raw
+              - delay: 2s
+              - deep_sleep.enter:
+                  sleep_duration: !lambda 'return (uint32_t)id(battery_interval_mins) * 60000;'
+            else:
+              - wait_until:
+                  condition:
+                    wifi.connected:
+                  timeout: 10s
+              - if:
+                  condition:
+                    not:
+                      wifi.connected:
+                  then:
+                    - lambda: 'id(conn_status) = 1;'
+                  else:
+                    - script.execute: gw_fetch
+                    - wait_until:
+                        condition:
+                          lambda: 'return !id(gw_fetch).is_running();'
+                        timeout: 8s
+              - lambda: 'id(is_booting) = false; id(updated_ui) = true;'
+
+esp32:
+  board: ${BOARD}
+  framework:
+    type: arduino
+
+# ssid/password come from ../common/network.yaml; these are handheld-specific
+# overrides merged on top of it.
+wifi:
+  output_power: 10dB
+  fast_connect: true
+  # Stays associated while idle so a button press acts immediately; the tiered
+  # power model below blanks the screen long before it deep-sleeps.
+  power_save_mode: LIGHT
+  reboot_timeout: 0s
+  on_connect:
+    - if:
+        condition: { lambda: 'return id(conn_status) == 1;' }
+        then:
+          - lambda: 'id(conn_status) = 0;'
+          - script.execute: gw_fetch
+  on_disconnect:
+    - lambda: 'id(conn_status) = 1;'
+
+ota:
+  - platform: esphome
+
+logger:
+
+output:
+  - platform: gpio
+    pin: 15
+    id: oled_power
+
+# network.yaml points every device at the house broker. This remote publishes
+# nothing the gateway ingests, so drop the broker connection entirely.
+mqtt: !remove
+
+deep_sleep:
+  id: go_sleep
+  wakeup_pin:
+    number: ${PIN_WAKE}
+    allow_other_uses: true
+  wakeup_pin_mode: INVERT_WAKEUP
+
+i2c:
+  sda: ${PIN_I2C_SDA}
+  scl: ${PIN_I2C_SCL}
+  frequency: 400kHz
+  scan: false
+
+display:
+  - platform: ssd1306_i2c
+    model: "SH1106 128x64"
+    address: 0x3C
+    rotation: 180
+    contrast: 0.5
+    id: oled_display
+
+globals:
+  - id: app_mode
+    type: int
+    initial_value: '0'
+    restore_value: true
+
+  - id: menu_active
+    type: bool
+    initial_value: 'false'
+
+  - id: menu_index
+    type: int
+    initial_value: '0'
+
+  - id: last_active
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: updated_ui
+    type: bool
+    initial_value: 'true'
+
+  - id: is_booting
+    type: bool
+    initial_value: 'true'
+
+  - id: is_shutting_down
+    type: bool
+    initial_value: 'false'
+
+  - id: is_timer_wake
+    type: bool
+    initial_value: 'false'
+
+  # Screen blanked but wifi still associated — tier 2 of the power model.
+  - id: screen_off
+    type: bool
+    initial_value: 'false'
+
+  # 0=ok  1=no-wifi  2=gateway unreachable  3=empty/unparseable response
+  - id: conn_status
+    type: int
+    initial_value: '0'
+
+  # Idle minutes before dropping from screen-off into deep sleep.
+  - id: deep_sleep_after_mins
+    type: int
+    initial_value: '30'
+    restore_value: true
+
+script:
+
+  - id: blank_screen
+    mode: single
+    then:
+      - lambda: |-
+          id(screen_off) = true;
+          id(oled_display)->clear();
+          id(oled_display)->display();
+      - delay: 50ms
+      - output.turn_off: oled_power
+
+  - id: wake_screen
+    mode: single
+    then:
+      - lambda: 'RemoteCore::resetIdleTimer(id(last_active));'
+      - if:
+          condition: { lambda: 'return id(screen_off);' }
+          then:
+            - output.turn_on: oled_power
+            - delay: 50ms
+            - lambda: |-
+                id(screen_off) = false;
+                id(updated_ui) = true;
+            - script.execute: gw_fetch
+
+  - id: turn_off
+    mode: single
+    then:
+      - lambda: 'id(is_shutting_down) = true; RemoteCore::drawPowerOff(id(oled_display), id(font_base));'
+      - delay: 1s
+      - lambda: |-
+          id(oled_display)->clear();
+          id(oled_display)->display();
+      - delay: 500ms
+      - output.turn_off: oled_power
+      - delay: 5ms
+      - deep_sleep.enter:
+          sleep_duration: !lambda 'return (uint32_t)id(battery_interval_mins) * 60000;'
+
+  - id: boot_screen
+    then:
+      - lambda: 'RemoteCore::drawBoot(id(oled_display), id(menu_icon_big), id(font_small));'
+
+  - id: main_update
+    then:
+      - if:
+          condition: { lambda: 'return !id(is_shutting_down) && !id(screen_off);' }
+          then:
+            - if:
+                condition: { lambda: 'return id(is_booting);' }
+                then: [ script.execute: boot_screen ]
+                else:
+                  - if:
+                      condition: { lambda: 'return id(conn_status) != 0;' }
+                      then:
+                        - lambda: 'RemoteCore::drawConnError(id(oled_display), id(font_base), id(font_small), id(conn_status));'
+                      else:
+                        - if:
+                            condition: { lambda: 'return id(menu_active);' }
+                            then: [ script.execute: menu_draw ]
+                            else:
+                              - if:
+                                  condition: { lambda: 'return id(app_mode) == APP_LIGHTS;' }
+                                  then: [ script.execute: lights_update ]
+                              - if:
+                                  condition: { lambda: 'return id(app_mode) == APP_MEDIA;' }
+                                  then: [ script.execute: media_update ]
+                              - if:
+                                  condition: { lambda: 'return id(app_mode) == APP_SETTINGS;' }
+                                  then: [ script.execute: settings_update ]
+
+interval:
+  - interval: 500ms
+    then:
+      - if:
+          condition: { lambda: 'return !id(is_timer_wake);' }
+          then:
+            - if:
+                condition:
+                  lambda: 'return RemoteCore::isIdle(id(last_active), id(deep_sleep_after_mins) * 60);'
+                then: [ script.execute: turn_off ]
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return !id(screen_off) && RemoteCore::isIdle(id(last_active), id(sleep_timeout_mins) * 60);'
+                      then: [ script.execute: blank_screen ]
+                      else: [ script.execute: main_update ]

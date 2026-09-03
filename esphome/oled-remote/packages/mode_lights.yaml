@@ -1,0 +1,77 @@
+# Lights mode — scrollable list of every light the gateway exposes.
+#
+# The list is discovered at runtime from the `entities` query; nothing here is
+# hardcoded. Brightness is adjusted with the gateway's relative brightnessMove
+# mutation, so the remote never needs to know the current level.
+#
+# Button entry points:
+#   lights_btn_prev            -> scroll up
+#   lights_btn_next            -> scroll down
+#   lights_btn_toggle          -> on/off
+#   lights_btn_brightness_up   -> brighter
+#   lights_btn_brightness_down -> dimmer
+
+esphome:
+  includes:
+    - src/lights_controller.h
+
+globals:
+  - id: selected_light_index
+    type: int
+    initial_value: '0'
+    restore_value: true
+
+script:
+
+  - id: lights_btn_prev
+    then:
+      - lambda: 'LightsController::prevLight(id(selected_light_index)); id(updated_ui) = true;'
+      - script.execute: lights_draw
+
+  - id: lights_btn_next
+    then:
+      - lambda: 'LightsController::nextLight(id(selected_light_index)); id(updated_ui) = true;'
+      - script.execute: lights_draw
+
+  - id: lights_btn_toggle
+    then:
+      - lambda: 'LightsController::toggleLocal(id(selected_light_index), id(updated_ui));'
+      - script.execute: lights_draw
+      - script.execute:
+          id: gw_mutate
+          query: !lambda 'return GatewayClient::lightToggle(id(selected_light_index));'
+
+  - id: lights_btn_brightness_up
+    then:
+      - if:
+          condition:
+            lambda: 'return LightsController::dimmable(id(selected_light_index));'
+          then:
+            - script.execute:
+                id: gw_mutate
+                query: !lambda 'return GatewayClient::lightBrightnessMove(id(selected_light_index), 40);'
+
+  - id: lights_btn_brightness_down
+    then:
+      - if:
+          condition:
+            lambda: 'return LightsController::dimmable(id(selected_light_index));'
+          then:
+            - script.execute:
+                id: gw_mutate
+                query: !lambda 'return GatewayClient::lightBrightnessMove(id(selected_light_index), -40);'
+
+  - id: lights_update
+    then:
+      - lambda: 'LightsController::clamp(id(selected_light_index));'
+      - script.execute: lights_draw
+
+  - id: lights_draw
+    then:
+      - if:
+          condition:
+            lambda: 'return id(app_mode) == APP_LIGHTS && !id(menu_active) && !id(is_booting) && !id(screen_off);'
+          then:
+            - lambda: >-
+                LightsController::draw(id(oled_display), id(font_small),
+                                       id(selected_light_index), id(updated_ui));

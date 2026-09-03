@@ -1,0 +1,71 @@
+# Media mode — one player at a time, transport controls on the d-pad.
+#
+# Players are discovered at runtime from the same `entities` query the lights
+# mode uses. State text is whatever the gateway reports for the player.
+#
+# Button entry points:
+#   media_btn_prev_player / media_btn_next_player -> cycle player
+#   media_btn_play_pause                          -> OK
+#   media_btn_previous / media_btn_next           -> track skip
+#   media_btn_turn_off                            -> stop
+
+esphome:
+  includes:
+    - src/media_controller.h
+
+globals:
+  - id: selected_media_index
+    type: int
+    initial_value: '0'
+    restore_value: true
+
+script:
+
+  - id: media_btn_prev_player
+    then:
+      - lambda: 'MediaController::prevPlayer(id(selected_media_index)); id(updated_ui) = true;'
+      - script.execute: media_draw
+
+  - id: media_btn_next_player
+    then:
+      - lambda: 'MediaController::nextPlayer(id(selected_media_index)); id(updated_ui) = true;'
+      - script.execute: media_draw
+
+  - id: media_btn_play_pause
+    then:
+      - script.execute:
+          id: gw_mutate
+          query: !lambda 'return GatewayClient::mediaAction(id(selected_media_index), "playPause");'
+
+  - id: media_btn_previous
+    then:
+      - script.execute:
+          id: gw_mutate
+          query: !lambda 'return GatewayClient::mediaAction(id(selected_media_index), "previous");'
+
+  - id: media_btn_next
+    then:
+      - script.execute:
+          id: gw_mutate
+          query: !lambda 'return GatewayClient::mediaAction(id(selected_media_index), "next");'
+
+  - id: media_btn_turn_off
+    then:
+      - script.execute:
+          id: gw_mutate
+          query: !lambda 'return GatewayClient::mediaAction(id(selected_media_index), "turnOff");'
+
+  - id: media_update
+    then:
+      - lambda: 'MediaController::clamp(id(selected_media_index));'
+      - script.execute: media_draw
+
+  - id: media_draw
+    then:
+      - if:
+          condition:
+            lambda: 'return id(app_mode) == APP_MEDIA && !id(menu_active) && !id(is_booting) && !id(screen_off);'
+          then:
+            - lambda: >-
+                MediaController::draw(id(oled_display), id(font_base), id(font_small),
+                                      id(selected_media_index), id(updated_ui));

@@ -1,0 +1,38 @@
+This directory is derived from plugowski/esphome_remote:
+
+    https://github.com/plugowski/esphome_remote
+    commit d5e090131116ee7c1301f7eca770301b1c667831
+    Copyright (C) plugowski, licensed GNU GPL v3.0
+
+Derived from devices/multi_function_remote/ in that repository:
+
+    remote.yaml
+    packages/buttons.yaml
+    packages/menu.yaml
+    packages/mode_lights.yaml
+    packages/mode_settings.yaml
+    packages/layouts/layout_v2.yaml
+    src/display_utils.h
+    src/lights_controller.h
+    src/menu_controller.h
+    src/menu_entities.h
+    src/remote_core.h
+    src/settings_controller.h
+    src/wake_utils.h
+
+Written for this repository, but part of the same derived work:
+
+    packages/gateway.yaml
+    packages/mode_media.yaml
+    src/gateway_client.h
+    src/media_controller.h
+
+The whole of esphome/oled-remote/ is therefore GPL-3.0 (see LICENSE), unlike
+the rest of home-gateway, which is MIT.
+
+Changes from upstream: the Home Assistant transport (homeassistant-platform
+sensors and homeassistant.service calls) is replaced with HTTP GraphQL calls to
+this repository's gateway; the AC, covers and automations modes and the
+quick-action overlay are removed; a media-player mode is added; the entity list
+is discovered at runtime rather than hardcoded; fonts are fetched via gfonts
+instead of a vendored TTF.

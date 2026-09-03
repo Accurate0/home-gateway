@@ -42,6 +42,13 @@ api_keys:
     scopes: ["ingest:unifi:write"]
   - name: home-gateway-app
     scopes: ["*"]
+  - name: oled-remote
+    scopes:
+      - "graphql:entity:read"
+      - "graphql:light:read"
+      - "graphql:light:write"
+      - "graphql:media_player:read"
+      - "graphql:media_player:write"
 
 woolworths:
   refresh: 1h

@@ -1,0 +1,62 @@
+# Mode-selector carousel.
+
+esphome:
+  includes:
+    - src/menu_controller.h
+
+font:
+  - file:
+      type: gfonts
+      family: Material+Symbols+Rounded
+      weight: 400
+    id: menu_icon_big
+    size: 32
+    glyphs:
+      - ""  # lightbulb
+      - ""  # tv  (media)
+      - ""  # settings
+      - ""  # hourglass_empty  (boot screen)
+
+  - file:
+      type: gfonts
+      family: Material+Symbols+Rounded
+      weight: 400
+    id: menu_icon_small
+    size: 18
+    glyphs:
+      - ""  # lightbulb
+      - ""  # tv  (media)
+      - ""  # settings
+      - ""  # hourglass_empty
+
+script:
+
+  - id: menu_open
+    then:
+      - lambda: 'MenuController::open(id(menu_index), id(app_mode), id(menu_active));'
+      - script.execute: menu_draw
+
+  - id: menu_confirm
+    then:
+      - lambda: 'MenuController::confirm(id(app_mode), id(menu_index), id(menu_active), id(updated_ui));'
+
+  - id: menu_cancel
+    then:
+      - lambda: 'id(menu_active) = false; id(updated_ui) = true;'
+
+  - id: menu_prev
+    then:
+      - lambda: 'MenuController::prev(id(menu_index));'
+      - script.execute: menu_draw
+
+  - id: menu_next
+    then:
+      - lambda: 'MenuController::next(id(menu_index));'
+      - script.execute: menu_draw
+
+  - id: menu_draw
+    then:
+      - lambda: >-
+          MenuController::draw(id(oled_display),
+            id(menu_icon_big), id(menu_icon_small),
+            id(font_base), id(font_small), id(menu_index));

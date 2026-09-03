@@ -1,0 +1,174 @@
+# Physical button layout for v2 hardware — 6-button directional pad.
+#
+# Pin assignment:
+#   14  left arrow
+#   26  right arrow
+#   23  OK (centre confirm / select)
+#   17  up arrow
+#   18  down arrow
+#   19  stop / pause
+#              short press (50-700 ms)   -> btn_stop
+#              long  press (800-3000 ms) -> btn_menu_open
+#    0  power off (shared with the deep-sleep wake pin — allow_other_uses: true)
+#
+# Always-present hardware buttons (shared with v1):
+#    5  menu           open / confirm menu
+#   22  MODE / <<      menu prev | Lights: prev | Media: prev player
+#   33  FAN  / >>      menu next | Lights: next | Media: next player
+#
+# btn_* routing logic lives in packages/buttons.yaml.
+# Pins 5 / 22 / 33 are dispatched inline (different semantics from btn_left/right).
+
+binary_sensor:
+
+  - platform: gpio
+    pin:
+      allow_other_uses: true   # shared with deep_sleep wakeup_pin
+      number: 0
+      mode: { input: true, pullup: true }
+    name: "Power Off"
+    internal: true
+    filters: [ invert: ]
+    on_press:
+      then: [ script.execute: turn_off ]
+
+  - platform: gpio
+    pin:
+      number: 14
+      mode: { input: true, pullup: true }
+    name: "Button Left"
+    internal: true
+    filters: [ invert:, delayed_on: 30ms ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - script.execute: btn_left
+
+  - platform: gpio
+    pin:
+      number: 26
+      mode: { input: true, pullup: true }
+    name: "Button Right"
+    internal: true
+    filters: [ invert:, delayed_on: 30ms ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - script.execute: btn_right
+
+  - platform: gpio
+    pin:
+      number: 23
+      mode: { input: true, pullup: true }
+    name: "Button OK"
+    internal: true
+    filters: [ invert:, delayed_on: 30ms ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - script.execute: btn_ok
+
+  - platform: gpio
+    pin:
+      number: 17
+      mode: { input: true, pullup: true }
+    name: "Button Up"
+    internal: true
+    filters: [ invert: ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - script.execute: btn_up
+
+  - platform: gpio
+    pin:
+      number: 18
+      mode: { input: true, pullup: true }
+    name: "Button Down"
+    internal: true
+    filters: [ invert: ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - script.execute: btn_down
+
+  # Short press -> btn_stop  |  long press -> open the mode carousel
+  - platform: gpio
+    pin:
+      number: 19
+      mode: { input: true, pullup: true }
+    name: "Button Stop"
+    internal: true
+    filters: [ invert: ]
+    on_click:
+      - min_length: 50ms
+        max_length: 700ms
+        then:
+          - script.execute: wake_screen
+          - script.execute: btn_stop
+      - min_length: 800ms
+        max_length: 3000ms
+        then:
+          - script.execute: wake_screen
+          - script.execute: btn_menu_open
+
+  - platform: gpio
+    pin:
+      number: 5
+      mode: { input: true, pullup: true }
+    name: "Button Menu"
+    internal: true
+    filters: [ invert:, delayed_on: 30ms ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - if:
+            condition: { lambda: 'return !id(menu_active);' }
+            then: [ script.execute: menu_open ]
+            else: [ script.execute: menu_confirm ]
+
+  - platform: gpio
+    pin:
+      number: 22
+      mode: { input: true, pullup: true }
+    name: "Button Mode"
+    internal: true
+    filters: [ invert:, delayed_on: 30ms ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - if:
+            condition: { lambda: 'return id(menu_active);' }
+            then: [ script.execute: menu_prev ]
+        - if:
+            condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_LIGHTS;' }
+            then: [ script.execute: lights_btn_prev ]
+        - if:
+            condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_MEDIA;' }
+            then: [ script.execute: media_btn_prev_player ]
+        - if:
+            condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_SETTINGS;' }
+            then: [ script.execute: settings_btn_up ]
+
+  - platform: gpio
+    pin:
+      number: 33
+      mode: { input: true, pullup: true }
+    name: "Button Fan"
+    internal: true
+    filters: [ invert:, delayed_on: 30ms ]
+    on_press:
+      then:
+        - script.execute: wake_screen
+        - if:
+            condition: { lambda: 'return id(menu_active);' }
+            then: [ script.execute: menu_next ]
+        - if:
+            condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_LIGHTS;' }
+            then: [ script.execute: lights_btn_next ]
+        - if:
+            condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_MEDIA;' }
+            then: [ script.execute: media_btn_next_player ]
+        - if:
+            condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_SETTINGS;' }
+            then: [ script.execute: settings_btn_down ]

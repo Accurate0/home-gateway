@@ -1,0 +1,97 @@
+# Abstract button dispatcher.
+#
+# Translates semantic btn_* scripts into per-mode controller scripts based on
+# the current app_mode. Physical GPIO -> btn_* wiring lives in the active layout
+# file (packages/layouts/layout_v2.yaml).
+#
+#   btn_*      | menu  | Lights          | Media           | Settings
+#   -----------+-------+-----------------+-----------------+---------------
+#   btn_left   | prev  | brightness -    | prev player     | value -
+#   btn_right  | next  | brightness +    | next player     | value +
+#   btn_ok     | confm | toggle on/off   | play/pause      | -
+#   btn_up     |  -    | scroll up       | prev track      | prev row
+#   btn_down   |  -    | scroll down     | next track      | next row
+#   btn_stop   | cancl | -               | turn off        | -
+#   btn_menu_open | opens the mode carousel
+
+script:
+
+  - id: btn_left
+    then:
+      - if:
+          condition: { lambda: 'return id(menu_active);' }
+          then: [ script.execute: menu_prev ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_LIGHTS;' }
+          then: [ script.execute: lights_btn_brightness_down ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_MEDIA;' }
+          then: [ script.execute: media_btn_prev_player ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_SETTINGS;' }
+          then: [ script.execute: settings_btn_left ]
+
+  - id: btn_right
+    then:
+      - if:
+          condition: { lambda: 'return id(menu_active);' }
+          then: [ script.execute: menu_next ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_LIGHTS;' }
+          then: [ script.execute: lights_btn_brightness_up ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_MEDIA;' }
+          then: [ script.execute: media_btn_next_player ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_SETTINGS;' }
+          then: [ script.execute: settings_btn_right ]
+
+  - id: btn_ok
+    then:
+      - if:
+          condition: { lambda: 'return id(menu_active);' }
+          then: [ script.execute: menu_confirm ]
+          else:
+            - if:
+                condition: { lambda: 'return id(app_mode) == APP_LIGHTS;' }
+                then: [ script.execute: lights_btn_toggle ]
+            - if:
+                condition: { lambda: 'return id(app_mode) == APP_MEDIA;' }
+                then: [ script.execute: media_btn_play_pause ]
+
+  - id: btn_up
+    then:
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_LIGHTS;' }
+          then: [ script.execute: lights_btn_prev ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_MEDIA;' }
+          then: [ script.execute: media_btn_previous ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_SETTINGS;' }
+          then: [ script.execute: settings_btn_up ]
+
+  - id: btn_down
+    then:
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_LIGHTS;' }
+          then: [ script.execute: lights_btn_next ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_MEDIA;' }
+          then: [ script.execute: media_btn_next ]
+      - if:
+          condition: { lambda: 'return !id(menu_active) && id(app_mode) == APP_SETTINGS;' }
+          then: [ script.execute: settings_btn_down ]
+
+  - id: btn_stop
+    then:
+      - if:
+          condition: { lambda: 'return id(menu_active);' }
+          then: [ script.execute: menu_cancel ]
+          else:
+            - if:
+                condition: { lambda: 'return id(app_mode) == APP_MEDIA;' }
+                then: [ script.execute: media_btn_turn_off ]
+
+  - id: btn_menu_open
+    then: [ script.execute: menu_open ]

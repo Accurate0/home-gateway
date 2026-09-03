@@ -1,0 +1,87 @@
+# home-gateway GraphQL client.
+#
+# State comes from a single `entities` query; actions are one-shot mutations.
+# Every request is a blocking HTTP round-trip, so these scripts must never be
+# called from a display lambda.
+#
+# conn_status: 0=ok  1=no-wifi  2=gateway unreachable
+
+esphome:
+  includes:
+    - src/gateway_client.h
+
+http_request:
+  id: gw
+  timeout: 5s
+  verify_ssl: false
+
+script:
+
+  - id: gw_fetch
+    mode: single
+    then:
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - http_request.post:
+                url: ${GATEWAY_URL}/v1/graphql
+                request_headers:
+                  Content-Type: application/json
+                  X-Api-Key: ${GATEWAY_API_KEY}
+                body: !lambda 'return GW_STATE_QUERY;'
+                capture_response: true
+                on_response:
+                  then:
+                    - lambda: |-
+                        if (response->status_code != 200) {
+                          id(conn_status) = 2;
+                          return;
+                        }
+                        if (!GatewayClient::ingest(body, id(updated_ui))) {
+                          id(conn_status) = 3;
+                          return;
+                        }
+                        id(conn_status) = 0;
+                    - script.execute: lights_draw
+                    - script.execute: media_draw
+                on_error:
+                  then:
+                    - lambda: 'id(conn_status) = 2;'
+
+  - id: gw_mutate
+    mode: queued
+    parameters:
+      query: string
+    then:
+      - if:
+          condition:
+            lambda: 'return !query.empty();'
+          then:
+            - http_request.post:
+                url: ${GATEWAY_URL}/v1/graphql
+                request_headers:
+                  Content-Type: application/json
+                  X-Api-Key: ${GATEWAY_API_KEY}
+                body: !lambda 'return query;'
+                capture_response: false
+                on_error:
+                  then:
+                    - lambda: 'id(conn_status) = 2;'
+            - script.execute: gw_refresh_soon
+
+  # Re-reads authoritative state shortly after a mutation, so an optimistic
+  # local flip is corrected if the gateway disagreed.
+  - id: gw_refresh_soon
+    mode: restart
+    then:
+      - delay: 1s
+      - script.execute: gw_fetch
+
+interval:
+  - interval: 30s
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(is_timer_wake) && !id(screen_off);'
+          then: [ script.execute: gw_fetch ]
