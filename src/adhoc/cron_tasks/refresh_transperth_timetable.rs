@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use crate::actors::integrations::transperth::{TransperthActor, TransperthMessage};
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::adhoc::{AdhocCronTask, AdhocTaskContext, AdhocTaskError};
 use crate::adhoc_task_source;
-use crate::actors::integrations::transperth::{TransperthActor, TransperthMessage};
 use crate::integrations::transperth::{TIMETABLE_KEY, Transperth, gtfs};
 
 const ETAG_METADATA_KEY: &str = "gtfs-etag";
@@ -32,8 +32,8 @@ impl AdhocCronTask for RefreshTransperthTimetable {
             return Ok(0);
         };
 
-        let transperth =
-            Transperth::new(&settings).map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
+        let transperth = Transperth::new(&settings)
+            .map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
 
         let stored = ctx
             .s3
@@ -82,16 +82,11 @@ impl AdhocCronTask for RefreshTransperthTimetable {
         }
 
         ctx.s3
-            .put_object_with_metadata(
-                TIMETABLE_KEY,
-                &payload,
-                Some("application/json"),
-                &metadata,
-            )
+            .put_object_with_metadata(TIMETABLE_KEY, &payload, Some("application/json"), &metadata)
             .await
             .map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
 
-        match ractor::registry::where_is(TransperthActor::NAME.to_owned()) {
+        match ractor::registry::where_is(TransperthActor::NAME) {
             Some(actor) => match actor.send_message(TransperthMessage::LoadTimetable) {
                 Ok(()) => tracing::info!("transperth actor asked to reload the timetable"),
                 Err(error) => tracing::warn!("transperth actor reload failed: {error}"),

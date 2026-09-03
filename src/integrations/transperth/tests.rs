@@ -16,8 +16,7 @@ const STOPS: &str = "location_type, parent_station, stop_id, stop_code, stop_nam
 1,,64,64,\"Perth Underground Stn\",\n\
 1,,138,138,\"Aubin Grove Stn\",\n";
 
-const ROUTES: &str =
-    "route_id,agency_id,route_short_name,route_long_name,route_desc,route_type\n\
+const ROUTES: &str = "route_id,agency_id,route_short_name,route_long_name,route_desc,route_type\n\
 WES-RAI-1829,WES-RAI,,Mandurah Line,,2\n\
 BUS-1,BUS,,A Bus Route,,3\n";
 
@@ -37,8 +36,7 @@ trip-weekend,09:25:00,09:25:00,99601,2,0,0\n\
 trip-bus,08:05:00,08:05:00,99671,1,0,0\n\
 trip-bus,08:30:00,08:30:00,99601,2,0,0\n";
 
-const CALENDAR: &str =
-    "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n\
+const CALENDAR: &str = "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n\
 WEEKDAY,1,1,1,1,1,0,0,20260101,20271231\n\
 WEEKEND,0,0,0,0,0,1,1,20260101,20271231\n";
 
@@ -157,7 +155,11 @@ fn services_not_running_today_are_excluded() {
 
     let trips: Vec<&str> = found.iter().map(|d| d.trip_id.as_str()).collect();
 
-    assert_eq!(trips, vec!["trip-weekend"], "weekday trip ran on a saturday");
+    assert_eq!(
+        trips,
+        vec!["trip-weekend"],
+        "weekday trip ran on a saturday"
+    );
 }
 
 #[test]

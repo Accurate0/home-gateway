@@ -2,14 +2,14 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use moka::future::Cache;
 use chrono::{DateTime, NaiveDate, TimeDelta, Timelike, Utc};
 use chrono_tz::Australia::Perth;
+use moka::future::Cache;
 use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
 
 use crate::http::get_traced_http_client;
-use crate::settings::{TransperthSettings, TransperthRoute};
+use crate::settings::{TransperthRoute, TransperthSettings};
 
 pub mod auth;
 pub mod departures;

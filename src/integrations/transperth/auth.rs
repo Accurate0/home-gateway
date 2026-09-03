@@ -9,10 +9,7 @@ const PREFIX: &str = "TrAnSpErTh";
 const NONCE_DIGITS: usize = 6;
 
 pub fn realtime_auth_header(realtime_api_key: &str, now: DateTime<Utc>) -> String {
-    let datetime = now
-        .with_timezone(&Perth)
-        .format("%d%m%Y%H%M%S")
-        .to_string();
+    let datetime = now.with_timezone(&Perth).format("%d%m%Y%H%M%S").to_string();
 
     let mut rng = rand::rng();
     let nonce: String = (0..NONCE_DIGITS)

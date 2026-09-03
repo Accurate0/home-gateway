@@ -65,8 +65,7 @@ pub(super) fn read(
 
             let mut days = [false; 7];
             for (slot, index) in day_indexes.iter().enumerate() {
-                days[slot] =
-                    index.and_then(|index| record.get(index)).map(str::trim) == Some("1");
+                days[slot] = index.and_then(|index| record.get(index)).map(str::trim) == Some("1");
             }
 
             let start_date = start_index

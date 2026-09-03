@@ -1,6 +1,6 @@
+use chrono::TimeZone;
 use chrono::{DateTime, NaiveDate, TimeDelta, Utc};
 use chrono_tz::Australia::Perth;
-use chrono::TimeZone;
 
 use crate::settings::TransperthRoute;
 
@@ -45,9 +45,7 @@ pub fn build(
         let alights = stop_times
             .iter()
             .skip(boarding + 1)
-            .any(|stop_time| {
-                destination.contains(&stop_time.stop_id) && stop_time.dropoff_allowed
-            });
+            .any(|stop_time| destination.contains(&stop_time.stop_id) && stop_time.dropoff_allowed);
 
         if !alights {
             continue;

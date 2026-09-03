@@ -68,9 +68,7 @@ pub use solar::SolarSettings;
 pub use sun::SunSettings;
 pub use switch::{RawSmartSwitchBlock, SwitchRole};
 pub use template::TemplateString;
-pub use transperth::{
-    PeakWindow, RawTransperthSettings, TransperthSettings, TransperthRoute,
-};
+pub use transperth::{PeakWindow, RawTransperthSettings, TransperthRoute, TransperthSettings};
 pub use trigger::TriggerMatcher;
 pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
@@ -240,9 +238,7 @@ impl RawSettings {
             return Err("willyweather.api_key is required (set WILLYWEATHER__API_KEY)".to_owned());
         }
 
-        let transperth = transperth
-            .map(RawTransperthSettings::resolve)
-            .transpose()?;
+        let transperth = transperth.map(RawTransperthSettings::resolve).transpose()?;
 
         if let Some(transperth) = &transperth {
             if transperth
@@ -268,7 +264,10 @@ impl RawSettings {
                 }
 
                 if route.from.trim().is_empty() || route.to.trim().is_empty() {
-                    return Err(format!("transperth route {} has an empty from/to", route.id));
+                    return Err(format!(
+                        "transperth route {} has an empty from/to",
+                        route.id
+                    ));
                 }
 
                 if route.limit == 0 {

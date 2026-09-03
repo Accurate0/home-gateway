@@ -7,9 +7,7 @@ use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
 
 use crate::http::get_traced_http_client;
-use crate::integrations::willyweather::types::{
-    Forecast, ForecastDetails, WillyWeatherForecast,
-};
+use crate::integrations::willyweather::types::{Forecast, ForecastDetails, WillyWeatherForecast};
 use crate::settings::WillyWeatherSettings;
 
 pub mod types;
@@ -149,7 +147,10 @@ fn shape_forecast(raw: WillyWeatherForecast) -> Result<Forecast, WillyWeatherErr
 
     for (i, day) in raw.forecasts.weather.days.into_iter().enumerate() {
         let Some(entry) = day.entries.into_iter().next() else {
-            tracing::warn!("willyweather day {} has no entries; skipping", day.date_time);
+            tracing::warn!(
+                "willyweather day {} has no entries; skipping",
+                day.date_time
+            );
             continue;
         };
 

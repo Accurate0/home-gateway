@@ -92,7 +92,11 @@ pub(super) fn read(
             trip_id.to_owned(),
             Trip {
                 trip_id: trip_id.to_owned(),
-                service_id: record.get(service_index).unwrap_or_default().trim().to_owned(),
+                service_id: record
+                    .get(service_index)
+                    .unwrap_or_default()
+                    .trim()
+                    .to_owned(),
                 line: line.clone(),
                 headsign,
             },

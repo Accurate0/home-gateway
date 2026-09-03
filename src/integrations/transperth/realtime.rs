@@ -101,7 +101,10 @@ pub async fn fetch_timetable(
         return Err(TransperthError::Status { status, body });
     }
 
-    Ok(response.json().await.map_err(reqwest_middleware::Error::from)?)
+    Ok(response
+        .json()
+        .await
+        .map_err(reqwest_middleware::Error::from)?)
 }
 
 pub async fn overlay(
@@ -137,9 +140,7 @@ fn match_trip(timetable: &PtaTimetable, departure: &Departure) -> Option<String>
     timetable
         .trips
         .iter()
-        .filter(|trip| {
-            headsign.is_empty() || normalise_station(&trip.headsign) == headsign
-        })
+        .filter(|trip| headsign.is_empty() || normalise_station(&trip.headsign) == headsign)
         .find_map(|trip| {
             let pattern = timetable
                 .stop_patterns

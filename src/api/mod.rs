@@ -27,6 +27,8 @@ use crate::graphql::{
     mutations::MutationRoot,
     subscription::SubscriptionRoot,
 };
+use crate::integrations::transperth::Transperth;
+use crate::integrations::willyweather::WillyWeather;
 use crate::routes::{
     self,
     admin::keys::{create_key, list_keys, regenerate_key, revoke_key, update_key},
@@ -42,8 +44,6 @@ use crate::routes::{
     schema::schema as schema_route,
     workflow::execute::workflow_execute,
 };
-use crate::integrations::willyweather::WillyWeather;
-use crate::integrations::transperth::Transperth;
 use crate::state::{ApiState, SharedActorState};
 
 const GRAPHQL_MAX_DEPTH: usize = 20;
