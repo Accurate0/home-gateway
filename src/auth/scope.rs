@@ -361,6 +361,8 @@ pub mod required {
     pub const REST_EPD_READ: Scope = Scope::new(Domain::Rest, Resource::Epd, Action::Read);
     pub const REST_EPD_WRITE: Scope = Scope::new(Domain::Rest, Resource::Epd, Action::Write);
     pub const REST_SCHEMA_READ: Scope = Scope::new(Domain::Rest, Resource::Schema, Action::Read);
+    pub const REST_WEATHER_READ: Scope =
+        Scope::new(Domain::Rest, Resource::Weather, Action::Read);
 
     pub const INGEST_SYNERGY_WRITE: Scope =
         Scope::new(Domain::Ingest, Resource::Synergy, Action::Write);

@@ -1,0 +1,91 @@
+{
+  "location": {
+    "id": 14576,
+    "name": "Perth",
+    "region": "Perth",
+    "state": "WA",
+    "postcode": "6000",
+    "timeZone": "Australia/Perth",
+    "lat": -31.9522,
+    "lng": 115.8589,
+    "typeId": 2
+  },
+  "forecasts": {
+    "weather": {
+      "days": [
+        {
+          "dateTime": "2026-09-03 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-03 00:00:00",
+              "precisCode": "mostly-fine",
+              "precis": "Mostly sunny",
+              "precisOverlayCode": null,
+              "night": false,
+              "min": 9,
+              "max": 22
+            }
+          ]
+        },
+        {
+          "dateTime": "2026-09-04 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-04 00:00:00",
+              "precisCode": "showers-rain",
+              "precis": "Showers",
+              "precisOverlayCode": "shower",
+              "night": false,
+              "min": 12,
+              "max": 19
+            }
+          ]
+        },
+        {
+          "dateTime": "2026-09-05 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-05 00:00:00",
+              "precisCode": "not-a-real-code",
+              "precis": "Unknown",
+              "precisOverlayCode": null,
+              "night": false,
+              "min": 11,
+              "max": 20
+            }
+          ]
+        }
+      ],
+      "units": {
+        "temperature": "c"
+      },
+      "issueDateTime": "2026-09-03 04:30:00"
+    },
+    "uv": {
+      "days": [
+        {
+          "dateTime": "2026-09-03 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-03 10:00:00",
+              "index": 5.5,
+              "scale": "moderate"
+            }
+          ],
+          "alert": {
+            "maxIndex": 7.2,
+            "scale": "high",
+            "startDateTime": "2026-09-03 09:20:00",
+            "endDateTime": "2026-09-03 14:40:00"
+          }
+        },
+        {
+          "dateTime": "2026-09-04 00:00:00",
+          "entries": [],
+          "alert": null
+        }
+      ],
+      "issueDateTime": "2026-09-03 04:30:00"
+    }
+  }
+}

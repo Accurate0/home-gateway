@@ -42,6 +42,7 @@ use crate::routes::{
     schema::schema as schema_route,
     workflow::execute::workflow_execute,
 };
+use crate::integrations::willyweather::WillyWeather;
 use crate::state::{ApiState, SharedActorState};
 
 const GRAPHQL_MAX_DEPTH: usize = 20;
@@ -66,7 +67,11 @@ async fn log_request(req: Request, next: Next) -> Response {
     response
 }
 
-pub fn build_schema(state: &SharedActorState, http_client: ClientWithMiddleware) -> FinalSchema {
+pub fn build_schema(
+    state: &SharedActorState,
+    http_client: ClientWithMiddleware,
+    willyweather: WillyWeather,
+) -> FinalSchema {
     let db = &state.db;
 
     Schema::build(
@@ -126,6 +131,7 @@ pub fn build_schema(state: &SharedActorState, http_client: ClientWithMiddleware)
     .data(state.eink.clone())
     .data(state.s3.clone())
     .data(http_client)
+    .data(willyweather)
     .data(state.mqtt.clone())
     .data(state.db.clone())
     .data(state.settings.clone())
@@ -162,6 +168,7 @@ pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
         .route("/admin/keys", post(create_key).get(list_keys))
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route("/admin/keys/{id}/regenerate", post(regenerate_key))
+        .route("/weather/forecast", get(routes::weather::forecast))
         .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
         .route("/solar/current", get(routes::solar::current))

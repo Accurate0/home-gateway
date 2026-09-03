@@ -51,6 +51,8 @@ pub enum MainError {
     #[error(transparent)]
     Woolworths(#[from] WoolworthsError),
     #[error(transparent)]
+    WillyWeather(#[from] crate::integrations::willyweather::WillyWeatherError),
+    #[error(transparent)]
     Join(#[from] tokio::task::JoinError),
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),

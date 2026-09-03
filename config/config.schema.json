@@ -134,8 +134,8 @@
         }
       ]
     },
-    "bom": {
-      "$ref": "#/$defs/BomSettings"
+    "willyweather": {
+      "$ref": "#/$defs/WillyWeatherSettings"
     },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
@@ -158,7 +158,7 @@
     "workflow",
     "location",
     "sun",
-    "bom",
+    "willyweather",
     "adhoc"
   ],
   "$defs": {
@@ -2555,15 +2555,26 @@
         "refresh"
       ]
     },
-    "BomSettings": {
+    "WillyWeatherSettings": {
       "type": "object",
       "properties": {
-        "url": {
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "default_location": {
+          "type": "string"
+        },
+        "cache_ttl": {
           "type": "string"
         }
       },
       "required": [
-        "url"
+        "default_location",
+        "cache_ttl"
       ]
     },
     "RawEinkGlobal": {

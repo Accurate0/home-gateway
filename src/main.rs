@@ -8,7 +8,7 @@ use home_gateway::api::{build_router, build_schema};
 use home_gateway::eink::EinkDisplayManager;
 use home_gateway::{
     actors, auth, db, error, event_bus,
-    integrations::{feature_flag, home_assistant, jellyfin, mqtt, s3},
+    integrations::{feature_flag, home_assistant, jellyfin, mqtt, s3, willyweather::WillyWeather},
     settings, state, tracing_setup, utils,
 };
 use mqtt::Mqtt;
@@ -107,7 +107,9 @@ async fn main() -> anyhow::Result<()> {
         eink: eink.clone(),
     };
 
-    let schema = build_schema(&shared_actor_state, http_client);
+    let willyweather = WillyWeather::new(&settings.willyweather)?;
+
+    let schema = build_schema(&shared_actor_state, http_client, willyweather.clone());
 
     let root_supervisor_handle = init_actors(shared_actor_state).await?;
 
@@ -125,6 +127,7 @@ async fn main() -> anyhow::Result<()> {
         auth: AuthManager::new(pool.clone(), oauth),
         devices: device_registry.clone(),
         eink,
+        willyweather,
     };
 
     for key in &settings.api_keys {

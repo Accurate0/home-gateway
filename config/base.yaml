@@ -59,8 +59,9 @@ trmnl:
 alarm:
   poll_interval: 60s
 
-bom:
-  url: http://bom-api.bom.svc.cluster.local:8000
+willyweather:
+  default_location: "14576"
+  cache_ttl: 15m
 
 home_assistant:
   url: http://home-assistant.internal

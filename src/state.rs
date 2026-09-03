@@ -11,6 +11,7 @@ use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
+use crate::integrations::willyweather::WillyWeather;
 use crate::settings::SettingsContainer;
 
 #[derive(Clone)]
@@ -38,4 +39,5 @@ pub struct ApiState {
     pub auth: AuthManager,
     pub devices: DeviceRegistry,
     pub eink: EinkDisplayManager,
+    pub willyweather: WillyWeather,
 }

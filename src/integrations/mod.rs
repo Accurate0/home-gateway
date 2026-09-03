@@ -8,5 +8,6 @@ pub mod reddit;
 pub mod s3;
 pub mod solar;
 pub mod trmnl;
+pub mod willyweather;
 pub mod woolworths;
 pub mod zigbee2mqtt;

@@ -51,8 +51,10 @@ trmnl:
 alarm:
   poll_interval: 60s
 
-bom:
-  url: http://bom-api.bom.svc.cluster.local:8000
+willyweather:
+  api_key: test
+  default_location: "14576"
+  cache_ttl: 15m
 
 solar:
   refresh: 1m

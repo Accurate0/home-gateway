@@ -12,7 +12,6 @@ use std::{
 pub mod adhoc;
 pub mod alarm;
 pub mod auth;
-pub mod bom;
 pub mod de;
 pub mod device;
 pub mod door;
@@ -36,6 +35,7 @@ pub mod trigger;
 pub mod trmnl;
 pub mod valetudo;
 pub mod watchdog;
+pub mod willyweather;
 pub mod woolworths;
 pub mod workflow;
 pub mod zigbee_model;
@@ -43,7 +43,6 @@ pub mod zigbee_model;
 pub use adhoc::AdhocSettings;
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
-pub use bom::BomSettings;
 pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
@@ -72,6 +71,7 @@ pub use trigger::TriggerMatcher;
 pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use watchdog::WatchdogSettings;
+pub use willyweather::WillyWeatherSettings;
 pub use woolworths::WoolworthsSettings;
 pub use workflow::{Workflow, WorkflowSettings};
 pub use zigbee_model::{RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile};
@@ -128,7 +128,7 @@ pub struct Settings {
     pub home_assistant: HomeAssistantSettings,
     pub jellyfin: Option<JellyfinSettings>,
     pub solar: Option<SolarSettings>,
-    pub bom: BomSettings,
+    pub willyweather: WillyWeatherSettings,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
 }
@@ -181,7 +181,7 @@ pub struct RawSettings {
     jellyfin: Option<JellyfinSettings>,
     #[serde(default)]
     solar: Option<SolarSettings>,
-    bom: BomSettings,
+    willyweather: WillyWeatherSettings,
     #[serde(default)]
     eink_display: eink::RawEinkGlobal,
     adhoc: AdhocSettings,
@@ -218,10 +218,19 @@ impl RawSettings {
             home_assistant,
             jellyfin,
             solar,
-            bom,
+            willyweather,
             eink_display,
             adhoc,
         } = self;
+
+        if willyweather
+            .api_key
+            .as_deref()
+            .map(str::trim)
+            .is_none_or(str::is_empty)
+        {
+            return Err("willyweather.api_key is required (set WILLYWEATHER__API_KEY)".to_owned());
+        }
 
         let mut seen_key_names = HashSet::new();
         for key in &api_keys {
@@ -306,7 +315,7 @@ impl RawSettings {
                 home_assistant,
                 jellyfin,
                 solar,
-                bom,
+                willyweather,
                 eink_display: eink_display.resolve(),
                 adhoc,
             },
@@ -611,6 +620,8 @@ mqtt_username: x
 mqtt_password: x
 unifi_webhook_secret: x
 android_app_webhook_secret: x
+willyweather:
+  api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -637,6 +648,8 @@ mqtt_username: x
 mqtt_password: x
 unifi_webhook_secret: x
 android_app_webhook_secret: x
+willyweather:
+  api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -888,6 +901,8 @@ mqtt_username: x
 mqtt_password: x
 unifi_webhook_secret: x
 android_app_webhook_secret: x
+willyweather:
+  api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -922,7 +937,7 @@ watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h 
 workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-bom: { url: "http://bom" }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 api_keys:
   - name: bad-key
@@ -952,7 +967,7 @@ watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h 
 workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-bom: { url: "http://bom" }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 workflows:
   - - name: Caller
@@ -985,7 +1000,7 @@ watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h 
 workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-bom: { url: "http://bom" }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 workflows:
   - - name: Callee
@@ -1020,7 +1035,7 @@ watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h 
 workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-bom: { url: "http://bom" }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 eink_display:
   views:
@@ -1094,7 +1109,7 @@ watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h 
 workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-bom: { url: "http://bom" }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 devices:
   - id: epd
@@ -1151,7 +1166,7 @@ watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h 
 workflow: { workers: 12 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-bom: { url: "http://bom" }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 devices:
   - id: epd

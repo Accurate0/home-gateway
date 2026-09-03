@@ -10,6 +10,7 @@ use home_gateway::event_bus::{EventBus, EventBusMessage};
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::reddit::Reddit;
 use home_gateway::integrations::s3::S3;
+use home_gateway::integrations::willyweather::WillyWeather;
 use home_gateway::settings::SettingsContainer;
 use home_gateway::state::{ApiState, SharedActorState};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -130,15 +131,19 @@ impl Harness {
         let http_client =
             home_gateway::http::get_traced_http_client().expect("failed to build the http client");
 
+        let willyweather = WillyWeather::new(&self.settings.willyweather)
+            .expect("failed to build the willyweather client");
+
         ApiState {
             feature_flag_client: self.state.feature_flag_client.clone(),
-            schema: build_schema(&self.state, http_client),
+            schema: build_schema(&self.state, http_client, willyweather.clone()),
             settings: self.settings.clone(),
             db: self.db.clone(),
             s3: self.state.s3.clone(),
             auth: AuthManager::new(self.db.clone(), None),
             devices: self.devices.clone(),
             eink: self.state.eink.clone(),
+            willyweather,
         }
     }
 

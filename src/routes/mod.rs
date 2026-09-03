@@ -7,4 +7,5 @@ pub mod metrics;
 pub mod push;
 pub mod schema;
 pub mod solar;
+pub mod weather;
 pub mod workflow;
