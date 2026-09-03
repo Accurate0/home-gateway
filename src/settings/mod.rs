@@ -17,6 +17,7 @@ pub mod device;
 pub mod door;
 pub mod eink;
 pub mod environment;
+pub mod fuelwatch;
 pub mod home_assistant;
 pub mod jellyfin;
 pub mod light;
@@ -54,6 +55,7 @@ pub use eink::{
 pub use environment::{
     EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
 };
+pub use fuelwatch::FuelWatchSettings;
 pub use home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use jellyfin::JellyfinSettings;
 pub use light::RawLightBlock;
@@ -132,6 +134,7 @@ pub struct Settings {
     pub solar: Option<SolarSettings>,
     pub transperth: Option<TransperthSettings>,
     pub willyweather: WillyWeatherSettings,
+    pub fuelwatch: Option<FuelWatchSettings>,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
 }
@@ -188,6 +191,8 @@ pub struct RawSettings {
     transperth: Option<RawTransperthSettings>,
     willyweather: WillyWeatherSettings,
     #[serde(default)]
+    fuelwatch: Option<FuelWatchSettings>,
+    #[serde(default)]
     eink_display: eink::RawEinkGlobal,
     adhoc: AdhocSettings,
 }
@@ -225,6 +230,7 @@ impl RawSettings {
             solar,
             transperth,
             willyweather,
+            fuelwatch,
             eink_display,
             adhoc,
         } = self;
@@ -361,6 +367,7 @@ impl RawSettings {
                 solar,
                 transperth,
                 willyweather,
+                fuelwatch,
                 eink_display: eink_display.resolve(),
                 adhoc,
             },

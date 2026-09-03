@@ -294,6 +294,23 @@ type ForecastDetails {
 	uv: Float
 }
 
+type FuelSite {
+	name: String!
+	brand: String!
+	suburb: String!
+	postcode: Int!
+	address: String!
+	price: Float!
+	priceTomorrow: Float
+	latitude: Float!
+	longitude: Float!
+}
+
+type FuelWatchObject {
+	cheapest: FuelSite
+	sites(limit: Int): [FuelSite!]!
+}
+
 type GenerationHistory {
 	wh: Float!
 	at: NaiveDateTime!
@@ -581,6 +598,7 @@ type QueryRoot {
 	weather(input: WeatherInput!): WeatherObject!
 	woolworths: WoolworthsObject!
 	transperth: TransperthObject!
+	fuelwatch(postcode: Int): FuelWatchObject!
 	workflows: [WorkflowStatus!]!
 	activeModes: [Mode!]!
 	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")

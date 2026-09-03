@@ -8,7 +8,10 @@ use home_gateway::api::{build_router, build_schema};
 use home_gateway::eink::EinkDisplayManager;
 use home_gateway::{
     actors, auth, db, error, event_bus,
-    integrations::{feature_flag, home_assistant, jellyfin, mqtt, s3, willyweather::WillyWeather},
+    integrations::{
+        feature_flag, fuelwatch::FuelWatch, home_assistant, jellyfin, mqtt, s3,
+        willyweather::WillyWeather,
+    },
     settings, state, tracing_setup, utils,
 };
 use mqtt::Mqtt;
@@ -116,11 +119,17 @@ async fn main() -> anyhow::Result<()> {
 
     let willyweather = WillyWeather::new(&settings.willyweather)?;
 
+    let fuelwatch = match settings.fuelwatch.as_ref() {
+        Some(fuelwatch) => Some(FuelWatch::new(fuelwatch)?),
+        None => None,
+    };
+
     let schema = build_schema(
         &shared_actor_state,
         http_client,
         willyweather.clone(),
         transperth,
+        fuelwatch,
     );
 
     let root_supervisor_handle = init_actors(shared_actor_state).await?;

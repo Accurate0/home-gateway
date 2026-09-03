@@ -2,6 +2,7 @@ pub mod adhoc_query;
 pub mod auth_query;
 pub mod energy_query;
 pub mod entities_query;
+pub mod fuelwatch_query;
 pub mod home_assistant_query;
 pub mod jellyfin_query;
 pub mod solar_query;

@@ -1,0 +1,232 @@
+[
+ {
+  "id": 2625,
+  "siteName": "OTR Yangebup",
+  "address": {
+   "id": 4769,
+   "line1": "71 Shallcross St",
+   "location": "YANGEBUP",
+   "postCode": 6164,
+   "state": "WA",
+   "latitude": -32.1188832,
+   "longitude": 115.79473
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceToday": 191.9,
+   "priceTomorrow": 191.9,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "CAL",
+  "isClosedNow": false,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": false,
+  "membershipRequired": false,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 30,
+  "nextPricingOrder": 21
+ },
+ {
+  "id": 2323,
+  "siteName": "OMG Metro Yangebup",
+  "address": {
+   "id": 4447,
+   "line1": "109 Barrington St",
+   "location": "YANGEBUP",
+   "postCode": 6164,
+   "state": "WA",
+   "latitude": -32.116891,
+   "longitude": 115.795446
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceToday": 197.9,
+   "priceTomorrow": 197.9,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "OMM",
+  "isClosedNow": false,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": false,
+  "membershipRequired": false,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 92,
+  "nextPricingOrder": 102
+ },
+ {
+  "id": 1899,
+  "siteName": "EG Ampol South Lake",
+  "address": {
+   "id": 1923,
+   "line1": "752 North Lake Rd",
+   "location": "SOUTH LAKE",
+   "postCode": 6164,
+   "state": "WA",
+   "latitude": -32.115172,
+   "longitude": 115.837032
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceToday": 199.9,
+   "priceTomorrow": 199.9,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "EGA",
+  "isClosedNow": false,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": true,
+  "membershipRequired": false,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 154,
+  "nextPricingOrder": 200
+ },
+ {
+  "id": 1739,
+  "siteName": "Vibe Jandakot",
+  "address": {
+   "id": 1765,
+   "line1": "630 Karel Ave",
+   "location": "JANDAKOT",
+   "postCode": 6164,
+   "state": "WA",
+   "latitude": -32.090758,
+   "longitude": 115.868846
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceToday": 205.7,
+   "priceTomorrow": 199.7,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "VIB",
+  "isClosedNow": false,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": true,
+  "membershipRequired": false,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 247,
+  "nextPricingOrder": 128
+ },
+ {
+  "id": 1416,
+  "siteName": "7-Eleven Cockburn Central",
+  "address": {
+   "id": 1374,
+   "line1": "814 North Lake Rd",
+   "location": "COCKBURN CENTRAL",
+   "postCode": 6164,
+   "state": "WA",
+   "latitude": -32.120001,
+   "longitude": 115.846548
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceToday": 209.9,
+   "priceTomorrow": 199.9,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "711",
+  "isClosedNow": false,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": true,
+  "membershipRequired": false,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 327,
+  "nextPricingOrder": 151
+ },
+ {
+  "id": 2227,
+  "siteName": "Shell Reddy Express Armadale",
+  "address": {
+   "id": 2237,
+   "line1": "269 South Western Hwy",
+   "location": "ARMADALE",
+   "postCode": 6164,
+   "state": "WA",
+   "latitude": -32.168864,
+   "longitude": 116.014864
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceTomorrow": 199.9,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "REX",
+  "isClosedNow": true,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": false,
+  "membershipRequired": false,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 689,
+  "nextPricingOrder": 135
+ },
+ {
+  "id": 1870,
+  "siteName": "Costco Casuarina",
+  "address": {
+   "id": 1899,
+   "line1": "137 Market St",
+   "location": "CASUARINA",
+   "postCode": 6167,
+   "state": "WA",
+   "latitude": -32.233481,
+   "longitude": 115.853714
+  },
+  "product": {
+   "shortName": "ULP",
+   "isTruckStop": false,
+   "priceToday": 186.7,
+   "priceTomorrow": 186.7,
+   "isTwoPrice": true,
+   "isLowAromaticFuel": false,
+   "isOutOfSupply": false
+  },
+  "productFuelType": "ULP",
+  "brandName": "CCO",
+  "isClosedNow": false,
+  "isClosedAllDayTomorrow": false,
+  "drivewayService": "None",
+  "manned": true,
+  "operates247": false,
+  "membershipRequired": true,
+  "entryPermitRequired": false,
+  "currentPricingOrder": 1,
+  "nextPricingOrder": 1
+ }
+]

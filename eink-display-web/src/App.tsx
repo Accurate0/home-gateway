@@ -34,6 +34,9 @@ const AppQuery = graphql`
         ...NextTrainTile_route
       }
     }
+    fuelwatch {
+      ...FuelPrice_fuel
+    }
     outdoor: environment(id: "env-outdoor") {
       temperature
       humidity
@@ -73,7 +76,9 @@ export default function App() {
 
       <ClimateBand outdoor={data.outdoor} weatherRef={data.weather} />
 
-      {!weatherOnly && <NextTrainTile routeRef={data.transperth?.route} />}
+      {!weatherOnly && (
+        <NextTrainTile routeRef={data.transperth?.route} fuelRef={data.fuelwatch} />
+      )}
 
       {!weatherOnly && data.solar && (
         <SolarSection

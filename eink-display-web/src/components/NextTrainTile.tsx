@@ -1,5 +1,7 @@
 import { graphql, useFragment } from "react-relay";
 import type { NextTrainTile_route$key } from "./__generated__/NextTrainTile_route.graphql";
+import FuelPrice from "./FuelPrice";
+import type { FuelPrice_fuel$key } from "./__generated__/FuelPrice_fuel.graphql";
 import { HAIRLINE, INK, RED, ROW, TYPE } from "../theme";
 
 const RouteFragment = graphql`
@@ -30,8 +32,10 @@ function clockTime(value: string) {
 
 export default function NextTrainTile({
   routeRef,
+  fuelRef,
 }: {
   routeRef: NextTrainTile_route$key | null | undefined;
+  fuelRef: FuelPrice_fuel$key | null | undefined;
 }) {
   const route = useFragment(RouteFragment, routeRef ?? null);
 
@@ -47,47 +51,44 @@ export default function NextTrainTile({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: 24,
+        gap: 40,
       }}
     >
       <div>
         <div style={{ ...TYPE.label, color: INK }}>
-          {route ? `${route.origin} → ${route.destination}` : "Next train"}
+          {route ? `${route.origin} \u2192 ${route.destination}` : "Next train"}
         </div>
 
-        <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginTop: 8 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginTop: 6 }}>
           <div
             style={{
-              fontSize: 84,
+              fontSize: 64,
               fontWeight: 900,
               lineHeight: 1,
               color: late ? RED : INK,
             }}
           >
-            {next ? Math.max(next.minutesAway, 0) : "—"}
-            {next && <span style={{ fontSize: 34, fontWeight: 800 }}> min</span>}
+            {next ? Math.max(next.minutesAway, 0) : "\u2014"}
+            {next && <span style={{ fontSize: 30, fontWeight: 800 }}> min</span>}
           </div>
 
           {next && (
             <div style={TYPE.body}>
               {clockTime(next.scheduledDeparture)}
-              {next.platform && ` · Plat ${next.platform}`}
-              {!next.live && " · sched"}
+              {next.platform && ` \u00b7 Plat ${next.platform}`}
+              {!next.live && " \u00b7 sched"}
             </div>
           )}
         </div>
+
+        {rest.length > 0 && (
+          <div style={{ ...TYPE.label, marginTop: 6 }}>
+            then {rest.map((departure) => clockTime(departure.scheduledDeparture)).join(" \u00b7 ")}
+          </div>
+        )}
       </div>
 
-      <div style={{ textAlign: "right" }}>
-        {rest.map((departure) => (
-          <div key={departure.scheduledDeparture} style={{ ...TYPE.body, marginTop: 6 }}>
-            {clockTime(departure.scheduledDeparture)}
-            <span style={{ ...TYPE.label, marginLeft: 12 }}>
-              {Math.max(departure.minutesAway, 0)} min
-            </span>
-          </div>
-        ))}
-      </div>
+      <FuelPrice fuelRef={fuelRef} />
     </section>
   );
 }

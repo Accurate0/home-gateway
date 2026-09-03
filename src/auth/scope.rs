@@ -14,6 +14,7 @@ pub enum Resource {
     Solar,
     Weather,
     Transperth,
+    FuelWatch,
     Woolworths,
     Control,
     Workflow,
@@ -70,6 +71,7 @@ impl Resource {
             "solar" => Self::Solar,
             "weather" => Self::Weather,
             "transperth" => Self::Transperth,
+            "fuelwatch" => Self::FuelWatch,
             "woolworths" => Self::Woolworths,
             "control" => Self::Control,
             "workflow" => Self::Workflow,
@@ -132,6 +134,7 @@ impl Resource {
             Self::Solar => "solar",
             Self::Weather => "weather",
             Self::Transperth => "transperth",
+            Self::FuelWatch => "fuelwatch",
             Self::Woolworths => "woolworths",
             Self::Control => "control",
             Self::Workflow => "workflow",
@@ -331,6 +334,8 @@ pub mod required {
         Scope::new(Domain::Graphql, Resource::Weather, Action::Read);
     pub const GRAPHQL_TRANSPERTH_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Transperth, Action::Read);
+    pub const GRAPHQL_FUELWATCH_READ: Scope =
+        Scope::new(Domain::Graphql, Resource::FuelWatch, Action::Read);
     pub const GRAPHQL_WOOLWORTHS_READ: Scope =
         Scope::new(Domain::Graphql, Resource::Woolworths, Action::Read);
     pub const GRAPHQL_WORKFLOW_READ: Scope =

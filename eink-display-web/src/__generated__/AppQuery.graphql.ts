@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<853553c51090917dae750a628c57a5cc>>
+ * @generated SignedSource<<d493942b63788ab8935a5f8b32edf2c6>>
  * @lightSyntaxTransform
  */
 
@@ -15,6 +15,9 @@ export type AppQuery$variables = {
   transitRoute: string;
 };
 export type AppQuery$data = {
+  readonly fuelwatch: {
+    readonly " $fragmentSpreads": FragmentRefs<"FuelPrice_fuel">;
+  };
   readonly hallwayPanel: {
     readonly batteryPercentage: number | null | undefined;
     readonly name: string;
@@ -192,14 +195,15 @@ v6 = {
   ],
   "storageKey": "environment(id:\"env-outdoor\")"
 },
-v7 = [
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "name",
-    "storageKey": null
-  },
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v8 = [
+  (v7/*:: as any*/),
   {
     "alias": null,
     "args": null,
@@ -208,7 +212,7 @@ v7 = [
     "storageKey": null
   }
 ],
-v8 = {
+v9 = {
   "alias": "hallwayPanel",
   "args": [
     {
@@ -221,10 +225,10 @@ v8 = {
   "kind": "LinkedField",
   "name": "einkDisplay",
   "plural": false,
-  "selections": (v7/*:: as any*/),
+  "selections": (v8/*:: as any*/),
   "storageKey": "einkDisplay(id:\"hallway-epd\")"
 },
-v9 = {
+v10 = {
   "alias": "livingRoomPanel",
   "args": [
     {
@@ -237,7 +241,7 @@ v9 = {
   "kind": "LinkedField",
   "name": "einkDisplay",
   "plural": false,
-  "selections": (v7/*:: as any*/),
+  "selections": (v8/*:: as any*/),
   "storageKey": "einkDisplay(id:\"living-room-epd\")"
 };
 return {
@@ -312,9 +316,25 @@ return {
         ],
         "storageKey": null
       },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "FuelWatchObject",
+        "kind": "LinkedField",
+        "name": "fuelwatch",
+        "plural": false,
+        "selections": [
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "FuelPrice_fuel"
+          }
+        ],
+        "storageKey": null
+      },
       (v6/*:: as any*/),
-      (v8/*:: as any*/),
-      (v9/*:: as any*/)
+      (v9/*:: as any*/),
+      (v10/*:: as any*/)
     ],
     "type": "QueryRoot",
     "abstractKey": null
@@ -540,22 +560,59 @@ return {
         ],
         "storageKey": null
       },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "FuelWatchObject",
+        "kind": "LinkedField",
+        "name": "fuelwatch",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "FuelSite",
+            "kind": "LinkedField",
+            "name": "cheapest",
+            "plural": false,
+            "selections": [
+              (v7/*:: as any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "suburb",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "price",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
       (v6/*:: as any*/),
-      (v8/*:: as any*/),
-      (v9/*:: as any*/)
+      (v9/*:: as any*/),
+      (v10/*:: as any*/)
     ]
   },
   "params": {
-    "cacheID": "a8f9ae0144a19389a15b7047a9039eb6",
+    "cacheID": "c1dbe546986eace888dd84a879e7ce9b",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  transperth {\n    route(id: $transitRoute) {\n      ...NextTrainTile_route\n    }\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment NextTrainTile_route on RouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  transperth {\n    route(id: $transitRoute) {\n      ...NextTrainTile_route\n    }\n  }\n  fuelwatch {\n    ...FuelPrice_fuel\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment FuelPrice_fuel on FuelWatchObject {\n  cheapest {\n    name\n    suburb\n    price\n  }\n}\n\nfragment NextTrainTile_route on RouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a3076a9e2b7bd74a8a1a5f4c3078c5f2";
+(node as any).hash = "0c629f0a777440857f6d4f22c09db48c";
 
 export default node;

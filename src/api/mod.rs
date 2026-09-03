@@ -27,6 +27,7 @@ use crate::graphql::{
     mutations::MutationRoot,
     subscription::SubscriptionRoot,
 };
+use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::transperth::Transperth;
 use crate::integrations::willyweather::WillyWeather;
 use crate::routes::{
@@ -73,6 +74,7 @@ pub fn build_schema(
     http_client: ClientWithMiddleware,
     willyweather: WillyWeather,
     transperth: Option<Transperth>,
+    fuelwatch: Option<FuelWatch>,
 ) -> FinalSchema {
     let db = &state.db;
 
@@ -135,6 +137,7 @@ pub fn build_schema(
     .data(http_client)
     .data(willyweather)
     .data(transperth)
+    .data(fuelwatch)
     .data(state.mqtt.clone())
     .data(state.db.clone())
     .data(state.settings.clone())

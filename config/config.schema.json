@@ -147,6 +147,16 @@
     "willyweather": {
       "$ref": "#/$defs/WillyWeatherSettings"
     },
+    "fuelwatch": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FuelWatchSettings"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
     },
@@ -2677,6 +2687,22 @@
       },
       "required": [
         "default_location",
+        "cache_ttl"
+      ]
+    },
+    "FuelWatchSettings": {
+      "type": "object",
+      "properties": {
+        "postcode": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "cache_ttl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "postcode",
         "cache_ttl"
       ]
     },
