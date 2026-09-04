@@ -1,13 +1,16 @@
 use crate::{
     actors::integrations::synergy::{SynergyActor, SynergyMessage},
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
     error::AppError,
 };
 use bytes::Bytes;
 use http::StatusCode;
 
 pub async fn synergy(Auth(auth): Auth, body: Bytes) -> Result<StatusCode, AppError> {
-    auth.require(&required::INGEST_SYNERGY_WRITE)
+    auth.require(&Scope::new(Resource::IngestSynergy, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     let Some(actor) = ractor::registry::where_is(SynergyActor::NAME) else {

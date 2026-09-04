@@ -6,7 +6,7 @@ use sqlx::{Pool, Postgres};
 
 use crate::adhoc::task::checksum;
 use crate::adhoc::{cron_registry, registry};
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::adhoc_object::{AdhocCronTaskStatus, AdhocTaskStatus};
 
@@ -15,7 +15,7 @@ pub struct AdhocQuery;
 
 #[Object]
 impl AdhocQuery {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ADHOC_TASK_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Read)))]
     async fn adhoc_cron_tasks(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -63,7 +63,7 @@ impl AdhocQuery {
             .collect())
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ADHOC_TASK_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Read)))]
     async fn adhoc_tasks(
         &self,
         ctx: &async_graphql::Context<'_>,

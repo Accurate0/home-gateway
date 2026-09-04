@@ -1,4 +1,4 @@
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::weather_object::WeatherObject;
 use async_graphql::{InputObject, Object};
@@ -13,7 +13,7 @@ pub struct WeatherQuery;
 
 #[Object]
 impl WeatherQuery {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_WEATHER_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Weather, Action::Read)))]
     async fn weather(
         &self,
         _ctx: &async_graphql::Context<'_>,

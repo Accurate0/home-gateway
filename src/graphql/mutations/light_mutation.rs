@@ -2,7 +2,7 @@ use async_graphql::{InputObject, Object};
 use ractor::factory::{FactoryMessage, Job, JobOptions};
 
 use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::Capability;
 use crate::graphql::guard::ScopeGuard;
 use crate::settings::IEEEAddress;
@@ -68,28 +68,28 @@ fn dispatch(message: LightHandlerMessage) -> async_graphql::Result<bool> {
 
 #[Object]
 impl LightMutation {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn on(&self) -> async_graphql::Result<bool> {
         dispatch(LightHandlerMessage::TurnOn {
             ieee_addr: self.address.clone(),
         })
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn off(&self) -> async_graphql::Result<bool> {
         dispatch(LightHandlerMessage::TurnOff {
             ieee_addr: self.address.clone(),
         })
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn toggle(&self) -> async_graphql::Result<bool> {
         dispatch(LightHandlerMessage::Toggle {
             ieee_addr: self.address.clone(),
         })
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn set_brightness(&self, input: SetBrightnessInput) -> async_graphql::Result<bool> {
         self.require(Capability::Brightness)?;
         dispatch(LightHandlerMessage::SetBrightness {
@@ -98,7 +98,7 @@ impl LightMutation {
         })
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn brightness_move(&self, input: BrightnessMoveInput) -> async_graphql::Result<bool> {
         self.require(Capability::Brightness)?;
         dispatch(LightHandlerMessage::BrightnessMove {
@@ -108,7 +108,7 @@ impl LightMutation {
         })
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn set_colour(&self, input: SetColourInput) -> async_graphql::Result<bool> {
         self.require(Capability::Rgb)?;
         if !is_valid_hex(&input.hex) {
@@ -122,7 +122,7 @@ impl LightMutation {
         })
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn colour_temperature_move(
         &self,
         input: ColourTemperatureMoveInput,

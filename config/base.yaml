@@ -32,23 +32,25 @@ oauth:
   userinfo_url: https://idm.anurag.sh/oauth2/openid/home-gateway/userinfo
   audience: home-gateway
   group_scopes:
-    home_gateway_admins@idm.anurag.sh: ["*"]
-    home_gateway_readers@idm.anurag.sh: ["graphql:*:read", "rest:epd:read"]
+    home_gateway_admins@idm.anurag.sh: ["**:*"]
+    home_gateway_readers@idm.anurag.sh:
+      - "*:read"
+      - "media.player:read"
+      - "events.**:read"
 
 api_keys:
   - name: eink-display-living-room
-    scopes: ["rest:epd:read"]
+    scopes: ["epd:read"]
   - name: unifi-ingest
-    scopes: ["ingest:unifi:write"]
+    scopes: ["ingest.unifi:write"]
   - name: home-gateway-app
-    scopes: ["*"]
+    scopes: ["**:*"]
   - name: oled-remote
     scopes:
-      - "graphql:entity:read"
-      - "graphql:light:read"
-      - "graphql:light:write"
-      - "graphql:media_player:read"
-      - "graphql:media_player:write"
+      - "light:read"
+      - "light:write"
+      - "media.player:read"
+      - "media.player:write"
 
 woolworths:
   refresh: 1h

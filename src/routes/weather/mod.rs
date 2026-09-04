@@ -3,7 +3,10 @@ use axum::{Json, extract::Query, extract::State};
 use http::StatusCode;
 use serde::Deserialize;
 
-use crate::auth::{Auth, scope::required};
+use crate::auth::{
+    Auth,
+    scope::{Action, Resource, Scope},
+};
 use crate::integrations::willyweather::WillyWeatherError;
 use crate::integrations::willyweather::types::Forecast;
 use crate::state::ApiState;
@@ -50,7 +53,10 @@ pub async fn forecast(
     }): State<ApiState>,
     params: Query<ForecastQueryParams>,
 ) -> Result<Json<Forecast>, WeatherError> {
-    if auth.require(&required::REST_WEATHER_READ).is_err() {
+    if auth
+        .require(&Scope::new(Resource::Weather, Action::Read))
+        .is_err()
+    {
         return Err(WeatherError::Forbidden);
     }
 

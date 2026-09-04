@@ -1,6 +1,9 @@
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
     error::AppError,
     settings::workflow::Workflow,
     state::ApiState,
@@ -21,7 +24,7 @@ pub async fn workflow_execute(
     Auth(auth): Auth,
     Json(payload): Json<WorkflowExecutePayload>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&required::REST_WORKFLOW_EXECUTE)
+    auth.require(&Scope::new(Resource::Workflow, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME) else {

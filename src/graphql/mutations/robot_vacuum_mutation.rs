@@ -1,7 +1,7 @@
 use async_graphql::Object;
 use serde_json::json;
 
-use crate::auth::scope::required;
+use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
@@ -119,17 +119,17 @@ impl RobotVacuumMutation {
 
 #[Object]
 impl RobotVacuumMutation {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOT_VACUUM_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn start(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.run(ctx, Action::Start).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOT_VACUUM_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn stop(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.run(ctx, Action::Stop).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOT_VACUUM_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn dock(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.run(ctx, Action::Dock).await
     }

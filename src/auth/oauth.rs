@@ -277,30 +277,30 @@ mod tests {
     fn known_group_maps_to_scopes() {
         let v = validator(HashMap::from([(
             "admins@idm".to_owned(),
-            vec!["*".to_owned()],
+            vec!["**:*".to_owned()],
         )]));
-        assert_eq!(v.scopes_for(&userinfo(&["admins@idm"])), vec!["*"]);
+        assert_eq!(v.scopes_for(&userinfo(&["admins@idm"])), vec!["**:*"]);
     }
 
     #[test]
     fn multiple_groups_dedupe() {
         let v = validator(HashMap::from([
-            ("a".to_owned(), vec!["graphql:*:read".to_owned()]),
+            ("a".to_owned(), vec!["light:read".to_owned()]),
             (
                 "b".to_owned(),
-                vec!["graphql:*:read".to_owned(), "rest:epd:read".to_owned()],
+                vec!["light:read".to_owned(), "epd:read".to_owned()],
             ),
         ]));
         let mut scopes = v.scopes_for(&userinfo(&["a", "b"]));
         scopes.sort();
-        assert_eq!(scopes, vec!["graphql:*:read", "rest:epd:read"]);
+        assert_eq!(scopes, vec!["epd:read", "light:read"]);
     }
 
     #[test]
     fn unknown_group_yields_no_scopes() {
         let v = validator(HashMap::from([(
             "admins@idm".to_owned(),
-            vec!["*".to_owned()],
+            vec!["**:*".to_owned()],
         )]));
         assert!(v.scopes_for(&userinfo(&["nobody@idm"])).is_empty());
     }

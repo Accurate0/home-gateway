@@ -110,7 +110,7 @@ async fn requests_without_credentials_are_rejected() {
 async fn a_valid_api_key_is_accepted() {
     let harness = Harness::start().await;
     let client = Client::new(&harness);
-    let key = mint_key(&harness, "test-admin", &["*"]).await;
+    let key = mint_key(&harness, "test-admin", &["**:*"]).await;
 
     let (status, body) = client.graphql(Some(&key), "{ __typename }").await;
 
@@ -141,7 +141,7 @@ async fn a_revoked_api_key_is_rejected() {
 async fn temperature_readings_are_queryable_over_graphql() {
     let harness = Harness::start().await;
     let client = Client::new(&harness);
-    let key = mint_key(&harness, "test-reader", &["*"]).await;
+    let key = mint_key(&harness, "test-reader", &["**:*"]).await;
 
     sqlx::query(
         "INSERT INTO latest_temperature_sensor (name, entity_id, ieee_addr, temperature, humidity)

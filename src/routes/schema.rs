@@ -1,5 +1,8 @@
 use crate::{
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
     error::AppError,
     state::ApiState,
 };
@@ -9,7 +12,7 @@ pub async fn schema(
     State(ApiState { schema, .. }): State<ApiState>,
     Auth(auth): Auth,
 ) -> Result<String, AppError> {
-    auth.require(&required::REST_SCHEMA_READ)
+    auth.require(&Scope::new(Resource::Schema, Action::Read))
         .map_err(AppError::StatusCode)?;
 
     Ok(schema.sdl())

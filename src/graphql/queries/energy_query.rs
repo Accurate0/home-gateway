@@ -1,4 +1,4 @@
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::energy_object::EnergyObject;
 use async_graphql::Object;
@@ -8,7 +8,7 @@ pub struct EnergyQuery;
 
 #[Object]
 impl EnergyQuery {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ENERGY_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Energy, Action::Read)))]
     async fn energy(
         &self,
         _ctx: &async_graphql::Context<'_>,

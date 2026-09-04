@@ -1,7 +1,7 @@
 use async_graphql::Object;
 
 use crate::auth::context::AuthContext;
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::entity_object::{
@@ -33,7 +33,7 @@ impl EntitiesQuery {
 
         let mut out = Vec::new();
 
-        if auth.has(&required::GRAPHQL_LIGHT_READ) {
+        if auth.has(&Scope::new(Resource::Light, Action::Read)) {
             out.extend(
                 registry
                     .lights()
@@ -42,7 +42,7 @@ impl EntitiesQuery {
             );
         }
 
-        if auth.has(&required::GRAPHQL_DOOR_READ) {
+        if auth.has(&Scope::new(Resource::Door, Action::Read)) {
             out.extend(
                 registry
                     .doors()
@@ -51,7 +51,7 @@ impl EntitiesQuery {
             );
         }
 
-        if auth.has(&required::GRAPHQL_PRESENCE_READ) {
+        if auth.has(&Scope::new(Resource::Presence, Action::Read)) {
             out.extend(
                 registry
                     .presence_devices()
@@ -60,7 +60,7 @@ impl EntitiesQuery {
             );
         }
 
-        if auth.has(&required::GRAPHQL_ENVIRONMENT_READ) {
+        if auth.has(&Scope::new(Resource::Environment, Action::Read)) {
             out.extend(
                 registry
                     .environment_devices()
@@ -69,7 +69,7 @@ impl EntitiesQuery {
             );
         }
 
-        if auth.has(&required::GRAPHQL_EPD_READ) {
+        if auth.has(&Scope::new(Resource::Epd, Action::Read)) {
             out.extend(
                 registry
                     .eink_displays()
@@ -86,7 +86,7 @@ impl EntitiesQuery {
             );
         }
 
-        if auth.has(&required::GRAPHQL_ROBOT_VACUUM_READ) {
+        if auth.has(&Scope::new(Resource::RobotVacuum, Action::Read)) {
             out.extend(
                 registry
                     .roborocks()
@@ -101,7 +101,7 @@ impl EntitiesQuery {
             );
         }
 
-        if auth.has(&required::GRAPHQL_MEDIA_PLAYER_READ) {
+        if auth.has(&Scope::new(Resource::MediaPlayer, Action::Read)) {
             out.extend(
                 registry
                     .media_players()
@@ -113,7 +113,7 @@ impl EntitiesQuery {
         Ok(out)
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Read)))]
     async fn media_player(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -125,7 +125,7 @@ impl EntitiesQuery {
             .ok_or_else(|| async_graphql::Error::new(format!("unknown media player `{id}`")))
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_LIGHT_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Read)))]
     async fn light(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -137,7 +137,7 @@ impl EntitiesQuery {
             .ok_or_else(|| async_graphql::Error::new(format!("unknown light `{id}`")))
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_DOOR_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Door, Action::Read)))]
     async fn door(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -149,7 +149,7 @@ impl EntitiesQuery {
             .ok_or_else(|| async_graphql::Error::new(format!("unknown door `{id}`")))
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_PRESENCE_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Presence, Action::Read)))]
     async fn presence(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -161,7 +161,7 @@ impl EntitiesQuery {
             .ok_or_else(|| async_graphql::Error::new(format!("unknown presence sensor `{id}`")))
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ENVIRONMENT_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Environment, Action::Read)))]
     async fn environment(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -173,7 +173,7 @@ impl EntitiesQuery {
             .ok_or_else(|| async_graphql::Error::new(format!("unknown environment sensor `{id}`")))
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_EPD_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Epd, Action::Read)))]
     async fn eink_display(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -186,7 +186,7 @@ impl EntitiesQuery {
             .ok_or_else(|| async_graphql::Error::new(format!("unknown eink display `{id}`")))
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_ROBOT_VACUUM_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, Action::Read)))]
     async fn robot_vacuum(
         &self,
         ctx: &async_graphql::Context<'_>,

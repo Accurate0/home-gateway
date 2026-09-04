@@ -2,7 +2,7 @@ use async_graphql::Object;
 use sqlx::{Pool, Postgres};
 
 use crate::actors::workflows::manager::WorkflowManager;
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::workflow_object::{WorkflowRun, WorkflowStatus};
 use crate::mode::Mode;
@@ -13,7 +13,7 @@ pub struct WorkflowsQuery;
 
 #[Object]
 impl WorkflowsQuery {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
     async fn workflows(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -40,7 +40,7 @@ impl WorkflowsQuery {
         Ok(statuses)
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
     async fn active_modes(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -50,7 +50,7 @@ impl WorkflowsQuery {
     }
 
     #[graphql(
-        guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ),
+        guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)),
         deprecation = "use activeModes / mode(GUEST) instead"
     )]
     async fn guest_mode(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
@@ -58,7 +58,7 @@ impl WorkflowsQuery {
         Ok(manager.mode_active(Mode::Guest).await)
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
     async fn workflow_runs(
         &self,
         ctx: &async_graphql::Context<'_>,

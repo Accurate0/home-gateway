@@ -138,7 +138,7 @@ pub async fn resolve_auth(
             return Ok(AuthContext::from_scopes(
                 None,
                 Some("android-webhook".to_owned()),
-                &["ingest:home:write".to_owned()],
+                &["ingest.home:write".to_owned()],
             ));
         }
 
@@ -146,7 +146,7 @@ pub async fn resolve_auth(
             return Ok(AuthContext::from_scopes(
                 None,
                 Some("unifi-webhook".to_owned()),
-                &["ingest:unifi:write".to_owned()],
+                &["ingest.unifi:write".to_owned()],
             ));
         }
     }

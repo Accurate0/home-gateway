@@ -1,6 +1,9 @@
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
     battery::BatteryChemistry,
     error::AppError,
     state::ApiState,
@@ -98,7 +101,7 @@ pub async fn image(
     axum::extract::Path(hash): axum::extract::Path<String>,
     Query(params): Query<ImageParams>,
 ) -> Result<Vec<u8>, AppError> {
-    auth.require(&required::REST_EPD_READ)
+    auth.require(&Scope::new(Resource::Epd, Action::Read))
         .map_err(AppError::StatusCode)?;
 
     let window = params.window()?;
@@ -141,7 +144,7 @@ pub async fn config(
     Auth(auth): Auth,
     Json(request): Json<EpdConfigRequest>,
 ) -> Result<Json<EpdConfig>, AppError> {
-    auth.require(&required::REST_EPD_READ)
+    auth.require(&Scope::new(Resource::Epd, Action::Read))
         .map_err(AppError::StatusCode)?;
 
     let display = devices.eink_display(&request.device_id);
@@ -273,7 +276,7 @@ pub async fn firmware(
     Auth(auth): Auth,
     Query(params): Query<DeviceParams>,
 ) -> Result<Vec<u8>, AppError> {
-    auth.require(&required::REST_EPD_READ)
+    auth.require(&Scope::new(Resource::Epd, Action::Read))
         .map_err(AppError::StatusCode)?;
 
     let Some(display) = eink.resolve(&params.device_id).await else {
@@ -298,7 +301,7 @@ pub async fn firmware(
 }
 
 pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
-    auth.require(&required::REST_EPD_WRITE)
+    auth.require(&Scope::new(Resource::Epd, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME);

@@ -1,5 +1,8 @@
 use crate::{
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
     state::ApiState,
 };
 use axum::{Json, extract::State};
@@ -16,7 +19,10 @@ pub async fn push_token(
     Auth(auth): Auth,
     Json(payload): Json<PushTokenPayload>,
 ) -> StatusCode {
-    if auth.require(&required::INGEST_HOME_WRITE).is_err() {
+    if auth
+        .require(&Scope::new(Resource::IngestHome, Action::Write))
+        .is_err()
+    {
         return StatusCode::FORBIDDEN;
     }
 

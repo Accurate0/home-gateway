@@ -1,106 +1,11 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Domain {
-    Graphql,
-    Rest,
-    Ingest,
-    Admin,
-    Events,
-}
+use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Resource {
-    Energy,
-    Entity,
-    Solar,
-    Weather,
-    Transperth,
-    FuelWatch,
-    Woolworths,
-    Control,
-    Workflow,
-    Push,
-    Epd,
-    Schema,
-    Synergy,
-    Home,
-    Unifi,
-    Keys,
-    Presence,
-    Door,
-    Switch,
-    Environment,
-    Cron,
-    Light,
-    Sun,
-    Mode,
-    HomeAssistant,
-    Battery,
-    Roborock,
-    Valetudo,
-    RobotVacuum,
-    Jellyfin,
-    MediaPlayer,
-    AdhocTask,
-}
+use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Action {
     Read,
     Write,
-    Execute,
-}
-
-impl Domain {
-    fn from_segment(s: &str) -> Option<Self> {
-        Some(match s {
-            "graphql" => Self::Graphql,
-            "rest" => Self::Rest,
-            "ingest" => Self::Ingest,
-            "admin" => Self::Admin,
-            "events" => Self::Events,
-            _ => return None,
-        })
-    }
-}
-
-impl Resource {
-    fn from_segment(s: &str) -> Option<Self> {
-        Some(match s {
-            "energy" => Self::Energy,
-            "entity" => Self::Entity,
-            "solar" => Self::Solar,
-            "weather" => Self::Weather,
-            "transperth" => Self::Transperth,
-            "fuelwatch" => Self::FuelWatch,
-            "woolworths" => Self::Woolworths,
-            "control" => Self::Control,
-            "workflow" => Self::Workflow,
-            "push" => Self::Push,
-            "epd" => Self::Epd,
-            "schema" => Self::Schema,
-            "synergy" => Self::Synergy,
-            "home" => Self::Home,
-            "unifi" => Self::Unifi,
-            "keys" => Self::Keys,
-            "presence" => Self::Presence,
-            "door" => Self::Door,
-            "switch" => Self::Switch,
-            "environment" => Self::Environment,
-            "cron" => Self::Cron,
-            "light" => Self::Light,
-            "sun" => Self::Sun,
-            "mode" => Self::Mode,
-            "home_assistant" => Self::HomeAssistant,
-            "battery" => Self::Battery,
-            "roborock" => Self::Roborock,
-            "valetudo" => Self::Valetudo,
-            "robot_vacuum" => Self::RobotVacuum,
-            "jellyfin" => Self::Jellyfin,
-            "media_player" => Self::MediaPlayer,
-            "adhoc_task" => Self::AdhocTask,
-            _ => return None,
-        })
-    }
 }
 
 impl Action {
@@ -108,285 +13,297 @@ impl Action {
         Some(match s {
             "read" => Self::Read,
             "write" => Self::Write,
-            "execute" => Self::Execute,
             _ => return None,
         })
     }
-}
 
-impl Domain {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Graphql => "graphql",
-            Self::Rest => "rest",
-            Self::Ingest => "ingest",
-            Self::Admin => "admin",
-            Self::Events => "events",
-        }
-    }
-}
-
-impl Resource {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Energy => "energy",
-            Self::Entity => "entity",
-            Self::Solar => "solar",
-            Self::Weather => "weather",
-            Self::Transperth => "transperth",
-            Self::FuelWatch => "fuelwatch",
-            Self::Woolworths => "woolworths",
-            Self::Control => "control",
-            Self::Workflow => "workflow",
-            Self::Push => "push",
-            Self::Epd => "epd",
-            Self::Schema => "schema",
-            Self::Synergy => "synergy",
-            Self::Home => "home",
-            Self::Unifi => "unifi",
-            Self::Keys => "keys",
-            Self::Presence => "presence",
-            Self::Door => "door",
-            Self::Switch => "switch",
-            Self::Environment => "environment",
-            Self::Cron => "cron",
-            Self::Light => "light",
-            Self::Sun => "sun",
-            Self::Mode => "mode",
-            Self::HomeAssistant => "home_assistant",
-            Self::Battery => "battery",
-            Self::Roborock => "roborock",
-            Self::Valetudo => "valetudo",
-            Self::RobotVacuum => "robot_vacuum",
-            Self::Jellyfin => "jellyfin",
-            Self::MediaPlayer => "media_player",
-            Self::AdhocTask => "adhoc_task",
-        }
-    }
-
-    pub fn for_event_kind(kind: &str) -> Option<Self> {
-        Some(match kind {
-            "presence" => Self::Presence,
-            "door" => Self::Door,
-            "switch" => Self::Switch,
-            "environment" => Self::Environment,
-            "cron" => Self::Cron,
-            "light" => Self::Light,
-            "unifi" => Self::Unifi,
-            "sun" => Self::Sun,
-            "mode" => Self::Mode,
-            "home_assistant" => Self::HomeAssistant,
-            "woolworths" => Self::Woolworths,
-            "device_battery" => Self::Battery,
-            "jellyfin" => Self::Jellyfin,
-            "media_player" => Self::MediaPlayer,
-            "solar" => Self::Solar,
-            _ => return None,
-        })
-    }
-}
-
-impl Action {
     fn as_str(&self) -> &'static str {
         match self {
             Self::Read => "read",
             Self::Write => "write",
-            Self::Execute => "execute",
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Segment<T> {
-    Any,
-    Exact(T),
+macro_rules! scopes {
+    ($($variant:ident => $path:literal [$($action:ident),+ $(,)?]),+ $(,)?) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum Resource {
+            $($variant),+
+        }
+
+        impl Resource {
+            pub const ALL: &'static [Resource] = &[$(Resource::$variant),+];
+
+            pub fn as_str(&self) -> &'static str {
+                match self {
+                    $(Self::$variant => $path),+
+                }
+            }
+
+            fn from_path(s: &str) -> Option<Self> {
+                match s {
+                    $($path => Some(Self::$variant),)+
+                    _ => None,
+                }
+            }
+        }
+
+        impl Scope {
+            pub const ALL: &'static [Scope] = &[
+                $($(Scope::new(Resource::$variant, Action::$action),)+)+
+            ];
+        }
+    };
 }
 
-impl<T> Segment<T> {
-    fn as_str(&self, render: impl Fn(&T) -> &'static str) -> &'static str {
-        match self {
-            Segment::Any => "*",
-            Segment::Exact(value) => render(value),
-        }
+scopes! {
+    AdhocTask => "adhoc_task" [Read, Write],
+    AdminKeys => "admin.keys" [Read, Write],
+    Control => "control" [Write],
+    Door => "door" [Read],
+    Energy => "energy" [Read],
+    Environment => "environment" [Read],
+    Epd => "epd" [Read, Write],
+    FuelWatch => "fuelwatch" [Read],
+    HomeAssistant => "home_assistant" [Read],
+    IngestHome => "ingest.home" [Write],
+    IngestSynergy => "ingest.synergy" [Write],
+    IngestUnifi => "ingest.unifi" [Write],
+    Jellyfin => "jellyfin" [Read],
+    Light => "light" [Read, Write],
+    MediaPlayer => "media.player" [Read, Write],
+    Presence => "presence" [Read],
+    Push => "push" [Write],
+    RobotVacuum => "robot_vacuum" [Read, Write],
+    Schema => "schema" [Read],
+    Solar => "solar" [Read],
+    Transperth => "transperth" [Read],
+    Weather => "weather" [Read],
+    Woolworths => "woolworths" [Read],
+    Workflow => "workflow" [Read, Write],
+
+    EventsBattery => "events.battery" [Read],
+    EventsCron => "events.cron" [Read],
+    EventsDoor => "events.door" [Read],
+    EventsEnvironment => "events.environment" [Read],
+    EventsHomeAssistant => "events.home_assistant" [Read],
+    EventsJellyfin => "events.jellyfin" [Read],
+    EventsLight => "events.light" [Read],
+    EventsMediaPlayer => "events.media_player" [Read],
+    EventsMode => "events.mode" [Read],
+    EventsPresence => "events.presence" [Read],
+    EventsSolar => "events.solar" [Read],
+    EventsSun => "events.sun" [Read],
+    EventsSwitch => "events.switch" [Read],
+    EventsUnifi => "events.unifi" [Read],
+    EventsWoolworths => "events.woolworths" [Read],
+}
+
+impl Resource {
+    pub fn for_event_kind(kind: &str) -> Option<Self> {
+        Some(match kind {
+            "presence" => Self::EventsPresence,
+            "door" => Self::EventsDoor,
+            "switch" => Self::EventsSwitch,
+            "environment" => Self::EventsEnvironment,
+            "cron" => Self::EventsCron,
+            "light" => Self::EventsLight,
+            "unifi" => Self::EventsUnifi,
+            "sun" => Self::EventsSun,
+            "mode" => Self::EventsMode,
+            "home_assistant" => Self::EventsHomeAssistant,
+            "woolworths" => Self::EventsWoolworths,
+            "device_battery" => Self::EventsBattery,
+            "jellyfin" => Self::EventsJellyfin,
+            "media_player" => Self::EventsMediaPlayer,
+            "solar" => Self::EventsSolar,
+            _ => return None,
+        })
     }
 }
 
-impl<T: PartialEq> Segment<T> {
-    fn matches(&self, other: &T) -> bool {
-        match self {
-            Segment::Any => true,
-            Segment::Exact(value) => value == other,
-        }
-    }
-
-    fn parse(s: &str, parse_value: impl Fn(&str) -> Option<T>) -> Option<Self> {
-        if s == "*" {
-            Some(Segment::Any)
-        } else {
-            parse_value(s).map(Segment::Exact)
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Scope {
-    pub domain: Domain,
     pub resource: Resource,
     pub action: Action,
 }
 
 impl Scope {
-    pub const fn new(domain: Domain, resource: Resource, action: Action) -> Self {
-        Self {
-            domain,
-            resource,
-            action,
-        }
+    pub const fn new(resource: Resource, action: Action) -> Self {
+        Self { resource, action }
     }
+}
+
+impl fmt::Display for Scope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.resource.as_str(), self.action.as_str())
+    }
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum ScopeParseError {
+    #[error("expected `resource:action`, got `{0}`")]
+    Shape(String),
+    #[error("`@` is reserved for a future target selector")]
+    ReservedTarget,
+    #[error("empty path segment in `{0}`")]
+    EmptySegment(String),
+    #[error("`**` must be the last path segment")]
+    RestNotLast,
+    #[error("unknown resource `{0}`")]
+    UnknownResource(String),
+    #[error("unknown action `{0}`")]
+    UnknownAction(String),
+    #[error("resource `{resource}` has no `{action}` action")]
+    UnsupportedAction { resource: String, action: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum PathSegment {
+    Exact(String),
+    One,
+    Rest,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScopePattern {
-    Global,
-    Parts {
-        domain: Segment<Domain>,
-        resource: Segment<Resource>,
-        action: Segment<Action>,
-    },
+enum ActionSegment {
+    Any,
+    Exact(Action),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopePattern {
+    path: Vec<PathSegment>,
+    action: ActionSegment,
 }
 
 impl ScopePattern {
-    pub fn parse(raw: &str) -> Option<Self> {
+    pub fn parse(raw: &str) -> Result<Self, ScopeParseError> {
         let raw = raw.trim();
-        if raw == "*" {
-            return Some(ScopePattern::Global);
+        if raw.contains('@') {
+            return Err(ScopeParseError::ReservedTarget);
         }
 
-        let mut segments = raw.split(':');
-        let domain = segments.next()?;
-        let resource = segments.next()?;
-        let action = segments.next()?;
-        if segments.next().is_some() {
-            return None;
+        let (resource, action) = raw
+            .split_once(':')
+            .ok_or_else(|| ScopeParseError::Shape(raw.to_owned()))?;
+        if resource.is_empty() || action.contains(':') {
+            return Err(ScopeParseError::Shape(raw.to_owned()));
         }
 
-        Some(ScopePattern::Parts {
-            domain: Segment::parse(domain, Domain::from_segment)?,
-            resource: Segment::parse(resource, Resource::from_segment)?,
-            action: Segment::parse(action, Action::from_segment)?,
-        })
+        let mut path = Vec::new();
+        for segment in resource.split('.') {
+            if segment.is_empty() {
+                return Err(ScopeParseError::EmptySegment(resource.to_owned()));
+            }
+            path.push(match segment {
+                "*" => PathSegment::One,
+                "**" => PathSegment::Rest,
+                other => PathSegment::Exact(other.to_owned()),
+            });
+        }
+
+        if path
+            .iter()
+            .position(|s| *s == PathSegment::Rest)
+            .is_some_and(|i| i != path.len() - 1)
+        {
+            return Err(ScopeParseError::RestNotLast);
+        }
+
+        let exact_resource = if path.iter().all(|s| matches!(s, PathSegment::Exact(_))) {
+            Some(
+                Resource::from_path(resource)
+                    .ok_or_else(|| ScopeParseError::UnknownResource(resource.to_owned()))?,
+            )
+        } else {
+            None
+        };
+
+        let action = if action == "*" {
+            ActionSegment::Any
+        } else {
+            ActionSegment::Exact(
+                Action::from_segment(action)
+                    .ok_or_else(|| ScopeParseError::UnknownAction(action.to_owned()))?,
+            )
+        };
+
+        if let (Some(resource), ActionSegment::Exact(action)) = (exact_resource, action)
+            && !Scope::ALL.contains(&Scope::new(resource, action))
+        {
+            return Err(ScopeParseError::UnsupportedAction {
+                resource: resource.as_str().to_owned(),
+                action: action.as_str().to_owned(),
+            });
+        }
+
+        Ok(Self { path, action })
     }
 
     pub fn matches(&self, required: &Scope) -> bool {
-        match self {
-            ScopePattern::Global => true,
-            ScopePattern::Parts {
-                domain,
-                resource,
-                action,
-            } => {
-                domain.matches(&required.domain)
-                    && resource.matches(&required.resource)
-                    && action.matches(&required.action)
+        match self.action {
+            ActionSegment::Any => {}
+            ActionSegment::Exact(action) if action == required.action => {}
+            ActionSegment::Exact(_) => return false,
+        }
+
+        let mut actual = required.resource.as_str().split('.');
+        for segment in &self.path {
+            match segment {
+                PathSegment::Rest => return actual.next().is_some(),
+                PathSegment::One => {
+                    if actual.next().is_none() {
+                        return false;
+                    }
+                }
+                PathSegment::Exact(expected) => {
+                    if actual.next() != Some(expected.as_str()) {
+                        return false;
+                    }
+                }
             }
         }
+
+        actual.next().is_none()
     }
 }
 
-impl std::fmt::Display for ScopePattern {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ScopePattern::Global => f.write_str("*"),
-            ScopePattern::Parts {
-                domain,
-                resource,
-                action,
-            } => write!(
-                f,
-                "{}:{}:{}",
-                domain.as_str(Domain::as_str),
-                resource.as_str(Resource::as_str),
-                action.as_str(Action::as_str)
-            ),
-        }
+impl fmt::Display for ScopePattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let path = self
+            .path
+            .iter()
+            .map(|segment| match segment {
+                PathSegment::Exact(value) => value.as_str(),
+                PathSegment::One => "*",
+                PathSegment::Rest => "**",
+            })
+            .collect::<Vec<_>>()
+            .join(".");
+
+        let action = match self.action {
+            ActionSegment::Any => "*",
+            ActionSegment::Exact(action) => action.as_str(),
+        };
+
+        write!(f, "{path}:{action}")
     }
-}
-
-pub mod required {
-    use super::{Action, Domain, Resource, Scope};
-
-    pub const GRAPHQL_ENERGY_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Energy, Action::Read);
-    pub const GRAPHQL_ENTITY_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Entity, Action::Read);
-    pub const GRAPHQL_HOME_ASSISTANT_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::HomeAssistant, Action::Read);
-    pub const GRAPHQL_LIGHT_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Light, Action::Read);
-    pub const GRAPHQL_DOOR_READ: Scope = Scope::new(Domain::Graphql, Resource::Door, Action::Read);
-    pub const GRAPHQL_PRESENCE_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Presence, Action::Read);
-    pub const GRAPHQL_ENVIRONMENT_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Environment, Action::Read);
-    pub const GRAPHQL_SOLAR_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Solar, Action::Read);
-    pub const GRAPHQL_WEATHER_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Weather, Action::Read);
-    pub const GRAPHQL_TRANSPERTH_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Transperth, Action::Read);
-    pub const GRAPHQL_FUELWATCH_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::FuelWatch, Action::Read);
-    pub const GRAPHQL_WOOLWORTHS_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Woolworths, Action::Read);
-    pub const GRAPHQL_WORKFLOW_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Workflow, Action::Read);
-    pub const GRAPHQL_EPD_READ: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Read);
-    pub const GRAPHQL_ROBOT_VACUUM_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Read);
-    pub const GRAPHQL_JELLYFIN_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::Jellyfin, Action::Read);
-    pub const GRAPHQL_ADHOC_TASK_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::AdhocTask, Action::Read);
-    pub const GRAPHQL_MEDIA_PLAYER_READ: Scope =
-        Scope::new(Domain::Graphql, Resource::MediaPlayer, Action::Read);
-
-    pub const GRAPHQL_LIGHT_WRITE: Scope =
-        Scope::new(Domain::Graphql, Resource::Light, Action::Write);
-    pub const GRAPHQL_ROBOT_VACUUM_WRITE: Scope =
-        Scope::new(Domain::Graphql, Resource::RobotVacuum, Action::Write);
-    pub const GRAPHQL_MEDIA_PLAYER_WRITE: Scope =
-        Scope::new(Domain::Graphql, Resource::MediaPlayer, Action::Write);
-    pub const GRAPHQL_WORKFLOW_WRITE: Scope =
-        Scope::new(Domain::Graphql, Resource::Workflow, Action::Write);
-    pub const GRAPHQL_EPD_WRITE: Scope = Scope::new(Domain::Graphql, Resource::Epd, Action::Write);
-
-    pub const GRAPHQL_ADHOC_TASK_EXECUTE: Scope =
-        Scope::new(Domain::Graphql, Resource::AdhocTask, Action::Execute);
-
-    pub const REST_CONTROL_WRITE: Scope =
-        Scope::new(Domain::Rest, Resource::Control, Action::Write);
-    pub const REST_WORKFLOW_EXECUTE: Scope =
-        Scope::new(Domain::Rest, Resource::Workflow, Action::Execute);
-    pub const REST_PUSH_WRITE: Scope = Scope::new(Domain::Rest, Resource::Push, Action::Write);
-    pub const REST_EPD_READ: Scope = Scope::new(Domain::Rest, Resource::Epd, Action::Read);
-    pub const REST_EPD_WRITE: Scope = Scope::new(Domain::Rest, Resource::Epd, Action::Write);
-    pub const REST_SCHEMA_READ: Scope = Scope::new(Domain::Rest, Resource::Schema, Action::Read);
-    pub const REST_WEATHER_READ: Scope = Scope::new(Domain::Rest, Resource::Weather, Action::Read);
-
-    pub const INGEST_SYNERGY_WRITE: Scope =
-        Scope::new(Domain::Ingest, Resource::Synergy, Action::Write);
-    pub const INGEST_HOME_WRITE: Scope = Scope::new(Domain::Ingest, Resource::Home, Action::Write);
-    pub const INGEST_UNIFI_WRITE: Scope =
-        Scope::new(Domain::Ingest, Resource::Unifi, Action::Write);
-
-    pub const ADMIN_KEYS_READ: Scope = Scope::new(Domain::Admin, Resource::Keys, Action::Read);
-    pub const ADMIN_KEYS_WRITE: Scope = Scope::new(Domain::Admin, Resource::Keys, Action::Write);
 }
 
 #[cfg(test)]
 mod tests {
-    use super::required::*;
     use super::*;
+
+    const SOLAR_READ: Scope = Scope::new(Resource::Solar, Action::Read);
+    const LIGHT_READ: Scope = Scope::new(Resource::Light, Action::Read);
+    const LIGHT_WRITE: Scope = Scope::new(Resource::Light, Action::Write);
+    const MEDIA_PLAYER_READ: Scope = Scope::new(Resource::MediaPlayer, Action::Read);
+    const MEDIA_PLAYER_WRITE: Scope = Scope::new(Resource::MediaPlayer, Action::Write);
+    const ADMIN_KEYS_READ: Scope = Scope::new(Resource::AdminKeys, Action::Read);
+    const ADMIN_KEYS_WRITE: Scope = Scope::new(Resource::AdminKeys, Action::Write);
+    const EVENTS_PRESENCE_READ: Scope = Scope::new(Resource::EventsPresence, Action::Read);
 
     fn matches(granted: &str, required: &Scope) -> bool {
         ScopePattern::parse(granted).unwrap().matches(required)
@@ -394,33 +311,50 @@ mod tests {
 
     #[test]
     fn exact_match() {
-        assert!(matches("graphql:solar:read", &GRAPHQL_SOLAR_READ));
-    }
-
-    #[test]
-    fn resource_wildcard() {
-        assert!(matches("graphql:*:read", &GRAPHQL_SOLAR_READ));
-        assert!(matches("graphql:*:read", &GRAPHQL_ENERGY_READ));
-        assert!(!matches("graphql:*:read", &REST_CONTROL_WRITE));
+        assert!(matches("solar:read", &SOLAR_READ));
+        assert!(matches("media.player:write", &MEDIA_PLAYER_WRITE));
     }
 
     #[test]
     fn action_wildcard() {
-        assert!(matches("graphql:solar:*", &GRAPHQL_SOLAR_READ));
-        assert!(matches("ingest:*:write", &INGEST_HOME_WRITE));
-        assert!(matches("ingest:*:write", &INGEST_UNIFI_WRITE));
+        assert!(matches("light:*", &LIGHT_READ));
+        assert!(matches("light:*", &LIGHT_WRITE));
+        assert!(!matches("light:*", &SOLAR_READ));
+    }
+
+    #[test]
+    fn write_does_not_grant_read() {
+        assert!(!matches("light:write", &LIGHT_READ));
+    }
+
+    #[test]
+    fn single_segment_wildcard_does_not_cross_a_dot() {
+        assert!(matches("*:read", &SOLAR_READ));
+        assert!(!matches("*:read", &MEDIA_PLAYER_READ));
+        assert!(matches("media.*:read", &MEDIA_PLAYER_READ));
+        assert!(!matches("media.*:read", &SOLAR_READ));
+    }
+
+    #[test]
+    fn rest_wildcard_spans_subtrees() {
+        assert!(matches("**:read", &SOLAR_READ));
+        assert!(matches("**:read", &MEDIA_PLAYER_READ));
+        assert!(!matches("**:read", &LIGHT_WRITE));
+        assert!(matches("events.**:read", &EVENTS_PRESENCE_READ));
+        assert!(!matches("events.**:read", &SOLAR_READ));
     }
 
     #[test]
     fn global_wildcard() {
-        assert!(matches("*", &GRAPHQL_SOLAR_READ));
-        assert!(matches("*", &REST_CONTROL_WRITE));
-        assert!(matches("*", &ADMIN_KEYS_WRITE));
+        assert!(matches("**:*", &SOLAR_READ));
+        assert!(matches("**:*", &ADMIN_KEYS_WRITE));
+        assert!(matches("**:*", &MEDIA_PLAYER_WRITE));
     }
 
     #[test]
-    fn no_match_different_domain() {
-        assert!(!matches("graphql:solar:read", &REST_CONTROL_WRITE));
+    fn readers_do_not_get_admin() {
+        assert!(matches("**:read", &ADMIN_KEYS_READ));
+        assert!(!matches("events.**:read", &ADMIN_KEYS_READ));
     }
 
     #[test]
@@ -434,11 +368,55 @@ mod tests {
     }
 
     #[test]
+    fn every_resource_round_trips() {
+        for resource in Resource::ALL {
+            assert_eq!(Resource::from_path(resource.as_str()), Some(*resource));
+        }
+    }
+
+    #[test]
+    fn patterns_round_trip_through_display() {
+        for raw in ["solar:read", "media.*:write", "events.**:read", "**:*"] {
+            assert_eq!(ScopePattern::parse(raw).unwrap().to_string(), raw);
+        }
+    }
+
+    #[test]
     fn invalid_scopes_do_not_parse() {
-        assert!(ScopePattern::parse("graphql:solar").is_none());
-        assert!(ScopePattern::parse("graphql:solar:read:extra").is_none());
-        assert!(ScopePattern::parse("bogus:solar:read").is_none());
-        assert!(ScopePattern::parse("graphql:bogus:read").is_none());
-        assert!(ScopePattern::parse("graphql:solar:bogus").is_none());
+        assert_eq!(
+            ScopePattern::parse("solar"),
+            Err(ScopeParseError::Shape("solar".to_owned()))
+        );
+        assert_eq!(
+            ScopePattern::parse("solar:read:extra"),
+            Err(ScopeParseError::Shape("solar:read:extra".to_owned()))
+        );
+        assert_eq!(
+            ScopePattern::parse("bogus:read"),
+            Err(ScopeParseError::UnknownResource("bogus".to_owned()))
+        );
+        assert_eq!(
+            ScopePattern::parse("solar:bogus"),
+            Err(ScopeParseError::UnknownAction("bogus".to_owned()))
+        );
+        assert_eq!(
+            ScopePattern::parse("**.player:read"),
+            Err(ScopeParseError::RestNotLast)
+        );
+        assert_eq!(
+            ScopePattern::parse("media..player:read"),
+            Err(ScopeParseError::EmptySegment("media..player".to_owned()))
+        );
+        assert_eq!(
+            ScopePattern::parse("light:write@kitchen_lamp"),
+            Err(ScopeParseError::ReservedTarget)
+        );
+        assert_eq!(
+            ScopePattern::parse("control:read"),
+            Err(ScopeParseError::UnsupportedAction {
+                resource: "control".to_owned(),
+                action: "read".to_owned()
+            })
+        );
     }
 }

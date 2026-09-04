@@ -1,4 +1,4 @@
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::fuelwatch_object::FuelWatchObject;
 use async_graphql::Object;
@@ -8,7 +8,7 @@ pub struct FuelWatchQuery;
 
 #[Object]
 impl FuelWatchQuery {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_FUELWATCH_READ))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::FuelWatch, Action::Read)))]
     async fn fuelwatch(
         &self,
         _ctx: &async_graphql::Context<'_>,

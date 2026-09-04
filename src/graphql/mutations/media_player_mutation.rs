@@ -1,7 +1,7 @@
 use async_graphql::Object;
 use serde_json::json;
 
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::settings::MediaPlayerSettings;
@@ -47,37 +47,37 @@ impl MediaPlayerMutation {
 
 #[Object]
 impl MediaPlayerMutation {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn play(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "media_play", json!({})).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn pause(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "media_pause", json!({})).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn play_pause(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "media_play_pause", json!({})).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn stop(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "media_stop", json!({})).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn next(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "media_next_track", json!({})).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn previous(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "media_previous_track", json!({})).await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn volume_set(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -93,7 +93,7 @@ impl MediaPlayerMutation {
             .await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn mute(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -103,7 +103,7 @@ impl MediaPlayerMutation {
             .await
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_MEDIA_PLAYER_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn turn_off(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
         self.call(ctx, "turn_off", json!({})).await
     }

@@ -18,7 +18,7 @@ impl AuthContext {
         Self {
             key_id: None,
             name: None,
-            scopes: vec![ScopePattern::Global],
+            scopes: vec![ScopePattern::parse("**:*").expect("global pattern is valid")],
             legacy,
         }
     }
@@ -27,9 +27,9 @@ impl AuthContext {
         let scopes = scopes
             .iter()
             .filter_map(|raw| match ScopePattern::parse(raw) {
-                Some(pattern) => Some(pattern),
-                None => {
-                    tracing::warn!("ignoring invalid scope: {raw}");
+                Ok(pattern) => Some(pattern),
+                Err(e) => {
+                    tracing::warn!("ignoring invalid scope '{raw}': {e}");
                     None
                 }
             })

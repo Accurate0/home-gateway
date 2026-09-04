@@ -287,10 +287,13 @@ impl RawSettings {
             if !seen_key_names.insert(key.name.clone()) {
                 return Err(format!("duplicate api_keys name: {}", key.name));
             }
-            for scope in &key.scopes {
-                if ScopePattern::parse(scope).is_none() {
-                    return Err(format!("api key '{}' has invalid scope: {scope}", key.name));
-                }
+
+            validate_scopes(&format!("api key '{}'", key.name), &key.scopes)?;
+        }
+
+        if let Some(oauth) = &oauth {
+            for (group, scopes) in &oauth.group_scopes {
+                validate_scopes(&format!("oauth group '{group}'"), scopes)?;
             }
         }
 
@@ -374,6 +377,16 @@ impl RawSettings {
             registry,
         ))
     }
+}
+
+fn validate_scopes(owner: &str, scopes: &[String]) -> Result<(), String> {
+    for scope in scopes {
+        if let Err(e) = ScopePattern::parse(scope) {
+            return Err(format!("{owner} has invalid scope '{scope}': {e}"));
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Clone)]
@@ -973,13 +986,13 @@ transperth:
             settings
                 .api_keys
                 .iter()
-                .any(|k| k.name == "eink-display-living-room" && k.scopes == ["rest:epd:read"]),
+                .any(|k| k.name == "eink-display-living-room" && k.scopes == ["epd:read"]),
             "expected the eink config key to parse"
         );
     }
 
     #[test]
-    fn api_keys_reject_invalid_scope() {
+    fn api_keys_reject_an_invalid_scope() {
         let raw: RawSettings = serde_yaml::from_str(
             r#"
 api_key: x
@@ -999,13 +1012,50 @@ willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
 api_keys:
   - name: bad-key
-    scopes: ["graphql:bogus:read"]
+    scopes: ["bogus:read"]
 "#,
         )
         .unwrap();
 
         let err = raw.resolve().unwrap_err();
-        assert!(err.contains("invalid scope"), "{err}");
+        assert!(err.contains("unknown resource `bogus`"), "{err}");
+    }
+
+    #[test]
+    fn oauth_group_scopes_are_validated() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+adhoc: { recheck_interval: 15m }
+oauth:
+  issuer: i
+  jwks_url: j
+  userinfo_url: u
+  audience: a
+  group_scopes:
+    admins@idm: ["graphql:solar:read"]
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(
+            err.contains("oauth group 'admins@idm' has invalid scope"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -1027,6 +1077,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+
 workflows:
   - - name: Caller
       slug: caller
@@ -1060,6 +1111,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+
 workflows:
   - - name: Callee
       slug: callee
@@ -1095,6 +1147,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+
 eink_display:
   views:
     home: { query: "view=home" }
@@ -1169,6 +1222,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+
 devices:
   - id: epd
     transport: eink_display_firmware
@@ -1226,6 +1280,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+
 devices:
   - id: epd
     transport: eink_display_firmware

@@ -12,12 +12,12 @@ async fn manager() -> AuthManager {
 async fn claim_updates_scopes_by_name() {
     let mgr = manager().await;
     let created = mgr
-        .create("svc", &["graphql:solar:read".to_owned()], None)
+        .create("svc", &["solar:read".to_owned()], None)
         .await
         .unwrap();
 
     assert!(
-        mgr.claim("svc", &["rest:epd:read".to_owned()], None)
+        mgr.claim("svc", &["epd:read".to_owned()], None)
             .await
             .unwrap()
     );
@@ -27,7 +27,7 @@ async fn claim_updates_scopes_by_name() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(looked_up.scopes, ["rest:epd:read"]);
+    assert_eq!(looked_up.scopes, ["epd:read"]);
 
     assert!(!mgr.claim("missing", &[], None).await.unwrap());
 }
@@ -36,7 +36,7 @@ async fn claim_updates_scopes_by_name() {
 async fn regenerate_swaps_the_token() {
     let mgr = manager().await;
     let created = mgr
-        .create("svc", &["graphql:solar:read".to_owned()], None)
+        .create("svc", &["solar:read".to_owned()], None)
         .await
         .unwrap();
     let old_hash = hash_key(&created.key);
@@ -44,7 +44,7 @@ async fn regenerate_swaps_the_token() {
     let regenerated = mgr.regenerate(created.id).await.unwrap().unwrap();
     assert_eq!(regenerated.id, created.id);
     assert_eq!(regenerated.name, "svc");
-    assert_eq!(regenerated.scopes, ["graphql:solar:read"]);
+    assert_eq!(regenerated.scopes, ["solar:read"]);
     assert_ne!(regenerated.key, created.key);
 
     assert!(

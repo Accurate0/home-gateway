@@ -2,13 +2,19 @@ use crate::{
     actors::integrations::unifi::{
         UnifiConnectedClientHandler, UnifiMessage, types::UnifiWebhookEvent,
     },
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
 };
 use axum::Json;
 use http::StatusCode;
 
 pub async fn unifi(Auth(auth): Auth, Json(unifi_event): Json<UnifiWebhookEvent>) -> StatusCode {
-    if auth.require(&required::INGEST_UNIFI_WRITE).is_err() {
+    if auth
+        .require(&Scope::new(Resource::IngestUnifi, Action::Write))
+        .is_err()
+    {
         return StatusCode::FORBIDDEN;
     }
 

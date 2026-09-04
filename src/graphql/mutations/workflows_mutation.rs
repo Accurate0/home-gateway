@@ -2,7 +2,7 @@ use async_graphql::Object;
 use uuid::Uuid;
 
 use crate::actors::workflows::manager::WorkflowManager;
-use crate::auth::scope::required;
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::event_bus::{EventBus, EventBusMessage};
 use crate::graphql::guard::ScopeGuard;
 use crate::mode::Mode;
@@ -13,7 +13,7 @@ pub struct WorkflowsMutation;
 
 #[Object]
 impl WorkflowsMutation {
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]
     async fn set_workflow_enabled(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -33,7 +33,7 @@ impl WorkflowsMutation {
         Ok(enabled)
     }
 
-    #[graphql(guard = ScopeGuard(required::GRAPHQL_WORKFLOW_WRITE))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]
     async fn set_mode(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -56,7 +56,7 @@ impl WorkflowsMutation {
     }
 
     #[graphql(
-        guard = ScopeGuard(required::GRAPHQL_WORKFLOW_WRITE),
+        guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)),
         deprecation = "use setMode(mode: GUEST, active: ...) instead"
     )]
     async fn set_guest_mode(

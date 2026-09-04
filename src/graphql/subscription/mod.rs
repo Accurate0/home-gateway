@@ -3,7 +3,7 @@ use futures::{Stream, StreamExt};
 use tokio::sync::broadcast;
 
 use crate::auth::AuthContext;
-use crate::auth::scope::{Action, Domain, Resource, Scope};
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::{EventBus, EventBusMessage, EventFilter};
 
@@ -26,7 +26,7 @@ impl SubscriptionRoot {
         let auth = ctx.data::<AuthContext>()?;
         for kind in filter.domains() {
             let resource = Resource::for_event_kind(kind).ok_or("invalid event filter")?;
-            if !auth.has(&Scope::new(Domain::Events, resource, Action::Read)) {
+            if !auth.has(&Scope::new(resource, Action::Read)) {
                 return Err("insufficient scope".into());
             }
         }

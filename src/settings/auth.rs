@@ -19,11 +19,11 @@ pub struct OAuthSettings {
     pub audience: String,
     #[serde(default = "default_groups_claim")]
     pub groups_claim: String,
-    /// group SPN -> granted scope strings (`domain:resource:action`).
+    /// group SPN -> granted scope patterns (`resource.path:action`).
     pub group_scopes: HashMap<String, Vec<String>>,
 }
 
-/// Declarative API key: config is the source of truth for a key's name + scope.
+/// Declarative API key: config is the source of truth for a key's name + scopes.
 /// Secret material is never here — the admin API mints/regenerates the token and
 /// startup reconciles these scopes onto the matching DB row by `name`.
 #[derive(Debug, Clone, Deserialize, JsonSchema)]

@@ -38,9 +38,9 @@ watchdog:
 
 api_keys:
   - name: test-reader
-    scopes: ["rest:epd:read"]
+    scopes: ["epd:read"]
   - name: test-admin
-    scopes: ["*"]
+    scopes: ["**:*"]
 
 woolworths:
   refresh: 1h

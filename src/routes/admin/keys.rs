@@ -7,18 +7,34 @@ use http::StatusCode;
 use uuid::Uuid;
 
 use crate::{
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope, ScopePattern},
+    },
     error::AppError,
     state::ApiState,
 };
+
+fn validate_scopes(scopes: &[String]) -> Result<(), AppError> {
+    for scope in scopes {
+        if let Err(e) = ScopePattern::parse(scope) {
+            tracing::warn!("rejecting api key with invalid scope '{scope}': {e}");
+            return Err(AppError::StatusCode(StatusCode::BAD_REQUEST));
+        }
+    }
+
+    Ok(())
+}
 
 pub async fn create_key(
     State(ApiState { auth: manager, .. }): State<ApiState>,
     Auth(auth): Auth,
     Json(payload): Json<CreateKeyPayload>,
 ) -> Result<Json<CreatedKey>, AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE)
+    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
         .map_err(AppError::StatusCode)?;
+
+    validate_scopes(&payload.scopes)?;
 
     let created = manager
         .create(&payload.name, &payload.scopes, payload.expires_at)
@@ -31,7 +47,7 @@ pub async fn list_keys(
     State(ApiState { auth: manager, .. }): State<ApiState>,
     Auth(auth): Auth,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    auth.require(&required::ADMIN_KEYS_READ)
+    auth.require(&Scope::new(Resource::AdminKeys, Action::Read))
         .map_err(AppError::StatusCode)?;
 
     let keys = manager.list().await?;
@@ -45,8 +61,12 @@ pub async fn update_key(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateKeyPayload>,
 ) -> Result<Json<ApiKeyInfo>, AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE)
+    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
         .map_err(AppError::StatusCode)?;
+
+    if let Some(scopes) = &payload.scopes {
+        validate_scopes(scopes)?;
+    }
 
     let updated = manager
         .update(
@@ -68,7 +88,7 @@ pub async fn regenerate_key(
     Auth(auth): Auth,
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<CreatedKey>), AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE)
+    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     match manager.regenerate(id).await? {
@@ -82,7 +102,7 @@ pub async fn revoke_key(
     Auth(auth): Auth,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&required::ADMIN_KEYS_WRITE)
+    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     if manager.revoke(id).await? {

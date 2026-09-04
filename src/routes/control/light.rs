@@ -1,6 +1,9 @@
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
-    auth::{Auth, scope::required},
+    auth::{
+        Auth,
+        scope::{Action, Resource, Scope},
+    },
     error::AppError,
     settings::IEEEAddress,
     state::ApiState,
@@ -29,7 +32,7 @@ pub async fn light_control(
     Auth(auth): Auth,
     Json(control): Json<LightControlPayload>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&required::REST_CONTROL_WRITE)
+    auth.require(&Scope::new(Resource::Control, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     let Some(actor) = ractor::registry::where_is(LightHandler::NAME) else {

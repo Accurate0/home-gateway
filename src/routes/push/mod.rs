@@ -4,7 +4,10 @@ use ractor::factory::{FactoryMessage, Job, JobOptions};
 use serde::Deserialize;
 
 use crate::actors::system::push::{self, PushWorker};
-use crate::auth::{Auth, scope::required};
+use crate::auth::{
+    Auth,
+    scope::{Action, Resource, Scope},
+};
 
 #[derive(Deserialize)]
 pub struct PushNotifyPayload {
@@ -18,7 +21,10 @@ fn default_title() -> String {
 }
 
 pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) -> StatusCode {
-    if auth.require(&required::REST_PUSH_WRITE).is_err() {
+    if auth
+        .require(&Scope::new(Resource::Push, Action::Write))
+        .is_err()
+    {
         return StatusCode::FORBIDDEN;
     }
 
