@@ -114,13 +114,18 @@ async fn server() -> &'static Server {
 
             for database in stale {
                 admin
-                    .execute(format!(r#"DROP DATABASE IF EXISTS "{database}" WITH (FORCE)"#).as_str())
+                    .execute(
+                        format!(r#"DROP DATABASE IF EXISTS "{database}" WITH (FORCE)"#).as_str(),
+                    )
                     .await
                     .expect("failed to drop a stale test database");
             }
 
             admin
-                .execute(format!(r#"DROP DATABASE IF EXISTS "{TEMPLATE_DATABASE}" WITH (FORCE)"#).as_str())
+                .execute(
+                    format!(r#"DROP DATABASE IF EXISTS "{TEMPLATE_DATABASE}" WITH (FORCE)"#)
+                        .as_str(),
+                )
                 .await
                 .expect("failed to drop the stale template database");
             admin
