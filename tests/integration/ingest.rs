@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use home_gateway::actors::devices::{
-    door_events::DoorEventsSupervisor, door_sensor::spawn::spawn_door_handler,
-    environment_sensor::spawn::spawn_environment_sensor_handler,
+    door_events::DoorEventsSupervisor, door_sensor::DoorSensorHandler,
+    environment_sensor::EnvironmentSensorHandler, handler::spawn_handler,
 };
 use home_gateway::actors::system::mqtt_ingest::{self, MqttIngest, spawn::spawn_mqtt_ingest};
 use home_gateway::event_bus::{EventBusMessage, SensorReading};
@@ -69,7 +69,7 @@ async fn zigbee_environment_report_lands_in_the_db_and_on_the_bus() {
     spawn_mqtt_ingest(&harness.root, harness.state.clone())
         .await
         .unwrap();
-    spawn_environment_sensor_handler(&harness.root, harness.state.clone())
+    spawn_handler::<EnvironmentSensorHandler>(&harness.root, harness.state.clone())
         .await
         .unwrap();
 
@@ -141,7 +141,7 @@ async fn zigbee_door_report_lands_in_the_db_and_on_the_bus() {
     spawn_mqtt_ingest(&harness.root, harness.state.clone())
         .await
         .unwrap();
-    spawn_door_handler(&harness.root, harness.state.clone())
+    spawn_handler::<DoorSensorHandler>(&harness.root, harness.state.clone())
         .await
         .unwrap();
     spawn_door_events(&harness).await;
@@ -190,7 +190,7 @@ async fn free_form_zigbee_metrics_land_in_the_generic_sink() {
     spawn_mqtt_ingest(&harness.root, harness.state.clone())
         .await
         .unwrap();
-    spawn_door_handler(&harness.root, harness.state.clone())
+    spawn_handler::<DoorSensorHandler>(&harness.root, harness.state.clone())
         .await
         .unwrap();
     spawn_door_events(&harness).await;
@@ -245,7 +245,7 @@ async fn an_unregistered_address_is_ignored() {
     spawn_mqtt_ingest(&harness.root, harness.state.clone())
         .await
         .unwrap();
-    spawn_environment_sensor_handler(&harness.root, harness.state.clone())
+    spawn_handler::<EnvironmentSensorHandler>(&harness.root, harness.state.clone())
         .await
         .unwrap();
 

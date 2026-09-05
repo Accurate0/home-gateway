@@ -1,5 +1,6 @@
 use crate::{
     actors::alarm::{AlarmActor, AlarmMessage, types::AndroidAppAlarmPayload},
+    actors::system::rpc,
     auth::{
         Auth,
         scope::{Action, Resource, Scope},
@@ -16,14 +17,10 @@ pub async fn alarm(Auth(auth): Auth, Json(payload): Json<AndroidAppAlarmPayload>
         return StatusCode::FORBIDDEN;
     }
 
-    let Some(actor) = ractor::registry::where_is(AlarmActor::NAME) else {
-        tracing::warn!("alarm actor not found");
+    if let Err(e) = rpc::cast(AlarmActor::NAME, AlarmMessage::NextAlarm(payload)) {
+        tracing::error!("error forwarding alarm event: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR;
-    };
-
-    if let Err(e) = actor.send_message(AlarmMessage::NextAlarm(payload)) {
-        tracing::error!("error forwarding alarm event {e}")
-    };
+    }
 
     StatusCode::NO_CONTENT
 }

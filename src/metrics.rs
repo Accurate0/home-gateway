@@ -38,6 +38,10 @@ struct Instruments {
     integration_poll_duration: Histogram<f64>,
     /// MQTT messages ingested, labelled by classified topic kind.
     mqtt_ingest_total: Counter<u64>,
+    /// Supervised actor restarts, labelled by actor name and reason.
+    actor_restarts_total: Counter<u64>,
+    /// Device handler message failures, labelled by handler name.
+    device_handler_errors_total: Counter<u64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -95,8 +99,32 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .u64_counter("home_gateway_mqtt_ingest_total")
             .with_description("MQTT messages ingested, labelled by classified topic kind")
             .build(),
+        actor_restarts_total: meter
+            .u64_counter("home_gateway_actor_restarts_total")
+            .with_description("Supervised actor restarts, labelled by actor and reason")
+            .build(),
+        device_handler_errors_total: meter
+            .u64_counter("home_gateway_device_handler_errors_total")
+            .with_description("Device handler message failures, labelled by handler")
+            .build(),
     }
 });
+
+pub fn record_actor_restart(actor: &str, reason: &'static str) {
+    INSTRUMENTS.actor_restarts_total.add(
+        1,
+        &[
+            KeyValue::new("actor", actor.to_owned()),
+            KeyValue::new("reason", reason),
+        ],
+    );
+}
+
+pub fn record_device_handler_error(handler: &'static str) {
+    INSTRUMENTS
+        .device_handler_errors_total
+        .add(1, &[KeyValue::new("handler", handler)]);
+}
 
 pub fn record_integration_poll(name: &'static str, outcome: &'static str, elapsed: Duration) {
     let labels = [

@@ -1,51 +1,16 @@
-use crate::{
-    actors::{
-        eink_display::EInkDisplayActor,
-        integrations::{solar::SolarActor, trmnl::TrmnlActor, woolworths::WoolworthsActor},
-        sun::SunActor,
-        system::{battery::BatteryActor, watchdog::WatchdogActor},
-    },
-    integrations::{
-        solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
-        trmnl::Trmnl,
-        woolworths::Woolworths,
-    },
-    state::SharedActorState,
-};
-use ractor::Actor;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use super::{
-    alarm::AlarmActor,
-    devices::{
-        control_switch::{self, ControlSwitchHandler},
-        door_events::DoorEventsSupervisor,
-        door_sensor::{self, DoorSensorHandler},
-        environment_sensor::{self, EnvironmentSensorHandler},
-        light::{self, LightHandler},
-        media_player::MediaPlayerHandler,
-        plant_sensor::{self, PlantSensorHandler},
-        presence_sensor::{self, PresenceSensorHandler},
-        robot_vacuum::RobotVacuumHandler,
-        smart_switch::{self, SmartSwitchHandler},
-    },
-    integrations::{
-        home_assistant::HomeAssistantActor, jellyfin::JellyfinActor, synergy::SynergyActor,
-        transperth::TransperthActor, unifi::UnifiConnectedClientHandler,
-    },
-    system::{
-        adhoc::AdhocTaskActor,
-        cron::CronActor,
-        mqtt_ingest::{self, MqttIngest},
-        push::{self, PushWorker},
-    },
-    workflows::{self, WorkflowWorker, dispatcher::WorkflowDispatcher},
-};
+use ractor::Actor;
+
+use crate::actors::health::Lifecycle;
+use crate::actors::manifest::{ACTORS, Spawned, find};
+use crate::state::SharedActorState;
 
 const RESTART_BACKOFF_BASE: Duration = Duration::from_secs(1);
 const RESTART_BACKOFF_MAX: Duration = Duration::from_secs(60);
 const RESTART_BACKOFF_MAX_SHIFT: u32 = 16;
+const HEALTHY_AFTER: Duration = Duration::from_secs(300);
 
 pub enum RootMessage {
     Restart(String),
@@ -54,6 +19,7 @@ pub enum RootMessage {
 #[derive(Default)]
 pub struct RootState {
     attempts: HashMap<String, u32>,
+    started_at: HashMap<String, std::time::Instant>,
 }
 
 pub struct RootSupervisor {
@@ -61,412 +27,42 @@ pub struct RootSupervisor {
 }
 
 impl RootSupervisor {
-    fn schedule_restart(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-        state: &mut RootState,
-        name: String,
-        delay: Duration,
-    ) {
-        state.attempts.entry(name.clone()).or_insert(0);
-        myself.send_after(delay, move || RootMessage::Restart(name));
-    }
-
-    async fn restart(
+    async fn spawn(
         &self,
         myself: &ractor::ActorRef<RootMessage>,
         name: &str,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        tracing::info!(actor = %name, "restarting actor");
+    ) -> Result<Spawned, ractor::ActorProcessingErr> {
+        let Some(spec) = find(name) else {
+            return Err(format!("no actor named `{name}` in the manifest").into());
+        };
 
-        let state = self.shared_actor_state.clone();
+        (spec.spawn)(myself.clone(), self.shared_actor_state.clone()).await
+    }
 
-        match name {
-            UnifiConnectedClientHandler::NAME => {
-                self.start_unifi_connected_clients_handler(myself).await?
-            }
-            CronActor::NAME => self.start_cron_actor(myself).await?,
-            AdhocTaskActor::NAME => self.start_adhoc_task_actor(myself).await,
-            SynergyActor::NAME => self.start_synergy_actor(myself).await?,
-            WoolworthsActor::NAME => self.start_woolworths_actor(myself).await?,
-            TrmnlActor::NAME => self.start_trmnl_actor(myself).await?,
-            AlarmActor::NAME => self.start_alarm_actor(myself).await?,
-            EInkDisplayActor::NAME => self.start_eink_display_actor(myself).await?,
-            BatteryActor::NAME => self.start_battery_actor(myself).await?,
-            HomeAssistantActor::NAME => self.start_home_assistant_actor(myself).await?,
-            JellyfinActor::NAME => self.start_jellyfin_actor(myself).await?,
-            TransperthActor::NAME => self.start_transperth_actor(myself).await?,
-            SolarActor::NAME => self.start_solar_actor(myself).await?,
-            SunActor::NAME => self.start_sun_actor(myself).await?,
-            WatchdogActor::NAME => self.start_watchdog_actor(myself).await?,
-            WorkflowDispatcher::NAME => self.start_workflow_dispatcher(myself).await?,
+    fn record_health(&self, name: &str, lifecycle: Lifecycle) {
+        let Some(spec) = find(name) else {
+            return;
+        };
 
-            MqttIngest::NAME => {
-                mqtt_ingest::spawn::spawn_mqtt_ingest(myself, state).await?;
-            }
-            WorkflowWorker::NAME => {
-                workflows::spawn::spawn_workflows(myself, state).await?;
-            }
-            DoorEventsSupervisor::NAME => {
-                myself
-                    .spawn_linked(
-                        Some(DoorEventsSupervisor::NAME.to_string()),
-                        DoorEventsSupervisor {
-                            shared_actor_state: state,
-                        },
-                        (),
-                    )
-                    .await?;
-            }
-            LightHandler::NAME => {
-                light::spawn::spawn_light_handler(myself, state).await?;
-            }
-            PresenceSensorHandler::NAME => {
-                presence_sensor::spawn::spawn_presence_handler(myself, state).await?;
-            }
-            EnvironmentSensorHandler::NAME => {
-                environment_sensor::spawn::spawn_environment_sensor_handler(myself, state).await?;
-            }
-            PlantSensorHandler::NAME => {
-                plant_sensor::spawn::spawn_plant_sensor_handler(myself, state).await?;
-            }
-            DoorSensorHandler::NAME => {
-                door_sensor::spawn::spawn_door_handler(myself, state).await?;
-            }
-            ControlSwitchHandler::NAME => {
-                control_switch::spawn::spawn_control_switch_handler(myself, state).await?;
-            }
-            SmartSwitchHandler::NAME => {
-                smart_switch::spawn::spawn_smart_switch_handler(myself, state).await?;
-            }
-            MediaPlayerHandler::NAME => {
-                crate::actors::devices::media_player::spawn::spawn_media_player_handler(
-                    myself, state,
-                )
-                .await?;
-            }
-            RobotVacuumHandler::NAME => {
-                crate::actors::devices::robot_vacuum::spawn::spawn_robot_vacuum_handler(
-                    myself, state,
-                )
-                .await?;
-            }
-            PushWorker::NAME => {
-                push::spawn::spawn_push(myself, state).await?;
-            }
+        self.shared_actor_state
+            .actor_health
+            .record(spec.name, lifecycle);
+    }
 
-            name => tracing::error!(actor = %name, "no restart hook for this actor"),
+    fn attempts_for(&self, state: &mut RootState, name: &str) -> u32 {
+        let healthy = state
+            .started_at
+            .get(name)
+            .is_some_and(|started| started.elapsed() >= HEALTHY_AFTER);
+
+        if healthy {
+            state.attempts.remove(name);
         }
 
-        Ok(())
-    }
+        let attempts = state.attempts.entry(name.to_owned()).or_insert(0);
+        *attempts += 1;
 
-    async fn start_eink_display_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(EInkDisplayActor::NAME.to_owned()),
-                EInkDisplayActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_battery_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(BatteryActor::NAME.to_owned()),
-                BatteryActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_home_assistant_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        if self.shared_actor_state.home_assistant.is_none() {
-            return Ok(());
-        }
-
-        myself
-            .spawn_linked(
-                Some(HomeAssistantActor::NAME.to_owned()),
-                HomeAssistantActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_transperth_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        let Some(transperth) = self.shared_actor_state.transperth.clone() else {
-            return Ok(());
-        };
-
-        myself
-            .spawn_linked(
-                Some(TransperthActor::NAME.to_owned()),
-                TransperthActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                    transperth,
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_jellyfin_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        let Some(jellyfin) = self.shared_actor_state.jellyfin.clone() else {
-            return Ok(());
-        };
-
-        myself
-            .spawn_linked(
-                Some(JellyfinActor::NAME.to_owned()),
-                JellyfinActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                    jellyfin,
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_alarm_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(AlarmActor::NAME.to_owned()),
-                AlarmActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_unifi_connected_clients_handler(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(UnifiConnectedClientHandler::NAME.to_owned()),
-                UnifiConnectedClientHandler {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_cron_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(CronActor::NAME.to_owned()),
-                CronActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_adhoc_task_actor(&self, myself: &ractor::ActorRef<RootMessage>) {
-        let spawned = myself
-            .spawn_linked(
-                Some(AdhocTaskActor::NAME.to_owned()),
-                AdhocTaskActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await;
-
-        match spawned {
-            Ok(_) => tracing::debug!("adhoc task actor started"),
-            Err(e) => {
-                tracing::error!("failed to start adhoc task actor, continuing without it: {e}")
-            }
-        }
-    }
-
-    async fn start_woolworths_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(WoolworthsActor::NAME.to_owned()),
-                WoolworthsActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                    woolworths: Woolworths::new(self.shared_actor_state.db.clone()),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_trmnl_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        let Some(api_key) = self.shared_actor_state.settings.trmnl_api_key.clone() else {
-            return Ok(());
-        };
-
-        myself
-            .spawn_linked(
-                Some(TrmnlActor::NAME.to_owned()),
-                TrmnlActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                    trmnl: Trmnl::new(
-                        api_key,
-                        self.shared_actor_state.settings.trmnl.base_url.clone(),
-                    ),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_synergy_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(SynergyActor::NAME.to_owned()),
-                SynergyActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_solar_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        let Some(settings) = self.shared_actor_state.settings.solar.clone() else {
-            tracing::info!("no solar config; skipping solar actor");
-            return Ok(());
-        };
-
-        let Some(goodwe) = GoodWeSemsAPI::new(self.shared_actor_state.db.clone(), &settings) else {
-            return Ok(());
-        };
-
-        myself
-            .spawn_linked(
-                Some(SolarActor::NAME.to_owned()),
-                SolarActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                    goodwe,
-                    weather: WeatherAPI::new()?,
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_sun_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(SunActor::NAME.to_owned()),
-                SunActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_watchdog_actor(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(WatchdogActor::NAME.to_owned()),
-                WatchdogActor {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn start_workflow_dispatcher(
-        &self,
-        myself: &ractor::ActorRef<RootMessage>,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        myself
-            .spawn_linked(
-                Some(WorkflowDispatcher::NAME.to_owned()),
-                WorkflowDispatcher {
-                    shared_actor_state: self.shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        Ok(())
+        *attempts
     }
 }
 
@@ -480,71 +76,36 @@ impl Actor for RootSupervisor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let shared_actor_state = &self.shared_actor_state;
+        let mut state = RootState::default();
 
-        workflows::spawn::spawn_workflows(&myself, shared_actor_state.clone()).await?;
+        for spec in ACTORS.iter().filter(|spec| spec.autostart) {
+            match self.spawn(&myself, spec.name).await {
+                Ok(Spawned::Started) => {
+                    state
+                        .started_at
+                        .insert(spec.name.to_owned(), std::time::Instant::now());
+                    self.record_health(spec.name, Lifecycle::Running);
 
-        control_switch::spawn::spawn_control_switch_handler(&myself, shared_actor_state.clone())
-            .await?;
+                    tracing::debug!(actor = spec.name, "actor started");
+                }
+                Ok(Spawned::Skipped) => {
+                    self.record_health(spec.name, Lifecycle::Skipped);
 
-        smart_switch::spawn::spawn_smart_switch_handler(&myself, shared_actor_state.clone())
-            .await?;
+                    tracing::info!(actor = spec.name, "actor not configured, skipping")
+                }
+                Err(e) if spec.optional => {
+                    self.record_health(spec.name, Lifecycle::Unavailable);
 
-        door_sensor::spawn::spawn_door_handler(&myself, shared_actor_state.clone()).await?;
-        push::spawn::spawn_push(&myself, self.shared_actor_state.clone()).await?;
+                    tracing::error!(
+                        actor = spec.name,
+                        "failed to start, continuing without it: {e}"
+                    )
+                }
+                Err(e) => return Err(e),
+            }
+        }
 
-        light::spawn::spawn_light_handler(&myself, shared_actor_state.clone()).await?;
-        environment_sensor::spawn::spawn_environment_sensor_handler(
-            &myself,
-            shared_actor_state.clone(),
-        )
-        .await?;
-
-        presence_sensor::spawn::spawn_presence_handler(&myself, shared_actor_state.clone()).await?;
-
-        plant_sensor::spawn::spawn_plant_sensor_handler(&myself, shared_actor_state.clone())
-            .await?;
-
-        crate::actors::devices::media_player::spawn::spawn_media_player_handler(
-            &myself,
-            shared_actor_state.clone(),
-        )
-        .await?;
-
-        crate::actors::devices::robot_vacuum::spawn::spawn_robot_vacuum_handler(
-            &myself,
-            shared_actor_state.clone(),
-        )
-        .await?;
-
-        myself
-            .spawn_linked(
-                Some(DoorEventsSupervisor::NAME.to_string()),
-                DoorEventsSupervisor {
-                    shared_actor_state: shared_actor_state.clone(),
-                },
-                (),
-            )
-            .await?;
-
-        self.start_unifi_connected_clients_handler(&myself).await?;
-        self.start_cron_actor(&myself).await?;
-        self.start_synergy_actor(&myself).await?;
-        self.start_woolworths_actor(&myself).await?;
-        self.start_trmnl_actor(&myself).await?;
-        self.start_alarm_actor(&myself).await?;
-        self.start_home_assistant_actor(&myself).await?;
-        self.start_jellyfin_actor(&myself).await?;
-        self.start_transperth_actor(&myself).await?;
-        self.start_eink_display_actor(&myself).await?;
-        self.start_battery_actor(&myself).await?;
-        self.start_solar_actor(&myself).await?;
-        self.start_sun_actor(&myself).await?;
-        self.start_watchdog_actor(&myself).await?;
-        self.start_workflow_dispatcher(&myself).await?;
-        self.start_adhoc_task_actor(&myself).await;
-
-        Ok(RootState::default())
+        Ok(state)
     }
 
     async fn handle_supervisor_evt(
@@ -566,7 +127,14 @@ impl Actor for RootSupervisor {
                     return Ok(());
                 };
 
-                self.schedule_restart(&myself, state, name.to_string(), Duration::ZERO);
+                let attempts = self.attempts_for(state, &name);
+                let backoff = restart_backoff(attempts);
+
+                self.record_health(&name, Lifecycle::Unavailable);
+                crate::metrics::record_actor_restart(&name, "failed");
+                tracing::warn!(actor = %name, attempts, ?backoff, "scheduling restart");
+
+                myself.send_after(backoff, move || RootMessage::Restart(name));
             }
             _ => {}
         }
@@ -582,25 +150,35 @@ impl Actor for RootSupervisor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             RootMessage::Restart(name) => {
-                if let Err(e) = self.restart(&myself, &name).await {
-                    let attempts = state.attempts.entry(name.clone()).or_insert(0);
-                    *attempts += 1;
+                tracing::info!(actor = %name, "restarting actor");
 
-                    let backoff = restart_backoff(*attempts);
+                match self.spawn(&myself, &name).await {
+                    Ok(Spawned::Started) => {
+                        state
+                            .started_at
+                            .insert(name.clone(), std::time::Instant::now());
+                        self.record_health(&name, Lifecycle::Running);
+                    }
+                    Ok(Spawned::Skipped) => {
+                        self.record_health(&name, Lifecycle::Skipped);
 
-                    tracing::error!(
-                        actor = %name,
-                        attempts = *attempts,
-                        ?backoff,
-                        "failed to restart actor, retrying: {e}"
-                    );
+                        tracing::info!(actor = %name, "actor not configured, not restarting")
+                    }
+                    Err(e) => {
+                        let attempts = self.attempts_for(state, &name);
+                        let backoff = restart_backoff(attempts);
 
-                    myself.send_after(backoff, move || RootMessage::Restart(name));
+                        crate::metrics::record_actor_restart(&name, "respawn-failed");
+                        tracing::error!(
+                            actor = %name,
+                            attempts,
+                            ?backoff,
+                            "failed to restart actor, retrying: {e}"
+                        );
 
-                    return Ok(());
+                        myself.send_after(backoff, move || RootMessage::Restart(name));
+                    }
                 }
-
-                state.attempts.remove(&name);
             }
         }
 

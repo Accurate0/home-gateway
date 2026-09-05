@@ -28,19 +28,16 @@ impl BatteryActor {
         battery_percent: Option<f64>,
         battery_chemistry: Option<BatteryChemistry>,
     ) {
-        let Some(actor) = ractor::registry::where_is(Self::NAME) else {
-            tracing::error!("battery actor not found, dropping report for {device_id}");
-            return;
-        };
-
-        if let Err(e) = actor.send_message(BatteryMessage::Report {
+        let message = BatteryMessage::Report {
             device_id,
             name,
             kind,
             battery_voltage,
             battery_percent,
             battery_chemistry,
-        }) {
+        };
+
+        if let Err(e) = crate::actors::system::rpc::cast(Self::NAME, message) {
             tracing::error!("failed to send battery report: {e}");
         }
     }

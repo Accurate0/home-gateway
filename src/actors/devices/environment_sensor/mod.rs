@@ -1,17 +1,13 @@
+use crate::actors::devices::handler::DeviceHandler;
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
     settings::Metric,
     state::SharedActorState,
 };
 use chrono::Utc;
-use ractor::{
-    ActorProcessingErr, ActorRef, RpcReplyPort,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
+use ractor::RpcReplyPort;
 use std::collections::HashMap;
 use uuid::Uuid;
-
-pub mod spawn;
 
 pub enum Entity {
     Zigbee {
@@ -293,46 +289,17 @@ impl EnvironmentSensorHandler {
     }
 }
 
-impl Worker for EnvironmentSensorHandler {
-    type Key = ();
+impl DeviceHandler for EnvironmentSensorHandler {
+    const NAME: &'static str = EnvironmentSensorHandler::NAME;
+
     type Message = Message;
     type State = EnvironmentSensorState;
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(EnvironmentSensorState::default())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        Job { msg, .. }: Job<(), Message>,
-        state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg, state).await {
-            tracing::error!("error while handling message: {e}")
-        }
-
-        Ok(())
-    }
-}
-
-pub struct EnvironmentSensorHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-impl WorkerBuilder<EnvironmentSensorHandler, ()> for EnvironmentSensorHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (EnvironmentSensorHandler, ()) {
-        (
-            EnvironmentSensorHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
+    async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
+        Self::handle(self, message, state).await
     }
 }

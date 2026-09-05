@@ -1,7 +1,9 @@
 pub mod alarm;
 pub mod devices;
 pub mod eink_display;
+pub mod health;
 pub mod integrations;
+pub mod manifest;
 pub mod root;
 pub mod sun;
 pub mod system;

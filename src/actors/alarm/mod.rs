@@ -1,12 +1,10 @@
+use crate::actors::system::rpc;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     state::SharedActorState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
-use ractor::{
-    Actor,
-    factory::{FactoryMessage, Job, JobOptions},
-};
+use ractor::Actor;
 use std::collections::HashMap;
 use std::time::Duration;
 use tracing::Level;
@@ -90,12 +88,6 @@ impl Actor for AlarmActor {
                     if should_trigger {
                         let workflow_name = &self.shared_actor_state.settings.alarm.workflow;
                         tracing::info!("triggering `{workflow_name}` workflow");
-                        let Some(workflow_actor) = ractor::registry::where_is(WorkflowWorker::NAME)
-                        else {
-                            tracing::warn!("could not find workflow actor");
-                            return Ok(());
-                        };
-
                         let Some(workflow) = self
                             .shared_actor_state
                             .settings
@@ -108,18 +100,13 @@ impl Actor for AlarmActor {
                         let workflow = workflow.clone();
 
                         let event_id = Uuid::new_v4();
-                        let message = FactoryMessage::Dispatch(Job {
-                            key: (),
-                            msg: WorkflowWorkerMessage::Execute {
-                                event_id,
-                                workflow,
-                                vars: HashMap::new(),
-                            },
-                            options: JobOptions::default(),
-                            accepted: None,
-                        });
+                        let message = WorkflowWorkerMessage::Execute {
+                            event_id,
+                            workflow,
+                            vars: HashMap::new(),
+                        };
 
-                        workflow_actor.send_message(message)?;
+                        rpc::cast_factory(WorkflowWorker::NAME, message)?;
                         sqlx::query!("DELETE FROM state WHERE key = $1", Self::ALARM_STATE_KEY)
                             .execute(&self.shared_actor_state.db)
                             .await?;

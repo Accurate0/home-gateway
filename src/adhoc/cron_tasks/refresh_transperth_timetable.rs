@@ -1,3 +1,4 @@
+use crate::actors::system::rpc;
 use std::collections::HashMap;
 
 use crate::actors::integrations::transperth::{TransperthActor, TransperthMessage};
@@ -86,12 +87,9 @@ impl AdhocCronTask for RefreshTransperthTimetable {
             .await
             .map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
 
-        match ractor::registry::where_is(TransperthActor::NAME) {
-            Some(actor) => match actor.send_message(TransperthMessage::LoadTimetable) {
-                Ok(()) => tracing::info!("transperth actor asked to reload the timetable"),
-                Err(error) => tracing::warn!("transperth actor reload failed: {error}"),
-            },
-            None => tracing::debug!("transperth actor not running, index will load on next start"),
+        match rpc::cast(TransperthActor::NAME, TransperthMessage::LoadTimetable) {
+            Ok(()) => tracing::info!("transperth actor asked to reload the timetable"),
+            Err(error) => tracing::debug!("transperth actor reload skipped: {error}"),
         }
 
         Ok(trips)

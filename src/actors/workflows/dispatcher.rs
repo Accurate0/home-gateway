@@ -8,12 +8,10 @@
 //! itself — it only matches and dispatches, so the factory's worker pool keeps
 //! providing the parallelism.
 
+use crate::actors::system::rpc;
 use std::collections::HashMap;
 
-use ractor::{
-    Actor, ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, JobOptions},
-};
+use ractor::{Actor, ActorProcessingErr, ActorRef};
 use tokio::sync::broadcast::error::RecvError;
 use tracing::Instrument;
 
@@ -542,21 +540,15 @@ impl WorkflowDispatcher {
         workflow: Workflow,
         vars: HashMap<String, String>,
     ) -> Result<(), ActorProcessingErr> {
-        let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME) else {
-            tracing::warn!("[{event_id}] workflow factory not found, dropping trigger");
-            return Ok(());
+        let message = WorkflowWorkerMessage::Execute {
+            event_id,
+            workflow,
+            vars,
         };
 
-        actor.send_message(FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: WorkflowWorkerMessage::Execute {
-                event_id,
-                workflow,
-                vars,
-            },
-            options: JobOptions::default(),
-            accepted: None,
-        }))?;
+        if let Err(e) = rpc::cast_factory(WorkflowWorker::NAME, message) {
+            tracing::warn!("[{event_id}] could not dispatch trigger: {e}");
+        }
 
         Ok(())
     }

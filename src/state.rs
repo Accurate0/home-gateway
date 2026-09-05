@@ -1,5 +1,6 @@
 use sqlx::{Pool, Postgres};
 
+use crate::actors::health::ActorHealthRegistry;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::AuthManager;
 use crate::device_registry::DeviceRegistry;
@@ -29,6 +30,7 @@ pub struct SharedActorState {
     pub jellyfin: Option<Jellyfin>,
     pub transperth: Option<Transperth>,
     pub eink: EinkDisplayManager,
+    pub actor_health: ActorHealthRegistry,
 }
 
 #[derive(Clone)]
@@ -41,5 +43,6 @@ pub struct ApiState {
     pub auth: AuthManager,
     pub devices: DeviceRegistry,
     pub eink: EinkDisplayManager,
+    pub actor_health: ActorHealthRegistry,
     pub willyweather: WillyWeather,
 }

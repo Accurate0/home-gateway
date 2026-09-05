@@ -1,16 +1,11 @@
+use crate::actors::devices::handler::DeviceHandler;
 use crate::{
     actors::devices::door_events::{
         DoorEvents, DoorEventsMessage, DoorEventsSupervisor, DoorEventsType,
     },
     state::SharedActorState,
 };
-use ractor::{
-    ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
 use uuid::Uuid;
-
-pub mod spawn;
 
 pub enum Entity {
     Zigbee {
@@ -109,46 +104,18 @@ impl DoorSensorHandler {
     }
 }
 
-impl Worker for DoorSensorHandler {
-    type Key = ();
+impl DeviceHandler for DoorSensorHandler {
+    const NAME: &'static str = DoorSensorHandler::NAME;
+    const WORKERS: usize = 1;
+
     type Message = Message;
     type State = ();
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        Job { msg, .. }: Job<(), Message>,
-        _state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
-            tracing::error!("error while handling message: {e}")
-        }
-
-        Ok(())
-    }
-}
-
-pub struct DoorSensorHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-impl WorkerBuilder<DoorSensorHandler, ()> for DoorSensorHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (DoorSensorHandler, ()) {
-        (
-            DoorSensorHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
+    async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
+        Self::handle(self, message).await
     }
 }

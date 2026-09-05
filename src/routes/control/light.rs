@@ -1,5 +1,6 @@
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
+    actors::system::rpc,
     auth::{
         Auth,
         scope::{Action, Resource, Scope},
@@ -10,7 +11,7 @@ use crate::{
 };
 use axum::{Json, extract::State};
 use http::StatusCode;
-use ractor::factory::{FactoryMessage, Job, JobOptions};
+
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -35,11 +36,6 @@ pub async fn light_control(
     auth.require(&Scope::new(Resource::Control, Action::Write))
         .map_err(AppError::StatusCode)?;
 
-    let Some(actor) = ractor::registry::where_is(LightHandler::NAME) else {
-        tracing::warn!("could not find light actor");
-        return Ok(StatusCode::INTERNAL_SERVER_ERROR);
-    };
-
     for (ieee_addr, change) in control.change {
         let message = match change {
             LightControlChange::Off => LightHandlerMessage::TurnOff { ieee_addr },
@@ -47,14 +43,10 @@ pub async fn light_control(
             LightControlChange::Toggle => LightHandlerMessage::Toggle { ieee_addr },
         };
 
-        let message = FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: message,
-            options: JobOptions::default(),
-            accepted: None,
-        });
-
-        actor.send_message(message)?;
+        if let Err(e) = rpc::cast_factory(LightHandler::NAME, message) {
+            tracing::error!("error dispatching light control: {e}");
+            return Ok(StatusCode::INTERNAL_SERVER_ERROR);
+        }
     }
 
     Ok(StatusCode::NO_CONTENT)

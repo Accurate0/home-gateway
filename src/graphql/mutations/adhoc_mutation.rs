@@ -1,6 +1,7 @@
 use async_graphql::Object;
 
 use crate::actors::system::adhoc::{AdhocTaskActor, AdhocTaskActorMessage};
+use crate::actors::system::rpc;
 use crate::adhoc::cron_registry;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
@@ -12,11 +13,7 @@ pub struct AdhocMutation;
 impl AdhocMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Write)))]
     async fn run_pending_adhoc_tasks(&self) -> async_graphql::Result<bool> {
-        let Some(actor) = ractor::registry::where_is(AdhocTaskActor::NAME) else {
-            return Err(async_graphql::Error::new("adhoc task actor unavailable"));
-        };
-
-        actor.send_message(AdhocTaskActorMessage::RunPending)?;
+        rpc::cast(AdhocTaskActor::NAME, AdhocTaskActorMessage::RunPending)?;
 
         Ok(true)
     }
@@ -29,11 +26,10 @@ impl AdhocMutation {
             )));
         };
 
-        let Some(actor) = ractor::registry::where_is(AdhocTaskActor::NAME) else {
-            return Err(async_graphql::Error::new("adhoc task actor unavailable"));
-        };
-
-        actor.send_message(AdhocTaskActorMessage::RunCron { name: task.name() })?;
+        rpc::cast(
+            AdhocTaskActor::NAME,
+            AdhocTaskActorMessage::RunCron { name: task.name() },
+        )?;
 
         Ok(true)
     }

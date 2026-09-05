@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use home_gateway::actors::devices::light::spawn::spawn_light_handler;
+use home_gateway::actors::devices::handler::spawn_handler;
+use home_gateway::actors::devices::light::LightHandler;
 use home_gateway::actors::workflows::{dispatcher::WorkflowDispatcher, spawn::spawn_workflows};
 use home_gateway::event_bus::EventBusMessage;
 use pretty_assertions::assert_eq;
@@ -21,7 +22,7 @@ async fn start() -> Harness {
     spawn_workflows(&harness.root, harness.state.clone())
         .await
         .unwrap();
-    spawn_light_handler(&harness.root, harness.state.clone())
+    spawn_handler::<LightHandler>(&harness.root, harness.state.clone())
         .await
         .unwrap();
 

@@ -1,15 +1,11 @@
+use crate::actors::devices::handler::DeviceHandler;
 use crate::{
     device_registry::Capability, event_bus::EventBusMessage,
     integrations::esphome::light_command_topic, integrations::mqtt::ZIGBEE2MQTT_BASE,
     settings::IEEEAddress, state::SharedActorState,
 };
-use ractor::{
-    ActorProcessingErr, ActorRef, RpcReplyPort,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
+use ractor::RpcReplyPort;
 use uuid::Uuid;
-
-pub mod spawn;
 
 pub enum Entity {
     Zigbee { address: String, state: String },
@@ -274,47 +270,19 @@ impl LightHandler {
     }
 }
 
-impl Worker for LightHandler {
-    type Key = ();
+impl DeviceHandler for LightHandler {
+    const NAME: &'static str = LightHandler::NAME;
+    const WORKERS: usize = 1;
+
     type Message = LightHandlerMessage;
     type State = ();
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), LightHandlerMessage>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), LightHandlerMessage>>,
-        Job { msg, .. }: Job<(), LightHandlerMessage>,
-        _state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
-            tracing::error!("error while handling message: {e}")
-        }
-
-        Ok(())
-    }
-}
-
-pub struct LightHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-impl WorkerBuilder<LightHandler, ()> for LightHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (LightHandler, ()) {
-        (
-            LightHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
+    async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
+        Self::handle(self, message).await
     }
 }
 

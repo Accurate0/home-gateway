@@ -1,5 +1,5 @@
+use actors::root::RootSupervisor;
 use actors::workflows::manager::WorkflowManager;
-use actors::{root::RootSupervisor, system::mqtt_ingest};
 use auth::{AuthManager, OAuthValidator};
 use error::MainError;
 use event_bus::EventBus;
@@ -28,16 +28,8 @@ use utils::{axum_shutdown_signal, handle_cancellation};
 async fn init_actors(
     shared_actor_state: SharedActorState,
 ) -> anyhow::Result<tokio::task::JoinHandle<()>> {
-    let (root_supervisor_ref, root_supervisor_handle) = Actor::spawn(
-        None,
-        RootSupervisor {
-            shared_actor_state: shared_actor_state.clone(),
-        },
-        (),
-    )
-    .await?;
-
-    mqtt_ingest::spawn::spawn_mqtt_ingest(&root_supervisor_ref, shared_actor_state.clone()).await?;
+    let (_, root_supervisor_handle) =
+        Actor::spawn(None, RootSupervisor { shared_actor_state }, ()).await?;
 
     Ok(root_supervisor_handle)
 }
@@ -102,6 +94,8 @@ async fn main() -> anyhow::Result<()> {
 
     let http_client = home_gateway::http::get_traced_http_client()?;
 
+    let actor_health = home_gateway::actors::health::ActorHealthRegistry::new();
+
     let shared_actor_state = SharedActorState {
         settings: settings_container.clone(),
         devices: device_registry.clone(),
@@ -115,6 +109,7 @@ async fn main() -> anyhow::Result<()> {
         jellyfin,
         transperth: transperth.clone(),
         eink: eink.clone(),
+        actor_health: actor_health.clone(),
     };
 
     let willyweather = WillyWeather::new(&settings.willyweather)?;
@@ -148,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
         auth: AuthManager::new(pool.clone(), oauth),
         devices: device_registry.clone(),
         eink,
+        actor_health,
         willyweather,
     };
 

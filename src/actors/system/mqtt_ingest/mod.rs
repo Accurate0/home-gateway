@@ -1,4 +1,5 @@
 use crate::actors::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
+use crate::actors::system::rpc;
 use crate::{
     actors::devices::{
         door_sensor, environment_sensor, environment_sensor::EnvironmentSensorHandler, light,
@@ -11,7 +12,7 @@ use crate::{
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
+    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -135,14 +136,9 @@ impl MqttIngest {
         };
 
         let event_id = uuid::Uuid::new_v4();
-        let Some(actor_cell) = ractor::registry::where_is(PresenceSensorHandler::NAME) else {
-            tracing::error!("no presence sensor actor found for esphome motion");
-            return Ok(());
-        };
-
-        actor_cell.send_message(FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
+        rpc::cast_factory(
+            PresenceSensorHandler::NAME,
+            presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
                 event_id,
                 entity: presence_sensor::Entity::Esphome {
                     node: node.to_string(),
@@ -150,9 +146,7 @@ impl MqttIngest {
                     motion,
                 },
             }),
-            options: JobOptions::default(),
-            accepted: None,
-        }))?;
+        )?;
 
         Ok(())
     }
@@ -174,45 +168,29 @@ impl MqttIngest {
         let event_id = uuid::Uuid::new_v4();
 
         if self.shared_actor_state.devices.plant(node).is_some() {
-            match ractor::registry::where_is(plant_sensor::PlantSensorHandler::NAME) {
-                Some(actor_cell) => {
-                    actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                        key: (),
-                        msg: plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
-                            event_id,
-                            node: node.to_string(),
-                            object_id: object_id.to_string(),
-                            value,
-                        }),
-                        options: JobOptions::default(),
-                        accepted: None,
-                    }))?;
-                }
-                None => tracing::error!("no plant sensor actor found for esphome sensor"),
-            }
+            rpc::cast_factory(
+                plant_sensor::PlantSensorHandler::NAME,
+                plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
+                    event_id,
+                    node: node.to_string(),
+                    object_id: object_id.to_string(),
+                    value,
+                }),
+            )?;
         }
 
         if self.shared_actor_state.devices.environment(node).is_some() {
-            match ractor::registry::where_is(EnvironmentSensorHandler::NAME) {
-                Some(actor_cell) => {
-                    actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                        key: (),
-                        msg: environment_sensor::Message::NewEvent(Box::new(
-                            environment_sensor::NewEvent {
-                                event_id,
-                                entity: environment_sensor::Entity::Esphome {
-                                    node: node.to_string(),
-                                    object_id: object_id.to_string(),
-                                    value,
-                                },
-                            },
-                        )),
-                        options: JobOptions::default(),
-                        accepted: None,
-                    }))?;
-                }
-                None => tracing::error!("no temperature sensor actor found for esphome sensor"),
-            }
+            rpc::cast_factory(
+                EnvironmentSensorHandler::NAME,
+                environment_sensor::Message::NewEvent(Box::new(environment_sensor::NewEvent {
+                    event_id,
+                    entity: environment_sensor::Entity::Esphome {
+                        node: node.to_string(),
+                        object_id: object_id.to_string(),
+                        value,
+                    },
+                })),
+            )?;
         }
 
         Ok(())
@@ -381,13 +359,6 @@ impl MqttIngest {
             MqttTopic::Valetudo { identifier, leaf } => {
                 self.record_last_seen(&identifier).await;
 
-                let Some(actor_cell) =
-                    ractor::registry::where_is(robot_vacuum::RobotVacuumHandler::NAME)
-                else {
-                    tracing::error!("no robot vacuum actor found");
-                    return Ok(());
-                };
-
                 let device_id = self
                     .shared_actor_state
                     .devices
@@ -395,17 +366,15 @@ impl MqttIngest {
                     .unwrap_or(&identifier)
                     .to_owned();
 
-                actor_cell.send_message(FactoryMessage::Dispatch(Job {
-                    key: (),
-                    msg: robot_vacuum::Message::Valetudo(robot_vacuum::ValetudoEvent {
+                rpc::cast_factory(
+                    robot_vacuum::RobotVacuumHandler::NAME,
+                    robot_vacuum::Message::Valetudo(robot_vacuum::ValetudoEvent {
                         event_id: uuid::Uuid::new_v4(),
                         device_id,
                         leaf,
                         payload,
                     }),
-                    options: JobOptions::default(),
-                    accepted: None,
-                }))?;
+                )?;
             }
             MqttTopic::Zigbee2MqttDevice => {
                 let friendly_name = topic

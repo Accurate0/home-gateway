@@ -1,14 +1,9 @@
+use crate::actors::devices::handler::DeviceHandler;
 use crate::actors::system::battery::BatteryActor;
 use crate::settings::RoborockField;
 use crate::state::SharedActorState;
-use ractor::{
-    ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
 use serde::Deserialize;
 use uuid::Uuid;
-
-pub mod spawn;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Leaf {
@@ -255,47 +250,18 @@ impl RobotVacuumHandler {
     }
 }
 
-impl Worker for RobotVacuumHandler {
-    type Key = ();
+impl DeviceHandler for RobotVacuumHandler {
+    const NAME: &'static str = RobotVacuumHandler::NAME;
+    const WORKERS: usize = 2;
+
     type Message = Message;
     type State = ();
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        Job { msg, .. }: Job<(), Message>,
-        _state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
-            tracing::error!("error while handling message: {e}")
-        }
-
-        Ok(())
-    }
-}
-
-pub struct RobotVacuumHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-
-impl WorkerBuilder<RobotVacuumHandler, ()> for RobotVacuumHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (RobotVacuumHandler, ()) {
-        (
-            RobotVacuumHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
+    async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
+        Self::handle(self, message).await
     }
 }

@@ -1,11 +1,6 @@
+use crate::actors::devices::handler::DeviceHandler;
 use crate::{event_bus::EventBusMessage, state::SharedActorState};
-use ractor::{
-    ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
 use uuid::Uuid;
-
-pub mod spawn;
 
 #[derive(Debug)]
 pub enum Entity {
@@ -48,46 +43,18 @@ impl ControlSwitchHandler {
     }
 }
 
-impl Worker for ControlSwitchHandler {
-    type Key = ();
+impl DeviceHandler for ControlSwitchHandler {
+    const NAME: &'static str = ControlSwitchHandler::NAME;
+    const WORKERS: usize = 3;
+
     type Message = ControlSwitchMessage;
     type State = ();
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), ControlSwitchMessage>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), ControlSwitchMessage>>,
-        Job { msg, .. }: Job<(), ControlSwitchMessage>,
-        _state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
-            tracing::error!("error while handling message: {e}")
-        }
-
-        Ok(())
-    }
-}
-
-pub struct ControlSwitchHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-impl WorkerBuilder<ControlSwitchHandler, ()> for ControlSwitchHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (ControlSwitchHandler, ()) {
-        (
-            ControlSwitchHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
+    async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
+        Self::handle(self, message).await
     }
 }

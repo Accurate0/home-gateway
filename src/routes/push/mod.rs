@@ -1,9 +1,10 @@
 use axum::Json;
 use http::StatusCode;
-use ractor::factory::{FactoryMessage, Job, JobOptions};
+
 use serde::Deserialize;
 
 use crate::actors::system::push::{self, PushWorker};
+use crate::actors::system::rpc;
 use crate::auth::{
     Auth,
     scope::{Action, Resource, Scope},
@@ -28,20 +29,12 @@ pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) ->
         return StatusCode::FORBIDDEN;
     }
 
-    let Some(actor) = ractor::registry::where_is(PushWorker::NAME) else {
-        tracing::warn!("push worker not found, cannot send notification");
-        return StatusCode::SERVICE_UNAVAILABLE;
+    let message = push::PushMessage::Send {
+        title: payload.title,
+        body: payload.body,
     };
 
-    if let Err(e) = actor.send_message(FactoryMessage::Dispatch(Job {
-        key: (),
-        msg: push::PushMessage::Send {
-            title: payload.title,
-            body: payload.body,
-        },
-        options: JobOptions::default(),
-        accepted: None,
-    })) {
+    if let Err(e) = rpc::cast_factory(PushWorker::NAME, message) {
         tracing::error!("error sending to push worker: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR;
     }

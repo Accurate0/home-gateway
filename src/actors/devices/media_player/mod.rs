@@ -1,15 +1,11 @@
+use crate::actors::devices::handler::DeviceHandler;
 use std::collections::HashMap;
 
-use ractor::{
-    ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
 use uuid::Uuid;
 
 use crate::event_bus::EventBusMessage;
 use crate::state::SharedActorState;
 
-pub mod spawn;
 pub mod state;
 
 use state::{Attributes, Prior, edges};
@@ -215,51 +211,19 @@ impl MediaPlayerHandler {
     }
 }
 
-impl Worker for MediaPlayerHandler {
-    type Key = ();
+impl DeviceHandler for MediaPlayerHandler {
+    const NAME: &'static str = MediaPlayerHandler::NAME;
+
     type Message = Message;
     type State = HashMap<String, Prior>;
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(HashMap::new())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        Job { msg, .. }: Job<(), Message>,
-        state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        match msg {
-            Message::HomeAssistant(update) => {
-                if let Err(e) = self.handle_update(update, state).await {
-                    tracing::error!("error while handling media player update: {e}")
-                }
-            }
+    async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
+        match message {
+            Message::HomeAssistant(update) => self.handle_update(update, state).await,
         }
-
-        Ok(())
-    }
-}
-
-pub struct MediaPlayerHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-
-impl WorkerBuilder<MediaPlayerHandler, ()> for MediaPlayerHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (MediaPlayerHandler, ()) {
-        (
-            MediaPlayerHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
     }
 }

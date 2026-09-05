@@ -1,7 +1,7 @@
 use async_graphql::{InputObject, Object};
-use ractor::factory::{FactoryMessage, Job, JobOptions};
 
 use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
+use crate::actors::system::rpc;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::Capability;
 use crate::graphql::guard::ScopeGuard;
@@ -50,18 +50,7 @@ fn is_valid_hex(hex: &str) -> bool {
 }
 
 fn dispatch(message: LightHandlerMessage) -> async_graphql::Result<bool> {
-    let Some(actor) = ractor::registry::where_is(LightHandler::NAME) else {
-        return Err(async_graphql::Error::new("light actor unavailable"));
-    };
-
-    let message = FactoryMessage::Dispatch(Job {
-        key: (),
-        msg: message,
-        options: JobOptions::default(),
-        accepted: None,
-    });
-
-    actor.send_message(message)?;
+    rpc::cast_factory(LightHandler::NAME, message)?;
 
     Ok(true)
 }

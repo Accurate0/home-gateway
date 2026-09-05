@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::time::Duration;
 
+use home_gateway::actors::health::ActorHealthRegistry;
 use home_gateway::actors::root::RootMessage;
 use home_gateway::actors::workflows::manager::WorkflowManager;
 use home_gateway::api::{build_router, build_schema};
@@ -109,6 +110,7 @@ impl Harness {
             jellyfin: None,
             transperth: None,
             eink,
+            actor_health: ActorHealthRegistry::new(),
         };
 
         let (root, _) = Actor::spawn(None, TestRoot, ())
@@ -143,6 +145,7 @@ impl Harness {
             s3: self.state.s3.clone(),
             auth: AuthManager::new(self.db.clone(), None),
             devices: self.devices.clone(),
+            actor_health: self.state.actor_health.clone(),
             eink: self.state.eink.clone(),
             willyweather,
         }

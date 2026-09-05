@@ -73,3 +73,28 @@ where
 
     rx.await.map_err(|e| RpcError::Messaging(e.to_string()))
 }
+
+pub fn cast<M>(name: &'static str, message: M) -> Result<(), RpcError>
+where
+    M: ractor::Message,
+{
+    let actor = ractor::registry::where_is(name).ok_or(RpcError::ActorNotFound(name))?;
+
+    actor
+        .send_message(message)
+        .map_err(|e| RpcError::Messaging(e.to_string()))
+}
+
+pub fn cast_factory<M>(name: &'static str, message: M) -> Result<(), RpcError>
+where
+    M: ractor::Message,
+{
+    let job = FactoryMessage::Dispatch(Job {
+        key: (),
+        msg: message,
+        options: JobOptions::default(),
+        accepted: None,
+    });
+
+    cast(name, job)
+}

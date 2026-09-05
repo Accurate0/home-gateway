@@ -1,3 +1,4 @@
+use crate::actors::system::rpc;
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{
@@ -229,28 +230,24 @@ async fn wake_drift_secs(eink: &EinkDisplayManager, device_id: &str) -> Option<i
 }
 
 fn schedule_next_render(device_id: &str, wake_in_secs: u32) -> Result<(), AppError> {
-    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME) else {
-        tracing::warn!("eink display actor not found, not scheduling the next render");
-        return Ok(());
-    };
-
-    actor.send_message(EInkDisplayMessage::ScheduleNextRender {
-        device_id: device_id.to_owned(),
-        wake_in_secs,
-    })?;
+    rpc::cast(
+        EInkDisplayActor::NAME,
+        EInkDisplayMessage::ScheduleNextRender {
+            device_id: device_id.to_owned(),
+            wake_in_secs,
+        },
+    )?;
 
     Ok(())
 }
 
 fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
-    let Some(actor) = ractor::registry::where_is(EInkDisplayActor::NAME) else {
-        tracing::warn!("eink display actor not found, dropping config request");
-        return Ok(());
-    };
-
-    actor.send_message(EInkDisplayMessage::ConfigRequest {
-        device_id: request.device_id.clone(),
-    })?;
+    rpc::cast(
+        EInkDisplayActor::NAME,
+        EInkDisplayMessage::ConfigRequest {
+            device_id: request.device_id.clone(),
+        },
+    )?;
 
     let Some(voltage) = request.battery_voltage else {
         tracing::warn!(
@@ -260,13 +257,16 @@ fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
         return Ok(());
     };
 
-    actor.send_message(EInkDisplayMessage::BatteryReport {
-        device_id: request.device_id.clone(),
-        battery_voltage: voltage as f64,
-        is_charging: request.is_charging,
-        battery_chemistry: request.battery_chemistry,
-        battery_kind: request.battery_kind.clone(),
-    })?;
+    rpc::cast(
+        EInkDisplayActor::NAME,
+        EInkDisplayMessage::BatteryReport {
+            device_id: request.device_id.clone(),
+            battery_voltage: voltage as f64,
+            is_charging: request.is_charging,
+            battery_chemistry: request.battery_chemistry,
+            battery_kind: request.battery_kind.clone(),
+        },
+    )?;
 
     Ok(())
 }
@@ -304,11 +304,14 @@ pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
     auth.require(&Scope::new(Resource::Epd, Action::Write))
         .map_err(AppError::StatusCode)?;
 
-    let maybe_actor = ractor::registry::where_is(EInkDisplayActor::NAME);
-    if let Some(actor) = maybe_actor {
-        actor.send_message(EInkDisplayMessage::TakeScreenshot { device_id: None })?;
-        Ok(StatusCode::CREATED)
-    } else {
-        Ok(StatusCode::INTERNAL_SERVER_ERROR)
+    match rpc::cast(
+        EInkDisplayActor::NAME,
+        EInkDisplayMessage::TakeScreenshot { device_id: None },
+    ) {
+        Ok(()) => Ok(StatusCode::CREATED),
+        Err(e) => {
+            tracing::error!("could not request screenshot: {e}");
+            Ok(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }

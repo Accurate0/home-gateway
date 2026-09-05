@@ -1,3 +1,4 @@
+use crate::actors::system::rpc;
 use crate::{
     actors::devices::{
         control_switch, control_switch::ControlSwitchHandler, door_sensor,
@@ -8,7 +9,7 @@ use crate::{
     device_registry::{DeviceRegistry, ZigbeeDevice},
     settings::zigbee_model::{payload_bool, payload_f64, payload_i64, payload_string},
 };
-use ractor::factory::{FactoryMessage, Job, JobOptions};
+
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
@@ -294,17 +295,7 @@ pub fn run<R: ZigbeeRole>(
         return;
     };
 
-    let Some(actor) = ractor::registry::where_is(R::ACTOR) else {
-        tracing::error!("no {} actor found for zigbee event", R::ACTOR);
-        return;
-    };
-
-    if let Err(e) = actor.send_message(FactoryMessage::<(), R::Message>::Dispatch(Job {
-        key: (),
-        msg: entity.into_message(event_id),
-        options: JobOptions::default(),
-        accepted: None,
-    })) {
+    if let Err(e) = rpc::cast_factory(R::ACTOR, entity.into_message(event_id)) {
         tracing::error!("failed to dispatch zigbee event to {}: {e}", R::ACTOR);
     }
 }

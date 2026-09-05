@@ -1,3 +1,5 @@
+pub mod handler;
+
 pub mod control_switch;
 pub mod door_events;
 pub mod door_sensor;

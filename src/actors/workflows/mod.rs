@@ -1,3 +1,4 @@
+use crate::actors::system::rpc;
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
@@ -9,7 +10,7 @@ use crate::{
 };
 use ractor::{
     ActorRef,
-    factory::{FactoryMessage, Job, JobOptions, Worker, WorkerBuilder, WorkerId},
+    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -357,9 +358,6 @@ impl WorkflowWorker {
     }
 
     async fn run_light(&self, device: String, state: LightState) -> Result<(), WorkflowError> {
-        let actor = ractor::registry::where_is(LightHandler::NAME)
-            .ok_or(WorkflowError::ActorNotFound(LightHandler::NAME))?;
-
         let ieee_addr = self
             .shared_actor_state
             .devices
@@ -410,14 +408,7 @@ impl WorkflowWorker {
             },
         };
 
-        let message = FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: light_actor_message,
-            options: JobOptions::default(),
-            accepted: None,
-        });
-        actor
-            .send_message(message)
+        rpc::cast_factory(LightHandler::NAME, light_actor_message)
             .map_err(|e| WorkflowError::Messaging(e.to_string()))
     }
 }

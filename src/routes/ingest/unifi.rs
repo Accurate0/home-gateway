@@ -2,6 +2,7 @@ use crate::{
     actors::integrations::unifi::{
         UnifiConnectedClientHandler, UnifiMessage, types::UnifiWebhookEvent,
     },
+    actors::system::rpc,
     auth::{
         Auth,
         scope::{Action, Resource, Scope},
@@ -18,14 +19,13 @@ pub async fn unifi(Auth(auth): Auth, Json(unifi_event): Json<UnifiWebhookEvent>)
         return StatusCode::FORBIDDEN;
     }
 
-    let Some(actor) = ractor::registry::where_is(UnifiConnectedClientHandler::NAME) else {
-        tracing::warn!("unifi actor not found");
+    if let Err(e) = rpc::cast(
+        UnifiConnectedClientHandler::NAME,
+        UnifiMessage::Webhook(Box::new(unifi_event)),
+    ) {
+        tracing::error!("error forwarding unifi event: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR;
-    };
-
-    if let Err(e) = actor.send_message(UnifiMessage::Webhook(Box::new(unifi_event))) {
-        tracing::error!("error forwarding unifi event {e}")
-    };
+    }
 
     StatusCode::NO_CONTENT
 }

@@ -1,4 +1,5 @@
 use crate::{
+    actors::system::rpc,
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     auth::{
         Auth,
@@ -10,7 +11,7 @@ use crate::{
 };
 use axum::{Json, extract::State};
 use http::StatusCode;
-use ractor::factory::{FactoryMessage, Job, JobOptions};
+
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -27,25 +28,16 @@ pub async fn workflow_execute(
     auth.require(&Scope::new(Resource::Workflow, Action::Write))
         .map_err(AppError::StatusCode)?;
 
-    let Some(actor) = ractor::registry::where_is(WorkflowWorker::NAME) else {
-        tracing::warn!("could not find workflow actor");
-        return Ok(StatusCode::INTERNAL_SERVER_ERROR);
-    };
-
     let message = WorkflowWorkerMessage::Execute {
         event_id: uuid::Uuid::new_v4(),
         workflow: payload.workflow,
         vars: HashMap::new(),
     };
 
-    let message = FactoryMessage::Dispatch(Job {
-        key: (),
-        msg: message,
-        options: JobOptions::default(),
-        accepted: None,
-    });
-
-    actor.send_message(message)?;
+    if let Err(e) = rpc::cast_factory(WorkflowWorker::NAME, message) {
+        tracing::error!("error dispatching workflow: {e}");
+        return Ok(StatusCode::INTERNAL_SERVER_ERROR);
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

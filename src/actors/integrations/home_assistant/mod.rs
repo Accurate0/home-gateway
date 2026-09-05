@@ -1,3 +1,4 @@
+use crate::actors::system::rpc;
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -5,7 +6,7 @@ use std::{
 
 use futures_util::{SinkExt, StreamExt};
 use ractor::Actor;
-use ractor::factory::{FactoryMessage, Job, JobOptions};
+
 use serde_json::{Value, json};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use uuid::Uuid;
@@ -193,24 +194,14 @@ impl HomeAssistantActor {
             return;
         };
 
-        let Some(actor) = ractor::registry::where_is(RobotVacuumHandler::NAME) else {
-            tracing::error!("no robot vacuum actor found for roborock update");
-            return;
-        };
-
-        let job = FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
-                event_id,
-                device_id: device_id.to_owned(),
-                field,
-                value: state.to_owned(),
-            }),
-            options: JobOptions::default(),
-            accepted: None,
+        let message = robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
+            event_id,
+            device_id: device_id.to_owned(),
+            field,
+            value: state.to_owned(),
         });
 
-        if let Err(e) = actor.send_message(job) {
+        if let Err(e) = rpc::cast_factory(RobotVacuumHandler::NAME, message) {
             tracing::error!("failed to forward roborock update: {e}");
         }
     }
@@ -264,24 +255,14 @@ impl HomeAssistantActor {
             return;
         }
 
-        let Some(actor) = ractor::registry::where_is(MediaPlayerHandler::NAME) else {
-            tracing::error!("no media player actor found for home assistant update");
-            return;
-        };
-
-        let job = FactoryMessage::Dispatch(Job {
-            key: (),
-            msg: media_player::Message::HomeAssistant(media_player::Update {
-                event_id,
-                address: entity_id.to_owned(),
-                state: state.to_owned(),
-                attributes: attributes.clone(),
-            }),
-            options: JobOptions::default(),
-            accepted: None,
+        let message = media_player::Message::HomeAssistant(media_player::Update {
+            event_id,
+            address: entity_id.to_owned(),
+            state: state.to_owned(),
+            attributes: attributes.clone(),
         });
 
-        if let Err(e) = actor.send_message(job) {
+        if let Err(e) = rpc::cast_factory(MediaPlayerHandler::NAME, message) {
             tracing::error!("failed to forward media player update: {e}");
         }
     }

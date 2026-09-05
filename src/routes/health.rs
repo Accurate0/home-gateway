@@ -1,51 +1,21 @@
 use axum::Json;
+use axum::extract::State;
 use http::StatusCode;
 use serde::Serialize;
 
-use crate::actors::{
-    alarm::AlarmActor,
-    devices::{
-        control_switch, door_events::DoorEventsSupervisor, door_sensor, environment_sensor, light,
-        media_player, plant_sensor, presence_sensor, smart_switch,
-    },
-    eink_display::EInkDisplayActor,
-    integrations::{
-        solar::SolarActor, synergy::SynergyActor, unifi::UnifiConnectedClientHandler,
-        woolworths::WoolworthsActor,
-    },
-    system::{cron::CronActor, push},
-    workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher},
-};
+use crate::actors::health::Lifecycle;
+use crate::actors::manifest;
+use crate::state::ApiState;
 
 pub async fn health() -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
-const EXPECTED_ACTORS: &[&str] = &[
-    WorkflowDispatcher::NAME,
-    UnifiConnectedClientHandler::NAME,
-    CronActor::NAME,
-    SynergyActor::NAME,
-    WoolworthsActor::NAME,
-    AlarmActor::NAME,
-    EInkDisplayActor::NAME,
-    SolarActor::NAME,
-    DoorEventsSupervisor::NAME,
-    WorkflowWorker::NAME,
-    push::PushWorker::NAME,
-    light::LightHandler::NAME,
-    control_switch::ControlSwitchHandler::NAME,
-    smart_switch::SmartSwitchHandler::NAME,
-    door_sensor::DoorSensorHandler::NAME,
-    environment_sensor::EnvironmentSensorHandler::NAME,
-    presence_sensor::PresenceSensorHandler::NAME,
-    plant_sensor::PlantSensorHandler::NAME,
-    media_player::MediaPlayerHandler::NAME,
-];
-
 #[derive(Serialize)]
 pub struct ActorStatus {
     name: &'static str,
+    lifecycle: Lifecycle,
+    expected: bool,
     present: bool,
 }
 
@@ -56,16 +26,29 @@ pub struct ActorHealth {
     registered: Vec<String>,
 }
 
-pub async fn actor_health() -> (StatusCode, Json<ActorHealth>) {
-    let actors: Vec<ActorStatus> = EXPECTED_ACTORS
-        .iter()
-        .map(|name| ActorStatus {
+fn is_expected(name: &str, lifecycle: Lifecycle) -> bool {
+    match lifecycle {
+        Lifecycle::Skipped => false,
+        Lifecycle::Running => true,
+        Lifecycle::Unavailable => manifest::find(name).is_some_and(|spec| !spec.optional),
+    }
+}
+
+pub async fn actor_health(
+    State(ApiState { actor_health, .. }): State<ApiState>,
+) -> (StatusCode, Json<ActorHealth>) {
+    let actors: Vec<ActorStatus> = actor_health
+        .snapshot()
+        .into_iter()
+        .map(|(name, lifecycle)| ActorStatus {
             name,
+            lifecycle,
+            expected: is_expected(name, lifecycle),
             present: ractor::registry::where_is(name).is_some(),
         })
         .collect();
 
-    let healthy = actors.iter().all(|a| a.present);
+    let healthy = actors.iter().all(|a| !a.expected || a.present);
     let status = if healthy {
         StatusCode::OK
     } else {
@@ -80,4 +63,27 @@ pub async fn actor_health() -> (StatusCode, Json<ActorHealth>) {
             registered: ractor::registry::registered(),
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::actors::system::adhoc::AdhocTaskActor;
+    use crate::actors::workflows::WorkflowWorker;
+
+    #[test]
+    fn a_skipped_actor_is_not_expected() {
+        assert!(!is_expected(WorkflowWorker::NAME, Lifecycle::Skipped));
+    }
+
+    #[test]
+    fn a_running_actor_is_expected() {
+        assert!(is_expected(WorkflowWorker::NAME, Lifecycle::Running));
+    }
+
+    #[test]
+    fn an_unavailable_optional_actor_does_not_fail_the_check() {
+        assert!(!is_expected(AdhocTaskActor::NAME, Lifecycle::Unavailable));
+        assert!(is_expected(WorkflowWorker::NAME, Lifecycle::Unavailable));
+    }
 }

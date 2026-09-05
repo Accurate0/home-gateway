@@ -1,14 +1,9 @@
+use crate::actors::devices::handler::DeviceHandler;
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
     state::SharedActorState,
 };
-use ractor::{
-    ActorProcessingErr, ActorRef,
-    factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
-};
 use uuid::Uuid;
-
-pub mod spawn;
 
 pub struct NewEvent {
     pub event_id: Uuid,
@@ -48,47 +43,18 @@ impl PlantSensorHandler {
     }
 }
 
-impl Worker for PlantSensorHandler {
-    type Key = ();
+impl DeviceHandler for PlantSensorHandler {
+    const NAME: &'static str = PlantSensorHandler::NAME;
+    const WORKERS: usize = 1;
+
     type Message = Message;
     type State = ();
-    type Arguments = ();
 
-    async fn pre_start(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        _startup_context: Self::Arguments,
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+    fn new(shared_actor_state: SharedActorState) -> Self {
+        Self { shared_actor_state }
     }
 
-    async fn handle(
-        &self,
-        _wid: WorkerId,
-        _factory: &ActorRef<FactoryMessage<(), Message>>,
-        Job { msg, .. }: Job<(), Message>,
-        _state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg) {
-            tracing::error!("error while handling message: {e}")
-        }
-
-        Ok(())
-    }
-}
-
-pub struct PlantSensorHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
-}
-
-impl WorkerBuilder<PlantSensorHandler, ()> for PlantSensorHandlerBuilder {
-    fn build(&mut self, _wid: usize) -> (PlantSensorHandler, ()) {
-        (
-            PlantSensorHandler {
-                shared_actor_state: self.shared_actor_state.clone(),
-            },
-            (),
-        )
+    async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
+        Self::handle(self, message)
     }
 }
