@@ -1,7 +1,7 @@
 use sqlx::{Executor, Pool, Postgres};
 use std::time::Duration;
 use testcontainers::{
-    ContainerAsync, GenericBuildableImage, GenericImage, ImageExt,
+    ContainerAsync, GenericBuildableImage, GenericImage, ImageExt, ReuseDirective,
     core::{IntoContainerPort, WaitFor},
     runners::{AsyncBuilder, AsyncRunner},
 };
@@ -11,6 +11,7 @@ use uuid::Uuid;
 const POSTGRES_IMAGE: &str = "home-gateway-postgres";
 const POSTGRES_TAG: &str = "test";
 const DOCKERFILE: &str = "Dockerfile.postgres";
+const CONTAINER_NAME: &str = "home-gateway-test-postgres";
 const TEMPLATE_DATABASE: &str = "home_gateway_test_template";
 const CONNECT_ATTEMPTS: u32 = 60;
 
@@ -78,6 +79,8 @@ async fn start_server() -> Server {
         .with_wait_for(WaitFor::message_on_stderr(
             "database system is ready to accept connections",
         ))
+        .with_container_name(CONTAINER_NAME)
+        .with_reuse(ReuseDirective::Always)
         .with_env_var("POSTGRES_PASSWORD", "test")
         .with_env_var("POSTGRES_DB", "home")
         .with_cmd(["postgres", "-c", "shared_preload_libraries=timescaledb"])
@@ -102,8 +105,22 @@ async fn server() -> &'static Server {
             let server = start_server().await;
 
             let admin = connect_with_retry(&server.admin_url).await;
+
+            let stale: Vec<String> =
+                sqlx::query_scalar("SELECT datname FROM pg_database WHERE datname LIKE 'test\\_%'")
+                    .fetch_all(&admin)
+                    .await
+                    .expect("failed to list the stale test databases");
+
+            for database in stale {
+                admin
+                    .execute(format!(r#"DROP DATABASE IF EXISTS "{database}" WITH (FORCE)"#).as_str())
+                    .await
+                    .expect("failed to drop a stale test database");
+            }
+
             admin
-                .execute(format!(r#"DROP DATABASE IF EXISTS "{TEMPLATE_DATABASE}""#).as_str())
+                .execute(format!(r#"DROP DATABASE IF EXISTS "{TEMPLATE_DATABASE}" WITH (FORCE)"#).as_str())
                 .await
                 .expect("failed to drop the stale template database");
             admin

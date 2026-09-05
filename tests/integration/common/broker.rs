@@ -3,13 +3,14 @@ use std::time::Duration;
 
 use home_gateway::device_registry::DeviceRegistry;
 use home_gateway::integrations::mqtt::{Mqtt, MqttClient};
-use testcontainers::{ContainerAsync, runners::AsyncRunner};
+use testcontainers::{ContainerAsync, ImageExt, ReuseDirective, runners::AsyncRunner};
 use testcontainers_modules::mosquitto::Mosquitto;
 use tokio::sync::OnceCell;
 use tokio_util::sync::CancellationToken;
 
 use super::wait_for;
 
+const CONTAINER_NAME: &str = "home-gateway-test-broker";
 const RECORDER_CAPACITY: usize = 100;
 const PUBLISH_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -72,6 +73,8 @@ async fn broker() -> &'static Broker {
     BROKER
         .get_or_init(|| async {
             let container = Mosquitto::default()
+                .with_container_name(CONTAINER_NAME)
+                .with_reuse(ReuseDirective::Always)
                 .start()
                 .await
                 .expect("failed to start the mosquitto container");
