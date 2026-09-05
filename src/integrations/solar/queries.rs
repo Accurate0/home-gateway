@@ -2,9 +2,9 @@ use crate::integrations::solar::goodwe::types::PlantDetailsByPowerStationIdRespo
 use crate::integrations::solar::types::{
     GenerationHistory, SolarCurrentResponse, SolarCurrentStatistics, SolarCurrentStatisticsAverages,
 };
+use crate::repo::SolarRepo;
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SolarQueryError {
@@ -24,16 +24,11 @@ pub async fn average_for_last_n_minutes(
     db: &Pool<Postgres>,
     minutes: i32,
 ) -> Result<Option<f64>, SolarQueryError> {
-    let row = sqlx::query!(
-        "SELECT avg(current_kwh) AS avg FROM solar_data_tsdb \
-         WHERE time > now() - MAKE_INTERVAL(mins => $1)",
-        minutes
-    )
-    .fetch_optional(db)
-    .instrument(tracing::info_span!("solar_average", time_in_mins = minutes))
-    .await?;
+    let row = SolarRepo::new(db.clone())
+        .average_for_last_n_minutes(minutes)
+        .await?;
 
-    Ok(row.and_then(|r| r.avg))
+    Ok(row)
 }
 
 pub async fn statistics(db: &Pool<Postgres>) -> Result<SolarCurrentStatistics, SolarQueryError> {
@@ -53,29 +48,18 @@ pub async fn statistics(db: &Pool<Postgres>) -> Result<SolarCurrentStatistics, S
 }
 
 pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQueryError> {
-    let latest = sqlx::query!(
-        "SELECT raw_data, temperature, uv_level FROM solar_data_tsdb ORDER BY time DESC LIMIT 1"
-    )
-    .fetch_optional(db)
-    .instrument(tracing::info_span!("get_latest_solar_data"))
-    .await?
-    .ok_or(SolarQueryError::NoData)?;
+    let latest = SolarRepo::new(db.clone())
+        .latest()
+        .await?
+        .ok_or(SolarQueryError::NoData)?;
 
     let raw_data = serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(latest.raw_data)?;
 
-    let yesterday = sqlx::query!(
-        "SELECT raw_data FROM solar_data_tsdb \
-         WHERE (time AT TIME ZONE 'Australia/Perth')::date \
-             = (now() AT TIME ZONE 'Australia/Perth')::date - INTEGER '1' \
-         ORDER BY time DESC LIMIT 1"
-    )
-    .fetch_optional(db)
-    .instrument(tracing::info_span!("get_yesterday_results"))
-    .await?;
+    let yesterday = SolarRepo::new(db.clone()).yesterday_raw_data().await?;
 
     let yesterday_production_kwh = match yesterday {
-        Some(row) => {
-            serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(row.raw_data)?
+        Some(raw_data) => {
+            serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(raw_data)?
                 .data
                 .kpi
                 .power
@@ -105,29 +89,22 @@ pub async fn history_since(
     db: &Pool<Postgres>,
     since: DateTime<Utc>,
 ) -> Result<Vec<GenerationHistory>, SolarQueryError> {
-    let history = sqlx::query!(
-        "SELECT avg(current_kwh) AS avg_wh, avg(uv_level) AS avg_uv_level, \
-                avg(temperature) AS avg_temp, time_bucket('5 minutes', time) AS bucket_time \
-         FROM solar_data_tsdb WHERE time >= $1 \
-         GROUP BY bucket_time ORDER BY bucket_time ASC",
-        since
-    )
-    .fetch_all(db)
-    .instrument(tracing::info_span!("solar_history_since"))
-    .await?
-    .into_iter()
-    .filter_map(|r| {
-        let bucket_time = r.bucket_time?;
+    let history = SolarRepo::new(db.clone())
+        .buckets_since(since)
+        .await?
+        .into_iter()
+        .filter_map(|r| {
+            let bucket_time = r.bucket_time?;
 
-        Some(GenerationHistory {
-            uv_level: r.avg_uv_level,
-            temperature: r.avg_temp,
-            at: bucket_time.naive_utc(),
-            wh: r.avg_wh?,
-            timestamp: bucket_time.timestamp_millis(),
+            Some(GenerationHistory {
+                uv_level: r.avg_uv_level,
+                temperature: r.avg_temp,
+                at: bucket_time.naive_utc(),
+                wh: r.avg_wh?,
+                timestamp: bucket_time.timestamp_millis(),
+            })
         })
-    })
-    .collect();
+        .collect();
 
     Ok(history)
 }
@@ -139,35 +116,27 @@ pub async fn history_last_two_days(
         .with_timezone(&chrono_tz::Australia::Perth)
         .date_naive();
 
-    let (today, yesterday) = sqlx::query!(
-        "SELECT avg(current_kwh) AS avg_wh, avg(uv_level) AS avg_uv_level, \
-                avg(temperature) AS avg_temp, time_bucket('5 minutes', time) AS bucket_time \
-         FROM solar_data_tsdb \
-         WHERE (time AT TIME ZONE 'Australia/Perth')::date \
-             > ((now() AT TIME ZONE 'Australia/Perth')::date - 2) \
-         GROUP BY bucket_time ORDER BY bucket_time ASC"
-    )
-    .fetch_all(db)
-    .instrument(tracing::info_span!("solar_history_two_days"))
-    .await?
-    .into_iter()
-    .filter_map(|r| {
-        let bucket_time = r.bucket_time?;
+    let (today, yesterday) = SolarRepo::new(db.clone())
+        .buckets_last_two_days()
+        .await?
+        .into_iter()
+        .filter_map(|r| {
+            let bucket_time = r.bucket_time?;
 
-        Some(GenerationHistory {
-            uv_level: r.avg_uv_level,
-            temperature: r.avg_temp,
-            at: bucket_time.naive_utc(),
-            wh: r.avg_wh?,
-            timestamp: bucket_time.timestamp_millis(),
+            Some(GenerationHistory {
+                uv_level: r.avg_uv_level,
+                temperature: r.avg_temp,
+                at: bucket_time.naive_utc(),
+                wh: r.avg_wh?,
+                timestamp: bucket_time.timestamp_millis(),
+            })
         })
-    })
-    .partition(|r| {
-        r.at.and_utc()
-            .with_timezone(&chrono_tz::Australia::Perth)
-            .date_naive()
-            == today_in_perth
-    });
+        .partition(|r| {
+            r.at.and_utc()
+                .with_timezone(&chrono_tz::Australia::Perth)
+                .date_naive()
+                == today_in_perth
+        });
 
     Ok((today, yesterday))
 }

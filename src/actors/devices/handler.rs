@@ -1,5 +1,5 @@
 use crate::actors::root::RootMessage;
-use crate::state::SharedActorState;
+use crate::state::AppState;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{
@@ -17,7 +17,7 @@ pub trait DeviceHandler: Send + Sync + Sized + 'static {
     type Message: ractor::Message;
     type State: ractor::State + Default;
 
-    fn new(shared_actor_state: SharedActorState) -> Self;
+    fn new(shared_actor_state: AppState) -> Self;
 
     fn handle(
         &self,
@@ -97,7 +97,7 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
 }
 
 pub struct HandlerBuilder<T: DeviceHandler> {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
     _handler: std::marker::PhantomData<fn() -> T>,
 }
 
@@ -109,7 +109,7 @@ impl<T: DeviceHandler> WorkerBuilder<HandlerWorker<T>, ()> for HandlerBuilder<T>
 
 pub async fn spawn_handler<T: DeviceHandler>(
     root_supervisor_ref: &ActorRef<RootMessage>,
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 ) -> Result<ActorRef<FactoryMessage<(), T::Message>>, ActorProcessingErr> {
     let factory_def = Factory::<
         (),

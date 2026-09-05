@@ -17,7 +17,7 @@ use chrono::Utc;
 use http::{HeaderMap, StatusCode, request::Parts};
 use sha2::{Digest, Sha256};
 
-use crate::state::ApiState;
+use crate::state::AppState;
 
 fn dev_bypass_enabled() -> bool {
     std::env::var("AUTH_DEV_BYPASS").is_ok_and(|value| value == "1")
@@ -31,7 +31,7 @@ pub fn hash_key(key: &str) -> String {
 
 async fn resolve_api_key(
     api_key: &str,
-    state: &ApiState,
+    state: &AppState,
 ) -> Result<Option<AuthContext>, StatusCode> {
     let settings = &state.settings;
 
@@ -40,10 +40,15 @@ async fn resolve_api_key(
     }
 
     let hashed = hash_key(api_key);
-    let key = state.auth.lookup_by_hash(&hashed).await.map_err(|e| {
-        tracing::error!("failed to look up api key: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let key = state
+        .handles
+        .expect::<AuthManager>()
+        .lookup_by_hash(&hashed)
+        .await
+        .map_err(|e| {
+            tracing::error!("failed to look up api key: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     if let Some(key) = key {
         if key.revoked_at.is_some() {
@@ -55,7 +60,10 @@ async fn resolve_api_key(
             return Err(StatusCode::UNAUTHORIZED);
         }
 
-        state.auth.touch_last_used(key.id);
+        state
+            .handles
+            .expect::<AuthManager>()
+            .touch_last_used(key.id);
 
         return Ok(Some(AuthContext::from_scopes(
             Some(key.id),
@@ -69,7 +77,7 @@ async fn resolve_api_key(
 
 pub async fn resolve_ws_auth(
     token: Option<&str>,
-    state: &ApiState,
+    state: &AppState,
 ) -> Result<AuthContext, StatusCode> {
     if dev_bypass_enabled() {
         return Ok(AuthContext::full_access(false));
@@ -83,7 +91,7 @@ pub async fn resolve_ws_auth(
         }
         // ws sends a single token field; a JWT (has dots) is an OAuth access token.
         if token.contains('.')
-            && let Some(oauth) = &state.auth.oauth
+            && let Some(oauth) = &state.handles.expect::<AuthManager>().oauth
         {
             return oauth.validate(token).await;
         }
@@ -94,7 +102,7 @@ pub async fn resolve_ws_auth(
 
 pub async fn resolve_auth(
     headers: &HeaderMap,
-    state: &ApiState,
+    state: &AppState,
 ) -> Result<AuthContext, StatusCode> {
     if dev_bypass_enabled() {
         return Ok(AuthContext::full_access(false));
@@ -121,7 +129,7 @@ pub async fn resolve_auth(
         .filter(|s| !s.is_empty());
 
     if let Some(token) = bearer
-        && let Some(oauth) = &state.auth.oauth
+        && let Some(oauth) = &state.handles.expect::<AuthManager>().oauth
     {
         return oauth.validate(token).await;
     }
@@ -155,7 +163,7 @@ pub async fn resolve_auth(
 }
 
 pub async fn auth_middleware(
-    State(state): State<ApiState>,
+    State(state): State<AppState>,
     mut req: Request,
     next: Next,
 ) -> Response {

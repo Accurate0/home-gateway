@@ -13,9 +13,7 @@ impl FuelWatchObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<FuelSite>> {
-        let Some(fuelwatch) = ctx.data::<Option<FuelWatch>>()? else {
-            return Ok(None);
-        };
+        let fuelwatch = crate::graphql::require::<FuelWatch>(ctx, "fuelwatch")?;
 
         Ok(fuelwatch.sites(self.postcode).await?.into_iter().next())
     }
@@ -25,9 +23,7 @@ impl FuelWatchObject {
         ctx: &async_graphql::Context<'_>,
         limit: Option<usize>,
     ) -> async_graphql::Result<Vec<FuelSite>> {
-        let Some(fuelwatch) = ctx.data::<Option<FuelWatch>>()? else {
-            return Ok(Vec::new());
-        };
+        let fuelwatch = crate::graphql::require::<FuelWatch>(ctx, "fuelwatch")?;
 
         let mut sites = fuelwatch.sites(self.postcode).await?;
 

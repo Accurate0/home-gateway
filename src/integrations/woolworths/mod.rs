@@ -1,3 +1,4 @@
+use crate::repo::WoolworthsRepo;
 use http::HeaderMap;
 use sqlx::{Pool, Postgres};
 use tracing::instrument;
@@ -59,13 +60,10 @@ impl Woolworths {
     pub async fn get_all_tracked_products(
         &self,
     ) -> Result<Vec<WoolworthsTrackedProduct>, WoolworthsError> {
-        sqlx::query_as!(
-            WoolworthsTrackedProduct,
-            "SELECT id, product_id FROM woolworths_product_tracking"
-        )
-        .fetch_all(&self.db)
-        .await
-        .map_err(WoolworthsError::from)
+        WoolworthsRepo::new(self.db.clone())
+            .tracked_products()
+            .await
+            .map_err(WoolworthsError::from)
     }
 
     #[instrument(skip(self))]

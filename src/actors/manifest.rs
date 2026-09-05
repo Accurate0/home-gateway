@@ -26,10 +26,14 @@ use crate::actors::system::{
     push::PushWorker, watchdog::WatchdogActor,
 };
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
+use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
+use crate::integrations::transperth::Transperth;
 use crate::integrations::trmnl::Trmnl;
 use crate::integrations::woolworths::Woolworths;
-use crate::state::SharedActorState;
+use crate::settings::SettingsContainer;
+use crate::state::{AppState, HandleRegistry};
 
 pub enum Spawned {
     Started,
@@ -37,13 +41,50 @@ pub enum Spawned {
 }
 
 type SpawnFuture = Pin<Box<dyn Future<Output = Result<Spawned, ActorProcessingErr>> + Send>>;
-type SpawnFn = fn(ActorRef<RootMessage>, SharedActorState) -> SpawnFuture;
+type SpawnFn = fn(ActorRef<RootMessage>, AppState) -> SpawnFuture;
+
+pub enum Requirement {
+    Handle {
+        label: &'static str,
+        present: fn(&HandleRegistry) -> bool,
+    },
+    Setting {
+        label: &'static str,
+        present: fn(&SettingsContainer) -> bool,
+    },
+}
+
+impl Requirement {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Requirement::Handle { label, .. } => label,
+            Requirement::Setting { label, .. } => label,
+        }
+    }
+
+    pub fn satisfied_by(&self, state: &AppState) -> bool {
+        match self {
+            Requirement::Handle { present, .. } => present(&state.handles),
+            Requirement::Setting { present, .. } => present(&state.settings),
+        }
+    }
+}
 
 pub struct ActorSpec {
     pub name: &'static str,
     pub autostart: bool,
     pub optional: bool,
+    pub requires: &'static [Requirement],
     pub spawn: SpawnFn,
+}
+
+impl ActorSpec {
+    pub fn unmet_requirement(&self, state: &AppState) -> Option<&'static str> {
+        self.requires
+            .iter()
+            .find(|requirement| !requirement.satisfied_by(state))
+            .map(Requirement::label)
+    }
 }
 
 pub fn find(name: &str) -> Option<&'static ActorSpec> {
@@ -56,6 +97,7 @@ macro_rules! plain {
             name: $actor::NAME,
             autostart: true,
             optional: false,
+            requires: &[],
             spawn: |root, shared_actor_state| {
                 Box::pin(async move {
                     root.spawn_linked(
@@ -78,6 +120,7 @@ macro_rules! device {
             name: <$handler as DeviceHandler>::NAME,
             autostart: true,
             optional: false,
+            requires: &[],
             spawn: |root, shared_actor_state| {
                 Box::pin(async move {
                     spawn_handler::<$handler>(&root, shared_actor_state).await?;
@@ -113,6 +156,7 @@ pub static ACTORS: &[ActorSpec] = &[
         name: AdhocTaskActor::NAME,
         autostart: true,
         optional: true,
+        requires: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 root.spawn_linked(
@@ -130,6 +174,7 @@ pub static ACTORS: &[ActorSpec] = &[
         name: PushWorker::NAME,
         autostart: true,
         optional: false,
+        requires: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::push::spawn::spawn_push(&root, shared_actor_state).await?;
@@ -142,6 +187,7 @@ pub static ACTORS: &[ActorSpec] = &[
         name: WorkflowWorker::NAME,
         autostart: true,
         optional: false,
+        requires: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::workflows::spawn::spawn_workflows(&root, shared_actor_state).await?;
@@ -154,12 +200,12 @@ pub static ACTORS: &[ActorSpec] = &[
         name: HomeAssistantActor::NAME,
         autostart: true,
         optional: false,
+        requires: &[Requirement::Handle {
+            label: "home assistant",
+            present: |handles| handles.contains::<HomeAssistant>(),
+        }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                if shared_actor_state.home_assistant.is_none() {
-                    return Ok(Spawned::Skipped);
-                }
-
                 root.spawn_linked(
                     Some(HomeAssistantActor::NAME.to_owned()),
                     HomeAssistantActor { shared_actor_state },
@@ -175,11 +221,13 @@ pub static ACTORS: &[ActorSpec] = &[
         name: JellyfinActor::NAME,
         autostart: true,
         optional: false,
+        requires: &[Requirement::Handle {
+            label: "jellyfin",
+            present: |handles| handles.contains::<Jellyfin>(),
+        }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                let Some(jellyfin) = shared_actor_state.jellyfin.clone() else {
-                    return Ok(Spawned::Skipped);
-                };
+                let jellyfin = shared_actor_state.handles.expect::<Jellyfin>().clone();
 
                 root.spawn_linked(
                     Some(JellyfinActor::NAME.to_owned()),
@@ -199,11 +247,13 @@ pub static ACTORS: &[ActorSpec] = &[
         name: TransperthActor::NAME,
         autostart: true,
         optional: false,
+        requires: &[Requirement::Handle {
+            label: "transperth",
+            present: |handles| handles.contains::<Transperth>(),
+        }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                let Some(transperth) = shared_actor_state.transperth.clone() else {
-                    return Ok(Spawned::Skipped);
-                };
+                let transperth = shared_actor_state.handles.expect::<Transperth>().clone();
 
                 root.spawn_linked(
                     Some(TransperthActor::NAME.to_owned()),
@@ -223,11 +273,17 @@ pub static ACTORS: &[ActorSpec] = &[
         name: TrmnlActor::NAME,
         autostart: true,
         optional: false,
+        requires: &[Requirement::Setting {
+            label: "trmnl_api_key",
+            present: |settings| settings.trmnl_api_key.is_some(),
+        }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                let Some(api_key) = shared_actor_state.settings.trmnl_api_key.clone() else {
-                    return Ok(Spawned::Skipped);
-                };
+                let api_key = shared_actor_state
+                    .settings
+                    .trmnl_api_key
+                    .clone()
+                    .expect("trmnl_api_key was required");
 
                 let trmnl = Trmnl::new(api_key, shared_actor_state.settings.trmnl.base_url.clone());
 
@@ -249,6 +305,7 @@ pub static ACTORS: &[ActorSpec] = &[
         name: WoolworthsActor::NAME,
         autostart: true,
         optional: false,
+        requires: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let woolworths = Woolworths::new(shared_actor_state.db.clone());
@@ -271,16 +328,13 @@ pub static ACTORS: &[ActorSpec] = &[
         name: SolarActor::NAME,
         autostart: true,
         optional: false,
+        requires: &[Requirement::Handle {
+            label: "goodwe",
+            present: |handles| handles.contains::<GoodWeSemsAPI>(),
+        }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                let Some(settings) = shared_actor_state.settings.solar.clone() else {
-                    return Ok(Spawned::Skipped);
-                };
-
-                let Some(goodwe) = GoodWeSemsAPI::new(shared_actor_state.db.clone(), &settings)
-                else {
-                    return Ok(Spawned::Skipped);
-                };
+                let goodwe = shared_actor_state.handles.expect::<GoodWeSemsAPI>().clone();
 
                 let weather = WeatherAPI::new()?;
 
@@ -303,6 +357,7 @@ pub static ACTORS: &[ActorSpec] = &[
         name: MqttIngest::NAME,
         autostart: true,
         optional: false,
+        requires: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::mqtt_ingest::spawn::spawn_mqtt_ingest(
@@ -321,6 +376,49 @@ pub static ACTORS: &[ActorSpec] = &[
 mod tests {
     use super::*;
     use std::collections::HashSet;
+
+    #[test]
+    fn only_the_optional_integrations_declare_requirements() {
+        let gated: Vec<&str> = ACTORS
+            .iter()
+            .filter(|spec| !spec.requires.is_empty())
+            .map(|spec| spec.name)
+            .collect();
+
+        assert_eq!(
+            gated,
+            vec![
+                HomeAssistantActor::NAME,
+                JellyfinActor::NAME,
+                TransperthActor::NAME,
+                TrmnlActor::NAME,
+                SolarActor::NAME,
+            ]
+        );
+    }
+
+    #[test]
+    fn an_empty_registry_satisfies_only_the_ungated_actors() {
+        let handles = HandleRegistry::default();
+
+        for spec in ACTORS {
+            let satisfied = spec.requires.iter().all(|requirement| match requirement {
+                Requirement::Handle { present, .. } => present(&handles),
+                Requirement::Setting { .. } => true,
+            });
+
+            let gated_by_a_handle = spec
+                .requires
+                .iter()
+                .any(|requirement| matches!(requirement, Requirement::Handle { .. }));
+
+            assert_eq!(
+                satisfied, !gated_by_a_handle,
+                "{} should be gated by its handle requirement",
+                spec.name
+            );
+        }
+    }
 
     #[test]
     fn actor_names_are_unique() {

@@ -15,7 +15,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use ractor::Actor;
 use uuid::Uuid;
 
-use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::SharedActorState};
+use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::AppState};
 
 use calc::SunTransition;
 
@@ -29,7 +29,7 @@ pub enum SunActorMessage {
 }
 
 pub struct SunActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl SunActor {
@@ -64,15 +64,11 @@ impl SunActor {
                 offset,
             });
 
-        sqlx::query!(
-            "INSERT INTO sun_event_fired (transition, offset_seconds, fired_at) VALUES ($1, $2, $3) \
-             ON CONFLICT (transition, offset_seconds) DO UPDATE SET fired_at = EXCLUDED.fired_at",
-            transition.as_str(),
-            offset.num_seconds(),
-            at
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .sun()
+            .record_fired(transition.as_str(), offset.num_seconds(), at)
+            .await?;
 
         Ok(())
     }
@@ -82,15 +78,14 @@ impl SunActor {
         transition: SunTransition,
         offset: TimeDelta,
     ) -> Result<Option<DateTime<Utc>>, ractor::ActorProcessingErr> {
-        let row = sqlx::query!(
-            "SELECT fired_at FROM sun_event_fired WHERE transition = $1 AND offset_seconds = $2",
-            transition.as_str(),
-            offset.num_seconds()
-        )
-        .fetch_optional(&self.shared_actor_state.db)
-        .await?;
+        let fired_at = self
+            .shared_actor_state
+            .repos
+            .sun()
+            .last_fired(transition.as_str(), offset.num_seconds())
+            .await?;
 
-        Ok(row.map(|row| row.fired_at))
+        Ok(fired_at)
     }
 
     async fn catch_up(

@@ -68,17 +68,12 @@ impl DashboardSource {
     }
 
     async fn stored_image_key(
-        db: &sqlx::Pool<sqlx::Postgres>,
+        eink: &crate::repo::EinkRepo,
         device_id: &str,
     ) -> Result<Option<String>, AppError> {
-        let row = sqlx::query!(
-            "SELECT image_key, image_content_hash FROM eink_display WHERE device_id = $1",
-            device_id
-        )
-        .fetch_optional(db)
-        .await?;
+        let stored = eink.stored_render(device_id).await?;
 
-        Ok(row.and_then(|row| row.image_key))
+        Ok(stored.and_then(|row| row.image_key))
     }
 }
 
@@ -124,7 +119,8 @@ impl ImageSource for DashboardSource {
     async fn prepare(&self, ctx: &SourceContext<'_>) -> Result<Prepared, AppError> {
         let image_key = Self::key_for(ctx.display);
 
-        if Self::stored_image_key(ctx.db, &ctx.display.device_id).await? == Some(image_key.clone())
+        if Self::stored_image_key(ctx.eink, &ctx.display.device_id).await?
+            == Some(image_key.clone())
         {
             return Ok(Prepared::Skip);
         }

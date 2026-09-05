@@ -3,7 +3,7 @@ use crate::{
         Auth,
         scope::{Action, Resource, Scope},
     },
-    state::ApiState,
+    state::AppState,
 };
 use axum::{Json, extract::State};
 use http::StatusCode;
@@ -15,7 +15,7 @@ pub struct PushTokenPayload {
 }
 
 pub async fn push_token(
-    State(ApiState { ref db, .. }): State<ApiState>,
+    State(AppState { ref repos, .. }): State<AppState>,
     Auth(auth): Auth,
     Json(payload): Json<PushTokenPayload>,
 ) -> StatusCode {
@@ -26,13 +26,7 @@ pub async fn push_token(
         return StatusCode::FORBIDDEN;
     }
 
-    let result = sqlx::query!(
-        "INSERT INTO android_push_tokens (token) VALUES ($1) \
-         ON CONFLICT (token) DO UPDATE SET updated_at = now()",
-        payload.token
-    )
-    .execute(db)
-    .await;
+    let result = repos.push().upsert_token(&payload.token).await;
 
     match result {
         Ok(_) => StatusCode::NO_CONTENT,

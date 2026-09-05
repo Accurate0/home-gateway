@@ -7,7 +7,7 @@ use crate::{
     },
     error::AppError,
     settings::IEEEAddress,
-    state::ApiState,
+    state::AppState,
 };
 use axum::{Json, extract::State};
 use http::StatusCode;
@@ -29,7 +29,7 @@ pub struct LightControlPayload {
 }
 
 pub async fn light_control(
-    State(ApiState { .. }): State<ApiState>,
+    State(AppState { .. }): State<AppState>,
     Auth(auth): Auth,
     Json(control): Json<LightControlPayload>,
 ) -> Result<StatusCode, AppError> {

@@ -4,10 +4,11 @@
 //!
 //! Both need to answer the same boolean predicates against live device/sensor
 //! state, so the actor-query RPC logic lives here once and takes a plain
-//! [`SharedActorState`] rather than being tied to the workflow worker.
+//! [`AppState`] rather than being tied to the workflow worker.
 
 use super::WorkflowError;
 use crate::actors::sun::calc;
+use crate::actors::workflows::manager::WorkflowManager;
 use crate::{
     actors::{
         devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
@@ -20,7 +21,7 @@ use crate::{
     },
     db::DoorState,
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
-    state::SharedActorState,
+    state::AppState,
 };
 use chrono::{Local, Utc};
 use std::time::Duration;
@@ -37,17 +38,14 @@ impl From<RpcError> for WorkflowError {
 const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Evaluate a condition against current state. Recursive via `all`/`any`/`not`.
-pub async fn eval(state: &SharedActorState, cond: &Condition) -> Result<bool, WorkflowError> {
+pub async fn eval(state: &AppState, cond: &Condition) -> Result<bool, WorkflowError> {
     match cond {
         Condition::Combinator(c) => eval_combinator(state, c).await,
         Condition::Leaf(l) => eval_leaf(state, l).await,
     }
 }
 
-async fn eval_combinator(
-    state: &SharedActorState,
-    cond: &Combinator,
-) -> Result<bool, WorkflowError> {
+async fn eval_combinator(state: &AppState, cond: &Combinator) -> Result<bool, WorkflowError> {
     match cond {
         Combinator::All(conditions) => {
             for c in conditions {
@@ -69,7 +67,7 @@ async fn eval_combinator(
     }
 }
 
-async fn eval_leaf(state: &SharedActorState, cond: &LeafCondition) -> Result<bool, WorkflowError> {
+async fn eval_leaf(state: &AppState, cond: &LeafCondition) -> Result<bool, WorkflowError> {
     match cond {
         LeafCondition::Light { ieee_addr, on } => {
             Ok(query_light_on(state.devices.address_or_self(ieee_addr)).await? == *on)
@@ -98,9 +96,12 @@ async fn eval_leaf(state: &SharedActorState, cond: &LeafCondition) -> Result<boo
         LeafCondition::Sun { is, offset } => {
             Ok(calc::current_period(state.settings.location, Utc::now(), *offset) == *is)
         }
-        LeafCondition::Mode { mode, active } => {
-            Ok(state.workflows.mode_active(*mode).await == *active)
-        }
+        LeafCondition::Mode { mode, active } => Ok(state
+            .handles
+            .expect::<WorkflowManager>()
+            .mode_active(*mode)
+            .await
+            == *active),
     }
 }
 

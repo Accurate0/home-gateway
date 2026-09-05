@@ -13,7 +13,7 @@ impl WeatherObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Forecast> {
-        let willyweather = ctx.data::<WillyWeather>()?;
+        let willyweather = crate::graphql::require::<WillyWeather>(ctx, "willyweather")?;
 
         Ok(willyweather.forecast(&self.location).await?)
     }

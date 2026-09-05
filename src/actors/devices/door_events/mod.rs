@@ -1,4 +1,4 @@
-use crate::{db::DoorState, settings::IEEEAddress, state::SharedActorState};
+use crate::{db::DoorState, settings::IEEEAddress, state::AppState};
 use armed_door_actor::ArmedDoor;
 pub use derived_door_events_actor::DerivedDoorEvents;
 use ractor::{Actor, ActorCell, RpcReplyPort};
@@ -31,7 +31,7 @@ pub enum DoorEventsMessage {
 }
 
 pub struct DoorEventsSupervisor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl DoorEventsSupervisor {
@@ -40,7 +40,7 @@ impl DoorEventsSupervisor {
 
     async fn start_derived_door_events_actor(
         myself: ActorCell,
-        shared_actor_state: SharedActorState,
+        shared_actor_state: AppState,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let (derived_door_events_actor, _) = Actor::spawn_linked(
             Some(DerivedDoorEvents::NAME.to_owned()),
@@ -60,7 +60,7 @@ impl DoorEventsSupervisor {
 
     async fn start_armed_door_actor(
         myself: ActorCell,
-        shared_actor_state: SharedActorState,
+        shared_actor_state: AppState,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let (armed_door_actor, _) = Actor::spawn_linked(
             Some(ArmedDoor::NAME.to_string()),

@@ -5,7 +5,7 @@ use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::s3::S3;
 use crate::settings::SettingsContainer;
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 pub struct AdhocTaskContext<'a> {
     pub tx: &'a mut Transaction<'static, Postgres>,
@@ -17,14 +17,14 @@ pub struct AdhocTaskContext<'a> {
 }
 
 impl<'a> AdhocTaskContext<'a> {
-    pub fn new(state: &'a SharedActorState, tx: &'a mut Transaction<'static, Postgres>) -> Self {
+    pub fn new(state: &'a AppState, tx: &'a mut Transaction<'static, Postgres>) -> Self {
         Self {
             tx,
             devices: &state.devices,
             settings: &state.settings,
-            s3: &state.s3,
-            home_assistant: state.home_assistant.as_ref(),
-            jellyfin: state.jellyfin.as_ref(),
+            s3: state.handles.expect::<S3>(),
+            home_assistant: state.handles.get::<HomeAssistant>(),
+            jellyfin: state.handles.get::<Jellyfin>(),
         }
     }
 }

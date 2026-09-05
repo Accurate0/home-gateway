@@ -13,9 +13,7 @@ impl TransperthObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<RouteDeparturesObject>> {
-        let Some(transperth) = ctx.data::<Option<Transperth>>()? else {
-            return Ok(Vec::new());
-        };
+        let transperth = crate::graphql::require::<Transperth>(ctx, "transperth")?;
 
         Ok(transperth
             .route_departures()
@@ -30,9 +28,7 @@ impl TransperthObject {
         ctx: &async_graphql::Context<'_>,
         id: String,
     ) -> async_graphql::Result<Option<RouteDeparturesObject>> {
-        let Some(transperth) = ctx.data::<Option<Transperth>>()? else {
-            return Ok(None);
-        };
+        let transperth = crate::graphql::require::<Transperth>(ctx, "transperth")?;
 
         Ok(transperth
             .route(&id)

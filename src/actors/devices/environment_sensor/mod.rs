@@ -1,10 +1,10 @@
 use crate::actors::devices::handler::DeviceHandler;
+use crate::repo::environment::EnvironmentReading;
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
     settings::Metric,
-    state::SharedActorState,
+    state::AppState,
 };
-use chrono::Utc;
 use ractor::RpcReplyPort;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -63,7 +63,7 @@ pub enum Message {
 }
 
 pub struct EnvironmentSensorHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl EnvironmentSensorHandler {
@@ -76,21 +76,19 @@ impl EnvironmentSensorHandler {
     ) -> Result<(), anyhow::Error> {
         match message {
             Message::QueryLatest { entity_id, reply } => {
-                let row = sqlx::query!(
-                    "SELECT temperature, humidity, pressure, lux, uv_index \
-                     FROM latest_temperature_sensor WHERE entity_id = $1",
-                    entity_id
-                )
-                .fetch_optional(&self.shared_actor_state.db)
-                .await?;
-
-                let reading = row.map(|r| LatestReading {
-                    temperature: r.temperature,
-                    humidity: r.humidity,
-                    pressure: r.pressure,
-                    lux: r.lux,
-                    uv_index: r.uv_index,
-                });
+                let reading = self
+                    .shared_actor_state
+                    .repos
+                    .environment()
+                    .latest(&entity_id)
+                    .await?
+                    .map(|r| LatestReading {
+                        temperature: r.temperature,
+                        humidity: r.humidity,
+                        pressure: r.pressure,
+                        lux: r.lux,
+                        uv_index: r.uv_index,
+                    });
 
                 reply.send(reading)?;
                 return Ok(());
@@ -216,53 +214,24 @@ impl EnvironmentSensorHandler {
             .devices
             .environment(&ieee_addr)
             .map(|s| &s.id);
-        let now = Utc::now();
-
-        sqlx::query!(
-            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-            event_id,
-            id,
-            friendly_name,
-            ieee_addr,
-            temperature,
-            battery,
-            humidity,
-            pressure,
-            pm25,
-            voc_index,
-            lux,
-            uv_index,
-        ).execute(&self.shared_actor_state.db).await?;
-
-        sqlx::query!(
-            r#"INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            ON CONFLICT (entity_id)
-            DO UPDATE SET
-                name = EXCLUDED.name,
-                ieee_addr = EXCLUDED.ieee_addr,
-                temperature = EXCLUDED.temperature,
-                battery = EXCLUDED.battery,
-                humidity = EXCLUDED.humidity,
-                pressure = EXCLUDED.pressure,
-                pm25 = EXCLUDED.pm25,
-                voc_index = EXCLUDED.voc_index,
-                lux = EXCLUDED.lux,
-                uv_index = EXCLUDED.uv_index,
-                updated_at = EXCLUDED.updated_at
-            "#,
-            id,
-            friendly_name,
-            ieee_addr,
-            temperature,
-            battery,
-            humidity,
-            pressure,
-            pm25,
-            voc_index,
-            lux,
-            uv_index,
-            now,
-        ).execute(&self.shared_actor_state.db).await?;
+        self.shared_actor_state
+            .repos
+            .environment()
+            .record(&EnvironmentReading {
+                event_id,
+                id: id.cloned(),
+                friendly_name: friendly_name.clone(),
+                ieee_addr: ieee_addr.clone(),
+                temperature,
+                battery,
+                humidity,
+                pressure,
+                pm25,
+                voc_index,
+                lux,
+                uv_index,
+            })
+            .await?;
 
         // publish all present readings in a single event, keyed by device id, so
         // `environment` triggers and subscribers see the full metric snapshot
@@ -295,7 +264,7 @@ impl DeviceHandler for EnvironmentSensorHandler {
     type Message = Message;
     type State = EnvironmentSensorState;
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

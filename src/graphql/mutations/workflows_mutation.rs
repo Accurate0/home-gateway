@@ -28,7 +28,7 @@ impl WorkflowsMutation {
             )));
         }
 
-        let manager = ctx.data::<WorkflowManager>()?;
+        let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         manager.set_enabled(&slug, enabled).await?;
         Ok(enabled)
     }
@@ -40,7 +40,7 @@ impl WorkflowsMutation {
         mode: Mode,
         active: bool,
     ) -> async_graphql::Result<Vec<Mode>> {
-        let manager = ctx.data::<WorkflowManager>()?;
+        let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         let event_bus = ctx.data::<EventBus>()?;
 
         let transitions = manager.set_mode(mode, active).await?;

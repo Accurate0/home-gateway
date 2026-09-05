@@ -1,7 +1,7 @@
+use crate::repo::RepoRegistry;
 use async_graphql::{InputObject, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use sqlx::{Pool, Postgres};
 
 pub struct WoolworthsObject {}
 
@@ -32,19 +32,18 @@ impl WoolworthsObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<WoolworthsProducts>> {
-        let db = ctx.data::<Pool<Postgres>>()?;
+        let repos = ctx.data::<RepoRegistry>()?;
 
-        Ok(
-            sqlx::query!(r#"SELECT display_name, price FROM woolworths_product_price"#,)
-                .fetch_all(db)
-                .await?
-                .into_iter()
-                .map(|r| WoolworthsProducts {
-                    name: r.display_name,
-                    price: r.price,
-                })
-                .collect_vec(),
-        )
+        Ok(repos
+            .woolworths()
+            .products()
+            .await?
+            .into_iter()
+            .map(|r| WoolworthsProducts {
+                name: r.display_name,
+                price: r.price,
+            })
+            .collect_vec())
     }
 
     pub async fn price_history(
@@ -52,25 +51,19 @@ impl WoolworthsObject {
         ctx: &async_graphql::Context<'_>,
         input: WoolworthsPriceHistoryInput,
     ) -> async_graphql::Result<Vec<WoolworthsPricePoint>> {
-        let db = ctx.data::<Pool<Postgres>>()?;
+        let repos = ctx.data::<RepoRegistry>()?;
 
-        Ok(sqlx::query!(
-            r#"SELECT product_id, display_name, price, "time"
-               FROM woolworths_price_history
-               WHERE product_id = $1 AND "time" >= $2
-               ORDER BY "time" ASC"#,
-            input.product_id,
-            input.since
-        )
-        .fetch_all(db)
-        .await?
-        .into_iter()
-        .map(|r| WoolworthsPricePoint {
-            product_id: r.product_id,
-            name: r.display_name,
-            price: r.price,
-            time: r.time,
-        })
-        .collect_vec())
+        Ok(repos
+            .woolworths()
+            .price_history(input.product_id, input.since)
+            .await?
+            .into_iter()
+            .map(|r| WoolworthsPricePoint {
+                product_id: r.product_id,
+                name: r.display_name,
+                price: r.price,
+                time: r.time,
+            })
+            .collect_vec())
     }
 }

@@ -1,5 +1,4 @@
 use async_graphql::Object;
-use sqlx::{Pool, Postgres};
 
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::{Action, Resource, Scope};
@@ -19,7 +18,7 @@ impl WorkflowsQuery {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<WorkflowStatus>> {
         let settings = ctx.data::<SettingsContainer>()?;
-        let manager = ctx.data::<WorkflowManager>()?;
+        let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
 
         let mut statuses = Vec::with_capacity(settings.workflows.len());
         for workflow in settings.workflows.values() {
@@ -45,7 +44,7 @@ impl WorkflowsQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<Mode>> {
-        let manager = ctx.data::<WorkflowManager>()?;
+        let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         Ok(manager.active_modes().await)
     }
 
@@ -54,7 +53,7 @@ impl WorkflowsQuery {
         deprecation = "use activeModes / mode(GUEST) instead"
     )]
     async fn guest_mode(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
-        let manager = ctx.data::<WorkflowManager>()?;
+        let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         Ok(manager.mode_active(Mode::Guest).await)
     }
 
@@ -65,20 +64,10 @@ impl WorkflowsQuery {
         slug: Option<String>,
         limit: Option<i64>,
     ) -> async_graphql::Result<Vec<WorkflowRun>> {
-        let db = ctx.data::<Pool<Postgres>>()?;
+        let workflows = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         let limit = limit.unwrap_or(50).clamp(1, 500);
 
-        let rows = sqlx::query!(
-            "SELECT id, slug, name, event_id, outcome, dry_run, duration_ms, error, started_at \
-             FROM workflow_runs \
-             WHERE ($1::text IS NULL OR slug = $1) \
-             ORDER BY started_at DESC \
-             LIMIT $2",
-            slug,
-            limit,
-        )
-        .fetch_all(db)
-        .await?;
+        let rows = workflows.recent_runs(slug.as_deref(), limit).await?;
 
         Ok(rows
             .into_iter()

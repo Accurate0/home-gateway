@@ -6,14 +6,13 @@ use home_gateway::actors::root::RootMessage;
 use home_gateway::actors::workflows::manager::WorkflowManager;
 use home_gateway::api::{build_router, build_schema};
 use home_gateway::auth::AuthManager;
-use home_gateway::device_registry::DeviceRegistry;
 use home_gateway::event_bus::{EventBus, EventBusMessage};
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::reddit::Reddit;
 use home_gateway::integrations::s3::S3;
 use home_gateway::integrations::willyweather::WillyWeather;
 use home_gateway::settings::SettingsContainer;
-use home_gateway::state::{ApiState, SharedActorState};
+use home_gateway::state::{ApiState, AppState, HandleRegistry};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use sqlx::{Pool, Postgres};
 use tokio::sync::broadcast;
@@ -52,10 +51,8 @@ impl Actor for TestRoot {
 }
 
 pub struct Harness {
-    pub state: SharedActorState,
+    pub state: AppState,
     pub db: Pool<Postgres>,
-    pub settings: SettingsContainer,
-    pub devices: DeviceRegistry,
     pub event_bus: EventBus,
     pub recorder: Recorder,
     pub root: ActorRef<RootMessage>,
@@ -97,20 +94,31 @@ impl Harness {
 
         let event_bus = EventBus::default();
 
-        let state = SharedActorState {
+        let handles = HandleRegistry::builder()
+            .insert(test_broker.client.clone())
+            .insert(s3)
+            .insert(eink)
+            .insert(WorkflowManager::new(db.clone()))
+            .insert(ActorHealthRegistry::new())
+            .insert(AuthManager::new(db.clone(), None))
+            .insert(
+                WillyWeather::new(&settings.willyweather)
+                    .expect("failed to build the willyweather client"),
+            )
+            .insert(
+                home_gateway::http::get_traced_http_client()
+                    .expect("failed to build the http client"),
+            )
+            .build();
+
+        let state = AppState {
+            repos: home_gateway::repo::RepoRegistry::new(db.clone()),
             settings: settings.clone(),
             devices: devices.clone(),
             db: db.clone(),
-            mqtt: test_broker.client.clone(),
             feature_flag_client,
-            s3,
             event_bus: event_bus.clone(),
-            workflows: WorkflowManager::new(db.clone()),
-            home_assistant: None,
-            jellyfin: None,
-            transperth: None,
-            eink,
-            actor_health: ActorHealthRegistry::new(),
+            handles,
         };
 
         let (root, _) = Actor::spawn(None, TestRoot, ())
@@ -120,8 +128,6 @@ impl Harness {
         Self {
             state,
             db,
-            settings,
-            devices,
             event_bus,
             recorder,
             root,
@@ -131,23 +137,9 @@ impl Harness {
     }
 
     pub fn api_state(&self) -> ApiState {
-        let http_client =
-            home_gateway::http::get_traced_http_client().expect("failed to build the http client");
-
-        let willyweather = WillyWeather::new(&self.settings.willyweather)
-            .expect("failed to build the willyweather client");
-
         ApiState {
-            feature_flag_client: self.state.feature_flag_client.clone(),
-            schema: build_schema(&self.state, http_client, willyweather.clone(), None, None),
-            settings: self.settings.clone(),
-            db: self.db.clone(),
-            s3: self.state.s3.clone(),
-            auth: AuthManager::new(self.db.clone(), None),
-            devices: self.devices.clone(),
-            actor_health: self.state.actor_health.clone(),
-            eink: self.state.eink.clone(),
-            willyweather,
+            schema: build_schema(&self.state),
+            inner: self.state.clone(),
         }
     }
 

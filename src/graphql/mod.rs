@@ -38,6 +38,15 @@ pub struct QueryRoot(
 
 pub type FinalSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;
 
+pub fn require<'a, T: std::any::Any + Send + Sync>(
+    ctx: &'a async_graphql::Context<'_>,
+    name: &str,
+) -> async_graphql::Result<&'a T> {
+    ctx.data::<crate::state::HandleRegistry>()?
+        .get::<T>()
+        .ok_or_else(|| async_graphql::Error::new(format!("{name} is not configured")))
+}
+
 pub fn sdl() -> String {
     Schema::build(
         QueryRoot::default(),

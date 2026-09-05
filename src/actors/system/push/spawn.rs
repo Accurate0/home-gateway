@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{http::get_traced_http_client, state::SharedActorState};
+use crate::{http::get_traced_http_client, state::AppState};
 use gcp_auth::{CustomServiceAccount, TokenProvider};
 use ractor::{
     ActorRef,
@@ -11,7 +11,7 @@ use super::{PushMessage, PushWorker, PushWorkerBuilder};
 
 pub async fn spawn_push(
     root_supervisor_ref: &ActorRef<crate::actors::root::RootMessage>,
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), PushMessage>>> {
     let push_factory_def = Factory::<
         (),

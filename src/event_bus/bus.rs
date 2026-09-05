@@ -3,7 +3,7 @@ use tokio::sync::broadcast;
 use super::message::EventBusMessage;
 
 /// Clonable handle to the in-memory event bus. Cheap to clone (shares one
-/// broadcast sender). Stored on `SharedActorState` so any actor can publish.
+/// broadcast sender). Stored on `AppState` so any actor can publish.
 #[derive(Clone)]
 pub struct EventBus {
     tx: broadcast::Sender<EventBusMessage>,

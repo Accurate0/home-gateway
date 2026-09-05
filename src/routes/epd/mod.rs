@@ -1,4 +1,5 @@
 use crate::actors::system::rpc;
+use crate::integrations::s3::S3;
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{
@@ -7,7 +8,7 @@ use crate::{
     },
     battery::BatteryChemistry,
     error::AppError,
-    state::ApiState,
+    state::AppState,
 };
 use axum::{
     Json,
@@ -97,7 +98,7 @@ impl ImageParams {
 }
 
 pub async fn image(
-    State(ApiState { s3, .. }): State<ApiState>,
+    State(state): State<AppState>,
     Auth(auth): Auth,
     axum::extract::Path(hash): axum::extract::Path<String>,
     Query(params): Query<ImageParams>,
@@ -115,7 +116,7 @@ pub async fn image(
         return Err(AppError::StatusCode(StatusCode::BAD_REQUEST));
     };
 
-    let Ok(packed) = s3.get_object(&key).await else {
+    let Ok(packed) = state.handles.expect::<S3>().get_object(&key).await else {
         tracing::warn!(
             device_id = %params.device_id,
             key = %key,
@@ -141,17 +142,21 @@ pub async fn image(
 }
 
 pub async fn config(
-    State(ApiState { eink, devices, .. }): State<ApiState>,
+    State(state): State<AppState>,
     Auth(auth): Auth,
     Json(request): Json<EpdConfigRequest>,
 ) -> Result<Json<EpdConfig>, AppError> {
     auth.require(&Scope::new(Resource::Epd, Action::Read))
         .map_err(AppError::StatusCode)?;
 
-    let display = devices.eink_display(&request.device_id);
+    let display = state.devices.eink_display(&request.device_id);
     let registered = display.is_some();
     let configured_mode = display.map(|display| display.mode.name());
-    let wake_drift_secs = wake_drift_secs(&eink, &request.device_id).await;
+    let wake_drift_secs = wake_drift_secs(
+        state.handles.expect::<EinkDisplayManager>(),
+        &request.device_id,
+    )
+    .await;
 
     tracing::info!(
         device_id = %request.device_id,
@@ -193,11 +198,18 @@ pub async fn config(
         );
     }
 
-    let Some(resolved) = eink.resolve(&request.device_id).await else {
+    let Some(resolved) = state
+        .handles
+        .expect::<EinkDisplayManager>()
+        .resolve(&request.device_id)
+        .await
+    else {
         return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
     };
 
-    let config = eink
+    let config = state
+        .handles
+        .expect::<EinkDisplayManager>()
         .epd_config(
             &resolved,
             DeviceReport {
@@ -272,14 +284,19 @@ fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
 }
 
 pub async fn firmware(
-    State(ApiState { s3, eink, .. }): State<ApiState>,
+    State(state): State<AppState>,
     Auth(auth): Auth,
     Query(params): Query<DeviceParams>,
 ) -> Result<Vec<u8>, AppError> {
     auth.require(&Scope::new(Resource::Epd, Action::Read))
         .map_err(AppError::StatusCode)?;
 
-    let Some(display) = eink.resolve(&params.device_id).await else {
+    let Some(display) = state
+        .handles
+        .expect::<EinkDisplayManager>()
+        .resolve(&params.device_id)
+        .await
+    else {
         tracing::warn!(
             device_id = %params.device_id,
             "firmware requested by an unregistered display"
@@ -297,7 +314,7 @@ pub async fn firmware(
         "serving firmware"
     );
 
-    Ok(s3.get_object(&key).await?)
+    Ok(state.handles.expect::<S3>().get_object(&key).await?)
 }
 
 pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {

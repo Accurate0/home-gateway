@@ -1,7 +1,7 @@
 use crate::actors::system::rpc;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
-    state::SharedActorState,
+    state::AppState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use ractor::Actor;
@@ -19,7 +19,7 @@ pub enum AlarmMessage {
 }
 
 pub struct AlarmActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl AlarmActor {
@@ -62,25 +62,23 @@ impl Actor for AlarmActor {
         match message {
             AlarmMessage::NextAlarm(android_app_alarm_payload) => {
                 tracing::info!("alarm local: {}", android_app_alarm_payload.local_time);
-                sqlx::query!(
-                    "INSERT INTO state (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-                    Self::ALARM_STATE_KEY,
-                    android_app_alarm_payload.local_time
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
+                self.shared_actor_state
+                    .repos
+                    .workflow()
+                    .set_state_value(Self::ALARM_STATE_KEY, &android_app_alarm_payload.local_time)
+                    .await?;
             }
             AlarmMessage::CheckIfAlarmWillTrigger { offset } => {
-                let maybe_alarm_time = sqlx::query!(
-                    "SELECT value FROM state WHERE key = $1",
-                    Self::ALARM_STATE_KEY
-                )
-                .fetch_optional(&self.shared_actor_state.db)
-                .await?;
+                let maybe_alarm_time = self
+                    .shared_actor_state
+                    .repos
+                    .workflow()
+                    .state_value(Self::ALARM_STATE_KEY)
+                    .await?;
 
                 if let Some(alarm_time) = maybe_alarm_time {
                     let now = Utc::now();
-                    let alarm_time = DateTime::parse_from_rfc3339(&alarm_time.value)?;
+                    let alarm_time = DateTime::parse_from_rfc3339(&alarm_time)?;
 
                     let should_trigger =
                         now.timestamp_millis() >= (alarm_time - offset).timestamp_millis();
@@ -107,8 +105,10 @@ impl Actor for AlarmActor {
                         };
 
                         rpc::cast_factory(WorkflowWorker::NAME, message)?;
-                        sqlx::query!("DELETE FROM state WHERE key = $1", Self::ALARM_STATE_KEY)
-                            .execute(&self.shared_actor_state.db)
+                        self.shared_actor_state
+                            .repos
+                            .workflow()
+                            .clear_state_value(Self::ALARM_STATE_KEY)
                             .await?;
                     }
                 }

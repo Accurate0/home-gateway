@@ -2,7 +2,6 @@ pub mod context;
 pub mod cron_task;
 pub mod cron_tasks;
 pub mod error;
-pub mod queries;
 pub mod runner;
 pub mod task;
 pub mod tasks;

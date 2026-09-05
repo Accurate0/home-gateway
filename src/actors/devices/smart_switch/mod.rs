@@ -1,5 +1,6 @@
 use crate::actors::devices::handler::DeviceHandler;
-use crate::{actors::devices::light::record_light_state, state::SharedActorState};
+use crate::repo::smart_switch::SmartSwitchReading;
+use crate::{actors::devices::light::record_light_state, state::AppState};
 use uuid::Uuid;
 
 pub enum Entity {
@@ -24,7 +25,7 @@ pub enum Message {
 }
 
 pub struct SmartSwitchHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl SmartSwitchHandler {
@@ -41,16 +42,19 @@ impl SmartSwitchHandler {
         current: f64,
         energy: f64,
     ) -> Result<(), anyhow::Error> {
-        sqlx::query!(
-            "INSERT INTO smart_switch (event_id, name, ieee_addr, voltage, power, current_f64, energy) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-            event_id,
-            friendly_name,
-            ieee_addr,
-            voltage,
-            power,
-            current,
-            energy
-        ).execute(&self.shared_actor_state.db).await?;
+        self.shared_actor_state
+            .repos
+            .smart_switch()
+            .append(&SmartSwitchReading {
+                event_id,
+                friendly_name: friendly_name.to_owned(),
+                ieee_addr: ieee_addr.to_owned(),
+                voltage,
+                power,
+                current,
+                energy,
+            })
+            .await?;
 
         Ok(())
     }
@@ -112,7 +116,7 @@ impl DeviceHandler for SmartSwitchHandler {
     type Message = Message;
     type State = ();
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

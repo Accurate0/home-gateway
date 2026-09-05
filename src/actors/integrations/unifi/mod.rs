@@ -1,5 +1,5 @@
 use crate::event_bus::EventBusMessage;
-use crate::{db::UnifiState, state::SharedActorState};
+use crate::{db::UnifiState, state::AppState};
 use ractor::Actor;
 use tracing::instrument;
 use types::{Parameters, UnifiWebhookEvent};
@@ -14,7 +14,7 @@ pub enum UnifiMessage {
 }
 
 pub struct UnifiConnectedClientHandler {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl UnifiConnectedClientHandler {
@@ -29,12 +29,12 @@ impl UnifiConnectedClientHandler {
         state: UnifiState,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let event_id = uuid::Uuid::new_v4();
-        let response = sqlx::query!(
-            "SELECT name, id FROM unifi_clients_mapping WHERE mac_address = $1",
-            mac_address
-        )
-        .fetch_optional(&self.shared_actor_state.db)
-        .await?;
+        let response = self
+            .shared_actor_state
+            .repos
+            .unifi()
+            .mapping_for(mac_address)
+            .await?;
 
         let name = response
             .as_ref()
@@ -46,15 +46,11 @@ impl UnifiConnectedClientHandler {
             .map(|r| r.id.to_string())
             .unwrap_or("unknown".to_owned());
 
-        sqlx::query!(
-            "INSERT INTO unifi_clients (event_id, name, id, state) VALUES ($1, $2, $3, $4)",
-            event_id,
-            name,
-            id,
-            state as UnifiState
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .unifi()
+            .append_event(event_id, name, &id, state)
+            .await?;
 
         self.shared_actor_state
             .event_bus

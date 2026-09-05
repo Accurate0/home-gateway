@@ -2,7 +2,7 @@ use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::{
     integrations::notify::notify,
     settings::{ArmedDoorStates, IEEEAddress},
-    state::SharedActorState,
+    state::AppState,
 };
 use chrono::{DateTime, Utc};
 use ractor::Actor;
@@ -20,7 +20,7 @@ pub struct ArmedDoorState {
 }
 
 pub struct ArmedDoor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl ArmedDoor {

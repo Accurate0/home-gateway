@@ -1,7 +1,7 @@
 use crate::{
     event_bus::EventBusMessage,
     integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
-    state::SharedActorState,
+    state::AppState,
 };
 use ractor::Actor;
 use std::time::Duration;
@@ -12,7 +12,7 @@ pub enum SolarMessage {
 }
 
 pub struct SolarActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
     pub goodwe: GoodWeSemsAPI,
     pub weather: WeatherAPI,
 }
@@ -51,16 +51,11 @@ impl SolarActor {
 
         tracing::info!("fetched uv level: {uv_level:?}, temperature: {temperature:?}");
 
-        sqlx::query!(
-            "INSERT INTO solar_data_tsdb (current_kwh, raw_data, uv_level, temperature) \
-             VALUES ($1, $2, $3, $4)",
-            current_kwh,
-            raw_data,
-            uv_level,
-            temperature
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .solar()
+            .append_reading(current_kwh, raw_data, uv_level, temperature)
+            .await?;
 
         self.shared_actor_state
             .event_bus

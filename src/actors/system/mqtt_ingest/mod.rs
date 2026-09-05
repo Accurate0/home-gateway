@@ -1,5 +1,6 @@
 use crate::actors::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
 use crate::actors::system::rpc;
+use crate::integrations::mqtt::MqttClient;
 use crate::{
     actors::devices::{
         door_sensor, environment_sensor, environment_sensor::EnvironmentSensorHandler, light,
@@ -8,7 +9,7 @@ use crate::{
     device_metric::DeviceMetric,
     device_registry::ZigbeeDevice,
     integrations::zigbee2mqtt::{devices::BridgeDevices, role},
-    state::SharedActorState,
+    state::AppState,
 };
 use ractor::{
     ActorProcessingErr, ActorRef,
@@ -98,7 +99,7 @@ impl MqttTopic {
 }
 
 pub struct MqttIngest {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl MqttIngest {
@@ -252,7 +253,7 @@ impl MqttIngest {
                 value,
             };
 
-            if let Err(e) = record.save(&self.shared_actor_state.db).await {
+            if let Err(e) = self.shared_actor_state.repos.metric().record(&record).await {
                 tracing::error!("failed to save device metric for {address}: {e}");
             }
         }
@@ -261,13 +262,12 @@ impl MqttIngest {
     }
 
     async fn record_last_seen(&self, device_key: &str) {
-        if let Err(e) = sqlx::query!(
-            "INSERT INTO device_last_seen (device_key, last_seen) VALUES ($1, now()) \
-             ON CONFLICT (device_key) DO UPDATE SET last_seen = now()",
-            device_key
-        )
-        .execute(&self.shared_actor_state.db)
-        .await
+        if let Err(e) = self
+            .shared_actor_state
+            .repos
+            .device()
+            .touch_last_seen(device_key)
+            .await
         {
             tracing::error!("failed to record last seen for {device_key}: {e}");
         }
@@ -283,13 +283,11 @@ impl MqttIngest {
                 for device in devices_payload {
                     let ieee_address = device.ieee_address;
                     let friendly_name = device.friendly_name;
-                    sqlx::query!(
-                            "INSERT INTO known_devices (ieee_addr, name) VALUES ($1, $2) ON CONFLICT (ieee_addr) DO UPDATE SET name = $2",
-                                &ieee_address,
-                                &friendly_name
-                            )
-                            .execute(&self.shared_actor_state.db)
-                            .await?;
+                    self.shared_actor_state
+                        .repos
+                        .device()
+                        .upsert_known(&ieee_address, &friendly_name)
+                        .await?;
                     self.shared_actor_state
                         .devices
                         .record_friendly_name(ieee_address, friendly_name)
@@ -320,7 +318,11 @@ impl MqttIngest {
 
                 for topic in topics {
                     tracing::info!("subscribing to esphome topic: {topic}");
-                    self.shared_actor_state.mqtt.subscribe(topic).await?;
+                    self.shared_actor_state
+                        .handles
+                        .expect::<MqttClient>()
+                        .subscribe(topic)
+                        .await?;
                 }
             }
             MqttTopic::Other => {
@@ -456,7 +458,7 @@ impl Worker for MqttIngest {
 }
 
 pub struct MqttMessageHandlerBuilder {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 impl WorkerBuilder<MqttIngest, ()> for MqttMessageHandlerBuilder {
     fn build(&mut self, _wid: usize) -> (MqttIngest, ()) {

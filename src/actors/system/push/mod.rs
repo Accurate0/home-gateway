@@ -9,7 +9,7 @@ use ractor::{
 };
 use types::{FcmMessage, FcmNotification, FcmSendRequest};
 
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 pub mod spawn;
 pub mod types;
@@ -23,7 +23,7 @@ pub enum PushMessage {
 
 pub struct PushWorker {
     client: reqwest_middleware::ClientWithMiddleware,
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
     /// `None` when no FCM service account is configured; sends are then skipped.
     token_provider: Option<Arc<dyn TokenProvider>>,
 }
@@ -65,9 +65,11 @@ impl PushWorker {
                 // (app uninstalled / token rotated). Prune them so we stop trying.
                 if status == StatusCode::NOT_FOUND {
                     tracing::info!("pruning unregistered push token");
-                    if let Err(e) = sqlx::query("DELETE FROM android_push_tokens WHERE token = $1")
-                        .bind(&device_token)
-                        .execute(&self.shared_actor_state.db)
+                    if let Err(e) = self
+                        .shared_actor_state
+                        .repos
+                        .push()
+                        .delete_token(&device_token)
                         .await
                     {
                         tracing::error!("failed to prune push token: {e}");
@@ -138,10 +140,7 @@ impl Worker for PushWorker {
                 };
 
                 let device_tokens: Vec<String> =
-                    match sqlx::query_scalar!("SELECT token FROM android_push_tokens")
-                        .fetch_all(&self.shared_actor_state.db)
-                        .await
-                    {
+                    match self.shared_actor_state.repos.push().tokens().await {
                         Ok(tokens) => tokens,
                         Err(e) => {
                             tracing::error!("failed to load push tokens: {e}");
@@ -173,7 +172,7 @@ impl Worker for PushWorker {
 
 pub struct PushWorkerBuilder {
     pub client: reqwest_middleware::ClientWithMiddleware,
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
     pub token_provider: Option<Arc<dyn TokenProvider>>,
 }
 

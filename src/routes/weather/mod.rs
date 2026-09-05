@@ -1,3 +1,4 @@
+use crate::integrations::willyweather::WillyWeather;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Query, extract::State};
 use http::StatusCode;
@@ -9,7 +10,7 @@ use crate::auth::{
 };
 use crate::integrations::willyweather::WillyWeatherError;
 use crate::integrations::willyweather::types::Forecast;
-use crate::state::ApiState;
+use crate::state::AppState;
 
 pub enum WeatherError {
     Forbidden,
@@ -46,11 +47,7 @@ pub struct ForecastQueryParams {
 
 pub async fn forecast(
     Auth(auth): Auth,
-    State(ApiState {
-        willyweather,
-        settings,
-        ..
-    }): State<ApiState>,
+    State(state): State<AppState>,
     params: Query<ForecastQueryParams>,
 ) -> Result<Json<Forecast>, WeatherError> {
     if auth
@@ -63,7 +60,13 @@ pub async fn forecast(
     let location = params
         .location
         .clone()
-        .unwrap_or_else(|| settings.willyweather.default_location.clone());
+        .unwrap_or_else(|| state.settings.willyweather.default_location.clone());
 
-    Ok(Json(willyweather.forecast(&location).await?))
+    Ok(Json(
+        state
+            .handles
+            .expect::<WillyWeather>()
+            .forecast(&location)
+            .await?,
+    ))
 }

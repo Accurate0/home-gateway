@@ -1,8 +1,9 @@
 use crate::actors::devices::handler::DeviceHandler;
+use crate::integrations::mqtt::MqttClient;
 use crate::{
     device_registry::Capability, event_bus::EventBusMessage,
     integrations::esphome::light_command_topic, integrations::mqtt::ZIGBEE2MQTT_BASE,
-    settings::IEEEAddress, state::SharedActorState,
+    settings::IEEEAddress, state::AppState,
 };
 use ractor::RpcReplyPort;
 use uuid::Uuid;
@@ -51,7 +52,7 @@ pub enum LightHandlerMessage {
 }
 
 pub struct LightHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 fn esphome_command(state: &serde_json::Value) -> Option<serde_json::Value> {
@@ -90,16 +91,16 @@ fn esphome_command(state: &serde_json::Value) -> Option<serde_json::Value> {
 }
 
 pub async fn record_light_state(
-    shared_actor_state: &SharedActorState,
+    shared_actor_state: &AppState,
     event_id: Uuid,
     ieee_addr: IEEEAddress,
     state: String,
 ) -> Result<(), anyhow::Error> {
-    sqlx::query!(
-        "INSERT INTO light_state (ieee_address, state) VALUES ($1, $2) ON CONFLICT (ieee_address) DO UPDATE SET state = EXCLUDED.state",
-        ieee_addr,
-        state,
-    ).execute(&shared_actor_state.db).await?;
+    shared_actor_state
+        .repos
+        .light()
+        .upsert_state(&ieee_addr, &state)
+        .await?;
 
     shared_actor_state
         .event_bus
@@ -125,14 +126,14 @@ impl LightHandler {
     }
 
     async fn stored_power_state(&self, ieee_addr: &str) -> Result<bool, anyhow::Error> {
-        let light_state = sqlx::query!(
-            "SELECT state FROM light_state WHERE ieee_address = $1",
-            ieee_addr
-        )
-        .fetch_optional(&self.shared_actor_state.db)
-        .await?;
+        let is_on = self
+            .shared_actor_state
+            .repos
+            .light()
+            .is_on(ieee_addr)
+            .await?;
 
-        Ok(light_state.is_some_and(|row| row.state == "ON"))
+        Ok(is_on.unwrap_or(false))
     }
 
     fn warn_if_unsupported(&self, ieee_addr: &str, capability: Capability) {
@@ -219,14 +220,13 @@ impl LightHandler {
                 self.send_mqtt_state(ieee_addr, state).await?;
             }
             LightHandlerMessage::QueryPowerState { ieee_addr, reply } => {
-                let light_state = sqlx::query!(
-                    "SELECT state FROM light_state WHERE ieee_address = $1",
-                    ieee_addr
-                )
-                .fetch_one(&self.shared_actor_state.db)
-                .await?;
-
-                let is_on = light_state.state == "ON";
+                let is_on = self
+                    .shared_actor_state
+                    .repos
+                    .light()
+                    .is_on(&ieee_addr)
+                    .await?
+                    .unwrap_or(false);
 
                 reply.send(is_on)?;
             }
@@ -247,7 +247,8 @@ impl LightHandler {
                 return Ok(());
             };
             self.shared_actor_state
-                .mqtt
+                .handles
+                .expect::<MqttClient>()
                 .send_event(topic, state)
                 .await?;
             return Ok(());
@@ -262,7 +263,8 @@ impl LightHandler {
 
         let topic = format!("{ZIGBEE2MQTT_BASE}/{target}/set");
         self.shared_actor_state
-            .mqtt
+            .handles
+            .expect::<MqttClient>()
             .send_event(topic, state)
             .await?;
 
@@ -277,7 +279,7 @@ impl DeviceHandler for LightHandler {
     type Message = LightHandlerMessage;
     type State = ();
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

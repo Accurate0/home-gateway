@@ -8,7 +8,7 @@ use crate::adhoc::cron_task::AdhocCronTask;
 use crate::adhoc::runner::{run_cron, run_pending};
 use crate::adhoc::{cron_registry, registry};
 use crate::integrations::feature_flag::ProviderEvent;
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 const RESUBSCRIBE_BACKOFF: Duration = Duration::from_secs(30);
 const CRON_JITTER_SECS: u64 = 60;
@@ -21,7 +21,7 @@ pub enum AdhocTaskActorMessage {
 }
 
 pub struct AdhocTaskActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl AdhocTaskActor {
@@ -54,7 +54,7 @@ impl AdhocTaskActor {
         }
     }
 
-    fn watch_flags(myself: ractor::ActorRef<AdhocTaskActorMessage>, state: SharedActorState) {
+    fn watch_flags(myself: ractor::ActorRef<AdhocTaskActorMessage>, state: AppState) {
         tokio::spawn(async move {
             let mut events = match state.feature_flag_client.subscribe() {
                 Some(events) => events,

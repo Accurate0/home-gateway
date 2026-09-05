@@ -15,6 +15,7 @@ pub mod http;
 pub mod integrations;
 pub mod metrics;
 pub mod mode;
+pub mod repo;
 pub mod routes;
 pub mod serde_lenient;
 pub mod settings;

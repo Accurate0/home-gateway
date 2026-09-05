@@ -31,6 +31,7 @@ pub trait ScreenshotBackend: Send + Sync {
 pub struct SourceContext<'a> {
     pub display: &'a ResolvedDisplay,
     pub db: &'a sqlx::Pool<sqlx::Postgres>,
+    pub eink: &'a crate::repo::EinkRepo,
     pub s3: &'a S3,
     pub reddit: &'a Reddit,
     pub screenshots: &'a dyn ScreenshotBackend,

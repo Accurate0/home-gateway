@@ -74,12 +74,8 @@ impl RobotVacuumMutation {
                     Action::Dock => dock_service,
                 };
 
-                let home_assistant = ctx.data::<Option<HomeAssistant>>()?;
-                let Some(home_assistant) = home_assistant else {
-                    return Err(async_graphql::Error::new(
-                        "home assistant is not configured",
-                    ));
-                };
+                let home_assistant =
+                    crate::graphql::require::<HomeAssistant>(ctx, "home assistant")?;
 
                 let Some((domain, service)) = service.split_once('.') else {
                     return Err(async_graphql::Error::new(format!(
@@ -106,7 +102,7 @@ impl RobotVacuumMutation {
                     Action::Dock => dock_payload,
                 };
 
-                let mqtt = ctx.data::<MqttClient>()?;
+                let mqtt = crate::graphql::require::<MqttClient>(ctx, "mqtt")?;
                 mqtt.send_event_raw(command_topic.clone(), payload)
                     .await
                     .map_err(|e| async_graphql::Error::new(e.to_string()))?;

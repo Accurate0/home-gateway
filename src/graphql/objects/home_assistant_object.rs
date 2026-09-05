@@ -1,7 +1,7 @@
+use crate::repo::RepoRegistry;
 use async_graphql::{ComplexObject, ID, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
 #[derive(SimpleObject)]
@@ -28,20 +28,19 @@ impl HomeAssistantObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<HomeAssistantEvent>> {
-        let db = ctx.data::<Pool<Postgres>>()?;
+        let repos = ctx.data::<RepoRegistry>()?;
 
-        Ok(sqlx::query!(
-            r#"SELECT event_id, entity_id, state, updated_at FROM latest_home_assistant_state ORDER BY updated_at DESC"#
-        )
-        .fetch_all(db)
-        .await?
-        .into_iter()
-        .map(|r| HomeAssistantEvent {
-            event_id: r.event_id,
-            entity_id: r.entity_id,
-            state: r.state,
-            time: r.updated_at,
-        })
-        .collect_vec())
+        Ok(repos
+            .home_assistant()
+            .latest_all()
+            .await?
+            .into_iter()
+            .map(|r| HomeAssistantEvent {
+                event_id: r.event_id,
+                entity_id: r.entity_id,
+                state: r.state,
+                time: r.updated_at,
+            })
+            .collect_vec())
     }
 }

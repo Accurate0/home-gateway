@@ -1,9 +1,10 @@
 use crate::actors::devices::handler::DeviceHandler;
+use crate::repo::door::DoorReading;
 use crate::{
     actors::devices::door_events::{
         DoorEvents, DoorEventsMessage, DoorEventsSupervisor, DoorEventsType,
     },
-    state::SharedActorState,
+    state::AppState,
 };
 use uuid::Uuid;
 
@@ -26,7 +27,7 @@ pub enum Message {
 }
 
 pub struct DoorSensorHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 // TODO: write the name from config too
@@ -42,14 +43,17 @@ impl DoorSensorHandler {
         contact: bool,
         battery: i64,
     ) -> Result<(), anyhow::Error> {
-        sqlx::query!(
-            "INSERT INTO door_sensor (event_id, name, ieee_addr, contact, battery) VALUES ($1, $2, $3, $4, $5)",
-            event_id,
-            friendly_name,
-            ieee_addr,
-            contact,
-            battery,
-        ).execute(&self.shared_actor_state.db).await?;
+        self.shared_actor_state
+            .repos
+            .door()
+            .append_reading(&DoorReading {
+                event_id,
+                friendly_name,
+                ieee_addr,
+                contact,
+                battery,
+            })
+            .await?;
 
         Ok(())
     }
@@ -111,7 +115,7 @@ impl DeviceHandler for DoorSensorHandler {
     type Message = Message;
     type State = ();
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

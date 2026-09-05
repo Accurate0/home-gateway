@@ -1,5 +1,5 @@
 use super::{WorkflowWorker, WorkflowWorkerBuilder, WorkflowWorkerMessage};
-use crate::state::SharedActorState;
+use crate::state::AppState;
 use ractor::{
     ActorRef,
     factory::{Factory, FactoryArguments, FactoryMessage, queues, routing},
@@ -7,7 +7,7 @@ use ractor::{
 
 pub async fn spawn_workflows(
     root_supervisor_ref: &ActorRef<crate::actors::root::RootMessage>,
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 ) -> anyhow::Result<ActorRef<FactoryMessage<(), WorkflowWorkerMessage>>> {
     let door_handler_factory_def = Factory::<
         (),

@@ -1,7 +1,7 @@
 use crate::{
     integrations::trmnl::{Trmnl, types::TrmnlDevice},
     settings::TrmnlDeviceSettings,
-    state::SharedActorState,
+    state::AppState,
 };
 use ractor::Actor;
 use std::time::Duration;
@@ -11,7 +11,7 @@ pub enum TrmnlMessage {
 }
 
 pub struct TrmnlActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
     pub trmnl: Trmnl,
 }
 
@@ -89,15 +89,11 @@ impl Actor for TrmnlActor {
                     let name = settings.name.clone();
                     let kind = "trmnl";
 
-                    sqlx::query!(
-                        "INSERT INTO eink_display (device_id, name, battery_voltage, updated_at) VALUES ($1, $2, $3, now()) \
-                         ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, battery_voltage = EXCLUDED.battery_voltage, updated_at = EXCLUDED.updated_at",
-                        device_id,
-                        name,
-                        voltage,
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                    self.shared_actor_state
+                        .repos
+                        .eink()
+                        .store_battery(&device_id, &name, voltage, None)
+                        .await?;
 
                     crate::actors::system::battery::BatteryActor::report(
                         device_id,

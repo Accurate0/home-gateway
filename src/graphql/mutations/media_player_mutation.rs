@@ -23,11 +23,7 @@ impl MediaPlayerMutation {
         service: &str,
         extra: serde_json::Value,
     ) -> async_graphql::Result<bool> {
-        let Some(home_assistant) = ctx.data::<Option<HomeAssistant>>()? else {
-            return Err(async_graphql::Error::new(
-                "home assistant is not configured",
-            ));
-        };
+        let home_assistant = crate::graphql::require::<HomeAssistant>(ctx, "home assistant")?;
 
         let mut data = json!({ "entity_id": self.entity_id });
         if let (Some(target), Some(extra)) = (data.as_object_mut(), extra.as_object()) {

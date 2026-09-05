@@ -17,11 +17,11 @@ use crate::{
     event_bus::EventBusMessage,
     integrations::home_assistant::HomeAssistant,
     settings::EntitySettings,
-    state::SharedActorState,
+    state::AppState,
 };
 
 pub struct HomeAssistantActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl HomeAssistantActor {
@@ -276,34 +276,22 @@ impl HomeAssistantActor {
         write_latest_state: bool,
     ) -> Result<(), anyhow::Error> {
         if entity.log {
-            sqlx::query!(
-                "INSERT INTO home_assistant_events (event_id, entity_id, state) VALUES ($1, $2, $3)",
-                event_id,
-                entity_id,
-                state,
-            )
-            .execute(&self.shared_actor_state.db)
-            .await?;
+            self.shared_actor_state
+                .repos
+                .home_assistant()
+                .append_event(event_id, entity_id, state)
+                .await?;
         }
 
         if !write_latest_state {
             return Ok(());
         }
 
-        sqlx::query!(
-            r#"INSERT INTO latest_home_assistant_state (entity_id, state, event_id, updated_at) VALUES ($1, $2, $3, now())
-            ON CONFLICT (entity_id)
-            DO UPDATE SET
-                state = EXCLUDED.state,
-                event_id = EXCLUDED.event_id,
-                updated_at = EXCLUDED.updated_at
-            "#,
-            entity_id,
-            state,
-            event_id,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .home_assistant()
+            .upsert_latest(event_id, entity_id, state)
+            .await?;
 
         Ok(())
     }
@@ -319,7 +307,12 @@ impl Actor for HomeAssistantActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let Some(home_assistant) = self.shared_actor_state.home_assistant.clone() else {
+        let Some(home_assistant) = self
+            .shared_actor_state
+            .handles
+            .get::<HomeAssistant>()
+            .cloned()
+        else {
             return Err(anyhow::anyhow!("home assistant is not configured").into());
         };
 

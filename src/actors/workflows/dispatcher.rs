@@ -9,6 +9,7 @@
 //! providing the parallelism.
 
 use crate::actors::system::rpc;
+use crate::actors::workflows::manager::WorkflowManager;
 use std::collections::HashMap;
 
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -20,11 +21,11 @@ use crate::{
     event_bus::{EventBusMessage, SensorMetric, SolarMetric},
     integrations::solar::{queries, types::SolarCurrentStatisticsAverages},
     settings::{TriggerMatcher, Workflow},
-    state::SharedActorState,
+    state::AppState,
 };
 
 pub struct WorkflowDispatcher {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 #[derive(Default)]
@@ -356,7 +357,8 @@ impl WorkflowDispatcher {
             }
             if !self
                 .shared_actor_state
-                .workflows
+                .handles
+                .expect::<WorkflowManager>()
                 .enabled(&workflow.slug, workflow.enabled)
                 .await
             {
@@ -498,32 +500,14 @@ impl WorkflowDispatcher {
         name: &str,
         cooldown: chrono::TimeDelta,
     ) -> Result<bool, ActorProcessingErr> {
-        let now = chrono::Utc::now();
-        let db = &self.shared_actor_state.db;
+        let ok = self
+            .shared_actor_state
+            .handles
+            .expect::<WorkflowManager>()
+            .cooldown_ok(name, cooldown)
+            .await?;
 
-        let last = sqlx::query!(
-            "SELECT last_fired FROM trigger_cooldowns WHERE name = $1",
-            name
-        )
-        .fetch_optional(db)
-        .await?;
-
-        if let Some(row) = last
-            && now - row.last_fired < cooldown
-        {
-            return Ok(false);
-        }
-
-        sqlx::query!(
-            "INSERT INTO trigger_cooldowns (name, last_fired) VALUES ($1, $2) \
-             ON CONFLICT (name) DO UPDATE SET last_fired = EXCLUDED.last_fired",
-            name,
-            now
-        )
-        .execute(db)
-        .await?;
-
-        Ok(true)
+        Ok(ok)
     }
 
     fn dispatch_workflow(

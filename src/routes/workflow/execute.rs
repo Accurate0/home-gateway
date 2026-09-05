@@ -7,7 +7,7 @@ use crate::{
     },
     error::AppError,
     settings::workflow::Workflow,
-    state::ApiState,
+    state::AppState,
 };
 use axum::{Json, extract::State};
 use http::StatusCode;
@@ -21,7 +21,7 @@ pub struct WorkflowExecutePayload {
 }
 
 pub async fn workflow_execute(
-    State(ApiState { .. }): State<ApiState>,
+    State(AppState { .. }): State<AppState>,
     Auth(auth): Auth,
     Json(payload): Json<WorkflowExecutePayload>,
 ) -> Result<StatusCode, AppError> {

@@ -1,11 +1,13 @@
 use crate::actors::system::rpc;
+use crate::actors::workflows::manager::WorkflowManager;
+use crate::integrations::home_assistant::HomeAssistant;
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
     integrations::notify::notify,
     settings::workflow::{EnableState, LightState, Step, Workflow},
-    state::SharedActorState,
+    state::AppState,
     timer::timed_async,
 };
 use ractor::{
@@ -68,7 +70,7 @@ pub enum WorkflowWorkerMessage {
 }
 
 pub struct WorkflowWorker {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl WorkflowWorker {
@@ -82,14 +84,16 @@ impl WorkflowWorker {
     ) -> Result<(), WorkflowError> {
         if !self
             .shared_actor_state
-            .workflows
+            .handles
+            .expect::<WorkflowManager>()
             .enabled(&workflow.slug, workflow.enabled)
             .await
         {
             tracing::warn!("[{event_id}] workflow not executed as it's disabled");
             crate::metrics::record_workflow("disabled", Duration::ZERO);
             self.shared_actor_state
-                .workflows
+                .handles
+                .expect::<WorkflowManager>()
                 .record_run(WorkflowRun {
                     slug: workflow.slug.clone(),
                     name: workflow.name.clone(),
@@ -120,7 +124,8 @@ impl WorkflowWorker {
         let outcome = if result.is_ok() { "success" } else { "error" };
         crate::metrics::record_workflow(outcome, elapsed);
         self.shared_actor_state
-            .workflows
+            .handles
+            .expect::<WorkflowManager>()
             .record_run(WorkflowRun {
                 slug: workflow.slug.clone(),
                 name: workflow.name.clone(),
@@ -220,8 +225,8 @@ impl WorkflowWorker {
     ) -> Result<(), WorkflowError> {
         let home_assistant = self
             .shared_actor_state
-            .home_assistant
-            .as_ref()
+            .handles
+            .get::<HomeAssistant>()
             .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
 
         let (domain, service) = call_service.split_once('.').ok_or_else(|| {
@@ -246,7 +251,7 @@ impl WorkflowWorker {
         state: EnableState,
     ) -> Result<(), WorkflowError> {
         let settings = self.shared_actor_state.settings.clone();
-        let manager = &self.shared_actor_state.workflows;
+        let manager = self.shared_actor_state.handles.expect::<WorkflowManager>();
 
         let targets = settings
             .workflows
@@ -295,7 +300,8 @@ impl WorkflowWorker {
     ) -> Result<(), WorkflowError> {
         let transitions = self
             .shared_actor_state
-            .workflows
+            .handles
+            .expect::<WorkflowManager>()
             .set_mode(mode, active)
             .await
             .map_err(|e| WorkflowError::Other(e.into()))?;
@@ -339,7 +345,8 @@ impl WorkflowWorker {
 
         if !self
             .shared_actor_state
-            .workflows
+            .handles
+            .expect::<WorkflowManager>()
             .enabled(&workflow.slug, workflow.enabled)
             .await
         {
@@ -479,7 +486,7 @@ impl Worker for WorkflowWorker {
 }
 
 pub struct WorkflowWorkerBuilder {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 impl WorkerBuilder<WorkflowWorker, ()> for WorkflowWorkerBuilder {
     fn build(&mut self, _wid: usize) -> (WorkflowWorker, ()) {

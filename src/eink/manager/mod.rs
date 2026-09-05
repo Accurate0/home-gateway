@@ -29,6 +29,7 @@ use steps::{CropCover, FloydSteinbergPacked, RotateToPortrait, SleepLabel};
 #[derive(Clone)]
 pub struct EinkDisplayManager {
     db: sqlx::Pool<sqlx::Postgres>,
+    eink: crate::repo::EinkRepo,
     s3: S3,
     feature_flag_client: FeatureFlagClient,
     devices: DeviceRegistry,
@@ -59,6 +60,7 @@ impl EinkDisplayManager {
             .register(RotateToPortrait);
 
         Self {
+            eink: crate::repo::EinkRepo::new(db.clone()),
             db,
             s3,
             feature_flag_client,
@@ -116,6 +118,7 @@ impl EinkDisplayManager {
         SourceContext {
             display,
             db: &self.db,
+            eink: &self.eink,
             s3: &self.s3,
             reddit: &self.reddit,
             screenshots,

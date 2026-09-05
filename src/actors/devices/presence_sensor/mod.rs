@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::actors::devices::handler::DeviceHandler;
-use crate::{event_bus::EventBusMessage, state::SharedActorState};
+use crate::{event_bus::EventBusMessage, state::AppState};
 use ractor::RpcReplyPort;
 use uuid::Uuid;
 
@@ -39,7 +39,7 @@ pub struct PresenceSensorState {
 }
 
 pub struct PresenceSensorHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl PresenceSensorHandler {
@@ -116,7 +116,7 @@ impl DeviceHandler for PresenceSensorHandler {
     type Message = Message;
     type State = PresenceSensorState;
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

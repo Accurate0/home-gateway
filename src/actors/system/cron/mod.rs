@@ -9,7 +9,7 @@
 use ractor::Actor;
 use uuid::Uuid;
 
-use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::SharedActorState};
+use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::AppState};
 
 use schedule::CronSchedule;
 
@@ -25,7 +25,7 @@ pub enum CronActorMessage {
 }
 
 pub struct CronActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl CronActor {

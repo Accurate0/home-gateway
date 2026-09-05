@@ -1,5 +1,5 @@
 use crate::actors::devices::handler::DeviceHandler;
-use crate::{event_bus::EventBusMessage, state::SharedActorState};
+use crate::{event_bus::EventBusMessage, state::AppState};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum ControlSwitchMessage {
 }
 
 pub struct ControlSwitchHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl ControlSwitchHandler {
@@ -50,7 +50,7 @@ impl DeviceHandler for ControlSwitchHandler {
     type Message = ControlSwitchMessage;
     type State = ();
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

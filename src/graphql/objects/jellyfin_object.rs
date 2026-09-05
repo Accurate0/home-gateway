@@ -1,7 +1,7 @@
+use crate::repo::RepoRegistry;
 use async_graphql::{ComplexObject, ID, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
 #[derive(SimpleObject)]
@@ -47,36 +47,31 @@ impl JellyfinObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<JellyfinSession>> {
-        let db = ctx.data::<Pool<Postgres>>()?;
+        let repos = ctx.data::<RepoRegistry>()?;
 
-        Ok(sqlx::query!(
-            r#"SELECT event_id, session_id, user_name, device_name, client, item_id, item_name,
-                      item_type, series_name, season, episode, position_seconds, runtime_seconds,
-                      play_method, paused, updated_at
-               FROM jellyfin_state
-               ORDER BY updated_at DESC"#
-        )
-        .fetch_all(db)
-        .await?
-        .into_iter()
-        .map(|r| JellyfinSession {
-            event_id: r.event_id,
-            session_id: r.session_id,
-            user: r.user_name,
-            device: r.device_name,
-            client: r.client,
-            item_id: r.item_id,
-            item_name: r.item_name,
-            item_type: r.item_type,
-            series_name: r.series_name,
-            season: r.season,
-            episode: r.episode,
-            position_seconds: r.position_seconds,
-            runtime_seconds: r.runtime_seconds,
-            play_method: r.play_method,
-            paused: r.paused,
-            updated_at: r.updated_at,
-        })
-        .collect_vec())
+        Ok(repos
+            .jellyfin()
+            .sessions()
+            .await?
+            .into_iter()
+            .map(|r| JellyfinSession {
+                event_id: r.event_id,
+                session_id: r.session_id,
+                user: r.user_name,
+                device: r.device_name,
+                client: r.client,
+                item_id: r.item_id,
+                item_name: r.item_name,
+                item_type: r.item_type,
+                series_name: r.series_name,
+                season: r.season,
+                episode: r.episode,
+                position_seconds: r.position_seconds,
+                runtime_seconds: r.runtime_seconds,
+                play_method: r.play_method,
+                paused: r.paused,
+                updated_at: r.updated_at,
+            })
+            .collect_vec())
     }
 }

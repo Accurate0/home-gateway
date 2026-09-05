@@ -1,4 +1,4 @@
-use crate::state::SharedActorState;
+use crate::state::AppState;
 use bytes::Bytes;
 use chrono::DateTime;
 use ractor::Actor;
@@ -9,7 +9,7 @@ pub enum SynergyMessage {
 }
 
 pub struct SynergyActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl SynergyActor {
@@ -70,13 +70,10 @@ impl Actor for SynergyActor {
                             let time_unparsed = format!("{} {} +0800", r.date, r.time);
                             let time = DateTime::parse_from_str(&time_unparsed, dt_format)?;
 
-                            sqlx::query!(
-                                    "INSERT INTO energy_consumption(energy_used, solar_exported, time) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-                                    energy_used,
-                                    solar_exported,
-                                    time
-                                )
-                                .execute(&self.shared_actor_state.db)
+                            self.shared_actor_state
+                                .repos
+                                .energy()
+                                .record(energy_used, solar_exported, time)
                                 .await?;
 
                             tracing::info!("record: {count} added");

@@ -1,9 +1,10 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::db::DoorState;
 use crate::event_bus::EventBusMessage;
+use crate::repo::door::DerivedDoorEvent;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
-    state::SharedActorState,
+    state::AppState,
 };
 use chrono::{DateTime, Utc};
 use ractor::Actor;
@@ -15,7 +16,7 @@ pub struct DerivedDoorEventsState {
 }
 
 pub struct DerivedDoorEvents {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl DerivedDoorEvents {
@@ -29,14 +30,17 @@ impl DerivedDoorEvents {
         door_settings: &DoorSettings,
         door_state: DoorState,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        sqlx::query!(
-            "INSERT INTO derived_door_events (event_id, name, id, ieee_addr, state) VALUES ($1, $2, $3, $4, $5)",
-            message.event_id,
-            door_settings.name,
-            door_settings.id,
-            &message.ieee_addr,
-            door_state as DoorState
-        ).execute(&self.shared_actor_state.db).await?;
+        self.shared_actor_state
+            .repos
+            .door()
+            .append_derived(&DerivedDoorEvent {
+                event_id: message.event_id,
+                name: door_settings.name.clone(),
+                id: door_settings.id.clone(),
+                ieee_addr: message.ieee_addr.clone(),
+                state: door_state,
+            })
+            .await?;
 
         state.map.insert(message.ieee_addr.clone(), door_state);
 
@@ -65,21 +69,12 @@ impl Actor for DerivedDoorEvents {
         _myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let last_state = sqlx::query!(
-            r#"
-        SELECT DISTINCT ON (id) id, name, ieee_addr, state as "state: DoorState"
-        FROM derived_door_events
-        ORDER BY id, "time" DESC
-        "#
-        )
-        .fetch_all(&self.shared_actor_state.db)
-        .await?;
-
-        let mut map = HashMap::new();
-
-        for door in last_state {
-            map.insert(door.ieee_addr.clone(), door.state);
-        }
+        let map = self
+            .shared_actor_state
+            .repos
+            .door()
+            .latest_derived_per_door()
+            .await?;
 
         Ok(DerivedDoorEventsState {
             map,

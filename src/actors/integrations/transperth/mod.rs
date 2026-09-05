@@ -4,8 +4,9 @@ use chrono::Utc;
 use chrono_tz::Australia::Perth;
 use ractor::Actor;
 
+use crate::integrations::s3::S3;
 use crate::integrations::transperth::{TIMETABLE_KEY, Transperth, gtfs::TimetableIndex};
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 const FALLBACK_REFRESH: Duration = Duration::from_secs(900);
 
@@ -20,7 +21,7 @@ pub struct TransperthActorState {
 }
 
 pub struct TransperthActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
     pub transperth: Transperth,
 }
 
@@ -28,7 +29,13 @@ impl TransperthActor {
     pub const NAME: &str = "transperth";
 
     async fn load_timetable(&self) -> Result<(), ractor::ActorProcessingErr> {
-        let payload = match self.shared_actor_state.s3.get_object(TIMETABLE_KEY).await {
+        let payload = match self
+            .shared_actor_state
+            .handles
+            .expect::<S3>()
+            .get_object(TIMETABLE_KEY)
+            .await
+        {
             Ok(payload) => payload,
             Err(error) => {
                 tracing::warn!(

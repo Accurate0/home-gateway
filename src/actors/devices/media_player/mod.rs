@@ -1,10 +1,12 @@
 use crate::actors::devices::handler::DeviceHandler;
+use crate::integrations::home_assistant::HomeAssistant;
+use crate::repo::media_player::MediaPlayerUpdate;
 use std::collections::HashMap;
 
 use uuid::Uuid;
 
 use crate::event_bus::EventBusMessage;
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 pub mod state;
 
@@ -22,7 +24,7 @@ pub enum Message {
 }
 
 pub struct MediaPlayerHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl MediaPlayerHandler {
@@ -62,7 +64,8 @@ impl MediaPlayerHandler {
 
         let artwork_url = attributes.entity_picture.as_deref().and_then(|path| {
             self.shared_actor_state
-                .home_assistant
+                .handles
+                .get::<HomeAssistant>()
                 .as_ref()
                 .map(|ha| ha.absolute_url(path))
         });
@@ -134,17 +137,14 @@ impl MediaPlayerHandler {
     }
 
     async fn load_prior(&self, device_id: &str) -> Result<Option<Prior>, anyhow::Error> {
-        let row = sqlx::query!(
-            "SELECT state, media_title FROM media_player_state WHERE device_id = $1",
-            device_id,
-        )
-        .fetch_optional(&self.shared_actor_state.db)
-        .await?;
+        let prior = self
+            .shared_actor_state
+            .repos
+            .media_player()
+            .load_prior(device_id)
+            .await?;
 
-        Ok(row.map(|row| Prior {
-            state: row.state,
-            media_title: row.media_title,
-        }))
+        Ok(prior)
     }
 
     async fn save_state(
@@ -156,56 +156,18 @@ impl MediaPlayerHandler {
         artwork_url: Option<&str>,
         raw_attributes: &serde_json::Value,
     ) -> Result<(), anyhow::Error> {
-        sqlx::query!(
-            r#"INSERT INTO media_player_state (
-                device_id, state, app_name, source, media_content_type, media_title,
-                media_artist, media_album_name, media_series_title, media_season, media_episode,
-                position_seconds, duration_seconds, position_updated_at, volume_level, muted,
-                artwork_url, attributes, event_id, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, now())
-            ON CONFLICT (device_id) DO UPDATE SET
-                state = EXCLUDED.state,
-                app_name = EXCLUDED.app_name,
-                source = EXCLUDED.source,
-                media_content_type = EXCLUDED.media_content_type,
-                media_title = EXCLUDED.media_title,
-                media_artist = EXCLUDED.media_artist,
-                media_album_name = EXCLUDED.media_album_name,
-                media_series_title = EXCLUDED.media_series_title,
-                media_season = EXCLUDED.media_season,
-                media_episode = EXCLUDED.media_episode,
-                position_seconds = EXCLUDED.position_seconds,
-                duration_seconds = EXCLUDED.duration_seconds,
-                position_updated_at = EXCLUDED.position_updated_at,
-                volume_level = COALESCE(EXCLUDED.volume_level, media_player_state.volume_level),
-                muted = COALESCE(EXCLUDED.muted, media_player_state.muted),
-                artwork_url = EXCLUDED.artwork_url,
-                attributes = EXCLUDED.attributes,
-                event_id = EXCLUDED.event_id,
-                updated_at = now()
-            "#,
-            device_id,
-            state,
-            attributes.app_name,
-            attributes.source,
-            attributes.media_content_type,
-            attributes.media_title,
-            attributes.media_artist,
-            attributes.media_album_name,
-            attributes.media_series_title,
-            attributes.media_season,
-            attributes.media_episode,
-            attributes.media_position,
-            attributes.media_duration,
-            attributes.media_position_updated_at,
-            attributes.volume_level,
-            attributes.is_volume_muted,
-            artwork_url,
-            raw_attributes,
-            event_id,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .media_player()
+            .upsert(&MediaPlayerUpdate {
+                event_id,
+                device_id,
+                state,
+                attributes,
+                artwork_url,
+                raw_attributes,
+            })
+            .await?;
 
         Ok(())
     }
@@ -217,7 +179,7 @@ impl DeviceHandler for MediaPlayerHandler {
     type Message = Message;
     type State = HashMap<String, Prior>;
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

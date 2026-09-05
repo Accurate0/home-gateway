@@ -1,4 +1,5 @@
-use crate::{battery::BatteryChemistry, event_bus::EventBusMessage, state::SharedActorState};
+use crate::repo::battery::BatteryReading;
+use crate::{battery::BatteryChemistry, event_bus::EventBusMessage, state::AppState};
 use ractor::Actor;
 use uuid::Uuid;
 
@@ -14,7 +15,7 @@ pub enum BatteryMessage {
 }
 
 pub struct BatteryActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl BatteryActor {
@@ -80,29 +81,19 @@ impl Actor for BatteryActor {
 
         let event_id = Uuid::new_v4();
 
-        sqlx::query!(
-            "INSERT INTO device_battery (event_id, device_id, kind, battery_voltage, battery_percent) VALUES ($1, $2, $3, $4, $5)",
-            event_id,
-            device_id,
-            kind,
-            battery_voltage,
-            battery_percent,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
-
-        sqlx::query!(
-            "INSERT INTO device_battery_latest (device_id, name, kind, battery_voltage, battery_percent, battery_chemistry, updated_at) VALUES ($1, $2, $3, $4, $5, $6, now()) \
-             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, kind = EXCLUDED.kind, battery_voltage = EXCLUDED.battery_voltage, battery_percent = EXCLUDED.battery_percent, battery_chemistry = COALESCE(EXCLUDED.battery_chemistry, device_battery_latest.battery_chemistry), updated_at = EXCLUDED.updated_at",
-            device_id,
-            name,
-            kind,
-            battery_voltage,
-            battery_percent,
-            battery_chemistry as Option<BatteryChemistry>,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .battery()
+            .record(BatteryReading {
+                event_id,
+                device_id: &device_id,
+                name: &name,
+                kind: &kind,
+                battery_voltage,
+                battery_percent,
+                battery_chemistry,
+            })
+            .await?;
 
         if let Some(percent) = battery_percent {
             crate::metrics::record_device_battery_percent(device_id.clone(), kind.clone(), percent);

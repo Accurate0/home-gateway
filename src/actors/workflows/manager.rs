@@ -4,10 +4,12 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use crate::mode::Mode;
+use crate::repo::WorkflowRepo;
+use crate::repo::workflow::NewWorkflowRun;
 
 #[derive(Clone)]
 pub struct WorkflowManager {
-    db: Pool<Postgres>,
+    repo: WorkflowRepo,
     enabled_cache: Cache<String, Option<bool>>,
 }
 
@@ -27,19 +29,22 @@ impl WorkflowManager {
             .max_capacity(1024)
             .time_to_live(Duration::from_secs(300))
             .build();
-        Self { db, enabled_cache }
+
+        Self {
+            repo: WorkflowRepo::new(db),
+            enabled_cache,
+        }
     }
 
     pub async fn enabled(&self, slug: &str, config_default: bool) -> bool {
-        let db = self.db.clone();
+        let repo = self.repo.clone();
         let slug_owned = slug.to_owned();
         let override_value = self
             .enabled_cache
-            .try_get_with(slug.to_owned(), async move {
-                sqlx::query_scalar!("SELECT enabled FROM workflows WHERE slug = $1", slug_owned)
-                    .fetch_optional(&db)
-                    .await
-            })
+            .try_get_with(
+                slug.to_owned(),
+                async move { repo.enabled(&slug_owned).await },
+            )
             .await;
 
         match override_value {
@@ -52,11 +57,7 @@ impl WorkflowManager {
     }
 
     pub async fn mode_active(&self, mode: Mode) -> bool {
-        let row = sqlx::query_scalar!("SELECT value FROM state WHERE key = $1", mode.state_key())
-            .fetch_optional(&self.db)
-            .await;
-
-        match row {
+        match self.repo.state_value(&mode.state_key()).await {
             Ok(Some(value)) => value == "true",
             Ok(None) => false,
             Err(err) => {
@@ -100,26 +101,13 @@ impl WorkflowManager {
     }
 
     async fn write_mode(&self, mode: Mode, active: bool) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "INSERT INTO state (key, value) VALUES ($1, $2) \
-             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-            mode.state_key(),
-            if active { "true" } else { "false" }
-        )
-        .execute(&self.db)
-        .await?;
-        Ok(())
+        let value = if active { "true" } else { "false" };
+
+        self.repo.set_state_value(&mode.state_key(), value).await
     }
 
     pub async fn set_enabled(&self, slug: &str, enabled: bool) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "INSERT INTO workflows (slug, enabled, updated_at) VALUES ($1, $2, now()) \
-             ON CONFLICT (slug) DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = now()",
-            slug,
-            enabled
-        )
-        .execute(&self.db)
-        .await?;
+        self.repo.set_enabled(slug, enabled).await?;
 
         self.enabled_cache
             .insert(slug.to_owned(), Some(enabled))
@@ -129,22 +117,37 @@ impl WorkflowManager {
 
     pub async fn record_run(&self, run: WorkflowRun) {
         let duration_ms = i64::try_from(run.duration.as_millis()).unwrap_or(i64::MAX);
-        if let Err(err) = sqlx::query!(
-            "INSERT INTO workflow_runs \
-             (slug, name, event_id, outcome, dry_run, duration_ms, error) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7)",
-            run.slug,
-            run.name,
-            run.event_id,
-            run.outcome,
-            run.dry_run,
-            duration_ms,
-            run.error,
-        )
-        .execute(&self.db)
-        .await
+
+        if let Err(err) = self
+            .repo
+            .append_run(NewWorkflowRun {
+                slug: &run.slug,
+                name: &run.name,
+                event_id: run.event_id,
+                outcome: &run.outcome,
+                dry_run: run.dry_run,
+                duration_ms,
+                error: run.error.as_deref(),
+            })
+            .await
         {
             tracing::warn!("failed to record workflow run for '{}': {err}", run.slug);
         }
+    }
+
+    pub async fn recent_runs(
+        &self,
+        slug: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<crate::repo::workflow::WorkflowRunRow>, sqlx::Error> {
+        self.repo.recent_runs(slug, limit).await
+    }
+
+    pub async fn cooldown_ok(
+        &self,
+        name: &str,
+        cooldown: chrono::TimeDelta,
+    ) -> Result<bool, sqlx::Error> {
+        self.repo.cooldown_ok(name, cooldown).await
     }
 }

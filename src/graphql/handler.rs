@@ -9,7 +9,8 @@ use serde_json::Value;
 use crate::{
     auth::{Auth, resolve_ws_auth},
     error::AppError,
-    state::ApiState,
+    graphql::FinalSchema,
+    state::AppState,
 };
 
 fn token_from_payload(payload: &Value) -> Option<String> {
@@ -38,11 +39,11 @@ pub async fn graphiql() -> impl IntoResponse {
 }
 
 pub async fn graphql_ws_handler(
-    State(state): State<ApiState>,
+    State(schema): State<FinalSchema>,
+    State(state): State<AppState>,
     protocol: GraphQLProtocol,
     upgrade: WebSocketUpgrade,
 ) -> Response {
-    let schema = state.schema.clone();
     upgrade
         .protocols(ALL_WEBSOCKET_PROTOCOLS)
         .on_upgrade(move |stream| {
@@ -61,7 +62,7 @@ pub async fn graphql_ws_handler(
 }
 
 pub async fn graphql_handler(
-    State(ApiState { schema, .. }): State<ApiState>,
+    State(schema): State<FinalSchema>,
     Auth(auth): Auth,
     req: GraphQLRequest,
 ) -> Result<GraphQLResponse, AppError> {

@@ -2,7 +2,7 @@ use crate::battery::{BatteryChemistry, voltage_to_percentage};
 use crate::eink::manager::EinkDisplayManager;
 use crate::eink::manager::source::Prepared;
 use crate::error::AppError;
-use crate::state::SharedActorState;
+use crate::state::AppState;
 use browser::Chromium;
 use ractor::{Actor, RpcReplyPort};
 use std::collections::HashMap;
@@ -35,7 +35,7 @@ pub enum EInkDisplayMessage {
 }
 
 pub struct EInkDisplayActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 pub struct EInkActorState {
@@ -47,7 +47,9 @@ impl EInkDisplayActor {
     pub const NAME: &str = "eink_display";
 
     fn manager(&self) -> &EinkDisplayManager {
-        &self.shared_actor_state.eink
+        self.shared_actor_state
+            .handles
+            .expect::<EinkDisplayManager>()
     }
 
     async fn take_screenshot(

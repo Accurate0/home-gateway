@@ -1,7 +1,7 @@
 use crate::actors::devices::handler::DeviceHandler;
 use crate::actors::system::battery::BatteryActor;
 use crate::settings::RoborockField;
-use crate::state::SharedActorState;
+use crate::state::AppState;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -53,7 +53,7 @@ struct ValetudoAttributes {
 }
 
 pub struct RobotVacuumHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl RobotVacuumHandler {
@@ -78,33 +78,17 @@ impl RobotVacuumHandler {
     ) -> Result<(), anyhow::Error> {
         let parsed = serde_json::from_slice::<ValetudoState>(payload)?;
 
-        sqlx::query!(
-            "INSERT INTO robot_vacuum_events (event_id, device_id, source, state, battery_level) \
-             VALUES ($1, $2, 'valetudo', $3, $4)",
-            event_id,
-            device_id,
-            parsed.state,
-            parsed.battery_level,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
-
-        sqlx::query!(
-            "INSERT INTO latest_robot_vacuum_state (device_id, source, state, battery_level, fan_speed) \
-             VALUES ($1, 'valetudo', $2, $3, $4) \
-             ON CONFLICT (device_id) DO UPDATE SET \
-               source = EXCLUDED.source, \
-               state = COALESCE(EXCLUDED.state, latest_robot_vacuum_state.state), \
-               battery_level = COALESCE(EXCLUDED.battery_level, latest_robot_vacuum_state.battery_level), \
-               fan_speed = COALESCE(EXCLUDED.fan_speed, latest_robot_vacuum_state.fan_speed), \
-               updated_at = now()",
-            device_id,
-            parsed.state,
-            parsed.battery_level,
-            parsed.fan_speed,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .robot_vacuum()
+            .record_valetudo_state(
+                event_id,
+                device_id,
+                parsed.state.as_deref(),
+                parsed.battery_level,
+                parsed.fan_speed.as_deref(),
+            )
+            .await?;
 
         if let Some(level) = parsed.battery_level {
             self.report_battery(device_id, level);
@@ -121,21 +105,16 @@ impl RobotVacuumHandler {
         let parsed = serde_json::from_slice::<ValetudoAttributes>(payload)?;
         let attributes = serde_json::from_slice::<serde_json::Value>(payload)?;
 
-        sqlx::query!(
-            "INSERT INTO latest_robot_vacuum_state (device_id, source, current_clean_area, clean_count, attributes) \
-             VALUES ($1, 'valetudo', $2, $3, $4) \
-             ON CONFLICT (device_id) DO UPDATE SET \
-               current_clean_area = COALESCE(EXCLUDED.current_clean_area, latest_robot_vacuum_state.current_clean_area), \
-               clean_count = COALESCE(EXCLUDED.clean_count, latest_robot_vacuum_state.clean_count), \
-               attributes = EXCLUDED.attributes, \
-               updated_at = now()",
-            device_id,
-            parsed.current_clean_area,
-            parsed.clean_count,
-            attributes,
-        )
-        .execute(&self.shared_actor_state.db)
-        .await?;
+        self.shared_actor_state
+            .repos
+            .robot_vacuum()
+            .upsert_valetudo_attributes(
+                device_id,
+                parsed.current_clean_area,
+                parsed.clean_count,
+                &attributes,
+            )
+            .await?;
 
         Ok(())
     }
@@ -150,51 +129,21 @@ impl RobotVacuumHandler {
 
         match field {
             RoborockField::Status => {
-                sqlx::query!(
-                    "INSERT INTO robot_vacuum_events (event_id, device_id, source, state) \
-                     VALUES ($1, $2, 'roborock', $3)",
-                    event_id,
-                    device_id,
-                    value,
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
-
-                sqlx::query!(
-                    "INSERT INTO latest_robot_vacuum_state (device_id, source, state) \
-                     VALUES ($1, 'roborock', $2) \
-                     ON CONFLICT (device_id) DO UPDATE SET \
-                       source = EXCLUDED.source, state = EXCLUDED.state, updated_at = now()",
-                    device_id,
-                    value,
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
+                self.shared_actor_state
+                    .repos
+                    .robot_vacuum()
+                    .record_roborock_status(event_id, &device_id, &value)
+                    .await?;
             }
 
             RoborockField::Battery => {
                 let level = value.parse::<f64>().ok().map(|v| v as i32);
 
-                sqlx::query!(
-                    "INSERT INTO robot_vacuum_events (event_id, device_id, source, battery_level) \
-                     VALUES ($1, $2, 'roborock', $3)",
-                    event_id,
-                    device_id,
-                    level,
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
-
-                sqlx::query!(
-                    "INSERT INTO latest_robot_vacuum_state (device_id, source, battery_level) \
-                     VALUES ($1, 'roborock', $2) \
-                     ON CONFLICT (device_id) DO UPDATE SET \
-                       source = EXCLUDED.source, battery_level = EXCLUDED.battery_level, updated_at = now()",
-                    device_id,
-                    level,
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
+                self.shared_actor_state
+                    .repos
+                    .robot_vacuum()
+                    .record_roborock_battery(event_id, &device_id, level)
+                    .await?;
 
                 if let Some(level) = level {
                     self.report_battery(&device_id, level);
@@ -202,16 +151,11 @@ impl RobotVacuumHandler {
             }
 
             RoborockField::Room => {
-                sqlx::query!(
-                    "INSERT INTO latest_robot_vacuum_state (device_id, source, room) \
-                     VALUES ($1, 'roborock', $2) \
-                     ON CONFLICT (device_id) DO UPDATE SET \
-                       source = EXCLUDED.source, room = EXCLUDED.room, updated_at = now()",
-                    device_id,
-                    value,
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
+                self.shared_actor_state
+                    .repos
+                    .robot_vacuum()
+                    .upsert_roborock_room(&device_id, &value)
+                    .await?;
             }
         }
 
@@ -257,7 +201,7 @@ impl DeviceHandler for RobotVacuumHandler {
     type Message = Message;
     type State = ();
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

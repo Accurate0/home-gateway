@@ -1,4 +1,4 @@
-use home_gateway::adhoc::queries::{read_ledger, record_cron_run, write_ledger};
+use home_gateway::repo::AdhocRepo;
 use pretty_assertions::assert_eq;
 
 use crate::common::db::fresh_database;
@@ -9,15 +9,26 @@ const ORDINAL: i64 = 20260816120000;
 async fn ledger_round_trips() {
     let pool = fresh_database().await.pool;
 
-    assert!(read_ledger(&pool, ORDINAL).await.unwrap().is_none());
+    assert!(
+        AdhocRepo::new(pool.clone())
+            .read_ledger(ORDINAL)
+            .await
+            .unwrap()
+            .is_none()
+    );
 
     let mut tx = pool.begin().await.unwrap();
-    write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
+    AdhocRepo::new(pool.clone())
+        .write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
         .await
         .unwrap();
     tx.commit().await.unwrap();
 
-    let row = read_ledger(&pool, ORDINAL).await.unwrap().unwrap();
+    let row = AdhocRepo::new(pool.clone())
+        .read_ledger(ORDINAL)
+        .await
+        .unwrap()
+        .unwrap();
 
     assert_eq!(row.name, "trim");
     assert_eq!(row.checksum, "abc");
@@ -28,12 +39,19 @@ async fn rolled_back_ledger_leaves_task_pending() {
     let pool = fresh_database().await.pool;
 
     let mut tx = pool.begin().await.unwrap();
-    write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
+    AdhocRepo::new(pool.clone())
+        .write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
         .await
         .unwrap();
     tx.rollback().await.unwrap();
 
-    assert!(read_ledger(&pool, ORDINAL).await.unwrap().is_none());
+    assert!(
+        AdhocRepo::new(pool.clone())
+            .read_ledger(ORDINAL)
+            .await
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[tokio::test]
@@ -41,13 +59,16 @@ async fn ledger_rejects_a_second_run_of_the_same_ordinal() {
     let pool = fresh_database().await.pool;
 
     let mut tx = pool.begin().await.unwrap();
-    write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
+    AdhocRepo::new(pool.clone())
+        .write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
         .await
         .unwrap();
     tx.commit().await.unwrap();
 
     let mut tx = pool.begin().await.unwrap();
-    let second = write_ledger(&mut tx, ORDINAL, "trim", "abc", 12).await;
+    let second = AdhocRepo::new(pool.clone())
+        .write_ledger(&mut tx, ORDINAL, "trim", "abc", 12)
+        .await;
 
     assert!(second.is_err());
 }
@@ -56,10 +77,12 @@ async fn ledger_rejects_a_second_run_of_the_same_ordinal() {
 async fn cron_run_upserts_by_name() {
     let pool = fresh_database().await.pool;
 
-    record_cron_run(&pool, "trim", 10, 5, "success")
+    AdhocRepo::new(pool.clone())
+        .record_cron_run("trim", 10, 5, "success")
         .await
         .unwrap();
-    record_cron_run(&pool, "trim", 20, 7, "error")
+    AdhocRepo::new(pool.clone())
+        .record_cron_run("trim", 20, 7, "error")
         .await
         .unwrap();
 

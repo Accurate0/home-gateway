@@ -1,23 +1,17 @@
-use std::collections::HashMap;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use ractor::Actor;
 use tracing::Level;
 
-use crate::{integrations::notify::notify, settings::NotifySource, state::SharedActorState};
-
-struct LastSeen {
-    last_seen: DateTime<Utc>,
-    alerted_at: Option<DateTime<Utc>>,
-}
+use crate::{integrations::notify::notify, settings::NotifySource, state::AppState};
 
 pub enum WatchdogMessage {
     Check,
 }
 
 pub struct WatchdogActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl WatchdogActor {
@@ -28,21 +22,7 @@ impl WatchdogActor {
         let now = Utc::now();
         let realert_before = now - watchdog.realert_after;
 
-        let rows = sqlx::query!("SELECT device_key, last_seen, alerted_at FROM device_last_seen")
-            .fetch_all(&self.shared_actor_state.db)
-            .await?;
-        let seen: HashMap<String, LastSeen> = rows
-            .into_iter()
-            .map(|r| {
-                (
-                    r.device_key,
-                    LastSeen {
-                        last_seen: r.last_seen,
-                        alerted_at: r.alerted_at,
-                    },
-                )
-            })
-            .collect();
+        let seen = self.shared_actor_state.repos.watchdog().last_seen().await?;
 
         for (device_key, device) in self.shared_actor_state.devices.watchdog_devices() {
             let Some(state) = seen.get(device_key) else {
@@ -66,25 +46,22 @@ impl WatchdogActor {
                         targets,
                         format!("Sensor offline: {device_key} has stopped reporting"),
                     );
-                    sqlx::query!(
-                        "UPDATE device_last_seen SET alerted_at = $1 WHERE device_key = $2",
-                        now,
-                        device_key
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                    self.shared_actor_state
+                        .repos
+                        .watchdog()
+                        .mark_alerted(device_key, now)
+                        .await?;
                 }
             } else if state.alerted_at.is_some() {
                 notify(
                     targets,
                     format!("Sensor back online: {device_key} is reporting again"),
                 );
-                sqlx::query!(
-                    "UPDATE device_last_seen SET alerted_at = NULL WHERE device_key = $1",
-                    device_key
-                )
-                .execute(&self.shared_actor_state.db)
-                .await?;
+                self.shared_actor_state
+                    .repos
+                    .watchdog()
+                    .clear_alerted(device_key)
+                    .await?;
             }
         }
 

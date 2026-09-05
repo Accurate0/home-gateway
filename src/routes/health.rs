@@ -3,9 +3,10 @@ use axum::extract::State;
 use http::StatusCode;
 use serde::Serialize;
 
+use crate::actors::health::ActorHealthRegistry;
 use crate::actors::health::Lifecycle;
 use crate::actors::manifest;
-use crate::state::ApiState;
+use crate::state::AppState;
 
 pub async fn health() -> StatusCode {
     StatusCode::NO_CONTENT
@@ -34,10 +35,10 @@ fn is_expected(name: &str, lifecycle: Lifecycle) -> bool {
     }
 }
 
-pub async fn actor_health(
-    State(ApiState { actor_health, .. }): State<ApiState>,
-) -> (StatusCode, Json<ActorHealth>) {
-    let actors: Vec<ActorStatus> = actor_health
+pub async fn actor_health(State(state): State<AppState>) -> (StatusCode, Json<ActorHealth>) {
+    let actors: Vec<ActorStatus> = state
+        .handles
+        .expect::<ActorHealthRegistry>()
         .snapshot()
         .into_iter()
         .map(|(name, lifecycle)| ActorStatus {

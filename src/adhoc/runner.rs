@@ -7,10 +7,9 @@ use open_feature::EvaluationContext;
 use super::context::AdhocTaskContext;
 use super::cron_task::AdhocCronTask;
 use super::error::AdhocTaskError;
-use super::queries::{read_ledger, record_cron_run, write_ledger};
 use super::registry;
 use super::task::{AdhocTask, checksum};
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 const TASK_TIMEOUT: Duration = Duration::from_secs(300);
 
@@ -36,7 +35,7 @@ fn classify(existing: Option<(&str, &str)>, name: &str, expected: &str) -> Ledge
     }
 }
 
-pub async fn run_pending(state: &SharedActorState, force: bool) {
+pub async fn run_pending(state: &AppState, force: bool) {
     for task in registry() {
         match run_one(state, task, force).await {
             Step::Continue => continue,
@@ -55,10 +54,10 @@ pub async fn run_pending(state: &SharedActorState, force: bool) {
     tracing::debug!("adhoc queue is fully drained");
 }
 
-async fn run_one(state: &SharedActorState, task: &'static dyn AdhocTask, force: bool) -> Step {
+async fn run_one(state: &AppState, task: &'static dyn AdhocTask, force: bool) -> Step {
     let expected = checksum(task.source());
 
-    let row = match read_ledger(&state.db, task.ordinal()).await {
+    let row = match state.repos.adhoc().read_ledger(task.ordinal()).await {
         Ok(row) => row,
         Err(e) => {
             tracing::error!("failed reading adhoc ledger for {}: {e}", task.name());
@@ -127,12 +126,12 @@ async fn run_one(state: &SharedActorState, task: &'static dyn AdhocTask, force: 
     }
 }
 
-async fn is_released(state: &SharedActorState, task: &'static dyn AdhocTask, force: bool) -> bool {
+async fn is_released(state: &AppState, task: &'static dyn AdhocTask, force: bool) -> bool {
     flag_released(state, task.name(), task.flag(), force).await
 }
 
 async fn flag_released(
-    state: &SharedActorState,
+    state: &AppState,
     name: &'static str,
     flag: Option<&'static str>,
     force: bool,
@@ -161,7 +160,7 @@ async fn flag_released(
         .await
 }
 
-pub async fn run_cron(state: &SharedActorState, task: &'static dyn AdhocCronTask, force: bool) {
+pub async fn run_cron(state: &AppState, task: &'static dyn AdhocCronTask, force: bool) {
     if !flag_released(state, task.name(), task.flag(), force).await {
         tracing::info!("adhoc cron task {} is held by its flag", task.name());
         crate::metrics::record_adhoc_task(task.name(), "held");
@@ -195,7 +194,7 @@ pub async fn run_cron(state: &SharedActorState, task: &'static dyn AdhocCronTask
 }
 
 async fn execute_cron(
-    state: &SharedActorState,
+    state: &AppState,
     task: &'static dyn AdhocCronTask,
 ) -> Result<u64, AdhocTaskError> {
     let mut tx = state.db.begin().await?;
@@ -221,14 +220,17 @@ async fn execute_cron(
 }
 
 async fn save_cron_run(
-    state: &SharedActorState,
+    state: &AppState,
     name: &'static str,
     elapsed: Duration,
     rows: i64,
     outcome: &'static str,
 ) {
-    let recorded =
-        record_cron_run(&state.db, name, elapsed.as_millis() as i64, rows, outcome).await;
+    let recorded = state
+        .repos
+        .adhoc()
+        .record_cron_run(name, elapsed.as_millis() as i64, rows, outcome)
+        .await;
 
     if let Err(e) = recorded {
         tracing::error!("failed recording adhoc cron run for {name}: {e}");
@@ -236,7 +238,7 @@ async fn save_cron_run(
 }
 
 async fn execute(
-    state: &SharedActorState,
+    state: &AppState,
     task: &'static dyn AdhocTask,
 ) -> Result<Duration, AdhocTaskError> {
     let start = Instant::now();
@@ -261,14 +263,17 @@ async fn execute(
 
     let elapsed = start.elapsed();
 
-    write_ledger(
-        &mut tx,
-        task.ordinal(),
-        task.name(),
-        &checksum(task.source()),
-        elapsed.as_millis() as i64,
-    )
-    .await?;
+    state
+        .repos
+        .adhoc()
+        .write_ledger(
+            &mut tx,
+            task.ordinal(),
+            task.name(),
+            &checksum(task.source()),
+            elapsed.as_millis() as i64,
+        )
+        .await?;
 
     tx.commit().await?;
 

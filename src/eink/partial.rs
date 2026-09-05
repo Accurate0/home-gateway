@@ -2,7 +2,7 @@ use super::manager::resolve::ResolvedDisplay;
 use super::panel::{PartialWindow, dirty_window, packed_cache_key};
 
 pub async fn resolve_partial_window(
-    db: &sqlx::Pool<sqlx::Postgres>,
+    eink: &crate::repo::EinkRepo,
     s3: &crate::integrations::s3::S3,
     display: &ResolvedDisplay,
     current_image_hash: Option<&str>,
@@ -21,14 +21,14 @@ pub async fn resolve_partial_window(
         return None;
     }
 
-    let consecutive = partial_refresh_count(db, device_id).await;
+    let consecutive = partial_refresh_count(eink, device_id).await;
     if consecutive >= policy.max_consecutive {
         tracing::info!(
             device_id = %device_id,
             consecutive,
             "forcing a full refresh to clear accumulated ghosting"
         );
-        reset_partial_refresh_count(db, device_id).await;
+        reset_partial_refresh_count(eink, device_id).await;
         return None;
     }
 
@@ -44,7 +44,7 @@ pub async fn resolve_partial_window(
     };
 
     let Some(window) = window else {
-        reset_partial_refresh_count(db, device_id).await;
+        reset_partial_refresh_count(eink, device_id).await;
         return None;
     };
 
@@ -56,7 +56,7 @@ pub async fn resolve_partial_window(
             area_pct,
             "dirty region too large for a partial refresh"
         );
-        reset_partial_refresh_count(db, device_id).await;
+        reset_partial_refresh_count(eink, device_id).await;
         return None;
     }
 
@@ -70,21 +70,14 @@ pub async fn resolve_partial_window(
         "serving a partial refresh"
     );
 
-    increment_partial_refresh_count(db, device_id).await;
+    increment_partial_refresh_count(eink, device_id).await;
 
     Some(window)
 }
 
-async fn partial_refresh_count(db: &sqlx::Pool<sqlx::Postgres>, device_id: &str) -> i32 {
-    let result = sqlx::query_scalar!(
-        "SELECT partial_refresh_count FROM eink_display WHERE device_id = $1",
-        device_id
-    )
-    .fetch_optional(db)
-    .await;
-
-    match result {
-        Ok(count) => count.unwrap_or(0),
+async fn partial_refresh_count(eink: &crate::repo::EinkRepo, device_id: &str) -> i32 {
+    match eink.partial_refresh_count(device_id).await {
+        Ok(count) => count,
         Err(e) => {
             tracing::warn!(device_id = %device_id, "failed to read partial refresh count: {e}");
             0
@@ -92,28 +85,14 @@ async fn partial_refresh_count(db: &sqlx::Pool<sqlx::Postgres>, device_id: &str)
     }
 }
 
-async fn increment_partial_refresh_count(db: &sqlx::Pool<sqlx::Postgres>, device_id: &str) {
-    let result = sqlx::query!(
-        "UPDATE eink_display SET partial_refresh_count = partial_refresh_count + 1 WHERE device_id = $1",
-        device_id
-    )
-    .execute(db)
-    .await;
-
-    if let Err(e) = result {
+async fn increment_partial_refresh_count(eink: &crate::repo::EinkRepo, device_id: &str) {
+    if let Err(e) = eink.increment_partial_refresh_count(device_id).await {
         tracing::warn!(device_id = %device_id, "failed to increment partial refresh count: {e}");
     }
 }
 
-async fn reset_partial_refresh_count(db: &sqlx::Pool<sqlx::Postgres>, device_id: &str) {
-    let result = sqlx::query!(
-        "UPDATE eink_display SET partial_refresh_count = 0 WHERE device_id = $1",
-        device_id
-    )
-    .execute(db)
-    .await;
-
-    if let Err(e) = result {
+async fn reset_partial_refresh_count(eink: &crate::repo::EinkRepo, device_id: &str) {
+    if let Err(e) = eink.reset_partial_refresh_count(device_id).await {
         tracing::warn!(device_id = %device_id, "failed to reset partial refresh count: {e}");
     }
 }

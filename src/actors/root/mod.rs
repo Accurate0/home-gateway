@@ -1,3 +1,4 @@
+use crate::actors::health::ActorHealthRegistry;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -5,7 +6,7 @@ use ractor::Actor;
 
 use crate::actors::health::Lifecycle;
 use crate::actors::manifest::{ACTORS, Spawned, find};
-use crate::state::SharedActorState;
+use crate::state::AppState;
 
 const RESTART_BACKOFF_BASE: Duration = Duration::from_secs(1);
 const RESTART_BACKOFF_MAX: Duration = Duration::from_secs(60);
@@ -23,7 +24,7 @@ pub struct RootState {
 }
 
 pub struct RootSupervisor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
 }
 
 impl RootSupervisor {
@@ -36,6 +37,12 @@ impl RootSupervisor {
             return Err(format!("no actor named `{name}` in the manifest").into());
         };
 
+        if let Some(label) = spec.unmet_requirement(&self.shared_actor_state) {
+            tracing::info!(actor = spec.name, "skipping {name}: {label} not configured");
+
+            return Ok(Spawned::Skipped);
+        }
+
         (spec.spawn)(myself.clone(), self.shared_actor_state.clone()).await
     }
 
@@ -45,7 +52,8 @@ impl RootSupervisor {
         };
 
         self.shared_actor_state
-            .actor_health
+            .handles
+            .expect::<ActorHealthRegistry>()
             .record(spec.name, lifecycle);
     }
 

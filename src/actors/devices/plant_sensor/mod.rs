@@ -1,7 +1,7 @@
 use crate::actors::devices::handler::DeviceHandler;
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
-    state::SharedActorState,
+    state::AppState,
 };
 use uuid::Uuid;
 
@@ -19,7 +19,7 @@ pub enum Message {
 }
 
 pub struct PlantSensorHandler {
-    shared_actor_state: SharedActorState,
+    shared_actor_state: AppState,
 }
 
 impl PlantSensorHandler {
@@ -50,7 +50,7 @@ impl DeviceHandler for PlantSensorHandler {
     type Message = Message;
     type State = ();
 
-    fn new(shared_actor_state: SharedActorState) -> Self {
+    fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
     }
 

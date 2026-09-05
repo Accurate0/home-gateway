@@ -86,4 +86,12 @@ jobs:
           docker logs postgres >&2
           exit 1
 
+      - name: Check the offline query cache matches the schema
+        env:
+          SQLX_OFFLINE: "false"
+        run: |
+          cargo install sqlx-cli --locked --no-default-features --features postgres,rustls
+          cargo sqlx migrate run
+          cargo sqlx prepare --check -- --all-targets
+
       - run: cargo test --workspace

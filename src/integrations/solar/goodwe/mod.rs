@@ -1,4 +1,5 @@
 use crate::http::{HttpCreationError, wrap_client_in_middleware_no_tracing};
+use crate::repo::SolarRepo;
 use crate::settings::SolarSettings;
 use axum::http::{HeaderMap, HeaderValue};
 use base64::{Engine, prelude::BASE64_STANDARD};
@@ -87,11 +88,7 @@ impl GoodWeSemsAPI {
     pub async fn get_latest_saved_solar_data(
         &self,
     ) -> Result<Option<SavedSolarData>, GoodWeSemsAPIError> {
-        let solar_data = sqlx::query!(
-            "SELECT raw_data, temperature, uv_level FROM solar_data_tsdb ORDER BY time DESC LIMIT 1"
-        )
-        .fetch_optional(&self.db)
-        .await?;
+        let solar_data = SolarRepo::new(self.db.clone()).latest().await?;
 
         solar_data
             .map(|row| {
@@ -136,11 +133,7 @@ impl GoodWeSemsAPI {
 
     #[instrument(skip(self))]
     pub async fn get_new_or_cached_login_data(&self) -> Result<LoginData, GoodWeSemsAPIError> {
-        let latest = sqlx::query!(
-            "SELECT login_data, created_at FROM solar_cached_token ORDER BY created_at DESC LIMIT 1"
-        )
-        .fetch_optional(&self.db)
-        .await?;
+        let latest = SolarRepo::new(self.db.clone()).cached_token().await?;
 
         let Some(latest) = latest else {
             return self.login_and_save().await;
@@ -166,12 +159,9 @@ impl GoodWeSemsAPI {
         let response = self.login().await?;
         let login_data = serde_json::to_value(&response.data)?;
 
-        sqlx::query!(
-            "INSERT INTO solar_cached_token (login_data) VALUES ($1)",
-            login_data
-        )
-        .execute(&self.db)
-        .await?;
+        SolarRepo::new(self.db.clone())
+            .save_cached_token(login_data)
+            .await?;
 
         tracing::info!("saved goodwe login data");
 

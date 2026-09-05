@@ -1,3 +1,8 @@
+use crate::actors::workflows::manager::WorkflowManager;
+use crate::eink::manager::EinkDisplayManager;
+use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::mqtt::MqttClient;
+use crate::integrations::s3::S3;
 use async_graphql::{Schema, dataloader::DataLoader};
 use axum::{
     Router,
@@ -9,7 +14,6 @@ use axum::{
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use http::Method;
 use prometheus::Registry;
-use reqwest_middleware::ClientWithMiddleware;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 
 use crate::auth::auth_middleware;
@@ -27,9 +31,6 @@ use crate::graphql::{
     mutations::MutationRoot,
     subscription::SubscriptionRoot,
 };
-use crate::integrations::fuelwatch::FuelWatch;
-use crate::integrations::transperth::Transperth;
-use crate::integrations::willyweather::WillyWeather;
 use crate::routes::{
     self,
     admin::keys::{create_key, list_keys, regenerate_key, revoke_key, update_key},
@@ -45,7 +46,7 @@ use crate::routes::{
     schema::schema as schema_route,
     workflow::execute::workflow_execute,
 };
-use crate::state::{ApiState, SharedActorState};
+use crate::state::{ApiState, AppState};
 
 const GRAPHQL_MAX_DEPTH: usize = 20;
 const GRAPHQL_MAX_COMPLEXITY: usize = 5000;
@@ -69,15 +70,7 @@ async fn log_request(req: Request, next: Next) -> Response {
     response
 }
 
-pub fn build_schema(
-    state: &SharedActorState,
-    http_client: ClientWithMiddleware,
-    willyweather: WillyWeather,
-    transperth: Option<Transperth>,
-    fuelwatch: Option<FuelWatch>,
-) -> FinalSchema {
-    let db = &state.db;
-
+pub fn build_schema(state: &AppState) -> FinalSchema {
     Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
@@ -85,66 +78,64 @@ pub fn build_schema(
     )
     .data(DataLoader::new(
         LatestTemperatureDataLoader {
-            database: db.clone(),
+            repo: state.repos.environment().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         LastSeenDataLoader {
-            database: db.clone(),
+            repo: state.repos.device().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         EinkDisplayDataLoader {
-            database: db.clone(),
+            repo: state.repos.eink().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         DeviceBatteryDataLoader {
-            database: db.clone(),
+            repo: state.repos.battery().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         DeviceBatteryHistoryDataLoader {
-            database: db.clone(),
+            repo: state.repos.battery().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         HomeAssistantStateDataLoader {
-            database: db.clone(),
+            repo: state.repos.home_assistant().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         MediaPlayerStateDataLoader {
-            database: db.clone(),
+            repo: state.repos.media_player().clone(),
         },
         tokio::spawn,
     ))
     .data(DataLoader::new(
         RobotVacuumStateDataLoader {
-            database: db.clone(),
+            repo: state.repos.robot_vacuum().clone(),
         },
         tokio::spawn,
     ))
-    .data(state.home_assistant.clone())
-    .data(state.eink.clone())
-    .data(state.s3.clone())
-    .data(http_client)
-    .data(willyweather)
-    .data(transperth)
-    .data(fuelwatch)
-    .data(state.mqtt.clone())
+    .data(state.handles.get::<HomeAssistant>().cloned())
+    .data(state.handles.expect::<EinkDisplayManager>().clone())
+    .data(state.handles.expect::<S3>().clone())
+    .data(state.handles.clone())
+    .data(state.handles.expect::<MqttClient>().clone())
     .data(state.db.clone())
     .data(state.settings.clone())
     .data(state.devices.clone())
     .data(state.feature_flag_client.clone())
     .data(state.event_bus.clone())
-    .data(state.workflows.clone())
+    .data(state.handles.expect::<WorkflowManager>().clone())
+    .data(state.repos.clone())
     .extension(crate::graphql_tracing::Tracing)
     .limit_depth(GRAPHQL_MAX_DEPTH)
     .limit_complexity(GRAPHQL_MAX_COMPLEXITY)
@@ -175,7 +166,7 @@ pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route("/admin/keys/{id}/regenerate", post(regenerate_key))
         .route("/weather/forecast", get(routes::weather::forecast))
-        .route_layer(from_fn_with_state(api_state.clone(), auth_middleware))
+        .route_layer(from_fn_with_state(api_state.inner.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
         .route("/solar/current", get(routes::solar::current))
         .route("/solar/history", get(routes::solar::history))

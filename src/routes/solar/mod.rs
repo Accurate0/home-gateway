@@ -2,7 +2,7 @@ use crate::integrations::solar::queries::{self, SolarQueryError};
 use crate::integrations::solar::types::{
     SolarCurrentResponse, SolarHistoryResponse, SolarHistoryTwoDayResponse,
 };
-use crate::state::ApiState;
+use crate::state::AppState;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Query, extract::State};
 use chrono::{NaiveDateTime, Utc};
@@ -26,13 +26,13 @@ impl From<SolarQueryError> for SolarError {
 }
 
 pub async fn current(
-    State(ApiState { db, .. }): State<ApiState>,
+    State(AppState { db, .. }): State<AppState>,
 ) -> Result<Json<SolarCurrentResponse>, SolarError> {
     Ok(Json(queries::current(&db).await?))
 }
 
 pub async fn history(
-    State(ApiState { db, .. }): State<ApiState>,
+    State(AppState { db, .. }): State<AppState>,
 ) -> Result<Json<SolarHistoryTwoDayResponse>, SolarError> {
     let (today, yesterday) = queries::history_last_two_days(&db).await?;
 
@@ -45,7 +45,7 @@ pub struct SolarHistoryQueryParams {
 }
 
 pub async fn history_since(
-    State(ApiState { db, .. }): State<ApiState>,
+    State(AppState { db, .. }): State<AppState>,
     params: Query<SolarHistoryQueryParams>,
 ) -> Result<Json<SolarHistoryResponse>, SolarError> {
     let since = queries::clamp_since(params.since.and_utc(), Utc::now());

@@ -6,6 +6,7 @@ use event_bus::EventBus;
 use feature_flag::FeatureFlagClient;
 use home_gateway::api::{build_router, build_schema};
 use home_gateway::eink::EinkDisplayManager;
+use home_gateway::integrations::solar::goodwe::GoodWeSemsAPI;
 use home_gateway::{
     actors, auth, db, error, event_bus,
     integrations::{
@@ -19,15 +20,13 @@ use ractor::Actor;
 use rustls::crypto::aws_lc_rs;
 use s3::S3;
 use settings::SettingsContainer;
-use state::{ApiState, SharedActorState};
+use state::{ApiState, AppState, HandleRegistry};
 use std::net::SocketAddr;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 use utils::{axum_shutdown_signal, handle_cancellation};
 
-async fn init_actors(
-    shared_actor_state: SharedActorState,
-) -> anyhow::Result<tokio::task::JoinHandle<()>> {
+async fn init_actors(shared_actor_state: AppState) -> anyhow::Result<tokio::task::JoinHandle<()>> {
     let (_, root_supervisor_handle) =
         Actor::spawn(None, RootSupervisor { shared_actor_state }, ()).await?;
 
@@ -47,6 +46,8 @@ async fn main() -> anyhow::Result<()> {
     db::migrate(&pool).await?;
 
     let workflow_manager = WorkflowManager::new(pool.clone());
+
+    let repos = home_gateway::repo::RepoRegistry::new(pool.clone());
 
     let feature_flag_client = FeatureFlagClient::new().await;
 
@@ -96,22 +97,6 @@ async fn main() -> anyhow::Result<()> {
 
     let actor_health = home_gateway::actors::health::ActorHealthRegistry::new();
 
-    let shared_actor_state = SharedActorState {
-        settings: settings_container.clone(),
-        devices: device_registry.clone(),
-        db: pool.clone(),
-        mqtt: mqtt_client,
-        feature_flag_client: feature_flag_client.clone(),
-        s3: s3.clone(),
-        event_bus,
-        workflows: workflow_manager,
-        home_assistant,
-        jellyfin,
-        transperth: transperth.clone(),
-        eink: eink.clone(),
-        actor_health: actor_health.clone(),
-    };
-
     let willyweather = WillyWeather::new(&settings.willyweather)?;
 
     let fuelwatch = match settings.fuelwatch.as_ref() {
@@ -119,37 +104,52 @@ async fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    let schema = build_schema(
-        &shared_actor_state,
-        http_client,
-        willyweather.clone(),
-        transperth,
-        fuelwatch,
-    );
-
-    let root_supervisor_handle = init_actors(shared_actor_state).await?;
+    let goodwe = settings_container
+        .solar
+        .as_ref()
+        .and_then(|solar| GoodWeSemsAPI::new(pool.clone(), solar));
 
     let oauth = match settings.oauth.clone() {
         Some(oauth_settings) => Some(std::sync::Arc::new(OAuthValidator::new(oauth_settings)?)),
         None => None,
     };
 
-    let api_state = ApiState {
-        feature_flag_client,
-        schema,
+    let handles = HandleRegistry::builder()
+        .insert(mqtt_client)
+        .insert(s3)
+        .insert(eink)
+        .insert(workflow_manager)
+        .insert(actor_health)
+        .insert(AuthManager::new(pool.clone(), oauth))
+        .insert(willyweather)
+        .insert(http_client)
+        .insert_optional(home_assistant)
+        .insert_optional(jellyfin)
+        .insert_optional(transperth)
+        .insert_optional(fuelwatch)
+        .insert_optional(goodwe)
+        .build();
+
+    assert_required_handles(&handles);
+
+    let state = AppState {
+        repos,
         settings: settings_container.clone(),
-        db: pool.clone(),
-        s3,
-        auth: AuthManager::new(pool.clone(), oauth),
         devices: device_registry.clone(),
-        eink,
-        actor_health,
-        willyweather,
+        db: pool.clone(),
+        feature_flag_client,
+        event_bus,
+        handles,
     };
 
+    let schema = build_schema(&state);
+
+    let root_supervisor_handle = init_actors(state.clone()).await?;
+
     for key in &settings.api_keys {
-        match api_state
-            .auth
+        match state
+            .handles
+            .expect::<AuthManager>()
             .claim(&key.name, &key.scopes, key.expires_at)
             .await
         {
@@ -162,7 +162,13 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let app = build_router(api_state, metrics_registry);
+    let app = build_router(
+        ApiState {
+            schema,
+            inner: state,
+        },
+        metrics_registry,
+    );
 
     let addr = "[::]:8000".parse::<SocketAddr>().unwrap();
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
@@ -211,3 +217,29 @@ async fn main() -> anyhow::Result<()> {
 }
 
 // TODO: query brightness and temperature states too if possible
+
+fn assert_required_handles(handles: &HandleRegistry) {
+    for (label, present) in [
+        ("mqtt", handles.contains::<mqtt::MqttClient>()),
+        ("s3", handles.contains::<S3>()),
+        (
+            "eink",
+            handles.contains::<home_gateway::eink::EinkDisplayManager>(),
+        ),
+        ("workflows", handles.contains::<WorkflowManager>()),
+        (
+            "actor health",
+            handles.contains::<home_gateway::actors::health::ActorHealthRegistry>(),
+        ),
+        ("auth", handles.contains::<AuthManager>()),
+        ("willyweather", handles.contains::<WillyWeather>()),
+        (
+            "http client",
+            handles.contains::<reqwest_middleware::ClientWithMiddleware>(),
+        ),
+    ] {
+        if !present {
+            panic!("the {label} handle was not registered before startup");
+        }
+    }
+}

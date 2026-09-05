@@ -4,7 +4,7 @@ use crate::{
         Woolworths,
         types::{WoolworthsProductResponse, WoolworthsTrackedProduct},
     },
-    state::SharedActorState,
+    state::AppState,
 };
 use ractor::Actor;
 use std::{collections::HashMap, time::Duration};
@@ -22,7 +22,7 @@ pub struct WoolworthsActorState {
 }
 
 pub struct WoolworthsActor {
-    pub shared_actor_state: SharedActorState,
+    pub shared_actor_state: AppState,
     pub woolworths: Woolworths,
 }
 
@@ -40,14 +40,7 @@ impl Actor for WoolworthsActor {
         myself: ractor::ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
-        let results = sqlx::query!("SELECT product_id, price FROM woolworths_product_price")
-            .fetch_all(&self.shared_actor_state.db)
-            .await?;
-
-        let mut price_map = HashMap::new();
-        for result in results {
-            price_map.insert(result.product_id, result.price);
-        }
+        let price_map = self.shared_actor_state.repos.woolworths().prices().await?;
 
         let refresh = self
             .shared_actor_state
@@ -144,25 +137,17 @@ impl Actor for WoolworthsActor {
                         .entry(product_id)
                         .and_modify(|price| *price = current_price);
 
-                    sqlx::query!(
-                        r#"INSERT INTO woolworths_product_price(product_id, price, display_name) VALUES ($1, $2, $3)
-                        ON CONFLICT(product_id)
-                        DO UPDATE SET price = EXCLUDED.price, display_name = EXCLUDED.display_name"#,
-                        product_id,
-                        current_price,
-                        product_name
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                    self.shared_actor_state
+                        .repos
+                        .woolworths()
+                        .upsert_price(product_id, current_price, &product_name)
+                        .await?;
 
-                    sqlx::query!(
-                        r#"INSERT INTO woolworths_price_history(product_id, price, display_name) VALUES ($1, $2, $3)"#,
-                        product_id,
-                        current_price,
-                        product_name
-                    )
-                    .execute(&self.shared_actor_state.db)
-                    .await?;
+                    self.shared_actor_state
+                        .repos
+                        .woolworths()
+                        .append_price_history(product_id, current_price, &product_name)
+                        .await?;
                 }
             }
         }

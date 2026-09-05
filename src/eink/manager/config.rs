@@ -62,7 +62,7 @@ impl EinkDisplayManager {
             true => None,
             false => {
                 resolve_partial_window(
-                    &self.db,
+                    &self.eink,
                     &self.s3,
                     resolved,
                     report.current_image_hash,

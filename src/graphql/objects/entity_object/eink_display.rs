@@ -186,7 +186,7 @@ impl EinkDisplayEntity {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EpdConfig> {
-        let eink = ctx.data::<EinkDisplayManager>()?;
+        let eink = crate::graphql::require::<EinkDisplayManager>(ctx, "eink display")?;
 
         let Some(display) = eink.resolve(&self.address).await else {
             return Err(async_graphql::Error::new(format!(

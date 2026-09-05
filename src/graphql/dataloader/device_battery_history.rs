@@ -1,15 +1,16 @@
+use crate::repo::BatteryRepo;
 use async_graphql::dataloader::Loader;
 use chrono::{DateTime, Duration, Utc};
-use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, sync::Arc};
-use tracing::Instrument;
+
+pub use crate::repo::battery::BatteryHistoryRow as Row;
 
 pub const MAX_HISTORY_WINDOW: Duration = Duration::days(90);
 
 pub type BatteryHistoryKey = (String, DateTime<Utc>);
 
 pub struct DeviceBatteryHistoryDataLoader {
-    pub database: Pool<Postgres>,
+    pub repo: BatteryRepo,
 }
 
 #[derive(Clone)]
@@ -17,13 +18,6 @@ pub struct BatteryHistoryPoint {
     pub battery_voltage: Option<f64>,
     pub battery_percent: Option<f64>,
     pub time: DateTime<Utc>,
-}
-
-struct Row {
-    device_id: String,
-    battery_voltage: Option<f64>,
-    battery_percent: Option<f64>,
-    time: DateTime<Utc>,
 }
 
 pub fn clamp_since(since: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
@@ -66,18 +60,7 @@ impl Loader<BatteryHistoryKey> for DeviceBatteryHistoryDataLoader {
             return Ok(HashMap::new());
         };
 
-        let rows = sqlx::query_as!(
-            Row,
-            r#"SELECT device_id, battery_voltage, battery_percent, "time"
-               FROM device_battery
-               WHERE device_id = ANY($1) AND "time" >= $2
-               ORDER BY "time" ASC"#,
-            &device_ids,
-            earliest
-        )
-        .fetch_all(&self.database)
-        .instrument(tracing::info_span!("bulk-get-device-battery-history"))
-        .await?;
+        let rows = self.repo.history_many(&device_ids, earliest).await?;
 
         Ok(partition(keys, rows))
     }
