@@ -152,43 +152,12 @@ pub const PALETTE_COLORS: [(&str, f32, f32, f32, u8); 6] = [
     ("green", 0.0, 255.0, 0.0, 6),
 ];
 
-#[derive(Debug, Clone, Copy)]
-pub struct PaletteColor {
-    pub name: &'static str,
-    pub r: f32,
-    pub g: f32,
-    pub b: f32,
-    pub index: u8,
-}
-
-fn default_palette() -> Vec<PaletteColor> {
-    PALETTE_COLORS
-        .iter()
-        .map(|&(name, r, g, b, index)| PaletteColor {
-            name,
-            r,
-            g,
-            b,
-            index,
-        })
-        .collect()
-}
-
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 pub struct RawEinkGlobal {
     #[serde(default)]
     views: HashMap<String, RawDashboardView>,
     #[serde(default)]
     albums: HashMap<String, RawAlbum>,
-    #[serde(default)]
-    palette: HashMap<String, RawPaletteColor>,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
-struct RawPaletteColor {
-    r: f32,
-    g: f32,
-    b: f32,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
@@ -203,21 +172,10 @@ struct RawAlbum {
     prefix: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct EinkGlobalSettings {
     pub views: HashMap<String, DashboardView>,
     pub albums: HashMap<String, Album>,
-    pub palette: Vec<PaletteColor>,
-}
-
-impl Default for EinkGlobalSettings {
-    fn default() -> Self {
-        Self {
-            views: HashMap::new(),
-            albums: HashMap::new(),
-            palette: default_palette(),
-        }
-    }
 }
 
 impl RawEinkGlobal {
@@ -245,34 +203,7 @@ impl RawEinkGlobal {
                 (name.clone(), Album { name, prefix })
             })
             .collect();
-        let palette = PALETTE_COLORS
-            .iter()
-            .map(|&(name, dr, dg, db, index)| {
-                let (r, g, b) = self
-                    .palette
-                    .get(name)
-                    .map(|c| {
-                        (
-                            c.r.clamp(0.0, 255.0),
-                            c.g.clamp(0.0, 255.0),
-                            c.b.clamp(0.0, 255.0),
-                        )
-                    })
-                    .unwrap_or((dr, dg, db));
-                PaletteColor {
-                    name,
-                    r,
-                    g,
-                    b,
-                    index,
-                }
-            })
-            .collect();
-        EinkGlobalSettings {
-            views,
-            albums,
-            palette,
-        }
+        EinkGlobalSettings { views, albums }
     }
 }
 

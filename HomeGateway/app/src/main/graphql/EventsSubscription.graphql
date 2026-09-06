@@ -20,5 +20,12 @@ subscription Events {
         value
       }
     }
+    ... on MediaPlayerUpdate {
+      id
+      appName
+      mediaTitle
+      mediaSeriesTitle
+      state
+    }
   }
 }

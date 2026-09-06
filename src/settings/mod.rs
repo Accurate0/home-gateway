@@ -49,8 +49,7 @@ pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
     Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig,
-    Orientation, PaletteColor, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan,
-    SleepWindow,
+    Orientation, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan, SleepWindow,
 };
 pub use environment::{
     EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,

@@ -404,6 +404,7 @@ type LightMutation {
 	setBrightness(input: SetBrightnessInput!): Boolean!
 	brightnessMove(input: BrightnessMoveInput!): Boolean!
 	setColour(input: SetColourInput!): Boolean!
+	setColourTemperature(input: SetColourTemperatureInput!): Boolean!
 	colourTemperatureMove(input: ColourTemperatureMoveInput!): Boolean!
 }
 
@@ -660,6 +661,13 @@ input SetBrightnessInput {
 
 input SetColourInput {
 	hex: String!
+}
+
+input SetColourTemperatureInput {
+	"""
+	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	"""
+	value: Int!
 }
 
 type SolarCurrentResponse {

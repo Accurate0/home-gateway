@@ -25,7 +25,6 @@ pub struct ResolvedDisplay {
     pub sleep: Option<SleepWindow>,
     pub lead: Option<chrono::TimeDelta>,
     pub settle: Duration,
-    pub palette: Vec<(f32, f32, f32, u8)>,
     pub partial: PartialRefresh,
     pub partial_enabled: bool,
     pub clear_screen: bool,
@@ -38,7 +37,6 @@ impl ResolvedDisplay {
         display: &EinkDisplaySettings,
         global: &EinkGlobalSettings,
         flag: &EpdFlagConfig,
-        palette: Vec<(f32, f32, f32, u8)>,
     ) -> Self {
         let mode = flag.mode.unwrap_or_else(|| display.mode.name());
 
@@ -59,7 +57,6 @@ impl ResolvedDisplay {
                 .settle()
                 .and_then(|settle| settle.to_std().ok())
                 .unwrap_or(DEFAULT_SETTLE),
-            palette,
             partial: display.partial,
             partial_enabled: flag.partial_refresh.unwrap_or(display.partial.enabled),
             clear_screen: flag.clear_screen,

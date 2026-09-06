@@ -42,7 +42,7 @@ class AlarmWorker(appContext: Context, workerParams: WorkerParameters):
             .callTimeout(30, TimeUnit.SECONDS)
             .build()
 
-        val apiKey = BuildConfig.HOME_GATEWAY_INGEST_API_SECRET
+        val apiKey = BuildConfig.HOME_GATEWAY_API_KEY
         var url = "https://home.anurag.sh/v1/ingest/home/alarm"
         if(BuildConfig.DEBUG) {
             url = "http://192.168.0.104:8000/v1/ingest/home/alarm"
@@ -52,7 +52,7 @@ class AlarmWorker(appContext: Context, workerParams: WorkerParameters):
             .post(
                 JSONObject(payload).toString().toRequestBody("application/json".toMediaType())
             )
-            .header("X-Webhook-Secret", apiKey)
+            .header("X-Api-Key", apiKey)
             .url(url)
             .build()
 

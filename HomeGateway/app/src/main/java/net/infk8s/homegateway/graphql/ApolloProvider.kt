@@ -29,22 +29,15 @@ object ApolloProvider {
             .wsProtocol(
                 GraphQLWsProtocol {
                     // The backend reads the WS auth token from the connection-init payload.
-                    // Debug builds get full_access server-side, so no key is needed there.
-                    if (BuildConfig.DEBUG) emptyMap()
-                    else mapOf("X-Api-Key" to BuildConfig.HOME_GATEWAY_GRAPHQL_API_KEY)
+                    mapOf("X-Api-Key" to BuildConfig.HOME_GATEWAY_API_KEY)
                 },
             )
             .build()
 
-        val builder = ApolloClient.Builder()
+        return ApolloClient.Builder()
             .httpServerUrl(httpUrl)
             .subscriptionNetworkTransport(wsTransport)
-
-        // HTTP auth: debug builds need no key (server grants full_access).
-        if (!BuildConfig.DEBUG) {
-            builder.addHttpHeader("X-Api-Key", BuildConfig.HOME_GATEWAY_GRAPHQL_API_KEY)
-        }
-
-        return builder.build()
+            .addHttpHeader("X-Api-Key", BuildConfig.HOME_GATEWAY_API_KEY)
+            .build()
     }
 }

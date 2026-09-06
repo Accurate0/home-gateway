@@ -3,7 +3,6 @@ use image::RgbImage;
 pub struct FrameContext {
     pub crop_to: Option<(u32, u32)>,
     pub sleep_label: Option<String>,
-    pub palette: Vec<(f32, f32, f32, u8)>,
 }
 
 pub trait FrameStep: Send + Sync {
@@ -82,7 +81,6 @@ mod tests {
         CropCover, FloydSteinbergPacked, RotateToPortrait, SleepLabel,
     };
     use crate::eink::panel::PACKED_FRAME_SIZE;
-    use crate::settings::eink::PALETTE_COLORS;
 
     const GOLDEN_CROPPED: &str = "dc86f400cd03697fd84b27d5cd1306185720d73d25c4ab85f79dbed746cbcf3c";
     const GOLDEN_ROTATED: &str = "68ed8c71e335465d1157d1d0a6d8bed26d38d997912a776a66e2a2cd99051918";
@@ -92,13 +90,6 @@ mod tests {
             .register(CropCover)
             .register(SleepLabel)
             .register(RotateToPortrait)
-    }
-
-    fn palette() -> Vec<(f32, f32, f32, u8)> {
-        PALETTE_COLORS
-            .iter()
-            .map(|&(_, r, g, b, index)| (r, g, b, index))
-            .collect()
     }
 
     fn source_png() -> Vec<u8> {
@@ -125,7 +116,6 @@ mod tests {
                 &FrameContext {
                     crop_to: Some((1200, 1600)),
                     sleep_label: Some("zzz till 08:00".to_owned()),
-                    palette: palette(),
                 },
             )
             .unwrap();
@@ -136,7 +126,6 @@ mod tests {
                 &FrameContext {
                     crop_to: None,
                     sleep_label: None,
-                    palette: palette(),
                 },
             )
             .unwrap();
@@ -152,7 +141,6 @@ mod tests {
         let bare = FrameContext {
             crop_to: None,
             sleep_label: None,
-            palette: palette(),
         };
 
         let fingerprint = pipeline().fingerprint(&bare);
@@ -174,27 +162,16 @@ mod tests {
         let base = FrameContext {
             crop_to: Some((1200, 1600)),
             sleep_label: Some("zzz till 08:00".to_owned()),
-            palette: palette(),
         };
         let relabelled = FrameContext {
             crop_to: base.crop_to,
             sleep_label: Some("zzz till 06:00".to_owned()),
-            palette: base.palette.clone(),
-        };
-        let repainted = FrameContext {
-            crop_to: base.crop_to,
-            sleep_label: base.sleep_label.clone(),
-            palette: vec![(0.0, 0.0, 0.0, 0), (250.0, 250.0, 250.0, 1)],
         };
 
         assert_eq!(pipeline.fingerprint(&base), pipeline.fingerprint(&base));
         assert_ne!(
             pipeline.fingerprint(&base),
             pipeline.fingerprint(&relabelled)
-        );
-        assert_ne!(
-            pipeline.fingerprint(&base),
-            pipeline.fingerprint(&repainted)
         );
     }
 
@@ -210,7 +187,6 @@ mod tests {
             &FrameContext {
                 crop_to: None,
                 sleep_label: None,
-                palette: palette(),
             },
         );
 

@@ -29,6 +29,12 @@ pub struct ColourTemperatureMoveInput {
 }
 
 #[derive(InputObject)]
+pub struct SetColourTemperatureInput {
+    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    pub value: u64,
+}
+
+#[derive(InputObject)]
 pub struct SetColourInput {
     pub hex: String,
 }
@@ -108,6 +114,18 @@ impl LightMutation {
         dispatch(LightHandlerMessage::SetColour {
             ieee_addr: self.address.clone(),
             hex: input.hex,
+        })
+    }
+
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
+    async fn set_colour_temperature(
+        &self,
+        input: SetColourTemperatureInput,
+    ) -> async_graphql::Result<bool> {
+        self.require(Capability::ColourTemp)?;
+        dispatch(LightHandlerMessage::SetColourTemperature {
+            ieee_addr: self.address.clone(),
+            value: input.value,
         })
     }
 

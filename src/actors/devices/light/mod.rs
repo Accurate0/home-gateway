@@ -8,6 +8,9 @@ use crate::{
 use ractor::RpcReplyPort;
 use uuid::Uuid;
 
+const COLOUR_TEMP_MIN_MIREDS: u64 = 153;
+const COLOUR_TEMP_MAX_MIREDS: u64 = 500;
+
 pub enum Entity {
     Zigbee { address: String, state: String },
 }
@@ -40,6 +43,10 @@ pub enum LightHandlerMessage {
     ColourTemperatureMove {
         ieee_addr: IEEEAddress,
         value: i64,
+    },
+    SetColourTemperature {
+        ieee_addr: IEEEAddress,
+        value: u64,
     },
     SetBrightness {
         ieee_addr: IEEEAddress,
@@ -179,6 +186,13 @@ impl LightHandler {
                 };
 
                 self.send_mqtt_state(ieee_addr, state).await?;
+            }
+            LightHandlerMessage::SetColourTemperature { ieee_addr, value } => {
+                self.warn_if_unsupported(&ieee_addr, Capability::ColourTemp);
+                let value = value.clamp(COLOUR_TEMP_MIN_MIREDS, COLOUR_TEMP_MAX_MIREDS);
+
+                self.send_mqtt_state(ieee_addr, serde_json::json!({"color_temp": value}))
+                    .await?;
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Brightness);

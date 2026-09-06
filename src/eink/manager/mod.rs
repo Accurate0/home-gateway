@@ -9,7 +9,7 @@ mod config;
 mod store;
 
 use crate::device_registry::DeviceRegistry;
-use crate::eink::flag::{epd_flag_config, epd_palette};
+use crate::eink::flag::epd_flag_config;
 use crate::eink::panel::packed_cache_key;
 use crate::error::AppError;
 use crate::integrations::feature_flag::FeatureFlagClient;
@@ -82,20 +82,11 @@ impl EinkDisplayManager {
 
         let flag = epd_flag_config(&self.feature_flag_client, &self.devices, device_id).await;
 
-        let palette = epd_palette(
-            &self.feature_flag_client,
-            &self.devices,
-            &self.settings.eink_display.palette,
-            device_id,
-        )
-        .await;
-
         Some(ResolvedDisplay::resolve(
             device_id,
             &display,
             &self.settings.eink_display,
             &flag,
-            palette,
         ))
     }
 
@@ -188,7 +179,6 @@ impl EinkDisplayManager {
                 FrameContext {
                     crop_to: Some(display.target_dims()),
                     sleep_label: display.sleep_label(),
-                    palette: display.palette.clone(),
                 },
             ),
             None => {
@@ -204,7 +194,6 @@ impl EinkDisplayManager {
                     FrameContext {
                         crop_to: None,
                         sleep_label: None,
-                        palette: display.palette.clone(),
                     },
                 )
             }
@@ -263,7 +252,6 @@ impl EinkDisplayManager {
         let frame = FrameContext {
             crop_to: plan.frame.crop_to,
             sleep_label: plan.frame.sleep_label.clone(),
-            palette: plan.frame.palette.clone(),
         };
 
         let packed = tokio::task::spawn_blocking(move || frames.run(&source, &frame))

@@ -1,0 +1,59 @@
+mutation LightOn($id: String!) {
+  light(id: $id) {
+    on
+  }
+}
+
+mutation LightOff($id: String!) {
+  light(id: $id) {
+    off
+  }
+}
+
+mutation LightSetBrightness($id: String!, $value: Int!) {
+  light(id: $id) {
+    setBrightness(input: { value: $value })
+  }
+}
+
+mutation LightSetColourTemperature($id: String!, $value: Int!) {
+  light(id: $id) {
+    setColourTemperature(input: { value: $value })
+  }
+}
+
+mutation MediaPlayPause($id: String!) {
+  mediaPlayer(id: $id) {
+    playPause
+  }
+}
+
+mutation MediaStop($id: String!) {
+  mediaPlayer(id: $id) {
+    stop
+  }
+}
+
+mutation VacuumStart($id: String!) {
+  robotVacuum(id: $id) {
+    start
+  }
+}
+
+mutation VacuumStop($id: String!) {
+  robotVacuum(id: $id) {
+    stop
+  }
+}
+
+mutation VacuumDock($id: String!) {
+  robotVacuum(id: $id) {
+    dock
+  }
+}
+
+mutation EinkTakeScreenshot($id: String!) {
+  einkDisplay(id: $id) {
+    takeScreenshot
+  }
+}

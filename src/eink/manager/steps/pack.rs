@@ -1,4 +1,5 @@
 use crate::eink::manager::frame::{FrameContext, FrameEncoder};
+use crate::settings::eink::PALETTE_COLORS;
 use image::RgbImage;
 use image::imageops::ColorMap;
 
@@ -9,16 +10,16 @@ impl FrameEncoder for FloydSteinbergPacked {
         "pack"
     }
 
-    fn fingerprint(&self, ctx: &FrameContext) -> String {
-        ctx.palette
+    fn fingerprint(&self, _ctx: &FrameContext) -> String {
+        panel_palette()
             .iter()
             .map(|(r, g, b, index)| format!("{r}:{g}:{b}:{index}"))
             .collect::<Vec<_>>()
             .join(",")
     }
 
-    fn encode(&self, ctx: &FrameContext, img: &mut RgbImage) -> anyhow::Result<Vec<u8>> {
-        let indices = dither_to_palette(img, &ctx.palette);
+    fn encode(&self, _ctx: &FrameContext, img: &mut RgbImage) -> anyhow::Result<Vec<u8>> {
+        let indices = dither_to_palette(img, &panel_palette());
         let (width, height) = img.dimensions();
 
         let mut packed = Vec::with_capacity((width * height / 2) as usize);
@@ -32,6 +33,13 @@ impl FrameEncoder for FloydSteinbergPacked {
 
         Ok(packed)
     }
+}
+
+fn panel_palette() -> Vec<(f32, f32, f32, u8)> {
+    PALETTE_COLORS
+        .iter()
+        .map(|&(_, r, g, b, index)| (r, g, b, index))
+        .collect()
 }
 
 struct PanelPalette {

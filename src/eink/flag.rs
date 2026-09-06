@@ -2,12 +2,11 @@ use crate::{
     actors::system::cron::schedule::CronSchedule,
     device_registry::DeviceRegistry,
     integrations::feature_flag::FeatureFlagClient,
-    settings::{EinkMode, PaletteColor, RedditTimespan},
+    settings::{EinkMode, RedditTimespan},
 };
 use open_feature::EvaluationContext;
 
 const EPD_FLAG: &str = "home-gateway-epd";
-const EPD_DITHERING_CONFIG_FLAG: &str = "home-gateway-epd-dithering-config";
 
 #[derive(Debug, Clone, Default)]
 pub struct EpdFlagConfig {
@@ -122,48 +121,4 @@ pub async fn epd_flag_config(
             fallback
         }
     }
-}
-
-pub async fn epd_palette(
-    feature_flag_client: &FeatureFlagClient,
-    devices: &DeviceRegistry,
-    base: &[PaletteColor],
-    device_id: &str,
-) -> Vec<(f32, f32, f32, u8)> {
-    let config = feature_flag_client
-        .get_struct(
-            EPD_DITHERING_CONFIG_FLAG,
-            evaluation_context(devices, device_id),
-        )
-        .await
-        .ok();
-
-    base.iter()
-        .map(|color| {
-            let (r, g, b) = config
-                .as_ref()
-                .and_then(|c| c.fields.get(color.name))
-                .and_then(|v| v.as_struct())
-                .map(|s| {
-                    let channel = |key: &str, default: f32| {
-                        s.fields
-                            .get(key)
-                            .and_then(|v| {
-                                v.as_i64()
-                                    .map(|n| n as f32)
-                                    .or_else(|| v.as_f64().map(|f| f as f32))
-                            })
-                            .map(|n| n.clamp(0.0, 255.0))
-                            .unwrap_or(default)
-                    };
-                    (
-                        channel("r", color.r),
-                        channel("g", color.g),
-                        channel("b", color.b),
-                    )
-                })
-                .unwrap_or((color.r, color.g, color.b));
-            (r, g, b, color.index)
-        })
-        .collect()
 }

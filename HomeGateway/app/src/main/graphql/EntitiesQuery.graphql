@@ -1,30 +1,69 @@
 query Entities {
+  entitySections {
+    category
+    title
+  }
   entities {
     __typename
     ... on LightEntity {
+      category
       id
       name
+      room
+      capabilities
       on
     }
     ... on DoorEntity {
+      category
       id
       name
+      room
       open
     }
     ... on PresenceEntity {
+      category
       id
       name
+      room
       present
     }
     ... on EnvironmentEntity {
+      category
       id
       name
+      room
       temperature
       humidity
       pressure
       lux
       uvIndex
-      time
+    }
+    ... on EinkDisplayEntity {
+      category
+      id
+      name
+      room
+      batteryPercentage
+      isCharging
+    }
+    ... on RobotVacuumEntity {
+      category
+      id
+      name
+      room
+      status
+      batteryPercentage
+      currentRoom
+    }
+    ... on MediaPlayerEntity {
+      category
+      id
+      name
+      room
+      playing
+      appName
+      mediaTitle
+      mediaSeriesTitle
     }
   }
 }
