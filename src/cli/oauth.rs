@@ -22,7 +22,7 @@ use super::credentials::Credentials;
 pub const DEFAULT_ISSUER: &str = "https://idm.anurag.sh/oauth2/openid/home-gateway";
 pub const DEFAULT_CLIENT_ID: &str = "home-gateway";
 
-const SCOPES: &str = "openid email profile groups offline_access";
+const SCOPES: &str = "openid email profile groups";
 const VERIFIER_LEN: usize = 64;
 const STATE_LEN: usize = 32;
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(120);
