@@ -1,0 +1,3 @@
+mutation RunWorkflow($slug: String!) {
+  runWorkflow(slug: $slug)
+}

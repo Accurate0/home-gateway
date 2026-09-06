@@ -1,6 +1,6 @@
 use serde::Serialize;
+use std::collections::HashMap;
 
-/// FCM HTTP v1 send payload: `{ "message": { "token", "notification": { ... } } }`.
 #[derive(Serialize)]
 pub struct FcmSendRequest {
     pub message: FcmMessage,
@@ -9,11 +9,26 @@ pub struct FcmSendRequest {
 #[derive(Serialize)]
 pub struct FcmMessage {
     pub token: String,
-    pub notification: FcmNotification,
+    pub data: HashMap<String, String>,
+    pub android: FcmAndroidConfig,
 }
 
 #[derive(Serialize)]
-pub struct FcmNotification {
-    pub title: String,
-    pub body: String,
+pub struct FcmAndroidConfig {
+    pub priority: &'static str,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct PushAction {
+    pub label: String,
+    #[serde(flatten)]
+    pub kind: PushActionKind,
+}
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum PushActionKind {
+    RunWorkflow { slug: String },
+    Snooze { seconds: u64 },
+    Dismiss,
 }

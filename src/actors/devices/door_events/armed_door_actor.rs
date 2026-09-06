@@ -1,7 +1,7 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::{
-    integrations::notify::notify,
-    settings::{ArmedDoorStates, IEEEAddress},
+    integrations::notify::{Notification, notify},
+    settings::{ArmedDoorStates, IEEEAddress, NotifyCategory},
     state::AppState,
 };
 use chrono::{DateTime, Utc};
@@ -31,7 +31,10 @@ impl ArmedDoor {
     pub fn trigger_action(&self, ieee_addr: &IEEEAddress) {
         if let Some(settings) = self.shared_actor_state.devices.door(ieee_addr) {
             let message = format!("{} has been left open.", settings.name);
-            notify(&settings.notify, message);
+            notify(
+                &settings.notify,
+                Notification::new(message, NotifyCategory::Door, format!("door:{ieee_addr}")),
+            );
         }
     }
 }

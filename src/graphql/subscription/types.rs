@@ -76,6 +76,11 @@ pub struct LightUpdate {
     /// Raw device address the event was emitted for.
     pub device: String,
     pub on: bool,
+    pub brightness: Option<i32>,
+    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    pub colour_temperature: Option<i32>,
+    /// Current colour as `#rrggbb`, when the light reports one.
+    pub colour: Option<String>,
 }
 
 #[derive(SimpleObject)]
@@ -329,6 +334,9 @@ impl EventUpdate {
                 event_id,
                 ieee_addr,
                 on,
+                brightness,
+                colour_temp,
+                colour,
             } => {
                 let device = ieee_addr.to_string();
                 let id = slug(&device);
@@ -342,6 +350,9 @@ impl EventUpdate {
                     name,
                     device,
                     on,
+                    brightness,
+                    colour_temperature: colour_temp,
+                    colour,
                 })
             }
             EventBusMessage::Unifi {

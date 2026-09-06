@@ -4,4 +4,4 @@ assertion_line: 243
 expression: out
 ---
 # Woolworths Price Drop  (on: woolworths(*) price drop)
-  notify: notify(AndroidApp): ${name} dropped to $${new_price} (was $${old_price}, -$${drop})
+  notify: notify(AndroidApp, general): ${name} dropped to $${new_price} (was $${old_price}, -$${drop})

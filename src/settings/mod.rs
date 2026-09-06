@@ -60,7 +60,7 @@ pub use jellyfin::JellyfinSettings;
 pub use light::RawLightBlock;
 pub use location::LocationSettings;
 pub use media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
-pub use notify::{NotifySource, NotifyTargets};
+pub use notify::{NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets};
 pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
@@ -334,6 +334,14 @@ impl RawSettings {
                 if !resolved.contains_key(target) {
                     return Err(format!(
                         "workflow '{}': run_workflow references unknown workflow '{target}'",
+                        workflow.name
+                    ));
+                }
+            }
+            for target in workflow.notify_action_targets() {
+                if !resolved.contains_key(target) {
+                    return Err(format!(
+                        "workflow '{}': notify action references unknown workflow '{target}'",
                         workflow.name
                     ));
                 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gcp_auth::TokenProvider;
@@ -7,8 +8,9 @@ use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
-use types::{FcmMessage, FcmNotification, FcmSendRequest};
+use types::{FcmAndroidConfig, FcmMessage, FcmSendRequest, PushAction};
 
+use crate::settings::NotifyCategory;
 use crate::state::AppState;
 
 pub mod spawn;
@@ -17,8 +19,16 @@ pub mod types;
 /// OAuth2 scope required to call the FCM HTTP v1 API.
 const FCM_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
 
+pub struct PushNotification {
+    pub title: String,
+    pub body: String,
+    pub category: NotifyCategory,
+    pub tag: String,
+    pub actions: Vec<PushAction>,
+}
+
 pub enum PushMessage {
-    Send { title: String, body: String },
+    Send(PushNotification),
 }
 
 pub struct PushWorker {
@@ -31,22 +41,40 @@ pub struct PushWorker {
 impl PushWorker {
     pub const NAME: &str = "push";
 
+    fn data_payload(notification: &PushNotification) -> HashMap<String, String> {
+        let actions = match serde_json::to_string(&notification.actions) {
+            Ok(json) => json,
+            Err(e) => {
+                tracing::error!("failed to serialise push actions: {e}");
+                "[]".to_string()
+            }
+        };
+
+        HashMap::from([
+            ("title".to_string(), notification.title.clone()),
+            ("body".to_string(), notification.body.clone()),
+            (
+                "category".to_string(),
+                notification.category.as_str().to_string(),
+            ),
+            ("tag".to_string(), notification.tag.clone()),
+            ("actions".to_string(), actions),
+        ])
+    }
+
     async fn send_to_token(
         &self,
         access_token: &str,
         project_id: &str,
         device_token: String,
-        title: &str,
-        body: &str,
+        data: &HashMap<String, String>,
     ) {
         let url = format!("https://fcm.googleapis.com/v1/projects/{project_id}/messages:send");
         let payload = FcmSendRequest {
             message: FcmMessage {
                 token: device_token.clone(),
-                notification: FcmNotification {
-                    title: title.to_string(),
-                    body: body.to_string(),
-                },
+                data: data.clone(),
+                android: FcmAndroidConfig { priority: "high" },
             },
         };
 
@@ -107,14 +135,17 @@ impl Worker for PushWorker {
         _state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match msg {
-            PushMessage::Send { title, body } => {
+            PushMessage::Send(notification) => {
                 let Some(token_provider) = &self.token_provider else {
-                    tracing::warn!("no fcm service account configured, skipping push: {title}");
+                    tracing::warn!(
+                        "no fcm service account configured, skipping push: {}",
+                        notification.title
+                    );
                     return Ok(());
                 };
 
-                let evaluation_context =
-                    EvaluationContext::default().with_custom_field("message", body.clone());
+                let evaluation_context = EvaluationContext::default()
+                    .with_custom_field("message", notification.body.clone());
                 if self
                     .shared_actor_state
                     .feature_flag_client
@@ -125,7 +156,10 @@ impl Worker for PushWorker {
                     )
                     .await
                 {
-                    tracing::warn!("notification kill switch is enabled, not sending: {title}");
+                    tracing::warn!(
+                        "notification kill switch is enabled, not sending: {}",
+                        notification.title
+                    );
                     return Ok(());
                 }
 
@@ -153,15 +187,11 @@ impl Worker for PushWorker {
                     return Ok(());
                 }
 
+                let data = Self::data_payload(&notification);
+
                 for device_token in device_tokens {
-                    self.send_to_token(
-                        access_token.as_str(),
-                        &project_id,
-                        device_token,
-                        &title,
-                        &body,
-                    )
-                    .await;
+                    self.send_to_token(access_token.as_str(), &project_id, device_token, &data)
+                        .await;
                 }
             }
         }

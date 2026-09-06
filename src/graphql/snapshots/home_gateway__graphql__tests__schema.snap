@@ -398,10 +398,27 @@ type LightEntity {
 	error against this field without nulling the whole entity.
 	"""
 	on: Boolean
+	"""
+	Current brightness, 0-254. Null when the light has not reported one.
+	"""
+	brightness: Int
+	"""
+	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	"""
+	colourTemperature: Int
+	"""
+	Current colour as `#rrggbb`. Null when the light has not reported one.
+	"""
+	colour: String
 	lastSeen: DateTime
 }
 
 type LightMutation {
+	"""
+	Apply any combination of power, brightness, colour temperature and colour
+	in one command, and return the light's resulting state.
+	"""
+	set(input: LightSetInput!): LightState!
 	on: Boolean!
 	off: Boolean!
 	toggle: Boolean!
@@ -410,6 +427,32 @@ type LightMutation {
 	setColour(input: SetColourInput!): Boolean!
 	setColourTemperature(input: SetColourTemperatureInput!): Boolean!
 	colourTemperatureMove(input: ColourTemperatureMoveInput!): Boolean!
+}
+
+input LightSetInput {
+	on: Boolean
+	brightness: Int
+	"""
+	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	"""
+	colourTemperature: Int
+	colour: String
+}
+
+type LightState {
+	on: Boolean!
+	"""
+	Current brightness, 0-254, when the light reports one.
+	"""
+	brightness: Int
+	"""
+	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	"""
+	colourTemperature: Int
+	"""
+	Current colour as `#rrggbb`, when the light reports one.
+	"""
+	colour: String
 }
 
 type LightUpdate {
@@ -427,6 +470,15 @@ type LightUpdate {
 	"""
 	device: String!
 	on: Boolean!
+	brightness: Int
+	"""
+	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	"""
+	colourTemperature: Int
+	"""
+	Current colour as `#rrggbb`, when the light reports one.
+	"""
+	colour: String
 }
 
 type MediaPlayerEntity {
@@ -521,6 +573,7 @@ type MutationRoot {
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!, active: Boolean!): [Mode!]!
 	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
+	runWorkflow(slug: String!): Boolean!
 	runPendingAdhocTasks: Boolean!
 	runAdhocCronTask(name: String!): Boolean!
 }

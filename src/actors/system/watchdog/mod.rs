@@ -4,7 +4,11 @@ use chrono::Utc;
 use ractor::Actor;
 use tracing::Level;
 
-use crate::{integrations::notify::notify, settings::NotifySource, state::AppState};
+use crate::{
+    integrations::notify::{Notification, notify},
+    settings::{NotifyCategory, NotifySource},
+    state::AppState,
+};
 
 pub enum WatchdogMessage {
     Check,
@@ -44,7 +48,11 @@ impl WatchdogActor {
                 if should_alert {
                     notify(
                         targets,
-                        format!("Sensor offline: {device_key} has stopped reporting"),
+                        Notification::new(
+                            format!("Sensor offline: {device_key} has stopped reporting"),
+                            NotifyCategory::Watchdog,
+                            format!("watchdog:{device_key}"),
+                        ),
                     );
                     self.shared_actor_state
                         .repos
@@ -55,7 +63,11 @@ impl WatchdogActor {
             } else if state.alerted_at.is_some() {
                 notify(
                     targets,
-                    format!("Sensor back online: {device_key} is reporting again"),
+                    Notification::new(
+                        format!("Sensor back online: {device_key} is reporting again"),
+                        NotifyCategory::Watchdog,
+                        format!("watchdog:{device_key}"),
+                    ),
                 );
                 self.shared_actor_state
                     .repos

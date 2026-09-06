@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
+        android:name=".HomeGatewayApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -20,6 +21,10 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+        <receiver
+            android:name=".notifications.NotificationActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
         <receiver
             android:name=".AlarmChangeReceiver"
             android:enabled="true"

@@ -6,4 +6,5 @@
   run:
     - type: notify
       notify: { type: android_app }
+      category: general
       message: "Solar averaging ${avg_15m}W over the last 15 minutes (now ${current}W)"

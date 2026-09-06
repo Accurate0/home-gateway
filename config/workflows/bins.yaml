@@ -5,6 +5,7 @@
   run:
     - type: notify
       notify: { type: android_app }
+      category: general
       message: "Bins"
 
 - name: Bring Bins Back
@@ -14,4 +15,5 @@
   run:
     - type: notify
       notify: { type: android_app }
+      category: general
       message: "Bring the bins back in"

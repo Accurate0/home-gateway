@@ -24,19 +24,19 @@ aqara_fp1e:
     movement: { key: movement, type: string }
 
 aqara_t1:
-  light: [state]
+  light: [state, brightness, color_temp, color]
   metrics:
     brightness: { key: brightness, type: int }
     color_temp: { key: color_temp, type: int }
 
 ikea_led2201g8:
-  light: [state]
+  light: [state, brightness, color_temp, color]
   metrics:
     brightness: { key: brightness, type: int }
     color_temp: { key: color_temp, type: int }
 
 phillips_9290012573a:
-  light: [state]
+  light: [state, brightness, color_temp, color]
   metrics:
     brightness: { key: brightness, type: int }
     color_temp: { key: color_temp, type: int }

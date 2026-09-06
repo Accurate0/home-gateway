@@ -78,6 +78,9 @@ pub struct ZigbeeDoorFields {
 #[derive(Debug, Clone)]
 pub struct ZigbeeLightFields {
     pub state: String,
+    pub brightness: Option<String>,
+    pub colour_temp: Option<String>,
+    pub colour: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -139,9 +142,22 @@ impl ZigbeeModelProfile {
             .map(|block| {
                 let mut fields = block.normalize(&slug, "light")?;
                 let state = take_required(&mut fields, &slug, "light", "state")?;
-                reject_unknown(fields, &slug, "light", &["state"])?;
+                let brightness = fields.remove("brightness");
+                let colour_temp = fields.remove("color_temp");
+                let colour = fields.remove("color");
+                reject_unknown(
+                    fields,
+                    &slug,
+                    "light",
+                    &["state", "brightness", "color_temp", "color"],
+                )?;
 
-                Ok::<_, String>(ZigbeeLightFields { state })
+                Ok::<_, String>(ZigbeeLightFields {
+                    state,
+                    brightness,
+                    colour_temp,
+                    colour,
+                })
             })
             .transpose()?;
 

@@ -52,18 +52,47 @@ pub fn light_command_topic(node: &str, object_id: &str) -> String {
     format!("{node}/light/{object_id}/command")
 }
 
-pub fn parse_light_state(payload: &[u8]) -> Option<bool> {
+pub struct LightReport {
+    pub on: bool,
+    pub brightness: Option<i32>,
+    pub colour: Option<String>,
+}
+
+pub fn parse_light_state(payload: &[u8]) -> Option<LightReport> {
+    #[derive(Deserialize)]
+    struct Colour {
+        r: u8,
+        g: u8,
+        b: u8,
+    }
+
     #[derive(Deserialize)]
     struct LightState {
         state: String,
+        brightness: Option<u32>,
+        color: Option<Colour>,
     }
 
     if let Some(on) = parse_binary_state(payload) {
-        return Some(on);
+        return Some(LightReport {
+            on,
+            brightness: None,
+            colour: None,
+        });
     }
 
     let parsed: LightState = serde_json::from_slice(payload).ok()?;
-    parse_binary_state(parsed.state.as_bytes())
+    let on = parse_binary_state(parsed.state.as_bytes())?;
+
+    Some(LightReport {
+        on,
+        brightness: parsed
+            .brightness
+            .map(|value| (value * 254).div_ceil(255) as i32),
+        colour: parsed
+            .color
+            .map(|colour| format!("#{:02x}{:02x}{:02x}", colour.r, colour.g, colour.b)),
+    })
 }
 
 pub fn parse_binary_state(payload: &[u8]) -> Option<bool> {

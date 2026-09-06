@@ -5,4 +5,5 @@
   run:
     - type: notify
       notify: { type: android_app }
+      category: general
       message: "${name} dropped to $${new_price} (was $${old_price}, -$${drop})"

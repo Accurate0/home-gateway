@@ -1,11 +1,16 @@
 use async_graphql::{InputObject, Object};
 
-use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
+use std::time::Duration;
+
+use crate::actors::devices::light::{LightHandler, LightHandlerMessage, SetRequest};
 use crate::actors::system::rpc;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::Capability;
 use crate::graphql::guard::ScopeGuard;
+use crate::graphql::objects::entity_object::LightStateObject;
 use crate::settings::IEEEAddress;
+
+const SET_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct LightMutation {
     pub address: IEEEAddress,
@@ -39,6 +44,15 @@ pub struct SetColourInput {
     pub hex: String,
 }
 
+#[derive(InputObject)]
+pub struct LightSetInput {
+    pub on: Option<bool>,
+    pub brightness: Option<u64>,
+    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    pub colour_temperature: Option<u64>,
+    pub colour: Option<String>,
+}
+
 impl LightMutation {
     fn require(&self, capability: Capability) -> async_graphql::Result<()> {
         if self.capabilities.contains(&capability) {
@@ -63,6 +77,44 @@ fn dispatch(message: LightHandlerMessage) -> async_graphql::Result<bool> {
 
 #[Object]
 impl LightMutation {
+    /// Apply any combination of power, brightness, colour temperature and colour
+    /// in one command, and return the light's resulting state.
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
+    async fn set(&self, input: LightSetInput) -> async_graphql::Result<LightStateObject> {
+        if input.brightness.is_some() {
+            self.require(Capability::Brightness)?;
+        }
+
+        if input.colour_temperature.is_some() {
+            self.require(Capability::ColourTemp)?;
+        }
+
+        if let Some(colour) = &input.colour {
+            self.require(Capability::Rgb)?;
+            if !is_valid_hex(colour) {
+                return Err(async_graphql::Error::new(
+                    "invalid hex colour, expected #RRGGBB",
+                ));
+            }
+        }
+
+        let state = rpc::query_factory(LightHandler::NAME, SET_TIMEOUT, |reply| {
+            LightHandlerMessage::Set {
+                ieee_addr: self.address.clone(),
+                request: Box::new(SetRequest {
+                    on: input.on,
+                    brightness: input.brightness,
+                    colour_temp: input.colour_temperature,
+                    colour: input.colour,
+                }),
+                reply,
+            }
+        })
+        .await?;
+
+        Ok(state.into())
+    }
+
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn on(&self) -> async_graphql::Result<bool> {
         dispatch(LightHandlerMessage::TurnOn {

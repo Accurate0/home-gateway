@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO light_state (ieee_address, state, brightness, colour_temp, colour) VALUES ($1, COALESCE($2, 'OFF'), $3, $4, $5) ON CONFLICT (ieee_address) DO UPDATE SET state = COALESCE(EXCLUDED.state, light_state.state), brightness = COALESCE(EXCLUDED.brightness, light_state.brightness), colour_temp = COALESCE(EXCLUDED.colour_temp, light_state.colour_temp), colour = COALESCE(EXCLUDED.colour, light_state.colour) RETURNING state, brightness, colour_temp, colour",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "brightness",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "colour_temp",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "colour",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "3167625e57dfb34087a0641dec45e1cfa52b7aebe1d902196d9413dbd77a83bb"
+}

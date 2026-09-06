@@ -57,6 +57,9 @@ pub enum EventBusMessage {
         event_id: Uuid,
         ieee_addr: IEEEAddress,
         on: bool,
+        brightness: Option<i32>,
+        colour_temp: Option<i32>,
+        colour: Option<String>,
     },
     /// A UniFi WiFi client connected or disconnected. `client` is the mapped
     /// friendly name (or `unknown`); published for subscribers, not triggered on.

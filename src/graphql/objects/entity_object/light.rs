@@ -8,6 +8,7 @@ use crate::{
     },
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
+    repo::light::LightState,
 };
 
 pub struct LightEntity {
@@ -19,6 +20,7 @@ pub struct LightEntity {
     pub address: String,
     pub capabilities: Vec<Capability>,
     pub room: Option<String>,
+    state: tokio::sync::OnceCell<LightState>,
 }
 
 impl LightEntity {
@@ -34,7 +36,23 @@ impl LightEntity {
             address: address.to_owned(),
             capabilities: registry.capabilities(address).to_vec(),
             room: registry.room(address).map(str::to_owned),
+            state: tokio::sync::OnceCell::new(),
         })
+    }
+
+    async fn state(&self) -> async_graphql::Result<&LightState> {
+        self.state
+            .get_or_try_init(|| async {
+                rpc::query_factory(LightHandler::NAME, QUERY_TIMEOUT, |reply| {
+                    LightHandlerMessage::QueryState {
+                        ieee_addr: self.address.clone(),
+                        reply,
+                    }
+                })
+                .await
+                .map_err(async_graphql::Error::from)
+            })
+            .await
     }
 }
 
@@ -70,15 +88,22 @@ impl LightEntity {
     /// Current power state. Nullable so an unreachable light actor reports the
     /// error against this field without nulling the whole entity.
     async fn on(&self) -> async_graphql::Result<Option<bool>> {
-        Ok(Some(
-            rpc::query_factory(LightHandler::NAME, QUERY_TIMEOUT, |reply| {
-                LightHandlerMessage::QueryPowerState {
-                    ieee_addr: self.address.clone(),
-                    reply,
-                }
-            })
-            .await?,
-        ))
+        Ok(Some(self.state().await?.on))
+    }
+
+    /// Current brightness, 0-254. Null when the light has not reported one.
+    async fn brightness(&self) -> async_graphql::Result<Option<i32>> {
+        Ok(self.state().await?.brightness)
+    }
+
+    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    async fn colour_temperature(&self) -> async_graphql::Result<Option<i32>> {
+        Ok(self.state().await?.colour_temp)
+    }
+
+    /// Current colour as `#rrggbb`. Null when the light has not reported one.
+    async fn colour(&self) -> async_graphql::Result<Option<&str>> {
+        Ok(self.state().await?.colour.as_deref())
     }
 
     async fn last_seen(

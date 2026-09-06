@@ -7,6 +7,7 @@ use crate::{
         presence_sensor::PresenceSensorHandler, smart_switch, smart_switch::SmartSwitchHandler,
     },
     device_registry::{DeviceRegistry, ZigbeeDevice},
+    repo::light::LightAttributes,
     settings::zigbee_model::{payload_bool, payload_f64, payload_i64, payload_string},
 };
 
@@ -142,9 +143,32 @@ impl ZigbeeRole for light::Entity {
             return None;
         };
 
+        let brightness = fields
+            .brightness
+            .as_deref()
+            .and_then(|key| payload_i64(payload, key))
+            .map(|value| value as i32);
+
+        let colour_temp = fields
+            .colour_temp
+            .as_deref()
+            .and_then(|key| payload_i64(payload, key))
+            .map(|value| value as i32);
+
+        let colour = fields
+            .colour
+            .as_deref()
+            .and_then(|key| payload.get(key))
+            .and_then(light::colour_hex);
+
         Some(light::Entity::Zigbee {
             address: address.clone(),
-            state,
+            attributes: LightAttributes {
+                state: Some(state),
+                brightness,
+                colour_temp,
+                colour,
+            },
         })
     }
 

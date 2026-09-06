@@ -39,3 +39,37 @@ pub(crate) fn resolve_notify(
 ) -> Result<Vec<NotifySource>, String> {
     refs.into_iter().map(|r| r.resolve(targets)).collect()
 }
+
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+pub struct NotifyAction {
+    pub label: String,
+    pub action: NotifyActionKind,
+}
+
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum NotifyActionKind {
+    RunWorkflow { workflow: String },
+    Snooze { seconds: u64 },
+    Dismiss,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum NotifyCategory {
+    Alarm,
+    Door,
+    Watchdog,
+    General,
+}
+
+impl NotifyCategory {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            NotifyCategory::Alarm => "alarm",
+            NotifyCategory::Door => "door",
+            NotifyCategory::Watchdog => "watchdog",
+            NotifyCategory::General => "general",
+        }
+    }
+}

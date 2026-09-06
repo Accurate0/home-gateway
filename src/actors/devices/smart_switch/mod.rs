@@ -1,6 +1,8 @@
 use crate::actors::devices::handler::DeviceHandler;
 use crate::repo::smart_switch::SmartSwitchReading;
-use crate::{actors::devices::light::record_light_state, state::AppState};
+use crate::{
+    actors::devices::light::record_light_state, repo::light::LightAttributes, state::AppState,
+};
 use uuid::Uuid;
 
 pub enum Entity {
@@ -90,7 +92,7 @@ impl SmartSwitchHandler {
                                 &self.shared_actor_state,
                                 event.event_id,
                                 address,
-                                state,
+                                LightAttributes::state(state),
                             )
                             .await?;
                         }

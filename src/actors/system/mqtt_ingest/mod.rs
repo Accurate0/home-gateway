@@ -111,7 +111,7 @@ impl MqttIngest {
         node: &str,
         payload: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let Some(on) = crate::integrations::esphome::parse_light_state(payload) else {
+        let Some(report) = crate::integrations::esphome::parse_light_state(payload) else {
             tracing::warn!("unrecognised esphome light state payload for {node}");
             return Ok(());
         };
@@ -120,9 +120,16 @@ impl MqttIngest {
             &self.shared_actor_state,
             uuid::Uuid::new_v4(),
             node.to_string(),
-            if on { "ON" } else { "OFF" }.to_string(),
+            crate::repo::light::LightAttributes {
+                state: Some(if report.on { "ON" } else { "OFF" }.to_owned()),
+                brightness: report.brightness,
+                colour_temp: None,
+                colour: report.colour,
+            },
         )
-        .await
+        .await?;
+
+        Ok(())
     }
 
     fn dispatch_esphome_motion(

@@ -1,3 +1,4 @@
+use crate::actors::system::push::types::{PushAction, PushActionKind};
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::integrations::home_assistant::HomeAssistant;
@@ -5,8 +6,9 @@ use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
-    integrations::notify::notify,
+    integrations::notify::{Notification, notify},
     settings::workflow::{EnableState, LightState, Step, Workflow},
+    settings::{NotifyAction, NotifyActionKind},
     state::AppState,
     timer::timed_async,
 };
@@ -198,9 +200,26 @@ impl WorkflowWorker {
             }
             Step::Scene { run, .. } => Box::pin(self.run_steps(ctx, run)).await,
             Step::Notify {
-                notify: n, message, ..
+                notify: n,
+                message,
+                title,
+                category,
+                actions,
+                ..
             } => {
-                notify(std::slice::from_ref(n), message.render(ctx.vars));
+                let notification = Notification::new(
+                    message.render(ctx.vars),
+                    *category,
+                    format!("workflow:{}", ctx.origin_slug),
+                )
+                .with_actions(self.resolve_push_actions(actions));
+
+                let notification = match title {
+                    Some(title) => notification.with_title(title.render(ctx.vars)),
+                    None => notification,
+                };
+
+                notify(std::slice::from_ref(n), notification);
                 Ok(())
             }
             Step::Delay { seconds, .. } => {
@@ -216,6 +235,33 @@ impl WorkflowWorker {
                 call_service, data, ..
             } => self.run_home_assistant(call_service, data.clone()).await,
         }
+    }
+
+    fn resolve_push_actions(&self, actions: &[NotifyAction]) -> Vec<PushAction> {
+        let settings = &self.shared_actor_state.settings;
+
+        actions
+            .iter()
+            .filter_map(|action| {
+                let kind = match &action.action {
+                    NotifyActionKind::RunWorkflow { workflow } => {
+                        let target = settings.workflows.get(workflow)?;
+                        PushActionKind::RunWorkflow {
+                            slug: target.slug.clone(),
+                        }
+                    }
+                    NotifyActionKind::Snooze { seconds } => {
+                        PushActionKind::Snooze { seconds: *seconds }
+                    }
+                    NotifyActionKind::Dismiss => PushActionKind::Dismiss,
+                };
+
+                Some(PushAction {
+                    label: action.label.clone(),
+                    kind,
+                })
+            })
+            .collect()
     }
 
     async fn run_home_assistant(

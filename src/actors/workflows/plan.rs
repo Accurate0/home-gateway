@@ -140,6 +140,7 @@ mod tests {
                 state: "ON"
               - type: notify
                 notify: { type: android_app }
+                category: general
                 message: "kitchen on"
             "#,
         );
@@ -184,6 +185,7 @@ mod tests {
               run:
                 - type: notify
                   notify: { type: android_app }
+                  category: general
                   message: "from leaf"
             "#,
         );

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT state, brightness, colour_temp, colour FROM light_state WHERE ieee_address = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "state",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "brightness",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "colour_temp",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "colour",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "cce94d0fe6c7843194c947690b4add8493524138c0813329dccdb3c8fb9b8086"
+}

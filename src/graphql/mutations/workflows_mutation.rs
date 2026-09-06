@@ -1,5 +1,9 @@
 use async_graphql::Object;
+use std::collections::HashMap;
 use uuid::Uuid;
+
+use crate::actors::system::rpc;
+use crate::actors::workflows::{WorkflowWorker, WorkflowWorkerMessage};
 
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::{Action, Resource, Scope};
@@ -66,5 +70,31 @@ impl WorkflowsMutation {
     ) -> async_graphql::Result<bool> {
         self.set_mode(ctx, Mode::Guest, active).await?;
         Ok(active)
+    }
+
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]
+    async fn run_workflow(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        slug: String,
+    ) -> async_graphql::Result<bool> {
+        let settings = ctx.data::<SettingsContainer>()?;
+        let workflow = settings
+            .workflows
+            .values()
+            .find(|w| w.slug == slug)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown workflow slug: {slug}")))?
+            .clone();
+
+        let message = WorkflowWorkerMessage::Execute {
+            event_id: Uuid::new_v4(),
+            workflow,
+            vars: HashMap::new(),
+        };
+
+        rpc::cast_factory(WorkflowWorker::NAME, message)
+            .map_err(|e| async_graphql::Error::new(format!("error dispatching workflow: {e}")))?;
+
+        Ok(true)
     }
 }

@@ -1,7 +1,7 @@
 use crate::device_registry::{Capability, DeviceRegistry};
-use crate::settings::NotifySource;
 use crate::settings::TemplateString;
 use crate::settings::trigger::TriggerMatcher;
+use crate::settings::{NotifyAction, NotifyActionKind, NotifyCategory, NotifySource};
 use crate::timedelta_format::option_time_delta_from_str;
 
 use super::{DeviceAliases, IEEEAddress, validate_device, yes};
@@ -317,6 +317,11 @@ pub enum Step {
         notify: NotifySource,
         message: TemplateString,
         #[serde(default)]
+        title: Option<TemplateString>,
+        category: NotifyCategory,
+        #[serde(default)]
+        actions: Vec<NotifyAction>,
+        #[serde(default)]
         when: Option<Condition>,
     },
     Delay {
@@ -391,8 +396,24 @@ impl Step {
                 ieee_addr, state, ..
             } => Some(format!("switch({ieee_addr}) -> {state:?}")),
             Step::Notify {
-                notify, message, ..
-            } => Some(format!("notify({notify:?}): {message}")),
+                notify,
+                message,
+                category,
+                actions,
+                ..
+            } => {
+                let suffix = if actions.is_empty() {
+                    String::new()
+                } else {
+                    let labels: Vec<&str> = actions.iter().map(|a| a.label.as_str()).collect();
+                    format!(" [{}]", labels.join(", "))
+                };
+
+                Some(format!(
+                    "notify({notify:?}, {}): {message}{suffix}",
+                    category.as_str()
+                ))
+            }
             Step::Delay { seconds, .. } => Some(format!("delay {seconds}s")),
             Step::SetMode { mode, active, .. } => {
                 Some(format!("set_mode({}) -> {active}", mode.as_str()))
@@ -559,8 +580,11 @@ impl Workflow {
         fn collect(steps: &[Step], out: &mut Vec<String>) {
             for step in steps {
                 match step {
-                    Step::Notify { message, .. } => {
+                    Step::Notify { message, title, .. } => {
                         out.extend(message.placeholders().into_iter().map(str::to_owned));
+                        if let Some(title) = title {
+                            out.extend(title.placeholders().into_iter().map(str::to_owned));
+                        }
                     }
                     Step::Scene { run, .. } => collect(run, out),
                     _ => {}
@@ -577,6 +601,27 @@ impl Workflow {
             for step in steps {
                 match step {
                     Step::RunWorkflow { workflow, .. } => out.push(workflow.as_str()),
+                    Step::Scene { run, .. } => collect(run, out),
+                    _ => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        collect(&self.run, &mut out);
+        out
+    }
+
+    pub fn notify_action_targets(&self) -> Vec<&str> {
+        fn collect<'a>(steps: &'a [Step], out: &mut Vec<&'a str>) {
+            for step in steps {
+                match step {
+                    Step::Notify { actions, .. } => {
+                        for action in actions {
+                            if let NotifyActionKind::RunWorkflow { workflow } = &action.action {
+                                out.push(workflow.as_str());
+                            }
+                        }
+                    }
                     Step::Scene { run, .. } => collect(run, out),
                     _ => {}
                 }
@@ -723,5 +768,74 @@ run:
             &workflow.run[0],
             Step::HomeAssistant { call_service, .. } if call_service == "light.turn_on"
         ));
+    }
+
+    #[test]
+    fn notify_step_parses_category_and_actions() {
+        let workflow = parse(
+            r#"
+name: Notify test
+slug: notify-test
+on: { type: presence, sensor: hallway, present: true }
+run:
+  - type: notify
+    notify: { type: android_app }
+    category: alarm
+    title: "Wake up"
+    message: "Alarm in 5 minutes"
+    actions:
+      - label: Snooze
+        action: { type: snooze, seconds: 600 }
+      - label: Lights on
+        action: { type: run_workflow, workflow: alarm-wakeup }
+      - label: Dismiss
+        action: { type: dismiss }
+"#,
+        );
+
+        let Step::Notify {
+            category,
+            title,
+            actions,
+            ..
+        } = &workflow.run[0]
+        else {
+            panic!("expected a notify step");
+        };
+
+        assert_eq!(category.as_str(), "alarm");
+        assert_eq!(
+            title.as_ref().map(ToString::to_string),
+            Some("Wake up".to_string())
+        );
+        assert_eq!(actions.len(), 3);
+        assert!(matches!(
+            &actions[1].action,
+            NotifyActionKind::RunWorkflow { workflow } if workflow == "alarm-wakeup"
+        ));
+        assert_eq!(workflow.notify_action_targets(), vec!["alarm-wakeup"]);
+    }
+
+    #[test]
+    fn notify_step_requires_a_category() {
+        let err = Config::builder()
+            .add_source(File::from_str(
+                r#"
+name: Notify test
+slug: notify-test
+on: { type: presence, sensor: hallway, present: true }
+run:
+  - type: notify
+    notify: { type: android_app }
+    message: "no category"
+"#,
+                FileFormat::Yaml,
+            ))
+            .build()
+            .unwrap()
+            .try_deserialize::<Workflow>()
+            .unwrap_err();
+
+        assert!(err.to_string().contains("category"), "{err}");
     }
 }

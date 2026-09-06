@@ -6,6 +6,7 @@
   run:
     - type: notify
       notify: { type: android_app }
+      category: general
       message: "Hallway plant is dry (soil moisture below 20%)"
 
 - name: Hallway plant overwatered
@@ -16,4 +17,5 @@
   run:
     - type: notify
       notify: { type: android_app }
+      category: general
       message: "Hallway plant is overwatered (soil moisture above 80%)"

@@ -2098,6 +2098,21 @@
             "message": {
               "type": "string"
             },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "category": {
+              "$ref": "#/$defs/NotifyCategory"
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NotifyAction"
+              }
+            },
             "when": {
               "anyOf": [
                 {
@@ -2116,7 +2131,8 @@
           "required": [
             "type",
             "notify",
-            "message"
+            "message",
+            "category"
           ]
         },
         {
@@ -2271,6 +2287,80 @@
         "ON",
         "OFF",
         "TOGGLE"
+      ]
+    },
+    "NotifyCategory": {
+      "type": "string",
+      "enum": [
+        "alarm",
+        "door",
+        "watchdog",
+        "general"
+      ]
+    },
+    "NotifyAction": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/NotifyActionKind"
+        }
+      },
+      "required": [
+        "label",
+        "action"
+      ]
+    },
+    "NotifyActionKind": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "workflow": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "run_workflow"
+            }
+          },
+          "required": [
+            "type",
+            "workflow"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "seconds": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "snooze"
+            }
+          },
+          "required": [
+            "type",
+            "seconds"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "dismiss"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
       ]
     },
     "EnableState": {
@@ -2720,12 +2810,6 @@
           "additionalProperties": {
             "$ref": "#/$defs/RawAlbum"
           }
-        },
-        "palette": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/RawPaletteColor"
-          }
         }
       }
     },
@@ -2752,28 +2836,6 @@
           "default": null
         }
       }
-    },
-    "RawPaletteColor": {
-      "type": "object",
-      "properties": {
-        "r": {
-          "type": "number",
-          "format": "float"
-        },
-        "g": {
-          "type": "number",
-          "format": "float"
-        },
-        "b": {
-          "type": "number",
-          "format": "float"
-        }
-      },
-      "required": [
-        "r",
-        "g",
-        "b"
-      ]
     },
     "AdhocSettings": {
       "type": "object",
