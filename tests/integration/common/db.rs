@@ -14,6 +14,7 @@ const DOCKERFILE: &str = "Dockerfile.postgres";
 const CONTAINER_NAME: &str = "home-gateway-test-postgres";
 const TEMPLATE_DATABASE: &str = "home_gateway_test_template";
 const CONNECT_ATTEMPTS: u32 = 60;
+const CREATE_ATTEMPTS: u32 = 50;
 
 static SERVER: OnceCell<Server> = OnceCell::const_new();
 
@@ -30,6 +31,13 @@ fn with_database(url: &str, database: &str) -> String {
     let mut parsed: url::Url = url.parse().expect("DATABASE_URL is not a valid url");
     parsed.set_path(database);
     parsed.into()
+}
+
+fn is_template_in_use(error: &sqlx::Error) -> bool {
+    error
+        .as_database_error()
+        .and_then(|e| e.code())
+        .is_some_and(|code| code == "55006")
 }
 
 async fn connect_with_retry(url: &str) -> Pool<Postgres> {
@@ -141,8 +149,33 @@ async fn server() -> &'static Server {
                 .expect("failed to migrate the template database");
 
             // CREATE DATABASE ... TEMPLATE refuses to run while anything is
-            // still connected to the template.
+            // still connected to the template, and TimescaleDB keeps a
+            // background worker attached to every database it is loaded in.
+            // Barring new connections (as template0 does) stops it coming back
+            // after we evict it.
             template.close().await;
+
+            let admin = connect_with_retry(&server.admin_url).await;
+            admin
+                .execute(
+                    format!(
+                        r#"ALTER DATABASE "{TEMPLATE_DATABASE}" WITH ALLOW_CONNECTIONS false"#
+                    )
+                    .as_str(),
+                )
+                .await
+                .expect("failed to bar connections to the template database");
+            admin
+                .execute(
+                    format!(
+                        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+                         WHERE datname = '{TEMPLATE_DATABASE}' AND pid <> pg_backend_pid()"
+                    )
+                    .as_str(),
+                )
+                .await
+                .expect("failed to evict the template database sessions");
+            admin.close().await;
 
             server
         })
@@ -154,10 +187,27 @@ pub async fn fresh_database() -> TestDb {
     let name = format!("test_{}", Uuid::new_v4().simple());
 
     let admin = connect_with_retry(&server.admin_url).await;
-    admin
-        .execute(format!(r#"CREATE DATABASE "{name}" TEMPLATE "{TEMPLATE_DATABASE}""#).as_str())
-        .await
-        .expect("failed to create the test database from the template");
+    let statement = format!(r#"CREATE DATABASE "{name}" TEMPLATE "{TEMPLATE_DATABASE}""#);
+    let mut last_error = None;
+
+    for _ in 0..CREATE_ATTEMPTS {
+        match admin.execute(statement.as_str()).await {
+            Ok(_) => {
+                last_error = None;
+                break;
+            }
+            Err(e) if is_template_in_use(&e) => {
+                last_error = Some(e);
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+            Err(e) => panic!("failed to create the test database from the template: {e}"),
+        }
+    }
+
+    if let Some(e) = last_error {
+        panic!("gave up creating the test database from the template: {e}");
+    }
+
     admin.close().await;
 
     let pool = connect_with_retry(&with_database(&server.admin_url, &name)).await;
