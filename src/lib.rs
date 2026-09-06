@@ -3,6 +3,7 @@ pub mod adhoc;
 pub mod api;
 pub mod auth;
 pub mod battery;
+pub mod cli;
 pub mod db;
 pub mod device_metric;
 pub mod device_registry;
