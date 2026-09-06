@@ -28,7 +28,7 @@ pub struct MediaPlayerHandler {
 }
 
 impl MediaPlayerHandler {
-    pub const NAME: &str = "media_player";
+    pub const NAME: &str = "media-player";
 
     async fn handle_update(
         &self,
