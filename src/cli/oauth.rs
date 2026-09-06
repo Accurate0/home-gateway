@@ -424,6 +424,6 @@ mod tests {
         assert!(url.contains("code_challenge=c"));
         assert!(url.contains("code_challenge_method=S256"));
         assert!(url.contains("redirect_uri=http%3A%2F%2Flocalhost%3A1234%2Fcallback"));
-        assert!(url.contains("scope=openid%20email%20profile%20groups%20offline_access"));
+        assert!(url.contains("scope=openid%20email%20profile%20groups"));
     }
 }
