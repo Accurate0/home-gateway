@@ -5,7 +5,7 @@ use crate::{
     event_bus::EventBusMessage,
     integrations::esphome::light_command_topic,
     integrations::mqtt::ZIGBEE2MQTT_BASE,
-    repo::light::{LightAttributes, LightState},
+    repo::light::{HistorySource, LightAttributes, LightSample, LightState},
     settings::IEEEAddress,
     state::AppState,
 };
@@ -168,11 +168,35 @@ pub async fn record_light_state(
     ieee_addr: IEEEAddress,
     attributes: LightAttributes,
 ) -> Result<LightState, anyhow::Error> {
+    let previous = shared_actor_state.repos.light().get(&ieee_addr).await?;
+
     let state = shared_actor_state
         .repos
         .light()
         .upsert_state(&ieee_addr, &attributes)
         .await?;
+
+    if previous.as_ref() != Some(&state) {
+        let sample = LightSample {
+            address: ieee_addr.clone(),
+            device_id: shared_actor_state
+                .devices
+                .id_for_address(&ieee_addr)
+                .map(str::to_owned),
+            source: HistorySource::Edge,
+            event_id: Some(event_id),
+            state: state.clone(),
+        };
+
+        if let Err(e) = shared_actor_state
+            .repos
+            .light()
+            .record_history(sample)
+            .await
+        {
+            tracing::warn!("failed to record light history for {ieee_addr}: {e}");
+        }
+    }
 
     shared_actor_state
         .event_bus

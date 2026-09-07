@@ -1,4 +1,40 @@
+use chrono::TimeDelta;
 use sqlx::{Pool, Postgres};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HistorySource {
+    Edge,
+    Sample,
+}
+
+impl HistorySource {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            HistorySource::Edge => "edge",
+            HistorySource::Sample => "sample",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LightSample {
+    pub address: String,
+    pub device_id: Option<String>,
+    pub source: HistorySource,
+    pub event_id: Option<Uuid>,
+    pub state: LightState,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProfileBucket {
+    pub address: String,
+    pub isodow: i16,
+    pub slot: i16,
+    pub on_fraction: f64,
+    pub observations: i64,
+    pub turned_on: i64,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LightState {
@@ -91,5 +127,82 @@ impl LightRepo {
 
     pub async fn is_on(&self, ieee_addr: &str) -> Result<Option<bool>, sqlx::Error> {
         Ok(self.get(ieee_addr).await?.map(|state| state.on))
+    }
+
+    pub async fn record_history(&self, sample: LightSample) -> Result<(), sqlx::Error> {
+        self.record_history_many(&[sample]).await
+    }
+
+    pub async fn record_history_many(&self, samples: &[LightSample]) -> Result<(), sqlx::Error> {
+        let mut tx = self.db.begin().await?;
+
+        for sample in samples {
+            sqlx::query!(
+                "INSERT INTO light_history \
+                     (address, device_id, on_state, brightness, colour_temp, colour, source, event_id) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                sample.address,
+                sample.device_id,
+                sample.state.on,
+                sample.state.brightness,
+                sample.state.colour_temp,
+                sample.state.colour,
+                sample.source.as_str(),
+                sample.event_id,
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await
+    }
+
+    pub async fn profile(
+        &self,
+        address: &str,
+        window: TimeDelta,
+    ) -> Result<Vec<ProfileBucket>, sqlx::Error> {
+        sqlx::query_as!(
+            ProfileBucket,
+            r#"SELECT
+                 address AS "address!",
+                 EXTRACT(isodow FROM bucket AT TIME ZONE 'Australia/Perth')::smallint AS "isodow!",
+                 (EXTRACT(hour FROM bucket AT TIME ZONE 'Australia/Perth')::smallint * 2
+                    + EXTRACT(minute FROM bucket AT TIME ZONE 'Australia/Perth')::smallint / 30
+                 )::smallint AS "slot!",
+                 (sum(on_fraction * observations) / sum(observations))::double precision AS "on_fraction!",
+                 sum(observations)::bigint AS "observations!",
+                 sum(turned_on)::bigint AS "turned_on!"
+               FROM light_activity_30m
+               WHERE address = $1 AND bucket >= now() - make_interval(secs => $2)
+               GROUP BY 1, 2, 3
+               ORDER BY 1, 2, 3"#,
+            address,
+            window.num_seconds() as f64,
+        )
+        .fetch_all(&self.db)
+        .await
+    }
+
+    pub async fn profile_all(&self, window: TimeDelta) -> Result<Vec<ProfileBucket>, sqlx::Error> {
+        sqlx::query_as!(
+            ProfileBucket,
+            r#"SELECT
+                 address AS "address!",
+                 EXTRACT(isodow FROM bucket AT TIME ZONE 'Australia/Perth')::smallint AS "isodow!",
+                 (EXTRACT(hour FROM bucket AT TIME ZONE 'Australia/Perth')::smallint * 2
+                    + EXTRACT(minute FROM bucket AT TIME ZONE 'Australia/Perth')::smallint / 30
+                 )::smallint AS "slot!",
+                 (sum(on_fraction * observations) / sum(observations))::double precision AS "on_fraction!",
+                 sum(observations)::bigint AS "observations!",
+                 sum(turned_on)::bigint AS "turned_on!"
+               FROM light_activity_30m
+               WHERE bucket >= now() - make_interval(secs => $1)
+               GROUP BY 1, 2, 3
+               ORDER BY 1, 2, 3"#,
+            window.num_seconds() as f64,
+        )
+        .fetch_all(&self.db)
+        .await
     }
 }

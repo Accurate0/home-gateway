@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                 address AS \"address!\",\n                 EXTRACT(isodow FROM bucket AT TIME ZONE 'Australia/Perth')::smallint AS \"isodow!\",\n                 (EXTRACT(hour FROM bucket AT TIME ZONE 'Australia/Perth')::smallint * 2\n                    + EXTRACT(minute FROM bucket AT TIME ZONE 'Australia/Perth')::smallint / 30\n                 )::smallint AS \"slot!\",\n                 (sum(on_fraction * observations) / sum(observations))::double precision AS \"on_fraction!\",\n                 sum(observations)::bigint AS \"observations!\",\n                 sum(turned_on)::bigint AS \"turned_on!\"\n               FROM light_activity_30m\n               WHERE address = $1 AND bucket >= now() - make_interval(secs => $2)\n               GROUP BY 1, 2, 3\n               ORDER BY 1, 2, 3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "address!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "isodow!",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 2,
+        "name": "slot!",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 3,
+        "name": "on_fraction!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "observations!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "turned_on!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      true,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4bb85cfc5ec99dad5f2120741aa5b6c89ffdd46ca26a37f0a9f3008d69ca4d42"
+}

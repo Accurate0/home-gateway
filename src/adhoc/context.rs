@@ -4,12 +4,14 @@ use crate::device_registry::DeviceRegistry;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::s3::S3;
+use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
 use crate::state::AppState;
 
 pub struct AdhocTaskContext<'a> {
     pub tx: &'a mut Transaction<'static, Postgres>,
     pub devices: &'a DeviceRegistry,
+    pub repos: &'a RepoRegistry,
     pub settings: &'a SettingsContainer,
     pub s3: &'a S3,
     pub home_assistant: Option<&'a HomeAssistant>,
@@ -21,6 +23,7 @@ impl<'a> AdhocTaskContext<'a> {
         Self {
             tx,
             devices: &state.devices,
+            repos: &state.repos,
             settings: &state.settings,
             s3: state.handles.expect::<S3>(),
             home_assistant: state.handles.get::<HomeAssistant>(),
