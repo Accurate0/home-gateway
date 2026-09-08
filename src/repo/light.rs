@@ -78,20 +78,35 @@ impl LightRepo {
         Self { db }
     }
 
-    pub async fn upsert_state(
+    pub async fn upsert_state_returning_previous(
         &self,
         ieee_addr: &str,
         attributes: &LightAttributes,
-    ) -> Result<LightState, sqlx::Error> {
+    ) -> Result<(LightState, Option<LightState>), sqlx::Error> {
         let row = sqlx::query!(
-            "INSERT INTO light_state (ieee_address, state, brightness, colour_temp, colour) \
-             VALUES ($1, COALESCE($2, 'OFF'), $3, $4, $5) \
-             ON CONFLICT (ieee_address) DO UPDATE SET \
-                 state = COALESCE(EXCLUDED.state, light_state.state), \
-                 brightness = COALESCE(EXCLUDED.brightness, light_state.brightness), \
-                 colour_temp = COALESCE(EXCLUDED.colour_temp, light_state.colour_temp), \
-                 colour = COALESCE(EXCLUDED.colour, light_state.colour) \
-             RETURNING state, brightness, colour_temp, colour",
+            "WITH prev AS ( \
+                 SELECT state, brightness, colour_temp, colour \
+                 FROM light_state WHERE ieee_address = $1 \
+             ), upserted AS ( \
+                 INSERT INTO light_state (ieee_address, state, brightness, colour_temp, colour) \
+                 VALUES ($1, COALESCE($2, 'OFF'), $3, $4, $5) \
+                 ON CONFLICT (ieee_address) DO UPDATE SET \
+                     state = COALESCE(EXCLUDED.state, light_state.state), \
+                     brightness = COALESCE(EXCLUDED.brightness, light_state.brightness), \
+                     colour_temp = COALESCE(EXCLUDED.colour_temp, light_state.colour_temp), \
+                     colour = COALESCE(EXCLUDED.colour, light_state.colour) \
+                 RETURNING state, brightness, colour_temp, colour \
+             ) \
+             SELECT \
+                 upserted.state AS \"state!\", \
+                 upserted.brightness, \
+                 upserted.colour_temp, \
+                 upserted.colour, \
+                 prev.state AS \"previous_state?\", \
+                 prev.brightness AS \"previous_brightness?\", \
+                 prev.colour_temp AS \"previous_colour_temp?\", \
+                 prev.colour AS \"previous_colour?\" \
+             FROM upserted LEFT JOIN prev ON true",
             ieee_addr,
             attributes.state.as_deref(),
             attributes.brightness,
@@ -101,12 +116,21 @@ impl LightRepo {
         .fetch_one(&self.db)
         .await?;
 
-        Ok(LightState {
+        let state = LightState {
             on: row.state == "ON",
             brightness: row.brightness,
             colour_temp: row.colour_temp,
             colour: row.colour,
-        })
+        };
+
+        let previous = row.previous_state.map(|previous_state| LightState {
+            on: previous_state == "ON",
+            brightness: row.previous_brightness,
+            colour_temp: row.previous_colour_temp,
+            colour: row.previous_colour,
+        });
+
+        Ok((state, previous))
     }
 
     pub async fn get(&self, ieee_addr: &str) -> Result<Option<LightState>, sqlx::Error> {
@@ -155,33 +179,6 @@ impl LightRepo {
         }
 
         tx.commit().await
-    }
-
-    pub async fn profile(
-        &self,
-        address: &str,
-        window: TimeDelta,
-    ) -> Result<Vec<ProfileBucket>, sqlx::Error> {
-        sqlx::query_as!(
-            ProfileBucket,
-            r#"SELECT
-                 address AS "address!",
-                 EXTRACT(isodow FROM bucket AT TIME ZONE 'Australia/Perth')::smallint AS "isodow!",
-                 (EXTRACT(hour FROM bucket AT TIME ZONE 'Australia/Perth')::smallint * 2
-                    + EXTRACT(minute FROM bucket AT TIME ZONE 'Australia/Perth')::smallint / 30
-                 )::smallint AS "slot!",
-                 (sum(on_fraction * observations) / sum(observations))::double precision AS "on_fraction!",
-                 sum(observations)::bigint AS "observations!",
-                 sum(turned_on)::bigint AS "turned_on!"
-               FROM light_activity_30m
-               WHERE address = $1 AND bucket >= now() - make_interval(secs => $2)
-               GROUP BY 1, 2, 3
-               ORDER BY 1, 2, 3"#,
-            address,
-            window.num_seconds() as f64,
-        )
-        .fetch_all(&self.db)
-        .await
     }
 
     pub async fn profile_all(&self, window: TimeDelta) -> Result<Vec<ProfileBucket>, sqlx::Error> {

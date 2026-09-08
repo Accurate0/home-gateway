@@ -6,14 +6,14 @@
 //! same shape as [`crate::actors::sun::SunActor`]. The plan is deterministic, so
 //! a restart mid-day resumes it instead of re-rolling.
 
-use chrono::{Duration, NaiveDate, Utc};
+use chrono::{NaiveDate, TimeZone, Utc};
 use chrono_tz::Australia::Perth;
 use ractor::Actor;
 
 use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
-use crate::away::{PlannedAction, build_plan};
+use crate::away::{PlannedAction, build_plan, target_at};
 use crate::event_bus::{Recipient, Subscription};
 use crate::state::AppState;
 
@@ -36,6 +36,15 @@ pub struct AwayState {
     _subscription: Subscription,
     armed: bool,
     plan: Vec<PlannedAction>,
+    timers: Vec<ractor::concurrency::JoinHandle<Result<(), ractor::MessagingErr<AwayMessage>>>>,
+}
+
+impl AwayState {
+    fn cancel_timers(&mut self) {
+        for timer in self.timers.drain(..) {
+            timer.abort();
+        }
+    }
 }
 
 impl AwayActor {
@@ -65,6 +74,8 @@ impl AwayActor {
         myself: &ractor::ActorRef<AwayMessage>,
         state: &mut AwayState,
     ) -> Result<(), ractor::ActorProcessingErr> {
+        state.cancel_timers();
+
         let settings = &self.shared_actor_state.settings.away;
         let day = self.today();
 
@@ -87,26 +98,48 @@ impl AwayActor {
 
             let address = action.address.clone();
             let on = action.on;
-            myself.send_after(delay, move || AwayMessage::Fire { address, on });
+            state
+                .timers
+                .push(myself.send_after(delay, move || AwayMessage::Fire { address, on }));
             armed += 1;
         }
 
         let midnight = day
             .succ_opt()
             .and_then(|next| next.and_hms_opt(0, 0, 0))
-            .map(|local| local.and_utc() - Duration::hours(8));
+            .and_then(|local| Perth.from_local_datetime(&local).earliest())
+            .map(|local| local.with_timezone(&Utc));
 
         if let Some(midnight) = midnight
             && let Ok(delay) = (midnight - now).to_std()
         {
-            myself.send_after(delay, || AwayMessage::Rebuild);
+            state
+                .timers
+                .push(myself.send_after(delay, || AwayMessage::Rebuild));
         }
+
+        let mut addresses: Vec<&str> = state
+            .plan
+            .iter()
+            .map(|action| action.address.as_str())
+            .collect();
+
+        addresses.sort_unstable();
+        addresses.dedup();
 
         tracing::info!(
             "away plan for {day}: {} actions, {armed} still ahead across {} lights",
             state.plan.len(),
-            self.shared_actor_state.devices.lights().count()
+            addresses.len()
         );
+
+        for address in addresses {
+            let Some(on) = target_at(&state.plan, address, now) else {
+                continue;
+            };
+
+            self.fire(address.to_owned(), on).await?;
+        }
 
         Ok(())
     }
@@ -169,6 +202,7 @@ impl Actor for AwayActor {
             _subscription: subscription,
             armed: self.armed_now().await,
             plan: Vec::new(),
+            timers: Vec::new(),
         };
 
         if state.armed {
@@ -197,6 +231,7 @@ impl Actor for AwayActor {
             AwayMessage::Arm(false) => {
                 tracing::info!("away mode disarmed, dropping the plan");
                 state.armed = false;
+                state.cancel_timers();
                 state.plan.clear();
             }
             AwayMessage::Rebuild => {

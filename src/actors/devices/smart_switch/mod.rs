@@ -1,8 +1,7 @@
 use crate::actors::devices::handler::DeviceHandler;
+use crate::actors::system::rpc;
 use crate::repo::smart_switch::SmartSwitchReading;
-use crate::{
-    actors::devices::light::record_light_state, repo::light::LightAttributes, state::AppState,
-};
+use crate::{actors::devices::light, repo::light::LightAttributes, state::AppState};
 use uuid::Uuid;
 
 pub enum Entity {
@@ -88,13 +87,18 @@ impl SmartSwitchHandler {
 
                     match (is_light, state) {
                         (true, Some(state)) => {
-                            record_light_state(
-                                &self.shared_actor_state,
-                                event.event_id,
-                                address,
-                                LightAttributes::state(state),
-                            )
-                            .await?;
+                            let new_event = light::NewEvent {
+                                event_id: event.event_id,
+                                entity: light::Entity::Zigbee {
+                                    address,
+                                    attributes: LightAttributes::state(state),
+                                },
+                            };
+
+                            rpc::cast_factory(
+                                light::LightHandler::NAME,
+                                light::LightHandlerMessage::NewEvent(Box::new(new_event)),
+                            )?;
                         }
                         (true, None) => {
                             tracing::debug!(

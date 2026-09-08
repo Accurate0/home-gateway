@@ -21,6 +21,10 @@ pub enum Entity {
         address: String,
         attributes: LightAttributes,
     },
+    Esphome {
+        node: String,
+        attributes: LightAttributes,
+    },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -162,18 +166,16 @@ fn xy_to_hex(x: f64, y: f64) -> String {
     format!("#{:02x}{:02x}{:02x}", channel(r), channel(g), channel(b))
 }
 
-pub async fn record_light_state(
+async fn record_light_state(
     shared_actor_state: &AppState,
     event_id: Uuid,
     ieee_addr: IEEEAddress,
     attributes: LightAttributes,
 ) -> Result<LightState, anyhow::Error> {
-    let previous = shared_actor_state.repos.light().get(&ieee_addr).await?;
-
-    let state = shared_actor_state
+    let (state, previous) = shared_actor_state
         .repos
         .light()
-        .upsert_state(&ieee_addr, &attributes)
+        .upsert_state_returning_previous(&ieee_addr, &attributes)
         .await?;
 
     if previous.as_ref() != Some(&state) {
@@ -320,6 +322,9 @@ impl LightHandler {
                         self.update_light_state(event_id, address, attributes)
                             .await?;
                     }
+                    Entity::Esphome { node, attributes } => {
+                        self.update_light_state(event_id, node, attributes).await?;
+                    }
                 }
             }
             LightHandlerMessage::TurnOn { ieee_addr } => {
@@ -354,7 +359,7 @@ impl LightHandler {
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
-                let value = value.clamp(0, 254);
+                let value = value.clamp(0, BRIGHTNESS_MAX);
 
                 self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
                     .await?;

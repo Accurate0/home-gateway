@@ -116,18 +116,23 @@ impl MqttIngest {
             return Ok(());
         };
 
-        crate::actors::devices::light::record_light_state(
-            &self.shared_actor_state,
-            uuid::Uuid::new_v4(),
-            node.to_string(),
-            crate::repo::light::LightAttributes {
-                state: Some(if report.on { "ON" } else { "OFF" }.to_owned()),
-                brightness: report.brightness,
-                colour_temp: None,
-                colour: report.colour,
+        let event = crate::actors::devices::light::NewEvent {
+            event_id: uuid::Uuid::new_v4(),
+            entity: crate::actors::devices::light::Entity::Esphome {
+                node: node.to_string(),
+                attributes: crate::repo::light::LightAttributes {
+                    state: Some(if report.on { "ON" } else { "OFF" }.to_owned()),
+                    brightness: report.brightness,
+                    colour_temp: None,
+                    colour: report.colour,
+                },
             },
-        )
-        .await?;
+        };
+
+        rpc::cast_factory(
+            crate::actors::devices::light::LightHandler::NAME,
+            crate::actors::devices::light::LightHandlerMessage::NewEvent(Box::new(event)),
+        )?;
 
         Ok(())
     }

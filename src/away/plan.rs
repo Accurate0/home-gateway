@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
 use chrono_tz::Australia::Perth;
 use std::collections::HashMap;
 
@@ -76,7 +76,7 @@ fn slot_states(
 }
 
 pub fn coverage(buckets: &[ProfileBucket], address: &str, day: NaiveDate, min: i64) -> usize {
-    let isodow = day.format("%u").to_string().parse::<i16>().unwrap_or(0);
+    let isodow = day.weekday().number_from_monday() as i16;
 
     buckets
         .iter()
@@ -94,7 +94,7 @@ pub fn build_plan(
     day: NaiveDate,
     settings: &AwaySettings,
 ) -> Vec<PlannedAction> {
-    let isodow = day.format("%u").to_string().parse::<i16>().unwrap_or(0);
+    let isodow = day.weekday().number_from_monday() as i16;
 
     let mut by_address: HashMap<&str, HashMap<i16, &ProfileBucket>> = HashMap::new();
     for bucket in buckets {
@@ -263,5 +263,22 @@ mod tests {
             None
         );
         assert_eq!(target_at(&plan, "0x001", plan[0].at), Some(true));
+    }
+
+    #[test]
+    fn arming_between_transitions_still_has_a_target() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .map(|slot| bucket(slot, if slot < 24 { 0.0 } else { 1.0 }, 30))
+            .collect::<Vec<_>>();
+
+        let plan = build_plan(&buckets, day(), &settings());
+
+        assert_eq!(plan.len(), 2);
+        assert!(!plan[0].on);
+        assert!(plan[1].on);
+
+        let midway = plan[1].at + Duration::hours(4);
+
+        assert_eq!(target_at(&plan, "0x001", midway), Some(true));
     }
 }
