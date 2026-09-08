@@ -81,6 +81,14 @@ eink_display:
 adhoc:
   recheck_interval: 15m
 
+away:
+  enabled: true
+  modes: [away, vacation]
+  window: 672h
+  jitter: 12m
+  min_observations: 8
+  seed: 20260908
+
 zigbee_models: !include zigbee_models.yaml
 devices: !include devices.yaml
 workflows: !include workflows/index.yaml

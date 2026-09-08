@@ -13,12 +13,14 @@ use crate::actors::workflows::manager::WorkflowManager;
 use std::collections::HashMap;
 
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use tokio::sync::broadcast::error::RecvError;
+
 use tracing::Instrument;
 
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage, conditions},
-    event_bus::{EventBusMessage, SensorMetric, SolarMetric},
+    event_bus::{
+        EventBusMessage, EventSubscriber, Recipient, SensorMetric, SolarMetric, Subscription,
+    },
     integrations::solar::{queries, types::SolarCurrentStatisticsAverages},
     settings::{TriggerMatcher, Workflow},
     state::AppState,
@@ -28,8 +30,21 @@ pub struct WorkflowDispatcher {
     pub shared_actor_state: AppState,
 }
 
+pub struct DispatcherSubscriber;
+
+impl EventSubscriber for DispatcherSubscriber {
+    type Msg = EventBusMessage;
+
+    const KINDS: &'static [&'static str] = EventBusMessage::KINDS;
+
+    fn to_actor_message(&self, event: &EventBusMessage) -> Option<Self::Msg> {
+        Some(event.clone())
+    }
+}
+
 #[derive(Default)]
 pub struct WorkflowDispatcherState {
+    _subscription: Subscription,
     /// `(trigger name, sensor, metric) -> comparison satisfied at last reading`.
     /// Lets environment triggers fire on the rising edge only, matching the old
     /// plant-sensor semantics.
@@ -548,27 +563,18 @@ impl Actor for WorkflowDispatcher {
         myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        // bridge the broadcast receiver into this actor's mailbox so matching is
+        // the bus forwards every event straight into this mailbox, so matching is
         // serialized through `handle` while execution fans out to the factory
-        let mut rx = self.shared_actor_state.event_bus.subscribe();
-        tokio::spawn(async move {
-            loop {
-                match rx.recv().await {
-                    Ok(msg) => {
-                        if myself.send_message(msg).is_err() {
-                            // dispatcher stopped; nothing left to feed
-                            break;
-                        }
-                    }
-                    Err(RecvError::Lagged(n)) => {
-                        tracing::warn!("event dispatcher lagged, dropped {n} events");
-                    }
-                    Err(RecvError::Closed) => break,
-                }
-            }
-        });
+        let subscription = self.shared_actor_state.event_bus.register(
+            Self::NAME,
+            Recipient::Actor(myself),
+            DispatcherSubscriber,
+        );
 
-        Ok(WorkflowDispatcherState::default())
+        Ok(WorkflowDispatcherState {
+            _subscription: subscription,
+            ..Default::default()
+        })
     }
 
     async fn handle(

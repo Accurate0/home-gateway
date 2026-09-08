@@ -5,6 +5,7 @@ pub mod entity_object;
 pub mod fuelwatch_object;
 pub mod home_assistant_object;
 pub mod jellyfin_object;
+pub mod mode_object;
 pub mod solar_object;
 pub mod transperth_object;
 pub mod weather_object;

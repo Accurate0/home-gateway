@@ -3,6 +3,7 @@ use async_graphql::Object;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
+use crate::graphql::objects::mode_object::ModeObject;
 use crate::graphql::objects::workflow_object::{WorkflowRun, WorkflowStatus};
 use crate::mode::Mode;
 use crate::settings::SettingsContainer;
@@ -39,7 +40,28 @@ impl WorkflowsQuery {
         Ok(statuses)
     }
 
+    /// Every mode and whether it is active. Modes carrying extra state resolve to
+    /// their own type, so `... on AwayMode { lights { … } }` reaches the replay
+    /// plan without a second round trip.
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
+    async fn modes(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Vec<ModeObject>> {
+        let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
+
+        let mut modes = Vec::with_capacity(Mode::ALL.len());
+        for mode in Mode::ALL {
+            modes.push(ModeObject::new(*mode, manager.mode_active(*mode).await));
+        }
+
+        Ok(modes)
+    }
+
+    #[graphql(
+        guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)),
+        deprecation = "use modes { mode active } instead"
+    )]
     async fn active_modes(
         &self,
         ctx: &async_graphql::Context<'_>,

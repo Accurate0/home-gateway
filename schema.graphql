@@ -27,6 +27,36 @@ type AuthObject {
 	scopes: [String!]!
 }
 
+type AwayAction {
+	at: DateTime!
+	on: Boolean!
+	slot: Int!
+	onFraction: Float!
+}
+
+type AwayLight {
+	address: String!
+	deviceId: String
+	name: String!
+	coverage: Int!
+	currentTarget: LightTarget!
+	actions: [AwayAction!]!
+}
+
+type AwayMode implements ModeState {
+	mode: Mode!
+	active: Boolean!
+	enabled: Boolean!
+	window: String!
+	jitter: String!
+	minObservations: Int!
+	"""
+	The replay plan for every configured light: what it should be doing now,
+	and every switch still to come in the next 24 hours.
+	"""
+	lights: [AwayLight!]!
+}
+
 enum BatteryChemistry {
 	UNKNOWN
 	LIPO
@@ -451,6 +481,12 @@ type LightState {
 	colour: String
 }
 
+enum LightTarget {
+	ON
+	OFF
+	LEAVE_ALONE
+}
+
 type LightUpdate {
 	eventId: UUID!
 	"""
@@ -555,6 +591,11 @@ enum Mode {
 	PARTY
 }
 
+interface ModeState {
+	mode: Mode!
+	active: Boolean!
+}
+
 type ModeUpdate {
 	eventId: UUID!
 	mode: Mode!
@@ -593,6 +634,11 @@ type PartialWindow {
 	y: Int!
 	width: Int!
 	height: Int!
+}
+
+type PlainMode implements ModeState {
+	mode: Mode!
+	active: Boolean!
 }
 
 type PresenceEntity {
@@ -654,7 +700,13 @@ type QueryRoot {
 	transperth: TransperthObject!
 	fuelwatch(postcode: Int): FuelWatchObject!
 	workflows: [WorkflowStatus!]!
-	activeModes: [Mode!]!
+	"""
+	Every mode and whether it is active. Modes carrying extra state resolve to
+	their own type, so `... on AwayMode { lights { … } }` reaches the replay
+	plan without a second round trip.
+	"""
+	modes: [ModeState!]!
+	activeModes: [Mode!]! @deprecated(reason: "use modes { mode active } instead")
 	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
 	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
 	jellyfin: JellyfinObject!

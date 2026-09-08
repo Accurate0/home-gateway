@@ -1,4 +1,5 @@
 pub mod alarm;
+pub mod away;
 pub mod devices;
 pub mod eink_display;
 pub mod health;

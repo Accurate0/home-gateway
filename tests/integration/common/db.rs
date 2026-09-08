@@ -158,10 +158,8 @@ async fn server() -> &'static Server {
             let admin = connect_with_retry(&server.admin_url).await;
             admin
                 .execute(
-                    format!(
-                        r#"ALTER DATABASE "{TEMPLATE_DATABASE}" WITH ALLOW_CONNECTIONS false"#
-                    )
-                    .as_str(),
+                    format!(r#"ALTER DATABASE "{TEMPLATE_DATABASE}" WITH ALLOW_CONNECTIONS false"#)
+                        .as_str(),
                 )
                 .await
                 .expect("failed to bar connections to the template database");

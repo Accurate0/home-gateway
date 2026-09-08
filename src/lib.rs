@@ -2,6 +2,7 @@ pub mod actors;
 pub mod adhoc;
 pub mod api;
 pub mod auth;
+pub mod away;
 pub mod battery;
 pub mod cli;
 pub mod db;

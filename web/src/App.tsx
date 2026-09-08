@@ -6,6 +6,7 @@ import RunsPage from "./components/RunsPage";
 import AdhocTasksPage from "./components/AdhocTasksPage";
 import HomeAssistantPage from "./components/HomeAssistantPage";
 import BatteryPage from "./components/BatteryPage";
+import AwayPage from "./components/AwayPage";
 import { cn } from "@/lib/utils";
 
 const GraphiqlPage = lazy(() => import("./components/GraphiqlPage"));
@@ -16,6 +17,7 @@ const TABS = [
   { to: "/runs", label: "Runs" },
   { to: "/adhoc-tasks", label: "Adhoc Tasks" },
   { to: "/batteries", label: "Batteries" },
+  { to: "/away", label: "Away" },
   { to: "/home-assistant", label: "Home Assistant" },
   { to: "/graphql", label: "GraphQL" },
 ];
@@ -60,6 +62,7 @@ export default function App() {
           <Route path="/runs" element={<RunsPage />} />
           <Route path="/adhoc-tasks" element={<AdhocTasksPage />} />
           <Route path="/batteries" element={<BatteryPage />} />
+          <Route path="/away" element={<AwayPage />} />
           <Route path="/home-assistant" element={<HomeAssistantPage />} />
           <Route path="/graphql" element={<GraphiqlPage />} />
         </Routes>

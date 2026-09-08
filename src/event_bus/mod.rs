@@ -13,6 +13,7 @@ pub mod message;
 pub mod playback;
 pub mod reading;
 pub mod solar_metric;
+pub mod subscriber;
 
 pub use bus::EventBus;
 pub use filter::{EventFilter, FilterSegment};
@@ -20,3 +21,4 @@ pub use message::EventBusMessage;
 pub use playback::PlaybackState;
 pub use reading::{SensorMetric, SensorReading, metric_var_name};
 pub use solar_metric::SolarMetric;
+pub use subscriber::{EventSubscriber, Recipient, Subscription};

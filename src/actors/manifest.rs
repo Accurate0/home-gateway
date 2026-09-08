@@ -4,6 +4,7 @@ use std::pin::Pin;
 use ractor::{ActorProcessingErr, ActorRef};
 
 use crate::actors::alarm::AlarmActor;
+use crate::actors::away::AwayActor;
 use crate::actors::devices::door_events::DoorEventsSupervisor;
 use crate::actors::devices::handler::{DeviceHandler, spawn_handler};
 use crate::actors::devices::{
@@ -148,6 +149,27 @@ pub static ACTORS: &[ActorSpec] = &[
     plain!(DoorEventsSupervisor),
     plain!(EInkDisplayActor),
     plain!(SunActor),
+    ActorSpec {
+        name: AwayActor::NAME,
+        autostart: true,
+        optional: true,
+        requires: &[Requirement::Setting {
+            label: "away.enabled",
+            present: |settings| settings.away.enabled,
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                root.spawn_linked(
+                    Some(AwayActor::NAME.to_owned()),
+                    AwayActor { shared_actor_state },
+                    (),
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
     plain!(SynergyActor),
     plain!(UnifiConnectedClientHandler),
     plain!(WatchdogActor),
@@ -388,6 +410,7 @@ mod tests {
         assert_eq!(
             gated,
             vec![
+                AwayActor::NAME,
                 HomeAssistantActor::NAME,
                 JellyfinActor::NAME,
                 TransperthActor::NAME,

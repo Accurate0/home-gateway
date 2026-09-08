@@ -12,6 +12,7 @@ use std::{
 pub mod adhoc;
 pub mod alarm;
 pub mod auth;
+pub mod away;
 pub mod de;
 pub mod device;
 pub mod door;
@@ -45,6 +46,7 @@ pub mod zigbee_model;
 pub use adhoc::AdhocSettings;
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
+pub use away::AwaySettings;
 pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
@@ -136,6 +138,7 @@ pub struct Settings {
     pub fuelwatch: Option<FuelWatchSettings>,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
+    pub away: AwaySettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -194,6 +197,7 @@ pub struct RawSettings {
     #[serde(default)]
     eink_display: eink::RawEinkGlobal,
     adhoc: AdhocSettings,
+    away: AwaySettings,
 }
 
 impl RawSettings {
@@ -232,6 +236,7 @@ impl RawSettings {
             fuelwatch,
             eink_display,
             adhoc,
+            away,
         } = self;
 
         if willyweather
@@ -380,6 +385,7 @@ impl RawSettings {
                 fuelwatch,
                 eink_display: eink_display.resolve(),
                 adhoc,
+                away,
             },
             registry,
         ))
@@ -1017,6 +1023,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 api_keys:
   - name: bad-key
     scopes: ["bogus:read"]
@@ -1047,6 +1054,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 oauth:
   issuer: i
   jwks_url: j
@@ -1084,6 +1092,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Caller
@@ -1118,6 +1127,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Callee
@@ -1154,6 +1164,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 eink_display:
   views:
@@ -1229,6 +1240,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
   - id: epd
@@ -1287,6 +1299,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
 adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
   - id: epd
