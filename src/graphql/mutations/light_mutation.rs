@@ -1,14 +1,17 @@
 use async_graphql::{InputObject, Object};
+use tokio::sync::broadcast;
 
 use std::time::Duration;
 
-use crate::actors::devices::light::{LightHandler, LightHandlerMessage, SetRequest};
+use crate::actors::devices::light::{LightHandler, LightHandlerMessage, SetRequest, normalise_hex};
 use crate::actors::system::rpc;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::Capability;
+use crate::event_bus::{EventBus, EventBusMessage};
 use crate::graphql::guard::ScopeGuard;
-use crate::graphql::objects::entity_object::LightStateObject;
-use crate::settings::IEEEAddress;
+use crate::graphql::objects::entity_object::{LightCommandResultObject, LightCommandStatusObject};
+use crate::repo::light::{LightAttributes, LightState};
+use crate::settings::{IEEEAddress, SettingsContainer};
 
 const SET_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -75,12 +78,54 @@ fn dispatch(message: LightHandlerMessage) -> async_graphql::Result<bool> {
     Ok(true)
 }
 
+async fn await_confirmation(
+    events: &mut broadcast::Receiver<EventBusMessage>,
+    address: &str,
+    wanted: &LightAttributes,
+    timeout: Duration,
+) -> Option<LightState> {
+    let wait = async {
+        loop {
+            match events.recv().await {
+                Ok(EventBusMessage::Light {
+                    ieee_addr,
+                    on,
+                    brightness,
+                    colour_temp,
+                    colour,
+                    ..
+                }) if ieee_addr == address => {
+                    let reported = LightState {
+                        on,
+                        brightness,
+                        colour_temp,
+                        colour,
+                    };
+
+                    if wanted.satisfied_by(&reported) {
+                        return Some(reported);
+                    }
+                }
+                Ok(_) => continue,
+                Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                    tracing::warn!("lagged {skipped} events while confirming a light command");
+                }
+                Err(broadcast::error::RecvError::Closed) => return None,
+            }
+        }
+    };
+
+    tokio::time::timeout(timeout, wait).await.ok().flatten()
+}
+
 #[Object]
 impl LightMutation {
-    /// Apply any combination of power, brightness, colour temperature and colour
-    /// in one command, and return the light's resulting state.
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
-    async fn set(&self, input: LightSetInput) -> async_graphql::Result<LightStateObject> {
+    async fn set(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        input: LightSetInput,
+    ) -> async_graphql::Result<LightCommandResultObject> {
         if input.brightness.is_some() {
             self.require(Capability::Brightness)?;
         }
@@ -98,6 +143,22 @@ impl LightMutation {
             }
         }
 
+        let wanted = LightAttributes {
+            state: input.on.map(|on| if on { "ON" } else { "OFF" }.to_owned()),
+            brightness: input.brightness.map(|value| value as i32),
+            colour_temp: input.colour_temperature.map(|value| value as i32),
+            colour: input.colour.as_deref().map(normalise_hex),
+        };
+
+        let mut events = ctx.data::<EventBus>()?.subscribe();
+
+        let confirm_timeout = ctx
+            .data::<SettingsContainer>()?
+            .reconciler
+            .confirm_timeout
+            .to_std()
+            .unwrap_or(Duration::from_secs(5));
+
         let state = rpc::query_factory(LightHandler::NAME, SET_TIMEOUT, |reply| {
             LightHandlerMessage::Set {
                 ieee_addr: self.address.clone(),
@@ -112,7 +173,16 @@ impl LightMutation {
         })
         .await?;
 
-        Ok(state.into())
+        match await_confirmation(&mut events, &self.address, &wanted, confirm_timeout).await {
+            Some(reported) => Ok(LightCommandResultObject {
+                status: LightCommandStatusObject::Confirmed,
+                state: reported.into(),
+            }),
+            None => Ok(LightCommandResultObject {
+                status: LightCommandStatusObject::Pending,
+                state: state.into(),
+            }),
+        }
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]

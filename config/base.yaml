@@ -20,6 +20,16 @@ sun:
 workflow:
   workers: 12
 
+reconciler:
+  enabled: true
+  workers: 4
+  interval: 5s
+  grace: 3s
+  backoff: 10s
+  confirm_timeout: 5s
+  max_attempts: 3
+  batch_size: 64
+
 watchdog:
   enabled: false
   timeout: 30m

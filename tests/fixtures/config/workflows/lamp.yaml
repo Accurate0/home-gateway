@@ -22,3 +22,12 @@
     - type: light
       device: test-lamp
       state: OFF
+
+- name: Test switch step drives the lamp
+  slug: test-switch-step
+  group: Test
+  on: { type: door, device: test-door, open: false }
+  run:
+    - type: switch
+      device: test-lamp
+      state: ON

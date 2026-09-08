@@ -73,6 +73,9 @@
     "workflow": {
       "$ref": "#/$defs/WorkflowSettings"
     },
+    "reconciler": {
+      "$ref": "#/$defs/ReconcilerSettings"
+    },
     "oauth": {
       "anyOf": [
         {
@@ -179,6 +182,7 @@
     "s3",
     "watchdog",
     "workflow",
+    "reconciler",
     "location",
     "sun",
     "willyweather",
@@ -2433,6 +2437,49 @@
       },
       "required": [
         "workers"
+      ]
+    },
+    "ReconcilerSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "workers": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "interval": {
+          "type": "string"
+        },
+        "grace": {
+          "type": "string"
+        },
+        "backoff": {
+          "type": "string"
+        },
+        "confirm_timeout": {
+          "type": "string"
+        },
+        "max_attempts": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "batch_size": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "enabled",
+        "workers",
+        "interval",
+        "grace",
+        "backoff",
+        "confirm_timeout",
+        "max_attempts",
+        "batch_size"
       ]
     },
     "OAuthSettings": {

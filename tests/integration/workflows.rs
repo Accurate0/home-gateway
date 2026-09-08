@@ -118,3 +118,20 @@ async fn a_non_matching_trigger_runs_nothing() {
 
     assert_eq!(runs, 0, "no workflow should have run");
 }
+
+#[tokio::test]
+#[serial]
+async fn a_switch_step_drives_a_smart_switch_declared_as_a_light() {
+    let harness = start().await;
+
+    harness.event_bus.publish(EventBusMessage::Door {
+        event_id: Uuid::new_v4(),
+        ieee_addr: DOOR_ADDRESS.to_owned(),
+        open: false,
+    });
+
+    let payload = harness.recorder.expect_publish(LAMP_TOPIC).await;
+    assert_eq!(payload, serde_json::json!({ "state": "ON" }));
+
+    assert_ran(&harness, "test-switch-step").await;
+}

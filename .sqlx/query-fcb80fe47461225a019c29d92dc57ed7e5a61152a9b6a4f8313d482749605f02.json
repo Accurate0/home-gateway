@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_intent SET status = $2, settled_at = now() WHERE id = ANY($1) AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fcb80fe47461225a019c29d92dc57ed7e5a61152a9b6a4f8313d482749605f02"
+}

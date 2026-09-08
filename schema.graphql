@@ -94,6 +94,18 @@ input ColourTemperatureMoveInput {
 	value: Int!
 }
 
+type CommandFailedUpdate {
+	eventId: UUID!
+	id: ID!
+	address: String!
+	kind: String!
+	attempts: Int!
+	state: String
+	brightness: Int
+	colourTemp: Int
+	colour: String
+}
+
 type CronUpdate {
 	eventId: UUID!
 	name: String!
@@ -308,7 +320,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | CommandFailedUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -412,6 +424,16 @@ type JellyfinUpdate {
 	id: ID!
 }
 
+type LightCommandResult {
+	status: LightCommandStatus!
+	state: LightState!
+}
+
+enum LightCommandStatus {
+	CONFIRMED
+	PENDING
+}
+
 type LightEntity {
 	category: EntityCategory!
 	id: String!
@@ -437,14 +459,11 @@ type LightEntity {
 	"""
 	colour: String
 	lastSeen: DateTime
+	pendingCommands: [PendingCommand!]!
 }
 
 type LightMutation {
-	"""
-	Apply any combination of power, brightness, colour temperature and colour
-	in one command, and return the light's resulting state.
-	"""
-	set(input: LightSetInput!): LightState!
+	set(input: LightSetInput!): LightCommandResult!
 	on: Boolean!
 	off: Boolean!
 	toggle: Boolean!
@@ -634,6 +653,16 @@ type PartialWindow {
 	y: Int!
 	width: Int!
 	height: Int!
+}
+
+type PendingCommand {
+	requestedAt: DateTime!
+	attempts: Int!
+	relative: Boolean!
+	state: String
+	brightness: Int
+	colourTemperature: Int
+	colour: String
 }
 
 type PlainMode implements ModeState {

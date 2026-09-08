@@ -3,6 +3,7 @@ use super::cron_task::AdhocCronTask;
 pub mod refresh_transperth_timetable;
 pub mod sample_light_state;
 pub mod trim_derived_door_events;
+pub mod trim_device_intent;
 pub mod trim_device_metric;
 pub mod trim_door_sensor;
 pub mod trim_home_assistant_events;
@@ -19,6 +20,7 @@ pub fn all() -> Vec<&'static dyn AdhocCronTask> {
         &refresh_transperth_timetable::RefreshTransperthTimetable,
         &sample_light_state::SampleLightState,
         &trim_derived_door_events::TrimDerivedDoorEvents,
+        &trim_device_intent::TrimDeviceIntent,
         &trim_device_metric::TrimDeviceMetric,
         &trim_door_sensor::TrimDoorSensor,
         &trim_home_assistant_events::TrimHomeAssistantEvents,

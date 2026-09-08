@@ -129,6 +129,19 @@ pub struct SolarUpdate {
 }
 
 #[derive(SimpleObject)]
+pub struct CommandFailedUpdate {
+    pub event_id: Uuid,
+    pub id: ID,
+    pub address: String,
+    pub kind: String,
+    pub attempts: i32,
+    pub state: Option<String>,
+    pub brightness: Option<i32>,
+    pub colour_temp: Option<i32>,
+    pub colour: Option<String>,
+}
+
+#[derive(SimpleObject)]
 #[graphql(complex)]
 pub struct DeviceBatteryUpdate {
     pub event_id: Uuid,
@@ -226,6 +239,7 @@ pub enum EventUpdate {
     Jellyfin(JellyfinUpdate),
     MediaPlayer(MediaPlayerUpdate),
     Solar(SolarUpdate),
+    CommandFailed(CommandFailedUpdate),
 }
 
 impl EventUpdate {
@@ -404,6 +418,28 @@ impl EventUpdate {
                 event_id,
                 current_wh,
             }),
+            EventBusMessage::CommandFailed {
+                event_id,
+                kind,
+                address,
+                attributes,
+                attempts,
+                ..
+            } => {
+                let light = attributes.as_light();
+
+                EventUpdate::CommandFailed(CommandFailedUpdate {
+                    event_id,
+                    id: ID(slug(&address)),
+                    address,
+                    attempts,
+                    kind: kind.as_str().to_owned(),
+                    state: light.and_then(|light| light.state.clone()),
+                    brightness: light.and_then(|light| light.brightness),
+                    colour_temp: light.and_then(|light| light.colour_temp),
+                    colour: light.and_then(|light| light.colour.clone()),
+                })
+            }
             EventBusMessage::DeviceBattery {
                 event_id,
                 device_id,

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_intent SET status = 'superseded', settled_at = now() WHERE kind = $1 AND address = $2 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7060df8575565eb8b354e493c9bee7b1ba86a5f75b379e89d6a6e0f06e858851"
+}

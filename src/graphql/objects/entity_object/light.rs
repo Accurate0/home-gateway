@@ -1,4 +1,4 @@
-use async_graphql::Object;
+use async_graphql::{Object, SimpleObject};
 use chrono::{DateTime, Utc};
 
 use crate::{
@@ -8,7 +8,11 @@ use crate::{
     },
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
-    repo::light::LightState,
+    repo::{
+        RepoRegistry,
+        intent::{DeviceIntent, DeviceKind},
+        light::LightState,
+    },
 };
 
 pub struct LightEntity {
@@ -111,5 +115,48 @@ impl LightEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<DateTime<Utc>>> {
         last_seen_for(ctx, &self.address).await
+    }
+
+    async fn pending_commands(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Vec<PendingCommand>> {
+        let pending = ctx
+            .data::<RepoRegistry>()?
+            .intent()
+            .pending_for(DeviceKind::Light, &self.address)
+            .await?;
+
+        Ok(pending
+            .iter()
+            .filter_map(PendingCommand::of_light)
+            .collect())
+    }
+}
+
+#[derive(SimpleObject)]
+pub struct PendingCommand {
+    pub requested_at: DateTime<Utc>,
+    pub attempts: i32,
+    pub relative: bool,
+    pub state: Option<String>,
+    pub brightness: Option<i32>,
+    pub colour_temperature: Option<i32>,
+    pub colour: Option<String>,
+}
+
+impl PendingCommand {
+    fn of_light(intent: &DeviceIntent) -> Option<Self> {
+        let attributes = intent.attributes.as_light()?;
+
+        Some(Self {
+            requested_at: intent.requested_at,
+            attempts: intent.attempts,
+            relative: intent.relative,
+            state: attributes.state.clone(),
+            brightness: attributes.brightness,
+            colour_temperature: attributes.colour_temp,
+            colour: attributes.colour.clone(),
+        })
     }
 }

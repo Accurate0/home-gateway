@@ -303,7 +303,6 @@ pub enum Step {
     Switch {
         #[serde(rename = "device", alias = "ieeeAddr")]
         ieee_addr: IEEEAddress,
-        #[allow(unused)]
         state: SwitchState,
         #[serde(default)]
         when: Option<Condition>,
@@ -466,6 +465,15 @@ impl Step {
                 {
                     return Err(format!(
                         "light {ieee_addr} does not support {required:?}: {state:?}"
+                    ));
+                }
+            }
+            Step::Switch { ieee_addr, .. } => {
+                let address = registry.address_or_self(ieee_addr);
+                if registry.light(address).is_none() {
+                    return Err(format!(
+                        "switch {ieee_addr} cannot be driven: only a smart switch declared \
+                         `as: light` has a control path"
                     ));
                 }
             }

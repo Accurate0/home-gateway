@@ -84,6 +84,7 @@ scopes! {
     Workflow => "workflow" [Read, Write],
 
     EventsBattery => "events.battery" [Read],
+    EventsCommandFailed => "events.command_failed" [Read],
     EventsCron => "events.cron" [Read],
     EventsDoor => "events.door" [Read],
     EventsEnvironment => "events.environment" [Read],
@@ -118,6 +119,7 @@ impl Resource {
             "jellyfin" => Self::EventsJellyfin,
             "media_player" => Self::EventsMediaPlayer,
             "solar" => Self::EventsSolar,
+            "command_failed" => Self::EventsCommandFailed,
             _ => return None,
         })
     }

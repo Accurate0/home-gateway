@@ -1,72 +1,9 @@
+pub mod types;
+
 use chrono::TimeDelta;
 use sqlx::{Pool, Postgres};
-use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HistorySource {
-    Edge,
-    Sample,
-}
-
-impl HistorySource {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            HistorySource::Edge => "edge",
-            HistorySource::Sample => "sample",
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LightSample {
-    pub address: String,
-    pub device_id: Option<String>,
-    pub source: HistorySource,
-    pub event_id: Option<Uuid>,
-    pub state: LightState,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ProfileBucket {
-    pub address: String,
-    pub isodow: i16,
-    pub slot: i16,
-    pub on_fraction: f64,
-    pub observations: i64,
-    pub turned_on: i64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LightState {
-    pub on: bool,
-    pub brightness: Option<i32>,
-    pub colour_temp: Option<i32>,
-    pub colour: Option<String>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct LightAttributes {
-    pub state: Option<String>,
-    pub brightness: Option<i32>,
-    pub colour_temp: Option<i32>,
-    pub colour: Option<String>,
-}
-
-impl LightAttributes {
-    pub fn state(state: impl Into<String>) -> Self {
-        Self {
-            state: Some(state.into()),
-            ..Self::default()
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.state.is_none()
-            && self.brightness.is_none()
-            && self.colour_temp.is_none()
-            && self.colour.is_none()
-    }
-}
+pub use types::{HistorySource, LightAttributes, LightSample, LightState, ProfileBucket};
 
 #[derive(Clone)]
 pub struct LightRepo {

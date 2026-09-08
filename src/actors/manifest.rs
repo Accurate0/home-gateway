@@ -23,8 +23,13 @@ use crate::actors::integrations::{
 use crate::actors::root::RootMessage;
 use crate::actors::sun::SunActor;
 use crate::actors::system::{
-    adhoc::AdhocTaskActor, battery::BatteryActor, cron::CronActor, mqtt_ingest::MqttIngest,
-    push::PushWorker, watchdog::WatchdogActor,
+    adhoc::AdhocTaskActor,
+    battery::BatteryActor,
+    cron::CronActor,
+    mqtt_ingest::MqttIngest,
+    push::PushWorker,
+    reconciler::{ReconcilerSweeper, ReconcilerWorker},
+    watchdog::WatchdogActor,
 };
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
 use crate::integrations::home_assistant::HomeAssistant;
@@ -213,6 +218,44 @@ pub static ACTORS: &[ActorSpec] = &[
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::workflows::spawn::spawn_workflows(&root, shared_actor_state).await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
+        name: ReconcilerWorker::NAME,
+        autostart: true,
+        optional: true,
+        requires: &[Requirement::Setting {
+            label: "reconciler.enabled",
+            present: |settings| settings.reconciler.enabled,
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                crate::actors::system::reconciler::spawn_reconciler(&root, shared_actor_state)
+                    .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
+        name: ReconcilerSweeper::NAME,
+        autostart: true,
+        optional: true,
+        requires: &[Requirement::Setting {
+            label: "reconciler.enabled",
+            present: |settings| settings.reconciler.enabled,
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                root.spawn_linked(
+                    Some(ReconcilerSweeper::NAME.to_owned()),
+                    ReconcilerSweeper { shared_actor_state },
+                    (),
+                )
+                .await?;
 
                 Ok(Spawned::Started)
             })
@@ -411,6 +454,8 @@ mod tests {
             gated,
             vec![
                 AwayActor::NAME,
+                ReconcilerWorker::NAME,
+                ReconcilerSweeper::NAME,
                 HomeAssistantActor::NAME,
                 JellyfinActor::NAME,
                 TransperthActor::NAME,

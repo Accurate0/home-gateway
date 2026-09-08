@@ -5,6 +5,7 @@ use super::playback::PlaybackState;
 use super::reading::{SensorReading, metric_var_name};
 use crate::actors::sun::calc::SunTransition;
 use crate::mode::Mode;
+use crate::repo::intent::{DeviceKind, IntentAttributes};
 use crate::settings::IEEEAddress;
 
 /// Every event that can flow through the bus. New producers (webhooks,
@@ -156,6 +157,14 @@ pub enum EventBusMessage {
     /// Threshold + rising-edge handling lives in the dispatcher, as it does for
     /// [`EventBusMessage::Environment`].
     Solar { event_id: Uuid, current_wh: f64 },
+    CommandFailed {
+        event_id: Uuid,
+        kind: DeviceKind,
+        address: String,
+        device_id: Option<String>,
+        attributes: IntentAttributes,
+        attempts: i32,
+    },
 }
 
 impl EventBusMessage {
@@ -177,7 +186,8 @@ impl EventBusMessage {
             | EventBusMessage::DeviceBattery { event_id, .. }
             | EventBusMessage::Jellyfin { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
-            | EventBusMessage::Solar { event_id, .. } => *event_id,
+            | EventBusMessage::Solar { event_id, .. }
+            | EventBusMessage::CommandFailed { event_id, .. } => *event_id,
         }
     }
 
@@ -199,6 +209,7 @@ impl EventBusMessage {
             EventBusMessage::Jellyfin { .. } => "jellyfin",
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
+            EventBusMessage::CommandFailed { .. } => "command_failed",
         }
     }
 
@@ -218,6 +229,7 @@ impl EventBusMessage {
         "jellyfin",
         "media_player",
         "solar",
+        "command_failed",
     ];
 
     pub fn entity(&self) -> String {
@@ -240,6 +252,7 @@ impl EventBusMessage {
             EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
+            EventBusMessage::CommandFailed { address, .. } => address.clone(),
         }
     }
 
@@ -431,6 +444,21 @@ impl EventBusMessage {
             EventBusMessage::Solar { current_wh, .. } => {
                 HashMap::from([("current".to_owned(), format!("{current_wh:.0}"))])
             }
+            EventBusMessage::CommandFailed {
+                kind,
+                address,
+                device_id,
+                attempts,
+                ..
+            } => HashMap::from([
+                ("device".to_owned(), address.clone()),
+                (
+                    "device_id".to_owned(),
+                    device_id.clone().unwrap_or_else(|| address.clone()),
+                ),
+                ("kind".to_owned(), kind.as_str().to_owned()),
+                ("attempts".to_owned(), attempts.to_string()),
+            ]),
         }
     }
 }

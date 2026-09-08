@@ -27,6 +27,7 @@ pub mod media_player;
 pub mod notify;
 pub mod plant;
 pub mod presence;
+pub mod reconciler;
 pub mod roborock;
 pub mod s3;
 pub mod solar;
@@ -65,6 +66,7 @@ pub use media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use notify::{NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets};
 pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
+pub use reconciler::ReconcilerSettings;
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use s3::S3Settings;
 pub use solar::SolarSettings;
@@ -120,6 +122,7 @@ pub struct Settings {
     pub android_app_webhook_secret: String,
     pub workflows: HashMap<String, Workflow>,
     pub workflow: WorkflowSettings,
+    pub reconciler: ReconcilerSettings,
     pub s3: S3Settings,
     pub watchdog: WatchdogSettings,
     pub oauth: Option<OAuthSettings>,
@@ -169,6 +172,7 @@ pub struct RawSettings {
     s3: S3Settings,
     watchdog: WatchdogSettings,
     workflow: WorkflowSettings,
+    reconciler: ReconcilerSettings,
     #[serde(default)]
     oauth: Option<OAuthSettings>,
     #[serde(default)]
@@ -220,6 +224,7 @@ impl RawSettings {
             s3,
             watchdog,
             workflow,
+            reconciler,
             oauth,
             api_keys,
             location,
@@ -369,6 +374,7 @@ impl RawSettings {
                 s3,
                 watchdog,
                 workflow,
+                reconciler,
                 oauth,
                 api_keys,
                 location,
@@ -686,6 +692,35 @@ ts011f_plug:
             .validate_capabilities(&registry)
             .unwrap_err();
         assert!(err.contains("does not support ColourTemp"), "{err}");
+    }
+
+    fn switch_step(device: &str) -> workflow::Step {
+        serde_yaml::from_str(&format!("type: switch\ndevice: {device}\nstate: ON\n")).unwrap()
+    }
+
+    #[test]
+    fn a_switch_step_needs_a_switch_declared_as_a_light() {
+        switch_step("living-room-table-lamp")
+            .validate_capabilities(&lamp_registry())
+            .unwrap();
+
+        let plain_plug = build_devices(
+            r#"
+- id: living-room-table-lamp
+  transport: zigbee
+  model: ts011f_plug
+  address: "0xa4c1389fe5cea26e"
+  roles:
+    - type: smart_switch
+      config: { name: Living Room Table Lamp }
+"#,
+        )
+        .unwrap();
+
+        let err = switch_step("living-room-table-lamp")
+            .validate_capabilities(&plain_plug)
+            .unwrap_err();
+        assert!(err.contains("cannot be driven"), "{err}");
     }
 
     #[test]
@@ -1019,6 +1054,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
@@ -1050,6 +1086,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
@@ -1088,6 +1125,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
@@ -1123,6 +1161,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
@@ -1160,6 +1199,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
@@ -1236,6 +1276,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
@@ -1295,6 +1336,7 @@ android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12 }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }

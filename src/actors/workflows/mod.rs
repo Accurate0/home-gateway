@@ -7,7 +7,7 @@ use crate::{
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
     integrations::notify::{Notification, notify},
-    settings::workflow::{EnableState, LightState, Step, Workflow},
+    settings::workflow::{EnableState, LightState, Step, SwitchState, Workflow},
     settings::{NotifyAction, NotifyActionKind},
     state::AppState,
     timer::timed_async,
@@ -41,6 +41,8 @@ pub enum WorkflowError {
     Messaging(String),
     #[error("not implemented: {0}")]
     NotImplemented(&'static str),
+    #[error("switch `{0}` has no control path: only a switch declared `as: light` can be driven")]
+    NotAControllableSwitch(String),
     #[error("home assistant is not configured")]
     HomeAssistantNotConfigured,
     #[error(transparent)]
@@ -193,11 +195,9 @@ impl WorkflowWorker {
             Step::Light {
                 ieee_addr, state, ..
             } => self.run_light(ieee_addr.clone(), state.clone()).await,
-            Step::Switch { ieee_addr, .. } => {
-                // implemented in a later phase (needs a smart-switch control path)
-                let _ = ieee_addr;
-                Err(WorkflowError::NotImplemented("switch action"))
-            }
+            Step::Switch {
+                ieee_addr, state, ..
+            } => self.run_switch(ieee_addr.clone(), *state).await,
             Step::Scene { run, .. } => Box::pin(self.run_steps(ctx, run)).await,
             Step::Notify {
                 notify: n,
@@ -463,6 +463,26 @@ impl WorkflowWorker {
 
         rpc::cast_factory(LightHandler::NAME, light_actor_message)
             .map_err(|e| WorkflowError::Messaging(e.to_string()))
+    }
+
+    async fn run_switch(&self, device: String, state: SwitchState) -> Result<(), WorkflowError> {
+        let ieee_addr = self
+            .shared_actor_state
+            .devices
+            .address_or_self(&device)
+            .to_owned();
+
+        if self.shared_actor_state.devices.light(&ieee_addr).is_none() {
+            return Err(WorkflowError::NotAControllableSwitch(ieee_addr));
+        }
+
+        let light_state = match state {
+            SwitchState::On => LightState::On,
+            SwitchState::Off => LightState::Off,
+            SwitchState::Toggle => LightState::Toggle,
+        };
+
+        self.run_light(ieee_addr, light_state).await
     }
 }
 

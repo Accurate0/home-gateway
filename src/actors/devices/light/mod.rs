@@ -5,6 +5,7 @@ use crate::{
     event_bus::EventBusMessage,
     integrations::esphome::light_command_topic,
     integrations::mqtt::ZIGBEE2MQTT_BASE,
+    repo::intent::{DeviceKind, DeviceReport, IntentAttributes, IntentStatus},
     repo::light::{HistorySource, LightAttributes, LightSample, LightState},
     settings::IEEEAddress,
     state::AppState,
@@ -55,6 +56,10 @@ pub enum LightHandlerMessage {
         reply: RpcReplyPort<LightState>,
     },
     NewEvent(Box<NewEvent>),
+    Reapply {
+        ieee_addr: IEEEAddress,
+        attributes: Box<LightAttributes>,
+    },
     TurnOn {
         ieee_addr: IEEEAddress,
     },
@@ -139,7 +144,7 @@ pub fn colour_hex(value: &serde_json::Value) -> Option<String> {
     (y > 0.0).then(|| xy_to_hex(x, y))
 }
 
-fn normalise_hex(hex: &str) -> String {
+pub fn normalise_hex(hex: &str) -> String {
     format!("#{}", hex.trim_start_matches('#').to_lowercase())
 }
 
@@ -164,6 +169,28 @@ fn xy_to_hex(x: f64, y: f64) -> String {
     };
 
     format!("#{:02x}{:02x}{:02x}", channel(r), channel(g), channel(b))
+}
+
+fn payload_for(attributes: &LightAttributes) -> serde_json::Value {
+    let mut payload = serde_json::Map::new();
+
+    if let Some(state) = &attributes.state {
+        payload.insert("state".into(), state.as_str().into());
+    }
+
+    if let Some(brightness) = attributes.brightness {
+        payload.insert("brightness".into(), brightness.into());
+    }
+
+    if let Some(colour_temp) = attributes.colour_temp {
+        payload.insert("color_temp".into(), colour_temp.into());
+    }
+
+    if let Some(colour) = &attributes.colour {
+        payload.insert("color".into(), serde_json::json!({ "hex": colour }));
+    }
+
+    payload.into()
 }
 
 async fn record_light_state(
@@ -200,6 +227,8 @@ async fn record_light_state(
         }
     }
 
+    settle_confirmed_intents(shared_actor_state, &ieee_addr, &state).await;
+
     shared_actor_state
         .event_bus
         .publish(EventBusMessage::Light {
@@ -212,6 +241,43 @@ async fn record_light_state(
         });
 
     Ok(state)
+}
+
+async fn settle_confirmed_intents(
+    shared_actor_state: &AppState,
+    ieee_addr: &str,
+    state: &LightState,
+) {
+    let repo = shared_actor_state.repos.intent();
+
+    let pending = match repo.pending_for(DeviceKind::Light, ieee_addr).await {
+        Ok(pending) => pending,
+        Err(e) => {
+            tracing::warn!("failed to read pending intents for {ieee_addr}: {e}");
+            return;
+        }
+    };
+
+    let report = DeviceReport::Light(state);
+
+    let confirmed: Vec<i64> = pending
+        .iter()
+        .filter(|intent| intent.relative || intent.attributes.satisfied_by(&report))
+        .map(|intent| intent.id)
+        .collect();
+
+    if confirmed.is_empty() {
+        return;
+    }
+
+    tracing::info!(
+        "confirmed {} intent(s) for {ieee_addr} from device report",
+        confirmed.len()
+    );
+
+    if let Err(e) = repo.settle(&confirmed, IntentStatus::Confirmed).await {
+        tracing::warn!("failed to settle intents for {ieee_addr}: {e}");
+    }
 }
 
 impl LightHandler {
@@ -306,8 +372,26 @@ impl LightHandler {
             return self.stored_state(ieee_addr).await;
         }
 
-        self.update_light_state(Uuid::new_v4(), ieee_addr.to_owned(), attributes)
+        self.record_intent(ieee_addr, &attributes, false).await;
+
+        self.stored_state(ieee_addr).await
+    }
+
+    async fn record_intent(&self, ieee_addr: &str, attributes: &LightAttributes, relative: bool) {
+        if let Err(e) = self
+            .shared_actor_state
+            .repos
+            .intent()
+            .replace_pending(
+                ieee_addr,
+                &IntentAttributes::Light(attributes.clone()),
+                relative,
+                Uuid::new_v4(),
+            )
             .await
+        {
+            tracing::warn!("failed to record intent for {ieee_addr}: {e}");
+        }
     }
 
     async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
@@ -327,47 +411,102 @@ impl LightHandler {
                     }
                 }
             }
-            LightHandlerMessage::TurnOn { ieee_addr } => {
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "ON"}))
+            LightHandlerMessage::Reapply {
+                ieee_addr,
+                attributes,
+            } => {
+                self.send_mqtt_state(ieee_addr, payload_for(&attributes))
                     .await?;
+            }
+            LightHandlerMessage::TurnOn { ieee_addr } => {
+                let attributes = LightAttributes::state("ON");
+
+                if self
+                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"state": "ON"}))
+                    .await?
+                {
+                    self.record_intent(&ieee_addr, &attributes, false).await;
+                }
             }
             LightHandlerMessage::TurnOff { ieee_addr } => {
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"state": "OFF"}))
-                    .await?;
+                let attributes = LightAttributes::state("OFF");
+
+                if self
+                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"state": "OFF"}))
+                    .await?
+                {
+                    self.record_intent(&ieee_addr, &attributes, false).await;
+                }
             }
             LightHandlerMessage::Toggle { ieee_addr } => {
+                let on = self.stored_power_state(&ieee_addr).await?;
+                let target = if on { "OFF" } else { "ON" };
+
                 let state = if self
                     .shared_actor_state
                     .devices
                     .esphome_light(&ieee_addr)
                     .is_some()
                 {
-                    let on = self.stored_power_state(&ieee_addr).await?;
-                    serde_json::json!({"state": if on { "OFF" } else { "ON" }})
+                    serde_json::json!({ "state": target })
                 } else {
                     serde_json::json!({"state": "TOGGLE"})
                 };
 
-                self.send_mqtt_state(ieee_addr, state).await?;
+                if self.send_mqtt_state(ieee_addr.clone(), state).await? {
+                    self.record_intent(&ieee_addr, &LightAttributes::state(target), false)
+                        .await;
+                }
             }
             LightHandlerMessage::SetColourTemperature { ieee_addr, value } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::ColourTemp);
                 let value = value.clamp(COLOUR_TEMP_MIN_MIREDS, COLOUR_TEMP_MAX_MIREDS);
 
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"color_temp": value}))
-                    .await?;
+                let attributes = LightAttributes {
+                    colour_temp: Some(value as i32),
+                    ..LightAttributes::default()
+                };
+
+                if self
+                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"color_temp": value}))
+                    .await?
+                {
+                    self.record_intent(&ieee_addr, &attributes, false).await;
+                }
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
                 let value = value.clamp(0, BRIGHTNESS_MAX);
 
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness": value}))
-                    .await?;
+                let attributes = LightAttributes {
+                    brightness: Some(value as i32),
+                    ..LightAttributes::default()
+                };
+
+                if self
+                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"brightness": value}))
+                    .await?
+                {
+                    self.record_intent(&ieee_addr, &attributes, false).await;
+                }
             }
             LightHandlerMessage::SetColour { ieee_addr, hex } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Rgb);
-                self.send_mqtt_state(ieee_addr, serde_json::json!({"color": {"hex": hex}}))
-                    .await?;
+
+                let attributes = LightAttributes {
+                    colour: Some(normalise_hex(&hex)),
+                    ..LightAttributes::default()
+                };
+
+                if self
+                    .send_mqtt_state(
+                        ieee_addr.clone(),
+                        serde_json::json!({"color": {"hex": hex}}),
+                    )
+                    .await?
+                {
+                    self.record_intent(&ieee_addr, &attributes, false).await;
+                }
             }
             LightHandlerMessage::BrightnessMove {
                 ieee_addr,
@@ -375,15 +514,16 @@ impl LightHandler {
                 on_off,
             } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
-                if on_off {
-                    self.send_mqtt_state(
-                        ieee_addr,
-                        serde_json::json!({"brightness_move_onoff": value}),
-                    )
-                    .await?;
+
+                let state = if on_off {
+                    serde_json::json!({"brightness_move_onoff": value})
                 } else {
-                    self.send_mqtt_state(ieee_addr, serde_json::json!({"brightness_move": value}))
-                        .await?;
+                    serde_json::json!({"brightness_move": value})
+                };
+
+                if self.send_mqtt_state(ieee_addr.clone(), state).await? {
+                    self.record_intent(&ieee_addr, &LightAttributes::default(), true)
+                        .await;
                 }
             }
             LightHandlerMessage::ColourTemperatureMove { ieee_addr, value } => {
@@ -394,7 +534,10 @@ impl LightHandler {
                     serde_json::json!({"color_temp_move": value})
                 };
 
-                self.send_mqtt_state(ieee_addr, state).await?;
+                if self.send_mqtt_state(ieee_addr.clone(), state).await? {
+                    self.record_intent(&ieee_addr, &LightAttributes::default(), true)
+                        .await;
+                }
             }
             LightHandlerMessage::Set {
                 ieee_addr,
