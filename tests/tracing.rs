@@ -60,29 +60,22 @@ fn always_on() -> SamplingControl {
     control
 }
 
-/// The whole point of the change: an event that starts at an MQTT packet and
-/// ends in a workflow step must be ONE trace, even though every hop is a
-/// separate ractor actor that only receives a `traceparent` string.
 #[test]
 fn the_ingest_to_workflow_chain_is_a_single_connected_trace() {
     let harness = Harness::new(always_on());
 
     let spans = harness.run(|| {
-        // mqtt_ingest: root of the whole thing
         let ingest = tracing::info_span!(parent: None, "mqtt.ingest", topic = "zigbee2mqtt/door");
         let from_ingest = ingest.in_scope(inject_current);
 
-        // device actor: a different actor, reached by a factory cast
         let device = tracing::info_span!(parent: None, "device.handle", device = "0x00124b");
         set_parent(&device, from_ingest.as_deref());
         let from_device = device.in_scope(inject_current);
 
-        // dispatcher: reached over the event bus
         let trigger = tracing::info_span!(parent: None, "trigger.evaluate", trigger = "lamp on");
         set_parent(&trigger, from_device.as_deref());
         let from_trigger = trigger.in_scope(inject_current);
 
-        // workflow factory: another cast
         let workflow = tracing::info_span!(parent: None, "workflow-worker", workflow = "lamp on");
         set_parent(&workflow, from_trigger.as_deref());
         workflow.in_scope(|| {
@@ -123,9 +116,6 @@ fn the_ingest_to_workflow_chain_is_a_single_connected_trace() {
     assert_eq!(step.parent_span_id, workflow.span_context.span_id());
 }
 
-/// A span with no incoming traceparent must start its own trace rather than
-/// silently attaching to whatever the actor runtime happened to have current.
-/// This is the bug that merged seven unrelated solar polls into one trace.
 #[test]
 fn a_detached_actor_span_does_not_adopt_an_ambient_parent() {
     let harness = Harness::new(always_on());
@@ -242,9 +232,6 @@ fn a_recorded_error_sets_the_span_status() {
     );
 }
 
-/// Outbound span names and attributes reach Tempo AND, via Tempo's span-metrics
-/// generator, become Prometheus series labels. A credential in a URL therefore
-/// ends up in long-lived metric storage, so nothing secret may survive here.
 const SECRET: &str = "8f2c1d9ab4e7f60351aa27bcd0e4915f";
 
 #[rstest]
@@ -275,8 +262,6 @@ fn a_credential_in_a_url_never_reaches_a_span(#[case] raw: &str, #[case] expecte
     );
 }
 
-/// A malformed or absent traceparent must leave the span as a healthy root
-/// rather than panicking or producing an unroutable parent id.
 #[test]
 fn a_missing_traceparent_leaves_a_clean_root() {
     let harness = Harness::new(always_on());
