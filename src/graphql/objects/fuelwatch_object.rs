@@ -17,7 +17,10 @@ impl FuelWatchObject {
         let repos = ctx.data::<RepoRegistry>()?;
         let settings = ctx.data::<SettingsContainer>()?;
 
-        let postcode = match self.postcode.or(settings.fuelwatch.as_ref().map(|f| f.postcode)) {
+        let postcode = match self
+            .postcode
+            .or(settings.fuelwatch.as_ref().map(|f| f.postcode))
+        {
             Some(postcode) => postcode,
             None => return Err(async_graphql::Error::new("fuelwatch is not configured")),
         };

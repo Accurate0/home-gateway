@@ -30,10 +30,7 @@ pub struct FuelWatch {
 
 impl FuelWatch {
     pub fn new(settings: &FuelWatchSettings) -> Result<Self, FuelWatchError> {
-        tracing::info!(
-            "fuelwatch integration enabled for {}",
-            settings.postcode
-        );
+        tracing::info!("fuelwatch integration enabled for {}", settings.postcode);
 
         Ok(Self {
             client: get_traced_http_client()?,

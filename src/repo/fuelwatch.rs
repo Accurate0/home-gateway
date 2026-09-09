@@ -148,7 +148,12 @@ impl FuelWatchRepo {
         Ok(inserted)
     }
 
-    #[tracing::instrument(skip_all, name = "db.fuelwatch.sites_for_postcode", fields(postcode), err)]
+    #[tracing::instrument(
+        skip_all,
+        name = "db.fuelwatch.sites_for_postcode",
+        fields(postcode),
+        err
+    )]
     pub async fn sites_for_postcode(
         &self,
         postcode: i32,

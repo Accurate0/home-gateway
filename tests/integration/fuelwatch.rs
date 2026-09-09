@@ -133,7 +133,10 @@ async fn an_empty_batch_leaves_history_untouched() {
     let repo = FuelWatchRepo::new(db.pool.clone());
 
     let mut tx = db.pool.begin().await.expect("begin");
-    let appended = repo.append_history(&mut tx, &[]).await.expect("append none");
+    let appended = repo
+        .append_history(&mut tx, &[])
+        .await
+        .expect("append none");
     tx.commit().await.expect("commit");
 
     assert_eq!(appended, 0);
