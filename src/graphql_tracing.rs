@@ -24,23 +24,13 @@ struct TracingExtension;
 #[async_trait::async_trait]
 impl Extension for TracingExtension {
     async fn request(&self, ctx: &ExtensionContext<'_>, next: NextRequest<'_>) -> Response {
-        let span = tracing::span!(
-            target: "async_graphql::graphql",
-            tracing::Level::INFO,
-            "graphql",
-            otel.name = tracing::field::Empty,
-            operation = tracing::field::Empty,
-            otel.status_code = tracing::field::Empty,
-            otel.status_message = tracing::field::Empty,
-        );
-
-        let response = next.run(ctx).instrument(span.clone()).await;
-
-        if let Some(error) = response.errors.first() {
-            crate::tracing_context::record_error(&span, &error.message);
-        }
-
-        response
+        next.run(ctx)
+            .instrument(tracing::span!(
+                target: "async_graphql::graphql",
+                tracing::Level::DEBUG,
+                "request",
+            ))
+            .await
     }
 
     async fn parse_query(
@@ -89,11 +79,26 @@ impl Extension for TracingExtension {
     ) -> Response {
         let operation = operation_name.unwrap_or("anonymous");
 
-        let span = tracing::Span::current();
-        span.record("otel.name", format!("graphql {operation}"));
-        span.record("operation", operation);
+        let span = tracing::span!(
+            target: "async_graphql::graphql",
+            tracing::Level::INFO,
+            "graphql",
+            otel.name = format!("graphql {operation}"),
+            operation = operation,
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        );
 
-        next.run(ctx, operation_name).await
+        let response = next
+            .run(ctx, operation_name)
+            .instrument(span.clone())
+            .await;
+
+        if let Some(error) = response.errors.first() {
+            crate::tracing_context::record_error(&span, &error.message);
+        }
+
+        response
     }
 
     async fn resolve(
