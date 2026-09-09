@@ -82,7 +82,10 @@ impl HomeAssistantRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-home-assistant-state"))
+        .instrument(tracing::info_span!(
+            "bulk-get-home-assistant-state",
+            keys = keys.len()
+        ))
         .await
     }
     pub async fn latest_all(&self) -> Result<Vec<HomeAssistantEventRow>, sqlx::Error> {

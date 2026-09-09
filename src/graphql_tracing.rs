@@ -4,7 +4,7 @@ use async_graphql::{
         Extension, ExtensionContext, ExtensionFactory, NextExecute, NextParseQuery, NextRequest,
         NextResolve, NextValidation, ResolveInfo,
     },
-    parser::types::ExecutableDocument,
+    parser::types::{ExecutableDocument, Selection},
 };
 use futures_util::TryFutureExt;
 use std::sync::Arc;
@@ -42,15 +42,38 @@ impl Extension for TracingExtension {
     ) -> ServerResult<ExecutableDocument> {
         let span = tracing::span!(
             target: "async_graphql::graphql",
-            tracing::Level::DEBUG,
+            tracing::Level::INFO,
             "parse_query",
-            source = tracing::field::Empty
+            source = tracing::field::Empty,
+            operation = tracing::field::Empty,
+            fields = tracing::field::Empty,
         );
         async move {
             let res = next.run(ctx, query, variables).await;
             if let Ok(doc) = &res {
-                tracing::Span::current()
-                    .record("source", ctx.stringify_execute_doc(doc, variables).as_str());
+                let current = tracing::Span::current();
+                current.record("source", ctx.stringify_execute_doc(doc, variables).as_str());
+
+                if let Some((name, operation)) = doc.operations.iter().next() {
+                    if let Some(name) = name {
+                        current.record("operation", name.as_str());
+                    }
+
+                    let fields = operation
+                        .node
+                        .selection_set
+                        .node
+                        .items
+                        .iter()
+                        .filter_map(|item| match &item.node {
+                            Selection::Field(field) => Some(field.node.name.node.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join(",");
+
+                    current.record("fields", fields.as_str());
+                }
             }
             res
         }
@@ -65,7 +88,7 @@ impl Extension for TracingExtension {
     ) -> Result<ValidationResult, Vec<ServerError>> {
         let span = tracing::span!(
             target: "async_graphql::graphql",
-            tracing::Level::DEBUG,
+            tracing::Level::INFO,
             "validation"
         );
         next.run(ctx).instrument(span).await
@@ -104,6 +127,21 @@ impl Extension for TracingExtension {
         info: ResolveInfo<'_>,
         next: NextResolve<'_>,
     ) -> ServerResult<Option<Value>> {
+        if info.is_for_introspection {
+            return next.run(ctx, info).await;
+        }
+
+        let span = tracing::span!(
+            target: "async_graphql::graphql",
+            tracing::Level::INFO,
+            "field",
+            otel.name = format!("{}.{}", info.parent_type, info.name),
+            path = %info.path_node,
+            return_type = info.return_type,
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        );
+
         next.run(ctx, info)
             .inspect_err(|err| {
                 tracing::error!(
@@ -111,7 +149,9 @@ impl Extension for TracingExtension {
                     error = %err.message,
                     "error",
                 );
+                crate::tracing_context::record_current_error(&err.message);
             })
+            .instrument(span)
             .await
     }
 }

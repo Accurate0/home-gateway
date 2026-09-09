@@ -27,6 +27,20 @@ impl Harness {
         Self { provider, exporter }
     }
 
+    async fn run_async<F: std::future::Future<Output = ()>>(&self, f: F) -> Vec<SpanData> {
+        global::set_text_map_propagator(TraceContextPropagator::new());
+
+        let layer = tracing_opentelemetry::layer().with_tracer(self.provider.tracer("test"));
+        let subscriber = tracing_subscriber::registry().with(layer);
+        use tracing::instrument::WithSubscriber;
+
+        f.with_subscriber(subscriber).await;
+
+        self.provider.force_flush().ok();
+
+        self.exporter.get_finished_spans().unwrap()
+    }
+
     fn run(&self, f: impl FnOnce()) -> Vec<SpanData> {
         global::set_text_map_propagator(TraceContextPropagator::new());
 
@@ -239,6 +253,100 @@ fn a_device_span_names_the_handler_and_carries_the_device_as_an_attribute() {
         .collect();
 
     assert_eq!(devices, vec!["0x54ef441000d4f05c", "0x94a081fffe2eedc0"]);
+}
+
+struct Lamp;
+
+#[async_graphql::Object]
+impl Lamp {
+    async fn name(&self) -> &str {
+        "living room"
+    }
+}
+
+struct TestQuery;
+
+#[async_graphql::Object]
+impl TestQuery {
+    async fn lamps(&self) -> Vec<Lamp> {
+        vec![Lamp]
+    }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn the_real_extension_produces_a_named_operation_with_phase_and_field_spans() {
+    let harness = Harness::new(always_on());
+
+    let schema = async_graphql::Schema::build(
+        TestQuery,
+        async_graphql::EmptyMutation,
+        async_graphql::EmptySubscription,
+    )
+    .extension(home_gateway::graphql_tracing::Tracing)
+    .finish();
+
+    let spans = harness
+        .run_async(async {
+            let response = schema
+                .execute("query DashboardEntitiesQuery { lamps { name } }")
+                .await;
+
+            assert!(response.errors.is_empty(), "{:?}", response.errors);
+        })
+        .await;
+
+    let names: Vec<_> = spans.iter().map(|s| s.name.to_string()).collect();
+
+    assert!(
+        names.contains(&"graphql DashboardEntitiesQuery".to_owned()),
+        "the operation span must be named: {names:?}"
+    );
+    assert!(
+        names.contains(&"parse_query".to_owned()),
+        "parse must be visible: {names:?}"
+    );
+    assert!(
+        names.contains(&"validation".to_owned()),
+        "validation must be visible: {names:?}"
+    );
+    assert!(
+        names.contains(&"TestQuery.lamps".to_owned()),
+        "a span per resolved field, named by schema coordinate: {names:?}"
+    );
+    assert!(
+        names.contains(&"Lamp.name".to_owned()),
+        "nested fields get their own span: {names:?}"
+    );
+
+    let parse = spans
+        .iter()
+        .find(|s| s.name == "parse_query")
+        .expect("parse span");
+    let attr = |span: &SpanData, key: &str| {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key.as_str() == key)
+            .map(|kv| kv.value.as_str().to_string())
+    };
+
+    assert_eq!(attr(parse, "operation").as_deref(), Some("DashboardEntitiesQuery"));
+    assert_eq!(attr(parse, "fields").as_deref(), Some("lamps"));
+
+    let lamps = spans
+        .iter()
+        .find(|s| s.name == "TestQuery.lamps")
+        .expect("field span");
+    assert_eq!(attr(lamps, "path").as_deref(), Some("lamps"));
+
+    let operation = spans
+        .iter()
+        .find(|s| s.name == "graphql DashboardEntitiesQuery")
+        .expect("operation span");
+    assert_eq!(
+        lamps.parent_span_id,
+        operation.span_context.span_id(),
+        "field spans must nest under the named operation"
+    );
 }
 
 fn graphql_operation_span(operation: &str) -> tracing::Span {
