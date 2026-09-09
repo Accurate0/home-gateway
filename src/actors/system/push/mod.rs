@@ -81,6 +81,9 @@ impl PushWorker {
         let response = self
             .client
             .request(Method::POST, url)
+            .with_extension(crate::http::UrlTemplate(
+                "/v1/projects/{project_id}/messages:send",
+            ))
             .bearer_auth(access_token)
             .json(&payload)
             .send()

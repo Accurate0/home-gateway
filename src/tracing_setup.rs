@@ -230,6 +230,16 @@ pub fn init_metrics() -> Registry {
     registry
 }
 
+pub fn telemetry_filter(exporter_level: LevelFilter) -> Targets {
+    Targets::default()
+        .with_target("otel::tracing", Level::TRACE)
+        .with_target("sea_orm::database", Level::TRACE)
+        .with_target("opentelemetry_sdk", exporter_level)
+        .with_target("ractor", Level::WARN)
+        .with_target("async_graphql::dataloader", Level::WARN)
+        .with_default(Level::INFO)
+}
+
 pub fn init() -> SamplingControl {
     let exporter_level = if cfg!(debug_assertions) {
         LevelFilter::OFF
@@ -237,11 +247,7 @@ pub fn init() -> SamplingControl {
         LevelFilter::from_level(Level::INFO)
     };
 
-    let filter = Targets::default()
-        .with_target("otel::tracing", Level::TRACE)
-        .with_target("sea_orm::database", Level::TRACE)
-        .with_target("opentelemetry_sdk", exporter_level)
-        .with_default(Level::INFO);
+    let filter = telemetry_filter(exporter_level);
 
     let control = SamplingControl::default();
 
@@ -356,6 +362,33 @@ mod tests {
         });
 
         assert!(decide(&sampler, MQTT_INGEST_SPAN, &[], u64::MAX));
+    }
+
+    #[test]
+    fn ractor_internal_spans_are_filtered_out() {
+        let filter = telemetry_filter(LevelFilter::INFO);
+
+        assert!(
+            !filter.would_enable("ractor::actor", &Level::INFO),
+            "ractor's long-lived Actor span must not be recorded: it never closes, so it is never \
+             exported, and everything that inherits it lands in an unrooted trace"
+        );
+        assert!(filter.would_enable("ractor::actor", &Level::WARN));
+        assert!(filter.would_enable("home_gateway::actors::workflows", &Level::INFO));
+    }
+
+    #[test]
+    fn dataloader_internals_are_filtered_out() {
+        let filter = telemetry_filter(LevelFilter::INFO);
+
+        assert!(
+            !filter.would_enable("async_graphql::dataloader", &Level::INFO),
+            "load_one/load_many/do_load/start_fetch are per-field plumbing, not operations"
+        );
+        assert!(
+            filter.would_enable("async_graphql::graphql", &Level::INFO),
+            "the named graphql operation span must survive"
+        );
     }
 
     #[test]

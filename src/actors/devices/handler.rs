@@ -70,7 +70,7 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
         let span = tracing::info_span!(
             parent: None,
             "device.handle",
-            otel.name = format!("device: {} {subject}", T::NAME),
+            otel.name = format!("device: {}", T::NAME),
             handler = T::NAME,
             device = subject,
             otel.status_code = tracing::field::Empty,

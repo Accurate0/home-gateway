@@ -24,13 +24,23 @@ struct TracingExtension;
 #[async_trait::async_trait]
 impl Extension for TracingExtension {
     async fn request(&self, ctx: &ExtensionContext<'_>, next: NextRequest<'_>) -> Response {
-        next.run(ctx)
-            .instrument(tracing::span!(
-                target: "async_graphql::graphql",
-                tracing::Level::INFO,
-                "request",
-            ))
-            .await
+        let span = tracing::span!(
+            target: "async_graphql::graphql",
+            tracing::Level::INFO,
+            "graphql",
+            otel.name = tracing::field::Empty,
+            operation = tracing::field::Empty,
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        );
+
+        let response = next.run(ctx).instrument(span.clone()).await;
+
+        if let Some(error) = response.errors.first() {
+            crate::tracing_context::record_error(&span, &error.message);
+        }
+
+        response
     }
 
     async fn parse_query(
@@ -42,7 +52,7 @@ impl Extension for TracingExtension {
     ) -> ServerResult<ExecutableDocument> {
         let span = tracing::span!(
             target: "async_graphql::graphql",
-            tracing::Level::INFO,
+            tracing::Level::DEBUG,
             "parse_query",
             source = tracing::field::Empty
         );
@@ -65,7 +75,7 @@ impl Extension for TracingExtension {
     ) -> Result<ValidationResult, Vec<ServerError>> {
         let span = tracing::span!(
             target: "async_graphql::graphql",
-            tracing::Level::INFO,
+            tracing::Level::DEBUG,
             "validation"
         );
         next.run(ctx).instrument(span).await
@@ -77,12 +87,13 @@ impl Extension for TracingExtension {
         operation_name: Option<&str>,
         next: NextExecute<'_>,
     ) -> Response {
-        let span = tracing::span!(
-            target: "async_graphql::graphql",
-            tracing::Level::INFO,
-            "execute"
-        );
-        next.run(ctx, operation_name).instrument(span).await
+        let operation = operation_name.unwrap_or("anonymous");
+
+        let span = tracing::Span::current();
+        span.record("otel.name", format!("graphql {operation}"));
+        span.record("operation", operation);
+
+        next.run(ctx, operation_name).await
     }
 
     async fn resolve(

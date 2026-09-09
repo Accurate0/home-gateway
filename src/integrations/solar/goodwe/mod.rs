@@ -109,6 +109,9 @@ impl GoodWeSemsAPI {
         let request = self
             .http
             .request(Method::POST, GET_POWERSTATION_DETAILS_URL)
+            .with_extension(crate::http::UrlTemplate(
+                "/api/v3/PowerStation/GetPlantDetailByPowerstationId",
+            ))
             .form(&{
                 let mut map = HashMap::new();
                 map.insert("powerStationId", &self.powerstation_id);
@@ -173,6 +176,7 @@ impl GoodWeSemsAPI {
         let request = self
             .http
             .request(Method::POST, LOGIN_URL)
+            .with_extension(crate::http::UrlTemplate("/api/v2/Common/CrossLogin"))
             .json(&LoginRequest {
                 account: self.username.clone(),
                 pwd: self.password.clone(),
