@@ -41,10 +41,11 @@ pub fn context_of(traceparent: Option<&str>) -> Option<opentelemetry::Context> {
     let traceparent = traceparent?;
 
     let mut carrier = Carrier::default();
-    carrier.0.insert(TRACEPARENT.to_owned(), traceparent.to_owned());
+    carrier
+        .0
+        .insert(TRACEPARENT.to_owned(), traceparent.to_owned());
 
-    let context =
-        global::get_text_map_propagator(|propagator| propagator.extract(&carrier));
+    let context = global::get_text_map_propagator(|propagator| propagator.extract(&carrier));
 
     Some(context)
 }

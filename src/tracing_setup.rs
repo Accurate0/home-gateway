@@ -48,10 +48,7 @@ impl Default for SampleRatios {
     fn default() -> Self {
         Self {
             default: DEFAULT_SAMPLE_RATIO,
-            by_span: HashMap::from([(
-                MQTT_INGEST_SPAN.to_owned(),
-                DEFAULT_MQTT_SAMPLE_RATIO,
-            )]),
+            by_span: HashMap::from([(MQTT_INGEST_SPAN.to_owned(), DEFAULT_MQTT_SAMPLE_RATIO)]),
         }
     }
 }

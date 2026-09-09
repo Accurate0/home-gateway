@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use home_gateway::tracing_context::{inject_current, record_error, set_parent};
-use home_gateway::tracing_setup::{
-    MQTT_INGEST_SPAN, SampleRatios, SamplingControl, ratio_sampler,
-};
+use home_gateway::tracing_setup::{MQTT_INGEST_SPAN, SampleRatios, SamplingControl, ratio_sampler};
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -84,7 +82,11 @@ fn the_ingest_to_workflow_chain_is_a_single_connected_trace() {
     });
 
     let named = by_name(&spans);
-    assert_eq!(spans.len(), 5, "expected every hop to be exported: {named:?}");
+    assert_eq!(
+        spans.len(),
+        5,
+        "expected every hop to be exported: {named:?}"
+    );
 
     let ingest = &named["mqtt.ingest"];
     let device = &named["device.handle"];
@@ -132,10 +134,7 @@ fn a_detached_actor_span_does_not_adopt_an_ambient_parent() {
         });
     });
 
-    let polls: Vec<_> = spans
-        .iter()
-        .filter(|s| s.name == "solar-actor")
-        .collect();
+    let polls: Vec<_> = spans.iter().filter(|s| s.name == "solar-actor").collect();
 
     assert_eq!(polls.len(), 2);
     assert_ne!(
@@ -379,10 +378,7 @@ const SECRET: &str = "8f2c1d9ab4e7f60351aa27bcd0e4915f";
     "https://www.woolworths.com.au/apis/ui/product/detail/324461",
     "/apis/ui/product/detail/{id}"
 )]
-#[case::nothing_sensitive(
-    "https://uvdata.arpansa.gov.au/xml/uvvalues.xml",
-    "/xml/uvvalues.xml"
-)]
+#[case::nothing_sensitive("https://uvdata.arpansa.gov.au/xml/uvvalues.xml", "/xml/uvvalues.xml")]
 fn a_credential_in_a_url_never_reaches_a_span(#[case] raw: &str, #[case] expected: &str) {
     let url = reqwest::Url::parse(raw).unwrap();
     let redacted = home_gateway::http::redacted_path(&url);

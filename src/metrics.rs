@@ -208,7 +208,9 @@ pub fn record_device_battery_voltage(device_id: String, kind: String, voltage: f
 pub fn record_device_liveness(device_key: &str, age_seconds: f64, stale: bool) {
     let labels = [KeyValue::new("device_id", device_key.to_owned())];
 
-    INSTRUMENTS.device_last_seen_age.record(age_seconds, &labels);
+    INSTRUMENTS
+        .device_last_seen_age
+        .record(age_seconds, &labels);
     INSTRUMENTS.device_stale.record(u64::from(stale), &labels);
 }
 

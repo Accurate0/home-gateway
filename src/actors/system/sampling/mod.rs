@@ -58,10 +58,13 @@ impl Actor for SamplingActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             SamplingMessage::Reevaluate(state) => {
-                tracing::debug!("re-evaluating trace sampling after a {} flag", state.as_str());
+                tracing::debug!(
+                    "re-evaluating trace sampling after a {} flag",
+                    state.as_str()
+                );
 
-                let ratios = tracing_flag::evaluate(&self.shared_actor_state.feature_flag_client)
-                    .await;
+                let ratios =
+                    tracing_flag::evaluate(&self.shared_actor_state.feature_flag_client).await;
 
                 self.shared_actor_state.sampling.replace(ratios);
             }

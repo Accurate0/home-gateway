@@ -55,7 +55,6 @@ impl AdhocTaskActor {
             }
         }
     }
-
 }
 
 #[derive(Default)]

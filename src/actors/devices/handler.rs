@@ -1,7 +1,6 @@
 use crate::actors::root::RootMessage;
 use crate::state::AppState;
 use crate::tracing_context::TracedMessage;
-use tracing::Instrument;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{
@@ -9,6 +8,7 @@ use ractor::{
         routing,
     },
 };
+use tracing::Instrument;
 
 pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 5;
 
@@ -78,7 +78,11 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
         );
         crate::tracing_context::set_parent(&span, msg.traceparent());
 
-        let result = self.0.handle(msg, &mut state.inner).instrument(span.clone()).await;
+        let result = self
+            .0
+            .handle(msg, &mut state.inner)
+            .instrument(span.clone())
+            .await;
 
         match result {
             Ok(()) => {

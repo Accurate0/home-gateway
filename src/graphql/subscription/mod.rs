@@ -56,6 +56,9 @@ fn event_stream(
     .filter_map(move |msg| {
         let keep = filter.matches(&msg);
         let registry = registry.clone();
-        async move { keep.then(|| EventUpdate::from_message(msg, &registry)).flatten() }
+        async move {
+            keep.then(|| EventUpdate::from_message(msg, &registry))
+                .flatten()
+        }
     })
 }

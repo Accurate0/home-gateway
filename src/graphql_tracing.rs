@@ -89,10 +89,7 @@ impl Extension for TracingExtension {
             otel.status_message = tracing::field::Empty,
         );
 
-        let response = next
-            .run(ctx, operation_name)
-            .instrument(span.clone())
-            .await;
+        let response = next.run(ctx, operation_name).instrument(span.clone()).await;
 
         if let Some(error) = response.errors.first() {
             crate::tracing_context::record_error(&span, &error.message);
