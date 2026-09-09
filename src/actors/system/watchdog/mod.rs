@@ -112,7 +112,7 @@ impl Actor for WatchdogActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "watchdog-actor", skip(self, _myself, message, _state), level = Level::TRACE)]
+    #[tracing::instrument(parent = None, name = "watchdog-actor", skip(self, _myself, message, _state), level = Level::DEBUG)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

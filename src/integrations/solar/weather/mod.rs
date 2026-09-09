@@ -44,6 +44,9 @@ impl WeatherAPI {
         let weather_details = self
             .http
             .get(Self::WEATHER_API_DETAILS.replace("{}", geocode))
+            .with_extension(crate::http::UrlTemplate(
+                "/v1/locations/{geocode}/observations",
+            ))
             .send()
             .await?
             .error_for_status()?
@@ -60,6 +63,7 @@ impl WeatherAPI {
         let uv_levels_xml = self
             .http
             .get(Self::UV_LEVELS_XML)
+            .with_extension(crate::http::UrlTemplate("/xml/uvvalues.xml"))
             .send()
             .await?
             .error_for_status()?

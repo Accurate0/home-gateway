@@ -389,6 +389,7 @@ impl MqttIngest {
                     robot_vacuum::RobotVacuumHandler::NAME,
                     robot_vacuum::Message::Valetudo(robot_vacuum::ValetudoEvent {
                         event_id: uuid::Uuid::new_v4(),
+                        traceparent: crate::tracing_context::inject_current(),
                         device_id,
                         leaf,
                         payload,

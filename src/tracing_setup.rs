@@ -84,6 +84,10 @@ impl SamplingControl {
     }
 }
 
+pub fn ratio_sampler(control: SamplingControl) -> Sampler {
+    Sampler::ParentBased(Box::new(RatioSampler { control }))
+}
+
 #[derive(Clone)]
 struct RatioSampler {
     control: SamplingControl,
@@ -198,7 +202,7 @@ pub fn external_tracer(ingest_url: String, control: SamplingControl) -> Tracer {
                 .with_batch_config(batch_config)
                 .build(),
         )
-        .with_sampler(Sampler::ParentBased(Box::new(RatioSampler { control })))
+        .with_sampler(ratio_sampler(control))
         .with_resource(resource)
         .build();
 

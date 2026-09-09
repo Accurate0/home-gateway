@@ -76,7 +76,7 @@ impl Actor for ReconcilerSweeper {
         Ok(())
     }
 
-    #[tracing::instrument(name = "reconciler-sweeper", skip(self, _myself, message, _state), level = Level::DEBUG)]
+    #[tracing::instrument(parent = None, name = "reconciler-sweeper", skip(self, _myself, message, _state), level = Level::DEBUG)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

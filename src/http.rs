@@ -10,17 +10,58 @@ use reqwest_tracing::{
 };
 use tracing::Span;
 
+#[derive(Clone)]
+pub struct UrlTemplate(pub &'static str);
+
+const REDACTED: &str = "{redacted}";
+
+fn placeholder_for(segment: &str) -> Option<&'static str> {
+    if segment.is_empty() {
+        return None;
+    }
+
+    if segment.chars().all(|c| c.is_ascii_digit()) {
+        return Some("{id}");
+    }
+
+    let opaque = segment.len() >= 16
+        && segment
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+
+    opaque.then_some(REDACTED)
+}
+
+pub fn redacted_path(url: &reqwest::Url) -> String {
+    let path = url
+        .path()
+        .split('/')
+        .map(|segment| placeholder_for(segment).unwrap_or(segment))
+        .collect::<Vec<_>>()
+        .join("/");
+
+    if url.query().is_some() {
+        format!("{path}?{REDACTED}")
+    } else {
+        path
+    }
+}
+
 pub struct TimeTrace;
 impl ReqwestOtelSpanBackend for TimeTrace {
     fn on_request_start(req: &Request, extension: &mut http::Extensions) -> Span {
-        let url = req.url().as_str();
         let host = req.url().host_str().unwrap_or("unknown");
+        let template = extension
+            .get::<UrlTemplate>()
+            .map(|template| template.0.to_owned())
+            .unwrap_or_else(|| redacted_path(req.url()));
+
         extension.insert(Instant::now());
 
         reqwest_otel_span!(
-            name = format!("{} {}", req.method(), host),
+            name = format!("{} {}{}", req.method(), host, template),
             req,
-            url = url,
+            url.template = template,
             time_elapsed = tracing::field::Empty,
             time_elapsed_formatted = tracing::field::Empty
         )

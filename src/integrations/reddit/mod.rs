@@ -74,6 +74,7 @@ impl Reddit {
         let body = self
             .client
             .get(url)
+            .with_extension(crate::http::UrlTemplate("/r/{subreddit}/top.rss"))
             .query(&[("t", timespan.as_str()), ("limit", &limit.to_string())])
             .send()
             .await?
@@ -88,7 +89,13 @@ impl Reddit {
 
     #[instrument(skip(self))]
     pub async fn download_image(&self, url: &str) -> Result<Vec<u8>, RedditError> {
-        let resp = self.client.get(url).send().await?.error_for_status()?;
+        let resp = self
+            .client
+            .get(url)
+            .with_extension(crate::http::UrlTemplate("{image}"))
+            .send()
+            .await?
+            .error_for_status()?;
 
         let content_type = resp
             .headers()

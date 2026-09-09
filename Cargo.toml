@@ -97,6 +97,7 @@ name = "integration"
 path = "tests/integration/main.rs"
 
 [dev-dependencies]
+opentelemetry_sdk = { version = "0.32.1", features = ["testing"] }
 pretty_assertions = "1.4.1"
 rstest = "0.26.1"
 insta = "1"

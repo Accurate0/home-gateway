@@ -83,6 +83,9 @@ pub async fn fetch_timetable(
 
     let response = client
         .get(TIMETABLE_URL)
+        .with_extension(crate::http::UrlTemplate(
+            "/journeyplannerservice/v2/REST/DataSets/PerthRestricted/Timetable",
+        ))
         .header("user-agent", USER_AGENT)
         .query(&[
             ("ApiKey", reference_key),
@@ -182,6 +185,7 @@ async fn fetch_estimate(
 
     let response = client
         .post(REALTIME_URL)
+        .with_extension(crate::http::UrlTemplate("/SJP/Trip"))
         .header("user-agent", USER_AGENT)
         .header(
             "authorization",

@@ -207,7 +207,13 @@ impl Transperth {
         &self,
         etag: Option<&str>,
     ) -> Result<Option<GtfsArchive>, TransperthError> {
-        let mut request = self.client.get(GTFS_URL).header("user-agent", USER_AGENT);
+        let mut request = self
+            .client
+            .get(GTFS_URL)
+            .with_extension(crate::http::UrlTemplate(
+                "/TimetablePDFs/GoogleTransit/Production/google_transit.zip",
+            ))
+            .header("user-agent", USER_AGENT);
 
         if let Some(etag) = etag {
             request = request.header("if-none-match", etag);

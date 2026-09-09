@@ -70,6 +70,16 @@ impl crate::tracing_context::TracedMessage for Message {
             Message::QueryLatest { .. } => None,
         }
     }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            Message::NewEvent(event) => match &event.entity {
+                Entity::Zigbee { address, .. } => Some(address),
+                Entity::Esphome { node, .. } => Some(node),
+            },
+            Message::QueryLatest { entity_id, .. } => Some(entity_id),
+        }
+    }
 }
 
 pub struct EnvironmentSensorHandler {

@@ -147,7 +147,7 @@ impl Actor for SunActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "sun-actor", skip(self, myself, message, _state))]
+    #[tracing::instrument(parent = None, name = "sun-actor", skip(self, myself, message, _state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

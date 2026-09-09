@@ -98,6 +98,7 @@ impl HomeAssistant {
         let response = self
             .client
             .post(url)
+            .with_extension(crate::http::UrlTemplate("/api/services/{domain}/{service}"))
             .bearer_auth(&self.token)
             .json(&data)
             .send()
@@ -109,7 +110,13 @@ impl HomeAssistant {
     #[allow(unused)]
     pub async fn get_states(&self) -> Result<Value, HomeAssistantError> {
         let url = format!("{}/api/states", self.base_url);
-        let response = self.client.get(url).bearer_auth(&self.token).send().await?;
+        let response = self
+            .client
+            .get(url)
+            .with_extension(crate::http::UrlTemplate("/api/states"))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
         let response = Self::error_for_status(response).await?;
         Ok(response
             .json()
@@ -120,7 +127,13 @@ impl HomeAssistant {
     #[allow(unused)]
     pub async fn get_state(&self, entity_id: &str) -> Result<Value, HomeAssistantError> {
         let url = format!("{}/api/states/{entity_id}", self.base_url);
-        let response = self.client.get(url).bearer_auth(&self.token).send().await?;
+        let response = self
+            .client
+            .get(url)
+            .with_extension(crate::http::UrlTemplate("/api/states/{entity_id}"))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
         let response = Self::error_for_status(response).await?;
         Ok(response
             .json()

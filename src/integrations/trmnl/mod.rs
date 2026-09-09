@@ -42,6 +42,7 @@ impl Trmnl {
         let resp = self
             .client
             .get(url)
+            .with_extension(crate::http::UrlTemplate("/api/devices"))
             .bearer_auth(&self.api_key)
             .send()
             .await?

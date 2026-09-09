@@ -24,6 +24,14 @@ impl crate::tracing_context::TracedMessage for ControlSwitchMessage {
             ControlSwitchMessage::NewEvent(event) => event.traceparent.as_deref(),
         }
     }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            ControlSwitchMessage::NewEvent(event) => match &event.entity {
+                Entity::Zigbee { address, .. } => Some(address),
+            },
+        }
+    }
 }
 
 pub struct ControlSwitchHandler {

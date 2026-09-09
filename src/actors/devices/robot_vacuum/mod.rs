@@ -16,6 +16,7 @@ pub struct ValetudoEvent {
     pub device_id: String,
     pub leaf: Leaf,
     pub payload: bytes::Bytes,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub struct RoborockUpdate {
@@ -23,6 +24,7 @@ pub struct RoborockUpdate {
     pub device_id: String,
     pub field: RoborockField,
     pub value: String,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum Message {
@@ -30,7 +32,21 @@ pub enum Message {
     Roborock(RoborockUpdate),
 }
 
-impl crate::tracing_context::TracedMessage for Message {}
+impl crate::tracing_context::TracedMessage for Message {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            Message::Valetudo(event) => event.traceparent.as_deref(),
+            Message::Roborock(update) => update.traceparent.as_deref(),
+        }
+    }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            Message::Valetudo(event) => Some(&event.device_id),
+            Message::Roborock(update) => Some(&update.device_id),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct ValetudoState {
@@ -127,6 +143,7 @@ impl RobotVacuumHandler {
             device_id,
             field,
             value,
+            ..
         } = update;
 
         match field {

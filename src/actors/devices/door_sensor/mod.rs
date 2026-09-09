@@ -33,6 +33,14 @@ impl crate::tracing_context::TracedMessage for Message {
             Message::NewEvent(event) => event.traceparent.as_deref(),
         }
     }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            Message::NewEvent(event) => match &event.entity {
+                Entity::Zigbee { address, .. } => Some(address),
+            },
+        }
+    }
 }
 
 pub struct DoorSensorHandler {

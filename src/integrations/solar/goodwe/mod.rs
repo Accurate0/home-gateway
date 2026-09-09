@@ -101,7 +101,7 @@ impl GoodWeSemsAPI {
             .transpose()
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self, login))]
     pub async fn get_solar_data(
         &self,
         login: LoginData,

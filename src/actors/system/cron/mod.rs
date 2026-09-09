@@ -73,7 +73,7 @@ impl Actor for CronActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "cron-actor", skip(self, myself, message, _state))]
+    #[tracing::instrument(parent = None, name = "cron-actor", skip(self, myself, message, _state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

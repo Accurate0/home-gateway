@@ -215,7 +215,7 @@ impl Actor for AwayActor {
         Ok(state)
     }
 
-    #[tracing::instrument(name = "away-actor", skip(self, myself, message, state))]
+    #[tracing::instrument(parent = None, name = "away-actor", skip(self, myself, message, state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

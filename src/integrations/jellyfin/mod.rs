@@ -80,6 +80,7 @@ impl Jellyfin {
         let response = self
             .client
             .get(url)
+            .with_extension(crate::http::UrlTemplate("/Sessions"))
             .header("Authorization", self.auth_header())
             .send()
             .await?;

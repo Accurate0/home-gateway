@@ -17,13 +17,26 @@ pub struct Update {
     pub address: String,
     pub state: String,
     pub attributes: serde_json::Value,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum Message {
     HomeAssistant(Update),
 }
 
-impl crate::tracing_context::TracedMessage for Message {}
+impl crate::tracing_context::TracedMessage for Message {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            Message::HomeAssistant(update) => update.traceparent.as_deref(),
+        }
+    }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            Message::HomeAssistant(update) => Some(&update.address),
+        }
+    }
+}
 
 pub struct MediaPlayerHandler {
     shared_actor_state: AppState,
@@ -42,6 +55,7 @@ impl MediaPlayerHandler {
             address,
             state,
             attributes,
+            ..
         } = update;
 
         let devices = &self.shared_actor_state.devices;

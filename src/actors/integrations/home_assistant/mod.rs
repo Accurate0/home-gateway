@@ -199,6 +199,7 @@ impl HomeAssistantActor {
             device_id: device_id.to_owned(),
             field,
             value: state.to_owned(),
+            traceparent: crate::tracing_context::inject_current(),
         });
 
         if let Err(e) = rpc::cast_factory(RobotVacuumHandler::NAME, message) {
@@ -260,6 +261,7 @@ impl HomeAssistantActor {
             address: entity_id.to_owned(),
             state: state.to_owned(),
             attributes: attributes.clone(),
+            traceparent: crate::tracing_context::inject_current(),
         });
 
         if let Err(e) = rpc::cast_factory(MediaPlayerHandler::NAME, message) {

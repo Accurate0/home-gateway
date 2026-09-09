@@ -75,6 +75,10 @@ pub trait TracedMessage {
     fn traceparent(&self) -> Option<&str> {
         None
     }
+
+    fn subject(&self) -> Option<&str> {
+        None
+    }
 }
 
 pub fn record_error(span: &Span, message: &str) {

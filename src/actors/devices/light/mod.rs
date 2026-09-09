@@ -100,6 +100,27 @@ impl crate::tracing_context::TracedMessage for LightHandlerMessage {
             _ => None,
         }
     }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            LightHandlerMessage::NewEvent(event) => match &event.entity {
+                Entity::Zigbee { address, .. } => Some(address),
+                Entity::Esphome { node, .. } => Some(node),
+            },
+            LightHandlerMessage::QueryPowerState { ieee_addr, .. }
+            | LightHandlerMessage::QueryState { ieee_addr, .. }
+            | LightHandlerMessage::Set { ieee_addr, .. }
+            | LightHandlerMessage::Reapply { ieee_addr, .. }
+            | LightHandlerMessage::TurnOn { ieee_addr }
+            | LightHandlerMessage::TurnOff { ieee_addr }
+            | LightHandlerMessage::Toggle { ieee_addr }
+            | LightHandlerMessage::BrightnessMove { ieee_addr, .. }
+            | LightHandlerMessage::ColourTemperatureMove { ieee_addr, .. }
+            | LightHandlerMessage::SetColourTemperature { ieee_addr, .. }
+            | LightHandlerMessage::SetBrightness { ieee_addr, .. }
+            | LightHandlerMessage::SetColour { ieee_addr, .. } => Some(ieee_addr),
+        }
+    }
 }
 
 pub struct LightHandler {

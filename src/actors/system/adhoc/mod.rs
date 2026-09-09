@@ -105,7 +105,7 @@ impl Actor for AdhocTaskActor {
         })
     }
 
-    #[tracing::instrument(name = "adhoc-task-actor", skip(self, myself, message, _state))]
+    #[tracing::instrument(parent = None, name = "adhoc-task-actor", skip(self, myself, message, _state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

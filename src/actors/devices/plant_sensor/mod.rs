@@ -25,6 +25,12 @@ impl crate::tracing_context::TracedMessage for Message {
             Message::NewEvent(event) => event.traceparent.as_deref(),
         }
     }
+
+    fn subject(&self) -> Option<&str> {
+        match self {
+            Message::NewEvent(event) => Some(&event.node),
+        }
+    }
 }
 
 pub struct PlantSensorHandler {

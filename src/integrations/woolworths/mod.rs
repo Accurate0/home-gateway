@@ -71,13 +71,20 @@ impl Woolworths {
         &self,
         product_id: i64,
     ) -> Result<WoolworthsProductResponse, WoolworthsError> {
-        self.client.get(Self::BASE_URL).send().await?;
+        self.client
+            .get(Self::BASE_URL)
+            .with_extension(crate::http::UrlTemplate("/"))
+            .send()
+            .await?;
 
         let product_url = format!("{}/{}/{}", Self::BASE_URL, Self::PRODUCT_SUFFIX, product_id);
         tracing::info!("fetching woolworths product: {product_id}");
         let resp = self
             .client
             .get(product_url)
+            .with_extension(crate::http::UrlTemplate(
+                "/apis/ui/product/detail/{product_id}",
+            ))
             .send()
             .await?
             .error_for_status()?

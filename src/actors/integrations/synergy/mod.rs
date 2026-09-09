@@ -43,7 +43,7 @@ impl Actor for SynergyActor {
         Ok(())
     }
 
-    #[tracing::instrument(name = "synergy-actor", skip(self, _myself, message, _state))]
+    #[tracing::instrument(parent = None, name = "synergy-actor", skip(self, _myself, message, _state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

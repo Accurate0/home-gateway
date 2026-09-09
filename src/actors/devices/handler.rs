@@ -66,11 +66,13 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
         Job { msg, .. }: Job<(), T::Message>,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
+        let subject = msg.subject().unwrap_or("unknown");
         let span = tracing::info_span!(
             parent: None,
             "device.handle",
-            otel.name = format!("device: {}", T::NAME),
+            otel.name = format!("device: {} {subject}", T::NAME),
             handler = T::NAME,
+            device = subject,
             otel.status_code = tracing::field::Empty,
             otel.status_message = tracing::field::Empty,
         );

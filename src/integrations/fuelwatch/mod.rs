@@ -95,6 +95,7 @@ impl FuelWatch {
         let response = self
             .client
             .get(SITES_URL)
+            .with_extension(crate::http::UrlTemplate("/api/sites"))
             .query(&[("product", PRODUCT_UNLEADED_91)])
             .send()
             .await?;

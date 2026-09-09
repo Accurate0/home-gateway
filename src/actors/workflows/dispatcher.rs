@@ -317,6 +317,7 @@ impl WorkflowDispatcher {
         &self,
         msg: &EventBusMessage,
         settings: &crate::settings::Settings,
+        traceparent: Option<&str>,
     ) -> Option<SolarCurrentStatisticsAverages> {
         if !matches!(msg, EventBusMessage::Solar { .. }) {
             return None;
@@ -333,10 +334,23 @@ impl WorkflowDispatcher {
             return None;
         }
 
-        match queries::statistics(&self.shared_actor_state.db).await {
+        let span = tracing::info_span!(
+            parent: None,
+            "dispatch.solar_averages",
+            event_id = %msg.event_id(),
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        );
+        crate::tracing_context::set_parent(&span, traceparent);
+
+        match queries::statistics(&self.shared_actor_state.db)
+            .instrument(span.clone())
+            .await
+        {
             Ok(statistics) => Some(statistics.averages),
             Err(e) => {
                 tracing::error!("[{}] error reading solar averages: {e}", msg.event_id());
+                crate::tracing_context::record_error(&span, &e.to_string());
                 None
             }
         }
@@ -357,7 +371,9 @@ impl WorkflowDispatcher {
         let settings = self.shared_actor_state.settings.clone();
         let mut vars = msg.vars();
 
-        let averages = self.solar_averages(&msg, &settings).await;
+        let averages = self
+            .solar_averages(&msg, &settings, traceparent.as_deref())
+            .await;
         if let Some(averages) = &averages {
             let watts = |w: Option<f64>| w.map_or_else(String::new, |w| format!("{w:.0}"));
             vars.insert("avg_15m".to_owned(), watts(averages.last_15_mins));

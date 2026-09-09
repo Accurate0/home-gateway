@@ -124,6 +124,9 @@ impl WillyWeather {
         let response = self
             .client
             .get(url)
+            .with_extension(crate::http::UrlTemplate(
+                "/v2/{api_key}/locations/{location_id}/weather.json",
+            ))
             .query(&[("forecasts", "weather,uv"), ("days", &days.to_string())])
             .send()
             .await?;
