@@ -17,6 +17,7 @@ impl WatchdogRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.watchdog.last_seen", err)]
     pub async fn last_seen(&self) -> Result<HashMap<String, LastSeenRow>, sqlx::Error> {
         let rows = sqlx::query!("SELECT device_key, last_seen, alerted_at FROM device_last_seen")
             .fetch_all(&self.db)
@@ -36,6 +37,7 @@ impl WatchdogRepo {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "db.watchdog.mark_alerted", err)]
     pub async fn mark_alerted(
         &self,
         device_key: &str,
@@ -52,6 +54,7 @@ impl WatchdogRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.watchdog.clear_alerted", err)]
     pub async fn clear_alerted(&self, device_key: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "UPDATE device_last_seen SET alerted_at = NULL WHERE device_key = $1",

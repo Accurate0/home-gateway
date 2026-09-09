@@ -1,7 +1,6 @@
 use chrono::DateTime;
 use chrono::Utc;
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 use uuid::Uuid;
 
 pub struct EnvironmentReading {
@@ -54,6 +53,7 @@ impl EnvironmentRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.environment.record", err)]
     pub async fn record(&self, reading: &EnvironmentReading) -> Result<(), sqlx::Error> {
         let now = Utc::now();
         let mut tx = self.db.begin().await?;
@@ -111,6 +111,7 @@ impl EnvironmentRepo {
         tx.commit().await
     }
 
+    #[tracing::instrument(skip_all, name = "db.environment.latest", err)]
     pub async fn latest(
         &self,
         entity_id: &str,
@@ -131,6 +132,7 @@ impl EnvironmentRepo {
             uv_index: row.uv_index,
         }))
     }
+    #[tracing::instrument(skip_all, name = "db.environment.latest_many", fields(keys = keys.len()), err)]
     pub async fn latest_many(
         &self,
         keys: &[String],
@@ -145,7 +147,6 @@ impl EnvironmentRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-temperature", keys = keys.len()))
         .await
     }
 }

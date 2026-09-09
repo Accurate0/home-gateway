@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -27,6 +26,7 @@ impl HomeAssistantRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.home_assistant.append_event", err)]
     pub async fn append_event(
         &self,
         event_id: Uuid,
@@ -45,6 +45,7 @@ impl HomeAssistantRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.home_assistant.upsert_latest", err)]
     pub async fn upsert_latest(
         &self,
         event_id: Uuid,
@@ -68,6 +69,7 @@ impl HomeAssistantRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.home_assistant.latest_many", fields(keys = keys.len()), err)]
     pub async fn latest_many(
         &self,
         keys: &[String],
@@ -82,12 +84,9 @@ impl HomeAssistantRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!(
-            "bulk-get-home-assistant-state",
-            keys = keys.len()
-        ))
         .await
     }
+    #[tracing::instrument(skip_all, name = "db.home_assistant.latest_all", err)]
     pub async fn latest_all(&self) -> Result<Vec<HomeAssistantEventRow>, sqlx::Error> {
         let rows = sqlx::query!(
             r#"SELECT event_id, entity_id, state, updated_at FROM latest_home_assistant_state ORDER BY updated_at DESC"#

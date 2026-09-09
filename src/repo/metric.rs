@@ -11,6 +11,7 @@ impl MetricRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.metric.record", err)]
     pub async fn record(&self, metric: &DeviceMetric) -> Result<(), sqlx::Error> {
         let (numeric, text) = metric.value.columns();
         let mut tx = self.db.begin().await?;

@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 
 #[derive(Clone)]
 pub struct SolarRepo {
@@ -30,6 +29,7 @@ impl SolarRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.solar.append_reading", err)]
     pub async fn append_reading(
         &self,
         current_kwh: f64,
@@ -50,6 +50,7 @@ impl SolarRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.solar.average_for_last_n_minutes", err)]
     pub async fn average_for_last_n_minutes(
         &self,
         minutes: i32,
@@ -60,22 +61,22 @@ impl SolarRepo {
             minutes
         )
         .fetch_optional(&self.db)
-        .instrument(tracing::info_span!("solar_average", time_in_mins = minutes))
         .await?;
 
         Ok(row.and_then(|row| row.avg))
     }
 
+    #[tracing::instrument(skip_all, name = "db.solar.latest", err)]
     pub async fn latest(&self) -> Result<Option<LatestSolarRow>, sqlx::Error> {
         sqlx::query_as!(
             LatestSolarRow,
             "SELECT raw_data, temperature, uv_level FROM solar_data_tsdb ORDER BY time DESC LIMIT 1"
         )
         .fetch_optional(&self.db)
-        .instrument(tracing::info_span!("get_latest_solar_data"))
         .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.solar.yesterday_raw_data", err)]
     pub async fn yesterday_raw_data(&self) -> Result<Option<serde_json::Value>, sqlx::Error> {
         let row = sqlx::query!(
             "SELECT raw_data FROM solar_data_tsdb \
@@ -84,12 +85,12 @@ impl SolarRepo {
              ORDER BY time DESC LIMIT 1"
         )
         .fetch_optional(&self.db)
-        .instrument(tracing::info_span!("get_yesterday_results"))
         .await?;
 
         Ok(row.map(|row| row.raw_data))
     }
 
+    #[tracing::instrument(skip_all, name = "db.solar.buckets_since", err)]
     pub async fn buckets_since(
         &self,
         since: DateTime<Utc>,
@@ -103,10 +104,10 @@ impl SolarRepo {
             since
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("solar_history_since"))
         .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.solar.buckets_last_two_days", err)]
     pub async fn buckets_last_two_days(&self) -> Result<Vec<SolarBucketRow>, sqlx::Error> {
         sqlx::query_as!(
             SolarBucketRow,
@@ -118,10 +119,10 @@ impl SolarRepo {
              GROUP BY bucket_time ORDER BY bucket_time ASC"
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("solar_history_two_days"))
         .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.solar.cached_token", err)]
     pub async fn cached_token(&self) -> Result<Option<CachedTokenRow>, sqlx::Error> {
         sqlx::query_as!(
             CachedTokenRow,
@@ -130,6 +131,7 @@ impl SolarRepo {
         .fetch_optional(&self.db)
         .await
     }
+    #[tracing::instrument(skip_all, name = "db.solar.save_cached_token", err)]
     pub async fn save_cached_token(
         &self,
         login_data: serde_json::Value,

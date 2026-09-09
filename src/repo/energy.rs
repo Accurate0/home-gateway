@@ -18,6 +18,7 @@ impl EnergyRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.energy.record", err)]
     pub async fn record<Tz: chrono::TimeZone>(
         &self,
         energy_used: f64,
@@ -36,6 +37,7 @@ impl EnergyRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.energy.history_since", err)]
     pub async fn history_since(
         &self,
         since: DateTime<Utc>,

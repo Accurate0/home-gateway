@@ -4,8 +4,10 @@ use opentelemetry_sdk::trace::{
     InMemorySpanExporter, SdkTracerProvider, SimpleSpanProcessor, SpanData,
 };
 use serial_test::serial;
+use tracing::Instrument;
 use tracing::instrument::WithSubscriber;
 use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::common::Harness;
 
@@ -33,6 +35,33 @@ where
     provider.force_flush().ok();
 
     exporter.get_finished_spans().unwrap()
+}
+
+static GLOBAL_EXPORTER: std::sync::OnceLock<InMemorySpanExporter> = std::sync::OnceLock::new();
+
+/// sqlx checks whether `sqlx::query` is enabled through tracing's cached
+/// callsite interest, which a scoped subscriber does not re-evaluate. Only a
+/// globally installed subscriber sees those events, so this test path installs
+/// one once for the whole binary.
+fn global_exporter() -> &'static InMemorySpanExporter {
+    GLOBAL_EXPORTER.get_or_init(|| {
+        let exporter = InMemorySpanExporter::default();
+        let provider = SdkTracerProvider::builder()
+            .with_span_processor(SimpleSpanProcessor::new(exporter.clone()))
+            .build();
+
+        let layer = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+        tracing_subscriber::registry()
+            .with(home_gateway::tracing_setup::telemetry_filter(
+                tracing_subscriber::filter::LevelFilter::INFO,
+            ))
+            .with(layer)
+            .init();
+
+        Box::leak(Box::new(provider));
+
+        exporter
+    })
 }
 
 fn request(query: &str) -> async_graphql::Request {
@@ -169,7 +198,7 @@ async fn a_bulk_query_span_reports_its_batch_size() {
 
     let loader = spans
         .iter()
-        .find(|s| s.name == "bulk-get-temperature")
+        .find(|s| s.name == "db.environment.latest_many")
         .unwrap_or_else(|| panic!("no dataloader span; got {:?}", names(&spans)));
 
     assert_eq!(
@@ -177,6 +206,130 @@ async fn a_bulk_query_span_reports_its_batch_size() {
         Some("3"),
         "the batch size is what tells you whether the dataloader batched"
     );
+}
+
+#[tokio::test]
+#[serial]
+async fn every_db_query_is_recorded_on_its_enclosing_span() {
+    let harness = Harness::start().await;
+    seed(&harness).await;
+
+    let repos = harness.state.repos.clone();
+
+    let exporter = global_exporter();
+    exporter.reset();
+
+    async {
+        repos
+            .environment()
+            .latest_many(&["test-room".to_owned()])
+            .await
+            .expect("the bulk read should succeed");
+    }
+    .instrument(tracing::info_span!("caller"))
+    .await;
+
+    let spans = exporter.get_finished_spans().unwrap();
+
+    let (host, query) = spans
+        .iter()
+        .find_map(|span| {
+            span.events
+                .iter()
+                .find(|e| {
+                    e.attributes
+                        .iter()
+                        .any(|kv| kv.key.as_str() == "db.statement")
+                })
+                .map(|event| (span, event))
+        })
+        .unwrap_or_else(|| {
+            panic!(
+                "no sqlx query event on any span; spans were {:?}",
+                spans
+                    .iter()
+                    .map(|s| (
+                        s.name.to_string(),
+                        s.events
+                            .iter()
+                            .map(|e| e.name.to_string())
+                            .collect::<Vec<_>>()
+                    ))
+                    .collect::<Vec<_>>()
+            )
+        });
+
+    assert_eq!(
+        host.name, "db.environment.latest_many",
+        "the query must be recorded on the repo span that issued it"
+    );
+
+    let field = |key: &str| {
+        query
+            .attributes
+            .iter()
+            .find(|kv| kv.key.as_str() == key)
+            .map(|kv| kv.value.as_str().to_string())
+    };
+
+    let statement = field("db.statement").expect("the SQL text");
+    assert!(
+        statement.contains("latest_temperature_sensor"),
+        "the query event must carry the SQL: {statement}"
+    );
+    assert!(
+        field("rows_returned").is_some(),
+        "the query event must carry row counts"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn a_failed_query_marks_its_repo_span_as_errored() {
+    let harness = Harness::start().await;
+
+    sqlx::query("DROP TABLE latest_temperature_sensor")
+        .execute(&harness.db)
+        .await
+        .expect("dropping the table should succeed");
+
+    let repos = harness.state.repos.clone();
+
+    let spans = spans_for(|| async move {
+        let result = repos
+            .environment()
+            .latest_many(&["test-room".to_owned()])
+            .await;
+
+        assert!(result.is_err(), "the query should fail without its table");
+    })
+    .await;
+
+    let span = spans
+        .iter()
+        .find(|s| s.name == "db.environment.latest_many")
+        .unwrap_or_else(|| panic!("no repo span; got {:?}", names(&spans)));
+
+    assert!(
+        matches!(span.status, opentelemetry::trace::Status::Error { .. }),
+        "`err` on the instrument attribute must mark the span, got {:?}",
+        span.status
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn query_events_do_not_reach_the_console() {
+    let filter = home_gateway::tracing_setup::console_filter();
+
+    assert!(
+        !filter.would_enable(
+            home_gateway::tracing_setup::SQLX_QUERY_TARGET,
+            &tracing::Level::DEBUG
+        ),
+        "per-query SQL would flood stdout"
+    );
+    assert!(filter.would_enable("home_gateway::actors", &tracing::Level::INFO));
 }
 
 #[tokio::test]

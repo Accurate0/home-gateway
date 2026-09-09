@@ -11,6 +11,7 @@ impl SunRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.sun.record_fired", err)]
     pub async fn record_fired(
         &self,
         transition: &str,
@@ -30,6 +31,7 @@ impl SunRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.sun.last_fired", err)]
     pub async fn last_fired(
         &self,
         transition: &str,

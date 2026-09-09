@@ -24,7 +24,11 @@ use opentelemetry_semantic_conventions::resource::{
 use prometheus::Registry;
 use std::time::Duration;
 use tracing::{Level, level_filters::LevelFilter};
-use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{Layer, filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
+
+pub const VERSION: &str = env!("HOME_GATEWAY_VERSION");
+
+pub const SQLX_QUERY_TARGET: &str = "sqlx::query";
 
 pub const MQTT_INGEST_SPAN: &str = "mqtt.ingest";
 pub const FORCE_SAMPLE: &str = "force_sample";
@@ -148,7 +152,7 @@ fn telemetry_resource() -> Resource {
         KeyValue::new(TELEMETRY_SDK_VERSION, env!("CARGO_PKG_VERSION").to_string()),
         KeyValue::new(TELEMETRY_SDK_LANGUAGE, "rust".to_string()),
         KeyValue::new(SERVICE_NAME, "home-gateway".to_string()),
-        KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION").to_string()),
+        KeyValue::new(SERVICE_VERSION, VERSION.to_string()),
         KeyValue::new(
             DEPLOYMENT_ENVIRONMENT_NAME,
             if cfg!(debug_assertions) {
@@ -234,6 +238,13 @@ pub fn telemetry_filter(exporter_level: LevelFilter) -> Targets {
         .with_target("opentelemetry_sdk", exporter_level)
         .with_target("ractor", Level::WARN)
         .with_target("async_graphql::dataloader", Level::WARN)
+        .with_target(SQLX_QUERY_TARGET, Level::DEBUG)
+        .with_default(Level::INFO)
+}
+
+pub fn console_filter() -> Targets {
+    Targets::default()
+        .with_target(SQLX_QUERY_TARGET, LevelFilter::OFF)
         .with_default(Level::INFO)
 }
 
@@ -256,14 +267,14 @@ pub fn init() -> SamplingControl {
 
             tracing_subscriber::registry()
                 .with(filter)
-                .with(tracing_subscriber::fmt::layer())
+                .with(tracing_subscriber::fmt::layer().with_filter(console_filter()))
                 .with(tracing_opentelemetry::layer().with_tracer(tracer))
                 .init();
         }
         _ => {
             tracing_subscriber::registry()
                 .with(filter)
-                .with(tracing_subscriber::fmt::layer())
+                .with(tracing_subscriber::fmt::layer().with_filter(console_filter()))
                 .init();
         }
     }
@@ -372,6 +383,20 @@ mod tests {
         );
         assert!(filter.would_enable("ractor::actor", &Level::WARN));
         assert!(filter.would_enable("home_gateway::actors::workflows", &Level::INFO));
+    }
+
+    #[test]
+    fn the_service_version_carries_the_build_commit() {
+        let (crate_version, sha) = VERSION
+            .split_once('-')
+            .unwrap_or_else(|| panic!("expected `<version>-<sha>`, got `{VERSION}`"));
+
+        assert_eq!(crate_version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(sha.len(), 7, "expected a short sha, got `{sha}`");
+        assert!(
+            sha.chars().all(|c| c.is_ascii_hexdigit()),
+            "expected a hex sha, got `{sha}`"
+        );
     }
 
     #[test]

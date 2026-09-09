@@ -1,7 +1,6 @@
 use crate::actors::devices::media_player::state::{Attributes, Prior};
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 use uuid::Uuid;
 
 pub struct MediaPlayerUpdate<'a> {
@@ -45,6 +44,7 @@ impl MediaPlayerRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.media_player.load_prior", err)]
     pub async fn load_prior(&self, device_id: &str) -> Result<Option<Prior>, sqlx::Error> {
         let row = sqlx::query!(
             "SELECT state, media_title FROM media_player_state WHERE device_id = $1",
@@ -59,6 +59,7 @@ impl MediaPlayerRepo {
         }))
     }
 
+    #[tracing::instrument(skip_all, name = "db.media_player.upsert", err)]
     pub async fn upsert(&self, update: &MediaPlayerUpdate<'_>) -> Result<(), sqlx::Error> {
         let attributes = update.attributes;
 
@@ -115,6 +116,7 @@ impl MediaPlayerRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.media_player.latest_many", fields(keys = keys.len()), err)]
     pub async fn latest_many(
         &self,
         keys: &[String],
@@ -132,10 +134,6 @@ impl MediaPlayerRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!(
-            "bulk-get-media-player-state",
-            keys = keys.len()
-        ))
         .await
     }
 }

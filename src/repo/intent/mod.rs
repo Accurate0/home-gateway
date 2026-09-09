@@ -40,6 +40,7 @@ impl IntentRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.intent.replace_pending", err)]
     pub async fn replace_pending(
         &self,
         address: &str,
@@ -78,6 +79,7 @@ impl IntentRepo {
         Ok(id)
     }
 
+    #[tracing::instrument(skip_all, name = "db.intent.claim_due", err)]
     pub async fn claim_due(
         &self,
         grace: TimeDelta,
@@ -123,6 +125,7 @@ impl IntentRepo {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "db.intent.pending_for", err)]
     pub async fn pending_for(
         &self,
         kind: DeviceKind,
@@ -157,6 +160,7 @@ impl IntentRepo {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "db.intent.settle", err)]
     pub async fn settle(&self, ids: &[i64], status: IntentStatus) -> Result<(), sqlx::Error> {
         if ids.is_empty() {
             return Ok(());

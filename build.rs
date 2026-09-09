@@ -94,13 +94,63 @@ fn placeholders(message: &str) -> Vec<&str> {
     names
 }
 
+fn git_short_sha(manifest_dir: &Path) -> Option<String> {
+    println!("cargo:rerun-if-env-changed=GIT_SHA");
+
+    if let Ok(sha) = std::env::var("GIT_SHA") {
+        let sha = sha.trim().to_owned();
+        if !sha.is_empty() {
+            return Some(sha.chars().take(7).collect());
+        }
+    }
+
+    let git_dir = manifest_dir.join(".git");
+    println!("cargo:rerun-if-changed={}", git_dir.join("HEAD").display());
+
+    let head = std::fs::read_to_string(git_dir.join("HEAD")).ok()?;
+    let head = head.trim();
+
+    let sha = match head.strip_prefix("ref: ") {
+        Some(reference) => {
+            let ref_path = git_dir.join(reference);
+            println!("cargo:rerun-if-changed={}", ref_path.display());
+
+            match std::fs::read_to_string(&ref_path) {
+                Ok(sha) => sha.trim().to_owned(),
+                Err(_) => {
+                    let packed = std::fs::read_to_string(git_dir.join("packed-refs")).ok()?;
+                    packed
+                        .lines()
+                        .filter(|line| !line.starts_with(['#', '^']))
+                        .find_map(|line| {
+                            let (sha, name) = line.split_once(' ')?;
+                            (name == reference).then(|| sha.trim().to_owned())
+                        })?
+                }
+            }
+        }
+        None => head.to_owned(),
+    };
+
+    let sha: String = sha.chars().take(7).collect();
+
+    (sha.len() == 7 && sha.chars().all(|c| c.is_ascii_hexdigit())).then_some(sha)
+}
+
 fn main() {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let version = match git_short_sha(manifest_dir) {
+        Some(sha) => format!("{}-{sha}", env!("CARGO_PKG_VERSION")),
+        None => env!("CARGO_PKG_VERSION").to_owned(),
+    };
+    println!("cargo:rustc-env=HOME_GATEWAY_VERSION={version}");
+
     println!("cargo:rerun-if-env-changed=SKIP_SCHEMA_VALIDATION");
     if std::env::var_os("SKIP_SCHEMA_VALIDATION").is_some() {
         return;
     }
 
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let config_dir = manifest_dir.join("config");
     println!("cargo:rerun-if-changed=config");
 

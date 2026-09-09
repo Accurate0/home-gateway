@@ -34,12 +34,14 @@ impl WorkflowRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.enabled", err)]
     pub async fn enabled(&self, slug: &str) -> Result<Option<bool>, sqlx::Error> {
         sqlx::query_scalar!("SELECT enabled FROM workflows WHERE slug = $1", slug)
             .fetch_optional(&self.db)
             .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.set_enabled", err)]
     pub async fn set_enabled(&self, slug: &str, enabled: bool) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO workflows (slug, enabled, updated_at) VALUES ($1, $2, now()) \
@@ -53,12 +55,14 @@ impl WorkflowRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.state_value", err)]
     pub async fn state_value(&self, key: &str) -> Result<Option<String>, sqlx::Error> {
         sqlx::query_scalar!("SELECT value FROM state WHERE key = $1", key)
             .fetch_optional(&self.db)
             .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.clear_state_value", err)]
     pub async fn clear_state_value(&self, key: &str) -> Result<(), sqlx::Error> {
         sqlx::query!("DELETE FROM state WHERE key = $1", key)
             .execute(&self.db)
@@ -67,6 +71,7 @@ impl WorkflowRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.set_state_value", err)]
     pub async fn set_state_value(&self, key: &str, value: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO state (key, value) VALUES ($1, $2) \
@@ -80,6 +85,7 @@ impl WorkflowRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.append_run", err)]
     pub async fn append_run(&self, run: NewWorkflowRun<'_>) -> Result<(), sqlx::Error> {
         let NewWorkflowRun {
             slug,
@@ -109,6 +115,7 @@ impl WorkflowRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.recent_runs", err)]
     pub async fn recent_runs(
         &self,
         slug: Option<&str>,
@@ -142,6 +149,7 @@ impl WorkflowRepo {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.cooldown_ok", err)]
     pub async fn cooldown_ok(&self, name: &str, cooldown: TimeDelta) -> Result<bool, sqlx::Error> {
         let now = Utc::now();
 

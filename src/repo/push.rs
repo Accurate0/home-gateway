@@ -10,12 +10,14 @@ impl PushRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.push.tokens", err)]
     pub async fn tokens(&self) -> Result<Vec<String>, sqlx::Error> {
         sqlx::query_scalar!("SELECT token FROM android_push_tokens")
             .fetch_all(&self.db)
             .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.push.upsert_token", err)]
     pub async fn upsert_token(&self, token: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO android_push_tokens (token) VALUES ($1) ON CONFLICT (token) DO UPDATE SET updated_at = now()",
@@ -27,6 +29,7 @@ impl PushRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.push.delete_token", err)]
     pub async fn delete_token(&self, token: &str) -> Result<(), sqlx::Error> {
         sqlx::query!("DELETE FROM android_push_tokens WHERE token = $1", token)
             .execute(&self.db)

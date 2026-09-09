@@ -1,7 +1,6 @@
 use crate::battery::BatteryChemistry;
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 use uuid::Uuid;
 
 pub struct BatteryReading<'a> {
@@ -41,6 +40,7 @@ impl BatteryRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.battery.record", err)]
     pub async fn record(&self, reading: BatteryReading<'_>) -> Result<(), sqlx::Error> {
         let BatteryReading {
             event_id,
@@ -80,6 +80,7 @@ impl BatteryRepo {
 
         tx.commit().await
     }
+    #[tracing::instrument(skip_all, name = "db.battery.latest_many", fields(keys = keys.len()), err)]
     pub async fn latest_many(&self, keys: &[String]) -> Result<Vec<DeviceBatteryRow>, sqlx::Error> {
         sqlx::query_as!(
             DeviceBatteryRow,
@@ -91,10 +92,10 @@ impl BatteryRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-device-battery", keys = keys.len()))
         .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.battery.history_many", fields(keys = device_ids.len()), err)]
     pub async fn history_many(
         &self,
         device_ids: &[String],
@@ -110,10 +111,6 @@ impl BatteryRepo {
             earliest
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!(
-            "bulk-get-device-battery-history",
-            keys = device_ids.len()
-        ))
         .await
     }
 }

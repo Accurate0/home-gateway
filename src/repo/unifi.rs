@@ -17,6 +17,7 @@ impl UnifiRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.unifi.mapping_for", err)]
     pub async fn mapping_for(
         &self,
         mac_address: &str,
@@ -34,6 +35,7 @@ impl UnifiRepo {
         }))
     }
 
+    #[tracing::instrument(skip_all, name = "db.unifi.append_event", err)]
     pub async fn append_event(
         &self,
         event_id: Uuid,

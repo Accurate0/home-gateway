@@ -10,6 +10,7 @@ const SLOW_STATEMENT_THRESHOLD: Duration = Duration::from_secs(6);
 
 pub async fn connect(database_url: &str) -> anyhow::Result<Pool<Postgres>> {
     let options = PgConnectOptions::from_url(&database_url.parse()?)?
+        .log_statements(log::LevelFilter::Debug)
         .log_slow_statements(log::LevelFilter::Warn, SLOW_STATEMENT_THRESHOLD);
 
     let pool = PgPoolOptions::new()

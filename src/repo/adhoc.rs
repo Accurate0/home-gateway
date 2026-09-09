@@ -30,6 +30,7 @@ impl AdhocRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.adhoc.read_ledger", err)]
     pub async fn read_ledger(&self, ordinal: i64) -> Result<Option<LedgerRow>, sqlx::Error> {
         let row = sqlx::query!(
             "SELECT name, checksum FROM adhoc_task_run WHERE ordinal = $1",
@@ -44,6 +45,7 @@ impl AdhocRepo {
         }))
     }
 
+    #[tracing::instrument(skip_all, name = "db.adhoc.write_ledger", err)]
     pub async fn write_ledger(
         &self,
         tx: &mut Transaction<'static, Postgres>,
@@ -65,6 +67,7 @@ impl AdhocRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.adhoc.record_cron_run", err)]
     pub async fn record_cron_run(
         &self,
         name: &str,
@@ -91,6 +94,7 @@ impl AdhocRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.adhoc.task_runs", err)]
     pub async fn task_runs(&self) -> Result<HashMap<i64, TaskRunRow>, sqlx::Error> {
         let rows =
             sqlx::query!("SELECT ordinal, checksum, completed_at, duration_ms FROM adhoc_task_run")
@@ -112,6 +116,7 @@ impl AdhocRepo {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "db.adhoc.cron_runs", err)]
     pub async fn cron_runs(&self) -> Result<HashMap<String, CronRunRow>, sqlx::Error> {
         let rows = sqlx::query!(
             "SELECT name, last_run_at, duration_ms, rows_affected, outcome FROM adhoc_cron_run"

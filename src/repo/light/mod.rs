@@ -15,6 +15,7 @@ impl LightRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.light.upsert_state_returning_previous", err)]
     pub async fn upsert_state_returning_previous(
         &self,
         ieee_addr: &str,
@@ -70,6 +71,7 @@ impl LightRepo {
         Ok((state, previous))
     }
 
+    #[tracing::instrument(skip_all, name = "db.light.get", err)]
     pub async fn get(&self, ieee_addr: &str) -> Result<Option<LightState>, sqlx::Error> {
         let row = sqlx::query!(
             "SELECT state, brightness, colour_temp, colour FROM light_state WHERE ieee_address = $1",
@@ -86,14 +88,17 @@ impl LightRepo {
         }))
     }
 
+    #[tracing::instrument(skip_all, name = "db.light.is_on", err)]
     pub async fn is_on(&self, ieee_addr: &str) -> Result<Option<bool>, sqlx::Error> {
         Ok(self.get(ieee_addr).await?.map(|state| state.on))
     }
 
+    #[tracing::instrument(skip_all, name = "db.light.record_history", err)]
     pub async fn record_history(&self, sample: LightSample) -> Result<(), sqlx::Error> {
         self.record_history_many(&[sample]).await
     }
 
+    #[tracing::instrument(skip_all, name = "db.light.record_history_many", err)]
     pub async fn record_history_many(&self, samples: &[LightSample]) -> Result<(), sqlx::Error> {
         let mut tx = self.db.begin().await?;
 
@@ -118,6 +123,7 @@ impl LightRepo {
         tx.commit().await
     }
 
+    #[tracing::instrument(skip_all, name = "db.light.profile_all", err)]
     pub async fn profile_all(&self, window: TimeDelta) -> Result<Vec<ProfileBucket>, sqlx::Error> {
         sqlx::query_as!(
             ProfileBucket,

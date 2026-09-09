@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -26,6 +25,7 @@ impl RobotVacuumRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.robot_vacuum.record_valetudo_state", err)]
     pub async fn record_valetudo_state(
         &self,
         event_id: Uuid,
@@ -67,6 +67,7 @@ impl RobotVacuumRepo {
         tx.commit().await
     }
 
+    #[tracing::instrument(skip_all, name = "db.robot_vacuum.upsert_valetudo_attributes", err)]
     pub async fn upsert_valetudo_attributes(
         &self,
         device_id: &str,
@@ -93,6 +94,7 @@ impl RobotVacuumRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.robot_vacuum.record_roborock_status", err)]
     pub async fn record_roborock_status(
         &self,
         event_id: Uuid,
@@ -125,6 +127,7 @@ impl RobotVacuumRepo {
         tx.commit().await
     }
 
+    #[tracing::instrument(skip_all, name = "db.robot_vacuum.record_roborock_battery", err)]
     pub async fn record_roborock_battery(
         &self,
         event_id: Uuid,
@@ -157,6 +160,7 @@ impl RobotVacuumRepo {
         tx.commit().await
     }
 
+    #[tracing::instrument(skip_all, name = "db.robot_vacuum.upsert_roborock_room", err)]
     pub async fn upsert_roborock_room(
         &self,
         device_id: &str,
@@ -175,6 +179,7 @@ impl RobotVacuumRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.robot_vacuum.latest_many", fields(keys = keys.len()), err)]
     pub async fn latest_many(
         &self,
         keys: &[String],
@@ -189,10 +194,6 @@ impl RobotVacuumRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!(
-            "bulk-get-robot-vacuum-state",
-            keys = keys.len()
-        ))
         .await
     }
 }

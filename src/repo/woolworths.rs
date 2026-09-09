@@ -24,6 +24,7 @@ impl WoolworthsRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.woolworths.prices", err)]
     pub async fn prices(&self) -> Result<HashMap<i64, f64>, sqlx::Error> {
         let rows = sqlx::query!("SELECT product_id, price FROM woolworths_product_price")
             .fetch_all(&self.db)
@@ -35,6 +36,7 @@ impl WoolworthsRepo {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "db.woolworths.upsert_price", err)]
     pub async fn upsert_price(
         &self,
         product_id: i64,
@@ -55,6 +57,7 @@ impl WoolworthsRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.woolworths.append_price_history", err)]
     pub async fn append_price_history(
         &self,
         product_id: i64,
@@ -72,6 +75,7 @@ impl WoolworthsRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.woolworths.products", err)]
     pub async fn products(&self) -> Result<Vec<WoolworthsProductRow>, sqlx::Error> {
         sqlx::query_as!(
             WoolworthsProductRow,
@@ -81,6 +85,7 @@ impl WoolworthsRepo {
         .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.woolworths.price_history", err)]
     pub async fn price_history(
         &self,
         product_id: i64,
@@ -98,6 +103,7 @@ impl WoolworthsRepo {
         .fetch_all(&self.db)
         .await
     }
+    #[tracing::instrument(skip_all, name = "db.woolworths.tracked_products", err)]
     pub async fn tracked_products(&self) -> Result<Vec<WoolworthsTrackedProduct>, sqlx::Error> {
         sqlx::query_as!(
             WoolworthsTrackedProduct,

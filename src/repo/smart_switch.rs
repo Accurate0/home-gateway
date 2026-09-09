@@ -21,6 +21,7 @@ impl SmartSwitchRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.smart_switch.append", err)]
     pub async fn append(&self, reading: &SmartSwitchReading) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO smart_switch (event_id, name, ieee_addr, voltage, power, current_f64, energy) VALUES ($1, $2, $3, $4, $5, $6, $7)",

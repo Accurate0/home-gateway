@@ -30,6 +30,7 @@ impl DoorRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.door.append_reading", err)]
     pub async fn append_reading(&self, reading: &DoorReading) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO door_sensor (event_id, name, ieee_addr, contact, battery) VALUES ($1, $2, $3, $4, $5)",
@@ -45,6 +46,7 @@ impl DoorRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.door.append_derived", err)]
     pub async fn append_derived(&self, event: &DerivedDoorEvent) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO derived_door_events (event_id, name, id, ieee_addr, state) VALUES ($1, $2, $3, $4, $5)",
@@ -60,6 +62,7 @@ impl DoorRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.door.latest_derived_per_door", err)]
     pub async fn latest_derived_per_door(
         &self,
     ) -> Result<HashMap<IEEEAddress, DoorState>, sqlx::Error> {

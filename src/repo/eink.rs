@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use tracing::Instrument;
 
 pub struct StoredRender {
     pub image_key: Option<String>,
@@ -25,6 +24,7 @@ impl EinkRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.store_render", err)]
     pub async fn store_render(
         &self,
         device_id: &str,
@@ -46,6 +46,7 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.store_seen", err)]
     pub async fn store_seen(&self, device_id: &str, name: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO eink_display (device_id, name, updated_at) VALUES ($1, $2, now()) \
@@ -59,6 +60,7 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.store_battery", err)]
     pub async fn store_battery(
         &self,
         device_id: &str,
@@ -80,6 +82,7 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.store_next_wake", err)]
     pub async fn store_next_wake(
         &self,
         device_id: &str,
@@ -99,6 +102,7 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.stored_next_wake", err)]
     pub async fn stored_next_wake(
         &self,
         device_id: &str,
@@ -113,6 +117,7 @@ impl EinkRepo {
         Ok(row.and_then(|row| row.next_wake_at))
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.stored_render", err)]
     pub async fn stored_render(
         &self,
         device_id: &str,
@@ -130,6 +135,7 @@ impl EinkRepo {
         }))
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.partial_refresh_count", err)]
     pub async fn partial_refresh_count(&self, device_id: &str) -> Result<i32, sqlx::Error> {
         let count = sqlx::query_scalar!(
             "SELECT partial_refresh_count FROM eink_display WHERE device_id = $1",
@@ -141,6 +147,7 @@ impl EinkRepo {
         Ok(count.unwrap_or(0))
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.increment_partial_refresh_count", err)]
     pub async fn increment_partial_refresh_count(
         &self,
         device_id: &str,
@@ -155,6 +162,7 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.reset_partial_refresh_count", err)]
     pub async fn reset_partial_refresh_count(&self, device_id: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "UPDATE eink_display SET partial_refresh_count = 0 WHERE device_id = $1",
@@ -165,6 +173,7 @@ impl EinkRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.eink.battery_many", fields(keys = keys.len()), err)]
     pub async fn battery_many(&self, keys: &[String]) -> Result<Vec<EinkDisplayRow>, sqlx::Error> {
         sqlx::query_as!(
             EinkDisplayRow,
@@ -176,10 +185,6 @@ impl EinkRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!(
-            "bulk-get-eink-display",
-            keys = keys.len()
-        ))
         .await
     }
 }

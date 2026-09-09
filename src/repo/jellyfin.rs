@@ -32,6 +32,7 @@ impl JellyfinRepo {
         Self { db }
     }
 
+    #[tracing::instrument(skip_all, name = "db.jellyfin.append_event", err)]
     pub async fn append_event(
         &self,
         event_id: Uuid,
@@ -66,6 +67,7 @@ impl JellyfinRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.jellyfin.delete_session", err)]
     pub async fn delete_session(
         &self,
         user_name: &str,
@@ -82,6 +84,7 @@ impl JellyfinRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.jellyfin.clear_sessions", err)]
     pub async fn clear_sessions(&self) -> Result<(), sqlx::Error> {
         sqlx::query!("DELETE FROM jellyfin_state")
             .execute(&self.db)
@@ -90,6 +93,7 @@ impl JellyfinRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.jellyfin.upsert_latest", err)]
     pub async fn upsert_latest(
         &self,
         event_id: Uuid,
@@ -141,6 +145,7 @@ impl JellyfinRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.jellyfin.refresh_latest", err)]
     pub async fn refresh_latest(&self, playing: &Playing) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"UPDATE jellyfin_state
@@ -156,6 +161,7 @@ impl JellyfinRepo {
 
         Ok(())
     }
+    #[tracing::instrument(skip_all, name = "db.jellyfin.sessions", err)]
     pub async fn sessions(&self) -> Result<Vec<JellyfinSessionRow>, sqlx::Error> {
         sqlx::query_as!(
             JellyfinSessionRow,
