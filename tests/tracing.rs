@@ -242,24 +242,25 @@ fn a_device_span_names_the_handler_and_carries_the_device_as_an_attribute() {
     assert_eq!(devices, vec!["0x54ef441000d4f05c", "0x94a081fffe2eedc0"]);
 }
 
+fn graphql_operation_span(operation: &str) -> tracing::Span {
+    tracing::info_span!(
+        parent: None,
+        "graphql",
+        otel.name = format!("graphql {operation}"),
+        operation = operation,
+        otel.status_code = tracing::field::Empty,
+        otel.status_message = tracing::field::Empty,
+    )
+}
+
 #[test]
-fn the_graphql_root_span_is_renamed_to_the_operation_once_it_is_known() {
+fn the_graphql_operation_span_is_the_outermost_exported_graphql_span() {
     let harness = Harness::new(always_on());
 
     let spans = harness.run(|| {
-        let span = tracing::info_span!(
-            parent: None,
-            "graphql",
-            otel.name = tracing::field::Empty,
-            operation = tracing::field::Empty,
-        );
+        let span = graphql_operation_span("EntitiesQuery");
 
         span.in_scope(|| {
-            let operation = "EntitiesQuery";
-            let current = tracing::Span::current();
-            current.record("otel.name", format!("graphql {operation}"));
-            current.record("operation", operation);
-
             let _resolve = tracing::info_span!("resolve").entered();
         });
     });
@@ -269,10 +270,7 @@ fn the_graphql_root_span_is_renamed_to_the_operation_once_it_is_known() {
         .find(|s| !s.parent_span_id.to_string().chars().any(|c| c != '0'))
         .expect("a root span was exported");
 
-    assert_eq!(
-        root.name, "graphql EntitiesQuery",
-        "recording otel.name after creation must rename the exported span"
-    );
+    assert_eq!(root.name, "graphql EntitiesQuery");
 
     let operation = root
         .attributes
@@ -293,19 +291,23 @@ fn the_graphql_root_span_is_renamed_to_the_operation_once_it_is_known() {
 }
 
 #[test]
+fn an_anonymous_operation_still_gets_a_stable_name() {
+    let harness = Harness::new(always_on());
+
+    let spans = harness.run(|| {
+        graphql_operation_span("anonymous").in_scope(|| {});
+    });
+
+    assert_eq!(spans[0].name, "graphql anonymous");
+}
+
+#[test]
 fn a_graphql_error_marks_the_operation_span() {
     let harness = Harness::new(always_on());
 
     let spans = harness.run(|| {
-        let span = tracing::info_span!(
-            parent: None,
-            "graphql",
-            otel.name = tracing::field::Empty,
-            otel.status_code = tracing::field::Empty,
-            otel.status_message = tracing::field::Empty,
-        );
+        let span = graphql_operation_span("BrokenQuery");
         span.in_scope(|| {});
-        span.record("otel.name", "graphql BrokenQuery");
         record_error(&span, "field `nope` not found");
     });
 
@@ -316,6 +318,23 @@ fn a_graphql_error_marks_the_operation_span() {
         matches!(span.status, opentelemetry::trace::Status::Error { .. }),
         "a graphql response carrying errors must mark the span, got {:?}",
         span.status
+    );
+}
+
+#[test]
+fn otel_name_cannot_be_changed_after_a_span_is_entered() {
+    let harness = Harness::new(always_on());
+
+    let spans = harness.run(|| {
+        let span = tracing::info_span!(parent: None, "graphql", otel.name = tracing::field::Empty);
+        span.in_scope(|| {});
+        span.record("otel.name", "graphql TooLate");
+    });
+
+    assert_eq!(
+        spans[0].name, "graphql",
+        "tracing-opentelemetry's update_span drops the name once the span has started, so the \
+         operation name must be known at span creation"
     );
 }
 

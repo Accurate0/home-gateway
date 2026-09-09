@@ -117,6 +117,7 @@ impl Harness {
             devices: devices.clone(),
             db: db.clone(),
             feature_flag_client,
+            sampling: home_gateway::tracing_setup::SamplingControl::default(),
             event_bus: event_bus.clone(),
             handles,
         };

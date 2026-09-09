@@ -67,6 +67,7 @@ fn report(attributes: LightAttributes) {
         LightHandler::NAME,
         LightHandlerMessage::NewEvent(Box::new(NewEvent {
             event_id: Uuid::new_v4(),
+            traceparent: None,
             entity: Entity::Zigbee {
                 address: LAMP.to_owned(),
                 attributes,
@@ -153,6 +154,7 @@ async fn a_smart_switch_report_confirms_the_intent_of_a_switch_acting_as_a_light
         SmartSwitchHandler::NAME,
         smart_switch::Message::NewEvent(smart_switch::NewEvent {
             event_id: Uuid::new_v4(),
+            traceparent: None,
             entity: smart_switch::Entity::Zigbee {
                 address: LAMP.to_owned(),
                 friendly_name: "Test Lamp".to_owned(),
