@@ -18,7 +18,6 @@ impl ExtensionFactory for Tracing {
     }
 }
 
-#[allow(unused)]
 struct TracingExtension;
 
 #[async_trait::async_trait]
@@ -127,8 +126,17 @@ impl Extension for TracingExtension {
         info: ResolveInfo<'_>,
         next: NextResolve<'_>,
     ) -> ServerResult<Option<Value>> {
-        if info.is_for_introspection {
-            return next.run(ctx, info).await;
+        if info.is_for_introspection || info.path_node.parent.is_some() {
+            return next
+                .run(ctx, info)
+                .inspect_err(|err| {
+                    tracing::error!(
+                        target: "async_graphql::graphql",
+                        error = %err.message,
+                        "error",
+                    );
+                })
+                .await;
         }
 
         let span = tracing::span!(

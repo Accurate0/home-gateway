@@ -311,11 +311,12 @@ async fn the_real_extension_produces_a_named_operation_with_phase_and_field_span
     );
     assert!(
         names.contains(&"TestQuery.lamps".to_owned()),
-        "a span per resolved field, named by schema coordinate: {names:?}"
+        "the top-level field gets a span, named by schema coordinate: {names:?}"
     );
     assert!(
-        names.contains(&"Lamp.name".to_owned()),
-        "nested fields get their own span: {names:?}"
+        !names.contains(&"Lamp.name".to_owned()),
+        "nested leaf resolvers are microsecond struct reads and must not each get a \
+         span; the top-level field span already covers their subtree: {names:?}"
     );
 
     let parse = spans

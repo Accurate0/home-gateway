@@ -9,4 +9,5 @@ mod ingest;
 mod reconciler;
 mod repo;
 mod solar;
+mod tracing;
 mod workflows;
