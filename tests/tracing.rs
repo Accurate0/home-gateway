@@ -329,7 +329,10 @@ async fn the_real_extension_produces_a_named_operation_with_phase_and_field_span
             .map(|kv| kv.value.as_str().to_string())
     };
 
-    assert_eq!(attr(parse, "operation").as_deref(), Some("DashboardEntitiesQuery"));
+    assert_eq!(
+        attr(parse, "operation").as_deref(),
+        Some("DashboardEntitiesQuery")
+    );
     assert_eq!(attr(parse, "fields").as_deref(), Some("lamps"));
 
     let lamps = spans
