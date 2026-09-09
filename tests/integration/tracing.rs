@@ -107,9 +107,7 @@ async fn a_graphql_query_produces_one_span_per_top_level_field() {
 
     let nested: Vec<_> = names
         .iter()
-        .filter(|n| {
-            n.starts_with("EnvironmentEntity.") || n.starts_with('[') || n.contains("].")
-        })
+        .filter(|n| n.starts_with("EnvironmentEntity.") || n.starts_with('[') || n.contains("]."))
         .collect();
     assert!(
         nested.is_empty(),
