@@ -102,6 +102,7 @@ impl Actor for AlarmActor {
                             event_id,
                             workflow,
                             vars: HashMap::new(),
+                            traceparent: crate::tracing_context::inject_current(),
                         };
 
                         rpc::cast_factory(WorkflowWorker::NAME, message)?;

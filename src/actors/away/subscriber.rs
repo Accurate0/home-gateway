@@ -1,4 +1,4 @@
-use crate::event_bus::{EventBusMessage, EventSubscriber};
+use crate::event_bus::{BusEvent, EventBusMessage, EventSubscriber};
 use crate::settings::SettingsContainer;
 
 use super::AwayMessage;
@@ -12,8 +12,8 @@ impl EventSubscriber for AwaySubscriber {
 
     const KINDS: &'static [&'static str] = &["mode"];
 
-    fn to_actor_message(&self, event: &EventBusMessage) -> Option<AwayMessage> {
-        match event {
+    fn to_actor_message(&self, event: &BusEvent) -> Option<AwayMessage> {
+        match &event.message {
             EventBusMessage::Mode { mode, active, .. } if self.settings.away.arms_on(mode) => {
                 Some(AwayMessage::Arm(*active))
             }

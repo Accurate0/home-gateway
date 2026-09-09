@@ -14,10 +14,11 @@ pub struct TimeTrace;
 impl ReqwestOtelSpanBackend for TimeTrace {
     fn on_request_start(req: &Request, extension: &mut http::Extensions) -> Span {
         let url = req.url().as_str();
+        let host = req.url().host_str().unwrap_or("unknown");
         extension.insert(Instant::now());
 
         reqwest_otel_span!(
-            name = format!("{} {}", req.method(), url),
+            name = format!("{} {}", req.method(), host),
             req,
             url = url,
             time_elapsed = tracing::field::Empty,

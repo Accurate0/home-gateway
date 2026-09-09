@@ -53,6 +53,8 @@ impl ReconcilerWorker {
 
         match &intent.attributes {
             IntentAttributes::Light(attributes) => {
+                crate::metrics::record_reconciler_retry(intent.kind().as_str());
+
                 rpc::cast_factory(
                     LightHandler::NAME,
                     LightHandlerMessage::Reapply {
@@ -84,6 +86,8 @@ impl ReconcilerWorker {
             intent.address,
             intent.attempts,
         );
+        crate::tracing_context::record_current_error("intent was never confirmed");
+        crate::metrics::record_reconciler_give_up(intent.kind().as_str(), &intent.address);
 
         if let Err(e) = self
             .shared_actor_state
@@ -127,7 +131,11 @@ impl ractor::factory::Worker for ReconcilerWorker {
         Ok(())
     }
 
-    #[tracing::instrument(name = "reconciler-worker", skip(self, _wid, _factory, msg, _state))]
+    #[tracing::instrument(
+        name = "reconciler-worker",
+        skip(self, _wid, _factory, msg, _state),
+        fields(otel.status_code = tracing::field::Empty, otel.status_message = tracing::field::Empty)
+    )]
     async fn handle(
         &self,
         _wid: WorkerId,

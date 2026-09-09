@@ -32,6 +32,7 @@ pub async fn workflow_execute(
         event_id: uuid::Uuid::new_v4(),
         workflow: payload.workflow,
         vars: HashMap::new(),
+        traceparent: crate::tracing_context::inject_current(),
     };
 
     if let Err(e) = rpc::cast_factory(WorkflowWorker::NAME, message) {

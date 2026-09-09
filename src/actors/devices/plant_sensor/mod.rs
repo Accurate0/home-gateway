@@ -12,10 +12,19 @@ pub struct NewEvent {
     /// esphome sensor object_id that produced this reading (e.g. `soil_moisture`).
     pub object_id: String,
     pub value: f64,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum Message {
     NewEvent(NewEvent),
+}
+
+impl crate::tracing_context::TracedMessage for Message {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            Message::NewEvent(event) => event.traceparent.as_deref(),
+        }
+    }
 }
 
 pub struct PlantSensorHandler {

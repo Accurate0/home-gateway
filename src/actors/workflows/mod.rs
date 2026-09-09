@@ -70,6 +70,7 @@ pub enum WorkflowWorkerMessage {
         event_id: Uuid,
         workflow: Workflow,
         vars: HashMap<String, String>,
+        traceparent: crate::tracing_context::TraceParent,
     },
 }
 
@@ -501,7 +502,6 @@ impl Worker for WorkflowWorker {
         Ok(())
     }
 
-    #[tracing::instrument(name = "workflow-worker", skip(self, _wid, _factory, msg, _state))]
     async fn handle(
         &self,
         _wid: WorkerId,
@@ -514,12 +514,22 @@ impl Worker for WorkflowWorker {
                 event_id,
                 workflow,
                 vars,
+                traceparent,
             } => {
+                let span = tracing::info_span!(
+                    parent: None,
+                    "workflow-worker",
+                    workflow = workflow.name,
+                    event_id = %event_id,
+                );
+                crate::tracing_context::set_parent(&span, traceparent.as_deref());
+
                 let result = timed_async(|| async {
                     self.execute_workflow(event_id, workflow, &vars)
                         .await
                         .map_err(anyhow::Error::from)
                 })
+                .instrument(span)
                 .await;
 
                 if let Err(e) = result {

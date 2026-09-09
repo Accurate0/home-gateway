@@ -1,16 +1,18 @@
+pub mod subscriber;
+
 use std::time::Duration;
 
 use ractor::Actor;
 use rand::RngExt;
-use tokio::sync::broadcast::error::RecvError;
 
 use crate::adhoc::cron_task::AdhocCronTask;
 use crate::adhoc::runner::{run_cron, run_pending};
 use crate::adhoc::{cron_registry, registry};
-use crate::integrations::feature_flag::ProviderEvent;
+use crate::event_bus::{Recipient, Subscription};
 use crate::state::AppState;
 
-const RESUBSCRIBE_BACKOFF: Duration = Duration::from_secs(30);
+use subscriber::AdhocSubscriber;
+
 const CRON_JITTER_SECS: u64 = 60;
 
 pub enum AdhocTaskActorMessage {
@@ -54,66 +56,16 @@ impl AdhocTaskActor {
         }
     }
 
-    fn watch_flags(myself: ractor::ActorRef<AdhocTaskActorMessage>, state: AppState) {
-        tokio::spawn(async move {
-            let mut events = match state.feature_flag_client.subscribe() {
-                Some(events) => events,
-                None => {
-                    tracing::debug!("no live flag provider, adhoc watcher relies on the interval");
+}
 
-                    return;
-                }
-            };
-
-            loop {
-                match events.recv().await {
-                    Ok(ProviderEvent::Ready) => {
-                        tracing::info!("flag provider ready, rechecking adhoc queue");
-                        let _ = myself.cast(AdhocTaskActorMessage::Recheck);
-                    }
-                    Ok(ProviderEvent::ConfigurationChanged { version }) => {
-                        tracing::info!(
-                            "flag configuration changed to version {version}, rechecking adhoc queue"
-                        );
-                        let _ = myself.cast(AdhocTaskActorMessage::Recheck);
-                    }
-                    Ok(ProviderEvent::Stale) => {
-                        tracing::warn!("flag provider is stale, holding adhoc queue where it is");
-                    }
-                    Ok(ProviderEvent::Error) => {
-                        tracing::warn!("flag provider errored, holding adhoc queue where it is");
-                    }
-                    Err(RecvError::Lagged(n)) => {
-                        tracing::warn!("missed {n} flag events, rechecking adhoc queue");
-                        let _ = myself.cast(AdhocTaskActorMessage::Recheck);
-                    }
-                    Err(RecvError::Closed) => {
-                        tracing::warn!("flag event stream closed, resubscribing after backoff");
-                        tokio::time::sleep(RESUBSCRIBE_BACKOFF).await;
-
-                        match state.feature_flag_client.subscribe() {
-                            Some(next) => {
-                                events = next;
-                                let _ = myself.cast(AdhocTaskActorMessage::Recheck);
-                            }
-                            None => {
-                                tracing::error!(
-                                    "flag provider is gone, adhoc watcher falling back to the interval"
-                                );
-
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
+#[derive(Default)]
+pub struct AdhocTaskActorState {
+    _subscription: Subscription,
 }
 
 impl Actor for AdhocTaskActor {
     type Msg = AdhocTaskActorMessage;
-    type State = ();
+    type State = AdhocTaskActorState;
     type Arguments = ();
 
     async fn pre_start(
@@ -130,7 +82,12 @@ impl Actor for AdhocTaskActor {
             .unwrap_or(Duration::from_secs(900));
 
         myself.send_interval(interval, || AdhocTaskActorMessage::Recheck);
-        Self::watch_flags(myself.clone(), self.shared_actor_state.clone());
+
+        let subscription = self.shared_actor_state.event_bus.register(
+            Self::NAME,
+            Recipient::Actor(myself.clone()),
+            AdhocSubscriber,
+        );
 
         for task in cron_registry() {
             tracing::info!(
@@ -143,7 +100,9 @@ impl Actor for AdhocTaskActor {
 
         let _ = myself.cast(AdhocTaskActorMessage::Recheck);
 
-        Ok(())
+        Ok(AdhocTaskActorState {
+            _subscription: subscription,
+        })
     }
 
     #[tracing::instrument(name = "adhoc-task-actor", skip(self, myself, message, _state))]

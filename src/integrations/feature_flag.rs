@@ -7,6 +7,70 @@ use openfeature_provider::{EvaluationMode, FeatureFlagProvider};
 
 pub use openfeature_provider::ProviderEvent;
 use tokio::sync::broadcast;
+use tokio::sync::broadcast::error::RecvError;
+use uuid::Uuid;
+
+use crate::event_bus::{EventBus, EventBusMessage, FeatureFlagState};
+
+const RESUBSCRIBE_BACKOFF: std::time::Duration = std::time::Duration::from_secs(5);
+
+pub async fn publish_provider_events(client: FeatureFlagClient, event_bus: EventBus) {
+    let publish = |state: FeatureFlagState, version: Option<String>| {
+        tracing::info!(
+            "feature flag provider is {} (version {})",
+            state.as_str(),
+            version.as_deref().unwrap_or("unknown")
+        );
+
+        event_bus.publish_detached(EventBusMessage::FeatureFlag {
+            event_id: Uuid::new_v4(),
+            state,
+            version,
+        });
+    };
+
+    publish(FeatureFlagState::Ready, None);
+
+    let mut events = match client.subscribe() {
+        Some(events) => events,
+        None => {
+            tracing::debug!("no live flag provider, publishing no further flag events");
+
+            return;
+        }
+    };
+
+    loop {
+        match events.recv().await {
+            Ok(ProviderEvent::Ready) => publish(FeatureFlagState::Ready, None),
+            Ok(ProviderEvent::ConfigurationChanged { version }) => {
+                publish(FeatureFlagState::Changed, Some(version.to_string()))
+            }
+            Ok(ProviderEvent::Stale) => publish(FeatureFlagState::Stale, None),
+            Ok(ProviderEvent::Error) => publish(FeatureFlagState::Error, None),
+            Err(RecvError::Lagged(n)) => {
+                tracing::warn!("missed {n} flag events, treating it as a change");
+                publish(FeatureFlagState::Changed, None);
+            }
+            Err(RecvError::Closed) => {
+                tracing::warn!("flag event stream closed, resubscribing after backoff");
+                tokio::time::sleep(RESUBSCRIBE_BACKOFF).await;
+
+                match client.subscribe() {
+                    Some(next) => {
+                        events = next;
+                        publish(FeatureFlagState::Changed, None);
+                    }
+                    None => {
+                        tracing::error!("flag provider is gone, stopping the flag watcher");
+
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct FeatureFlagClient {

@@ -39,6 +39,7 @@ pub struct SetRequest {
 pub struct NewEvent {
     pub event_id: Uuid,
     pub entity: Entity,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum LightHandlerMessage {
@@ -90,6 +91,15 @@ pub enum LightHandlerMessage {
         ieee_addr: IEEEAddress,
         hex: String,
     },
+}
+
+impl crate::tracing_context::TracedMessage for LightHandlerMessage {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            LightHandlerMessage::NewEvent(event) => event.traceparent.as_deref(),
+            _ => None,
+        }
+    }
 }
 
 pub struct LightHandler {

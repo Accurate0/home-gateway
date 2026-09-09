@@ -4,14 +4,14 @@ use ractor::ActorRef;
 
 use crate::actors::system::rpc;
 
-use super::message::EventBusMessage;
+use super::message::BusEvent;
 
 pub trait EventSubscriber: Send + Sync + 'static {
     type Msg: ractor::Message;
 
     const KINDS: &'static [&'static str];
 
-    fn to_actor_message(&self, event: &EventBusMessage) -> Option<Self::Msg>;
+    fn to_actor_message(&self, event: &BusEvent) -> Option<Self::Msg>;
 }
 
 pub enum Recipient<M: ractor::Message> {
@@ -30,7 +30,7 @@ pub struct Route {
     pub id: u64,
     pub label: &'static str,
     pub kinds: &'static [&'static str],
-    pub deliver: Box<dyn Fn(&EventBusMessage) -> Outcome + Send + Sync>,
+    pub deliver: Box<dyn Fn(&BusEvent) -> Outcome + Send + Sync>,
 }
 
 pub fn route<S: EventSubscriber>(
@@ -107,7 +107,7 @@ impl Default for Subscription {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event_bus::EventBus;
+    use crate::event_bus::{EventBus, EventBusMessage};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct Counter {
@@ -119,7 +119,7 @@ mod tests {
 
         const KINDS: &'static [&'static str] = &["cron"];
 
-        fn to_actor_message(&self, _event: &EventBusMessage) -> Option<()> {
+        fn to_actor_message(&self, _event: &BusEvent) -> Option<()> {
             self.seen.fetch_add(1, Ordering::Relaxed);
 
             None

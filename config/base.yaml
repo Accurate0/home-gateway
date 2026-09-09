@@ -31,7 +31,7 @@ reconciler:
   batch_size: 64
 
 watchdog:
-  enabled: false
+  enabled: true
   timeout: 30m
   check_interval: 5m
   realert_after: 6h

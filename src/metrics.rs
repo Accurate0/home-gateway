@@ -42,6 +42,14 @@ struct Instruments {
     actor_restarts_total: Counter<u64>,
     /// Device handler message failures, labelled by handler name.
     device_handler_errors_total: Counter<u64>,
+    /// Seconds since a watchdog device last reported, labelled by device key.
+    device_last_seen_age: Gauge<f64>,
+    /// Whether a watchdog device is past its timeout (1) or reporting (0).
+    device_stale: Gauge<u64>,
+    /// Reconciler command re-drives, labelled by device kind.
+    reconciler_retries_total: Counter<u64>,
+    /// Reconciler commands abandoned after `max_attempts`, by kind and device.
+    reconciler_give_ups_total: Counter<u64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -106,6 +114,22 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
         device_handler_errors_total: meter
             .u64_counter("home_gateway_device_handler_errors_total")
             .with_description("Device handler message failures, labelled by handler")
+            .build(),
+        device_last_seen_age: meter
+            .f64_gauge("home_gateway_device_last_seen_age_seconds")
+            .with_description("Seconds since a watchdog device last reported")
+            .build(),
+        device_stale: meter
+            .u64_gauge("home_gateway_device_stale")
+            .with_description("Whether a watchdog device is past its timeout")
+            .build(),
+        reconciler_retries_total: meter
+            .u64_counter("home_gateway_reconciler_retries_total")
+            .with_description("Reconciler command re-drives by device kind")
+            .build(),
+        reconciler_give_ups_total: meter
+            .u64_counter("home_gateway_reconciler_give_ups_total")
+            .with_description("Reconciler commands abandoned after max_attempts")
             .build(),
     }
 });
@@ -176,6 +200,32 @@ pub fn record_device_battery_voltage(device_id: String, kind: String, voltage: f
         &[
             KeyValue::new("device_id", device_id),
             KeyValue::new("kind", kind),
+        ],
+    );
+}
+
+/// Record how long a watchdog device has been silent, and whether that is stale.
+pub fn record_device_liveness(device_key: &str, age_seconds: f64, stale: bool) {
+    let labels = [KeyValue::new("device_id", device_key.to_owned())];
+
+    INSTRUMENTS.device_last_seen_age.record(age_seconds, &labels);
+    INSTRUMENTS.device_stale.record(u64::from(stale), &labels);
+}
+
+/// The reconciler re-drove an unconfirmed command.
+pub fn record_reconciler_retry(kind: &str) {
+    INSTRUMENTS
+        .reconciler_retries_total
+        .add(1, &[KeyValue::new("kind", kind.to_owned())]);
+}
+
+/// The reconciler abandoned a command after exhausting its attempts.
+pub fn record_reconciler_give_up(kind: &str, device_id: &str) {
+    INSTRUMENTS.reconciler_give_ups_total.add(
+        1,
+        &[
+            KeyValue::new("kind", kind.to_owned()),
+            KeyValue::new("device_id", device_id.to_owned()),
         ],
     );
 }

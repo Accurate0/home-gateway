@@ -72,6 +72,7 @@ impl ZigbeeRole for door_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         door_sensor::Message::NewEvent(door_sensor::NewEvent {
             event_id,
+            traceparent: crate::tracing_context::inject_current(),
             entity: self,
         })
     }
@@ -117,6 +118,7 @@ impl ZigbeeRole for environment_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         environment_sensor::Message::NewEvent(Box::new(environment_sensor::NewEvent {
             event_id,
+            traceparent: crate::tracing_context::inject_current(),
             entity: self,
         }))
     }
@@ -175,6 +177,7 @@ impl ZigbeeRole for light::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
             event_id,
+            traceparent: crate::tracing_context::inject_current(),
             entity: self,
         }))
     }
@@ -225,6 +228,7 @@ impl ZigbeeRole for smart_switch::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         smart_switch::Message::NewEvent(smart_switch::NewEvent {
             event_id,
+            traceparent: crate::tracing_context::inject_current(),
             entity: self,
         })
     }
@@ -260,6 +264,7 @@ impl ZigbeeRole for presence_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
             event_id,
+            traceparent: crate::tracing_context::inject_current(),
             entity: self,
         })
     }
@@ -297,6 +302,7 @@ impl ZigbeeRole for control_switch::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
             event_id,
+            traceparent: crate::tracing_context::inject_current(),
             entity: self,
         })
     }

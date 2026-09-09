@@ -17,7 +17,7 @@ pub mod subscriber;
 
 pub use bus::EventBus;
 pub use filter::{EventFilter, FilterSegment};
-pub use message::EventBusMessage;
+pub use message::{BusEvent, EventBusMessage, FeatureFlagState};
 pub use playback::PlaybackState;
 pub use reading::{SensorMetric, SensorReading, metric_var_name};
 pub use solar_metric::SolarMetric;

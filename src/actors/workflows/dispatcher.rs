@@ -19,7 +19,8 @@ use tracing::Instrument;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage, conditions},
     event_bus::{
-        EventBusMessage, EventSubscriber, Recipient, SensorMetric, SolarMetric, Subscription,
+        BusEvent, EventBusMessage, EventSubscriber, Recipient, SensorMetric, SolarMetric,
+        Subscription,
     },
     integrations::solar::{queries, types::SolarCurrentStatisticsAverages},
     settings::{TriggerMatcher, Workflow},
@@ -33,11 +34,11 @@ pub struct WorkflowDispatcher {
 pub struct DispatcherSubscriber;
 
 impl EventSubscriber for DispatcherSubscriber {
-    type Msg = EventBusMessage;
+    type Msg = BusEvent;
 
     const KINDS: &'static [&'static str] = EventBusMessage::KINDS;
 
-    fn to_actor_message(&self, event: &EventBusMessage) -> Option<Self::Msg> {
+    fn to_actor_message(&self, event: &BusEvent) -> Option<Self::Msg> {
         Some(event.clone())
     }
 }
@@ -343,9 +344,14 @@ impl WorkflowDispatcher {
 
     async fn handle(
         &self,
-        msg: EventBusMessage,
+        event: BusEvent,
         state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
+        let BusEvent {
+            traceparent,
+            message: msg,
+        } = event;
+
         let event_id = msg.event_id();
         crate::metrics::record_event(msg.kind());
         let settings = self.shared_actor_state.settings.clone();
@@ -381,11 +387,15 @@ impl WorkflowDispatcher {
             }
 
             let trigger_span = tracing::info_span!(
+                parent: None,
                 "trigger.evaluate",
                 otel.name = format!("trigger: {}", workflow.name),
                 trigger = workflow.name,
                 event_kind = msg.kind(),
+                event_id = %event_id,
             );
+            crate::tracing_context::set_parent(&trigger_span, traceparent.as_deref());
+
             self.evaluate_trigger(event_id, workflow, &subject, &vars, state, pending)
                 .instrument(trigger_span)
                 .await?;
@@ -543,6 +553,7 @@ impl WorkflowDispatcher {
             event_id,
             workflow,
             vars,
+            traceparent: crate::tracing_context::inject_current(),
         };
 
         if let Err(e) = rpc::cast_factory(WorkflowWorker::NAME, message) {
@@ -554,7 +565,7 @@ impl WorkflowDispatcher {
 }
 
 impl Actor for WorkflowDispatcher {
-    type Msg = EventBusMessage;
+    type Msg = BusEvent;
     type State = WorkflowDispatcherState;
     type Arguments = ();
 
@@ -583,20 +594,7 @@ impl Actor for WorkflowDispatcher {
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        // Root span per event: `parent: None` detaches from any span ractor
-        // re-enters from the `send_message` call site, so each dispatched event
-        // is its own trace rather than all sharing the bridge task's context.
-        let span = tracing::info_span!(
-            parent: None,
-            "dispatch_event",
-            event_kind = message.kind(),
-            event_id = %message.event_id(),
-        );
-
-        if let Err(e) = WorkflowDispatcher::handle(self, message, state)
-            .instrument(span)
-            .await
-        {
+        if let Err(e) = WorkflowDispatcher::handle(self, message, state).await {
             tracing::error!("error while dispatching event: {e}");
         }
 

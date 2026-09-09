@@ -90,6 +90,7 @@ impl WorkflowsMutation {
             event_id: Uuid::new_v4(),
             workflow,
             vars: HashMap::new(),
+            traceparent: crate::tracing_context::inject_current(),
         };
 
         rpc::cast_factory(WorkflowWorker::NAME, message)

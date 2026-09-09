@@ -29,6 +29,7 @@ use crate::actors::system::{
     mqtt_ingest::MqttIngest,
     push::PushWorker,
     reconciler::{ReconcilerSweeper, ReconcilerWorker},
+    sampling::SamplingActor,
     watchdog::WatchdogActor,
 };
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
@@ -175,6 +176,7 @@ pub static ACTORS: &[ActorSpec] = &[
             })
         },
     },
+    plain!(SamplingActor),
     plain!(SynergyActor),
     plain!(UnifiConnectedClientHandler),
     plain!(WatchdogActor),

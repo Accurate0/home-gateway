@@ -165,6 +165,64 @@ pub enum EventBusMessage {
         attributes: IntentAttributes,
         attempts: i32,
     },
+    FeatureFlag {
+        event_id: Uuid,
+        state: FeatureFlagState,
+        version: Option<String>,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeatureFlagState {
+    Ready,
+    Changed,
+    Stale,
+    Error,
+}
+
+impl FeatureFlagState {
+    pub fn should_reevaluate(&self) -> bool {
+        matches!(self, Self::Ready | Self::Changed)
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ready => "ready",
+            Self::Changed => "changed",
+            Self::Stale => "stale",
+            Self::Error => "error",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BusEvent {
+    pub traceparent: crate::tracing_context::TraceParent,
+    pub message: EventBusMessage,
+}
+
+impl BusEvent {
+    pub fn current(message: EventBusMessage) -> Self {
+        Self {
+            traceparent: crate::tracing_context::inject_current(),
+            message,
+        }
+    }
+
+    pub fn detached(message: EventBusMessage) -> Self {
+        Self {
+            traceparent: None,
+            message,
+        }
+    }
+
+    pub fn event_id(&self) -> Uuid {
+        self.message.event_id()
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.message.kind()
+    }
 }
 
 impl EventBusMessage {
@@ -187,7 +245,8 @@ impl EventBusMessage {
             | EventBusMessage::Jellyfin { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
             | EventBusMessage::Solar { event_id, .. }
-            | EventBusMessage::CommandFailed { event_id, .. } => *event_id,
+            | EventBusMessage::CommandFailed { event_id, .. }
+            | EventBusMessage::FeatureFlag { event_id, .. } => *event_id,
         }
     }
 
@@ -210,6 +269,7 @@ impl EventBusMessage {
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
             EventBusMessage::CommandFailed { .. } => "command_failed",
+            EventBusMessage::FeatureFlag { .. } => "feature_flag",
         }
     }
 
@@ -253,6 +313,7 @@ impl EventBusMessage {
             EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
             EventBusMessage::CommandFailed { address, .. } => address.clone(),
+            EventBusMessage::FeatureFlag { state, .. } => state.as_str().to_owned(),
         }
     }
 
@@ -458,6 +519,10 @@ impl EventBusMessage {
                 ),
                 ("kind".to_owned(), kind.as_str().to_owned()),
                 ("attempts".to_owned(), attempts.to_string()),
+            ]),
+            EventBusMessage::FeatureFlag { state, version, .. } => HashMap::from([
+                ("state".to_owned(), state.as_str().to_owned()),
+                ("version".to_owned(), version.clone().unwrap_or_default()),
             ]),
         }
     }

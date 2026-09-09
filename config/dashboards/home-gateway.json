@@ -343,6 +343,343 @@
      "legendFormat": "{{topic_kind}}"
     }
    ]
+  },
+  {
+   "id": 17,
+   "type": "row",
+   "title": "Reliability",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
+   "panels": []
+  },
+  {
+   "id": 18,
+   "type": "stat",
+   "title": "MQTT ingest rate",
+   "description": "Zero means the broker link is dead. Every device report arrives this way.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 6, "x": 0, "y": 53 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "decimals": 2,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "red", "value": null },
+       { "color": "green", "value": 0.01 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(home_gateway_mqtt_ingest_total_total[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "type": "stat",
+   "title": "Stale devices",
+   "description": "Devices past their watchdog timeout and no longer reporting.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 6, "x": 6, "y": 53 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 3 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(home_gateway_device_stale) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "type": "stat",
+   "title": "Reconciler give-ups (6h)",
+   "description": "Commands abandoned after max_attempts: a device was told to do something and never did.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 6, "x": 12, "y": 53 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 5 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_reconciler_give_ups_total_total[6h])) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "type": "stat",
+   "title": "Actor restarts (1h)",
+   "description": "A sustained non-zero value is a supervised actor in a crash loop.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 6, "x": 18, "y": 53 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 5 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_actor_restarts_total_total[1h])) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "type": "timeseries",
+   "title": "Reconciler retries vs give-ups",
+   "description": "A retry re-drives an unconfirmed command; a give-up means it never landed.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": [
+     {
+      "matcher": { "id": "byRegexp", "options": "give-up.*" },
+      "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (kind) (rate(home_gateway_reconciler_retries_total_total[15m]))",
+     "legendFormat": "retry {{kind}}"
+    },
+    {
+     "refId": "B",
+     "expr": "sum by (kind) (rate(home_gateway_reconciler_give_ups_total_total[15m]))",
+     "legendFormat": "give-up {{kind}}"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "type": "table",
+   "title": "Time since last report",
+   "description": "Worst first. Devices climbing here are about to trip the watchdog.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 57 },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "__name__": true,
+       "instance": true,
+       "job": true,
+       "namespace": true,
+       "pod": true,
+       "service": true,
+       "container": true,
+       "endpoint": true,
+       "otel_scope_name": true,
+       "otel_scope_version": true
+      },
+      "renameByName": { "device_id": "Device", "Value": "Silent for" }
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": { "unit": "s" },
+    "overrides": [
+     {
+      "matcher": { "id": "byName", "options": "Silent for" },
+      "properties": [
+       { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          { "color": "green", "value": null },
+          { "color": "orange", "value": 900 },
+          { "color": "red", "value": 1800 }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": { "sortBy": [{ "displayName": "Silent for", "desc": true }] },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "home_gateway_device_last_seen_age_seconds",
+     "instant": true,
+     "format": "table"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "type": "timeseries",
+   "title": "Actor restarts by actor and reason",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 65 },
+   "fieldConfig": {
+    "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 30, "stacking": { "mode": "normal" } } },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (actor, reason) (increase(home_gateway_actor_restarts_total_total[15m]))",
+     "legendFormat": "{{actor}} / {{reason}}"
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "type": "timeseries",
+   "title": "Device handler errors",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 65 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (handler) (rate(home_gateway_device_handler_errors_total_total[15m]))",
+     "legendFormat": "{{handler}}"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "type": "row",
+   "title": "Traces",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 73 },
+   "panels": []
+  },
+  {
+   "id": 27,
+   "type": "timeseries",
+   "title": "Span rate by name",
+   "description": "From Tempo's span-metrics generator. This is what the trace volume is made of; watch it after changing sampling.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 74 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(15, sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])))",
+     "legendFormat": "{{span_name}}"
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "type": "timeseries",
+   "title": "Span error ratio",
+   "description": "Share of spans reporting STATUS_CODE_ERROR, by span name.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 74 },
+   "fieldConfig": {
+    "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "(sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\", status_code=\"STATUS_CODE_ERROR\"}[15m])) or vector(0)) / clamp_min(sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])), 0.0001)",
+     "legendFormat": "{{span_name}}"
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "type": "timeseries",
+   "title": "Span latency (p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 82 },
+   "fieldConfig": {
+    "defaults": { "unit": "s" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=\"home-gateway\"}[15m]))))",
+     "legendFormat": "{{span_name}}"
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "type": "traces",
+   "title": "Recent errored traces",
+   "description": "An mqtt ingest error is emitted as its own always-sampled trace, so it survives even when its parent was sampled out.",
+   "datasource": { "type": "tempo", "uid": "tempo" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 82 },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": { "type": "tempo", "uid": "tempo" },
+     "queryType": "traceql",
+     "query": "{resource.service.name=\"home-gateway\" && status=error}",
+     "limit": 20
+    }
+   ]
   }
  ]
 }

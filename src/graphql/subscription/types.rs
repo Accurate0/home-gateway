@@ -246,7 +246,7 @@ impl EventUpdate {
     /// Build an update, resolving the raw device address to the same config slug
     /// and human name the `entities` query exposes so clients can correlate the
     /// two by `id`.
-    pub fn from_message(msg: EventBusMessage, registry: &DeviceRegistry) -> Self {
+    pub fn from_message(msg: EventBusMessage, registry: &DeviceRegistry) -> Option<Self> {
         // Reverse the alias map (address -> slug), falling back to the address
         // itself when a device has no configured id, mirroring `entities`.
         let slug = |address: &str| -> String {
@@ -256,7 +256,8 @@ impl EventUpdate {
                 .to_owned()
         };
 
-        match msg {
+        let update = match msg {
+            EventBusMessage::FeatureFlag { .. } => return None,
             EventBusMessage::Presence {
                 event_id,
                 sensor,
@@ -527,6 +528,8 @@ impl EventUpdate {
                 muted,
                 artwork_url,
             }),
-        }
+        };
+
+        Some(update)
     }
 }

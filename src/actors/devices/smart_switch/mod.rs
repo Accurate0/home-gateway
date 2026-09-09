@@ -19,10 +19,19 @@ pub enum Entity {
 pub struct NewEvent {
     pub event_id: Uuid,
     pub entity: Entity,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum Message {
     NewEvent(NewEvent),
+}
+
+impl crate::tracing_context::TracedMessage for Message {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            Message::NewEvent(event) => event.traceparent.as_deref(),
+        }
+    }
 }
 
 pub struct SmartSwitchHandler {
@@ -89,6 +98,7 @@ impl SmartSwitchHandler {
                         (true, Some(state)) => {
                             let new_event = light::NewEvent {
                                 event_id: event.event_id,
+                                traceparent: crate::tracing_context::inject_current(),
                                 entity: light::Entity::Zigbee {
                                     address,
                                     attributes: LightAttributes::state(state),

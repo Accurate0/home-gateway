@@ -1,5 +1,7 @@
 use crate::actors::root::RootMessage;
 use crate::state::AppState;
+use crate::tracing_context::TracedMessage;
+use tracing::Instrument;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{
@@ -14,7 +16,7 @@ pub trait DeviceHandler: Send + Sync + Sized + 'static {
     const NAME: &'static str;
     const WORKERS: usize = 1;
 
-    type Message: ractor::Message;
+    type Message: ractor::Message + crate::tracing_context::TracedMessage;
     type State: ractor::State + Default;
 
     fn new(shared_actor_state: AppState) -> Self;
@@ -64,7 +66,19 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
         Job { msg, .. }: Job<(), T::Message>,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        match self.0.handle(msg, &mut state.inner).await {
+        let span = tracing::info_span!(
+            parent: None,
+            "device.handle",
+            otel.name = format!("device: {}", T::NAME),
+            handler = T::NAME,
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        );
+        crate::tracing_context::set_parent(&span, msg.traceparent());
+
+        let result = self.0.handle(msg, &mut state.inner).instrument(span.clone()).await;
+
+        match result {
             Ok(()) => {
                 state.consecutive_failures = 0;
 
@@ -73,6 +87,7 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
             Err(e) => {
                 state.consecutive_failures += 1;
                 crate::metrics::record_device_handler_error(T::NAME);
+                crate::tracing_context::record_error(&span, &e.to_string());
 
                 if state.consecutive_failures >= CONSECUTIVE_FAILURE_LIMIT {
                     tracing::error!(

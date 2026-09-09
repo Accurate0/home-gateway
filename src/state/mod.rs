@@ -7,6 +7,7 @@ use crate::graphql::FinalSchema;
 use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
+use crate::tracing_setup::SamplingControl;
 
 pub mod handles;
 
@@ -20,6 +21,7 @@ pub struct AppState {
     pub devices: DeviceRegistry,
     pub event_bus: EventBus,
     pub feature_flag_client: FeatureFlagClient,
+    pub sampling: SamplingControl,
     pub handles: HandleRegistry,
 }
 

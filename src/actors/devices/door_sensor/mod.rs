@@ -20,10 +20,19 @@ pub enum Entity {
 pub struct NewEvent {
     pub event_id: Uuid,
     pub entity: Entity,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum Message {
     NewEvent(NewEvent),
+}
+
+impl crate::tracing_context::TracedMessage for Message {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            Message::NewEvent(event) => event.traceparent.as_deref(),
+        }
+    }
 }
 
 pub struct DoorSensorHandler {

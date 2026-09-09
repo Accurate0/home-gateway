@@ -23,6 +23,8 @@ pub enum Message {
     HomeAssistant(Update),
 }
 
+impl crate::tracing_context::TracedMessage for Message {}
+
 pub struct MediaPlayerHandler {
     shared_actor_state: AppState,
 }

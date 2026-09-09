@@ -30,6 +30,8 @@ pub enum Message {
     Roborock(RoborockUpdate),
 }
 
+impl crate::tracing_context::TracedMessage for Message {}
+
 #[derive(Debug, Deserialize)]
 struct ValetudoState {
     #[serde(default)]

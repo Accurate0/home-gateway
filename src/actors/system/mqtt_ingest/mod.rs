@@ -16,6 +16,7 @@ use ractor::{
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
 use serde_json::{Map, Value};
+use tracing::Instrument;
 use uuid::Uuid;
 
 pub mod spawn;
@@ -118,6 +119,7 @@ impl MqttIngest {
 
         let event = crate::actors::devices::light::NewEvent {
             event_id: uuid::Uuid::new_v4(),
+            traceparent: crate::tracing_context::inject_current(),
             entity: crate::actors::devices::light::Entity::Esphome {
                 node: node.to_string(),
                 attributes: crate::repo::light::LightAttributes {
@@ -153,6 +155,7 @@ impl MqttIngest {
             PresenceSensorHandler::NAME,
             presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
                 event_id,
+                traceparent: crate::tracing_context::inject_current(),
                 entity: presence_sensor::Entity::Esphome {
                     node: node.to_string(),
                     object_id: object_id.to_string(),
@@ -185,6 +188,7 @@ impl MqttIngest {
                 plant_sensor::PlantSensorHandler::NAME,
                 plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
                     event_id,
+                    traceparent: crate::tracing_context::inject_current(),
                     node: node.to_string(),
                     object_id: object_id.to_string(),
                     value,
@@ -197,6 +201,7 @@ impl MqttIngest {
                 EnvironmentSensorHandler::NAME,
                 environment_sensor::Message::NewEvent(Box::new(environment_sensor::NewEvent {
                     event_id,
+                    traceparent: crate::tracing_context::inject_current(),
                     entity: environment_sensor::Entity::Esphome {
                         node: node.to_string(),
                         object_id: object_id.to_string(),
@@ -461,8 +466,30 @@ impl Worker for MqttIngest {
         Job { msg, .. }: Job<(), Message>,
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = Self::handle(self, msg).await {
-            tracing::error!("error while handling message: {e}")
+        let Message::MqttPacket { topic, .. } = &msg;
+        let topic = topic.clone();
+        let topic_kind = MqttTopic::classify(&topic).kind();
+
+        let span = tracing::info_span!(
+            parent: None,
+            crate::tracing_setup::MQTT_INGEST_SPAN,
+            topic = %topic,
+            topic_kind,
+        );
+
+        if let Err(e) = Self::handle(self, msg).instrument(span).await {
+            tracing::error!("error while handling message: {e}");
+
+            let _errored = tracing::error_span!(
+                parent: None,
+                "mqtt.ingest.error",
+                force_sample = "true",
+                topic = %topic,
+                topic_kind,
+                otel.status_code = "ERROR",
+                otel.status_message = %e,
+            )
+            .entered();
         }
 
         Ok(())

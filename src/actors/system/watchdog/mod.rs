@@ -41,6 +41,12 @@ impl WatchdogActor {
             };
             let is_stale = state.last_seen < now - timeout;
 
+            crate::metrics::record_device_liveness(
+                device_key,
+                (now - state.last_seen).num_seconds() as f64,
+                is_stale,
+            );
+
             if is_stale {
                 let should_alert = state
                     .alerted_at

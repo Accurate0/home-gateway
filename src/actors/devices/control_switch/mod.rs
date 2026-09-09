@@ -11,10 +11,19 @@ pub enum Entity {
 pub struct NewEvent {
     pub event_id: Uuid,
     pub entity: Entity,
+    pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum ControlSwitchMessage {
     NewEvent(NewEvent),
+}
+
+impl crate::tracing_context::TracedMessage for ControlSwitchMessage {
+    fn traceparent(&self) -> Option<&str> {
+        match self {
+            ControlSwitchMessage::NewEvent(event) => event.traceparent.as_deref(),
+        }
+    }
 }
 
 pub struct ControlSwitchHandler {

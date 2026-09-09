@@ -36,7 +36,7 @@ async fn init_actors(shared_actor_state: AppState) -> anyhow::Result<tokio::task
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     aws_lc_rs::default_provider().install_default().unwrap();
-    tracing_setup::init();
+    let sampling_control = tracing_setup::init();
     let metrics_registry = tracing_setup::init_metrics();
 
     let (settings_container, device_registry) = SettingsContainer::new()?;
@@ -138,9 +138,13 @@ async fn main() -> anyhow::Result<()> {
         devices: device_registry.clone(),
         db: pool.clone(),
         feature_flag_client,
+        sampling: sampling_control,
         event_bus,
         handles,
     };
+
+    let flag_client = state.feature_flag_client.clone();
+    let flag_event_bus = state.event_bus.clone();
 
     let schema = build_schema(&state);
 
@@ -189,6 +193,12 @@ async fn main() -> anyhow::Result<()> {
     task_set.spawn(async move {
         mqtt.process_events(mqtt_cancellation_token, mqtt_devices)
             .await?;
+        Ok::<(), MainError>(())
+    });
+
+    task_set.spawn(async move {
+        feature_flag::publish_provider_events(flag_client, flag_event_bus).await;
+        tracing::warn!("the feature flag watcher stopped");
         Ok::<(), MainError>(())
     });
 

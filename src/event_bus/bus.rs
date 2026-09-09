@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use tokio::sync::broadcast;
 
-use super::message::EventBusMessage;
+use super::message::{BusEvent, EventBusMessage};
 use super::subscriber::{EventSubscriber, Outcome, Recipient, Route, Subscription, route};
 
 /// Clonable handle to the in-memory event bus. Cheap to clone (shares one
@@ -54,6 +54,14 @@ impl EventBus {
     /// match, then fan it out on the broadcast channel for stream consumers such
     /// as the GraphQL subscription.
     pub fn publish(&self, msg: EventBusMessage) {
+        self.publish_event(BusEvent::current(msg));
+    }
+
+    pub fn publish_detached(&self, msg: EventBusMessage) {
+        self.publish_event(BusEvent::detached(msg));
+    }
+
+    fn publish_event(&self, msg: BusEvent) {
         let kind = msg.kind();
         let event_id = msg.event_id();
 
@@ -83,7 +91,7 @@ impl EventBus {
             Err(e) => tracing::error!("[{event_id}] event routes unreadable: {e}"),
         }
 
-        if self.tx.send(msg).is_err() {
+        if self.tx.send(msg.message).is_err() {
             tracing::trace!("[{event_id}] no stream subscribers for {kind} event");
         }
     }
