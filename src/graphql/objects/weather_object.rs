@@ -1,6 +1,7 @@
 use async_graphql::Object;
+use async_graphql::dataloader::DataLoader;
 
-use crate::integrations::willyweather::WillyWeather;
+use crate::graphql::dataloader::forecast::ForecastDataLoader;
 use crate::integrations::willyweather::types::Forecast;
 
 pub struct WeatherObject {
@@ -13,8 +14,14 @@ impl WeatherObject {
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Forecast> {
-        let willyweather = crate::graphql::require::<WillyWeather>(ctx, "willyweather")?;
+        let loader = ctx.data::<DataLoader<ForecastDataLoader>>()?;
 
-        Ok(willyweather.forecast(&self.location).await?)
+        loader
+            .load_one(self.location.clone())
+            .await
+            .map_err(|e| async_graphql::Error::new(e.to_string()))?
+            .ok_or_else(|| {
+                async_graphql::Error::new(format!("no forecast for location {}", self.location))
+            })
     }
 }
