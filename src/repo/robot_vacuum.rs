@@ -189,7 +189,10 @@ impl RobotVacuumRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-robot-vacuum-state"))
+        .instrument(tracing::info_span!(
+            "bulk-get-robot-vacuum-state",
+            keys = keys.len()
+        ))
         .await
     }
 }

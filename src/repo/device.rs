@@ -56,7 +56,7 @@ impl DeviceRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-last-seen"))
+        .instrument(tracing::info_span!("bulk-get-last-seen", keys = keys.len()))
         .await
     }
 }

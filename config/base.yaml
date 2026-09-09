@@ -55,6 +55,8 @@ api_keys:
     scopes: ["ingest.unifi:write"]
   - name: home-gateway-app
     scopes: ["**:*"]
+  - name: home-ui
+    scopes: ["**:*"]
   - name: oled-remote
     scopes:
       - "light:read"

@@ -145,7 +145,7 @@ impl EnvironmentRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-temperature"))
+        .instrument(tracing::info_span!("bulk-get-temperature", keys = keys.len()))
         .await
     }
 }

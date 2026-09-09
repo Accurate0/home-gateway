@@ -132,7 +132,10 @@ impl MediaPlayerRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-media-player-state"))
+        .instrument(tracing::info_span!(
+            "bulk-get-media-player-state",
+            keys = keys.len()
+        ))
         .await
     }
 }

@@ -176,7 +176,7 @@ impl EinkRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-eink-display"))
+        .instrument(tracing::info_span!("bulk-get-eink-display", keys = keys.len()))
         .await
     }
 }

@@ -91,7 +91,7 @@ impl BatteryRepo {
             keys
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-device-battery"))
+        .instrument(tracing::info_span!("bulk-get-device-battery", keys = keys.len()))
         .await
     }
 
@@ -110,7 +110,10 @@ impl BatteryRepo {
             earliest
         )
         .fetch_all(&self.db)
-        .instrument(tracing::info_span!("bulk-get-device-battery-history"))
+        .instrument(tracing::info_span!(
+            "bulk-get-device-battery-history",
+            keys = device_ids.len()
+        ))
         .await
     }
 }
