@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO fuelwatch_site (\n                site_id, site_name, brand, suburb, postcode, address,\n                price, price_tomorrow, latitude, longitude\n            )\n            SELECT * FROM UNNEST(\n                $1::INTEGER[], $2::TEXT[], $3::TEXT[], $4::TEXT[], $5::INTEGER[], $6::TEXT[],\n                $7::DOUBLE PRECISION[], $8::DOUBLE PRECISION[],\n                $9::DOUBLE PRECISION[], $10::DOUBLE PRECISION[]\n            )\n            ON CONFLICT (site_id) DO UPDATE SET\n                site_name = EXCLUDED.site_name,\n                brand = EXCLUDED.brand,\n                suburb = EXCLUDED.suburb,\n                postcode = EXCLUDED.postcode,\n                address = EXCLUDED.address,\n                price = EXCLUDED.price,\n                price_tomorrow = EXCLUDED.price_tomorrow,\n                latitude = EXCLUDED.latitude,\n                longitude = EXCLUDED.longitude,\n                updated_at = now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "Int4Array",
+        "TextArray",
+        "Float8Array",
+        "Float8Array",
+        "Float8Array",
+        "Float8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1554a0f214f6ad0a0d746fe6d71de52b9656d21b68392352c6b56554b7fce3b2"
+}

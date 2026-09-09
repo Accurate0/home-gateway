@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO fuelwatch_price_history (\n                site_id, postcode, price, price_tomorrow\n            )\n            SELECT * FROM UNNEST(\n                $1::INTEGER[], $2::INTEGER[],\n                $3::DOUBLE PRECISION[], $4::DOUBLE PRECISION[]\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array",
+        "Int4Array",
+        "Float8Array",
+        "Float8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a186da146395de6df1a19c8bbec9c3f3485b7b1c8353ab0ca9721ca6c7fd7b74"
+}

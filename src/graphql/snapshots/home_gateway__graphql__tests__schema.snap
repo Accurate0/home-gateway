@@ -341,6 +341,7 @@ type ForecastDetails {
 }
 
 type FuelSite {
+	siteId: Int!
 	name: String!
 	brand: String!
 	suburb: String!

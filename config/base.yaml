@@ -94,7 +94,6 @@ transperth:
 
 fuelwatch:
   postcode: 6164
-  cache_ttl: 2h
 
 home_assistant:
   url: http://home-assistant.internal

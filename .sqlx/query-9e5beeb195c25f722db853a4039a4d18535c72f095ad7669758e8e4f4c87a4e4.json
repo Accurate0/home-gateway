@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM fuelwatch_site",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9e5beeb195c25f722db853a4039a4d18535c72f095ad7669758e8e4f4c87a4e4"
+}

@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use moka::future::Cache;
 use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
 
@@ -12,7 +9,6 @@ pub mod types;
 
 const SITES_URL: &str = "https://www.fuelwatch.wa.gov.au/api/sites";
 const PRODUCT_UNLEADED_91: &str = "1";
-const CACHE_KEY: &str = "sites";
 
 #[derive(thiserror::Error, Debug)]
 pub enum FuelWatchError {
@@ -25,69 +21,28 @@ pub enum FuelWatchError {
         status: reqwest::StatusCode,
         body: String,
     },
-    #[error("fuelwatch.cache_ttl must be positive")]
-    InvalidCacheTtl,
-    #[error(transparent)]
-    Shared(Arc<FuelWatchError>),
 }
 
 #[derive(Clone)]
 pub struct FuelWatch {
-    default_postcode: i32,
     client: ClientWithMiddleware,
-    cache: Cache<&'static str, Arc<Vec<FuelSite>>>,
 }
 
 impl FuelWatch {
     pub fn new(settings: &FuelWatchSettings) -> Result<Self, FuelWatchError> {
-        let ttl = settings
-            .cache_ttl
-            .to_std()
-            .map_err(|_| FuelWatchError::InvalidCacheTtl)?;
-
-        let cache = Cache::builder().max_capacity(1).time_to_live(ttl).build();
-
         tracing::info!(
-            "fuelwatch integration enabled for {} (cache ttl {ttl:?})",
+            "fuelwatch integration enabled for {}",
             settings.postcode
         );
 
         Ok(Self {
-            default_postcode: settings.postcode,
             client: get_traced_http_client()?,
-            cache,
         })
     }
 
-    #[instrument(skip(self))]
-    pub async fn sites(&self, postcode: Option<i32>) -> Result<Vec<FuelSite>, FuelWatchError> {
-        let postcode = postcode.unwrap_or(self.default_postcode);
-        let all = self.all_sites().await?;
-
-        let sites: Vec<FuelSite> = all
-            .iter()
-            .filter(|site| site.postcode == postcode)
-            .cloned()
-            .collect();
-
-        if sites.is_empty() {
-            tracing::warn!("fuelwatch has no unleaded prices for postcode {postcode}");
-        }
-
-        Ok(sites)
-    }
-
-    async fn all_sites(&self) -> Result<Arc<Vec<FuelSite>>, FuelWatchError> {
-        self.cache
-            .try_get_with(CACHE_KEY, async {
-                tracing::debug!("fuelwatch site cache miss");
-
-                let raw = self.get_sites().await?;
-
-                Ok(Arc::new(shape_sites(raw)))
-            })
-            .await
-            .map_err(FuelWatchError::Shared)
+    #[instrument(skip(self), err)]
+    pub async fn fetch_sites(&self) -> Result<Vec<FuelSite>, FuelWatchError> {
+        Ok(shape_sites(self.get_sites().await?))
     }
 
     #[instrument(skip(self))]
@@ -126,6 +81,7 @@ fn shape_sites(raw: Vec<Site>) -> Vec<FuelSite> {
             };
 
             Some(FuelSite {
+                site_id: site.id,
                 name: site.site_name,
                 brand: site.brand_name,
                 suburb: site.address.location,

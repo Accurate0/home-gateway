@@ -1,6 +1,7 @@
 use crate::repo::{
     AdhocRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo, EnvironmentRepo,
-    HomeAssistantRepo, IntentRepo, JellyfinRepo, LightRepo, MediaPlayerRepo, MetricRepo, PushRepo,
+    FuelWatchRepo, HomeAssistantRepo, IntentRepo, JellyfinRepo, LightRepo, MediaPlayerRepo,
+    MetricRepo, PushRepo,
     RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo, WatchdogRepo, WoolworthsRepo,
     WorkflowRepo,
 };
@@ -14,6 +15,7 @@ struct Repos {
     door: DoorRepo,
     eink: EinkRepo,
     energy: EnergyRepo,
+    fuelwatch: FuelWatchRepo,
     home_assistant: HomeAssistantRepo,
     jellyfin: JellyfinRepo,
     solar: SolarRepo,
@@ -47,6 +49,7 @@ impl RepoRegistry {
                 door: DoorRepo::new(db.clone()),
                 eink: EinkRepo::new(db.clone()),
                 energy: EnergyRepo::new(db.clone()),
+                fuelwatch: FuelWatchRepo::new(db.clone()),
                 home_assistant: HomeAssistantRepo::new(db.clone()),
                 jellyfin: JellyfinRepo::new(db.clone()),
                 solar: SolarRepo::new(db.clone()),
@@ -113,6 +116,10 @@ impl RepoRegistry {
 
     pub fn environment(&self) -> &EnvironmentRepo {
         &self.inner.environment
+    }
+
+    pub fn fuelwatch(&self) -> &FuelWatchRepo {
+        &self.inner.fuelwatch
     }
 
     pub fn intent(&self) -> &IntentRepo {

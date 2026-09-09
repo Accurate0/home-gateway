@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct FuelSite {
+    pub site_id: i32,
     pub name: String,
     pub brand: String,
     pub suburb: String,
@@ -17,6 +18,7 @@ pub struct FuelSite {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Site {
+    pub id: i32,
     pub site_name: String,
     pub brand_name: String,
     pub address: Address,
