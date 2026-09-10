@@ -58,6 +58,17 @@ impl Client {
         })
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
+    pub fn auth_header(&self) -> String {
+        match &self.auth {
+            Auth::ApiKey(key) => format!("X-Api-Key: {key}"),
+            Auth::Bearer(token) => format!("Authorization: Bearer {token}"),
+        }
+    }
+
     fn request(&self, method: Method, path: &str) -> RequestBuilder {
         let builder = self
             .http

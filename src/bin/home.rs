@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
-use home_gateway::cli::client::{Client, ClientError, DEFAULT_BASE_URL};
+use home_gateway::cli::client::{Client, DEFAULT_BASE_URL};
 use home_gateway::cli::credentials;
 use home_gateway::cli::oauth::{self, DEFAULT_CLIENT_ID, DEFAULT_ISSUER};
 use home_gateway::http::get_traced_http_client;
@@ -42,6 +42,7 @@ enum Command {
     #[command(subcommand)]
     Keys(KeysCommand),
     Push(PushArgs),
+    Curl(CurlArgs),
 }
 
 #[derive(Args)]
@@ -160,13 +161,54 @@ enum KeysCommand {
 #[derive(Args)]
 struct PushArgs {
     body: String,
-    #[arg(long)]
-    title: Option<String>,
-    #[arg(long)]
-    category: Option<String>,
+    #[arg(long, default_value = "Home Gateway")]
+    title: String,
+    #[arg(long, value_enum, default_value_t = PushCategory::General)]
+    category: PushCategory,
     #[arg(long)]
     tag: Option<String>,
+    #[arg(
+        long = "action",
+        value_name = "LABEL=KIND",
+        value_parser = parse_push_action,
+        help = "repeatable; KIND is acknowledge, dismiss, snooze:SECONDS or workflow:SLUG"
+    )]
+    actions: Vec<Value>,
+    #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, requires = "reminders")]
+    remind_after: Option<i64>,
+    #[arg(long, requires = "remind_after")]
+    reminders: Option<i32>,
 }
+
+#[derive(Clone, Copy, ValueEnum)]
+enum PushCategory {
+    Alarm,
+    Door,
+    Watchdog,
+    General,
+}
+
+impl PushCategory {
+    fn as_graphql(self) -> &'static str {
+        match self {
+            Self::Alarm => "ALARM",
+            Self::Door => "DOOR",
+            Self::Watchdog => "WATCHDOG",
+            Self::General => "GENERAL",
+        }
+    }
+}
+
+#[derive(Args)]
+struct CurlArgs {
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
+    args: Vec<String>,
+}
+
+const SEND_PUSH_MUTATION: &str =
+    "mutation($input: SendPushNotificationInput!) { sendPushNotification(input: $input) }";
+
+const CURL_AUTH_HEADER_VARIABLE: &str = "HG_CURL_AUTH_HEADER";
 
 const WHOAMI_QUERY: &str = "query { auth { id name scopes } }";
 
@@ -232,7 +274,8 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Workflow(command) => workflow(&client, command, cli.json).await,
         Command::Mode(command) => mode(&client, command, cli.json).await,
         Command::Keys(command) => keys(&client, command, cli.json).await,
-        Command::Push(args) => push(&client, args).await,
+        Command::Push(args) => push(&client, args, cli.json).await,
+        Command::Curl(args) => curl(&client, args),
     }
 }
 
@@ -651,36 +694,99 @@ fn print_created_key(created: &CreatedKey, as_json: bool) -> Result<()> {
     Ok(())
 }
 
-async fn push(client: &Client, args: &PushArgs) -> Result<()> {
-    let mut payload = serde_json::Map::new();
-    payload.insert("body".to_owned(), json!(args.body));
+fn parse_push_action(spec: &str) -> Result<Value, String> {
+    let (label, action) = spec
+        .split_once('=')
+        .ok_or_else(|| format!("expected LABEL=KIND, got '{spec}'"))?;
 
-    if let Some(title) = &args.title {
-        payload.insert("title".to_owned(), json!(title));
-    }
-    if let Some(category) = &args.category {
-        payload.insert("category".to_owned(), json!(category));
-    }
-    if let Some(tag) = &args.tag {
-        payload.insert("tag".to_owned(), json!(tag));
+    if label.is_empty() {
+        return Err("action label is empty".to_owned());
     }
 
-    let response = client
-        .send(
-            Method::POST,
-            "/v1/push/notify",
-            Some(&Value::Object(payload)),
-        )
+    let (kind, argument) = match action.split_once(':') {
+        Some((kind, argument)) => (kind, Some(argument)),
+        None => (action, None),
+    };
+
+    match (kind, argument) {
+        ("acknowledge", None) => Ok(json!({ "label": label, "kind": "ACKNOWLEDGE" })),
+        ("dismiss", None) => Ok(json!({ "label": label, "kind": "DISMISS" })),
+        ("snooze", Some(seconds)) => {
+            let seconds: i64 = seconds
+                .parse()
+                .map_err(|_| format!("snooze needs whole seconds, got '{seconds}'"))?;
+
+            Ok(json!({ "label": label, "kind": "SNOOZE", "snoozeSeconds": seconds }))
+        }
+        ("workflow", Some(slug)) if !slug.is_empty() => {
+            Ok(json!({ "label": label, "kind": "RUN_WORKFLOW", "workflowSlug": slug }))
+        }
+        _ => Err(format!(
+            "unknown action '{action}', expected acknowledge, dismiss, snooze:SECONDS or workflow:SLUG"
+        )),
+    }
+}
+
+fn parse_remind_after(value: &str) -> Result<i64, String> {
+    home_gateway::timedelta_format::parse_datetime_str_with_ms(value)
+        .map(|delta| delta.num_seconds())
+        .map_err(|e| e.to_string())
+}
+
+fn push_input(args: &PushArgs) -> Value {
+    let mut input = json!({
+        "title": args.title,
+        "body": args.body,
+        "category": args.category.as_graphql(),
+        "tag": args.tag,
+        "actions": args.actions,
+    });
+
+    if let (Some(remind_after), Some(reminders)) = (args.remind_after, args.reminders) {
+        input["acknowledge"] = json!({
+            "remindAfterSeconds": remind_after,
+            "reminders": reminders,
+        });
+    }
+
+    input
+}
+
+async fn push(client: &Client, args: &PushArgs, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(SEND_PUSH_MUTATION, json!({ "input": push_input(args) }))
         .await?;
 
-    let status = response.status();
-    if status.is_success() {
-        println!("sent");
-        Ok(())
-    } else {
-        let body = response.text().await.unwrap_or_default();
-        Err(ClientError::Status { status, body }.into())
-    }
+    report(&data, as_json, "sent")
+}
+
+fn curl_args(base_url: &str, args: &[String]) -> Vec<String> {
+    let mut out = vec![
+        "--variable".to_owned(),
+        format!("%{CURL_AUTH_HEADER_VARIABLE}"),
+        "--expand-header".to_owned(),
+        format!("{{{{{CURL_AUTH_HEADER_VARIABLE}}}}}"),
+    ];
+
+    out.extend(args.iter().map(|arg| {
+        if arg.starts_with("/v1/") {
+            format!("{base_url}{arg}")
+        } else {
+            arg.clone()
+        }
+    }));
+
+    out
+}
+
+fn curl(client: &Client, args: &CurlArgs) -> Result<()> {
+    let status = std::process::Command::new("curl")
+        .args(curl_args(client.base_url(), &args.args))
+        .env(CURL_AUTH_HEADER_VARIABLE, client.auth_header())
+        .status()
+        .context("failed to run curl, is it installed?")?;
+
+    std::process::exit(status.code().unwrap_or(1));
 }
 
 fn report(data: &Value, as_json: bool, message: &str) -> Result<()> {
@@ -784,5 +890,86 @@ mod tests {
     #[test]
     fn an_entity_with_no_readable_state_renders_empty() {
         assert_eq!(state(&json!({ "id": "x" })), "");
+    }
+
+    #[test]
+    fn push_actions_parse_every_kind() {
+        assert_eq!(
+            parse_push_action("Done=acknowledge").unwrap(),
+            json!({ "label": "Done", "kind": "ACKNOWLEDGE" })
+        );
+        assert_eq!(
+            parse_push_action("Later=snooze:300").unwrap(),
+            json!({ "label": "Later", "kind": "SNOOZE", "snoozeSeconds": 300 })
+        );
+        assert_eq!(
+            parse_push_action("Lamps=workflow:living-room-lamps-on").unwrap(),
+            json!({ "label": "Lamps", "kind": "RUN_WORKFLOW", "workflowSlug": "living-room-lamps-on" })
+        );
+        assert_eq!(
+            parse_push_action("Close=dismiss").unwrap(),
+            json!({ "label": "Close", "kind": "DISMISS" })
+        );
+    }
+
+    #[test]
+    fn malformed_push_actions_are_rejected() {
+        for spec in [
+            "acknowledge",
+            "=dismiss",
+            "Later=snooze",
+            "Later=snooze:soon",
+            "Go=workflow:",
+            "X=explode",
+        ] {
+            assert!(
+                parse_push_action(spec).is_err(),
+                "{spec} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn push_input_carries_the_acknowledge_policy() {
+        let args = PushArgs {
+            body: "Bins".to_owned(),
+            title: "Home Gateway".to_owned(),
+            category: PushCategory::General,
+            tag: None,
+            actions: vec![parse_push_action("Done=acknowledge").unwrap()],
+            remind_after: Some(parse_remind_after("2h").unwrap()),
+            reminders: Some(1),
+        };
+
+        let input = push_input(&args);
+
+        assert_eq!(input["category"], "GENERAL");
+        assert_eq!(input["actions"][0]["kind"], "ACKNOWLEDGE");
+        assert_eq!(input["acknowledge"]["remindAfterSeconds"], 7200);
+        assert_eq!(input["acknowledge"]["reminders"], 1);
+    }
+
+    #[test]
+    fn curl_prefixes_gateway_paths_and_injects_the_auth_header() {
+        let args: Vec<String> = ["-s", "-o", "/tmp/out.json", "/v1/health"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+
+        let out = curl_args("https://home.anurag.sh", &args);
+
+        assert_eq!(
+            out,
+            vec![
+                "--variable",
+                "%HG_CURL_AUTH_HEADER",
+                "--expand-header",
+                "{{HG_CURL_AUTH_HEADER}}",
+                "-s",
+                "-o",
+                "/tmp/out.json",
+                "https://home.anurag.sh/v1/health",
+            ]
+        );
     }
 }

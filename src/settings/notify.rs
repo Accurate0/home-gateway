@@ -56,6 +56,18 @@ pub enum NotifyActionKind {
     Acknowledge,
 }
 
+pub fn validate_acknowledge(has_block: bool, has_action: bool) -> Result<(), String> {
+    match (has_block, has_action) {
+        (true, false) => {
+            Err("notification has an `acknowledge` block but no acknowledge action".to_owned())
+        }
+        (false, true) => {
+            Err("notification has an acknowledge action but no `acknowledge` block".to_owned())
+        }
+        (true, true) | (false, false) => Ok(()),
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
 pub struct NotifyAcknowledge {
     #[serde(deserialize_with = "crate::timedelta_format::time_delta_from_str::deserialize")]
@@ -64,8 +76,9 @@ pub struct NotifyAcknowledge {
     pub reminders: u32,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, async_graphql::Enum)]
 #[serde(rename_all = "snake_case")]
+#[graphql(name = "PushNotificationCategory")]
 pub enum NotifyCategory {
     Alarm,
     Door,

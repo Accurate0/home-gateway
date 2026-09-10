@@ -9,6 +9,7 @@ use crate::settings::workflow_context::ContextSource;
 use crate::settings::workflow_timers::WorkflowTimerSettings;
 use crate::settings::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource,
+    validate_acknowledge,
 };
 use crate::timedelta_format::option_time_delta_from_str;
 use std::collections::BTreeMap;
@@ -817,19 +818,7 @@ impl Workflow {
                             .iter()
                             .any(|a| matches!(a.action, NotifyActionKind::Acknowledge));
 
-                        match (acknowledge, has_action) {
-                            (Some(_), false) => {
-                                return Err("notify step has an `acknowledge` block but no \
-                                            acknowledge action"
-                                    .to_owned());
-                            }
-                            (None, true) => {
-                                return Err("notify step has an acknowledge action but no \
-                                            `acknowledge` block"
-                                    .to_owned());
-                            }
-                            (Some(_), true) | (None, false) => {}
-                        }
+                        validate_acknowledge(acknowledge.is_some(), has_action)?;
                     }
                     Step::Scene { run, .. } => check(run)?,
                     _ => {}

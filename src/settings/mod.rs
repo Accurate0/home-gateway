@@ -70,6 +70,7 @@ pub use location::LocationSettings;
 pub use media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use notify::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
+    validate_acknowledge,
 };
 pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
@@ -471,14 +472,27 @@ impl SettingsContainer {
                 base.display()
             )));
         }
-        let merged = yaml_include::Transformer::new(base.clone(), true)
-            .map_err(|e| {
-                ConfigError::Message(format!(
-                    "failed to process includes in {}: {e}",
-                    base.display()
-                ))
-            })?
-            .to_string();
+        let transformer = yaml_include::Transformer::new(base.clone(), true).map_err(|e| {
+            ConfigError::Message(format!(
+                "failed to process includes in {}: {e}",
+                base.display()
+            ))
+        })?;
+
+        let merged =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| transformer.to_string()))
+                .map_err(|panic| {
+                    let reason = panic
+                        .downcast_ref::<String>()
+                        .map(String::as_str)
+                        .or_else(|| panic.downcast_ref::<&str>().copied())
+                        .unwrap_or("unknown include error");
+
+                    ConfigError::Message(format!(
+                        "failed to process includes in {}: {reason}",
+                        base.display()
+                    ))
+                })?;
 
         Ok(Config::builder().add_source(File::from_str(&merged, FileFormat::Yaml)))
     }
@@ -1458,5 +1472,24 @@ devices:
     fn load_from_dir_errors_on_missing_dir() {
         let result = SettingsContainer::load_from_dir(Path::new("./does-not-exist"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn a_missing_include_is_an_error_not_a_panic() {
+        let dir =
+            std::env::temp_dir().join(format!("home-gateway-config-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("base.yaml"),
+            "workflows: !include workflows/missing.yaml\n",
+        )
+        .unwrap();
+
+        let result = SettingsContainer::load_from_dir(&dir);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("failed to process includes"), "{err}");
+        assert!(err.contains("missing.yaml"), "{err}");
     }
 }

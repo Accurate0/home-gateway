@@ -645,6 +645,7 @@ type MutationRoot {
 	runWorkflow(slug: String!): Boolean!
 	runPendingAdhocTasks: Boolean!
 	runAdhocCronTask(name: String!): Boolean!
+	sendPushNotification(input: SendPushNotificationInput!): Boolean!
 	recordNotificationInteraction(id: UUID!, kind: NotificationInteractionKind!): Boolean!
 }
 
@@ -738,7 +739,19 @@ type PushNotification {
 	interactions: [PushNotificationInteraction!]!
 }
 
+input PushNotificationAcknowledgeInput {
+	remindAfterSeconds: Int!
+	reminders: Int!
+}
+
 type PushNotificationAction {
+	label: String!
+	kind: PushNotificationActionKind!
+	workflowSlug: String
+	snoozeSeconds: Int
+}
+
+input PushNotificationActionInput {
 	label: String!
 	kind: PushNotificationActionKind!
 	workflowSlug: String
@@ -750,6 +763,13 @@ enum PushNotificationActionKind {
 	SNOOZE
 	DISMISS
 	ACKNOWLEDGE
+}
+
+enum PushNotificationCategory {
+	ALARM
+	DOOR
+	WATCHDOG
+	GENERAL
 }
 
 type PushNotificationInteraction {
@@ -843,6 +863,15 @@ type RouteDeparturesObject {
 	updatedAt: DateTime!
 	stale: Boolean!
 	departures: [DepartureObject!]!
+}
+
+input SendPushNotificationInput {
+	title: String!
+	body: String!
+	category: PushNotificationCategory!
+	tag: String
+	actions: [PushNotificationActionInput!]! = []
+	acknowledge: PushNotificationAcknowledgeInput
 }
 
 input SetBrightnessInput {
