@@ -7,6 +7,8 @@ pub mod home_assistant_object;
 pub mod jellyfin_object;
 pub mod mode_object;
 pub mod notification_interaction_kind;
+pub mod push_notification_action_kind;
+pub mod push_notification_action_object;
 pub mod push_notification_interaction_object;
 pub mod push_notification_object;
 pub mod solar_object;

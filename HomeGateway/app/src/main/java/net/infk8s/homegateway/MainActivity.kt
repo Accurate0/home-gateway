@@ -24,7 +24,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -33,10 +36,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import androidx.core.content.ContextCompat
@@ -53,6 +58,8 @@ import net.infk8s.homegateway.graphql.EntitiesViewModel
 import net.infk8s.homegateway.graphql.EntityUi
 import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
 import net.infk8s.homegateway.notifications.NotificationInteractions
+import net.infk8s.homegateway.notifications.NotificationsScreen
+import net.infk8s.homegateway.notifications.NotificationsViewModel
 import net.infk8s.homegateway.notifications.PushPayload
 import net.infk8s.homegateway.ui.theme.HomeGatewayTheme
 
@@ -61,6 +68,10 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
     private val entitiesViewModel: EntitiesViewModel by viewModels()
+
+    private val notificationsViewModel: NotificationsViewModel by viewModels()
+
+    private var selectedTab by mutableStateOf(AppTab.HOME)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,19 +83,53 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             HomeGatewayTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val state by entitiesViewModel.state.collectAsStateWithLifecycle()
-                    // Run the live WebSocket only while the UI is at least STARTED.
-                    // repeatOnLifecycle cancels run() when the app is backgrounded or the
-                    // phone locks, and restarts it on return — which re-fetches a fresh
-                    // snapshot so the list is correct after time away.
-                    val lifecycleOwner = LocalLifecycleOwner.current
-                    LaunchedEffect(lifecycleOwner) {
-                        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                            entitiesViewModel.run()
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        NavigationBar {
+                            AppTab.entries.forEach { tab ->
+                                NavigationBarItem(
+                                    selected = selectedTab == tab,
+                                    onClick = { selectedTab = tab },
+                                    icon = { Icon(painterResource(tab.icon), contentDescription = null) },
+                                    label = { Text(tab.label) },
+                                )
+                            }
+                        }
+                    },
+                ) { innerPadding ->
+                    when (selectedTab) {
+                        AppTab.HOME -> {
+                            val state by entitiesViewModel.state.collectAsStateWithLifecycle()
+                            // Run the live WebSocket only while the UI is at least STARTED.
+                            // repeatOnLifecycle cancels run() when the app is backgrounded or the
+                            // phone locks, and restarts it on return — which re-fetches a fresh
+                            // snapshot so the list is correct after time away.
+                            val lifecycleOwner = LocalLifecycleOwner.current
+                            LaunchedEffect(lifecycleOwner) {
+                                lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                                    entitiesViewModel.run()
+                                }
+                            }
+                            EntitiesScreen(state, entitiesViewModel.controls(), Modifier.padding(innerPadding))
+                        }
+
+                        AppTab.NOTIFICATIONS -> {
+                            val state by notificationsViewModel.state.collectAsStateWithLifecycle()
+                            val lifecycleOwner = LocalLifecycleOwner.current
+                            LaunchedEffect(lifecycleOwner) {
+                                lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                                    notificationsViewModel.refresh()
+                                }
+                            }
+                            NotificationsScreen(
+                                state,
+                                onRefresh = notificationsViewModel::refresh,
+                                onAcknowledge = notificationsViewModel::acknowledge,
+                                modifier = Modifier.padding(innerPadding),
+                            )
                         }
                     }
-                    EntitiesScreen(state, entitiesViewModel.controls(), Modifier.padding(innerPadding))
                 }
             }
         }
@@ -99,6 +144,7 @@ class MainActivity : ComponentActivity() {
     private fun reportNotificationOpened(intent: Intent?) {
         val notificationId = intent?.getStringExtra(PushPayload.KEY_NOTIFICATION_ID) ?: return
         intent.removeExtra(PushPayload.KEY_NOTIFICATION_ID)
+        selectedTab = AppTab.NOTIFICATIONS
 
         lifecycleScope.launch {
             NotificationInteractions.record(notificationId, NotificationInteractionKind.OPENED)

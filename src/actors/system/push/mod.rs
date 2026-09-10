@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use gcp_auth::TokenProvider;
 use http::{Method, StatusCode};
 use open_feature::EvaluationContext;
@@ -112,7 +112,7 @@ impl PushActor {
         &self,
         myself: &ActorRef<PushMessage>,
         notification: &PushNotification,
-        acknowledge: NotifyAcknowledge,
+        acknowledge: Option<NotifyAcknowledge>,
     ) -> Option<Uuid> {
         let actions = match serde_json::to_value(&notification.actions) {
             Ok(actions) => actions,
@@ -132,8 +132,8 @@ impl PushActor {
                 body: &notification.body,
                 category: notification.category.as_str(),
                 actions,
-                remind_after: acknowledge.remind_after,
-                reminders: acknowledge.reminders,
+                remind_after: acknowledge.map_or(TimeDelta::zero(), |ack| ack.remind_after),
+                reminders: acknowledge.map_or(0, |ack| ack.reminders),
             })
             .await;
 
@@ -146,7 +146,7 @@ impl PushActor {
                 Some(row.id)
             }
             Err(e) => {
-                tracing::error!("failed to record tracked notification: {e}");
+                tracing::error!("failed to record notification: {e}");
                 None
             }
         }
@@ -372,10 +372,9 @@ impl Actor for PushActor {
     ) -> Result<(), ActorProcessingErr> {
         match message {
             PushMessage::Send(notification) => {
-                let notification_id = match notification.acknowledge {
-                    Some(acknowledge) => self.track(&myself, &notification, acknowledge).await,
-                    None => None,
-                };
+                let notification_id = self
+                    .track(&myself, &notification, notification.acknowledge)
+                    .await;
 
                 self.deliver(&notification, notification_id).await;
             }

@@ -734,11 +734,26 @@ type PushNotification {
 	title: String!
 	body: String!
 	category: String!
+	actions: [PushNotificationAction!]!
 	sendCount: Int!
 	nextReminderAt: DateTime
 	acknowledgedAt: DateTime
 	createdAt: DateTime!
 	interactions: [PushNotificationInteraction!]!
+}
+
+type PushNotificationAction {
+	label: String!
+	kind: PushNotificationActionKind!
+	workflowSlug: String
+	snoozeSeconds: Int
+}
+
+enum PushNotificationActionKind {
+	RUN_WORKFLOW
+	SNOOZE
+	DISMISS
+	ACKNOWLEDGE
 }
 
 type PushNotificationInteraction {

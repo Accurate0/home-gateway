@@ -1,0 +1,22 @@
+query PushNotifications {
+  pushNotifications(limit: 50) {
+    id
+    title
+    body
+    category
+    actions {
+      label
+      kind
+      workflowSlug
+      snoozeSeconds
+    }
+    sendCount
+    nextReminderAt
+    acknowledgedAt
+    createdAt
+    interactions {
+      kind
+      at
+    }
+  }
+}

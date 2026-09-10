@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use async_graphql::Object;
 use uuid::Uuid;
 
+use crate::actors::system::push::types::PushAction;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
+use crate::graphql::objects::push_notification_action_object::PushNotificationActionObject;
 use crate::graphql::objects::push_notification_interaction_object::PushNotificationInteractionObject;
 use crate::graphql::objects::push_notification_object::PushNotificationObject;
 use crate::repo::RepoRegistry;
@@ -12,6 +14,16 @@ use crate::repo::notification_interaction::NotificationInteraction;
 
 #[derive(Default)]
 pub struct PushQuery;
+
+fn actions(actions: &serde_json::Value) -> Vec<PushNotificationActionObject> {
+    match serde_json::from_value::<Vec<PushAction>>(actions.clone()) {
+        Ok(actions) => actions.into_iter().map(Into::into).collect(),
+        Err(e) => {
+            tracing::warn!("stored push actions are invalid: {e}");
+            Vec::new()
+        }
+    }
+}
 
 #[Object]
 impl PushQuery {
@@ -54,6 +66,7 @@ impl PushQuery {
             .into_iter()
             .map(|row| PushNotificationObject {
                 interactions: by_notification.remove(&row.id).unwrap_or_default(),
+                actions: actions(&row.actions),
                 id: row.id,
                 tag: row.tag,
                 title: row.title,
