@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE push_notification SET acknowledged_at = COALESCE(acknowledged_at, now()), next_reminder_at = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "678e6fdad15dda1bea02d9a1b2fe5d46eea8b0b988c895cade82ef7d4240e22f"
+}

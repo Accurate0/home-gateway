@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO push_notification (tag, title, body, category, actions, remind_after_secs, max_reminders, next_reminder_at) VALUES ($1, $2, $3, $4, $5, $6::BIGINT, $7::INT, CASE WHEN $7::INT > 0 THEN now() + make_interval(secs => $6::BIGINT::DOUBLE PRECISION) END) RETURNING id, tag, title, body, category, actions, send_count, next_reminder_at, acknowledged_at, created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "tag",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "actions",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "send_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "next_reminder_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "acknowledged_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "9cbdf1aeaaa132c30a9857ba8eaafd76f95756a65f74e68e1705a46f92654acc"
+}

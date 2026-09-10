@@ -645,6 +645,7 @@ type MutationRoot {
 	runWorkflow(slug: String!): Boolean!
 	runPendingAdhocTasks: Boolean!
 	runAdhocCronTask(name: String!): Boolean!
+	recordNotificationInteraction(id: UUID!, kind: NotificationInteractionKind!): Boolean!
 }
 
 """
@@ -655,6 +656,14 @@ ISO 8601 combined date and time without timezone.
 * `2015-07-01T08:59:60.123`,
 """
 scalar NaiveDateTime
+
+enum NotificationInteractionKind {
+	ACKNOWLEDGED
+	OPENED
+	DISMISSED
+	SNOOZED
+	SWIPED
+}
 
 enum Orientation {
 	PORTRAIT
@@ -715,6 +724,24 @@ type PresenceUpdate {
 	present: Boolean!
 }
 
+type PushNotification {
+	id: UUID!
+	tag: String!
+	title: String!
+	body: String!
+	category: String!
+	sendCount: Int!
+	nextReminderAt: DateTime
+	acknowledgedAt: DateTime
+	createdAt: DateTime!
+	interactions: [PushNotificationInteraction!]!
+}
+
+type PushNotificationInteraction {
+	kind: NotificationInteractionKind!
+	at: DateTime!
+}
+
 type QueryRoot {
 	auth: AuthObject!
 	homeAssistant: HomeAssistantObject!
@@ -754,6 +781,7 @@ type QueryRoot {
 	jellyfin: JellyfinObject!
 	adhocCronTasks: [AdhocCronTaskStatus!]!
 	adhocTasks: [AdhocTaskStatus!]!
+	pushNotifications(limit: Int): [PushNotification!]!
 }
 
 enum RedditTimespan {

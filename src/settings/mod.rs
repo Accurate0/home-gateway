@@ -68,7 +68,9 @@ pub use jellyfin::JellyfinSettings;
 pub use light::RawLightBlock;
 pub use location::LocationSettings;
 pub use media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
-pub use notify::{NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets};
+pub use notify::{
+    NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
+};
 pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use reconciler::ReconcilerSettings;
@@ -390,6 +392,10 @@ impl RawSettings {
                     ));
                 }
             }
+
+            workflow
+                .validate_acknowledgements()
+                .map_err(|e| format!("workflow '{}': {e}", workflow.name))?;
         }
 
         Ok((

@@ -2384,6 +2384,16 @@
                 "$ref": "#/$defs/NotifyAction"
               }
             },
+            "acknowledge": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NotifyAcknowledge"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "when": {
               "anyOf": [
                 {
@@ -2737,7 +2747,36 @@
           "required": [
             "type"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "acknowledge"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
+      ]
+    },
+    "NotifyAcknowledge": {
+      "type": "object",
+      "properties": {
+        "remind_after": {
+          "type": "string"
+        },
+        "reminders": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "remind_after",
+        "reminders"
       ]
     },
     "EnableState": {

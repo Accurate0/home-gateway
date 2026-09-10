@@ -10,15 +10,16 @@ class SnoozeWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val tag = inputData.getString(KEY_TAG) ?: body
         val rawActions = inputData.getString(KEY_ACTIONS).orEmpty()
 
-        val payload = PushPayload.from(
-            mapOf(
-                "title" to (inputData.getString(KEY_TITLE) ?: "Home Gateway"),
-                "body" to body,
-                "category" to (inputData.getString(KEY_CATEGORY) ?: NotificationCategory.GENERAL.name),
-                "tag" to tag,
-                "actions" to rawActions,
-            )
-        ) ?: return Result.failure()
+        val data = buildMap {
+            put("title", inputData.getString(KEY_TITLE) ?: "Home Gateway")
+            put("body", body)
+            put("category", inputData.getString(KEY_CATEGORY) ?: NotificationCategory.GENERAL.name)
+            put("tag", tag)
+            put("actions", rawActions)
+            inputData.getString(KEY_NOTIFICATION_ID)?.let { put(PushPayload.KEY_NOTIFICATION_ID, it) }
+        }
+
+        val payload = PushPayload.from(data) ?: return Result.failure()
 
         Notifications.show(applicationContext, payload)
 
@@ -31,5 +32,6 @@ class SnoozeWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         const val KEY_CATEGORY = "category"
         const val KEY_TAG = "tag"
         const val KEY_ACTIONS = "actions"
+        const val KEY_NOTIFICATION_ID = "notification_id"
     }
 }

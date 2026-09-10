@@ -4,13 +4,13 @@ use http::StatusCode;
 use serde::Deserialize;
 
 use crate::actors::system::push::types::{PushAction, PushActionKind};
-use crate::actors::system::push::{self, PushNotification, PushWorker};
+use crate::actors::system::push::{self, PushActor, PushNotification};
 use crate::actors::system::rpc;
 use crate::auth::{
     Auth,
     scope::{Action, Resource, Scope},
 };
-use crate::settings::NotifyCategory;
+use crate::settings::{NotifyAcknowledge, NotifyCategory};
 
 #[derive(Deserialize)]
 pub struct PushNotifyPayload {
@@ -23,6 +23,8 @@ pub struct PushNotifyPayload {
     pub tag: Option<String>,
     #[serde(default)]
     pub actions: Vec<PushActionPayload>,
+    #[serde(default)]
+    pub acknowledge: Option<NotifyAcknowledge>,
 }
 
 #[derive(Deserialize)]
@@ -38,6 +40,7 @@ pub enum PushActionKindPayload {
     RunWorkflow { slug: String },
     Snooze { seconds: u64 },
     Dismiss,
+    Acknowledge,
 }
 
 fn default_title() -> String {
@@ -65,6 +68,7 @@ pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) ->
                 PushActionKindPayload::RunWorkflow { slug } => PushActionKind::RunWorkflow { slug },
                 PushActionKindPayload::Snooze { seconds } => PushActionKind::Snooze { seconds },
                 PushActionKindPayload::Dismiss => PushActionKind::Dismiss,
+                PushActionKindPayload::Acknowledge => PushActionKind::Acknowledge,
             },
         })
         .collect();
@@ -79,9 +83,10 @@ pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) ->
         category: payload.category,
         tag,
         actions,
+        acknowledge: payload.acknowledge,
     });
 
-    if let Err(e) = rpc::cast_factory(PushWorker::NAME, message) {
+    if let Err(e) = rpc::cast(PushActor::NAME, message) {
         tracing::error!("error sending to push worker: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR;
     }

@@ -32,11 +32,17 @@ object Notifications {
 
         val id = notificationId(payload.tag)
 
+        val activityIntent = Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+        payload.notificationId?.let {
+            activityIntent.putExtra(PushPayload.KEY_NOTIFICATION_ID, it)
+        }
+
         val contentIntent = PendingIntent.getActivity(
             context,
             id,
-            Intent(context, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            activityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -49,6 +55,10 @@ object Notifications {
             .setGroup(payload.category.groupKey)
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
+
+        if (payload.notificationId != null) {
+            builder.setDeleteIntent(NotificationActionReceiver.deletePendingIntent(context, id, payload))
+        }
 
         payload.actions.forEachIndexed { index, action ->
             builder.addAction(

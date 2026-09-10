@@ -7,6 +7,9 @@
       notify: { type: android_app }
       category: general
       message: "Bins"
+      acknowledge: { remind_after: 2h, reminders: 1 }
+      actions:
+        - { label: Done, action: { type: acknowledge } }
 
 - name: Bring Bins Back
   slug: bring-bins-back
@@ -17,3 +20,6 @@
       notify: { type: android_app }
       category: general
       message: "Bring the bins back in"
+      acknowledge: { remind_after: 2h, reminders: 1 }
+      actions:
+        - { label: Done, action: { type: acknowledge } }

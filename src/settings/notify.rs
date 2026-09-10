@@ -1,3 +1,4 @@
+use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -52,6 +53,15 @@ pub enum NotifyActionKind {
     RunWorkflow { workflow: String },
     Snooze { seconds: u64 },
     Dismiss,
+    Acknowledge,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
+pub struct NotifyAcknowledge {
+    #[serde(deserialize_with = "crate::timedelta_format::time_delta_from_str::deserialize")]
+    #[schemars(with = "String")]
+    pub remind_after: TimeDelta,
+    pub reminders: u32,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy, JsonSchema)]
@@ -70,6 +80,16 @@ impl NotifyCategory {
             NotifyCategory::Door => "door",
             NotifyCategory::Watchdog => "watchdog",
             NotifyCategory::General => "general",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "alarm" => Some(NotifyCategory::Alarm),
+            "door" => Some(NotifyCategory::Door),
+            "watchdog" => Some(NotifyCategory::Watchdog),
+            "general" => Some(NotifyCategory::General),
+            _ => None,
         }
     }
 }

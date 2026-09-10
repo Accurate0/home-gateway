@@ -234,6 +234,7 @@ impl WorkflowWorker {
                 title,
                 category,
                 actions,
+                acknowledge,
                 ..
             } => {
                 let notification = Notification::new(
@@ -241,7 +242,8 @@ impl WorkflowWorker {
                     *category,
                     format!("workflow:{}", ctx.origin_slug),
                 )
-                .with_actions(self.resolve_push_actions(actions));
+                .with_actions(self.resolve_push_actions(actions))
+                .with_acknowledge(*acknowledge);
 
                 let notification = match title {
                     Some(title) => notification.with_title(title.render(ctx.vars)),
@@ -302,6 +304,7 @@ impl WorkflowWorker {
                         PushActionKind::Snooze { seconds: *seconds }
                     }
                     NotifyActionKind::Dismiss => PushActionKind::Dismiss,
+                    NotifyActionKind::Acknowledge => PushActionKind::Acknowledge,
                 };
 
                 Some(PushAction {

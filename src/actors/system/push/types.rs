@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -18,17 +18,18 @@ pub struct FcmAndroidConfig {
     pub priority: &'static str,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PushAction {
     pub label: String,
     #[serde(flatten)]
     pub kind: PushActionKind,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PushActionKind {
     RunWorkflow { slug: String },
     Snooze { seconds: u64 },
     Dismiss,
+    Acknowledge,
 }

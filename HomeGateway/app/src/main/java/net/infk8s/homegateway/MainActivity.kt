@@ -1,6 +1,7 @@
 package net.infk8s.homegateway
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -42,12 +43,17 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlin.concurrent.thread
+import kotlinx.coroutines.launch
 import net.infk8s.homegateway.graphql.EntitiesUiState
 import net.infk8s.homegateway.graphql.EntitiesViewModel
 import net.infk8s.homegateway.graphql.EntityUi
+import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
+import net.infk8s.homegateway.notifications.NotificationInteractions
+import net.infk8s.homegateway.notifications.PushPayload
 import net.infk8s.homegateway.ui.theme.HomeGatewayTheme
 
 class MainActivity : ComponentActivity() {
@@ -58,6 +64,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) {
+            reportNotificationOpened(intent)
+        }
         ensureNotificationPermission()
         registerPushToken()
         enableEdgeToEdge()
@@ -78,6 +87,21 @@ class MainActivity : ComponentActivity() {
                     EntitiesScreen(state, entitiesViewModel.controls(), Modifier.padding(innerPadding))
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        reportNotificationOpened(intent)
+    }
+
+    private fun reportNotificationOpened(intent: Intent?) {
+        val notificationId = intent?.getStringExtra(PushPayload.KEY_NOTIFICATION_ID) ?: return
+        intent.removeExtra(PushPayload.KEY_NOTIFICATION_ID)
+
+        lifecycleScope.launch {
+            NotificationInteractions.record(notificationId, NotificationInteractionKind.OPENED)
         }
     }
 

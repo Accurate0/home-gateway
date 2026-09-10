@@ -3,7 +3,7 @@ source: src/actors/workflows/plan.rs
 expression: out
 ---
 # Bins  (on: cron(0 19 * * 4))
-  notify: notify(AndroidApp, general): Bins
+  notify: notify(AndroidApp, general): Bins [Done] (remind after 2h, 1 reminder(s) until acknowledged)
 
 # Bring Bins Back  (on: cron(0 12 * * 5))
-  notify: notify(AndroidApp, general): Bring the bins back in
+  notify: notify(AndroidApp, general): Bring the bins back in [Done] (remind after 2h, 1 reminder(s) until acknowledged)

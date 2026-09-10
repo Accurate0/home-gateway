@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE push_notification SET send_count = send_count + 1, next_reminder_at = CASE WHEN send_count < max_reminders THEN now() + make_interval(secs => remind_after_secs::DOUBLE PRECISION) END WHERE id = $1 AND acknowledged_at IS NULL AND next_reminder_at IS NOT NULL AND next_reminder_at <= now() + INTERVAL '5 seconds' RETURNING id, tag, title, body, category, actions, send_count, next_reminder_at, acknowledged_at, created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "tag",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "actions",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "send_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "next_reminder_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "acknowledged_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "c30f841cfabc4ec9c7c2c823ee81a7d5b9ace6c05affe64ef325f3f1f800be61"
+}

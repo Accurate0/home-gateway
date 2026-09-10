@@ -74,7 +74,7 @@ scopes! {
     Light => "light" [Read, Write],
     MediaPlayer => "media.player" [Read, Write],
     Presence => "presence" [Read],
-    Push => "push" [Write],
+    Push => "push" [Read, Write],
     RobotVacuum => "robot_vacuum" [Read, Write],
     Schema => "schema" [Read],
     Solar => "solar" [Read],

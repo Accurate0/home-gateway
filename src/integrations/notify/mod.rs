@@ -3,8 +3,8 @@ use crate::actors::system::rpc;
 use tracing::instrument;
 
 use crate::{
-    actors::system::push::{self, PushNotification, PushWorker, types::PushAction},
-    settings::{NotifyCategory, NotifySource},
+    actors::system::push::{self, PushActor, PushNotification, types::PushAction},
+    settings::{NotifyAcknowledge, NotifyCategory, NotifySource},
 };
 
 #[derive(Debug, Clone)]
@@ -14,6 +14,7 @@ pub struct Notification {
     pub category: NotifyCategory,
     pub tag: String,
     pub actions: Vec<PushAction>,
+    pub acknowledge: Option<NotifyAcknowledge>,
 }
 
 impl Notification {
@@ -24,6 +25,7 @@ impl Notification {
             category,
             tag,
             actions: Vec::new(),
+            acknowledge: None,
         }
     }
 
@@ -34,6 +36,11 @@ impl Notification {
 
     pub fn with_actions(mut self, actions: Vec<PushAction>) -> Self {
         self.actions = actions;
+        self
+    }
+
+    pub fn with_acknowledge(mut self, acknowledge: Option<NotifyAcknowledge>) -> Self {
+        self.acknowledge = acknowledge;
         self
     }
 }
@@ -51,9 +58,10 @@ pub fn notify(notify_sources: &[NotifySource], notification: Notification) {
                     category: notification.category,
                     tag: notification.tag.clone(),
                     actions: notification.actions.clone(),
+                    acknowledge: notification.acknowledge,
                 });
 
-                if let Err(e) = rpc::cast_factory(PushWorker::NAME, push_message) {
+                if let Err(e) = rpc::cast(PushActor::NAME, push_message) {
                     tracing::error!("error sending to push worker: {e}");
                 };
             }

@@ -27,7 +27,7 @@ use crate::actors::system::{
     battery::BatteryActor,
     cron::CronActor,
     mqtt_ingest::MqttIngest,
-    push::PushWorker,
+    push::PushActor,
     reconciler::{ReconcilerSweeper, ReconcilerWorker},
     sampling::SamplingActor,
     watchdog::WatchdogActor,
@@ -201,7 +201,7 @@ pub static ACTORS: &[ActorSpec] = &[
         },
     },
     ActorSpec {
-        name: PushWorker::NAME,
+        name: PushActor::NAME,
         autostart: true,
         optional: false,
         requires: &[],

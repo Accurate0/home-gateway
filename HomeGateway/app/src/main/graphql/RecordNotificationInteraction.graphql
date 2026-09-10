@@ -1,0 +1,3 @@
+mutation RecordNotificationInteraction($id: UUID!, $kind: NotificationInteractionKind!) {
+  recordNotificationInteraction(id: $id, kind: $kind)
+}

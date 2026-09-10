@@ -7,7 +7,9 @@ use crate::settings::trigger::TriggerMatcher;
 use crate::settings::vacuum_command::VacuumCommand;
 use crate::settings::workflow_context::ContextSource;
 use crate::settings::workflow_timers::WorkflowTimerSettings;
-use crate::settings::{NotifyAction, NotifyActionKind, NotifyCategory, NotifySource};
+use crate::settings::{
+    NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource,
+};
 use crate::timedelta_format::option_time_delta_from_str;
 use std::collections::BTreeMap;
 
@@ -390,6 +392,8 @@ pub enum Step {
         #[serde(default)]
         actions: Vec<NotifyAction>,
         #[serde(default)]
+        acknowledge: Option<NotifyAcknowledge>,
+        #[serde(default)]
         when: Option<Condition>,
     },
     Delay {
@@ -498,6 +502,7 @@ impl Step {
                 message,
                 category,
                 actions,
+                acknowledge,
                 ..
             } => {
                 let suffix = if actions.is_empty() {
@@ -507,8 +512,17 @@ impl Step {
                     format!(" [{}]", labels.join(", "))
                 };
 
+                let ack = match acknowledge {
+                    Some(ack) => format!(
+                        " (remind after {}, {} reminder(s) until acknowledged)",
+                        crate::timedelta_format::humanize(ack.remind_after),
+                        ack.reminders
+                    ),
+                    None => String::new(),
+                };
+
                 Some(format!(
-                    "notify({notify:?}, {}): {message}{suffix}",
+                    "notify({notify:?}, {}): {message}{suffix}{ack}",
                     category.as_str()
                 ))
             }
@@ -788,6 +802,43 @@ impl Workflow {
         let mut out = Vec::new();
         collect(&self.run, &mut out);
         out
+    }
+
+    pub fn validate_acknowledgements(&self) -> Result<(), String> {
+        fn check(steps: &[Step]) -> Result<(), String> {
+            for step in steps {
+                match step {
+                    Step::Notify {
+                        actions,
+                        acknowledge,
+                        ..
+                    } => {
+                        let has_action = actions
+                            .iter()
+                            .any(|a| matches!(a.action, NotifyActionKind::Acknowledge));
+
+                        match (acknowledge, has_action) {
+                            (Some(_), false) => {
+                                return Err("notify step has an `acknowledge` block but no \
+                                            acknowledge action"
+                                    .to_owned());
+                            }
+                            (None, true) => {
+                                return Err("notify step has an acknowledge action but no \
+                                            `acknowledge` block"
+                                    .to_owned());
+                            }
+                            (Some(_), true) | (None, false) => {}
+                        }
+                    }
+                    Step::Scene { run, .. } => check(run)?,
+                    _ => {}
+                }
+            }
+            Ok(())
+        }
+
+        check(&self.run)
     }
 
     pub fn when(&self) -> Option<&Condition> {
@@ -1168,5 +1219,85 @@ run:
             .unwrap_err();
 
         assert!(err.to_string().contains("category"), "{err}");
+    }
+
+    fn notify_workflow(step: &str) -> Workflow {
+        let yaml = format!(
+            r#"
+name: Ack test
+slug: ack-test
+on: {{ type: presence, sensor: hallway, present: true }}
+run:
+  - type: notify
+    notify: {{ type: android_app }}
+    category: general
+    message: "Bins"
+{step}
+"#
+        );
+
+        Config::builder()
+            .add_source(File::from_str(&yaml, FileFormat::Yaml))
+            .build()
+            .unwrap()
+            .try_deserialize::<Workflow>()
+            .unwrap()
+    }
+
+    #[test]
+    fn notify_step_parses_acknowledge() {
+        let workflow = notify_workflow(
+            "    acknowledge: { remind_after: 2h, reminders: 1 }\n    actions:\n      - { label: Done, action: { type: acknowledge } }",
+        );
+
+        let Step::Notify { acknowledge, .. } = &workflow.run[0] else {
+            panic!("expected a notify step");
+        };
+
+        let acknowledge = acknowledge.expect("acknowledge block parsed");
+        assert_eq!(acknowledge.remind_after, TimeDelta::hours(2));
+        assert_eq!(acknowledge.reminders, 1);
+        assert!(workflow.validate_acknowledgements().is_ok());
+    }
+
+    #[test]
+    fn acknowledge_block_requires_an_acknowledge_action() {
+        let workflow = notify_workflow("    acknowledge: { remind_after: 2h, reminders: 1 }");
+
+        let err = workflow.validate_acknowledgements().unwrap_err();
+        assert!(err.contains("no acknowledge action"), "{err}");
+    }
+
+    #[test]
+    fn acknowledge_action_requires_an_acknowledge_block() {
+        let workflow =
+            notify_workflow("    actions:\n      - { label: Done, action: { type: acknowledge } }");
+
+        let err = workflow.validate_acknowledgements().unwrap_err();
+        assert!(err.contains("no `acknowledge` block"), "{err}");
+    }
+
+    #[test]
+    fn acknowledge_block_requires_both_fields() {
+        let yaml = r#"
+name: Ack test
+slug: ack-test
+on: { type: presence, sensor: hallway, present: true }
+run:
+  - type: notify
+    notify: { type: android_app }
+    category: general
+    message: "Bins"
+    acknowledge: { remind_after: 2h }
+"#;
+
+        let err = Config::builder()
+            .add_source(File::from_str(yaml, FileFormat::Yaml))
+            .build()
+            .unwrap()
+            .try_deserialize::<Workflow>()
+            .unwrap_err();
+
+        assert!(err.to_string().contains("reminders"), "{err}");
     }
 }

@@ -7,6 +7,7 @@ mod config;
 mod cron_tasks;
 mod fuelwatch;
 mod ingest;
+mod push;
 mod reconciler;
 mod repo;
 mod solar;

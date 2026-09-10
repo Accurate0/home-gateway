@@ -12,6 +12,7 @@ pub mod jellyfin;
 pub mod light;
 pub mod media_player;
 pub mod metric;
+pub mod notification_interaction;
 pub mod push;
 pub mod registry;
 pub mod robot_vacuum;

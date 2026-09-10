@@ -7,6 +7,7 @@ use queries::{
 
 use crate::graphql::mutations::MutationRoot;
 use crate::graphql::queries::fuelwatch_query::FuelWatchQuery;
+use crate::graphql::queries::push_query::PushQuery;
 use crate::graphql::queries::transperth_query::TransperthQuery;
 use crate::graphql::queries::woolworths_query::WoolworthsQuery;
 use crate::graphql::queries::workflows_query::WorkflowsQuery;
@@ -34,6 +35,7 @@ pub struct QueryRoot(
     WorkflowsQuery,
     JellyfinQuery,
     AdhocQuery,
+    PushQuery,
 );
 
 pub type FinalSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;

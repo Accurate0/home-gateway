@@ -9,8 +9,11 @@ data class PushPayload(
     val tag: String,
     val actions: List<PushAction>,
     val rawActions: String,
+    val notificationId: String?,
 ) {
     companion object {
+        const val KEY_NOTIFICATION_ID = "notification_id"
+
         fun from(data: Map<String, String>): PushPayload? {
             val body = data["body"] ?: return null
 
@@ -21,6 +24,7 @@ data class PushPayload(
                 tag = data["tag"] ?: body,
                 actions = parseActions(data["actions"]),
                 rawActions = data["actions"].orEmpty(),
+                notificationId = data[KEY_NOTIFICATION_ID]?.ifEmpty { null },
             )
         }
 
@@ -39,6 +43,7 @@ data class PushPayload(
 
                     "snooze" -> PushAction.Snooze(label, item.optLong("seconds", 0L))
                     "dismiss" -> PushAction.Dismiss(label)
+                    "acknowledge" -> PushAction.Acknowledge(label)
                     else -> null
                 }
             }
@@ -54,4 +59,6 @@ sealed interface PushAction {
     data class Snooze(override val label: String, val seconds: Long) : PushAction
 
     data class Dismiss(override val label: String) : PushAction
+
+    data class Acknowledge(override val label: String) : PushAction
 }
