@@ -1492,4 +1492,33 @@ devices:
         assert!(err.contains("failed to process includes"), "{err}");
         assert!(err.contains("missing.yaml"), "{err}");
     }
+
+    #[test]
+    fn every_config_file_is_shipped_in_the_config_map() {
+        let kustomization = std::fs::read_to_string("./config/kustomization.yaml").unwrap();
+        let listed: HashSet<&str> = kustomization
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("- "))
+            .collect();
+
+        let mut missing = Vec::new();
+
+        for dir in ["", "workflows/"] {
+            for entry in std::fs::read_dir(Path::new("./config").join(dir)).unwrap() {
+                let name = entry.unwrap().file_name().to_string_lossy().into_owned();
+                let is_yaml = name.ends_with(".yaml") && name != "kustomization.yaml";
+                let path = format!("{dir}{name}");
+
+                if is_yaml && !listed.contains(path.as_str()) {
+                    missing.push(path);
+                }
+            }
+        }
+
+        missing.sort();
+        assert!(
+            missing.is_empty(),
+            "config files not listed in config/kustomization.yaml, the deployed config would miss them: {missing:?}"
+        );
+    }
 }
