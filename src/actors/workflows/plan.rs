@@ -121,16 +121,15 @@ mod tests {
     fn mode_trigger_and_set_mode_step() {
         let wf = workflow(
             r#"
-            name: night lights off
-            on: { type: mode, mode: night, active: true }
+            name: vacation lights off
+            on: { type: mode, from: home, to: vacation }
             run:
               - type: light
                 device: "0x1"
                 state: "OFF"
               - type: set_mode
                 mode: away
-                active: true
-                when: { type: mode, mode: guest, active: false }
+                when: { type: mode, is: guest }
             "#,
         );
         insta::assert_snapshot!(rendered_with_header(&wf));

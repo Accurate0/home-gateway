@@ -73,12 +73,10 @@ pub enum EventBusMessage {
         client: String,
         connected: bool,
     },
-    /// A house mode was toggled (published per changed mode when `set_mode`
-    /// runs), so transition workflows can trigger on enter/exit.
     Mode {
         event_id: Uuid,
         mode: Mode,
-        active: bool,
+        previous: Mode,
     },
     /// A Home Assistant entity changed state, forwarded from HA's WebSocket
     /// `state_changed` stream by the [`crate::actors::integrations::home_assistant`] producer.
@@ -400,9 +398,9 @@ impl EventBusMessage {
                 ("client".to_owned(), client.clone()),
                 ("connected".to_owned(), connected.to_string()),
             ]),
-            EventBusMessage::Mode { mode, active, .. } => HashMap::from([
+            EventBusMessage::Mode { mode, previous, .. } => HashMap::from([
                 ("mode".to_owned(), mode.as_str().to_owned()),
-                ("active".to_owned(), active.to_string()),
+                ("previous".to_owned(), previous.as_str().to_owned()),
             ]),
             EventBusMessage::HomeAssistant {
                 entity_id, state, ..

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f5a5550b5e268b6ff0b5801fe2b8c076>>
+ * @generated SignedSource<<2416b74c6b7e2b5d52efa54f66d7b6b3>>
  * @lightSyntaxTransform
  */
 
@@ -326,6 +326,12 @@ return {
           {
             "kind": "InlineFragment",
             "selections": (v9/*:: as any*/),
+            "type": "CommandFailedUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v9/*:: as any*/),
             "type": "DeviceBatteryUpdate",
             "abstractKey": null
           },
@@ -347,12 +353,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "a7ba8920872eac4e7a054719a1eeac25",
+    "cacheID": "83786a0b942b41f4abbbefba705daff8",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();

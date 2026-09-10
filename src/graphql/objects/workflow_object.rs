@@ -1,6 +1,8 @@
 use async_graphql::SimpleObject;
 use chrono::{DateTime, Utc};
 
+use crate::mode::Mode;
+
 #[derive(SimpleObject)]
 pub struct WorkflowRun {
     pub id: async_graphql::ID,
@@ -25,4 +27,5 @@ pub struct WorkflowStatus {
     pub config_enabled: bool,
     pub dry_run: bool,
     pub reusable: bool,
+    pub modes: Vec<Mode>,
 }

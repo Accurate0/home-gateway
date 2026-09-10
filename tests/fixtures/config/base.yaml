@@ -96,9 +96,9 @@ eink_display:
 adhoc:
   recheck_interval: 15m
 
-away:
+vacation:
   enabled: true
-  modes: [away, vacation]
+  modes: [vacation]
   window: 672h
   jitter: 12m
   min_observations: 8

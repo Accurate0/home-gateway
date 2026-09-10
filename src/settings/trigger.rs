@@ -55,11 +55,11 @@ pub enum TriggerMatcher {
         #[schemars(with = "String")]
         offset: chrono::TimeDelta,
     },
-    /// Fires when a house mode is entered (`active: true`) or exited
-    /// (`active: false`), driven by `set_mode`.
     Mode {
-        mode: Mode,
-        active: bool,
+        #[serde(default)]
+        to: Option<Mode>,
+        #[serde(default)]
+        from: Option<Mode>,
     },
     /// Fires when a Home Assistant entity changes state, driven by the
     /// [`crate::actors::integrations::home_assistant`] producer. Optionally gate on the entity
@@ -263,8 +263,10 @@ impl TriggerMatcher {
                     cmp.op, cmp.value
                 )
             }
-            TriggerMatcher::Mode { mode, active } => {
-                format!("mode({}) -> {active}", mode.as_str())
+            TriggerMatcher::Mode { to, from } => {
+                let side = |mode: &Option<Mode>| mode.map_or("*", |mode| mode.as_str());
+
+                format!("mode({} -> {})", side(from), side(to))
             }
             TriggerMatcher::HomeAssistant { entity_id, state } => match state {
                 Some(state) => format!("home_assistant({entity_id}) -> {state}"),
@@ -389,7 +391,7 @@ impl TriggerMatcher {
             }
             TriggerMatcher::Cron { .. } => strs(&["name"]),
             TriggerMatcher::Sun { .. } => strs(&["transition"]),
-            TriggerMatcher::Mode { .. } => strs(&["mode", "active"]),
+            TriggerMatcher::Mode { .. } => strs(&["mode", "previous"]),
             TriggerMatcher::HomeAssistant { .. } => strs(&["entity_id", "state"]),
             TriggerMatcher::Woolworths { .. } => {
                 strs(&["product_id", "name", "old_price", "new_price", "drop"])
@@ -462,6 +464,12 @@ impl TriggerMatcher {
             TriggerMatcher::Presence { sensor, .. }
             | TriggerMatcher::Environment { sensor, .. } => {
                 validate_device(sensor, devices)?;
+            }
+            TriggerMatcher::Mode {
+                to: None,
+                from: None,
+            } => {
+                return Err("mode trigger needs `to` or `from`".to_owned());
             }
             TriggerMatcher::Cron { .. }
             | TriggerMatcher::Sun { .. }

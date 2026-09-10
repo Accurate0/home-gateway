@@ -95,7 +95,7 @@ pub struct UnifiUpdate {
 pub struct ModeUpdate {
     pub event_id: Uuid,
     pub mode: Mode,
-    pub active: bool,
+    pub previous: Mode,
 }
 
 #[derive(SimpleObject)]
@@ -413,11 +413,11 @@ impl EventUpdate {
             EventBusMessage::Mode {
                 event_id,
                 mode,
-                active,
+                previous,
             } => EventUpdate::Mode(ModeUpdate {
                 event_id,
                 mode,
-                active,
+                previous,
             }),
             EventBusMessage::HomeAssistant {
                 event_id,

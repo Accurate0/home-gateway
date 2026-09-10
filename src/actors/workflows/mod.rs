@@ -258,7 +258,7 @@ impl WorkflowWorker {
                 Ok(())
             }
             Step::RunWorkflow { workflow, .. } => self.run_named_workflow(ctx, workflow).await,
-            Step::SetMode { mode, active, .. } => self.run_set_mode(*mode, *active).await,
+            Step::SetMode { mode, .. } => self.run_set_mode(*mode).await,
             Step::SetWorkflowsEnabled { tag, state, .. } => {
                 self.run_set_workflows_enabled(ctx, tag, *state).await
             }
@@ -472,28 +472,25 @@ impl WorkflowWorker {
         Ok(())
     }
 
-    async fn run_set_mode(
-        &self,
-        mode: crate::mode::Mode,
-        active: bool,
-    ) -> Result<(), WorkflowError> {
-        let transitions = self
+    async fn run_set_mode(&self, mode: crate::mode::Mode) -> Result<(), WorkflowError> {
+        let previous = self
             .shared_actor_state
             .handles
             .expect::<WorkflowManager>()
-            .set_mode(mode, active)
+            .set_mode(mode)
             .await
             .map_err(|e| WorkflowError::Other(e.into()))?;
 
-        for (mode, active) in transitions {
+        if let Some(previous) = previous {
             self.shared_actor_state
                 .event_bus
                 .publish(EventBusMessage::Mode {
                     event_id: Uuid::new_v4(),
                     mode,
-                    active,
+                    previous,
                 });
         }
+
         Ok(())
     }
 

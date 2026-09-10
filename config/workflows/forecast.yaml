@@ -12,6 +12,7 @@
   slug: morning-forecast
   group: Weather
   on: { type: cron, schedule: "0 9 * * *" }
+  modes: [home, away]
   run:
     - type: run_workflow
       workflow: weather-forecast

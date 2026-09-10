@@ -6,7 +6,7 @@ use crate::mode::Mode;
 use crate::timedelta_format::time_delta_from_str;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct AwaySettings {
+pub struct VacationSettings {
     pub enabled: bool,
     pub modes: Vec<Mode>,
     #[serde(deserialize_with = "time_delta_from_str::deserialize")]
@@ -19,7 +19,7 @@ pub struct AwaySettings {
     pub seed: u64,
 }
 
-impl AwaySettings {
+impl VacationSettings {
     pub fn arms_on(&self, mode: &Mode) -> bool {
         self.enabled && self.modes.contains(mode)
     }

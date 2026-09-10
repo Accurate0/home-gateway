@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(
     Debug,
+    Default,
     Clone,
     Copy,
     PartialEq,
@@ -14,48 +15,32 @@ use serde::{Deserialize, Serialize};
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
+    #[default]
     Home,
     Away,
     Vacation,
-    Night,
     Guest,
-    Party,
 }
 
 impl Mode {
-    pub const ALL: &'static [Mode] = &[
-        Mode::Home,
-        Mode::Away,
-        Mode::Vacation,
-        Mode::Night,
-        Mode::Guest,
-        Mode::Party,
-    ];
+    pub const ALL: &'static [Mode] = &[Mode::Home, Mode::Away, Mode::Vacation, Mode::Guest];
 
-    const OCCUPANCY: &'static [Mode] = &[Mode::Home, Mode::Away, Mode::Vacation];
+    pub const STATE_KEY: &'static str = "mode";
 
     pub fn as_str(&self) -> &'static str {
         match self {
             Mode::Home => "home",
             Mode::Away => "away",
             Mode::Vacation => "vacation",
-            Mode::Night => "night",
             Mode::Guest => "guest",
-            Mode::Party => "party",
         }
     }
 
-    pub fn state_key(&self) -> String {
-        format!("mode:{}", self.as_str())
-    }
-
-    pub fn exclusive_peers(&self) -> impl Iterator<Item = Mode> + '_ {
-        let group: &'static [Mode] = if Self::OCCUPANCY.contains(self) {
-            Self::OCCUPANCY
-        } else {
-            &[]
-        };
-        group.iter().copied().filter(move |m| m != self)
+    pub fn parse(value: &str) -> Option<Mode> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|mode| mode.as_str() == value)
     }
 }
 
@@ -64,20 +49,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn occupancy_modes_are_mutually_exclusive() {
-        let peers: Vec<Mode> = Mode::Home.exclusive_peers().collect();
-        assert_eq!(peers, vec![Mode::Away, Mode::Vacation]);
+    fn every_mode_round_trips_through_its_name() {
+        for mode in Mode::ALL {
+            assert_eq!(Mode::parse(mode.as_str()), Some(*mode));
+        }
     }
 
     #[test]
-    fn toggle_modes_have_no_peers() {
-        assert_eq!(Mode::Guest.exclusive_peers().count(), 0);
-        assert_eq!(Mode::Night.exclusive_peers().count(), 0);
-        assert_eq!(Mode::Party.exclusive_peers().count(), 0);
+    fn an_unknown_name_does_not_parse() {
+        assert_eq!(Mode::parse("party"), None);
     }
 
     #[test]
-    fn state_key_namespaced() {
-        assert_eq!(Mode::Vacation.state_key(), "mode:vacation");
+    fn the_house_defaults_to_home() {
+        assert_eq!(Mode::default(), Mode::Home);
     }
 }

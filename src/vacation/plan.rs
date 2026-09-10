@@ -3,7 +3,7 @@ use chrono_tz::Australia::Perth;
 use std::collections::HashMap;
 
 use crate::repo::light::ProfileBucket;
-use crate::settings::AwaySettings;
+use crate::settings::VacationSettings;
 
 pub const SLOTS_PER_DAY: i16 = 48;
 const SLOT_MINUTES: i64 = 30;
@@ -33,7 +33,7 @@ fn address_seed(address: &str) -> u64 {
 /// A deterministic draw in `[0, 1)` for one (light, day, slot, salt). The plan is
 /// therefore a pure function of its inputs, so the API and the actor agree and a
 /// restart mid-day resumes the same plan rather than re-rolling it.
-fn draw(settings: &AwaySettings, address: &str, day: NaiveDate, slot: i16, salt: u64) -> f64 {
+fn draw(settings: &VacationSettings, address: &str, day: NaiveDate, slot: i16, salt: u64) -> f64 {
     let seed = mix(settings.seed)
         ^ mix(address_seed(address))
         ^ mix(day
@@ -60,7 +60,7 @@ fn slot_start(day: NaiveDate, slot: i16) -> DateTime<Utc> {
 /// history is dense enough to have an opinion, `None` where the light is left
 /// alone.
 fn slot_states(
-    settings: &AwaySettings,
+    settings: &VacationSettings,
     address: &str,
     day: NaiveDate,
     buckets: &HashMap<i16, &ProfileBucket>,
@@ -92,7 +92,7 @@ pub fn coverage(buckets: &[ProfileBucket], address: &str, day: NaiveDate, min: i
 pub fn build_plan(
     buckets: &[ProfileBucket],
     day: NaiveDate,
-    settings: &AwaySettings,
+    settings: &VacationSettings,
 ) -> Vec<PlannedAction> {
     let isodow = day.weekday().number_from_monday() as i16;
 
@@ -167,10 +167,10 @@ mod tests {
 
     use crate::mode::Mode;
 
-    fn settings() -> AwaySettings {
-        AwaySettings {
+    fn settings() -> VacationSettings {
+        VacationSettings {
             enabled: true,
-            modes: vec![Mode::Away],
+            modes: vec![Mode::Vacation],
             window: TimeDelta::hours(672),
             jitter: TimeDelta::minutes(12),
             min_observations: 8,

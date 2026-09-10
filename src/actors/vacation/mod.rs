@@ -1,8 +1,8 @@
-//! Away mode: replays the home's own historical lighting while nobody is here.
+//! Vacation mode: replays the home's own historical lighting while nobody is here.
 //!
 //! While one of the configured occupancy modes is active, the light history
 //! aggregate is turned into a switching plan for the day (see
-//! [`crate::away::plan`]) and each transition is armed as a one-shot timer, the
+//! [`crate::vacation::plan`]) and each transition is armed as a one-shot timer, the
 //! same shape as [`crate::actors::sun::SunActor`]. The plan is deterministic, so
 //! a restart mid-day resumes it instead of re-rolling.
 
@@ -13,33 +13,33 @@ use ractor::Actor;
 use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
-use crate::away::{PlannedAction, build_plan, target_at};
 use crate::event_bus::{Recipient, Subscription};
 use crate::state::AppState;
+use crate::vacation::{PlannedAction, build_plan, target_at};
 
 pub mod subscriber;
 
-pub use subscriber::AwaySubscriber;
+pub use subscriber::VacationSubscriber;
 
-pub enum AwayMessage {
+pub enum VacationMessage {
     Arm(bool),
     Rebuild,
     Fire { address: String, on: bool },
 }
 
-pub struct AwayActor {
+pub struct VacationActor {
     pub shared_actor_state: AppState,
 }
 
 #[derive(Default)]
-pub struct AwayState {
+pub struct VacationState {
     _subscription: Subscription,
     armed: bool,
     plan: Vec<PlannedAction>,
-    timers: Vec<ractor::concurrency::JoinHandle<Result<(), ractor::MessagingErr<AwayMessage>>>>,
+    timers: Vec<ractor::concurrency::JoinHandle<Result<(), ractor::MessagingErr<VacationMessage>>>>,
 }
 
-impl AwayState {
+impl VacationState {
     fn cancel_timers(&mut self) {
         for timer in self.timers.drain(..) {
             timer.abort();
@@ -47,36 +47,38 @@ impl AwayState {
     }
 }
 
-impl AwayActor {
-    pub const NAME: &str = "away";
+impl VacationActor {
+    pub const NAME: &str = "vacation";
 
     fn today(&self) -> NaiveDate {
         Utc::now().with_timezone(&Perth).date_naive()
     }
 
     async fn armed_now(&self) -> bool {
-        let manager = self.shared_actor_state.handles.expect::<WorkflowManager>();
-        let away = &self.shared_actor_state.settings.away;
+        let mode = self
+            .shared_actor_state
+            .handles
+            .expect::<WorkflowManager>()
+            .current_mode()
+            .await;
 
-        for mode in &away.modes {
-            if manager.mode_active(*mode).await {
-                return true;
-            }
-        }
-
-        false
+        self.shared_actor_state
+            .settings
+            .vacation
+            .modes
+            .contains(&mode)
     }
 
     /// Rebuild today's plan and arm a timer for every action still ahead of us,
     /// plus one at local midnight to roll onto the next day.
     async fn rebuild(
         &self,
-        myself: &ractor::ActorRef<AwayMessage>,
-        state: &mut AwayState,
+        myself: &ractor::ActorRef<VacationMessage>,
+        state: &mut VacationState,
     ) -> Result<(), ractor::ActorProcessingErr> {
         state.cancel_timers();
 
-        let settings = &self.shared_actor_state.settings.away;
+        let settings = &self.shared_actor_state.settings.vacation;
         let day = self.today();
 
         let buckets = self
@@ -100,7 +102,7 @@ impl AwayActor {
             let on = action.on;
             state
                 .timers
-                .push(myself.send_after(delay, move || AwayMessage::Fire { address, on }));
+                .push(myself.send_after(delay, move || VacationMessage::Fire { address, on }));
             armed += 1;
         }
 
@@ -115,7 +117,7 @@ impl AwayActor {
         {
             state
                 .timers
-                .push(myself.send_after(delay, || AwayMessage::Rebuild));
+                .push(myself.send_after(delay, || VacationMessage::Rebuild));
         }
 
         let mut addresses: Vec<&str> = state
@@ -128,7 +130,7 @@ impl AwayActor {
         addresses.dedup();
 
         tracing::info!(
-            "away plan for {day}: {} actions, {armed} still ahead across {} lights",
+            "vacation plan for {day}: {} actions, {armed} still ahead across {} lights",
             state.plan.len(),
             addresses.len()
         );
@@ -154,7 +156,7 @@ impl AwayActor {
 
         if current == Some(on) {
             tracing::info!(
-                "away: {address} is already {}",
+                "vacation: {address} is already {}",
                 if on { "on" } else { "off" }
             );
 
@@ -170,19 +172,19 @@ impl AwayActor {
 
         match rpc::cast_factory(LightHandler::NAME, message) {
             Ok(()) => tracing::info!(
-                "away: dispatched {address} {}",
+                "vacation: dispatched {address} {}",
                 if on { "on" } else { "off" }
             ),
-            Err(e) => tracing::warn!("away: could not switch {address}: {e}"),
+            Err(e) => tracing::warn!("vacation: could not switch {address}: {e}"),
         }
 
         Ok(())
     }
 }
 
-impl Actor for AwayActor {
-    type Msg = AwayMessage;
-    type State = AwayState;
+impl Actor for VacationActor {
+    type Msg = VacationMessage;
+    type State = VacationState;
     type Arguments = ();
 
     async fn pre_start(
@@ -193,12 +195,12 @@ impl Actor for AwayActor {
         let subscription = self.shared_actor_state.event_bus.register(
             Self::NAME,
             Recipient::Actor(myself.clone()),
-            AwaySubscriber {
+            VacationSubscriber {
                 settings: self.shared_actor_state.settings.clone(),
             },
         );
 
-        let mut state = AwayState {
+        let mut state = VacationState {
             _subscription: subscription,
             armed: self.armed_now().await,
             plan: Vec::new(),
@@ -206,16 +208,16 @@ impl Actor for AwayActor {
         };
 
         if state.armed {
-            tracing::info!("away mode is already active, building the replay plan");
+            tracing::info!("vacation mode is already active, building the replay plan");
             self.rebuild(&myself, &mut state).await?;
         } else {
-            tracing::info!("away mode is inactive, no lights will be replayed");
+            tracing::info!("vacation mode is inactive, no lights will be replayed");
         }
 
         Ok(state)
     }
 
-    #[tracing::instrument(parent = None, name = "away-actor", skip(self, myself, message, state))]
+    #[tracing::instrument(parent = None, name = "vacation-actor", skip(self, myself, message, state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,
@@ -223,29 +225,32 @@ impl Actor for AwayActor {
         state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
-            AwayMessage::Arm(true) => {
-                tracing::info!("away mode armed");
+            VacationMessage::Arm(true) => {
+                tracing::info!("vacation mode armed");
                 state.armed = true;
                 self.rebuild(&myself, state).await?;
             }
-            AwayMessage::Arm(false) => {
-                tracing::info!("away mode disarmed, dropping the plan");
+            VacationMessage::Arm(false) if !state.armed => {
+                tracing::debug!("vacation mode is already disarmed");
+            }
+            VacationMessage::Arm(false) => {
+                tracing::info!("vacation mode disarmed, dropping the plan");
                 state.armed = false;
                 state.cancel_timers();
                 state.plan.clear();
             }
-            AwayMessage::Rebuild => {
+            VacationMessage::Rebuild => {
                 if state.armed {
                     self.rebuild(&myself, state).await?;
                 } else {
-                    tracing::info!("away: skipping rebuild while disarmed");
+                    tracing::info!("vacation: skipping rebuild while disarmed");
                 }
             }
-            AwayMessage::Fire { address, on } => {
+            VacationMessage::Fire { address, on } => {
                 if state.armed {
                     self.fire(address, on).await?;
                 } else {
-                    tracing::info!("away: dropping queued action for {address} while disarmed");
+                    tracing::info!("vacation: dropping queued action for {address} while disarmed");
                 }
             }
         }

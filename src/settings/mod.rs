@@ -12,7 +12,6 @@ use std::{
 pub mod adhoc;
 pub mod alarm;
 pub mod auth;
-pub mod away;
 pub mod de;
 pub mod device;
 pub mod door;
@@ -39,6 +38,7 @@ pub mod template;
 pub mod transperth;
 pub mod trigger;
 pub mod trmnl;
+pub mod vacation;
 pub mod vacuum_command;
 pub mod valetudo;
 pub mod watchdog;
@@ -52,7 +52,6 @@ pub mod zigbee_model;
 pub use adhoc::AdhocSettings;
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
-pub use away::AwaySettings;
 pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use door::{ArmedDoorStates, DoorSettings};
 pub use eink::{
@@ -84,6 +83,7 @@ pub use template::TemplateString;
 pub use transperth::{PeakWindow, RawTransperthSettings, TransperthRoute, TransperthSettings};
 pub use trigger::TriggerMatcher;
 pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
+pub use vacation::VacationSettings;
 pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use watchdog::WatchdogSettings;
 pub use willyweather::WillyWeatherSettings;
@@ -149,7 +149,7 @@ pub struct Settings {
     pub fuelwatch: Option<FuelWatchSettings>,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
-    pub away: AwaySettings,
+    pub vacation: VacationSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -209,7 +209,7 @@ pub struct RawSettings {
     #[serde(default)]
     eink_display: eink::RawEinkGlobal,
     adhoc: AdhocSettings,
-    away: AwaySettings,
+    vacation: VacationSettings,
 }
 
 impl RawSettings {
@@ -249,7 +249,7 @@ impl RawSettings {
             fuelwatch,
             eink_display,
             adhoc,
-            away,
+            vacation,
         } = self;
 
         if willyweather
@@ -356,6 +356,13 @@ impl RawSettings {
                 ));
             }
 
+            if !workflow.modes.is_empty() && workflow.on().is_none() {
+                return Err(format!(
+                    "workflow '{}' uses `modes:` but has no trigger",
+                    workflow.name
+                ));
+            }
+
             if workflow.hold().is_some()
                 && !workflow.on().is_some_and(|trigger| trigger.supports_hold())
             {
@@ -454,7 +461,7 @@ impl RawSettings {
                 fuelwatch,
                 eink_display: eink_display.resolve(),
                 adhoc,
-                away,
+                vacation,
             },
             registry,
         ))
@@ -1135,7 +1142,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 api_keys:
   - name: bad-key
     scopes: ["bogus:read"]
@@ -1167,7 +1174,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 oauth:
   issuer: i
   jwks_url: j
@@ -1206,7 +1213,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Caller
@@ -1242,7 +1249,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Callee
@@ -1280,7 +1287,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Held cron
@@ -1294,6 +1301,76 @@ workflows:
 
         let err = raw.resolve().unwrap_err();
         assert!(err.contains("uses `for:`"), "{err}");
+    }
+
+    #[test]
+    fn modes_on_a_reusable_workflow_are_rejected() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+adhoc: { recheck_interval: 15m }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+
+workflows:
+  - - name: Reusable
+      slug: reusable
+      modes: [home]
+      run: []
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(err.contains("uses `modes:`"), "{err}");
+    }
+
+    #[test]
+    fn a_mode_trigger_without_to_or_from_is_rejected() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+adhoc: { recheck_interval: 15m }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+
+workflows:
+  - - name: Any mode change
+      slug: any-mode-change
+      on: { type: mode }
+      run: []
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(err.contains("needs `to` or `from`"), "{err}");
     }
 
     #[test]
@@ -1316,7 +1393,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 eink_display:
   views:
@@ -1393,7 +1470,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
   - id: epd
@@ -1453,7 +1530,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
-away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
   - id: epd

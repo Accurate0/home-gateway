@@ -56,54 +56,41 @@ impl WorkflowManager {
         }
     }
 
-    pub async fn mode_active(&self, mode: Mode) -> bool {
-        match self.repo.state_value(&mode.state_key()).await {
-            Ok(Some(value)) => value == "true",
-            Ok(None) => false,
+    pub async fn current_mode(&self) -> Mode {
+        match self.repo.state_value(Mode::STATE_KEY).await {
+            Ok(Some(value)) => Mode::parse(&value).unwrap_or_else(|| {
+                tracing::warn!(
+                    "unknown stored mode `{value}`, falling back to {}",
+                    Mode::default().as_str()
+                );
+
+                Mode::default()
+            }),
+            Ok(None) => Mode::default(),
             Err(err) => {
-                tracing::warn!("failed to read mode {}: {err}", mode.as_str());
-                false
+                tracing::warn!("failed to read the current mode: {err}");
+
+                Mode::default()
             }
         }
     }
 
-    pub async fn active_modes(&self) -> Vec<Mode> {
-        let mut active = Vec::new();
-        for mode in Mode::ALL {
-            if self.mode_active(*mode).await {
-                active.push(*mode);
-            }
-        }
-        active
+    pub async fn any_mode_active(&self, modes: &[Mode]) -> bool {
+        modes.is_empty() || modes.contains(&self.current_mode().await)
     }
 
-    /// Set `mode` to `active`, clearing any mutually-exclusive peers when
-    /// activating. Returns only the modes whose value actually changed so the
-    /// caller can publish a transition event per change.
-    pub async fn set_mode(
-        &self,
-        mode: Mode,
-        active: bool,
-    ) -> Result<Vec<(Mode, bool)>, sqlx::Error> {
-        let mut targets = vec![(mode, active)];
-        if active {
-            targets.extend(mode.exclusive_peers().map(|peer| (peer, false)));
+    pub async fn set_mode(&self, mode: Mode) -> Result<Option<Mode>, sqlx::Error> {
+        let previous = self.current_mode().await;
+
+        if previous == mode {
+            return Ok(None);
         }
 
-        let mut transitions = Vec::new();
-        for (m, want) in targets {
-            if self.mode_active(m).await != want {
-                self.write_mode(m, want).await?;
-                transitions.push((m, want));
-            }
-        }
-        Ok(transitions)
-    }
+        self.repo
+            .set_state_value(Mode::STATE_KEY, mode.as_str())
+            .await?;
 
-    async fn write_mode(&self, mode: Mode, active: bool) -> Result<(), sqlx::Error> {
-        let value = if active { "true" } else { "false" };
-
-        self.repo.set_state_value(&mode.state_key(), value).await
+        Ok(Some(previous))
     }
 
     pub async fn set_enabled(&self, slug: &str, enabled: bool) -> Result<(), sqlx::Error> {

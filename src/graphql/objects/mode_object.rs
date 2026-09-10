@@ -3,13 +3,13 @@ use chrono::{DateTime, Duration, Utc};
 use chrono_tz::Australia::Perth;
 
 use crate::auth::scope::{Action, Resource, Scope};
-use crate::away::{build_plan, coverage, target_at};
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
 use crate::mode::Mode;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
 use crate::timedelta_format::humanize;
+use crate::vacation::{build_plan, coverage, target_at};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, async_graphql::Enum)]
 pub enum LightTarget {
@@ -19,7 +19,7 @@ pub enum LightTarget {
 }
 
 #[derive(SimpleObject)]
-pub struct AwayAction {
+pub struct VacationAction {
     pub at: DateTime<Utc>,
     pub on: bool,
     pub slot: i32,
@@ -27,47 +27,42 @@ pub struct AwayAction {
 }
 
 #[derive(SimpleObject)]
-pub struct AwayLight {
+pub struct VacationLight {
     pub address: String,
     pub device_id: Option<String>,
     pub name: String,
     pub coverage: i32,
     pub current_target: LightTarget,
-    pub actions: Vec<AwayAction>,
+    pub actions: Vec<VacationAction>,
 }
 
-pub struct AwayMode {
+pub struct VacationMode {
     pub mode: Mode,
-    pub active: bool,
 }
 
 #[Object]
-impl AwayMode {
+impl VacationMode {
     async fn mode(&self) -> Mode {
         self.mode
     }
 
-    async fn active(&self) -> bool {
-        self.active
-    }
-
     async fn enabled(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
-        Ok(ctx.data::<SettingsContainer>()?.away.enabled)
+        Ok(ctx.data::<SettingsContainer>()?.vacation.enabled)
     }
 
     async fn window(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<String> {
-        Ok(humanize(ctx.data::<SettingsContainer>()?.away.window))
+        Ok(humanize(ctx.data::<SettingsContainer>()?.vacation.window))
     }
 
     async fn jitter(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<String> {
-        Ok(humanize(ctx.data::<SettingsContainer>()?.away.jitter))
+        Ok(humanize(ctx.data::<SettingsContainer>()?.vacation.jitter))
     }
 
     async fn min_observations(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<i64> {
-        Ok(ctx.data::<SettingsContainer>()?.away.min_observations)
+        Ok(ctx.data::<SettingsContainer>()?.vacation.min_observations)
     }
 
     /// The replay plan for every configured light: what it should be doing now,
@@ -76,8 +71,8 @@ impl AwayMode {
     async fn lights(
         &self,
         ctx: &async_graphql::Context<'_>,
-    ) -> async_graphql::Result<Vec<AwayLight>> {
-        let settings = &ctx.data::<SettingsContainer>()?.away;
+    ) -> async_graphql::Result<Vec<VacationLight>> {
+        let settings = &ctx.data::<SettingsContainer>()?.vacation;
         let devices = ctx.data::<DeviceRegistry>()?;
         let repos = ctx.data::<RepoRegistry>()?;
 
@@ -99,7 +94,7 @@ impl AwayMode {
                 .filter(|action| {
                     &action.address == address && action.at >= now && action.at <= horizon
                 })
-                .map(|action| AwayAction {
+                .map(|action| VacationAction {
                     at: action.at,
                     on: action.on,
                     slot: i32::from(action.slot),
@@ -113,7 +108,7 @@ impl AwayMode {
                 None => LightTarget::LeaveAlone,
             };
 
-            lights.push(AwayLight {
+            lights.push(VacationLight {
                 address: address.clone(),
                 device_id: devices.id_for_address(address).map(str::to_owned),
                 name: name.clone(),
@@ -131,7 +126,6 @@ impl AwayMode {
 
 pub struct PlainMode {
     pub mode: Mode,
-    pub active: bool,
 }
 
 #[Object]
@@ -139,28 +133,20 @@ impl PlainMode {
     async fn mode(&self) -> Mode {
         self.mode
     }
-
-    async fn active(&self) -> bool {
-        self.active
-    }
 }
 
 #[derive(Interface)]
-#[graphql(
-    name = "ModeState",
-    field(name = "mode", ty = "Mode"),
-    field(name = "active", ty = "bool")
-)]
+#[graphql(name = "ModeState", field(name = "mode", ty = "Mode"))]
 pub enum ModeObject {
-    Away(AwayMode),
+    Vacation(VacationMode),
     Plain(PlainMode),
 }
 
 impl ModeObject {
-    pub fn new(mode: Mode, active: bool) -> Self {
+    pub fn new(mode: Mode) -> Self {
         match mode {
-            Mode::Away => ModeObject::Away(AwayMode { mode, active }),
-            _ => ModeObject::Plain(PlainMode { mode, active }),
+            Mode::Vacation => ModeObject::Vacation(VacationMode { mode }),
+            Mode::Home | Mode::Away | Mode::Guest => ModeObject::Plain(PlainMode { mode }),
         }
     }
 }

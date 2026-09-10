@@ -166,8 +166,8 @@
     "adhoc": {
       "$ref": "#/$defs/AdhocSettings"
     },
-    "away": {
-      "$ref": "#/$defs/AwaySettings"
+    "vacation": {
+      "$ref": "#/$defs/VacationSettings"
     }
   },
   "required": [
@@ -187,7 +187,7 @@
     "sun",
     "willyweather",
     "adhoc",
-    "away"
+    "vacation"
   ],
   "$defs": {
     "NotifySource": {
@@ -1161,6 +1161,13 @@
           "type": "boolean",
           "default": false
         },
+        "modes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mode"
+          },
+          "default": []
+        },
         "on": {
           "anyOf": [
             {
@@ -1217,6 +1224,15 @@
       },
       "required": [
         "run"
+      ]
+    },
+    "Mode": {
+      "type": "string",
+      "enum": [
+        "home",
+        "away",
+        "vacation",
+        "guest"
       ]
     },
     "TriggerMatcher": {
@@ -1354,14 +1370,29 @@
           ]
         },
         {
-          "description": "Fires when a house mode is entered (`active: true`) or exited\n(`active: false`), driven by `set_mode`.",
           "type": "object",
           "properties": {
-            "mode": {
-              "$ref": "#/$defs/Mode"
+            "to": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Mode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
             },
-            "active": {
-              "type": "boolean"
+            "from": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Mode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
             },
             "type": {
               "type": "string",
@@ -1369,9 +1400,7 @@
             }
           },
           "required": [
-            "type",
-            "mode",
-            "active"
+            "type"
           ]
         },
         {
@@ -1672,17 +1701,6 @@
         "sunset"
       ]
     },
-    "Mode": {
-      "type": "string",
-      "enum": [
-        "home",
-        "away",
-        "vacation",
-        "night",
-        "guest",
-        "party"
-      ]
-    },
     "FuelChange": {
       "type": "string",
       "enum": [
@@ -1946,11 +1964,8 @@
         {
           "type": "object",
           "properties": {
-            "mode": {
+            "is": {
               "$ref": "#/$defs/Mode"
-            },
-            "active": {
-              "type": "boolean"
             },
             "type": {
               "type": "string",
@@ -1959,8 +1974,7 @@
           },
           "required": [
             "type",
-            "mode",
-            "active"
+            "is"
           ]
         },
         {
@@ -2480,9 +2494,6 @@
             "mode": {
               "$ref": "#/$defs/Mode"
             },
-            "active": {
-              "type": "boolean"
-            },
             "when": {
               "anyOf": [
                 {
@@ -2500,8 +2511,7 @@
           },
           "required": [
             "type",
-            "mode",
-            "active"
+            "mode"
           ]
         },
         {
@@ -3356,7 +3366,7 @@
         "recheck_interval"
       ]
     },
-    "AwaySettings": {
+    "VacationSettings": {
       "type": "object",
       "properties": {
         "enabled": {

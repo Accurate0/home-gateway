@@ -1,32 +1,33 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { format, formatDistanceToNow } from "date-fns";
-import type { AwayPageQuery } from "./__generated__/AwayPageQuery.graphql";
-import type { AwayPageSetModeMutation } from "./__generated__/AwayPageSetModeMutation.graphql";
-import { Switch } from "./ui/switch";
+import type { ModesPageQuery } from "./__generated__/ModesPageQuery.graphql";
+import type { ModesPageSetModeMutation } from "./__generated__/ModesPageSetModeMutation.graphql";
 import { cn } from "@/lib/utils";
 
-const AwayQuery = graphql`
-  query AwayPageQuery {
-    modes {
-      mode
+const ModesQuery = graphql`
+  query ModesPageQuery {
+    mode {
       active
-      ... on AwayMode {
-        enabled
-        window
-        jitter
-        minObservations
-        lights {
-          address
-          deviceId
-          name
-          coverage
-          currentTarget
-          actions {
-            at
-            on
-            slot
-            onFraction
+      node(mode: VACATION) {
+        mode
+        ... on VacationMode {
+          enabled
+          window
+          jitter
+          minObservations
+          lights {
+            address
+            deviceId
+            name
+            coverage
+            currentTarget
+            actions {
+              at
+              on
+              slot
+              onFraction
+            }
           }
         }
       }
@@ -35,10 +36,19 @@ const AwayQuery = graphql`
 `;
 
 const SetModeMutation = graphql`
-  mutation AwayPageSetModeMutation($active: Boolean!) {
-    setMode(mode: AWAY, active: $active)
+  mutation ModesPageSetModeMutation($mode: Mode!) {
+    setMode(mode: $mode)
   }
 `;
+
+type ModeValue = ModesPageSetModeMutation["variables"]["mode"];
+
+const MODES: { value: ModeValue; label: string }[] = [
+  { value: "HOME", label: "Home" },
+  { value: "AWAY", label: "Away" },
+  { value: "VACATION", label: "Vacation" },
+  { value: "GUEST", label: "Guest" },
+];
 
 const SLOTS_PER_DAY = 48;
 
@@ -67,61 +77,83 @@ function Pill({ children, className }: React.PropsWithChildren<{ className?: str
   );
 }
 
-export default function AwayPage() {
+export default function ModesPage() {
   const [fetchKey, setFetchKey] = useState(0);
-  const data = useLazyLoadQuery<AwayPageQuery>(
-    AwayQuery,
+  const data = useLazyLoadQuery<ModesPageQuery>(
+    ModesQuery,
     {},
     { fetchKey, fetchPolicy: "store-and-network" },
   );
 
-  const [override, setOverride] = useState<boolean | null>(null);
-  const [commit] = useMutation<AwayPageSetModeMutation>(SetModeMutation);
+  const [override, setOverride] = useState<ModeValue | null>(null);
+  const [commit] = useMutation<ModesPageSetModeMutation>(SetModeMutation);
 
-  const away = useMemo(
-    () => data.modes.find((mode) => mode.mode === "AWAY"),
-    [data.modes],
-  );
+  const active = override ?? data.mode.active;
+  const vacation = data.mode.node;
+  const lights = vacation.lights ?? [];
 
-  const active = override ?? away?.active ?? false;
-  const lights = away?.lights ?? [];
+  const select = (mode: ModeValue) => {
+    if (mode === active) {
+      return;
+    }
 
-  const toggle = () => {
-    const desired = !active;
-    setOverride(desired);
+    setOverride(mode);
     commit({
-      variables: { active: desired },
+      variables: { mode },
       onCompleted: () => {
         window.setTimeout(() => setFetchKey((key) => key + 1), 500);
       },
-      onError: () => setOverride(!desired),
+      onError: () => setOverride(null),
     });
   };
 
-  if (!away) {
-    return <p className="text-muted-foreground text-sm">Away mode is unavailable.</p>;
-  }
-
   return (
     <div className="flex flex-col gap-10">
-      <section className="bg-card border-border flex items-center justify-between gap-4 rounded-2xl border p-5">
+      <section className="bg-card border-border flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Away mode</span>
-            {!away.enabled && <Pill className="text-muted-foreground border-border">replay off</Pill>}
-          </div>
+          <span className="font-medium">House mode</span>
           <p className="text-muted-foreground mt-1 text-xs">
-            Replays {away.window} of light history, jittered by up to {away.jitter}, for
-            slots with at least {away.minObservations} observations.
+            Exactly one mode is active. Workflows limited to other modes will not fire.
           </p>
         </div>
-        <Switch checked={active} onCheckedChange={toggle} aria-label="Toggle away mode" />
+
+        <div role="group" aria-label="House mode" className="border-border flex rounded-md border text-xs">
+          {MODES.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => select(value)}
+              aria-pressed={active === value}
+              className={cn(
+                "cursor-pointer px-3 py-1.5 first:rounded-l-md last:rounded-r-md",
+                active === value
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section>
-        <h2 className="text-muted-foreground mb-4 text-xs font-semibold tracking-widest uppercase">
-          Plan for the next 24 hours
-        </h2>
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
+            Vacation replay
+          </h2>
+          {active === "VACATION" && (
+            <Pill className="border-amber-500/40 text-amber-600 dark:text-amber-400">replaying</Pill>
+          )}
+          {vacation.enabled === false && (
+            <Pill className="text-muted-foreground border-border">replay off</Pill>
+          )}
+        </div>
+
+        <p className="text-muted-foreground mb-4 text-xs">
+          Replays {vacation.window} of light history, jittered by up to {vacation.jitter}, for
+          slots with at least {vacation.minObservations} observations. Plan for the next 24 hours:
+        </p>
 
         <div className="flex flex-col gap-3">
           {lights.map((light) => (

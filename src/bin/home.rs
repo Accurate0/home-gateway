@@ -121,14 +121,8 @@ enum WorkflowCommand {
 
 #[derive(Subcommand)]
 enum ModeCommand {
-    List,
-    Set {
-        mode: String,
-        #[arg(long, conflicts_with = "inactive")]
-        active: bool,
-        #[arg(long)]
-        inactive: bool,
-    },
+    Show,
+    Set { mode: String },
 }
 
 #[derive(Subcommand)]
@@ -531,37 +525,30 @@ async fn set_enabled(client: &Client, slug: &str, enabled: bool, as_json: bool) 
 
 async fn mode(client: &Client, command: &ModeCommand, as_json: bool) -> Result<()> {
     match command {
-        ModeCommand::List => {
-            let data = client.graphql("query { activeModes }", json!({})).await?;
+        ModeCommand::Show => {
+            let data = client
+                .graphql("query { mode { active } }", json!({}))
+                .await?;
 
             if as_json {
-                return print_json(&data["activeModes"]);
+                return print_json(&data["mode"]["active"]);
             }
 
-            let modes = data["activeModes"].as_array().cloned().unwrap_or_default();
-            if modes.is_empty() {
-                println!("no active modes");
-            } else {
-                for mode in modes {
-                    println!("{}", mode.as_str().unwrap_or_default());
-                }
-            }
+            println!(
+                "{}",
+                data["mode"]["active"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_lowercase()
+            );
 
             Ok(())
         }
-        ModeCommand::Set {
-            mode,
-            active,
-            inactive,
-        } => {
-            if !active && !inactive {
-                anyhow::bail!("pass either --active or --inactive");
-            }
-
+        ModeCommand::Set { mode } => {
             let data = client
                 .graphql(
-                    "mutation($mode: Mode!, $active: Boolean!) { setMode(mode: $mode, active: $active) }",
-                    json!({ "mode": mode.to_uppercase(), "active": *active }),
+                    "mutation($mode: Mode!) { setMode(mode: $mode) }",
+                    json!({ "mode": mode.to_uppercase() }),
                 )
                 .await?;
 
@@ -569,7 +556,11 @@ async fn mode(client: &Client, command: &ModeCommand, as_json: bool) -> Result<(
                 return print_json(&data["setMode"]);
             }
 
-            println!("active modes: {}", data["setMode"]);
+            println!(
+                "mode is now {}",
+                data["setMode"].as_str().unwrap_or_default().to_lowercase()
+            );
+
             Ok(())
         }
     }

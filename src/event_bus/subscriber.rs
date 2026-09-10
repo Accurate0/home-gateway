@@ -137,7 +137,7 @@ mod tests {
         EventBusMessage::Mode {
             event_id: uuid::Uuid::new_v4(),
             mode: crate::mode::Mode::Away,
-            active: true,
+            previous: crate::mode::Mode::Home,
         }
     }
 

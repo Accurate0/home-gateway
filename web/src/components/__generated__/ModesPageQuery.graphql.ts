@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ee4d3dd4b9980e8615c941f8907e3764>>
+ * @generated SignedSource<<fc1524e8ffb1e69d0a530b2db1fd6940>>
  * @lightSyntaxTransform
  */
 
@@ -9,34 +9,36 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type LightTarget = "LEAVE_ALONE" | "OFF" | "ON" | "%future added value";
-export type Mode = "AWAY" | "GUEST" | "HOME" | "NIGHT" | "PARTY" | "VACATION" | "%future added value";
-export type AwayPageQuery$variables = Record<PropertyKey, never>;
-export type AwayPageQuery$data = {
-  readonly modes: ReadonlyArray<{
-    readonly active: boolean;
-    readonly enabled?: boolean;
-    readonly jitter?: string;
-    readonly lights?: ReadonlyArray<{
-      readonly actions: ReadonlyArray<{
-        readonly at: any;
-        readonly on: boolean;
-        readonly onFraction: number;
-        readonly slot: number;
+export type Mode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
+export type ModesPageQuery$variables = Record<PropertyKey, never>;
+export type ModesPageQuery$data = {
+  readonly mode: {
+    readonly active: Mode;
+    readonly node: {
+      readonly enabled?: boolean;
+      readonly jitter?: string;
+      readonly lights?: ReadonlyArray<{
+        readonly actions: ReadonlyArray<{
+          readonly at: any;
+          readonly on: boolean;
+          readonly onFraction: number;
+          readonly slot: number;
+        }>;
+        readonly address: string;
+        readonly coverage: number;
+        readonly currentTarget: LightTarget;
+        readonly deviceId: string | null | undefined;
+        readonly name: string;
       }>;
-      readonly address: string;
-      readonly coverage: number;
-      readonly currentTarget: LightTarget;
-      readonly deviceId: string | null | undefined;
-      readonly name: string;
-    }>;
-    readonly minObservations?: number;
-    readonly mode: Mode;
-    readonly window?: string;
-  }>;
+      readonly minObservations?: number;
+      readonly mode: Mode;
+      readonly window?: string;
+    };
+  };
 };
-export type AwayPageQuery = {
-  response: AwayPageQuery$data;
-  variables: AwayPageQuery$variables;
+export type ModesPageQuery = {
+  response: ModesPageQuery$data;
+  variables: ModesPageQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -44,17 +46,24 @@ var v0 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "mode",
-  "storageKey": null
-},
-v1 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "active",
   "storageKey": null
 },
+v1 = [
+  {
+    "kind": "Literal",
+    "name": "mode",
+    "value": "VACATION"
+  }
+],
 v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "mode",
+  "storageKey": null
+},
+v3 = {
   "kind": "InlineFragment",
   "selections": [
     {
@@ -88,7 +97,7 @@ v2 = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "AwayLight",
+      "concreteType": "VacationLight",
       "kind": "LinkedField",
       "name": "lights",
       "plural": true,
@@ -131,7 +140,7 @@ v2 = {
         {
           "alias": null,
           "args": null,
-          "concreteType": "AwayAction",
+          "concreteType": "VacationAction",
           "kind": "LinkedField",
           "name": "actions",
           "plural": true,
@@ -171,7 +180,7 @@ v2 = {
       "storageKey": null
     }
   ],
-  "type": "AwayMode",
+  "type": "VacationMode",
   "abstractKey": null
 };
 return {
@@ -179,19 +188,30 @@ return {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "AwayPageQuery",
+    "name": "ModesPageQuery",
     "selections": [
       {
         "alias": null,
         "args": null,
-        "concreteType": null,
+        "concreteType": "ModeStatus",
         "kind": "LinkedField",
-        "name": "modes",
-        "plural": true,
+        "name": "mode",
+        "plural": false,
         "selections": [
           (v0/*:: as any*/),
-          (v1/*:: as any*/),
-          (v2/*:: as any*/)
+          {
+            "alias": null,
+            "args": (v1/*:: as any*/),
+            "concreteType": null,
+            "kind": "LinkedField",
+            "name": "node",
+            "plural": false,
+            "selections": [
+              (v2/*:: as any*/),
+              (v3/*:: as any*/)
+            ],
+            "storageKey": "node(mode:\"VACATION\")"
+          }
         ],
         "storageKey": null
       }
@@ -203,42 +223,53 @@ return {
   "operation": {
     "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "AwayPageQuery",
+    "name": "ModesPageQuery",
     "selections": [
       {
         "alias": null,
         "args": null,
-        "concreteType": null,
+        "concreteType": "ModeStatus",
         "kind": "LinkedField",
-        "name": "modes",
-        "plural": true,
+        "name": "mode",
+        "plural": false,
         "selections": [
+          (v0/*:: as any*/),
           {
             "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "__typename",
-            "storageKey": null
-          },
-          (v0/*:: as any*/),
-          (v1/*:: as any*/),
-          (v2/*:: as any*/)
+            "args": (v1/*:: as any*/),
+            "concreteType": null,
+            "kind": "LinkedField",
+            "name": "node",
+            "plural": false,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "__typename",
+                "storageKey": null
+              },
+              (v2/*:: as any*/),
+              (v3/*:: as any*/)
+            ],
+            "storageKey": "node(mode:\"VACATION\")"
+          }
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "12aa50582fc13d1c6edc16714e6699bc",
+    "cacheID": "3a31b007c500145425a23b4107cc7d12",
     "id": null,
     "metadata": {},
-    "name": "AwayPageQuery",
+    "name": "ModesPageQuery",
     "operationKind": "query",
-    "text": "query AwayPageQuery {\n  modes {\n    __typename\n    mode\n    active\n    ... on AwayMode {\n      enabled\n      window\n      jitter\n      minObservations\n      lights {\n        address\n        deviceId\n        name\n        coverage\n        currentTarget\n        actions {\n          at\n          on\n          slot\n          onFraction\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query ModesPageQuery {\n  mode {\n    active\n    node(mode: VACATION) {\n      __typename\n      mode\n      ... on VacationMode {\n        enabled\n        window\n        jitter\n        minObservations\n        lights {\n          address\n          deviceId\n          name\n          coverage\n          currentTarget\n          actions {\n            at\n            on\n            slot\n            onFraction\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fe51d84c79f42cce670daba2ce30db68";
+(node as any).hash = "32fe6a0a495fb78d34ea85da4c19e373";
 
 export default node;

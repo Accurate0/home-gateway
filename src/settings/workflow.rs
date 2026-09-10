@@ -187,8 +187,7 @@ pub enum LeafCondition {
         offset: TimeDelta,
     },
     Mode {
-        mode: Mode,
-        active: bool,
+        is: Mode,
     },
     Solar {
         metric: SolarMetric,
@@ -314,9 +313,7 @@ impl LeafCondition {
                     )
                 }
             }
-            LeafCondition::Mode { mode, active } => {
-                format!("mode({}) is {active}", mode.as_str())
-            }
+            LeafCondition::Mode { is } => format!("mode is {}", is.as_str()),
             LeafCondition::Solar { metric, cmp } => {
                 format!("solar.{} {:?} {}", metric.var_name(), cmp.op, cmp.value)
             }
@@ -409,7 +406,6 @@ pub enum Step {
     },
     SetMode {
         mode: Mode,
-        active: bool,
         #[serde(default)]
         when: Option<Condition>,
     },
@@ -528,9 +524,7 @@ impl Step {
                 ))
             }
             Step::Delay { seconds, .. } => Some(format!("delay {seconds}s")),
-            Step::SetMode { mode, active, .. } => {
-                Some(format!("set_mode({}) -> {active}", mode.as_str()))
-            }
+            Step::SetMode { mode, .. } => Some(format!("set_mode({})", mode.as_str())),
             Step::SetWorkflowsEnabled { tag, state, .. } => {
                 Some(format!("set_workflows_enabled(#{tag}) -> {state:?}"))
             }
@@ -656,6 +650,7 @@ pub struct Workflow {
     pub tags: Vec<String>,
     pub enabled: bool,
     pub dry_run: bool,
+    pub modes: Vec<Mode>,
     pub trigger: WorkflowTrigger,
     pub context: Vec<ContextSource>,
     pub run: Vec<Step>,
@@ -675,6 +670,8 @@ pub struct RawWorkflow {
     enabled: bool,
     #[serde(default)]
     dry_run: bool,
+    #[serde(default)]
+    modes: Vec<Mode>,
     #[serde(default)]
     on: Option<TriggerMatcher>,
     #[serde(default)]
@@ -716,6 +713,7 @@ impl From<RawWorkflow> for Workflow {
             tags: raw.tags,
             enabled: raw.enabled,
             dry_run: raw.dry_run,
+            modes: raw.modes,
             trigger,
             context: raw.context,
             run: raw.run,
@@ -1000,21 +998,19 @@ mod condition_tests {
 when:
   or:
     - type: mode
-      mode: guest
-      active: true
+      is: guest
     - and:
         - type: presence
           sensor: living-room
           present: true
         - not:
             type: mode
-            mode: guest
-            active: true
+            is: vacation
 "#,
         );
         assert_eq!(
             cond.describe(),
-            "any[mode(guest) is true, all[presence(living-room) is true, not(mode(guest) is true)]]"
+            "any[mode is guest, all[presence(living-room) is true, not(mode is vacation)]]"
         );
     }
 
@@ -1065,10 +1061,8 @@ when:
 
     #[test]
     fn all_any_aliases_match_and_or() {
-        let with_all =
-            parse("when:\n  all:\n    - type: mode\n      mode: guest\n      active: true\n");
-        let with_and =
-            parse("when:\n  and:\n    - type: mode\n      mode: guest\n      active: true\n");
+        let with_all = parse("when:\n  all:\n    - type: mode\n      is: guest\n");
+        let with_and = parse("when:\n  and:\n    - type: mode\n      is: guest\n");
         assert_eq!(with_all.describe(), with_and.describe());
     }
 }

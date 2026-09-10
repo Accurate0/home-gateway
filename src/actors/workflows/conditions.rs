@@ -100,12 +100,12 @@ async fn eval_leaf(state: &AppState, cond: &LeafCondition) -> Result<bool, Workf
         LeafCondition::Sun { is, offset } => {
             Ok(calc::current_period(state.settings.location, Utc::now(), *offset) == *is)
         }
-        LeafCondition::Mode { mode, active } => Ok(state
+        LeafCondition::Mode { is } => Ok(state
             .handles
             .expect::<WorkflowManager>()
-            .mode_active(*mode)
+            .current_mode()
             .await
-            == *active),
+            == *is),
         LeafCondition::Solar { metric, cmp } => eval_solar(state, *metric, *cmp).await,
         LeafCondition::HomeAssistant {
             entity_id,

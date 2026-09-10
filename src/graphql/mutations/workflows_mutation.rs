@@ -42,34 +42,19 @@ impl WorkflowsMutation {
         &self,
         ctx: &async_graphql::Context<'_>,
         mode: Mode,
-        active: bool,
-    ) -> async_graphql::Result<Vec<Mode>> {
+    ) -> async_graphql::Result<Mode> {
         let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         let event_bus = ctx.data::<EventBus>()?;
 
-        let transitions = manager.set_mode(mode, active).await?;
-        for (mode, active) in transitions {
+        if let Some(previous) = manager.set_mode(mode).await? {
             event_bus.publish(EventBusMessage::Mode {
                 event_id: Uuid::new_v4(),
                 mode,
-                active,
+                previous,
             });
         }
 
-        Ok(manager.active_modes().await)
-    }
-
-    #[graphql(
-        guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)),
-        deprecation = "use setMode(mode: GUEST, active: ...) instead"
-    )]
-    async fn set_guest_mode(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        active: bool,
-    ) -> async_graphql::Result<bool> {
-        self.set_mode(ctx, Mode::Guest, active).await?;
-        Ok(active)
+        Ok(mode)
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]

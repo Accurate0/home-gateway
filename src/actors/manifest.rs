@@ -4,7 +4,6 @@ use std::pin::Pin;
 use ractor::{ActorProcessingErr, ActorRef};
 
 use crate::actors::alarm::AlarmActor;
-use crate::actors::away::AwayActor;
 use crate::actors::devices::door_events::DoorEventsSupervisor;
 use crate::actors::devices::handler::{DeviceHandler, spawn_handler};
 use crate::actors::devices::{
@@ -33,6 +32,7 @@ use crate::actors::system::{
     sampling::SamplingActor,
     watchdog::WatchdogActor,
 };
+use crate::actors::vacation::VacationActor;
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
 use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::home_assistant::HomeAssistant;
@@ -159,18 +159,18 @@ pub static ACTORS: &[ActorSpec] = &[
     plain!(EInkDisplayActor),
     plain!(SunActor),
     ActorSpec {
-        name: AwayActor::NAME,
+        name: VacationActor::NAME,
         autostart: true,
         optional: true,
         requires: &[Requirement::Setting {
-            label: "away.enabled",
-            present: |settings| settings.away.enabled,
+            label: "vacation.enabled",
+            present: |settings| settings.vacation.enabled,
         }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 root.spawn_linked(
-                    Some(AwayActor::NAME.to_owned()),
-                    AwayActor { shared_actor_state },
+                    Some(VacationActor::NAME.to_owned()),
+                    VacationActor { shared_actor_state },
                     (),
                 )
                 .await?;
@@ -515,7 +515,7 @@ mod tests {
         assert_eq!(
             gated,
             vec![
-                AwayActor::NAME,
+                VacationActor::NAME,
                 ReconcilerWorker::NAME,
                 ReconcilerSweeper::NAME,
                 HomeAssistantActor::NAME,

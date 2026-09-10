@@ -31,36 +31,6 @@ type AuthObject {
 	scopes: [String!]!
 }
 
-type AwayAction {
-	at: DateTime!
-	on: Boolean!
-	slot: Int!
-	onFraction: Float!
-}
-
-type AwayLight {
-	address: String!
-	deviceId: String
-	name: String!
-	coverage: Int!
-	currentTarget: LightTarget!
-	actions: [AwayAction!]!
-}
-
-type AwayMode implements ModeState {
-	mode: Mode!
-	active: Boolean!
-	enabled: Boolean!
-	window: String!
-	jitter: String!
-	minObservations: Int!
-	"""
-	The replay plan for every configured light: what it should be doing now,
-	and every switch still to come in the next 24 hours.
-	"""
-	lights: [AwayLight!]!
-}
-
 enum BatteryChemistry {
 	UNKNOWN
 	LIPO
@@ -640,20 +610,22 @@ enum Mode {
 	HOME
 	AWAY
 	VACATION
-	NIGHT
 	GUEST
-	PARTY
 }
 
 interface ModeState {
 	mode: Mode!
-	active: Boolean!
+}
+
+type ModeStatus {
+	active: Mode!
+	node(mode: Mode): ModeState!
 }
 
 type ModeUpdate {
 	eventId: UUID!
 	mode: Mode!
-	active: Boolean!
+	previous: Mode!
 }
 
 type MutationRoot {
@@ -662,8 +634,7 @@ type MutationRoot {
 	mediaPlayer(id: String!): MediaPlayerMutation!
 	einkDisplay(id: String!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
-	setMode(mode: Mode!, active: Boolean!): [Mode!]!
-	setGuestMode(active: Boolean!): Boolean! @deprecated(reason: "use setMode(mode: GUEST, active: ...) instead")
+	setMode(mode: Mode!): Mode!
 	runWorkflow(slug: String!): Boolean!
 	runPendingAdhocTasks: Boolean!
 	runAdhocCronTask(name: String!): Boolean!
@@ -712,7 +683,6 @@ type PendingCommand {
 
 type PlainMode implements ModeState {
 	mode: Mode!
-	active: Boolean!
 }
 
 type PresenceEntity {
@@ -826,14 +796,7 @@ type QueryRoot {
 	transperth: TransperthObject!
 	fuelwatch(postcode: Int): FuelWatchObject!
 	workflows: [WorkflowStatus!]!
-	"""
-	Every mode and whether it is active. Modes carrying extra state resolve to
-	their own type, so `... on AwayMode { lights { … } }` reaches the replay
-	plan without a second round trip.
-	"""
-	modes: [ModeState!]!
-	activeModes: [Mode!]! @deprecated(reason: "use modes { mode active } instead")
-	guestMode: Boolean! @deprecated(reason: "use activeModes / mode(GUEST) instead")
+	mode: ModeStatus!
 	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
 	jellyfin: JellyfinObject!
 	adhocCronTasks: [AdhocCronTaskStatus!]!
@@ -985,6 +948,35 @@ type UnifiUpdate {
 	connected: Boolean!
 }
 
+type VacationAction {
+	at: DateTime!
+	on: Boolean!
+	slot: Int!
+	onFraction: Float!
+}
+
+type VacationLight {
+	address: String!
+	deviceId: String
+	name: String!
+	coverage: Int!
+	currentTarget: LightTarget!
+	actions: [VacationAction!]!
+}
+
+type VacationMode implements ModeState {
+	mode: Mode!
+	enabled: Boolean!
+	window: String!
+	jitter: String!
+	minObservations: Int!
+	"""
+	The replay plan for every configured light: what it should be doing now,
+	and every switch still to come in the next 24 hours.
+	"""
+	lights: [VacationLight!]!
+}
+
 input WeatherInput {
 	location: String!
 }
@@ -1057,12 +1049,9 @@ type WorkflowStatus {
 	configEnabled: Boolean!
 	dryRun: Boolean!
 	reusable: Boolean!
+	modes: [Mode!]!
 }
 
-"""
-Marks an element of a GraphQL schema as no longer supported.
-"""
-directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
 """
 Directs the executor to include this field or fragment only when the `if` argument is true.
 """

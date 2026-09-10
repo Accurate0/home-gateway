@@ -293,12 +293,9 @@ impl WorkflowDispatcher {
                     ..
                 },
             ) => transition == t && offset == o,
-            (
-                TriggerMatcher::Mode { mode, active },
-                EventBusMessage::Mode {
-                    mode: m, active: a, ..
-                },
-            ) => mode == m && active == a,
+            (TriggerMatcher::Mode { to, from }, EventBusMessage::Mode { mode, previous, .. }) => {
+                to.is_none_or(|to| to == *mode) && from.is_none_or(|from| from == *previous)
+            }
             (
                 TriggerMatcher::HomeAssistant { entity_id, state },
                 EventBusMessage::HomeAssistant {
@@ -550,6 +547,10 @@ impl WorkflowDispatcher {
                 continue;
             }
 
+            if !self.modes_active(event_id, workflow).await {
+                continue;
+            }
+
             let trigger_span = tracing::info_span!(
                 parent: None,
                 "trigger.evaluate",
@@ -649,6 +650,24 @@ impl WorkflowDispatcher {
         }
 
         Ok(())
+    }
+
+    async fn modes_active(&self, event_id: Uuid, workflow: &Workflow) -> bool {
+        let active = self
+            .shared_actor_state
+            .handles
+            .expect::<WorkflowManager>()
+            .any_mode_active(&workflow.modes)
+            .await;
+
+        if !active {
+            tracing::info!(
+                "[{event_id}] trigger '{}' matched but none of its modes are active",
+                workflow.name
+            );
+        }
+
+        active
     }
 
     async fn when_satisfied(&self, event_id: Uuid, workflow: &Workflow) -> bool {
@@ -810,6 +829,10 @@ impl WorkflowDispatcher {
                     .await
             }
             Some(TimerKind::Delay) => {
+                if !self.modes_active(event_id, workflow).await {
+                    return Ok(());
+                }
+
                 tracing::info!("[{event_id}] delayed trigger '{}' firing", workflow.name);
                 self.dispatch_workflow(event_id, workflow.clone(), vars)
             }
@@ -859,6 +882,10 @@ impl WorkflowDispatcher {
         }
 
         if !self.when_satisfied(event_id, workflow).await {
+            return Ok(());
+        }
+
+        if !self.modes_active(event_id, workflow).await {
             return Ok(());
         }
 
