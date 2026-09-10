@@ -3,6 +3,7 @@
   group: Fuel
   on: { type: cron, schedule: "0 13 * * TUE" }
   context: [fuelwatch]
+  modes: [home, away]
   run:
     - type: notify
       notify: { type: android_app }

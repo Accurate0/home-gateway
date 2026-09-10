@@ -29,7 +29,7 @@ use crate::{
         SolarMetric, Subscription, WeatherMetric, WeatherReading, WeatherSource,
     },
     integrations::solar::{queries, types::SolarCurrentStatisticsAverages},
-    settings::{TriggerMatcher, Workflow},
+    settings::{ReusableWorkflow, TriggerMatcher, Workflow, WorkflowDefinition},
     state::AppState,
 };
 
@@ -89,7 +89,7 @@ impl WorkflowDispatcherState {
 }
 
 fn latch_for(workflow: &Workflow, subject_entity: &str) -> Option<PendingLatch> {
-    match workflow.on()? {
+    match &workflow.on {
         TriggerMatcher::Environment { metric, .. } => Some(PendingLatch::Sensor((
             workflow.name.clone(),
             subject_entity.to_owned(),
@@ -219,9 +219,7 @@ impl WorkflowDispatcher {
         state: &mut WorkflowDispatcherState,
         pending: &mut Option<PendingLatch>,
     ) -> bool {
-        let Some(on) = workflow.on() else {
-            return false;
-        };
+        let on = &workflow.on;
         let devices = &self.shared_actor_state.devices;
         match (on, msg) {
             (
@@ -447,12 +445,16 @@ impl WorkflowDispatcher {
             return None;
         }
 
-        let wanted = settings.workflows.values().any(|workflow| {
-            matches!(
-                workflow.on(),
-                Some(TriggerMatcher::Solar { metric, .. }) if *metric != SolarMetric::Current
-            )
-        });
+        let wanted = settings
+            .workflows
+            .values()
+            .filter_map(WorkflowDefinition::triggered)
+            .any(|workflow| {
+                matches!(
+                    &workflow.on,
+                    TriggerMatcher::Solar { metric, .. } if *metric != SolarMetric::Current
+                )
+            });
 
         if !wanted {
             return None;
@@ -523,15 +525,15 @@ impl WorkflowDispatcher {
             Err(e) => tracing::error!("[{event_id}] failed to cancel delayed triggers: {e}"),
         }
 
-        for workflow in settings.workflows.values() {
+        for workflow in settings
+            .workflows
+            .values()
+            .filter_map(WorkflowDefinition::triggered)
+        {
             let mut pending = None;
 
             if !self.matches(workflow, &msg, averages.as_ref(), state, &mut pending) {
-                if workflow.hold().is_some()
-                    && workflow
-                        .on()
-                        .is_some_and(|on| on.event_kind() == msg.kind())
-                {
+                if workflow.hold.is_some() && workflow.on.event_kind() == msg.kind() {
                     self.cancel_hold(event_id, workflow, &subject).await;
                 }
 
@@ -587,7 +589,7 @@ impl WorkflowDispatcher {
             return Ok(());
         }
 
-        if let Some(hold) = workflow.hold() {
+        if let Some(hold) = workflow.hold {
             self.arm_timer(
                 myself,
                 event_id,
@@ -602,7 +604,7 @@ impl WorkflowDispatcher {
             return Ok(());
         }
 
-        if let Some(cooldown) = workflow.cooldown()
+        if let Some(cooldown) = workflow.cooldown
             && !self.cooldown_ok(&workflow.name, cooldown).await?
         {
             tracing::info!(
@@ -633,7 +635,7 @@ impl WorkflowDispatcher {
         subject: &EventSubject,
         vars: &HashMap<String, String>,
     ) -> Result<(), ActorProcessingErr> {
-        match workflow.delay() {
+        match workflow.delay {
             Some(delay) => {
                 self.arm_timer(
                     myself,
@@ -646,7 +648,7 @@ impl WorkflowDispatcher {
                 )
                 .await;
             }
-            None => self.dispatch_workflow(event_id, workflow.clone(), vars.clone())?,
+            None => self.dispatch_workflow(event_id, workflow.body.clone(), vars.clone())?,
         }
 
         Ok(())
@@ -671,7 +673,7 @@ impl WorkflowDispatcher {
     }
 
     async fn when_satisfied(&self, event_id: Uuid, workflow: &Workflow) -> bool {
-        let Some(when) = workflow.when() else {
+        let Some(when) = &workflow.when else {
             return true;
         };
 
@@ -810,7 +812,11 @@ impl WorkflowDispatcher {
 
         let settings = self.shared_actor_state.settings.clone();
 
-        let Some(workflow) = settings.workflows.get(&timer.workflow) else {
+        let Some(workflow) = settings
+            .workflows
+            .get(&timer.workflow)
+            .and_then(WorkflowDefinition::triggered)
+        else {
             tracing::warn!(
                 "dropping {} timer for unknown workflow '{}'",
                 timer.timer_kind,
@@ -834,7 +840,7 @@ impl WorkflowDispatcher {
                 }
 
                 tracing::info!("[{event_id}] delayed trigger '{}' firing", workflow.name);
-                self.dispatch_workflow(event_id, workflow.clone(), vars)
+                self.dispatch_workflow(event_id, workflow.body.clone(), vars)
             }
             None => {
                 tracing::warn!(
@@ -855,7 +861,7 @@ impl WorkflowDispatcher {
         vars: &HashMap<String, String>,
         state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
-        let Some(condition) = workflow.on().and_then(|on| on.as_condition()) else {
+        let Some(condition) = workflow.on.as_condition() else {
             tracing::warn!(
                 "[{event_id}] trigger '{}' has a hold but no checkable state",
                 workflow.name
@@ -889,7 +895,7 @@ impl WorkflowDispatcher {
             return Ok(());
         }
 
-        if let Some(cooldown) = workflow.cooldown()
+        if let Some(cooldown) = workflow.cooldown
             && !self.cooldown_ok(&workflow.name, cooldown).await?
         {
             tracing::info!(
@@ -979,7 +985,7 @@ impl WorkflowDispatcher {
     fn dispatch_workflow(
         &self,
         event_id: uuid::Uuid,
-        workflow: Workflow,
+        workflow: ReusableWorkflow,
         vars: HashMap<String, String>,
     ) -> Result<(), ActorProcessingErr> {
         Self::send_to_factory(event_id, workflow, vars)
@@ -987,7 +993,7 @@ impl WorkflowDispatcher {
 
     fn send_to_factory(
         event_id: uuid::Uuid,
-        workflow: Workflow,
+        workflow: ReusableWorkflow,
         vars: HashMap<String, String>,
     ) -> Result<(), ActorProcessingErr> {
         let message = WorkflowWorkerMessage::Execute {
@@ -1107,6 +1113,7 @@ mod tests {
 name: hot
 on: { type: weather, source: bom, metric: temperature, op: gt, value: 35 }
 for: 1h
+modes: [home]
 run: []
 "#,
         );
@@ -1132,6 +1139,7 @@ run: []
 name: damp
 on: { type: environment, sensor: bathroom, metric: humidity, op: gt, value: 80 }
 for: 10m
+modes: [home]
 run: []
 "#,
         );
@@ -1150,12 +1158,13 @@ run: []
 name: empty
 on: { type: presence, sensor: hallway, present: false }
 for: 30m
+modes: [home]
 run: []
 "#,
         );
 
         assert!(latch_for(&empty, "0x1").is_none());
-        assert!(empty.on().is_some_and(|on| on.supports_hold()));
+        assert!(empty.on.supports_hold());
     }
 
     #[test]

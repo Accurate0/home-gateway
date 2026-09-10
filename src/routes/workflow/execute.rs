@@ -6,7 +6,7 @@ use crate::{
         scope::{Action, Resource, Scope},
     },
     error::AppError,
-    settings::workflow::Workflow,
+    settings::ReusableWorkflow,
     state::AppState,
 };
 use axum::{Json, extract::State};
@@ -17,7 +17,7 @@ use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub struct WorkflowExecutePayload {
-    pub workflow: Workflow,
+    pub workflow: ReusableWorkflow,
 }
 
 pub async fn workflow_execute(

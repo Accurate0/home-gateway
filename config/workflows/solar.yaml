@@ -3,6 +3,7 @@
   group: Energy
   on: { type: solar, metric: avg_15m, op: gt, value: 3000 }
   cooldown: 3h
+  modes: [home, away]
   run:
     - type: notify
       notify: { type: android_app }

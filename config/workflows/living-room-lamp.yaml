@@ -27,6 +27,7 @@
   tags: [living-room]
   on: { type: presence, sensor: livingroom-motion, present: true }
   when: { type: sun, is: night }
+  modes: [home, away, guest]
   run:
     - type: run_workflow
       workflow: living-room-lamps-on
@@ -37,6 +38,7 @@
   tags: [living-room]
   on: { type: sun, transition: sunset, offset: -15m }
   when: { type: presence, sensor: livingroom-motion, present: true }
+  modes: [home, away, guest]
   run:
     - type: scene
       when: { type: light, device: floor-lamp-living-room, on: false }
@@ -59,6 +61,7 @@
   tags: [living-room]
   on: { type: presence, sensor: livingroom-motion, present: false }
   delay: 25m
+  modes: [home, away, guest]
   run:
     - type: run_workflow
       workflow: living-room-lamps-off

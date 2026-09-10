@@ -28,6 +28,7 @@ pub mod notify;
 pub mod plant;
 pub mod presence;
 pub mod reconciler;
+pub mod reusable_workflow;
 pub mod roborock;
 pub mod s3;
 pub mod solar;
@@ -46,6 +47,7 @@ pub mod willyweather;
 pub mod woolworths;
 pub mod workflow;
 pub mod workflow_context;
+pub mod workflow_definition;
 pub mod workflow_timers;
 pub mod zigbee_model;
 
@@ -74,6 +76,7 @@ pub use notify::{
 pub use plant::{PlantSensorSettings, RawPlantBlock};
 pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use reconciler::ReconcilerSettings;
+pub use reusable_workflow::ReusableWorkflow;
 pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use s3::S3Settings;
 pub use solar::SolarSettings;
@@ -89,6 +92,7 @@ pub use watchdog::WatchdogSettings;
 pub use willyweather::WillyWeatherSettings;
 pub use woolworths::WoolworthsSettings;
 pub use workflow::{Workflow, WorkflowSettings};
+pub use workflow_definition::WorkflowDefinition;
 pub use zigbee_model::{RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile};
 
 use crate::auth::scope::ScopePattern;
@@ -128,7 +132,7 @@ pub struct Settings {
     pub mqtt_password: String,
     pub unifi_webhook_secret: String,
     pub android_app_webhook_secret: String,
-    pub workflows: HashMap<String, Workflow>,
+    pub workflows: HashMap<String, WorkflowDefinition>,
     pub workflow: WorkflowSettings,
     pub reconciler: ReconcilerSettings,
     pub s3: S3Settings,
@@ -176,7 +180,7 @@ pub struct RawSettings {
     devices: Vec<RawSensor>,
     zigbee_models: HashMap<String, RawZigbeeModelProfile>,
     #[serde(default)]
-    workflows: Vec<Vec<Workflow>>,
+    workflows: Vec<Vec<WorkflowDefinition>>,
     s3: S3Settings,
     watchdog: WatchdogSettings,
     workflow: WorkflowSettings,
@@ -343,69 +347,70 @@ impl RawSettings {
         let mut slugs = HashSet::new();
         for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
-            workflow.validate_capabilities(&registry)?;
 
-            if workflow
+            let body = workflow.body();
+            body.validate_capabilities(&registry)?;
+
+            if body
                 .context
                 .contains(&workflow_context::ContextSource::Fuelwatch)
                 && fuelwatch.is_none()
             {
                 return Err(format!(
                     "workflow '{}' uses `context: [fuelwatch]` but fuelwatch is not configured",
-                    workflow.name
+                    body.name
                 ));
             }
 
-            if !workflow.modes.is_empty() && workflow.on().is_none() {
-                return Err(format!(
-                    "workflow '{}' uses `modes:` but has no trigger",
-                    workflow.name
-                ));
-            }
+            if let Some(triggered) = workflow.triggered() {
+                if triggered.modes.is_empty() {
+                    return Err(format!(
+                        "workflow '{}' has an empty `modes:`",
+                        triggered.name
+                    ));
+                }
 
-            if workflow.hold().is_some()
-                && !workflow.on().is_some_and(|trigger| trigger.supports_hold())
-            {
-                return Err(format!(
-                    "workflow '{}' uses `for:` but its trigger is not a state that can be held",
-                    workflow.name
-                ));
-            }
+                if triggered.hold.is_some() && !triggered.on.supports_hold() {
+                    return Err(format!(
+                        "workflow '{}' uses `for:` but its trigger is not a state that can be held",
+                        triggered.name
+                    ));
+                }
 
-            if let Some(trigger) = workflow.on() {
-                let mut available = trigger.available_vars();
+                let mut available = triggered.on.available_vars();
                 available.extend(
-                    workflow
+                    triggered
                         .context
                         .iter()
                         .flat_map(|source| source.available_vars())
                         .map(|var| (*var).to_owned()),
                 );
 
-                for var in workflow.template_placeholders() {
+                for var in triggered.template_placeholders() {
                     if !available.contains(&var) {
                         tracing::warn!(
                             "workflow '{}' references unknown template var ${{{var}}}; \
                              its trigger provides: [{}]",
-                            workflow.name,
+                            triggered.name,
                             available.join(", ")
                         );
                     }
                 }
             }
-            if workflow.slug.trim().is_empty() {
-                return Err(format!("workflow '{}' has an empty slug", workflow.name));
+
+            if body.slug.trim().is_empty() {
+                return Err(format!("workflow '{}' has an empty slug", body.name));
             }
-            if !slugs.insert(workflow.slug.clone()) {
-                return Err(format!("duplicate workflow slug: {}", workflow.slug));
+            if !slugs.insert(body.slug.clone()) {
+                return Err(format!("duplicate workflow slug: {}", body.slug));
             }
-            let name = workflow.name.clone();
+            let name = body.name.clone();
             if resolved.insert(name.clone(), workflow).is_some() {
                 return Err(format!("duplicate workflow name: {name}"));
             }
         }
 
-        for workflow in resolved.values() {
+        for workflow in resolved.values().map(WorkflowDefinition::body) {
             for target in workflow.run_workflow_targets() {
                 if !resolved.contains_key(target) {
                     return Err(format!(
@@ -862,8 +867,9 @@ transperth:
         let switch_workflow = settings
             .workflows
             .values()
+            .filter_map(WorkflowDefinition::triggered)
             .find(|w| {
-                matches!(w.on(), Some(trigger::TriggerMatcher::Switch { ieee_addr, action })
+                matches!(&w.on, trigger::TriggerMatcher::Switch { ieee_addr, action }
                 if ieee_addr == "small-switch" && action == "single")
             })
             .expect("expected a switch workflow for the small switch");
@@ -896,8 +902,11 @@ transperth:
         );
 
         assert!(
-            settings.workflows.values().any(|w| w.name == "Bins"
-                && matches!(w.on(), Some(trigger::TriggerMatcher::Cron { .. })))
+            settings
+                .workflows
+                .values()
+                .filter_map(WorkflowDefinition::triggered)
+                .any(|w| w.name == "Bins" && matches!(w.on, trigger::TriggerMatcher::Cron { .. }))
         );
 
         let roborock_address = registry.address_or_self("roborock");
@@ -959,7 +968,7 @@ transperth:
         );
 
         let mut seen = HashSet::new();
-        for wf in settings.workflows.values() {
+        for wf in settings.workflows.values().map(WorkflowDefinition::body) {
             assert!(
                 !wf.slug.trim().is_empty(),
                 "workflow '{}' has empty slug",
@@ -1294,6 +1303,7 @@ workflows:
       slug: held-cron
       on: { type: cron, schedule: "0 13 * * TUE" }
       for: 10m
+      modes: [home]
       run: []
 "#,
         )
@@ -1304,8 +1314,44 @@ workflows:
     }
 
     #[test]
-    fn modes_on_a_reusable_workflow_are_rejected() {
+    fn a_triggered_workflow_with_empty_modes_is_rejected() {
         let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+adhoc: { recheck_interval: 15m }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+
+workflows:
+  - - name: Untagged cron
+      slug: untagged-cron
+      on: { type: cron, schedule: "0 13 * * TUE" }
+      modes: []
+      run: []
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(err.contains("empty `modes:`"), "{err}");
+    }
+
+    #[test]
+    fn modes_on_a_reusable_workflow_are_rejected() {
+        let err = serde_yaml::from_str::<RawSettings>(
             r#"
 api_key: x
 database_url: x
@@ -1332,10 +1378,12 @@ workflows:
       run: []
 "#,
         )
-        .unwrap();
+        .unwrap_err();
 
-        let err = raw.resolve().unwrap_err();
-        assert!(err.contains("uses `modes:`"), "{err}");
+        assert!(
+            err.to_string().contains("`modes` needs an `on:` trigger"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -1364,6 +1412,7 @@ workflows:
   - - name: Any mode change
       slug: any-mode-change
       on: { type: mode }
+      modes: [home]
       run: []
 "#,
         )

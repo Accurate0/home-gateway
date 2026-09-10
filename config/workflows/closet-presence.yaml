@@ -2,6 +2,7 @@
   slug: closet-presence-on
   group: Closet
   on: { type: presence, sensor: closet-presence, present: true }
+  modes: [home, away, guest]
   run:
     - type: light
       device: closet-light
@@ -12,6 +13,7 @@
   group: Closet
   on: { type: presence, sensor: closet-presence, present: false }
   delay: 1m
+  modes: [home, away, guest]
   run:
     - type: light
       device: closet-light

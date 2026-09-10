@@ -91,6 +91,7 @@ impl Actor for AlarmActor {
                             .settings
                             .workflows
                             .get(workflow_name)
+                            .map(crate::settings::WorkflowDefinition::body)
                         else {
                             tracing::warn!("alarm workflow `{workflow_name}` not configured");
                             return Ok(());

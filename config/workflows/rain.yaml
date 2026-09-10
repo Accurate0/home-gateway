@@ -3,6 +3,7 @@
   group: Weather
   on: { type: weather, source: willyweather, metric: rain_probability, day: today, op: gte, value: 70 }
   cooldown: 12h
+  modes: [home, away, guest]
   run:
     - type: notify
       notify: { type: android_app }

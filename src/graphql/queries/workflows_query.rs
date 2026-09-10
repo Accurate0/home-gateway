@@ -21,7 +21,8 @@ impl WorkflowsQuery {
         let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
 
         let mut statuses = Vec::with_capacity(settings.workflows.len());
-        for workflow in settings.workflows.values() {
+        for definition in settings.workflows.values() {
+            let workflow = definition.body();
             let enabled = manager.enabled(&workflow.slug, workflow.enabled).await;
             statuses.push(WorkflowStatus {
                 id: workflow.slug.clone(),
@@ -32,8 +33,11 @@ impl WorkflowsQuery {
                 enabled,
                 config_enabled: workflow.enabled,
                 dry_run: workflow.dry_run,
-                reusable: workflow.on().is_none(),
-                modes: workflow.modes.clone(),
+                reusable: definition.triggered().is_none(),
+                modes: definition
+                    .triggered()
+                    .map(|triggered| triggered.modes.clone())
+                    .unwrap_or_default(),
             });
         }
         statuses.sort_by(|a, b| a.name.cmp(&b.name));

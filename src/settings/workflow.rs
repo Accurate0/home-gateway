@@ -5,16 +5,12 @@ use crate::settings::http_method::HttpMethod;
 use crate::settings::switch_metric::SwitchMetric;
 use crate::settings::trigger::TriggerMatcher;
 use crate::settings::vacuum_command::VacuumCommand;
-use crate::settings::workflow_context::ContextSource;
 use crate::settings::workflow_timers::WorkflowTimerSettings;
-use crate::settings::{
-    NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource,
-    validate_acknowledge,
-};
+use crate::settings::{NotifyAcknowledge, NotifyAction, NotifyCategory, NotifySource};
 use crate::timedelta_format::option_time_delta_from_str;
 use std::collections::BTreeMap;
 
-use super::{DeviceAliases, IEEEAddress, validate_device, yes};
+use super::{DeviceAliases, IEEEAddress, ReusableWorkflow, validate_device};
 use crate::actors::sun::calc::SunPeriod;
 use crate::mode::Mode;
 use chrono::{NaiveTime, TimeDelta};
@@ -628,96 +624,34 @@ fn resolve_opt(when: &mut Option<Condition>, devices: &DeviceAliases) -> Result<
     Ok(())
 }
 
-#[derive(Debug, Clone)]
-pub enum WorkflowTrigger {
-    Triggered {
-        on: Box<TriggerMatcher>,
-        when: Option<Condition>,
-        cooldown: Option<TimeDelta>,
-        delay: Option<TimeDelta>,
-        hold: Option<TimeDelta>,
-    },
-    Reusable,
-}
-
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
-#[serde(from = "RawWorkflow")]
-#[schemars(with = "RawWorkflow")]
 pub struct Workflow {
-    pub slug: String,
-    pub name: String,
-    pub group: Option<String>,
-    pub tags: Vec<String>,
-    pub enabled: bool,
-    pub dry_run: bool,
+    #[serde(flatten)]
+    pub body: ReusableWorkflow,
+    pub on: TriggerMatcher,
     pub modes: Vec<Mode>,
-    pub trigger: WorkflowTrigger,
-    pub context: Vec<ContextSource>,
-    pub run: Vec<Step>,
-}
-
-#[derive(Debug, Deserialize, Clone, JsonSchema)]
-pub struct RawWorkflow {
     #[serde(default)]
-    slug: String,
-    #[serde(default)]
-    name: String,
-    #[serde(default)]
-    group: Option<String>,
-    #[serde(default)]
-    tags: Vec<String>,
-    #[serde(default = "yes")]
-    enabled: bool,
-    #[serde(default)]
-    dry_run: bool,
-    #[serde(default)]
-    modes: Vec<Mode>,
-    #[serde(default)]
-    on: Option<TriggerMatcher>,
-    #[serde(default)]
-    when: Option<Condition>,
+    pub when: Option<Condition>,
     #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
     #[schemars(with = "Option<String>")]
-    cooldown: Option<TimeDelta>,
+    pub cooldown: Option<TimeDelta>,
     #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
     #[schemars(with = "Option<String>")]
-    delay: Option<TimeDelta>,
+    pub delay: Option<TimeDelta>,
     #[serde(
         default,
         rename = "for",
         deserialize_with = "option_time_delta_from_str::deserialize"
     )]
     #[schemars(with = "Option<String>")]
-    hold: Option<TimeDelta>,
-    #[serde(default)]
-    context: Vec<ContextSource>,
-    run: Vec<Step>,
+    pub hold: Option<TimeDelta>,
 }
 
-impl From<RawWorkflow> for Workflow {
-    fn from(raw: RawWorkflow) -> Self {
-        let trigger = match raw.on {
-            Some(on) => WorkflowTrigger::Triggered {
-                on: Box::new(on),
-                when: raw.when,
-                cooldown: raw.cooldown,
-                delay: raw.delay,
-                hold: raw.hold,
-            },
-            None => WorkflowTrigger::Reusable,
-        };
-        Workflow {
-            slug: raw.slug,
-            name: raw.name,
-            group: raw.group,
-            tags: raw.tags,
-            enabled: raw.enabled,
-            dry_run: raw.dry_run,
-            modes: raw.modes,
-            trigger,
-            context: raw.context,
-            run: raw.run,
-        }
+impl std::ops::Deref for Workflow {
+    type Target = ReusableWorkflow;
+
+    fn deref(&self) -> &Self::Target {
+        &self.body
     }
 }
 
@@ -728,152 +662,11 @@ pub struct WorkflowSettings {
 }
 
 impl Workflow {
-    pub fn on(&self) -> Option<&TriggerMatcher> {
-        match &self.trigger {
-            WorkflowTrigger::Triggered { on, .. } => Some(on.as_ref()),
-            WorkflowTrigger::Reusable => None,
-        }
-    }
-
-    pub fn template_placeholders(&self) -> Vec<String> {
-        fn collect(steps: &[Step], out: &mut Vec<String>) {
-            for step in steps {
-                match step {
-                    Step::Notify { message, title, .. } => {
-                        out.extend(message.placeholders().into_iter().map(str::to_owned));
-                        if let Some(title) = title {
-                            out.extend(title.placeholders().into_iter().map(str::to_owned));
-                        }
-                    }
-                    Step::MqttPublish { topic, payload, .. } => {
-                        for template in [topic, payload] {
-                            out.extend(template.placeholders().into_iter().map(str::to_owned));
-                        }
-                    }
-                    Step::Http {
-                        url, headers, body, ..
-                    } => {
-                        for template in std::iter::once(url).chain(headers.values()).chain(body) {
-                            out.extend(template.placeholders().into_iter().map(str::to_owned));
-                        }
-                    }
-                    Step::Scene { run, .. } => collect(run, out),
-                    _ => {}
-                }
-            }
-        }
-        let mut out = Vec::new();
-        collect(&self.run, &mut out);
-        out
-    }
-
-    pub fn run_workflow_targets(&self) -> Vec<&str> {
-        fn collect<'a>(steps: &'a [Step], out: &mut Vec<&'a str>) {
-            for step in steps {
-                match step {
-                    Step::RunWorkflow { workflow, .. } => out.push(workflow.as_str()),
-                    Step::Scene { run, .. } => collect(run, out),
-                    _ => {}
-                }
-            }
-        }
-        let mut out = Vec::new();
-        collect(&self.run, &mut out);
-        out
-    }
-
-    pub fn notify_action_targets(&self) -> Vec<&str> {
-        fn collect<'a>(steps: &'a [Step], out: &mut Vec<&'a str>) {
-            for step in steps {
-                match step {
-                    Step::Notify { actions, .. } => {
-                        for action in actions {
-                            if let NotifyActionKind::RunWorkflow { workflow } = &action.action {
-                                out.push(workflow.as_str());
-                            }
-                        }
-                    }
-                    Step::Scene { run, .. } => collect(run, out),
-                    _ => {}
-                }
-            }
-        }
-        let mut out = Vec::new();
-        collect(&self.run, &mut out);
-        out
-    }
-
-    pub fn validate_acknowledgements(&self) -> Result<(), String> {
-        fn check(steps: &[Step]) -> Result<(), String> {
-            for step in steps {
-                match step {
-                    Step::Notify {
-                        actions,
-                        acknowledge,
-                        ..
-                    } => {
-                        let has_action = actions
-                            .iter()
-                            .any(|a| matches!(a.action, NotifyActionKind::Acknowledge));
-
-                        validate_acknowledge(acknowledge.is_some(), has_action)?;
-                    }
-                    Step::Scene { run, .. } => check(run)?,
-                    _ => {}
-                }
-            }
-            Ok(())
-        }
-
-        check(&self.run)
-    }
-
-    pub fn when(&self) -> Option<&Condition> {
-        match &self.trigger {
-            WorkflowTrigger::Triggered { when, .. } => when.as_ref(),
-            WorkflowTrigger::Reusable => None,
-        }
-    }
-
-    pub fn cooldown(&self) -> Option<TimeDelta> {
-        match &self.trigger {
-            WorkflowTrigger::Triggered { cooldown, .. } => *cooldown,
-            WorkflowTrigger::Reusable => None,
-        }
-    }
-
-    pub fn delay(&self) -> Option<TimeDelta> {
-        match &self.trigger {
-            WorkflowTrigger::Triggered { delay, .. } => *delay,
-            WorkflowTrigger::Reusable => None,
-        }
-    }
-
-    pub fn hold(&self) -> Option<TimeDelta> {
-        match &self.trigger {
-            WorkflowTrigger::Triggered { hold, .. } => *hold,
-            WorkflowTrigger::Reusable => None,
-        }
-    }
-
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
-        if let WorkflowTrigger::Triggered { on, when, .. } = &mut self.trigger {
-            on.resolve_devices(devices)?;
-            if let Some(when) = when {
-                when.resolve_devices(devices)?;
-            }
-        }
-        for step in &mut self.run {
-            step.resolve_devices(devices)?;
-        }
-        Ok(())
-    }
+        self.on.resolve_devices(devices)?;
+        resolve_opt(&mut self.when, devices)?;
 
-    pub(super) fn validate_capabilities(&self, registry: &DeviceRegistry) -> Result<(), String> {
-        for step in &self.run {
-            step.validate_capabilities(registry)?;
-        }
-        Ok(())
+        self.body.resolve_devices(devices)
     }
 }
 
@@ -887,12 +680,13 @@ mod fuelwatch_trigger_tests {
             r#"
 name: Fill up tomorrow
 on: { type: fuelwatch, change: tomorrow_lower, min_drop: 5 }
+modes: [home]
 run: []
 "#,
         )
         .unwrap();
 
-        let on = workflow.on().expect("a triggered workflow");
+        let on = &workflow.on;
 
         assert_eq!(on.event_kind(), "fuelwatch");
         assert!(!on.supports_hold());
@@ -1070,7 +864,9 @@ when:
 #[cfg(test)]
 mod home_assistant_tests {
     use super::*;
+    use crate::settings::NotifyActionKind;
     use crate::settings::trigger::TriggerMatcher;
+    use crate::settings::workflow_context::ContextSource;
     use config::{Config, File, FileFormat};
 
     fn parse(yaml: &str) -> Workflow {
@@ -1089,6 +885,7 @@ mod home_assistant_tests {
 name: HA test
 slug: ha-test
 on: { type: home_assistant, entity_id: binary_sensor.front_door, state: "on" }
+modes: [home]
 run:
   - type: home_assistant
     call_service: light.turn_on
@@ -1097,8 +894,8 @@ run:
         );
 
         assert!(matches!(
-            workflow.on(),
-            Some(TriggerMatcher::HomeAssistant { entity_id, state })
+            &workflow.on,
+            TriggerMatcher::HomeAssistant { entity_id, state }
                 if entity_id == "binary_sensor.front_door" && state.as_deref() == Some("on")
         ));
 
@@ -1115,6 +912,7 @@ run:
 name: Fuel test
 slug: fuel-test
 on: { type: cron, schedule: "0 13 * * TUE" }
+modes: [home]
 context: [fuelwatch]
 run:
   - type: notify
@@ -1142,6 +940,7 @@ run:
 name: Notify test
 slug: notify-test
 on: { type: presence, sensor: hallway, present: true }
+modes: [home]
 run:
   - type: notify
     notify: { type: android_app }
@@ -1189,6 +988,7 @@ run:
 name: Notify test
 slug: notify-test
 on: { type: presence, sensor: hallway, present: true }
+modes: [home]
 run:
   - type: notify
     notify: { type: android_app }
@@ -1210,6 +1010,7 @@ run:
 name: Ack test
 slug: ack-test
 on: {{ type: presence, sensor: hallway, present: true }}
+modes: [home]
 run:
   - type: notify
     notify: {{ type: android_app }}
@@ -1266,6 +1067,7 @@ run:
 name: Ack test
 slug: ack-test
 on: { type: presence, sensor: hallway, present: true }
+modes: [home]
 run:
   - type: notify
     notify: { type: android_app }

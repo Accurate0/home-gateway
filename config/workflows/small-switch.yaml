@@ -2,6 +2,7 @@
   slug: small-switch-single-toggle
   group: Living Room
   on: { type: switch, device: small-switch, action: single }
+  modes: [home, away, guest]
   run:
     - type: run_workflow
       when: { type: light, device: floor-lamp-living-room, on: true }
@@ -14,6 +15,7 @@
   slug: small-switch-double-toggle-automations
   group: Living Room
   on: { type: switch, device: small-switch, action: double }
+  modes: [home, away, guest]
   run:
     - type: set_workflows_enabled
       tag: living-room

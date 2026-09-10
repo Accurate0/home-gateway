@@ -2,6 +2,7 @@
   slug: control-switch-on
   group: Control Switch
   on: { type: switch, device: control-switch, action: on }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -11,6 +12,7 @@
   slug: control-switch-off
   group: Control Switch
   on: { type: switch, device: control-switch, action: off }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -20,6 +22,7 @@
   slug: control-switch-brightness-up
   group: Control Switch
   on: { type: switch, device: control-switch, action: brightness_move_up }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -30,6 +33,7 @@
   slug: control-switch-brightness-down
   group: Control Switch
   on: { type: switch, device: control-switch, action: brightness_move_down }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -40,6 +44,7 @@
   slug: control-switch-brightness-stop
   group: Control Switch
   on: { type: switch, device: control-switch, action: brightness_stop }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -49,6 +54,7 @@
   slug: control-switch-colour-temp-up
   group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_right_hold }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -59,6 +65,7 @@
   slug: control-switch-colour-temp-down
   group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_left_hold }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -69,6 +76,7 @@
   slug: control-switch-colour-temp-stop-left
   group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_left_release }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -78,6 +86,7 @@
   slug: control-switch-colour-temp-stop-right
   group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_right_release }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -87,6 +96,7 @@
   slug: control-switch-set-brightness-low
   group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_left_click }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom
@@ -97,6 +107,7 @@
   slug: control-switch-set-brightness-high
   group: Control Switch
   on: { type: switch, device: control-switch, action: arrow_right_click }
+  modes: [home, away, guest]
   run:
     - type: light
       device: table-lamp-bedroom

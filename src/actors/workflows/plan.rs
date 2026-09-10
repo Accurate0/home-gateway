@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 
 use super::MAX_DEPTH;
-use crate::settings::workflow::{Step, Workflow};
+use crate::settings::WorkflowDefinition;
+use crate::settings::workflow::Step;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlannedAction {
@@ -13,14 +14,14 @@ pub struct PlannedAction {
     pub guards: Vec<String>,
 }
 
-pub fn plan(workflows: &HashMap<String, Workflow>, steps: &[Step]) -> Vec<PlannedAction> {
+pub fn plan(workflows: &HashMap<String, WorkflowDefinition>, steps: &[Step]) -> Vec<PlannedAction> {
     let mut out = Vec::new();
     plan_steps(workflows, steps, 0, &[], &mut out);
     out
 }
 
 fn plan_steps(
-    workflows: &HashMap<String, Workflow>,
+    workflows: &HashMap<String, WorkflowDefinition>,
     steps: &[Step],
     depth: u8,
     guards: &[String],
@@ -41,10 +42,10 @@ fn plan_steps(
                 }
                 match workflows.get(workflow) {
                     None => out.push(marker("unknown_workflow", workflow, depth, &guards)),
-                    Some(wf) if !wf.enabled => {
+                    Some(wf) if !wf.body().enabled => {
                         out.push(marker("disabled", workflow, depth, &guards))
                     }
-                    Some(wf) => plan_steps(workflows, &wf.run, depth + 1, &guards, out),
+                    Some(wf) => plan_steps(workflows, &wf.body().run, depth + 1, &guards, out),
                 }
             }
             leaf => out.push(PlannedAction {
@@ -86,34 +87,41 @@ pub fn render(actions: &[PlannedAction]) -> String {
 mod tests {
     use super::*;
 
-    fn workflow(yaml: &str) -> Workflow {
+    fn workflow(yaml: &str) -> WorkflowDefinition {
         serde_yaml::from_str(yaml).expect("workflow yaml")
     }
 
-    fn workflows(yaml: &str) -> HashMap<String, Workflow> {
+    fn workflows(yaml: &str) -> HashMap<String, WorkflowDefinition> {
         serde_yaml::from_str(yaml).expect("workflows yaml")
     }
 
-    fn rendered(workflows: &HashMap<String, Workflow>, wf: &Workflow) -> String {
-        render(&plan(workflows, &wf.run))
+    fn rendered(
+        workflows: &HashMap<String, WorkflowDefinition>,
+        wf: &WorkflowDefinition,
+    ) -> String {
+        render(&plan(workflows, &wf.body().run))
     }
 
-    fn rendered_with_header(wf: &Workflow) -> String {
+    fn rendered_with_header(wf: &WorkflowDefinition) -> String {
         let mut out = String::new();
-        match wf.on() {
-            Some(on) => out.push_str(&format!("on: {}\n", on.describe())),
+        match wf.triggered() {
+            Some(triggered) => {
+                out.push_str(&format!("on: {}\n", triggered.on.describe()));
+
+                if let Some(when) = &triggered.when {
+                    out.push_str(&format!("when: {}\n", when.describe()));
+                }
+
+                if let Some(hold) = triggered.hold {
+                    out.push_str(&format!(
+                        "for: {}\n",
+                        crate::timedelta_format::humanize(hold)
+                    ));
+                }
+            }
             None => out.push_str("reusable\n"),
         }
-        if let Some(when) = wf.when() {
-            out.push_str(&format!("when: {}\n", when.describe()));
-        }
-        if let Some(hold) = wf.hold() {
-            out.push_str(&format!(
-                "for: {}\n",
-                crate::timedelta_format::humanize(hold)
-            ));
-        }
-        out.push_str(&render(&plan(&HashMap::new(), &wf.run)));
+        out.push_str(&render(&plan(&HashMap::new(), &wf.body().run)));
         out
     }
 
@@ -123,6 +131,7 @@ mod tests {
             r#"
             name: vacation lights off
             on: { type: mode, from: home, to: vacation }
+            modes: [home]
             run:
               - type: light
                 device: "0x1"
@@ -141,6 +150,7 @@ mod tests {
             r#"
             name: hallway held
             on: { type: presence, sensor: "0x4", present: true }
+            modes: [home]
             for: 10m
             run:
               - type: light
@@ -235,21 +245,30 @@ mod tests {
         path: std::path::PathBuf,
     ) {
         let yaml = std::fs::read_to_string(&path).expect("read workflow file");
-        let file_workflows: Vec<Workflow> =
+        let file_workflows: Vec<WorkflowDefinition> =
             serde_yaml::from_str(&yaml).expect("deserialize workflows");
 
-        let workflows: HashMap<String, Workflow> = file_workflows
+        let workflows: HashMap<String, WorkflowDefinition> = file_workflows
             .iter()
-            .map(|wf| (wf.name.clone(), wf.clone()))
+            .map(|wf| (wf.body().name.clone(), wf.clone()))
             .collect();
         let mut out = String::new();
-        for wf in &file_workflows {
-            match wf.on() {
-                Some(on) => out.push_str(&format!("# {}  (on: {})\n", wf.name, on.describe())),
+        for definition in &file_workflows {
+            let wf = definition.body();
+
+            match definition.triggered() {
+                Some(triggered) => {
+                    out.push_str(&format!(
+                        "# {}  (on: {})\n",
+                        wf.name,
+                        triggered.on.describe()
+                    ));
+
+                    if let Some(when) = &triggered.when {
+                        out.push_str(&format!("  when: {}\n", when.describe()));
+                    }
+                }
                 None => out.push_str(&format!("# {}  (reusable)\n", wf.name)),
-            }
-            if let Some(when) = wf.when() {
-                out.push_str(&format!("  when: {}\n", when.describe()));
             }
             if !wf.context.is_empty() {
                 let sources: Vec<&str> = wf.context.iter().map(|s| s.as_str()).collect();
@@ -276,6 +295,7 @@ mod tests {
             r#"
             name: dusk lamp
             on: { type: sun, transition: sunset }
+            modes: [home]
             when: { type: presence, sensor: living-room-epp, present: true }
             run:
               - type: light
@@ -292,6 +312,7 @@ mod tests {
             r#"
             name: night lamp
             on: { type: presence, sensor: living-room-epp, present: true }
+            modes: [home]
             when: { type: sun, is: night }
             run:
               - type: light
@@ -326,6 +347,7 @@ mod tests {
             r#"
             name: pre-dusk lamp
             on: { type: sun, transition: sunset, offset: "-30m" }
+            modes: [home]
             when: { type: sun, is: night, offset: "15m" }
             run:
               - type: light
@@ -342,6 +364,7 @@ mod tests {
             r#"
             name: dawn off
             on: { type: sun, transition: sunrise }
+            modes: [home]
             run:
               - type: light
                 device: "0x1"

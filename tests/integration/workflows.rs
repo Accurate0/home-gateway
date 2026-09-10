@@ -107,7 +107,7 @@ async fn arm_overdue_delay(harness: &Harness, overdue: TimeDelta) {
         .repos
         .workflow()
         .arm_timer(NewPendingTimer {
-            workflow: "test-lamp-on",
+            workflow: "Test lamp on when door opens",
             kind: TimerKind::Delay,
             subject_kind: "door",
             subject_entity: DOOR_ADDRESS,
@@ -260,7 +260,7 @@ async fn an_overdue_timer_within_catch_up_fires_on_start() {
     let payload = harness.recorder.expect_publish(LAMP_TOPIC).await;
     assert_eq!(payload, serde_json::json!({ "state": "ON" }));
 
-    assert_ran(&harness, "test-lamp-on").await;
+    assert_ran(&harness, "test-door-opens-lamp-on").await;
     assert_eq!(pending_timers(&harness).await, 0);
 }
 
@@ -275,6 +275,6 @@ async fn an_overdue_timer_past_catch_up_is_dropped() {
     tokio::time::sleep(Duration::from_millis(750)).await;
 
     harness.recorder.assert_no_publish(LAMP_TOPIC);
-    assert_eq!(runs_for(&harness, "test-lamp-on").await, 0);
+    assert_eq!(runs_for(&harness, "test-door-opens-lamp-on").await, 0);
     assert_eq!(pending_timers(&harness).await, 0);
 }

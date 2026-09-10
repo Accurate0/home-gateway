@@ -131,11 +131,17 @@ impl Actor for SunActor {
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let mut scheduled: Vec<(SunTransition, TimeDelta)> = Vec::new();
-        for workflow in self.shared_actor_state.settings.workflows.values() {
+        for workflow in self
+            .shared_actor_state
+            .settings
+            .workflows
+            .values()
+            .filter_map(crate::settings::WorkflowDefinition::triggered)
+        {
             if !workflow.enabled {
                 continue;
             }
-            if let Some(TriggerMatcher::Sun { transition, offset }) = workflow.on() {
+            if let TriggerMatcher::Sun { transition, offset } = &workflow.on {
                 let pair = (*transition, *offset);
                 if !scheduled.contains(&pair) {
                     scheduled.push(pair);

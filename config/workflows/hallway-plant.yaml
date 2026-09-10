@@ -3,6 +3,7 @@
   group: Plants
   on: { type: environment, sensor: hallway-plant, metric: soil_moisture, op: lt, value: 20 }
   cooldown: 24h
+  modes: [home, away, guest]
   run:
     - type: notify
       notify: { type: android_app }
@@ -14,6 +15,7 @@
   group: Plants
   on: { type: environment, sensor: hallway-plant, metric: soil_moisture, op: gt, value: 80 }
   cooldown: 24h
+  modes: [home, away, guest]
   run:
     - type: notify
       notify: { type: android_app }

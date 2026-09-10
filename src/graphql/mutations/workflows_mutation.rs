@@ -25,7 +25,7 @@ impl WorkflowsMutation {
         enabled: bool,
     ) -> async_graphql::Result<bool> {
         let settings = ctx.data::<SettingsContainer>()?;
-        let known = settings.workflows.values().any(|w| w.slug == slug);
+        let known = settings.workflows.values().any(|w| w.body().slug == slug);
         if !known {
             return Err(async_graphql::Error::new(format!(
                 "unknown workflow slug: {slug}"
@@ -67,6 +67,7 @@ impl WorkflowsMutation {
         let workflow = settings
             .workflows
             .values()
+            .map(crate::settings::WorkflowDefinition::body)
             .find(|w| w.slug == slug)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown workflow slug: {slug}")))?
             .clone();

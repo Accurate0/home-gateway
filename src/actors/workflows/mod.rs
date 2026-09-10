@@ -12,8 +12,8 @@ use crate::{
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
     integrations::notify::{Notification, notify},
-    settings::workflow::{EnableState, LightState, Step, SwitchState, Workflow},
-    settings::{NotifyAction, NotifyActionKind},
+    settings::workflow::{EnableState, LightState, Step, SwitchState},
+    settings::{NotifyAction, NotifyActionKind, ReusableWorkflow, WorkflowDefinition},
     state::AppState,
     timer::timed_async,
 };
@@ -89,7 +89,7 @@ struct WorkflowContext<'a> {
 pub enum WorkflowWorkerMessage {
     Execute {
         event_id: Uuid,
-        workflow: Workflow,
+        workflow: ReusableWorkflow,
         vars: HashMap<String, String>,
         traceparent: crate::tracing_context::TraceParent,
     },
@@ -105,7 +105,7 @@ impl WorkflowWorker {
     pub async fn execute_workflow(
         &self,
         event_id: Uuid,
-        workflow: Workflow,
+        workflow: ReusableWorkflow,
         vars: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
         if !self
@@ -295,7 +295,10 @@ impl WorkflowWorker {
             .filter_map(|action| {
                 let kind = match &action.action {
                     NotifyActionKind::RunWorkflow { workflow } => {
-                        let target = settings.workflows.get(workflow)?;
+                        let target = settings
+                            .workflows
+                            .get(workflow)
+                            .map(WorkflowDefinition::body)?;
                         PushActionKind::RunWorkflow {
                             slug: target.slug.clone(),
                         }
@@ -435,6 +438,7 @@ impl WorkflowWorker {
         let targets = settings
             .workflows
             .values()
+            .map(WorkflowDefinition::body)
             .filter(|w| w.tags.iter().any(|t| t == tag) && w.slug != ctx.origin_slug)
             .collect::<Vec<_>>();
 
@@ -511,7 +515,7 @@ impl WorkflowWorker {
         }
 
         let settings = self.shared_actor_state.settings.clone();
-        let Some(workflow) = settings.workflows.get(name) else {
+        let Some(workflow) = settings.workflows.get(name).map(WorkflowDefinition::body) else {
             tracing::warn!(
                 "[{}] run_workflow references unknown workflow `{name}`",
                 ctx.event_id

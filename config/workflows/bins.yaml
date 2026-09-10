@@ -2,6 +2,7 @@
   slug: bins
   group: Reminders
   on: { type: cron, schedule: "0 19 * * THU" }
+  modes: [home, away, guest]
   run:
     - type: notify
       notify: { type: android_app }
@@ -15,6 +16,7 @@
   slug: bring-bins-back
   group: Reminders
   on: { type: cron, schedule: "0 12 * * FRI" }
+  modes: [home, away, guest]
   run:
     - type: notify
       notify: { type: android_app }
