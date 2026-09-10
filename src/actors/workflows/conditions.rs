@@ -22,7 +22,7 @@ use crate::{
     },
     db::DoorState,
     event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherReading, WeatherSource},
-    integrations::{home_assistant::HomeAssistant, solar, willyweather::WillyWeather},
+    integrations::{home_assistant::HomeAssistant, solar},
     settings::switch_metric::SwitchMetric,
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
     state::AppState,
@@ -155,21 +155,18 @@ async fn eval_weather(
         }
         (WeatherSource::WillyWeather, Some(day)) => {
             let forecast = state
-                .handles
-                .expect::<WillyWeather>()
+                .repos
+                .willyweather()
                 .forecast(&state.settings.willyweather.default_location)
                 .await
                 .map_err(anyhow::Error::from)?;
 
-            forecast
-                .days
-                .get(day.index())
-                .and_then(|details| match metric {
-                    WeatherMetric::MaxTemp => Some(details.max as f64),
-                    WeatherMetric::MinTemp => Some(details.min as f64),
-                    WeatherMetric::UvMax => details.uv,
-                    _ => None,
-                })
+            forecast.and_then(|forecast| {
+                forecast
+                    .days
+                    .get(day.index())
+                    .and_then(|details| details.metric(metric))
+            })
         }
         (WeatherSource::WillyWeather, None) => None,
     };

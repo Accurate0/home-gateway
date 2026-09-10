@@ -1258,6 +1258,47 @@ run: []
     }
 
     #[test]
+    fn a_rain_probability_forecast_fires_on_the_rising_edge() {
+        let cmp = Comparison {
+            op: CompareOp::Gte,
+            value: 70.0,
+        };
+        let mut last = HashMap::new();
+
+        let fires = |probability: f64, last: &mut HashMap<_, _>| {
+            let readings = vec![WeatherReading {
+                metric: WeatherMetric::RainProbability,
+                day: Some(ForecastDay::Tomorrow),
+                value: probability,
+            }];
+
+            let mut pending = None;
+            let fired = weather_fires(
+                "rain tomorrow",
+                WeatherSource::WillyWeather,
+                WeatherMetric::RainProbability,
+                Some(ForecastDay::Tomorrow),
+                &cmp,
+                &readings,
+                last,
+                &mut pending,
+            );
+
+            if let Some(PendingLatch::Weather(key)) = pending {
+                last.insert(key, true);
+            }
+
+            fired
+        };
+
+        assert!(!fires(40.0, &mut last), "below the threshold");
+        assert!(fires(80.0, &mut last), "crosses the threshold");
+        assert!(!fires(90.0, &mut last), "no re-fire while past");
+        assert!(!fires(30.0, &mut last), "drops back");
+        assert!(fires(75.0, &mut last), "re-arms");
+    }
+
+    #[test]
     fn the_current_metric_reads_the_event_not_the_averages() {
         let cmp = Comparison {
             op: CompareOp::Gt,

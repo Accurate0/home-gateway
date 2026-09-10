@@ -261,6 +261,28 @@ impl RawSettings {
             return Err("willyweather.api_key is required (set WILLYWEATHER__API_KEY)".to_owned());
         }
 
+        if willyweather.locations.is_empty() {
+            return Err("willyweather.locations must declare at least one location".to_owned());
+        }
+
+        if !willyweather
+            .locations
+            .contains_key(&willyweather.default_location)
+        {
+            return Err(format!(
+                "willyweather.default_location `{}` is not one of willyweather.locations",
+                willyweather.default_location
+            ));
+        }
+
+        if willyweather.refresh <= chrono::TimeDelta::zero() {
+            return Err("willyweather.refresh must be positive".to_owned());
+        }
+
+        if willyweather.days < 1 {
+            return Err("willyweather.days must be at least 1".to_owned());
+        }
+
         let transperth = transperth.map(RawTransperthSettings::resolve).transpose()?;
 
         if let Some(transperth) = &transperth {
@@ -1111,7 +1133,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 api_keys:
@@ -1143,7 +1165,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 oauth:
@@ -1182,7 +1204,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1218,7 +1240,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1256,7 +1278,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1292,7 +1314,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1369,7 +1391,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1429,7 +1451,7 @@ workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 adhoc: { recheck_interval: 15m }
 away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 

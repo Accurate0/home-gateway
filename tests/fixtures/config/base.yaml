@@ -65,8 +65,11 @@ alarm:
 
 willyweather:
   api_key: test
-  default_location: "14576"
-  cache_ttl: 15m
+  refresh: 1h
+  days: 7
+  default_location: perth
+  locations:
+    perth: "14576"
 
 solar:
   refresh: 1m

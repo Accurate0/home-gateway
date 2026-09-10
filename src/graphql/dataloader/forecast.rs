@@ -1,27 +1,30 @@
 use async_graphql::dataloader::Loader;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::integrations::willyweather::{WillyWeather, WillyWeatherError, types::Forecast};
+use crate::integrations::willyweather::types::Forecast;
+use crate::repo::WillyWeatherRepo;
+use crate::repo::willyweather::WillyWeatherRepoError;
 
 pub struct ForecastDataLoader {
-    pub willyweather: WillyWeather,
+    pub repo: WillyWeatherRepo,
 }
 
 impl Loader<String> for ForecastDataLoader {
     type Value = Forecast;
-    type Error = Arc<WillyWeatherError>;
+    type Error = Arc<WillyWeatherRepoError>;
 
     async fn load(&self, keys: &[String]) -> Result<HashMap<String, Self::Value>, Self::Error> {
         let mut forecasts = HashMap::with_capacity(keys.len());
 
         for location in keys {
-            let forecast = self
-                .willyweather
-                .forecast(location)
-                .await
-                .map_err(Arc::new)?;
-
-            forecasts.insert(location.clone(), forecast);
+            match self.repo.forecast(location).await.map_err(Arc::new)? {
+                Some(forecast) => {
+                    forecasts.insert(location.clone(), forecast);
+                }
+                None => {
+                    tracing::warn!("no stored willyweather forecast for {location}");
+                }
+            }
         }
 
         Ok(forecasts)

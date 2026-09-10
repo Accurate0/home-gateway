@@ -22,6 +22,7 @@ pub mod sun;
 pub mod timer_kind;
 pub mod unifi;
 pub mod watchdog;
+pub mod willyweather;
 pub mod woolworths;
 pub mod workflow;
 
@@ -47,5 +48,6 @@ pub use solar::SolarRepo;
 pub use sun::SunRepo;
 pub use unifi::UnifiRepo;
 pub use watchdog::WatchdogRepo;
+pub use willyweather::WillyWeatherRepo;
 pub use woolworths::WoolworthsRepo;
 pub use workflow::WorkflowRepo;

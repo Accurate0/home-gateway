@@ -1,4 +1,3 @@
-use crate::integrations::willyweather::WillyWeather;
 use axum::response::{IntoResponse, Response};
 use axum::{Json, extract::Query, extract::State};
 use http::StatusCode;
@@ -8,13 +7,15 @@ use crate::auth::{
     Auth,
     scope::{Action, Resource, Scope},
 };
-use crate::integrations::willyweather::WillyWeatherError;
 use crate::integrations::willyweather::types::Forecast;
+use crate::repo::willyweather::WillyWeatherRepoError;
 use crate::state::AppState;
 
 pub enum WeatherError {
     Forbidden,
-    Upstream(WillyWeatherError),
+    UnknownLocation(String),
+    NotStored(String),
+    Database(WillyWeatherRepoError),
 }
 
 impl IntoResponse for WeatherError {
@@ -25,8 +26,18 @@ impl IntoResponse for WeatherError {
 
                 StatusCode::FORBIDDEN.into_response()
             }
-            WeatherError::Upstream(e) => {
-                tracing::error!("weather api error: {e:?}");
+            WeatherError::UnknownLocation(location) => {
+                tracing::warn!("weather forecast requested for unknown location {location}");
+
+                StatusCode::NOT_FOUND.into_response()
+            }
+            WeatherError::NotStored(location) => {
+                tracing::warn!("no stored weather forecast for {location} yet");
+
+                StatusCode::SERVICE_UNAVAILABLE.into_response()
+            }
+            WeatherError::Database(e) => {
+                tracing::error!("weather forecast lookup error: {e:?}");
 
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
             }
@@ -34,9 +45,9 @@ impl IntoResponse for WeatherError {
     }
 }
 
-impl From<WillyWeatherError> for WeatherError {
-    fn from(e: WillyWeatherError) -> Self {
-        Self::Upstream(e)
+impl From<WillyWeatherRepoError> for WeatherError {
+    fn from(e: WillyWeatherRepoError) -> Self {
+        Self::Database(e)
     }
 }
 
@@ -57,16 +68,21 @@ pub async fn forecast(
         return Err(WeatherError::Forbidden);
     }
 
-    let location = params
+    let settings = &state.settings.willyweather;
+    let requested = params
         .location
-        .clone()
-        .unwrap_or_else(|| state.settings.willyweather.default_location.clone());
+        .as_deref()
+        .unwrap_or(&settings.default_location);
 
-    Ok(Json(
-        state
-            .handles
-            .expect::<WillyWeather>()
-            .forecast(&location)
-            .await?,
-    ))
+    let Some(alias) = settings.resolve_location(requested) else {
+        return Err(WeatherError::UnknownLocation(requested.to_owned()));
+    };
+
+    state
+        .repos
+        .willyweather()
+        .forecast(alias)
+        .await?
+        .map(Json)
+        .ok_or_else(|| WeatherError::NotStored(alias.to_owned()))
 }

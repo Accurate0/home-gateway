@@ -76,8 +76,11 @@ alarm:
   poll_interval: 60s
 
 willyweather:
-  default_location: "14576"
-  cache_ttl: 15m
+  refresh: 1h
+  days: 7
+  default_location: perth
+  locations:
+    perth: "14576"
 
 transperth:
   refresh_peak: 3m

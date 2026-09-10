@@ -3,7 +3,6 @@ use crate::eink::manager::EinkDisplayManager;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
-use crate::integrations::willyweather::WillyWeather;
 use async_graphql::{Schema, dataloader::DataLoader};
 use axum::{
     Router,
@@ -128,7 +127,7 @@ pub fn build_schema(state: &AppState) -> FinalSchema {
     ))
     .data(DataLoader::new(
         ForecastDataLoader {
-            willyweather: state.handles.expect::<WillyWeather>().clone(),
+            repo: state.repos.willyweather().clone(),
         },
         tokio::spawn,
     ))

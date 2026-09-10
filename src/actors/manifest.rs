@@ -18,7 +18,8 @@ use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
     fuelwatch::FuelWatchActor, home_assistant::HomeAssistantActor, jellyfin::JellyfinActor,
     solar::SolarActor, synergy::SynergyActor, transperth::TransperthActor, trmnl::TrmnlActor,
-    unifi::UnifiConnectedClientHandler, woolworths::WoolworthsActor,
+    unifi::UnifiConnectedClientHandler, willyweather::WillyWeatherActor,
+    woolworths::WoolworthsActor,
 };
 use crate::actors::root::RootMessage;
 use crate::actors::sun::SunActor;
@@ -39,6 +40,7 @@ use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
 use crate::integrations::transperth::Transperth;
 use crate::integrations::trmnl::Trmnl;
+use crate::integrations::willyweather::WillyWeather;
 use crate::integrations::woolworths::Woolworths;
 use crate::settings::SettingsContainer;
 use crate::state::{AppState, HandleRegistry};
@@ -400,6 +402,33 @@ pub static ACTORS: &[ActorSpec] = &[
         },
     },
     ActorSpec {
+        name: WillyWeatherActor::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[Requirement::Handle {
+            label: "willyweather",
+            present: |handles| handles.contains::<WillyWeather>(),
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                let willyweather = shared_actor_state.handles.expect::<WillyWeather>().clone();
+                let settings = shared_actor_state.settings.willyweather.clone();
+
+                root.spawn_linked(
+                    Some(WillyWeatherActor::NAME.to_owned()),
+                    WillyWeatherActor {
+                        shared_actor_state,
+                        willyweather,
+                    },
+                    settings,
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
         name: WoolworthsActor::NAME,
         autostart: true,
         optional: false,
@@ -494,6 +523,7 @@ mod tests {
                 TransperthActor::NAME,
                 TrmnlActor::NAME,
                 FuelWatchActor::NAME,
+                WillyWeatherActor::NAME,
                 SolarActor::NAME,
             ]
         );

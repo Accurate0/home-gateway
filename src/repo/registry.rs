@@ -2,7 +2,7 @@ use crate::repo::{
     AdhocRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo, EnvironmentRepo,
     FuelWatchRepo, HomeAssistantRepo, IntentRepo, JellyfinRepo, LightRepo, MediaPlayerRepo,
     MetricRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo,
-    WatchdogRepo, WoolworthsRepo, WorkflowRepo,
+    WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
@@ -30,6 +30,7 @@ struct Repos {
     push: PushRepo,
     sun: SunRepo,
     watchdog: WatchdogRepo,
+    willyweather: WillyWeatherRepo,
     workflow: WorkflowRepo,
 }
 
@@ -64,6 +65,7 @@ impl RepoRegistry {
                 push: PushRepo::new(db.clone()),
                 sun: SunRepo::new(db.clone()),
                 watchdog: WatchdogRepo::new(db.clone()),
+                willyweather: WillyWeatherRepo::new(db.clone()),
                 workflow: WorkflowRepo::new(db),
             }),
         }
@@ -155,6 +157,10 @@ impl RepoRegistry {
 
     pub fn watchdog(&self) -> &WatchdogRepo {
         &self.inner.watchdog
+    }
+
+    pub fn willyweather(&self) -> &WillyWeatherRepo {
+        &self.inner.willyweather
     }
 
     pub fn workflow(&self) -> &WorkflowRepo {

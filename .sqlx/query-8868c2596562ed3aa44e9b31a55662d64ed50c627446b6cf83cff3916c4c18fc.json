@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM willyweather_forecast_day WHERE location = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8868c2596562ed3aa44e9b31a55662d64ed50c627446b6cf83cff3916c4c18fc"
+}

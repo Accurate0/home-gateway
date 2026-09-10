@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO willyweather_forecast_day (\n                location, date, precis_code, precis, min_temp, max_temp, uv_max,\n                rain_probability, rain_start_range, rain_end_range, rain_range_code,\n                wind_max_speed, first_light, sunrise, sunset, last_light\n            )\n            SELECT * FROM UNNEST(\n                $1::TEXT[], $2::DATE[], $3::TEXT[], $4::TEXT[], $5::INTEGER[], $6::INTEGER[],\n                $7::DOUBLE PRECISION[], $8::INTEGER[], $9::INTEGER[], $10::INTEGER[], $11::TEXT[],\n                $12::DOUBLE PRECISION[], $13::TIMESTAMPTZ[], $14::TIMESTAMPTZ[],\n                $15::TIMESTAMPTZ[], $16::TIMESTAMPTZ[]\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "DateArray",
+        "TextArray",
+        "TextArray",
+        "Int4Array",
+        "Int4Array",
+        "Float8Array",
+        "Int4Array",
+        "Int4Array",
+        "Int4Array",
+        "TextArray",
+        "Float8Array",
+        "TimestamptzArray",
+        "TimestamptzArray",
+        "TimestamptzArray",
+        "TimestamptzArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "afb04a075942575b164c9c0823f85eda4b0011dc39da6c9c9f8fd6823c085820"
+}

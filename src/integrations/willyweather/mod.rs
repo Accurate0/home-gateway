@@ -1,25 +1,27 @@
-use std::sync::Arc;
+use std::collections::{BTreeMap, HashMap};
 
-use chrono::DateTime;
-use moka::future::Cache;
+use chrono::{DateTime, FixedOffset};
 use phf::phf_map;
 use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
 
-use crate::event_bus::{
-    EventBus, EventBusMessage, ForecastDay, WeatherMetric, WeatherReading, WeatherSource,
-};
 use crate::http::get_traced_http_client;
-use crate::integrations::willyweather::types::{Forecast, ForecastDetails, WillyWeatherForecast};
+use crate::integrations::willyweather::types::{
+    Forecast, ForecastDetails, ForecastHour, Forecasts, WillyWeatherForecast,
+};
 use crate::settings::WillyWeatherSettings;
 
 pub mod types;
 
 const FORECAST_API_TEMPLATE: &str =
     "https://api.willyweather.com.au/v2/{API_KEY}/locations/{LOCATION_ID}/weather.json";
-const FORECAST_DAYS: i64 = 7;
+const FORECAST_TYPES: &str = "weather,uv,rainfall,wind,temperature,sunrisesunset";
 const FORECAST_UTC_OFFSET: &str = "+0800";
-const CACHE_CAPACITY: u64 = 32;
+
+pub const FORECAST_OFFSET: FixedOffset = match FixedOffset::east_opt(8 * 3600) {
+    Some(offset) => offset,
+    None => panic!("invalid willyweather forecast offset"),
+};
 
 const PRECIS_TO_EMOJI: phf::Map<&'static str, &'static str> = phf_map! {
     "fine" => "☀️",
@@ -66,78 +68,47 @@ pub enum WillyWeatherError {
     },
     #[error("could not parse forecast timestamp: {0}")]
     Timestamp(#[from] chrono::ParseError),
-    #[error("willyweather cache_ttl must be positive")]
-    InvalidCacheTtl,
-    #[error(transparent)]
-    Shared(Arc<WillyWeatherError>),
 }
 
 #[derive(Clone)]
 pub struct WillyWeather {
     api_key: String,
     client: ClientWithMiddleware,
-    cache: Cache<String, Forecast>,
-    event_bus: EventBus,
+}
+
+pub fn precis_emoji(code: &str) -> String {
+    PRECIS_TO_EMOJI.get(code).map_or("", |e| e).to_owned()
 }
 
 impl WillyWeather {
-    pub fn new(
-        settings: &WillyWeatherSettings,
-        event_bus: EventBus,
-    ) -> Result<Self, WillyWeatherError> {
-        let ttl = settings
-            .cache_ttl
-            .to_std()
-            .map_err(|_| WillyWeatherError::InvalidCacheTtl)?;
-
-        let cache = Cache::builder()
-            .max_capacity(CACHE_CAPACITY)
-            .time_to_live(ttl)
-            .build();
-
-        tracing::info!("willyweather integration enabled (cache ttl {ttl:?})");
+    pub fn new(settings: &WillyWeatherSettings) -> Result<Self, WillyWeatherError> {
+        tracing::info!(
+            "willyweather integration enabled for {} location(s)",
+            settings.locations.len()
+        );
 
         Ok(Self {
             api_key: settings.api_key.clone().unwrap_or_default(),
             client: get_traced_http_client()?,
-            cache,
-            event_bus,
         })
     }
 
     #[instrument(skip(self))]
-    pub async fn forecast(&self, location: &str) -> Result<Forecast, WillyWeatherError> {
-        self.cache
-            .try_get_with(location.to_owned(), async {
-                tracing::debug!("willyweather forecast cache miss for {location}");
+    pub async fn fetch(&self, location_id: &str, days: i64) -> Result<Forecast, WillyWeatherError> {
+        let raw = self.get_forecast(location_id, days).await?;
 
-                let raw = self.get_forecast(location, FORECAST_DAYS).await?;
-                let forecast = shape_forecast(raw)?;
-
-                let readings = forecast_readings(&forecast);
-                if !readings.is_empty() {
-                    self.event_bus.publish(EventBusMessage::Weather {
-                        event_id: uuid::Uuid::new_v4(),
-                        source: WeatherSource::WillyWeather,
-                        readings,
-                    });
-                }
-
-                Ok(forecast)
-            })
-            .await
-            .map_err(WillyWeatherError::Shared)
+        shape_forecast(raw)
     }
 
     #[instrument(skip(self))]
     pub async fn get_forecast(
         &self,
-        location: &str,
+        location_id: &str,
         days: i64,
     ) -> Result<WillyWeatherForecast, WillyWeatherError> {
         let url = FORECAST_API_TEMPLATE
             .replace("{API_KEY}", &self.api_key)
-            .replace("{LOCATION_ID}", location);
+            .replace("{LOCATION_ID}", location_id);
 
         let response = self
             .client
@@ -145,7 +116,7 @@ impl WillyWeather {
             .with_extension(crate::http::UrlTemplate(
                 "/v2/{api_key}/locations/{location_id}/weather.json",
             ))
-            .query(&[("forecasts", "weather,uv"), ("days", &days.to_string())])
+            .query(&[("forecasts", FORECAST_TYPES), ("days", &days.to_string())])
             .send()
             .await?;
 
@@ -162,38 +133,75 @@ impl WillyWeather {
     }
 }
 
-fn forecast_readings(forecast: &Forecast) -> Vec<WeatherReading> {
-    ForecastDay::ALL
-        .iter()
-        .filter_map(|day| {
-            forecast
-                .days
-                .get(day.index())
-                .map(|details| (*day, details))
-        })
-        .flat_map(|(day, details)| {
-            [
-                (WeatherMetric::MaxTemp, Some(details.max as f64)),
-                (WeatherMetric::MinTemp, Some(details.min as f64)),
-                (WeatherMetric::UvMax, details.uv),
-            ]
-            .into_iter()
-            .filter_map(move |(metric, value)| {
-                value.map(|value| WeatherReading {
-                    metric,
-                    day: Some(day),
-                    value,
-                })
-            })
-        })
-        .collect()
+fn local_time(value: &str) -> Result<DateTime<FixedOffset>, chrono::ParseError> {
+    DateTime::parse_from_str(
+        &format!("{value} {FORECAST_UTC_OFFSET}"),
+        "%Y-%m-%d %H:%M:%S %z",
+    )
+}
+
+fn local_rfc3339(value: &str) -> Result<String, chrono::ParseError> {
+    Ok(local_time(value)?.to_rfc3339())
+}
+
+fn day_key(date_time: &str) -> String {
+    date_time.get(..10).unwrap_or(date_time).to_owned()
 }
 
 fn shape_forecast(raw: WillyWeatherForecast) -> Result<Forecast, WillyWeatherError> {
-    let uv_days = raw.forecasts.uv.days;
-    let mut days = Vec::with_capacity(raw.forecasts.weather.days.len());
+    let Forecasts {
+        weather,
+        uv,
+        rainfall,
+        wind,
+        temperature,
+        sunrisesunset,
+    } = raw.forecasts;
 
-    for (i, day) in raw.forecasts.weather.days.into_iter().enumerate() {
+    let uv_by_day: HashMap<String, f64> = uv
+        .days
+        .into_iter()
+        .filter_map(|day| {
+            day.alert
+                .map(|alert| (day_key(&day.date_time), alert.max_index))
+        })
+        .collect();
+
+    let mut rain_by_day: HashMap<_, _> = rainfall
+        .days
+        .into_iter()
+        .filter_map(|day| {
+            let key = day_key(&day.date_time);
+            day.entries.into_iter().next().map(|entry| (key, entry))
+        })
+        .collect();
+
+    let wind_max_by_day: HashMap<String, f64> = wind
+        .days
+        .iter()
+        .filter_map(|day| {
+            day.entries
+                .iter()
+                .map(|entry| entry.speed)
+                .reduce(f64::max)
+                .map(|max| (day_key(&day.date_time), max))
+        })
+        .collect();
+
+    let mut sun_by_day: HashMap<_, _> = sunrisesunset
+        .days
+        .into_iter()
+        .filter_map(|day| {
+            let key = day_key(&day.date_time);
+            day.entries.into_iter().next().map(|entry| (key, entry))
+        })
+        .collect();
+
+    let mut days = Vec::with_capacity(weather.days.len());
+
+    for day in weather.days {
+        let key = day_key(&day.date_time);
+
         let Some(entry) = day.entries.into_iter().next() else {
             tracing::warn!(
                 "willyweather day {} has no entries; skipping",
@@ -202,38 +210,71 @@ fn shape_forecast(raw: WillyWeatherForecast) -> Result<Forecast, WillyWeatherErr
             continue;
         };
 
-        let datetime = DateTime::parse_from_str(
-            &format!("{} {FORECAST_UTC_OFFSET}", entry.date_time),
-            "%Y-%m-%d %H:%M:%S %z",
-        )?;
+        let date_time = local_rfc3339(&entry.date_time)?;
+        let emoji = precis_emoji(&entry.precis_code);
+        let rain = rain_by_day.remove(&key);
 
-        let emoji = PRECIS_TO_EMOJI
-            .get(entry.precis_code.as_str())
-            .map_or("", |e| e)
-            .to_owned();
-
-        let uv = uv_days
-            .get(i)
-            .and_then(|day| day.alert.as_ref())
-            .map(|alert| alert.max_index);
+        let (first_light, sunrise, sunset, last_light) = match sun_by_day.remove(&key) {
+            Some(sun) => (
+                Some(local_rfc3339(&sun.first_light_date_time)?),
+                Some(local_rfc3339(&sun.rise_date_time)?),
+                Some(local_rfc3339(&sun.set_date_time)?),
+                Some(local_rfc3339(&sun.last_light_date_time)?),
+            ),
+            None => (None, None, None, None),
+        };
 
         days.push(ForecastDetails {
-            date_time: datetime.to_rfc3339(),
+            date_time,
             code: entry.precis_code,
             description: entry.precis,
             emoji,
             min: entry.min,
             max: entry.max,
-            uv,
+            uv: uv_by_day.get(&key).copied(),
+            rain_probability: rain.as_ref().and_then(|rain| rain.probability),
+            rain_start_range: rain.as_ref().and_then(|rain| rain.start_range),
+            rain_end_range: rain.as_ref().and_then(|rain| rain.end_range),
+            rain_range_code: rain.and_then(|rain| rain.range_code),
+            wind_max_speed: wind_max_by_day.get(&key).copied(),
+            first_light,
+            sunrise,
+            sunset,
+            last_light,
         });
     }
 
-    Ok(Forecast { days })
+    let mut hours: BTreeMap<String, ForecastHour> = BTreeMap::new();
+
+    for entry in temperature.days.into_iter().flat_map(|day| day.entries) {
+        hours.entry(entry.date_time).or_default().temperature = Some(entry.temperature);
+    }
+
+    for entry in wind.days.into_iter().flat_map(|day| day.entries) {
+        let hour = hours.entry(entry.date_time).or_default();
+
+        hour.wind_speed = Some(entry.speed);
+        hour.wind_direction = entry.direction;
+        hour.wind_direction_text = entry.direction_text;
+    }
+
+    let hours = hours
+        .into_iter()
+        .map(|(local, hour)| {
+            Ok(ForecastHour {
+                date_time: local_rfc3339(&local)?,
+                ..hour
+            })
+        })
+        .collect::<Result<Vec<_>, chrono::ParseError>>()?;
+
+    Ok(Forecast { days, hours })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event_bus::WeatherMetric;
 
     const FIXTURE: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -255,11 +296,55 @@ mod tests {
         assert_eq!(first.min, 9);
         assert_eq!(first.max, 22);
         assert_eq!(first.uv, Some(7.2));
+        assert_eq!(first.rain_probability, Some(20));
+        assert_eq!(first.rain_start_range, None);
+        assert_eq!(first.rain_end_range, Some(1));
+        assert_eq!(first.wind_max_speed, Some(18.0));
+        assert_eq!(
+            first.first_light.as_deref(),
+            Some("2026-09-03T06:05:00+08:00")
+        );
+        assert_eq!(first.sunrise.as_deref(), Some("2026-09-03T06:31:00+08:00"));
+        assert_eq!(first.sunset.as_deref(), Some("2026-09-03T17:58:00+08:00"));
+        assert_eq!(
+            first.last_light.as_deref(),
+            Some("2026-09-03T18:24:00+08:00")
+        );
 
-        assert_eq!(forecast.days[1].emoji, "🌧️");
-        assert_eq!(forecast.days[1].uv, None, "day without a uv alert");
+        let second = &forecast.days[1];
+        assert_eq!(second.emoji, "🌧️");
+        assert_eq!(second.uv, None, "day without a uv alert");
+        assert_eq!(second.rain_range_code.as_deref(), Some("5-10"));
+        assert_eq!(second.metric(WeatherMetric::RainMax), Some(10.0));
+        assert_eq!(second.metric(WeatherMetric::RainProbability), Some(80.0));
+        assert_eq!(second.metric(WeatherMetric::WindMaxSpeed), Some(30.0));
+        assert_eq!(second.sunrise, None, "day beyond the sun forecast");
 
-        assert_eq!(forecast.days[2].emoji, "", "unmapped precis code");
-        assert_eq!(forecast.days[2].uv, None, "day beyond the uv forecast");
+        let third = &forecast.days[2];
+        assert_eq!(third.emoji, "", "unmapped precis code");
+        assert_eq!(third.uv, None, "day beyond the uv forecast");
+        assert_eq!(third.metric(WeatherMetric::RainProbability), None);
+        assert_eq!(third.wind_max_speed, None);
+
+        let hours: Vec<_> = forecast
+            .hours
+            .iter()
+            .map(|hour| (hour.date_time.as_str(), hour.temperature, hour.wind_speed))
+            .collect();
+
+        assert_eq!(
+            hours,
+            [
+                ("2026-09-03T00:00:00+08:00", Some(12.1), Some(12.5)),
+                ("2026-09-03T01:00:00+08:00", Some(11.4), Some(18.0)),
+                ("2026-09-03T02:00:00+08:00", Some(10.9), None),
+                ("2026-09-04T00:00:00+08:00", None, Some(30.0)),
+            ]
+        );
+        assert_eq!(forecast.hours[1].wind_direction, Some(247.5));
+        assert_eq!(
+            forecast.hours[1].wind_direction_text.as_deref(),
+            Some("WSW")
+        );
     }
 }

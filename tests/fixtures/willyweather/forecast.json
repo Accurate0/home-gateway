@@ -86,6 +86,128 @@
         }
       ],
       "issueDateTime": "2026-09-03 04:30:00"
+    },
+    "rainfall": {
+      "days": [
+        {
+          "dateTime": "2026-09-03 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-03 00:00:00",
+              "startRange": null,
+              "endRange": 1,
+              "rangeDivide": "<",
+              "rangeCode": "0",
+              "probability": 20
+            }
+          ]
+        },
+        {
+          "dateTime": "2026-09-04 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-04 00:00:00",
+              "startRange": 5,
+              "endRange": 10,
+              "rangeDivide": "-",
+              "rangeCode": "5-10",
+              "probability": 80
+            }
+          ]
+        }
+      ],
+      "units": {
+        "amount": "mm"
+      },
+      "issueDateTime": "2026-09-03 04:30:00"
+    },
+    "wind": {
+      "days": [
+        {
+          "dateTime": "2026-09-03 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-03 00:00:00",
+              "speed": 12.5,
+              "direction": 225,
+              "directionText": "SW"
+            },
+            {
+              "dateTime": "2026-09-03 01:00:00",
+              "speed": 18.0,
+              "direction": 247.5,
+              "directionText": "WSW"
+            }
+          ]
+        },
+        {
+          "dateTime": "2026-09-04 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-04 00:00:00",
+              "speed": 30.0,
+              "direction": 180,
+              "directionText": "S"
+            }
+          ]
+        }
+      ],
+      "units": {
+        "speed": "km/h"
+      },
+      "issueDateTime": "2026-09-03 04:30:00",
+      "carousel": {
+        "size": 2,
+        "start": 0
+      }
+    },
+    "temperature": {
+      "days": [
+        {
+          "dateTime": "2026-09-03 00:00:00",
+          "entries": [
+            {
+              "dateTime": "2026-09-03 00:00:00",
+              "temperature": 12.1
+            },
+            {
+              "dateTime": "2026-09-03 01:00:00",
+              "temperature": 11.4
+            },
+            {
+              "dateTime": "2026-09-03 02:00:00",
+              "temperature": 10.9
+            }
+          ]
+        }
+      ],
+      "units": {
+        "temperature": "c"
+      },
+      "issueDateTime": "2026-09-03 04:30:00",
+      "carousel": {
+        "size": 1,
+        "start": 0
+      }
+    },
+    "sunrisesunset": {
+      "days": [
+        {
+          "dateTime": "2026-09-03 00:00:00",
+          "entries": [
+            {
+              "firstLightDateTime": "2026-09-03 06:05:00",
+              "riseDateTime": "2026-09-03 06:31:00",
+              "setDateTime": "2026-09-03 17:58:00",
+              "lastLightDateTime": "2026-09-03 18:24:00"
+            }
+          ]
+        }
+      ],
+      "carousel": {
+        "size": 1,
+        "start": 0
+      }
     }
   }
 }

@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"time\", temperature, wind_speed, wind_direction, wind_direction_text\n            FROM willyweather_forecast_hour\n            WHERE location = $1 AND \"time\" >= $2\n            ORDER BY \"time\" ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "temperature",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "wind_speed",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "wind_direction",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "wind_direction_text",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "53f4a76f4df101bf24307c46944b09697f087ea5219a3daca28f936d9deb5525"
+}

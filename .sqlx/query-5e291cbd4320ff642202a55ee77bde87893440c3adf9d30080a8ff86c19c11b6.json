@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO willyweather_forecast_hour (\n                location, \"time\", temperature, wind_speed, wind_direction, wind_direction_text\n            )\n            SELECT * FROM UNNEST(\n                $1::TEXT[], $2::TIMESTAMPTZ[], $3::DOUBLE PRECISION[],\n                $4::DOUBLE PRECISION[], $5::DOUBLE PRECISION[], $6::TEXT[]\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TimestamptzArray",
+        "Float8Array",
+        "Float8Array",
+        "Float8Array",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5e291cbd4320ff642202a55ee77bde87893440c3adf9d30080a8ff86c19c11b6"
+}

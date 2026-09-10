@@ -18,6 +18,9 @@ pub enum WeatherMetric {
     MaxTemp,
     MinTemp,
     UvMax,
+    RainProbability,
+    RainMax,
+    WindMaxSpeed,
 }
 
 impl WeatherMetric {
@@ -34,10 +37,13 @@ impl WeatherMetric {
         WeatherMetric::MinTemp,
     ];
 
-    const WILLYWEATHER: &'static [WeatherMetric] = &[
+    pub const WILLYWEATHER: &'static [WeatherMetric] = &[
         WeatherMetric::MaxTemp,
         WeatherMetric::MinTemp,
         WeatherMetric::UvMax,
+        WeatherMetric::RainProbability,
+        WeatherMetric::RainMax,
+        WeatherMetric::WindMaxSpeed,
     ];
 
     pub fn as_str(&self) -> &'static str {
@@ -53,6 +59,9 @@ impl WeatherMetric {
             WeatherMetric::MaxTemp => "max_temp",
             WeatherMetric::MinTemp => "min_temp",
             WeatherMetric::UvMax => "uv_max",
+            WeatherMetric::RainProbability => "rain_probability",
+            WeatherMetric::RainMax => "rain_max",
+            WeatherMetric::WindMaxSpeed => "wind_max_speed",
         }
     }
 
@@ -153,6 +162,28 @@ mod tests {
                 .validate(WeatherSource::WillyWeather, Some(ForecastDay::Today))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn forecast_rain_and_wind_metrics_are_willyweather_only() {
+        for metric in [
+            WeatherMetric::RainProbability,
+            WeatherMetric::RainMax,
+            WeatherMetric::WindMaxSpeed,
+        ] {
+            assert!(
+                metric
+                    .validate(WeatherSource::WillyWeather, Some(ForecastDay::Today))
+                    .is_ok()
+            );
+            assert!(metric.validate(WeatherSource::WillyWeather, None).is_err());
+            assert!(metric.validate(WeatherSource::Bom, None).is_err());
+        }
+
+        let names = WeatherMetric::var_names(WeatherSource::WillyWeather);
+        assert!(names.contains(&"tomorrow_rain_probability".to_owned()));
+        assert!(names.contains(&"today_rain_max".to_owned()));
+        assert!(names.contains(&"today_wind_max_speed".to_owned()));
     }
 
     #[test]

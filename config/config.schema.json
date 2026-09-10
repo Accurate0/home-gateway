@@ -1730,7 +1730,10 @@
         "uv",
         "max_temp",
         "min_temp",
-        "uv_max"
+        "uv_max",
+        "rain_probability",
+        "rain_max",
+        "wind_max_speed"
       ]
     },
     "ForecastDay": {
@@ -3260,16 +3263,28 @@
           ],
           "default": null
         },
+        "refresh": {
+          "type": "string"
+        },
+        "days": {
+          "type": "integer",
+          "format": "int64"
+        },
         "default_location": {
           "type": "string"
         },
-        "cache_ttl": {
-          "type": "string"
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [
+        "refresh",
+        "days",
         "default_location",
-        "cache_ttl"
+        "locations"
       ]
     },
     "FuelWatchSettings": {

@@ -328,6 +328,7 @@ union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpda
 
 type Forecast {
 	days: [ForecastDetails!]!
+	hours: [ForecastHour!]!
 }
 
 type ForecastDetails {
@@ -338,6 +339,23 @@ type ForecastDetails {
 	min: Int!
 	max: Int!
 	uv: Float
+	rainProbability: Int
+	rainStartRange: Int
+	rainEndRange: Int
+	rainRangeCode: String
+	windMaxSpeed: Float
+	firstLight: String
+	sunrise: String
+	sunset: String
+	lastLight: String
+}
+
+type ForecastHour {
+	dateTime: String!
+	temperature: Float
+	windSpeed: Float
+	windDirection: Float
+	windDirectionText: String
 }
 
 type FuelSite {
