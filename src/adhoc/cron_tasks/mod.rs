@@ -1,6 +1,5 @@
 use super::cron_task::AdhocCronTask;
 
-pub mod refresh_fuelwatch_sites;
 pub mod refresh_transperth_timetable;
 pub mod sample_light_state;
 pub mod trim_derived_door_events;
@@ -18,7 +17,6 @@ pub mod trim_workflow_runs;
 
 pub fn all() -> Vec<&'static dyn AdhocCronTask> {
     vec![
-        &refresh_fuelwatch_sites::RefreshFuelWatchSites,
         &refresh_transperth_timetable::RefreshTransperthTimetable,
         &sample_light_state::SampleLightState,
         &trim_derived_door_events::TrimDerivedDoorEvents,

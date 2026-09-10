@@ -18,6 +18,7 @@ pub mod robot_vacuum;
 pub mod smart_switch;
 pub mod solar;
 pub mod sun;
+pub mod timer_kind;
 pub mod unifi;
 pub mod watchdog;
 pub mod woolworths;

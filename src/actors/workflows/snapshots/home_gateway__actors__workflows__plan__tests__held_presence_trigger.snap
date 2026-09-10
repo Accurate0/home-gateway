@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: rendered_with_header(&wf)
+---
+on: presence(0x4) -> true
+for: 10m
+light: light(0x1) -> On

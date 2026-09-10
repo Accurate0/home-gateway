@@ -10,7 +10,13 @@
 
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
+use crate::repo::timer_kind::TimerKind;
+use crate::repo::workflow::{NewPendingTimer, PendingTimerRow};
+use crate::settings::workflow::Condition;
+use chrono::Utc;
 use std::collections::HashMap;
+use std::time::Duration;
+use uuid::Uuid;
 
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 
@@ -19,8 +25,8 @@ use tracing::Instrument;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage, conditions},
     event_bus::{
-        BusEvent, EventBusMessage, EventSubscriber, Recipient, SensorMetric, SolarMetric,
-        Subscription,
+        BusEvent, EventBusMessage, EventSubscriber, ForecastDay, Recipient, SensorMetric,
+        SolarMetric, Subscription, WeatherMetric, WeatherReading, WeatherSource,
     },
     integrations::solar::{queries, types::SolarCurrentStatisticsAverages},
     settings::{TriggerMatcher, Workflow},
@@ -33,13 +39,18 @@ pub struct WorkflowDispatcher {
 
 pub struct DispatcherSubscriber;
 
+pub enum DispatcherMessage {
+    Event(Box<BusEvent>),
+    TimerExpired(Uuid),
+}
+
 impl EventSubscriber for DispatcherSubscriber {
-    type Msg = BusEvent;
+    type Msg = DispatcherMessage;
 
     const KINDS: &'static [&'static str] = EventBusMessage::KINDS;
 
     fn to_actor_message(&self, event: &BusEvent) -> Option<Self::Msg> {
-        Some(event.clone())
+        Some(DispatcherMessage::Event(Box::new(event.clone())))
     }
 }
 
@@ -53,32 +64,103 @@ pub struct WorkflowDispatcherState {
     /// `(trigger name, metric) -> comparison satisfied at last poll`, the solar
     /// counterpart to `last_satisfied` (there is only one plant, so no subject).
     last_solar_satisfied: HashMap<(String, SolarMetric), bool>,
-    pending_delays: HashMap<(EventSubject, String), tokio::task::JoinHandle<()>>,
+    last_weather_satisfied: HashMap<WeatherKey, bool>,
 }
 
 type EventSubject = (String, String);
 
+type WeatherKey = (String, WeatherSource, WeatherMetric, Option<ForecastDay>);
+
 impl WorkflowDispatcherState {
-    fn cancel_pending_for(&mut self, subject: &EventSubject) -> Vec<String> {
-        let mut cancelled = Vec::new();
-
-        self.pending_delays.retain(|(s, name), handle| {
-            if s == subject {
-                handle.abort();
-                cancelled.push(name.clone());
-                false
-            } else {
-                true
+    fn commit(&mut self, latch: Option<PendingLatch>) {
+        match latch {
+            Some(PendingLatch::Sensor(key)) => {
+                self.last_satisfied.insert(key, true);
             }
-        });
-
-        cancelled
+            Some(PendingLatch::Solar(key)) => {
+                self.last_solar_satisfied.insert(key, true);
+            }
+            Some(PendingLatch::Weather(key)) => {
+                self.last_weather_satisfied.insert(key, true);
+            }
+            None => {}
+        }
     }
+}
+
+fn latch_for(workflow: &Workflow, subject_entity: &str) -> Option<PendingLatch> {
+    match workflow.on()? {
+        TriggerMatcher::Environment { metric, .. } => Some(PendingLatch::Sensor((
+            workflow.name.clone(),
+            subject_entity.to_owned(),
+            metric.clone(),
+        ))),
+        TriggerMatcher::Solar { metric, .. } => {
+            Some(PendingLatch::Solar((workflow.name.clone(), *metric)))
+        }
+        TriggerMatcher::Weather {
+            source,
+            metric,
+            day,
+            ..
+        } => Some(PendingLatch::Weather((
+            workflow.name.clone(),
+            *source,
+            *metric,
+            *day,
+        ))),
+        _ => None,
+    }
+}
+
+fn schedule(myself: &ActorRef<DispatcherMessage>, timer: &PendingTimerRow) {
+    let id = timer.id;
+    let remaining = (timer.fire_at - Utc::now())
+        .to_std()
+        .unwrap_or(Duration::ZERO);
+
+    myself.send_after(remaining, move || DispatcherMessage::TimerExpired(id));
 }
 
 enum PendingLatch {
     Sensor((String, String, SensorMetric)),
     Solar((String, SolarMetric)),
+    Weather(WeatherKey),
+}
+
+#[allow(clippy::too_many_arguments)]
+fn weather_fires(
+    name: &str,
+    source: WeatherSource,
+    metric: WeatherMetric,
+    day: Option<ForecastDay>,
+    cmp: &crate::settings::workflow::Comparison,
+    readings: &[WeatherReading],
+    last_satisfied: &mut HashMap<WeatherKey, bool>,
+    pending: &mut Option<PendingLatch>,
+) -> bool {
+    let Some(reading) = readings
+        .iter()
+        .find(|reading| reading.metric == metric && reading.day == day)
+    else {
+        return false;
+    };
+
+    let satisfied = cmp.matches(reading.value);
+    let key = (name.to_owned(), source, metric, day);
+
+    if !satisfied {
+        last_satisfied.insert(key, false);
+        return false;
+    }
+
+    if last_satisfied.get(&key).copied().unwrap_or(false) {
+        return false;
+    }
+
+    *pending = Some(PendingLatch::Weather(key));
+
+    true
 }
 
 /// Whether a solar trigger fires for this reading: pick the metric's value
@@ -241,6 +323,26 @@ impl WorkflowDispatcher {
                     && min_drop.is_none_or(|min| old_price - new_price >= min)
             }
             (
+                TriggerMatcher::FuelWatch {
+                    change,
+                    site_id,
+                    below,
+                    min_drop,
+                },
+                EventBusMessage::FuelWatch {
+                    change: c,
+                    site_id: id,
+                    old_price,
+                    new_price,
+                    ..
+                },
+            ) => {
+                change == c
+                    && site_id.is_none_or(|s| s == *id)
+                    && below.is_none_or(|b| *new_price < b)
+                    && min_drop.is_none_or(|min| old_price - new_price >= min)
+            }
+            (
                 TriggerMatcher::DeviceBattery {
                     device_id,
                     kind,
@@ -305,6 +407,31 @@ impl WorkflowDispatcher {
                     pending,
                 )
             }
+            (
+                TriggerMatcher::Weather {
+                    source,
+                    metric,
+                    day,
+                    cmp,
+                },
+                EventBusMessage::Weather {
+                    source: s,
+                    readings,
+                    ..
+                },
+            ) => {
+                source == s
+                    && weather_fires(
+                        &workflow.name,
+                        *source,
+                        *metric,
+                        *day,
+                        cmp,
+                        readings,
+                        &mut state.last_weather_satisfied,
+                        pending,
+                    )
+            }
             _ => false,
         }
     }
@@ -356,8 +483,9 @@ impl WorkflowDispatcher {
         }
     }
 
-    async fn handle(
+    async fn handle_event(
         &self,
+        myself: &ActorRef<DispatcherMessage>,
         event: BusEvent,
         state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
@@ -382,14 +510,34 @@ impl WorkflowDispatcher {
         }
 
         let subject: EventSubject = (msg.kind().to_string(), msg.entity());
-        for name in state.cancel_pending_for(&subject) {
-            tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
+
+        match self
+            .shared_actor_state
+            .repos
+            .workflow()
+            .cancel_timers_for_subject(TimerKind::Delay, &subject.0, &subject.1)
+            .await
+        {
+            Ok(cancelled) => {
+                for name in cancelled {
+                    tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
+                }
+            }
+            Err(e) => tracing::error!("[{event_id}] failed to cancel delayed triggers: {e}"),
         }
 
         for workflow in settings.workflows.values() {
             let mut pending = None;
 
             if !self.matches(workflow, &msg, averages.as_ref(), state, &mut pending) {
+                if workflow.hold().is_some()
+                    && workflow
+                        .on()
+                        .is_some_and(|on| on.event_kind() == msg.kind())
+                {
+                    self.cancel_hold(event_id, workflow, &subject).await;
+                }
+
                 continue;
             }
             if !self
@@ -412,7 +560,7 @@ impl WorkflowDispatcher {
             );
             crate::tracing_context::set_parent(&trigger_span, traceparent.as_deref());
 
-            self.evaluate_trigger(event_id, workflow, &subject, &vars, state, pending)
+            self.evaluate_trigger(myself, event_id, workflow, &subject, &vars, state, pending)
                 .instrument(trigger_span)
                 .await?;
         }
@@ -423,8 +571,10 @@ impl WorkflowDispatcher {
     /// Evaluate a single matched trigger: gate on `when`, honour the cooldown,
     /// and dispatch its workflow. Recorded as one `trigger.evaluate` span by the
     /// caller via [`Instrument`].
+    #[allow(clippy::too_many_arguments)]
     async fn evaluate_trigger(
         &self,
+        myself: &ActorRef<DispatcherMessage>,
         event_id: uuid::Uuid,
         workflow: &Workflow,
         subject: &EventSubject,
@@ -432,32 +582,23 @@ impl WorkflowDispatcher {
         state: &mut WorkflowDispatcherState,
         pending: Option<PendingLatch>,
     ) -> Result<(), ActorProcessingErr> {
-        if let Some(when) = workflow.when() {
-            match conditions::eval(&self.shared_actor_state, when).await {
-                Ok(true) => {}
-                Ok(false) => {
-                    tracing::info!(
-                        "[{event_id}] trigger '{}' matched but `when` not satisfied",
-                        workflow.name
-                    );
-                    crate::metrics::record_trigger(
-                        &workflow.name,
-                        crate::metrics::TriggerOutcome::WhenNotMet,
-                    );
-                    return Ok(());
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "[{event_id}] trigger '{}' `when` evaluation failed: {e}",
-                        workflow.name
-                    );
-                    crate::metrics::record_trigger(
-                        &workflow.name,
-                        crate::metrics::TriggerOutcome::WhenError,
-                    );
-                    return Ok(());
-                }
-            }
+        if !self.when_satisfied(event_id, workflow).await {
+            return Ok(());
+        }
+
+        if let Some(hold) = workflow.hold() {
+            self.arm_timer(
+                myself,
+                event_id,
+                workflow,
+                TimerKind::Hold,
+                hold,
+                subject,
+                vars,
+            )
+            .await;
+
+            return Ok(());
         }
 
         if let Some(cooldown) = workflow.cooldown()
@@ -474,62 +615,319 @@ impl WorkflowDispatcher {
             return Ok(());
         }
 
-        match pending {
-            Some(PendingLatch::Sensor(key)) => {
-                state.last_satisfied.insert(key, true);
-            }
-            Some(PendingLatch::Solar(key)) => {
-                state.last_solar_satisfied.insert(key, true);
-            }
-            None => {}
-        }
+        state.commit(pending);
 
         tracing::info!("[{event_id}] trigger '{}' fired", workflow.name);
         crate::metrics::record_trigger(&workflow.name, crate::metrics::TriggerOutcome::Fired);
 
+        self.dispatch_or_delay(myself, event_id, workflow, subject, vars)
+            .await
+    }
+
+    async fn dispatch_or_delay(
+        &self,
+        myself: &ActorRef<DispatcherMessage>,
+        event_id: Uuid,
+        workflow: &Workflow,
+        subject: &EventSubject,
+        vars: &HashMap<String, String>,
+    ) -> Result<(), ActorProcessingErr> {
         match workflow.delay() {
-            Some(delay) => self.schedule_delayed(event_id, workflow, delay, subject, vars, state),
+            Some(delay) => {
+                self.arm_timer(
+                    myself,
+                    event_id,
+                    workflow,
+                    TimerKind::Delay,
+                    delay,
+                    subject,
+                    vars,
+                )
+                .await;
+            }
             None => self.dispatch_workflow(event_id, workflow.clone(), vars.clone())?,
         }
 
         Ok(())
     }
 
-    fn schedule_delayed(
+    async fn when_satisfied(&self, event_id: Uuid, workflow: &Workflow) -> bool {
+        let Some(when) = workflow.when() else {
+            return true;
+        };
+
+        match conditions::eval(&self.shared_actor_state, when).await {
+            Ok(true) => true,
+            Ok(false) => {
+                tracing::info!(
+                    "[{event_id}] trigger '{}' matched but `when` not satisfied",
+                    workflow.name
+                );
+                crate::metrics::record_trigger(
+                    &workflow.name,
+                    crate::metrics::TriggerOutcome::WhenNotMet,
+                );
+                false
+            }
+            Err(e) => {
+                tracing::error!(
+                    "[{event_id}] trigger '{}' `when` evaluation failed: {e}",
+                    workflow.name
+                );
+                crate::metrics::record_trigger(
+                    &workflow.name,
+                    crate::metrics::TriggerOutcome::WhenError,
+                );
+                false
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn arm_timer(
         &self,
-        event_id: uuid::Uuid,
+        myself: &ActorRef<DispatcherMessage>,
+        event_id: Uuid,
         workflow: &Workflow,
-        delay: chrono::TimeDelta,
+        kind: TimerKind,
+        duration: chrono::TimeDelta,
+        subject: &EventSubject,
+        vars: &HashMap<String, String>,
+    ) {
+        let vars = match serde_json::to_value(vars) {
+            Ok(vars) => vars,
+            Err(e) => {
+                tracing::error!(
+                    "[{event_id}] failed to encode vars for '{}': {e}",
+                    workflow.name
+                );
+                return;
+            }
+        };
+
+        let armed = self
+            .shared_actor_state
+            .repos
+            .workflow()
+            .arm_timer(NewPendingTimer {
+                workflow: &workflow.name,
+                kind,
+                subject_kind: &subject.0,
+                subject_entity: &subject.1,
+                event_id,
+                vars,
+                fire_at: Utc::now() + duration,
+            })
+            .await;
+
+        match armed {
+            Ok(Some(timer)) => {
+                tracing::info!(
+                    "[{event_id}] trigger '{}' armed {} timer for {}",
+                    workflow.name,
+                    kind.as_str(),
+                    crate::timedelta_format::humanize(duration)
+                );
+
+                schedule(myself, &timer);
+            }
+            Ok(None) => {
+                tracing::info!(
+                    "[{event_id}] trigger '{}' is already holding, keeping its deadline",
+                    workflow.name
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    "[{event_id}] failed to arm {} timer for '{}': {e}",
+                    kind.as_str(),
+                    workflow.name
+                );
+            }
+        }
+    }
+
+    async fn cancel_hold(&self, event_id: Uuid, workflow: &Workflow, subject: &EventSubject) {
+        let cancelled = self
+            .shared_actor_state
+            .repos
+            .workflow()
+            .cancel_timer(&workflow.name, TimerKind::Hold, &subject.0, &subject.1)
+            .await;
+
+        match cancelled {
+            Ok(true) => {
+                tracing::info!(
+                    "[{event_id}] trigger '{}' no longer holds, cancelled its timer",
+                    workflow.name
+                );
+            }
+            Ok(false) => {}
+            Err(e) => {
+                tracing::error!(
+                    "[{event_id}] failed to cancel hold for '{}': {e}",
+                    workflow.name
+                );
+            }
+        }
+    }
+
+    async fn handle_timer(
+        &self,
+        myself: &ActorRef<DispatcherMessage>,
+        id: Uuid,
+        state: &mut WorkflowDispatcherState,
+    ) -> Result<(), ActorProcessingErr> {
+        let Some(timer) = self
+            .shared_actor_state
+            .repos
+            .workflow()
+            .take_timer(id)
+            .await?
+        else {
+            tracing::debug!("timer {id} was cancelled before it fired");
+            return Ok(());
+        };
+
+        let settings = self.shared_actor_state.settings.clone();
+
+        let Some(workflow) = settings.workflows.get(&timer.workflow) else {
+            tracing::warn!(
+                "dropping {} timer for unknown workflow '{}'",
+                timer.timer_kind,
+                timer.workflow
+            );
+            return Ok(());
+        };
+
+        let event_id = timer.event_id;
+        let vars: HashMap<String, String> = serde_json::from_value(timer.vars)?;
+        let subject: EventSubject = (timer.subject_kind, timer.subject_entity);
+
+        match TimerKind::parse(&timer.timer_kind) {
+            Some(TimerKind::Hold) => {
+                self.fire_hold(myself, event_id, workflow, &subject, &vars, state)
+                    .await
+            }
+            Some(TimerKind::Delay) => {
+                tracing::info!("[{event_id}] delayed trigger '{}' firing", workflow.name);
+                self.dispatch_workflow(event_id, workflow.clone(), vars)
+            }
+            None => {
+                tracing::warn!(
+                    "[{event_id}] dropping timer with unknown kind '{}'",
+                    timer.timer_kind
+                );
+                Ok(())
+            }
+        }
+    }
+
+    async fn fire_hold(
+        &self,
+        myself: &ActorRef<DispatcherMessage>,
+        event_id: Uuid,
+        workflow: &Workflow,
         subject: &EventSubject,
         vars: &HashMap<String, String>,
         state: &mut WorkflowDispatcherState,
-    ) {
-        let Ok(delay) = delay.to_std() else {
-            let _ = self.dispatch_workflow(event_id, workflow.clone(), vars.clone());
-            return;
+    ) -> Result<(), ActorProcessingErr> {
+        let Some(condition) = workflow.on().and_then(|on| on.as_condition()) else {
+            tracing::warn!(
+                "[{event_id}] trigger '{}' has a hold but no checkable state",
+                workflow.name
+            );
+            return Ok(());
         };
 
-        let name = workflow.name.clone();
-        let workflow = workflow.clone();
-        tracing::info!(
-            "[{event_id}] trigger '{name}' deferred by {}s",
-            delay.as_secs()
-        );
-
-        let task_name = name.clone();
-        let vars = vars.clone();
-        let handle = tokio::spawn(async move {
-            tokio::time::sleep(delay).await;
-            tracing::info!("[{event_id}] delayed trigger '{task_name}' firing");
-            if let Err(e) = Self::send_to_factory(event_id, workflow, vars) {
-                tracing::error!(
-                    "[{event_id}] failed to dispatch delayed trigger '{task_name}': {e}"
+        match conditions::eval(&self.shared_actor_state, &Condition::Leaf(condition)).await {
+            Ok(true) => {}
+            Ok(false) => {
+                tracing::info!(
+                    "[{event_id}] trigger '{}' did not hold for its `for:` duration",
+                    workflow.name
                 );
+                return Ok(());
             }
-        });
+            Err(e) => {
+                tracing::error!(
+                    "[{event_id}] trigger '{}' hold re-check failed: {e}",
+                    workflow.name
+                );
+                return Ok(());
+            }
+        }
 
-        if let Some(prev) = state.pending_delays.insert((subject.clone(), name), handle) {
-            prev.abort();
+        if !self.when_satisfied(event_id, workflow).await {
+            return Ok(());
+        }
+
+        if let Some(cooldown) = workflow.cooldown()
+            && !self.cooldown_ok(&workflow.name, cooldown).await?
+        {
+            tracing::info!(
+                "[{event_id}] trigger '{}' held but is within cooldown, skipping",
+                workflow.name
+            );
+            crate::metrics::record_trigger(
+                &workflow.name,
+                crate::metrics::TriggerOutcome::CooldownSkipped,
+            );
+            return Ok(());
+        }
+
+        state.commit(latch_for(workflow, &subject.1));
+
+        tracing::info!("[{event_id}] trigger '{}' held and fired", workflow.name);
+        crate::metrics::record_trigger(&workflow.name, crate::metrics::TriggerOutcome::Fired);
+
+        self.dispatch_or_delay(myself, event_id, workflow, subject, vars)
+            .await
+    }
+
+    async fn restore_timers(&self, myself: &ActorRef<DispatcherMessage>) {
+        let repo = self.shared_actor_state.repos.workflow();
+
+        let timers = match repo.pending_timers().await {
+            Ok(timers) => timers,
+            Err(e) => {
+                tracing::error!("failed to load pending workflow timers: {e}");
+                return;
+            }
+        };
+
+        let catch_up_within = self
+            .shared_actor_state
+            .settings
+            .workflow
+            .timers
+            .catch_up_within;
+        let now = Utc::now();
+
+        for timer in timers {
+            if now - timer.fire_at > catch_up_within {
+                tracing::warn!(
+                    "dropping {} timer for '{}' that was due at {}",
+                    timer.timer_kind,
+                    timer.workflow,
+                    timer.fire_at
+                );
+
+                if let Err(e) = repo.take_timer(timer.id).await {
+                    tracing::error!("failed to drop stale timer {}: {e}", timer.id);
+                }
+
+                continue;
+            }
+
+            tracing::info!(
+                "restoring {} timer for '{}' due at {}",
+                timer.timer_kind,
+                timer.workflow,
+                timer.fire_at
+            );
+
+            schedule(myself, &timer);
         }
     }
 
@@ -581,7 +979,7 @@ impl WorkflowDispatcher {
 }
 
 impl Actor for WorkflowDispatcher {
-    type Msg = BusEvent;
+    type Msg = DispatcherMessage;
     type State = WorkflowDispatcherState;
     type Arguments = ();
 
@@ -594,9 +992,11 @@ impl Actor for WorkflowDispatcher {
         // serialized through `handle` while execution fans out to the factory
         let subscription = self.shared_actor_state.event_bus.register(
             Self::NAME,
-            Recipient::Actor(myself),
+            Recipient::Actor(myself.clone()),
             DispatcherSubscriber,
         );
+
+        self.restore_timers(&myself).await;
 
         Ok(WorkflowDispatcherState {
             _subscription: subscription,
@@ -606,11 +1006,16 @@ impl Actor for WorkflowDispatcher {
 
     async fn handle(
         &self,
-        _myself: ActorRef<Self::Msg>,
+        myself: ActorRef<Self::Msg>,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        if let Err(e) = WorkflowDispatcher::handle(self, message, state).await {
+        let result = match message {
+            DispatcherMessage::Event(event) => self.handle_event(&myself, *event, state).await,
+            DispatcherMessage::TimerExpired(id) => self.handle_timer(&myself, id, state).await,
+        };
+
+        if let Err(e) = result {
             tracing::error!("error while dispatching event: {e}");
         }
 
@@ -622,7 +1027,6 @@ impl Actor for WorkflowDispatcher {
 mod tests {
     use super::*;
     use crate::settings::workflow::{CompareOp, Comparison};
-    use std::time::Duration;
 
     fn averages(last_15_mins: Option<f64>) -> SolarCurrentStatisticsAverages {
         SolarCurrentStatisticsAverages {
@@ -665,51 +1069,66 @@ mod tests {
         assert!(fires(3500.0, &mut last), "expected a re-arm and re-fire");
     }
 
-    fn armed(state: &mut WorkflowDispatcherState, subject: &EventSubject, name: &str) {
-        let handle = tokio::spawn(async { tokio::time::sleep(Duration::from_secs(3600)).await });
-        state
-            .pending_delays
-            .insert((subject.clone(), name.to_owned()), handle);
+    fn workflow(yaml: &str) -> Workflow {
+        serde_yaml::from_str(yaml).expect("workflow yaml")
     }
 
-    #[tokio::test]
-    async fn a_matching_subject_cancels_every_delay_armed_for_it() {
+    #[test]
+    fn a_held_threshold_latches_the_edge_it_fired_on() {
+        let hot = workflow(
+            r#"
+name: hot
+on: { type: weather, source: bom, metric: temperature, op: gt, value: 35 }
+for: 1h
+run: []
+"#,
+        );
+
         let mut state = WorkflowDispatcherState::default();
-        let presence: EventSubject = ("presence".to_owned(), "livingroom-motion".to_owned());
-        let door: EventSubject = ("door".to_owned(), "front-door".to_owned());
+        state.commit(latch_for(&hot, "bom"));
 
-        armed(&mut state, &presence, "lamp off");
-        armed(&mut state, &presence, "heater off");
-        armed(&mut state, &door, "porch light off");
-
-        let mut cancelled = state.cancel_pending_for(&presence);
-        cancelled.sort();
-
-        assert_eq!(cancelled, vec!["heater off", "lamp off"]);
         assert_eq!(
-            state.pending_delays.len(),
-            1,
-            "a delay armed for a different subject survives"
-        );
-        assert!(
-            state
-                .pending_delays
-                .contains_key(&(door, "porch light off".to_owned())),
-            "the surviving delay is the door one"
+            state.last_weather_satisfied.get(&(
+                "hot".to_owned(),
+                WeatherSource::Bom,
+                WeatherMetric::Temperature,
+                None
+            )),
+            Some(&true)
         );
     }
 
-    #[tokio::test]
-    async fn cancelling_an_unarmed_subject_is_a_no_op() {
-        let mut state = WorkflowDispatcherState::default();
-        let presence: EventSubject = ("presence".to_owned(), "livingroom-motion".to_owned());
+    #[test]
+    fn a_held_environment_trigger_latches_on_the_event_sensor() {
+        let damp = workflow(
+            r#"
+name: damp
+on: { type: environment, sensor: bathroom, metric: humidity, op: gt, value: 80 }
+for: 10m
+run: []
+"#,
+        );
 
-        armed(&mut state, &presence, "lamp off");
+        assert!(matches!(
+            latch_for(&damp, "0xabc"),
+            Some(PendingLatch::Sensor((name, sensor, SensorMetric::Humidity)))
+                if name == "damp" && sensor == "0xabc"
+        ));
+    }
 
-        let other: EventSubject = ("presence".to_owned(), "closet-presence".to_owned());
+    #[test]
+    fn presence_holds_have_no_edge_to_latch() {
+        let empty = workflow(
+            r#"
+name: empty
+on: { type: presence, sensor: hallway, present: false }
+for: 30m
+run: []
+"#,
+        );
 
-        assert!(state.cancel_pending_for(&other).is_empty());
-        assert_eq!(state.pending_delays.len(), 1);
+        assert!(latch_for(&empty, "0x1").is_none());
+        assert!(empty.on().is_some_and(|on| on.supports_hold()));
     }
 
     #[test]
@@ -783,6 +1202,59 @@ mod tests {
             &mut None,
         ));
         assert!(last.is_empty(), "edge state should be untouched");
+    }
+
+    #[test]
+    fn a_weather_forecast_fires_on_the_rising_edge_for_its_day_only() {
+        let cmp = Comparison {
+            op: CompareOp::Gte,
+            value: 35.0,
+        };
+        let mut last = HashMap::new();
+
+        let forecast = |today: f64, tomorrow: f64| {
+            vec![
+                WeatherReading {
+                    metric: WeatherMetric::MaxTemp,
+                    day: Some(ForecastDay::Today),
+                    value: today,
+                },
+                WeatherReading {
+                    metric: WeatherMetric::MaxTemp,
+                    day: Some(ForecastDay::Tomorrow),
+                    value: tomorrow,
+                },
+            ]
+        };
+
+        let fires = |readings: Vec<WeatherReading>, last: &mut HashMap<_, _>| {
+            let mut pending = None;
+            let fired = weather_fires(
+                "hot tomorrow",
+                WeatherSource::WillyWeather,
+                WeatherMetric::MaxTemp,
+                Some(ForecastDay::Tomorrow),
+                &cmp,
+                &readings,
+                last,
+                &mut pending,
+            );
+
+            if let Some(PendingLatch::Weather(key)) = pending {
+                last.insert(key, true);
+            }
+
+            fired
+        };
+
+        assert!(!fires(forecast(38.0, 30.0), &mut last), "today is ignored");
+        assert!(fires(forecast(20.0, 36.0), &mut last), "tomorrow crosses");
+        assert!(
+            !fires(forecast(20.0, 37.0), &mut last),
+            "no re-fire while past"
+        );
+        assert!(!fires(forecast(20.0, 30.0), &mut last), "drops back");
+        assert!(fires(forecast(20.0, 35.0), &mut last), "re-arms");
     }
 
     #[test]

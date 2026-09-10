@@ -107,6 +107,12 @@ mod tests {
         if let Some(when) = wf.when() {
             out.push_str(&format!("when: {}\n", when.describe()));
         }
+        if let Some(hold) = wf.hold() {
+            out.push_str(&format!(
+                "for: {}\n",
+                crate::timedelta_format::humanize(hold)
+            ));
+        }
         out.push_str(&render(&plan(&HashMap::new(), &wf.run)));
         out
     }
@@ -125,6 +131,22 @@ mod tests {
                 mode: away
                 active: true
                 when: { type: mode, mode: guest, active: false }
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn held_presence_trigger() {
+        let wf = workflow(
+            r#"
+            name: hallway held
+            on: { type: presence, sensor: "0x4", present: true }
+            for: 10m
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
             "#,
         );
         insta::assert_snapshot!(rendered_with_header(&wf));
@@ -229,6 +251,10 @@ mod tests {
             }
             if let Some(when) = wf.when() {
                 out.push_str(&format!("  when: {}\n", when.describe()));
+            }
+            if !wf.context.is_empty() {
+                let sources: Vec<&str> = wf.context.iter().map(|s| s.as_str()).collect();
+                out.push_str(&format!("  context: [{}]\n", sources.join(", ")));
             }
             let rendered = render(&plan(&workflows, &wf.run));
             if rendered.is_empty() {

@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workflow_pending_timer (workflow, timer_kind, subject_kind, subject_entity, event_id, vars, fire_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (workflow, timer_kind) DO UPDATE SET id = gen_random_uuid(), subject_kind = EXCLUDED.subject_kind, subject_entity = EXCLUDED.subject_entity, event_id = EXCLUDED.event_id, vars = EXCLUDED.vars, armed_at = now(), fire_at = EXCLUDED.fire_at RETURNING id, workflow, timer_kind, subject_kind, subject_entity, event_id, vars, fire_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workflow",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "timer_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subject_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_entity",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "event_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "vars",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "fire_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ace0ecea3ccdbc482eef53b7bf838562f75caaff29fd447617a73dfc567647e0"
+}

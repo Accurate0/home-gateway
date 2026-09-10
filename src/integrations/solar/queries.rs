@@ -47,6 +47,16 @@ pub async fn statistics(db: &Pool<Postgres>) -> Result<SolarCurrentStatistics, S
     })
 }
 
+pub async fn current_wh(db: &Pool<Postgres>) -> Result<Option<f64>, SolarQueryError> {
+    let Some(latest) = SolarRepo::new(db.clone()).latest().await? else {
+        return Ok(None);
+    };
+
+    let raw_data = serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(latest.raw_data)?;
+
+    Ok(Some(raw_data.data.kpi.pac))
+}
+
 pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQueryError> {
     let latest = SolarRepo::new(db.clone())
         .latest()

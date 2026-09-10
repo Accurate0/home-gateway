@@ -102,7 +102,7 @@ impl Harness {
             .insert(ActorHealthRegistry::new())
             .insert(AuthManager::new(db.clone(), None))
             .insert(
-                WillyWeather::new(&settings.willyweather)
+                WillyWeather::new(&settings.willyweather, event_bus.clone())
                     .expect("failed to build the willyweather client"),
             )
             .insert(

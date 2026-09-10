@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
 
     let actor_health = home_gateway::actors::health::ActorHealthRegistry::new();
 
-    let willyweather = WillyWeather::new(&settings.willyweather)?;
+    let willyweather = WillyWeather::new(&settings.willyweather, event_bus.clone())?;
 
     let fuelwatch = match settings.fuelwatch.as_ref() {
         Some(fuelwatch) => Some(FuelWatch::new(fuelwatch)?),

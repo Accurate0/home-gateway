@@ -20,6 +20,7 @@ pub mod eink;
 pub mod environment;
 pub mod fuelwatch;
 pub mod home_assistant;
+pub mod http_method;
 pub mod jellyfin;
 pub mod light;
 pub mod location;
@@ -33,15 +34,19 @@ pub mod s3;
 pub mod solar;
 pub mod sun;
 pub mod switch;
+pub mod switch_metric;
 pub mod template;
 pub mod transperth;
 pub mod trigger;
 pub mod trmnl;
+pub mod vacuum_command;
 pub mod valetudo;
 pub mod watchdog;
 pub mod willyweather;
 pub mod woolworths;
 pub mod workflow;
+pub mod workflow_context;
+pub mod workflow_timers;
 pub mod zigbee_model;
 
 pub use adhoc::AdhocSettings;
@@ -314,8 +319,37 @@ impl RawSettings {
         for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
             workflow.validate_capabilities(&registry)?;
+
+            if workflow
+                .context
+                .contains(&workflow_context::ContextSource::Fuelwatch)
+                && fuelwatch.is_none()
+            {
+                return Err(format!(
+                    "workflow '{}' uses `context: [fuelwatch]` but fuelwatch is not configured",
+                    workflow.name
+                ));
+            }
+
+            if workflow.hold().is_some()
+                && !workflow.on().is_some_and(|trigger| trigger.supports_hold())
+            {
+                return Err(format!(
+                    "workflow '{}' uses `for:` but its trigger is not a state that can be held",
+                    workflow.name
+                ));
+            }
+
             if let Some(trigger) = workflow.on() {
-                let available = trigger.available_vars();
+                let mut available = trigger.available_vars();
+                available.extend(
+                    workflow
+                        .context
+                        .iter()
+                        .flat_map(|source| source.available_vars())
+                        .map(|var| (*var).to_owned()),
+                );
+
                 for var in workflow.template_placeholders() {
                     if !available.contains(&var) {
                         tracing::warn!(
@@ -1053,7 +1087,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1085,7 +1119,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1124,7 +1158,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1160,7 +1194,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1185,6 +1219,42 @@ workflows:
     }
 
     #[test]
+    fn a_hold_on_a_trigger_without_state_is_rejected() {
+        let raw: RawSettings = serde_yaml::from_str(
+            r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+willyweather: { api_key: x, default_location: "14576", cache_ttl: 15m }
+adhoc: { recheck_interval: 15m }
+away: { enabled: true, modes: [away], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+
+workflows:
+  - - name: Held cron
+      slug: held-cron
+      on: { type: cron, schedule: "0 13 * * TUE" }
+      for: 10m
+      run: []
+"#,
+        )
+        .unwrap();
+
+        let err = raw.resolve().unwrap_err();
+        assert!(err.contains("uses `for:`"), "{err}");
+    }
+
+    #[test]
     fn eink_display_modes_resolve() {
         let raw: RawSettings = serde_yaml::from_str(
             r#"
@@ -1198,7 +1268,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1275,7 +1345,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1335,7 +1405,7 @@ unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12 }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }

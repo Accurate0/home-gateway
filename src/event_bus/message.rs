@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use super::fuel_change::FuelChange;
 use super::playback::PlaybackState;
 use super::reading::{SensorReading, metric_var_name};
+use super::weather_reading::WeatherReading;
+use super::weather_source::WeatherSource;
 use crate::actors::sun::calc::SunTransition;
 use crate::mode::Mode;
 use crate::repo::intent::{DeviceKind, IntentAttributes};
@@ -157,6 +160,22 @@ pub enum EventBusMessage {
     /// Threshold + rising-edge handling lives in the dispatcher, as it does for
     /// [`EventBusMessage::Environment`].
     Solar { event_id: Uuid, current_wh: f64 },
+    Weather {
+        event_id: Uuid,
+        source: WeatherSource,
+        readings: Vec<WeatherReading>,
+    },
+    FuelWatch {
+        event_id: Uuid,
+        change: FuelChange,
+        site_id: i32,
+        name: String,
+        brand: String,
+        suburb: String,
+        address: String,
+        old_price: f64,
+        new_price: f64,
+    },
     CommandFailed {
         event_id: Uuid,
         kind: DeviceKind,
@@ -245,6 +264,8 @@ impl EventBusMessage {
             | EventBusMessage::Jellyfin { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
             | EventBusMessage::Solar { event_id, .. }
+            | EventBusMessage::Weather { event_id, .. }
+            | EventBusMessage::FuelWatch { event_id, .. }
             | EventBusMessage::CommandFailed { event_id, .. }
             | EventBusMessage::FeatureFlag { event_id, .. } => *event_id,
         }
@@ -268,6 +289,8 @@ impl EventBusMessage {
             EventBusMessage::Jellyfin { .. } => "jellyfin",
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
+            EventBusMessage::Weather { .. } => "weather",
+            EventBusMessage::FuelWatch { .. } => "fuelwatch",
             EventBusMessage::CommandFailed { .. } => "command_failed",
             EventBusMessage::FeatureFlag { .. } => "feature_flag",
         }
@@ -289,6 +312,8 @@ impl EventBusMessage {
         "jellyfin",
         "media_player",
         "solar",
+        "weather",
+        "fuelwatch",
         "command_failed",
     ];
 
@@ -312,6 +337,8 @@ impl EventBusMessage {
             EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
+            EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
+            EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
             EventBusMessage::CommandFailed { address, .. } => address.clone(),
             EventBusMessage::FeatureFlag { state, .. } => state.as_str().to_owned(),
         }
@@ -505,6 +532,38 @@ impl EventBusMessage {
             EventBusMessage::Solar { current_wh, .. } => {
                 HashMap::from([("current".to_owned(), format!("{current_wh:.0}"))])
             }
+            EventBusMessage::Weather {
+                source, readings, ..
+            } => {
+                let mut vars = HashMap::from([("source".to_owned(), source.as_str().to_owned())]);
+
+                for reading in readings {
+                    vars.insert(reading.var_name(), format!("{:.1}", reading.value));
+                }
+
+                vars
+            }
+            EventBusMessage::FuelWatch {
+                change,
+                site_id,
+                name,
+                brand,
+                suburb,
+                address,
+                old_price,
+                new_price,
+                ..
+            } => HashMap::from([
+                ("change".to_owned(), change.as_str().to_owned()),
+                ("site_id".to_owned(), site_id.to_string()),
+                ("name".to_owned(), name.clone()),
+                ("brand".to_owned(), brand.clone()),
+                ("suburb".to_owned(), suburb.clone()),
+                ("address".to_owned(), address.clone()),
+                ("old_price".to_owned(), format!("{old_price:.1}")),
+                ("new_price".to_owned(), format!("{new_price:.1}")),
+                ("drop".to_owned(), format!("{:.1}", old_price - new_price)),
+            ]),
             EventBusMessage::CommandFailed {
                 kind,
                 address,

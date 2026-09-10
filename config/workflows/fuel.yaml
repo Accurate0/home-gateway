@@ -1,0 +1,10 @@
+- name: Fuel Tuesday
+  slug: fuel-tuesday
+  group: Fuel
+  on: { type: cron, schedule: "0 13 * * TUE" }
+  context: [fuelwatch]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "Cheapest ULP91 near ${fuel_suburb}: ${fuel_price}c/L at ${fuel_brand} ${fuel_name}"

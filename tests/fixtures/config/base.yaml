@@ -29,6 +29,8 @@ sun:
 
 workflow:
   workers: 12
+  timers:
+    catch_up_within: 10m
 
 reconciler:
   enabled: true

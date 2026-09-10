@@ -1,7 +1,6 @@
 use sqlx::{Postgres, Transaction};
 
 use crate::device_registry::DeviceRegistry;
-use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::s3::S3;
@@ -17,7 +16,6 @@ pub struct AdhocTaskContext<'a> {
     pub s3: &'a S3,
     pub home_assistant: Option<&'a HomeAssistant>,
     pub jellyfin: Option<&'a Jellyfin>,
-    pub fuel_watch: Option<&'a FuelWatch>,
 }
 
 impl<'a> AdhocTaskContext<'a> {
@@ -30,7 +28,6 @@ impl<'a> AdhocTaskContext<'a> {
             s3: state.handles.expect::<S3>(),
             home_assistant: state.handles.get::<HomeAssistant>(),
             jellyfin: state.handles.get::<Jellyfin>(),
-            fuel_watch: state.handles.get::<FuelWatch>(),
         }
     }
 }

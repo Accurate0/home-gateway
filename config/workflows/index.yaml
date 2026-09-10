@@ -8,3 +8,4 @@
 - !include alarm.yaml
 - !include woolworths.yaml
 - !include solar.yaml
+- !include fuel.yaml

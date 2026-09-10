@@ -124,7 +124,6 @@ impl HomeAssistant {
             .map_err(reqwest_middleware::Error::from)?)
     }
 
-    #[allow(unused)]
     pub async fn get_state(&self, entity_id: &str) -> Result<Value, HomeAssistantError> {
         let url = format!("{}/api/states/{entity_id}", self.base_url);
         let response = self

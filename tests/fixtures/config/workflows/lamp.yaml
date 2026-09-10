@@ -23,6 +23,16 @@
       device: test-lamp
       state: OFF
 
+- name: Test lamp on when presence holds
+  slug: test-presence-held-lamp-on
+  group: Test
+  on: { type: presence, sensor: test-presence, present: true }
+  for: 1s
+  run:
+    - type: light
+      device: test-lamp
+      state: ON
+
 - name: Test switch step drives the lamp
   slug: test-switch-step
   group: Test

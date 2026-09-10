@@ -11,6 +11,13 @@ pub struct SmartSwitchReading {
     pub energy: f64,
 }
 
+pub struct SmartSwitchLatest {
+    pub voltage: i64,
+    pub power: i64,
+    pub current: f64,
+    pub energy: f64,
+}
+
 #[derive(Clone)]
 pub struct SmartSwitchRepo {
     db: Pool<Postgres>,
@@ -37,5 +44,22 @@ impl SmartSwitchRepo {
         .await?;
 
         Ok(())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.smart_switch.latest", fields(ieee_addr), err)]
+    pub async fn latest(&self, ieee_addr: &str) -> Result<Option<SmartSwitchLatest>, sqlx::Error> {
+        sqlx::query_as!(
+            SmartSwitchLatest,
+            r#"
+            SELECT voltage, power, current_f64 AS current, energy
+            FROM smart_switch
+            WHERE ieee_addr = $1
+            ORDER BY "time" DESC
+            LIMIT 1
+            "#,
+            ieee_addr,
+        )
+        .fetch_optional(&self.db)
+        .await
     }
 }

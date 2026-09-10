@@ -1,32 +1,16 @@
 use async_graphql::Object;
-use serde_json::json;
 
+use crate::actors::devices::robot_vacuum::command;
 use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
+use crate::settings::vacuum_command::VacuumCommand;
 use crate::settings::{RoborockSettings, ValetudoSettings};
 
-#[derive(Clone, Copy)]
-enum Action {
-    Start,
-    Stop,
-    Dock,
-}
-
 enum Backend {
-    Roborock {
-        control_entity: String,
-        start_service: String,
-        stop_service: String,
-        dock_service: String,
-    },
-    Valetudo {
-        command_topic: String,
-        start_payload: String,
-        stop_payload: String,
-        dock_payload: String,
-    },
+    Roborock(RoborockSettings),
+    Valetudo(ValetudoSettings),
 }
 
 pub struct RobotVacuumMutation {
@@ -36,80 +20,40 @@ pub struct RobotVacuumMutation {
 impl RobotVacuumMutation {
     pub fn roborock(settings: &RoborockSettings) -> Self {
         Self {
-            backend: Backend::Roborock {
-                control_entity: settings.control_entity.clone(),
-                start_service: settings.start_service.clone(),
-                stop_service: settings.stop_service.clone(),
-                dock_service: settings.dock_service.clone(),
-            },
+            backend: Backend::Roborock(settings.clone()),
         }
     }
 
     pub fn valetudo(settings: &ValetudoSettings) -> Self {
         Self {
-            backend: Backend::Valetudo {
-                command_topic: settings.command_topic.clone(),
-                start_payload: settings.start_payload.clone(),
-                stop_payload: settings.stop_payload.clone(),
-                dock_payload: settings.dock_payload.clone(),
-            },
+            backend: Backend::Valetudo(settings.clone()),
         }
     }
 
     async fn run(
         &self,
         ctx: &async_graphql::Context<'_>,
-        action: Action,
+        vacuum_command: VacuumCommand,
     ) -> async_graphql::Result<bool> {
         match &self.backend {
-            Backend::Roborock {
-                control_entity,
-                start_service,
-                stop_service,
-                dock_service,
-            } => {
-                let service = match action {
-                    Action::Start => start_service,
-                    Action::Stop => stop_service,
-                    Action::Dock => dock_service,
-                };
-
+            Backend::Roborock(settings) => {
                 let home_assistant =
                     crate::graphql::require::<HomeAssistant>(ctx, "home assistant")?;
 
-                let Some((domain, service)) = service.split_once('.') else {
-                    return Err(async_graphql::Error::new(format!(
-                        "invalid service `{service}`, expected `domain.service`"
-                    )));
-                };
-
-                home_assistant
-                    .call_service(domain, service, json!({ "entity_id": control_entity }))
+                command::roborock(home_assistant, settings, vacuum_command)
                     .await
                     .map_err(|e| async_graphql::Error::new(e.to_string()))?;
-
-                Ok(true)
             }
-            Backend::Valetudo {
-                command_topic,
-                start_payload,
-                stop_payload,
-                dock_payload,
-            } => {
-                let payload = match action {
-                    Action::Start => start_payload,
-                    Action::Stop => stop_payload,
-                    Action::Dock => dock_payload,
-                };
-
+            Backend::Valetudo(settings) => {
                 let mqtt = crate::graphql::require::<MqttClient>(ctx, "mqtt")?;
-                mqtt.send_event_raw(command_topic.clone(), payload)
+
+                command::valetudo(mqtt, settings, vacuum_command)
                     .await
                     .map_err(|e| async_graphql::Error::new(e.to_string()))?;
-
-                Ok(true)
             }
         }
+
+        Ok(true)
     }
 }
 
@@ -117,16 +61,16 @@ impl RobotVacuumMutation {
 impl RobotVacuumMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn start(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
-        self.run(ctx, Action::Start).await
+        self.run(ctx, VacuumCommand::Start).await
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn stop(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
-        self.run(ctx, Action::Stop).await
+        self.run(ctx, VacuumCommand::Stop).await
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn dock(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
-        self.run(ctx, Action::Dock).await
+        self.run(ctx, VacuumCommand::Dock).await
     }
 }

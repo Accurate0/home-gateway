@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workflow_pending_timer WHERE id = $1 RETURNING id, workflow, timer_kind, subject_kind, subject_entity, event_id, vars, fire_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workflow",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "timer_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subject_kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_entity",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "event_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "vars",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "fire_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2a97ffd32ef3dec4cef1b90a7f3673bc189f6887a642ab976c1ee687fe7630fa"
+}

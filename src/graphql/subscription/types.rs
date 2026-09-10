@@ -129,6 +129,33 @@ pub struct SolarUpdate {
 }
 
 #[derive(SimpleObject)]
+pub struct WeatherReadingUpdate {
+    pub metric: String,
+    pub day: Option<String>,
+    pub value: f64,
+}
+
+#[derive(SimpleObject)]
+pub struct WeatherUpdate {
+    pub event_id: Uuid,
+    pub source: String,
+    pub readings: Vec<WeatherReadingUpdate>,
+}
+
+#[derive(SimpleObject)]
+pub struct FuelWatchUpdate {
+    pub event_id: Uuid,
+    pub change: String,
+    pub site_id: i32,
+    pub name: String,
+    pub brand: String,
+    pub suburb: String,
+    pub address: String,
+    pub old_price: f64,
+    pub new_price: f64,
+}
+
+#[derive(SimpleObject)]
 pub struct CommandFailedUpdate {
     pub event_id: Uuid,
     pub id: ID,
@@ -239,6 +266,8 @@ pub enum EventUpdate {
     Jellyfin(JellyfinUpdate),
     MediaPlayer(MediaPlayerUpdate),
     Solar(SolarUpdate),
+    Weather(WeatherUpdate),
+    FuelWatch(FuelWatchUpdate),
     CommandFailed(CommandFailedUpdate),
 }
 
@@ -418,6 +447,43 @@ impl EventUpdate {
             } => EventUpdate::Solar(SolarUpdate {
                 event_id,
                 current_wh,
+            }),
+            EventBusMessage::Weather {
+                event_id,
+                source,
+                readings,
+            } => EventUpdate::Weather(WeatherUpdate {
+                event_id,
+                source: source.as_str().to_owned(),
+                readings: readings
+                    .into_iter()
+                    .map(|reading| WeatherReadingUpdate {
+                        metric: reading.metric.as_str().to_owned(),
+                        day: reading.day.map(|day| day.as_str().to_owned()),
+                        value: reading.value,
+                    })
+                    .collect(),
+            }),
+            EventBusMessage::FuelWatch {
+                event_id,
+                change,
+                site_id,
+                name,
+                brand,
+                suburb,
+                address,
+                old_price,
+                new_price,
+            } => EventUpdate::FuelWatch(FuelWatchUpdate {
+                event_id,
+                change: change.as_str().to_owned(),
+                site_id,
+                name,
+                brand,
+                suburb,
+                address,
+                old_price,
+                new_price,
             }),
             EventBusMessage::CommandFailed {
                 event_id,

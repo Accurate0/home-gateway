@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workflow_pending_timer WHERE timer_kind = $1 AND subject_kind = $2 AND subject_entity = $3 RETURNING workflow",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workflow",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "be441405d5a13dfa99b4bdf2dd07dd70883b5d5dbc425d492307c37dc52da9e9"
+}

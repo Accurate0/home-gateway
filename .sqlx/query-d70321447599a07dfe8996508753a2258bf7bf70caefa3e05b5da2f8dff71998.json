@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT voltage, power, current_f64 AS current, energy\n            FROM smart_switch\n            WHERE ieee_addr = $1\n            ORDER BY \"time\" DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "voltage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "power",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "current",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "energy",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d70321447599a07dfe8996508753a2258bf7bf70caefa3e05b5da2f8dff71998"
+}

@@ -6,6 +6,9 @@ use phf::phf_map;
 use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
 
+use crate::event_bus::{
+    EventBus, EventBusMessage, ForecastDay, WeatherMetric, WeatherReading, WeatherSource,
+};
 use crate::http::get_traced_http_client;
 use crate::integrations::willyweather::types::{Forecast, ForecastDetails, WillyWeatherForecast};
 use crate::settings::WillyWeatherSettings;
@@ -74,10 +77,14 @@ pub struct WillyWeather {
     api_key: String,
     client: ClientWithMiddleware,
     cache: Cache<String, Forecast>,
+    event_bus: EventBus,
 }
 
 impl WillyWeather {
-    pub fn new(settings: &WillyWeatherSettings) -> Result<Self, WillyWeatherError> {
+    pub fn new(
+        settings: &WillyWeatherSettings,
+        event_bus: EventBus,
+    ) -> Result<Self, WillyWeatherError> {
         let ttl = settings
             .cache_ttl
             .to_std()
@@ -94,6 +101,7 @@ impl WillyWeather {
             api_key: settings.api_key.clone().unwrap_or_default(),
             client: get_traced_http_client()?,
             cache,
+            event_bus,
         })
     }
 
@@ -104,8 +112,18 @@ impl WillyWeather {
                 tracing::debug!("willyweather forecast cache miss for {location}");
 
                 let raw = self.get_forecast(location, FORECAST_DAYS).await?;
+                let forecast = shape_forecast(raw)?;
 
-                shape_forecast(raw)
+                let readings = forecast_readings(&forecast);
+                if !readings.is_empty() {
+                    self.event_bus.publish(EventBusMessage::Weather {
+                        event_id: uuid::Uuid::new_v4(),
+                        source: WeatherSource::WillyWeather,
+                        readings,
+                    });
+                }
+
+                Ok(forecast)
             })
             .await
             .map_err(WillyWeatherError::Shared)
@@ -142,6 +160,33 @@ impl WillyWeather {
             .await
             .map_err(reqwest_middleware::Error::from)?)
     }
+}
+
+fn forecast_readings(forecast: &Forecast) -> Vec<WeatherReading> {
+    ForecastDay::ALL
+        .iter()
+        .filter_map(|day| {
+            forecast
+                .days
+                .get(day.index())
+                .map(|details| (*day, details))
+        })
+        .flat_map(|(day, details)| {
+            [
+                (WeatherMetric::MaxTemp, Some(details.max as f64)),
+                (WeatherMetric::MinTemp, Some(details.min as f64)),
+                (WeatherMetric::UvMax, details.uv),
+            ]
+            .into_iter()
+            .filter_map(move |(metric, value)| {
+                value.map(|value| WeatherReading {
+                    metric,
+                    day: Some(day),
+                    value,
+                })
+            })
+        })
+        .collect()
 }
 
 fn shape_forecast(raw: WillyWeatherForecast) -> Result<Forecast, WillyWeatherError> {

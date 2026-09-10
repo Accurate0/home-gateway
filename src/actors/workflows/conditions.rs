@@ -17,9 +17,13 @@ use crate::{
         },
         devices::light::{LightHandler, LightHandlerMessage},
         devices::presence_sensor::{Message as PresenceMessage, PresenceSensorHandler},
+        integrations::solar::{SolarActor, SolarMessage},
         system::rpc::{self, RpcError},
     },
     db::DoorState,
+    event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherReading, WeatherSource},
+    integrations::{home_assistant::HomeAssistant, solar, willyweather::WillyWeather},
+    settings::switch_metric::SwitchMetric,
     settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
     state::AppState,
 };
@@ -102,7 +106,162 @@ async fn eval_leaf(state: &AppState, cond: &LeafCondition) -> Result<bool, Workf
             .mode_active(*mode)
             .await
             == *active),
+        LeafCondition::Solar { metric, cmp } => eval_solar(state, *metric, *cmp).await,
+        LeafCondition::HomeAssistant {
+            entity_id,
+            state: expected,
+        } => eval_home_assistant(state, entity_id, expected).await,
+        LeafCondition::SmartSwitch {
+            ieee_addr,
+            metric,
+            cmp,
+        } => {
+            eval_smart_switch(
+                state,
+                state.devices.address_or_self(ieee_addr),
+                *metric,
+                *cmp,
+            )
+            .await
+        }
+        LeafCondition::Weather {
+            source,
+            metric,
+            day,
+            cmp,
+        } => eval_weather(state, *source, *metric, *day, *cmp).await,
     }
+}
+
+async fn eval_weather(
+    state: &AppState,
+    source: WeatherSource,
+    metric: WeatherMetric,
+    day: Option<ForecastDay>,
+    cmp: Comparison,
+) -> Result<bool, WorkflowError> {
+    let value = match (source, day) {
+        (WeatherSource::Bom, _) => {
+            let readings: Vec<WeatherReading> =
+                rpc::query(SolarActor::NAME, QUERY_TIMEOUT, |reply| {
+                    SolarMessage::LatestWeather { reply }
+                })
+                .await?;
+
+            readings
+                .iter()
+                .find(|reading| reading.metric == metric)
+                .map(|reading| reading.value)
+        }
+        (WeatherSource::WillyWeather, Some(day)) => {
+            let forecast = state
+                .handles
+                .expect::<WillyWeather>()
+                .forecast(&state.settings.willyweather.default_location)
+                .await
+                .map_err(anyhow::Error::from)?;
+
+            forecast
+                .days
+                .get(day.index())
+                .and_then(|details| match metric {
+                    WeatherMetric::MaxTemp => Some(details.max as f64),
+                    WeatherMetric::MinTemp => Some(details.min as f64),
+                    WeatherMetric::UvMax => details.uv,
+                    _ => None,
+                })
+        }
+        (WeatherSource::WillyWeather, None) => None,
+    };
+
+    let Some(value) = value else {
+        tracing::warn!(
+            "no {} weather reading for {}",
+            source.as_str(),
+            metric.var_name(day)
+        );
+        return Ok(false);
+    };
+
+    Ok(cmp.matches(value))
+}
+
+async fn eval_solar(
+    state: &AppState,
+    metric: SolarMetric,
+    cmp: Comparison,
+) -> Result<bool, WorkflowError> {
+    let value = match metric {
+        SolarMetric::Current => solar::queries::current_wh(&state.db)
+            .await
+            .map_err(anyhow::Error::from)?,
+        SolarMetric::Avg15m | SolarMetric::Avg1h | SolarMetric::Avg3h => {
+            let averages = solar::queries::statistics(&state.db)
+                .await
+                .map_err(anyhow::Error::from)?
+                .averages;
+
+            match metric {
+                SolarMetric::Avg15m => averages.last_15_mins,
+                SolarMetric::Avg1h => averages.last_1_hour,
+                _ => averages.last_3_hours,
+            }
+        }
+    };
+
+    let Some(value) = value else {
+        tracing::warn!("no solar reading for {}", metric.var_name());
+        return Ok(false);
+    };
+
+    Ok(cmp.matches(value))
+}
+
+async fn eval_home_assistant(
+    state: &AppState,
+    entity_id: &str,
+    expected: &str,
+) -> Result<bool, WorkflowError> {
+    let Some(home_assistant) = state.handles.get::<HomeAssistant>() else {
+        return Err(WorkflowError::HomeAssistantNotConfigured);
+    };
+
+    let entity = home_assistant.get_state(entity_id).await?;
+
+    let Some(current) = entity.get("state").and_then(|s| s.as_str()) else {
+        tracing::warn!("home assistant entity {entity_id} has no state");
+        return Ok(false);
+    };
+
+    Ok(current == expected)
+}
+
+async fn eval_smart_switch(
+    state: &AppState,
+    ieee_addr: &str,
+    metric: SwitchMetric,
+    cmp: Comparison,
+) -> Result<bool, WorkflowError> {
+    let latest = state
+        .repos
+        .smart_switch()
+        .latest(ieee_addr)
+        .await
+        .map_err(anyhow::Error::from)?;
+
+    let Some(latest) = latest else {
+        tracing::warn!("no readings for smart switch {ieee_addr}");
+        return Ok(false);
+    };
+
+    let value = match metric {
+        SwitchMetric::Power => latest.power as f64,
+        SwitchMetric::Voltage => latest.voltage as f64,
+        SwitchMetric::Current => latest.current,
+        SwitchMetric::Energy => latest.energy,
+    };
+
+    Ok(cmp.matches(value))
 }
 
 async fn query_light_on(ieee_addr: &str) -> Result<bool, WorkflowError> {

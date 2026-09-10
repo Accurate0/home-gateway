@@ -1195,6 +1195,19 @@
           ],
           "default": null
         },
+        "for": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContextSource"
+          }
+        },
         "run": {
           "type": "array",
           "items": {
@@ -1415,6 +1428,46 @@
           ]
         },
         {
+          "type": "object",
+          "properties": {
+            "change": {
+              "$ref": "#/$defs/FuelChange"
+            },
+            "site_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32",
+              "default": null
+            },
+            "below": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "min_drop": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "fuelwatch"
+            }
+          },
+          "required": [
+            "type",
+            "change"
+          ]
+        },
+        {
           "description": "Fires when a poll-transport device reports its battery voltage on\ncheck-in. Optionally gate on a specific `device_id`, device `kind`,\nand/or a `below` voltage threshold for low-battery alerts.",
           "type": "object",
           "properties": {
@@ -1555,6 +1608,46 @@
             "op",
             "value"
           ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/WeatherSource"
+            },
+            "metric": {
+              "$ref": "#/$defs/WeatherMetric"
+            },
+            "day": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "weather"
+            }
+          },
+          "required": [
+            "type",
+            "source",
+            "metric",
+            "op",
+            "value"
+          ]
         }
       ]
     },
@@ -1590,6 +1683,15 @@
         "party"
       ]
     },
+    "FuelChange": {
+      "type": "string",
+      "enum": [
+        "drop",
+        "tomorrow_lower",
+        "tomorrow_higher",
+        "cheapest"
+      ]
+    },
     "PlaybackState": {
       "type": "string",
       "enum": [
@@ -1606,6 +1708,36 @@
         "avg_15m",
         "avg_1h",
         "avg_3h"
+      ]
+    },
+    "WeatherSource": {
+      "type": "string",
+      "enum": [
+        "bom",
+        "willyweather"
+      ]
+    },
+    "WeatherMetric": {
+      "type": "string",
+      "enum": [
+        "temperature",
+        "feels_like",
+        "humidity",
+        "wind_speed",
+        "gust_speed",
+        "max_gust_speed",
+        "rain_since_9am",
+        "uv",
+        "max_temp",
+        "min_temp",
+        "uv_max"
+      ]
+    },
+    "ForecastDay": {
+      "type": "string",
+      "enum": [
+        "today",
+        "tomorrow"
       ]
     },
     "Condition": {
@@ -1827,6 +1959,122 @@
             "mode",
             "active"
           ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "metric": {
+              "$ref": "#/$defs/SolarMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "solar"
+            }
+          },
+          "required": [
+            "type",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entity_id": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "home_assistant"
+            }
+          },
+          "required": [
+            "type",
+            "entity_id",
+            "state"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "metric": {
+              "$ref": "#/$defs/SwitchMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "smart_switch"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/WeatherSource"
+            },
+            "metric": {
+              "$ref": "#/$defs/WeatherMetric"
+            },
+            "day": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "weather"
+            }
+          },
+          "required": [
+            "type",
+            "source",
+            "metric",
+            "op",
+            "value"
+          ]
         }
       ]
     },
@@ -1846,6 +2094,21 @@
       "enum": [
         "day",
         "night"
+      ]
+    },
+    "SwitchMetric": {
+      "type": "string",
+      "enum": [
+        "power",
+        "voltage",
+        "current",
+        "energy"
+      ]
+    },
+    "ContextSource": {
+      "type": "string",
+      "enum": [
+        "fuelwatch"
       ]
     },
     "Step": {
@@ -2285,6 +2548,112 @@
             "type",
             "call_service"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string"
+            },
+            "payload": {
+              "type": "string"
+            },
+            "retain": {
+              "type": "boolean"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "mqtt_publish"
+            }
+          },
+          "required": [
+            "type",
+            "topic",
+            "payload",
+            "retain"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "$ref": "#/$defs/HttpMethod"
+            },
+            "url": {
+              "type": "string"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "body": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "http"
+            }
+          },
+          "required": [
+            "type",
+            "method",
+            "url"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "command": {
+              "$ref": "#/$defs/VacuumCommand"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "robot_vacuum"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "command"
+          ]
         }
       ]
     },
@@ -2380,6 +2749,24 @@
         "TOGGLE"
       ]
     },
+    "HttpMethod": {
+      "type": "string",
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    "VacuumCommand": {
+      "type": "string",
+      "enum": [
+        "start",
+        "stop",
+        "dock"
+      ]
+    },
     "S3Settings": {
       "description": "S3 / object-storage config. Credentials are taken from the standard AWS\nenvironment, never from this file. `endpoint` is only set for\nS3-compatible stores (MinIO/R2/…); omit it for plain AWS S3.",
       "type": "object",
@@ -2433,10 +2820,25 @@
           "type": "integer",
           "format": "uint",
           "minimum": 0
+        },
+        "timers": {
+          "$ref": "#/$defs/WorkflowTimerSettings"
         }
       },
       "required": [
-        "workers"
+        "workers",
+        "timers"
+      ]
+    },
+    "WorkflowTimerSettings": {
+      "type": "object",
+      "properties": {
+        "catch_up_within": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "catch_up_within"
       ]
     },
     "ReconcilerSettings": {
@@ -2837,10 +3239,14 @@
         "postcode": {
           "type": "integer",
           "format": "int32"
+        },
+        "refresh": {
+          "type": "string"
         }
       },
       "required": [
-        "postcode"
+        "postcode",
+        "refresh"
       ]
     },
     "RawEinkGlobal": {

@@ -1,3 +1,5 @@
+pub mod command;
+
 use crate::actors::devices::handler::DeviceHandler;
 use crate::actors::system::battery::BatteryActor;
 use crate::settings::RoborockField;

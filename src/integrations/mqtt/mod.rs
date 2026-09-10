@@ -65,9 +65,14 @@ impl MqttClient {
             .map_err(MqttError::from)
     }
 
-    pub async fn send_event_raw(&self, topic: String, payload: &str) -> Result<(), MqttError> {
+    pub async fn send_event_raw(
+        &self,
+        topic: String,
+        payload: &str,
+        retain: bool,
+    ) -> Result<(), MqttError> {
         self.client
-            .publish(topic, rumqttc::QoS::ExactlyOnce, false, payload)
+            .publish(topic, rumqttc::QoS::ExactlyOnce, retain, payload)
             .await
             .map_err(MqttError::from)
     }

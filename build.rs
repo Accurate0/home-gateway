@@ -14,6 +14,19 @@ const INJECTED_SECRETS: &[&str] = &[
     "android_app_webhook_secret",
 ];
 
+fn context_vars(source: &str) -> Option<Vec<&'static str>> {
+    Some(match source {
+        "fuelwatch" => vec![
+            "fuel_price",
+            "fuel_brand",
+            "fuel_name",
+            "fuel_suburb",
+            "fuel_address",
+        ],
+        _ => return None,
+    })
+}
+
 fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
     Some(match trigger_type {
         "presence" => vec!["sensor", "present"],
@@ -33,6 +46,17 @@ fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
         "mode" => vec!["mode", "active"],
         "home_assistant" => vec!["entity_id", "state"],
         "woolworths" => vec!["product_id", "name", "old_price", "new_price", "drop"],
+        "fuelwatch" => vec![
+            "change",
+            "site_id",
+            "name",
+            "brand",
+            "suburb",
+            "address",
+            "old_price",
+            "new_price",
+            "drop",
+        ],
         "device_battery" => vec![
             "device_id",
             "kind",
@@ -74,6 +98,25 @@ fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
             "muted",
         ],
         "solar" => vec!["current", "avg_15m", "avg_1h", "avg_3h"],
+        "weather" => vec![
+            "source",
+            "temperature",
+            "feels_like",
+            "humidity",
+            "wind_speed",
+            "gust_speed",
+            "max_gust_speed",
+            "rain_since_9am",
+            "uv",
+            "max_temp",
+            "min_temp",
+            "today_max_temp",
+            "today_min_temp",
+            "today_uv_max",
+            "tomorrow_max_temp",
+            "tomorrow_min_temp",
+            "tomorrow_uv_max",
+        ],
         _ => return None,
     })
 }
@@ -251,12 +294,30 @@ fn validate_semantics(value: &serde_json::Value) {
             .and_then(|o| o.get("type"))
             .and_then(|t| t.as_str());
 
+        let context: Vec<&'static str> = wf
+            .get("context")
+            .and_then(|c| c.as_array())
+            .into_iter()
+            .flatten()
+            .flat_map(|source| {
+                let source = source.as_str().unwrap_or("<non-string>");
+                context_vars(source).unwrap_or_else(|| {
+                    panic!("workflow '{name}': unknown context source '{source}'")
+                })
+            })
+            .collect();
+
+        let available = trigger_type.and_then(trigger_vars).map(|mut vars| {
+            vars.extend(context.iter().copied());
+            vars
+        });
+
         check_device_refs(wf.get("on"), &device_ids, name);
         check_device_refs(wf.get("when"), &device_ids, name);
         if let Some(run) = wf.get("run") {
             check_device_refs(Some(run), &device_ids, name);
             check_run_workflow_refs(run, &names, name);
-            check_template_vars(run, trigger_type, name);
+            check_template_vars(run, available.as_deref(), name);
         }
     }
 }
@@ -303,31 +364,52 @@ fn check_run_workflow_refs(run: &serde_json::Value, names: &HashSet<String>, wor
     }
 }
 
-fn check_template_vars(run: &serde_json::Value, trigger_type: Option<&str>, workflow: &str) {
+fn templated_strings(step: &serde_json::Value) -> Vec<&str> {
+    let fields: &[&str] = match step.get("type").and_then(|t| t.as_str()) {
+        Some("notify") => &["message", "title"],
+        Some("mqtt_publish") => &["topic", "payload"],
+        Some("http") => &["url", "body"],
+        _ => return Vec::new(),
+    };
+
+    let headers = step
+        .get("headers")
+        .and_then(|h| h.as_object())
+        .into_iter()
+        .flat_map(|h| h.values());
+
+    fields
+        .iter()
+        .filter_map(|field| step.get(*field))
+        .chain(headers)
+        .filter_map(|value| value.as_str())
+        .collect()
+}
+
+fn check_template_vars(run: &serde_json::Value, available: Option<&[&str]>, workflow: &str) {
     let Some(steps) = run.as_array() else { return };
     for step in steps {
-        if step.get("type").and_then(|t| t.as_str()) == Some("notify")
-            && let Some(message) = step.get("message").and_then(|m| m.as_str())
-        {
-            for var in placeholders(message) {
-                let known = trigger_type
-                    .and_then(trigger_vars)
-                    .map(|vars| vars.contains(&var))
-                    .unwrap_or(false);
+        let kind = step
+            .get("type")
+            .and_then(|t| t.as_str())
+            .unwrap_or("<untyped>");
+
+        for template in templated_strings(step) {
+            for var in placeholders(template) {
+                let known = available.is_some_and(|vars| vars.contains(&var));
                 if !known {
-                    let available = trigger_type
-                        .and_then(trigger_vars)
+                    let listed = available
                         .map(|v| v.join(", "))
                         .unwrap_or_else(|| "none (reusable workflow)".to_owned());
                     panic!(
-                        "workflow '{workflow}': notify references unknown template var \
-                         ${{{var}}}; trigger provides: [{available}]"
+                        "workflow '{workflow}': {kind} references unknown template var \
+                         ${{{var}}}; trigger and context provide: [{listed}]"
                     );
                 }
             }
         }
         if let Some(nested) = step.get("run") {
-            check_template_vars(nested, trigger_type, workflow);
+            check_template_vars(nested, available, workflow);
         }
     }
 }

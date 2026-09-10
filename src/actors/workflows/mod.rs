@@ -1,7 +1,12 @@
+use crate::actors::devices::robot_vacuum;
 use crate::actors::system::push::types::{PushAction, PushActionKind};
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::mqtt::MqttClient;
+use crate::settings::TemplateString;
+use crate::settings::http_method::HttpMethod;
+use crate::settings::vacuum_command::VacuumCommand;
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
@@ -16,12 +21,15 @@ use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
+use reqwest_middleware::ClientWithMiddleware;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::time::Duration;
 use tracing::Instrument;
 use uuid::Uuid;
 
 pub mod conditions;
+pub mod context;
 pub mod dispatcher;
 pub mod manager;
 pub mod plan;
@@ -45,6 +53,19 @@ pub enum WorkflowError {
     NotAControllableSwitch(String),
     #[error("home assistant is not configured")]
     HomeAssistantNotConfigured,
+    #[error("workflow context `{0}` is unavailable")]
+    ContextUnavailable(&'static str),
+    #[error("`{0}` is not a robot vacuum")]
+    NotARobotVacuum(String),
+    #[error("http request to {url} returned {status}")]
+    Http {
+        url: String,
+        status: reqwest::StatusCode,
+    },
+    #[error(transparent)]
+    HttpRequest(#[from] reqwest_middleware::Error),
+    #[error(transparent)]
+    Mqtt(#[from] crate::integrations::mqtt::MqttError),
     #[error(transparent)]
     HomeAssistant(#[from] crate::integrations::home_assistant::HomeAssistantError),
     #[error(transparent)]
@@ -116,15 +137,22 @@ impl WorkflowWorker {
         if workflow.dry_run {
             tracing::info!("[{event_id}] workflow running in dry-run (shadow) mode");
         }
-        let ctx = WorkflowContext {
-            event_id,
-            depth: 0,
-            dry_run: workflow.dry_run,
-            origin_slug: &workflow.slug,
-            vars,
-        };
         let start = std::time::Instant::now();
-        let result = self.run_steps(ctx, &workflow.run).await;
+        let result = match context::resolve(&self.shared_actor_state, &workflow.context, vars).await
+        {
+            Ok(vars) => {
+                let ctx = WorkflowContext {
+                    event_id,
+                    depth: 0,
+                    dry_run: workflow.dry_run,
+                    origin_slug: &workflow.slug,
+                    vars: &vars,
+                };
+
+                self.run_steps(ctx, &workflow.run).await
+            }
+            Err(e) => Err(e),
+        };
         let elapsed = start.elapsed();
         let outcome = if result.is_ok() { "success" } else { "error" };
         crate::metrics::record_workflow(outcome, elapsed);
@@ -235,6 +263,25 @@ impl WorkflowWorker {
             Step::HomeAssistant {
                 call_service, data, ..
             } => self.run_home_assistant(call_service, data.clone()).await,
+            Step::MqttPublish {
+                topic,
+                payload,
+                retain,
+                ..
+            } => self.run_mqtt_publish(ctx, topic, payload, *retain).await,
+            Step::Http {
+                method,
+                url,
+                headers,
+                body,
+                ..
+            } => {
+                self.run_http(ctx, *method, url, headers, body.as_ref())
+                    .await
+            }
+            Step::RobotVacuum {
+                ieee_addr, command, ..
+            } => self.run_robot_vacuum(ieee_addr, *command).await,
         }
     }
 
@@ -286,6 +333,88 @@ impl WorkflowWorker {
 
         home_assistant.call_service(domain, service, data).await?;
         Ok(())
+    }
+
+    async fn run_mqtt_publish(
+        &self,
+        ctx: WorkflowContext<'_>,
+        topic: &TemplateString,
+        payload: &TemplateString,
+        retain: bool,
+    ) -> Result<(), WorkflowError> {
+        let topic = topic.render(ctx.vars);
+
+        self.shared_actor_state
+            .handles
+            .expect::<MqttClient>()
+            .send_event_raw(topic.clone(), &payload.render(ctx.vars), retain)
+            .await?;
+
+        tracing::info!("[{}] published to {topic}", ctx.event_id);
+        Ok(())
+    }
+
+    async fn run_http(
+        &self,
+        ctx: WorkflowContext<'_>,
+        method: HttpMethod,
+        url: &TemplateString,
+        headers: &BTreeMap<String, TemplateString>,
+        body: Option<&TemplateString>,
+    ) -> Result<(), WorkflowError> {
+        let url = url.render(ctx.vars);
+        let client = self
+            .shared_actor_state
+            .handles
+            .expect::<ClientWithMiddleware>();
+
+        let mut request = client.request(method.as_reqwest(), &url);
+
+        for (name, value) in headers {
+            request = request.header(name.as_str(), value.render(ctx.vars));
+        }
+
+        if let Some(body) = body {
+            request = request.body(body.render(ctx.vars));
+        }
+
+        let status = request.send().await?.status();
+
+        if !status.is_success() {
+            return Err(WorkflowError::Http { url, status });
+        }
+
+        tracing::info!("[{}] http {method:?} {url} returned {status}", ctx.event_id);
+        Ok(())
+    }
+
+    async fn run_robot_vacuum(
+        &self,
+        device: &str,
+        command: VacuumCommand,
+    ) -> Result<(), WorkflowError> {
+        let registry = &self.shared_actor_state.devices;
+        let address = registry.address_or_self(device);
+
+        if let Some(settings) = registry.roborock(address) {
+            let home_assistant = self
+                .shared_actor_state
+                .handles
+                .get::<HomeAssistant>()
+                .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
+
+            robot_vacuum::command::roborock(home_assistant, settings, command).await?;
+            return Ok(());
+        }
+
+        if let Some(settings) = registry.valetudo(address) {
+            let mqtt = self.shared_actor_state.handles.expect::<MqttClient>();
+
+            robot_vacuum::command::valetudo(mqtt, settings, command).await?;
+            return Ok(());
+        }
+
+        Err(WorkflowError::NotARobotVacuum(device.to_owned()))
     }
 
     /// Enable/disable every workflow carrying `tag`, skipping the workflow the

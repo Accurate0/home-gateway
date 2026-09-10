@@ -1,11 +1,13 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::workflow::Comparison;
+use super::workflow::{Comparison, EnvMetric, LeafCondition};
 use super::{DeviceAliases, IEEEAddress, validate_device};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
-use crate::event_bus::{PlaybackState, SensorMetric, SolarMetric};
+use crate::event_bus::{
+    ForecastDay, FuelChange, PlaybackState, SensorMetric, SolarMetric, WeatherMetric, WeatherSource,
+};
 use crate::mode::Mode;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
@@ -76,6 +78,16 @@ pub enum TriggerMatcher {
         #[serde(default)]
         min_drop: Option<f64>,
     },
+    #[serde(rename = "fuelwatch")]
+    FuelWatch {
+        change: FuelChange,
+        #[serde(default)]
+        site_id: Option<i32>,
+        #[serde(default)]
+        below: Option<f64>,
+        #[serde(default)]
+        min_drop: Option<f64>,
+    },
     /// Fires when a poll-transport device reports its battery voltage on
     /// check-in. Optionally gate on a specific `device_id`, device `kind`,
     /// and/or a `below` voltage threshold for low-battery alerts.
@@ -125,9 +137,106 @@ pub enum TriggerMatcher {
         #[serde(flatten)]
         cmp: Comparison,
     },
+    Weather {
+        source: WeatherSource,
+        metric: WeatherMetric,
+        #[serde(default)]
+        day: Option<ForecastDay>,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
 }
 
 impl TriggerMatcher {
+    pub fn event_kind(&self) -> &'static str {
+        match self {
+            TriggerMatcher::Presence { .. } => "presence",
+            TriggerMatcher::Door { .. } => "door",
+            TriggerMatcher::Switch { .. } => "switch",
+            TriggerMatcher::Environment { .. } => "environment",
+            TriggerMatcher::Cron { .. } => "cron",
+            TriggerMatcher::Sun { .. } => "sun",
+            TriggerMatcher::Mode { .. } => "mode",
+            TriggerMatcher::HomeAssistant { .. } => "home_assistant",
+            TriggerMatcher::Woolworths { .. } => "woolworths",
+            TriggerMatcher::FuelWatch { .. } => "fuelwatch",
+            TriggerMatcher::DeviceBattery { .. } => "device_battery",
+            TriggerMatcher::Jellyfin { .. } => "jellyfin",
+            TriggerMatcher::MediaPlayer { .. } => "media_player",
+            TriggerMatcher::Solar { .. } => "solar",
+            TriggerMatcher::Weather { .. } => "weather",
+        }
+    }
+
+    pub fn supports_hold(&self) -> bool {
+        self.as_condition().is_some()
+    }
+
+    pub fn as_condition(&self) -> Option<LeafCondition> {
+        match self {
+            TriggerMatcher::Presence { sensor, present } => Some(LeafCondition::Presence {
+                sensor: sensor.clone(),
+                present: *present,
+            }),
+            TriggerMatcher::Door { ieee_addr, open } => Some(LeafCondition::Door {
+                ieee_addr: ieee_addr.clone(),
+                open: *open,
+            }),
+            TriggerMatcher::Environment {
+                sensor,
+                metric,
+                cmp,
+            } => {
+                let metric = match metric {
+                    SensorMetric::Temperature => EnvMetric::Temperature,
+                    SensorMetric::Humidity => EnvMetric::Humidity,
+                    SensorMetric::Pressure => EnvMetric::Pressure,
+                    SensorMetric::Lux => EnvMetric::Lux,
+                    SensorMetric::UvIndex => EnvMetric::UvIndex,
+                    SensorMetric::SoilMoisture | SensorMetric::Other(_) => return None,
+                };
+
+                Some(LeafCondition::Environment {
+                    sensor: sensor.clone(),
+                    metric,
+                    cmp: *cmp,
+                })
+            }
+            TriggerMatcher::Solar { metric, cmp } => Some(LeafCondition::Solar {
+                metric: *metric,
+                cmp: *cmp,
+            }),
+            TriggerMatcher::HomeAssistant {
+                entity_id,
+                state: Some(state),
+            } => Some(LeafCondition::HomeAssistant {
+                entity_id: entity_id.clone(),
+                state: state.clone(),
+            }),
+            TriggerMatcher::Weather {
+                source,
+                metric,
+                day,
+                cmp,
+            } => Some(LeafCondition::Weather {
+                source: *source,
+                metric: *metric,
+                day: *day,
+                cmp: *cmp,
+            }),
+            TriggerMatcher::HomeAssistant { state: None, .. }
+            | TriggerMatcher::Switch { .. }
+            | TriggerMatcher::Cron { .. }
+            | TriggerMatcher::Sun { .. }
+            | TriggerMatcher::Mode { .. }
+            | TriggerMatcher::Woolworths { .. }
+            | TriggerMatcher::FuelWatch { .. }
+            | TriggerMatcher::DeviceBattery { .. }
+            | TriggerMatcher::Jellyfin { .. }
+            | TriggerMatcher::MediaPlayer { .. } => None,
+        }
+    }
+
     // used by the workflow `plan` renderer, currently exercised only in tests
     #[allow(dead_code)]
     pub fn describe(&self) -> String {
@@ -173,6 +282,27 @@ impl TriggerMatcher {
                     None => format!("woolworths({product}) price drop"),
                 }
             }
+            TriggerMatcher::FuelWatch {
+                change,
+                site_id,
+                below,
+                min_drop,
+            } => {
+                let site = site_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| "*".to_owned());
+                let mut out = format!("fuelwatch({site}) {}", change.as_str());
+
+                if let Some(below) = below {
+                    out.push_str(&format!(" below {below}"));
+                }
+
+                if let Some(min) = min_drop {
+                    out.push_str(&format!(" drop >= {min}"));
+                }
+
+                out
+            }
             TriggerMatcher::DeviceBattery {
                 device_id,
                 kind,
@@ -216,6 +346,18 @@ impl TriggerMatcher {
             TriggerMatcher::Solar { metric, cmp } => {
                 format!("solar.{} {:?} {}", metric.var_name(), cmp.op, cmp.value)
             }
+            TriggerMatcher::Weather {
+                source,
+                metric,
+                day,
+                cmp,
+            } => format!(
+                "weather({}).{} {:?} {}",
+                source.as_str(),
+                metric.var_name(*day),
+                cmp.op,
+                cmp.value
+            ),
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
@@ -252,6 +394,17 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => {
                 strs(&["product_id", "name", "old_price", "new_price", "drop"])
             }
+            TriggerMatcher::FuelWatch { .. } => strs(&[
+                "change",
+                "site_id",
+                "name",
+                "brand",
+                "suburb",
+                "address",
+                "old_price",
+                "new_price",
+                "drop",
+            ]),
             TriggerMatcher::DeviceBattery { .. } => strs(&[
                 "device_id",
                 "kind",
@@ -293,6 +446,11 @@ impl TriggerMatcher {
                 "muted",
             ]),
             TriggerMatcher::Solar { .. } => strs(&["current", "avg_15m", "avg_1h", "avg_3h"]),
+            TriggerMatcher::Weather { source, .. } => {
+                let mut vars = vec!["source".to_owned()];
+                vars.extend(WeatherMetric::var_names(*source));
+                vars
+            }
         }
     }
 
@@ -310,10 +468,17 @@ impl TriggerMatcher {
             | TriggerMatcher::Mode { .. }
             | TriggerMatcher::HomeAssistant { .. }
             | TriggerMatcher::Woolworths { .. }
+            | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Solar { .. } => {}
+            TriggerMatcher::Weather {
+                source,
+                metric,
+                day,
+                ..
+            } => metric.validate(*source, *day)?,
         }
         Ok(())
     }

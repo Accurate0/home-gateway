@@ -88,6 +88,7 @@ scopes! {
     EventsCron => "events.cron" [Read],
     EventsDoor => "events.door" [Read],
     EventsEnvironment => "events.environment" [Read],
+    EventsFuelWatch => "events.fuelwatch" [Read],
     EventsHomeAssistant => "events.home_assistant" [Read],
     EventsJellyfin => "events.jellyfin" [Read],
     EventsLight => "events.light" [Read],
@@ -98,6 +99,7 @@ scopes! {
     EventsSun => "events.sun" [Read],
     EventsSwitch => "events.switch" [Read],
     EventsUnifi => "events.unifi" [Read],
+    EventsWeather => "events.weather" [Read],
     EventsWoolworths => "events.woolworths" [Read],
 }
 
@@ -119,6 +121,8 @@ impl Resource {
             "jellyfin" => Self::EventsJellyfin,
             "media_player" => Self::EventsMediaPlayer,
             "solar" => Self::EventsSolar,
+            "weather" => Self::EventsWeather,
+            "fuelwatch" => Self::EventsFuelWatch,
             "command_failed" => Self::EventsCommandFailed,
             _ => return None,
         })

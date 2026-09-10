@@ -1,8 +1,15 @@
 use crate::device_registry::{Capability, DeviceRegistry};
+use crate::event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherSource};
 use crate::settings::TemplateString;
+use crate::settings::http_method::HttpMethod;
+use crate::settings::switch_metric::SwitchMetric;
 use crate::settings::trigger::TriggerMatcher;
+use crate::settings::vacuum_command::VacuumCommand;
+use crate::settings::workflow_context::ContextSource;
+use crate::settings::workflow_timers::WorkflowTimerSettings;
 use crate::settings::{NotifyAction, NotifyActionKind, NotifyCategory, NotifySource};
 use crate::timedelta_format::option_time_delta_from_str;
+use std::collections::BTreeMap;
 
 use super::{DeviceAliases, IEEEAddress, validate_device, yes};
 use crate::actors::sun::calc::SunPeriod;
@@ -180,6 +187,30 @@ pub enum LeafCondition {
         mode: Mode,
         active: bool,
     },
+    Solar {
+        metric: SolarMetric,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
+    HomeAssistant {
+        entity_id: String,
+        state: String,
+    },
+    SmartSwitch {
+        #[serde(rename = "device")]
+        ieee_addr: IEEEAddress,
+        metric: SwitchMetric,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
+    Weather {
+        source: WeatherSource,
+        metric: WeatherMetric,
+        #[serde(default)]
+        day: Option<ForecastDay>,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
 }
 
 impl Condition {
@@ -223,14 +254,24 @@ impl Combinator {
 impl LeafCondition {
     fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         match self {
-            LeafCondition::Light { ieee_addr, .. } | LeafCondition::Door { ieee_addr, .. } => {
+            LeafCondition::Light { ieee_addr, .. }
+            | LeafCondition::Door { ieee_addr, .. }
+            | LeafCondition::SmartSwitch { ieee_addr, .. } => {
                 validate_device(ieee_addr, devices)?;
             }
             LeafCondition::Environment { .. }
             | LeafCondition::Presence { .. }
             | LeafCondition::TimeOfDay { .. }
             | LeafCondition::Mode { .. }
-            | LeafCondition::Sun { .. } => {}
+            | LeafCondition::Sun { .. }
+            | LeafCondition::Solar { .. }
+            | LeafCondition::HomeAssistant { .. } => {}
+            LeafCondition::Weather {
+                source,
+                metric,
+                day,
+                ..
+            } => metric.validate(*source, *day)?,
         }
         Ok(())
     }
@@ -273,6 +314,34 @@ impl LeafCondition {
             LeafCondition::Mode { mode, active } => {
                 format!("mode({}) is {active}", mode.as_str())
             }
+            LeafCondition::Solar { metric, cmp } => {
+                format!("solar.{} {:?} {}", metric.var_name(), cmp.op, cmp.value)
+            }
+            LeafCondition::HomeAssistant { entity_id, state } => {
+                format!("ha({entity_id}) is {state}")
+            }
+            LeafCondition::SmartSwitch {
+                ieee_addr,
+                metric,
+                cmp,
+            } => format!(
+                "switch({ieee_addr}).{} {:?} {}",
+                metric.as_str(),
+                cmp.op,
+                cmp.value
+            ),
+            LeafCondition::Weather {
+                source,
+                metric,
+                day,
+                cmp,
+            } => format!(
+                "weather({}).{} {:?} {}",
+                source.as_str(),
+                metric.var_name(*day),
+                cmp.op,
+                cmp.value
+            ),
         }
     }
 }
@@ -353,6 +422,30 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    MqttPublish {
+        topic: TemplateString,
+        payload: TemplateString,
+        retain: bool,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
+    Http {
+        method: HttpMethod,
+        url: TemplateString,
+        #[serde(default)]
+        headers: BTreeMap<String, TemplateString>,
+        #[serde(default)]
+        body: Option<TemplateString>,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
+    RobotVacuum {
+        #[serde(rename = "device")]
+        ieee_addr: IEEEAddress,
+        command: VacuumCommand,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
 }
 
 impl Step {
@@ -368,6 +461,9 @@ impl Step {
             Step::SetMode { .. } => "set_mode",
             Step::SetWorkflowsEnabled { .. } => "set_workflows_enabled",
             Step::HomeAssistant { .. } => "home_assistant",
+            Step::MqttPublish { .. } => "mqtt_publish",
+            Step::Http { .. } => "http",
+            Step::RobotVacuum { .. } => "robot_vacuum",
         }
     }
 
@@ -382,7 +478,10 @@ impl Step {
             | Step::RunWorkflow { when, .. }
             | Step::SetMode { when, .. }
             | Step::SetWorkflowsEnabled { when, .. }
-            | Step::HomeAssistant { when, .. } => when.as_ref(),
+            | Step::HomeAssistant { when, .. }
+            | Step::MqttPublish { when, .. }
+            | Step::Http { when, .. }
+            | Step::RobotVacuum { when, .. } => when.as_ref(),
         }
     }
 
@@ -423,6 +522,20 @@ impl Step {
             Step::HomeAssistant {
                 call_service, data, ..
             } => Some(format!("home_assistant({call_service}) {data}")),
+            Step::MqttPublish {
+                topic,
+                payload,
+                retain,
+                ..
+            } => {
+                let suffix = if *retain { " (retained)" } else { "" };
+
+                Some(format!("mqtt_publish({topic}) {payload}{suffix}"))
+            }
+            Step::Http { method, url, .. } => Some(format!("http {method:?} {url}")),
+            Step::RobotVacuum {
+                ieee_addr, command, ..
+            } => Some(format!("robot_vacuum({ieee_addr}) -> {command:?}")),
             Step::Scene { .. } | Step::RunWorkflow { .. } => None,
         }
     }
@@ -433,6 +546,9 @@ impl Step {
                 ieee_addr, when, ..
             }
             | Step::Switch {
+                ieee_addr, when, ..
+            }
+            | Step::RobotVacuum {
                 ieee_addr, when, ..
             } => {
                 validate_device(ieee_addr, devices)?;
@@ -449,7 +565,9 @@ impl Step {
             | Step::RunWorkflow { when, .. }
             | Step::SetMode { when, .. }
             | Step::SetWorkflowsEnabled { when, .. }
-            | Step::HomeAssistant { when, .. } => resolve_opt(when, devices)?,
+            | Step::HomeAssistant { when, .. }
+            | Step::MqttPublish { when, .. }
+            | Step::Http { when, .. } => resolve_opt(when, devices)?,
         }
         Ok(())
     }
@@ -477,6 +595,12 @@ impl Step {
                     ));
                 }
             }
+            Step::RobotVacuum { ieee_addr, .. } => {
+                let address = registry.address_or_self(ieee_addr);
+                if registry.roborock(address).is_none() && registry.valetudo(address).is_none() {
+                    return Err(format!("robot_vacuum {ieee_addr} is not a robot vacuum"));
+                }
+            }
             Step::Scene { run, .. } => {
                 for step in run {
                     step.validate_capabilities(registry)?;
@@ -498,10 +622,11 @@ fn resolve_opt(when: &mut Option<Condition>, devices: &DeviceAliases) -> Result<
 #[derive(Debug, Clone)]
 pub enum WorkflowTrigger {
     Triggered {
-        on: TriggerMatcher,
+        on: Box<TriggerMatcher>,
         when: Option<Condition>,
         cooldown: Option<TimeDelta>,
         delay: Option<TimeDelta>,
+        hold: Option<TimeDelta>,
     },
     Reusable,
 }
@@ -517,6 +642,7 @@ pub struct Workflow {
     pub enabled: bool,
     pub dry_run: bool,
     pub trigger: WorkflowTrigger,
+    pub context: Vec<ContextSource>,
     pub run: Vec<Step>,
 }
 
@@ -544,6 +670,15 @@ pub struct RawWorkflow {
     #[serde(default, deserialize_with = "option_time_delta_from_str::deserialize")]
     #[schemars(with = "Option<String>")]
     delay: Option<TimeDelta>,
+    #[serde(
+        default,
+        rename = "for",
+        deserialize_with = "option_time_delta_from_str::deserialize"
+    )]
+    #[schemars(with = "Option<String>")]
+    hold: Option<TimeDelta>,
+    #[serde(default)]
+    context: Vec<ContextSource>,
     run: Vec<Step>,
 }
 
@@ -551,10 +686,11 @@ impl From<RawWorkflow> for Workflow {
     fn from(raw: RawWorkflow) -> Self {
         let trigger = match raw.on {
             Some(on) => WorkflowTrigger::Triggered {
-                on,
+                on: Box::new(on),
                 when: raw.when,
                 cooldown: raw.cooldown,
                 delay: raw.delay,
+                hold: raw.hold,
             },
             None => WorkflowTrigger::Reusable,
         };
@@ -566,6 +702,7 @@ impl From<RawWorkflow> for Workflow {
             enabled: raw.enabled,
             dry_run: raw.dry_run,
             trigger,
+            context: raw.context,
             run: raw.run,
         }
     }
@@ -574,12 +711,13 @@ impl From<RawWorkflow> for Workflow {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct WorkflowSettings {
     pub workers: usize,
+    pub timers: WorkflowTimerSettings,
 }
 
 impl Workflow {
     pub fn on(&self) -> Option<&TriggerMatcher> {
         match &self.trigger {
-            WorkflowTrigger::Triggered { on, .. } => Some(on),
+            WorkflowTrigger::Triggered { on, .. } => Some(on.as_ref()),
             WorkflowTrigger::Reusable => None,
         }
     }
@@ -592,6 +730,18 @@ impl Workflow {
                         out.extend(message.placeholders().into_iter().map(str::to_owned));
                         if let Some(title) = title {
                             out.extend(title.placeholders().into_iter().map(str::to_owned));
+                        }
+                    }
+                    Step::MqttPublish { topic, payload, .. } => {
+                        for template in [topic, payload] {
+                            out.extend(template.placeholders().into_iter().map(str::to_owned));
+                        }
+                    }
+                    Step::Http {
+                        url, headers, body, ..
+                    } => {
+                        for template in std::iter::once(url).chain(headers.values()).chain(body) {
+                            out.extend(template.placeholders().into_iter().map(str::to_owned));
                         }
                     }
                     Step::Scene { run, .. } => collect(run, out),
@@ -661,6 +811,13 @@ impl Workflow {
         }
     }
 
+    pub fn hold(&self) -> Option<TimeDelta> {
+        match &self.trigger {
+            WorkflowTrigger::Triggered { hold, .. } => *hold,
+            WorkflowTrigger::Reusable => None,
+        }
+    }
+
     pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         if let WorkflowTrigger::Triggered { on, when, .. } = &mut self.trigger {
             on.resolve_devices(devices)?;
@@ -679,6 +836,100 @@ impl Workflow {
             step.validate_capabilities(registry)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod fuelwatch_trigger_tests {
+    use super::*;
+
+    #[test]
+    fn fuelwatch_trigger_parses_and_exposes_vars() {
+        let workflow: Workflow = serde_yaml::from_str(
+            r#"
+name: Fill up tomorrow
+on: { type: fuelwatch, change: tomorrow_lower, min_drop: 5 }
+run: []
+"#,
+        )
+        .unwrap();
+
+        let on = workflow.on().expect("a triggered workflow");
+
+        assert_eq!(on.event_kind(), "fuelwatch");
+        assert!(!on.supports_hold());
+        assert!(on.available_vars().iter().any(|var| var == "new_price"));
+        assert_eq!(on.describe(), "fuelwatch(*) tomorrow_lower drop >= 5");
+    }
+}
+
+#[cfg(test)]
+mod outbound_step_tests {
+    use super::*;
+
+    #[test]
+    fn mqtt_publish_http_and_robot_vacuum_steps_parse() {
+        let steps: Vec<Step> = serde_yaml::from_str(
+            r#"
+- type: mqtt_publish
+  topic: "home/${room}/scene"
+  payload: '{"scene": "movie"}'
+  retain: true
+- type: http
+  method: POST
+  url: "https://example.com/hook/${name}"
+  headers: { Authorization: "Bearer x" }
+  body: '{"event": "${name}"}'
+- type: robot_vacuum
+  device: roborock
+  command: dock
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            steps.iter().map(Step::kind).collect::<Vec<_>>(),
+            ["mqtt_publish", "http", "robot_vacuum"]
+        );
+
+        match &steps[0] {
+            Step::MqttPublish { topic, retain, .. } => {
+                assert_eq!(topic.placeholders(), vec!["room"]);
+                assert!(*retain);
+            }
+            other => panic!("expected mqtt_publish, got {}", other.kind()),
+        }
+
+        match &steps[1] {
+            Step::Http {
+                method,
+                headers,
+                body,
+                ..
+            } => {
+                assert_eq!(*method, HttpMethod::Post);
+                assert_eq!(headers.len(), 1);
+                assert!(body.is_some());
+            }
+            other => panic!("expected http, got {}", other.kind()),
+        }
+
+        match &steps[2] {
+            Step::RobotVacuum {
+                ieee_addr, command, ..
+            } => {
+                assert_eq!(ieee_addr, "roborock");
+                assert_eq!(*command, VacuumCommand::Dock);
+            }
+            other => panic!("expected robot_vacuum, got {}", other.kind()),
+        }
+    }
+
+    #[test]
+    fn mqtt_publish_requires_retain() {
+        let parsed = serde_yaml::from_str::<Step>("type: mqtt_publish\ntopic: a\npayload: b\n");
+
+        assert!(parsed.is_err());
     }
 }
 
@@ -724,6 +975,51 @@ when:
         assert_eq!(
             cond.describe(),
             "any[mode(guest) is true, all[presence(living-room) is true, not(mode(guest) is true)]]"
+        );
+    }
+
+    #[test]
+    fn solar_home_assistant_and_smart_switch_leaves_parse() {
+        let cond = parse(
+            r#"
+when:
+  all:
+    - type: solar
+      metric: avg_15m
+      op: gt
+      value: 3000
+    - type: home_assistant
+      entity_id: binary_sensor.washer
+      state: "off"
+    - type: smart_switch
+      device: "0x1"
+      metric: power
+      op: lt
+      value: 5
+"#,
+        );
+        assert_eq!(
+            cond.describe(),
+            "all[solar.avg_15m Gt 3000, ha(binary_sensor.washer) is off, switch(0x1).power Lt 5]"
+        );
+    }
+
+    #[test]
+    fn weather_leaf_parses_with_day() {
+        let cond = parse(
+            r#"
+when:
+  type: weather
+  source: willyweather
+  metric: max_temp
+  day: tomorrow
+  op: gte
+  value: 35
+"#,
+        );
+        assert_eq!(
+            cond.describe(),
+            "weather(willyweather).tomorrow_max_temp Gte 35"
         );
     }
 
@@ -776,6 +1072,33 @@ run:
             &workflow.run[0],
             Step::HomeAssistant { call_service, .. } if call_service == "light.turn_on"
         ));
+    }
+
+    #[test]
+    fn context_parses_and_exposes_vars() {
+        let workflow = parse(
+            r#"
+name: Fuel test
+slug: fuel-test
+on: { type: cron, schedule: "0 13 * * TUE" }
+context: [fuelwatch]
+run:
+  - type: notify
+    notify: { type: android_app }
+    category: general
+    message: "${fuel_price}c/L at ${fuel_brand}"
+"#,
+        );
+
+        assert_eq!(workflow.context, vec![ContextSource::Fuelwatch]);
+
+        for var in workflow.template_placeholders() {
+            assert!(
+                ContextSource::Fuelwatch
+                    .available_vars()
+                    .contains(&var.as_str())
+            );
+        }
     }
 
     #[test]

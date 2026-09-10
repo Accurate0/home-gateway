@@ -16,8 +16,8 @@ use crate::actors::devices::{
 };
 use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
-    home_assistant::HomeAssistantActor, jellyfin::JellyfinActor, solar::SolarActor,
-    synergy::SynergyActor, transperth::TransperthActor, trmnl::TrmnlActor,
+    fuelwatch::FuelWatchActor, home_assistant::HomeAssistantActor, jellyfin::JellyfinActor,
+    solar::SolarActor, synergy::SynergyActor, transperth::TransperthActor, trmnl::TrmnlActor,
     unifi::UnifiConnectedClientHandler, woolworths::WoolworthsActor,
 };
 use crate::actors::root::RootMessage;
@@ -33,6 +33,7 @@ use crate::actors::system::{
     watchdog::WatchdogActor,
 };
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
+use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
@@ -369,6 +370,36 @@ pub static ACTORS: &[ActorSpec] = &[
         },
     },
     ActorSpec {
+        name: FuelWatchActor::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[Requirement::Handle {
+            label: "fuelwatch",
+            present: |handles| handles.contains::<FuelWatch>(),
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                let fuelwatch = shared_actor_state.handles.expect::<FuelWatch>().clone();
+
+                let Some(settings) = shared_actor_state.settings.fuelwatch.clone() else {
+                    return Ok(Spawned::Skipped);
+                };
+
+                root.spawn_linked(
+                    Some(FuelWatchActor::NAME.to_owned()),
+                    FuelWatchActor {
+                        shared_actor_state,
+                        fuelwatch,
+                    },
+                    settings,
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
         name: WoolworthsActor::NAME,
         autostart: true,
         optional: false,
@@ -462,6 +493,7 @@ mod tests {
                 JellyfinActor::NAME,
                 TransperthActor::NAME,
                 TrmnlActor::NAME,
+                FuelWatchActor::NAME,
                 SolarActor::NAME,
             ]
         );

@@ -19,6 +19,8 @@ sun:
 
 workflow:
   workers: 12
+  timers:
+    catch_up_within: 10m
 
 reconciler:
   enabled: true
@@ -94,6 +96,7 @@ transperth:
 
 fuelwatch:
   postcode: 6164
+  refresh: 1h
 
 home_assistant:
   url: http://home-assistant.internal

@@ -1,14 +1,17 @@
 use crate::{
-    event_bus::EventBusMessage,
+    event_bus::{EventBusMessage, WeatherMetric, WeatherReading, WeatherSource},
     integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
     state::AppState,
 };
-use ractor::Actor;
+use ractor::{Actor, RpcReplyPort};
 use std::time::Duration;
 use uuid::Uuid;
 
 pub enum SolarMessage {
     Poll,
+    LatestWeather {
+        reply: RpcReplyPort<Vec<WeatherReading>>,
+    },
 }
 
 pub struct SolarActor {
@@ -20,7 +23,7 @@ pub struct SolarActor {
 impl SolarActor {
     pub const NAME: &str = "solar";
 
-    async fn poll(&self) -> Result<(), ractor::ActorProcessingErr> {
+    async fn poll(&self) -> Result<Vec<WeatherReading>, ractor::ActorProcessingErr> {
         let login_data = self.goodwe.get_new_or_cached_login_data().await?;
         let solar_data = self.goodwe.get_solar_data(login_data).await?;
 
@@ -37,17 +40,19 @@ impl SolarActor {
             }
         };
 
-        let temperature = match self
+        let observation = match self
             .weather
             .get_weather_details(WeatherAPI::JANDAKOT_GEOCODE)
             .await
         {
-            Ok(weather) => Some(weather.data.temp),
+            Ok(weather) => Some(weather.data),
             Err(e) => {
                 tracing::error!("error getting weather details: {e}");
                 None
             }
         };
+
+        let temperature = observation.as_ref().map(|observation| observation.temp);
 
         tracing::info!("fetched uv level: {uv_level:?}, temperature: {temperature:?}");
 
@@ -64,13 +69,58 @@ impl SolarActor {
                 current_wh: current_kwh,
             });
 
-        Ok(())
+        let observed = observation
+            .map(|observation| {
+                vec![
+                    (WeatherMetric::Temperature, observation.temp),
+                    (WeatherMetric::FeelsLike, observation.temp_feels_like),
+                    (WeatherMetric::Humidity, observation.humidity as f64),
+                    (
+                        WeatherMetric::WindSpeed,
+                        observation.wind.speed_kilometre as f64,
+                    ),
+                    (
+                        WeatherMetric::GustSpeed,
+                        observation.gust.speed_kilometre as f64,
+                    ),
+                    (
+                        WeatherMetric::MaxGustSpeed,
+                        observation.max_gust.speed_kilometre as f64,
+                    ),
+                    (WeatherMetric::RainSince9am, observation.rain_since_9am),
+                    (WeatherMetric::MaxTemp, observation.max_temp.value),
+                    (WeatherMetric::MinTemp, observation.min_temp.value),
+                ]
+            })
+            .unwrap_or_default();
+
+        let readings: Vec<WeatherReading> = observed
+            .into_iter()
+            .chain(uv_level.map(|uv| (WeatherMetric::Uv, uv)))
+            .map(|(metric, value)| WeatherReading {
+                metric,
+                day: None,
+                value,
+            })
+            .collect();
+
+        if !readings.is_empty() {
+            self.shared_actor_state
+                .event_bus
+                .publish(EventBusMessage::Weather {
+                    event_id: Uuid::new_v4(),
+                    source: WeatherSource::Bom,
+                    readings: readings.clone(),
+                });
+        }
+
+        Ok(readings)
     }
 }
 
 impl Actor for SolarActor {
     type Msg = SolarMessage;
-    type State = ();
+    type State = Vec<WeatherReading>;
     type Arguments = ();
 
     async fn pre_start(
@@ -88,21 +138,28 @@ impl Actor for SolarActor {
 
         myself.send_interval(refresh, || SolarMessage::Poll);
 
-        Ok(())
+        Ok(Vec::new())
     }
 
-    #[tracing::instrument(parent = None, name = "solar-actor", skip(self, _myself, message, _state))]
+    #[tracing::instrument(parent = None, name = "solar-actor", skip(self, _myself, message, state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
         message: Self::Msg,
-        _state: &mut Self::State,
+        state: &mut Self::State,
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
+            SolarMessage::LatestWeather { reply } => {
+                reply.send(state.clone())?;
+            }
             SolarMessage::Poll => {
                 let started = std::time::Instant::now();
                 match self.poll().await {
-                    Ok(()) => {
+                    Ok(readings) => {
+                        if !readings.is_empty() {
+                            *state = readings;
+                        }
+
                         crate::metrics::record_integration_poll(
                             "solar",
                             "success",

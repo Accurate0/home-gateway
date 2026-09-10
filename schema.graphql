@@ -320,7 +320,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | CommandFailedUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -352,6 +352,18 @@ type FuelSite {
 type FuelWatchObject {
 	cheapest: FuelSite
 	sites(limit: Int): [FuelSite!]!
+}
+
+type FuelWatchUpdate {
+	eventId: UUID!
+	change: String!
+	siteId: Int!
+	name: String!
+	brand: String!
+	suburb: String!
+	address: String!
+	oldPrice: Float!
+	newPrice: Float!
 }
 
 type GenerationHistory {
@@ -885,6 +897,18 @@ input WeatherInput {
 
 type WeatherObject {
 	forecast: Forecast!
+}
+
+type WeatherReadingUpdate {
+	metric: String!
+	day: String
+	value: Float!
+}
+
+type WeatherUpdate {
+	eventId: UUID!
+	source: String!
+	readings: [WeatherReadingUpdate!]!
 }
 
 type WoolworthsObject {
