@@ -16,6 +16,7 @@ configMapGenerator:
       - workflows/bins.yaml
       - workflows/closet-presence.yaml
       - workflows/control-switch.yaml
+      - workflows/fuel.yaml
       - workflows/hallway-plant.yaml
       - workflows/living-room-lamp.yaml
       - workflows/living-room-plant.yaml
