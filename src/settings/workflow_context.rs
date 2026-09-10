@@ -5,12 +5,14 @@ use serde::Deserialize;
 #[serde(rename_all = "snake_case")]
 pub enum ContextSource {
     Fuelwatch,
+    Willyweather,
 }
 
 impl ContextSource {
     pub fn as_str(&self) -> &'static str {
         match self {
             ContextSource::Fuelwatch => "fuelwatch",
+            ContextSource::Willyweather => "willyweather",
         }
     }
 
@@ -22,6 +24,17 @@ impl ContextSource {
                 "fuel_name",
                 "fuel_suburb",
                 "fuel_address",
+            ],
+            ContextSource::Willyweather => &[
+                "forecast_description",
+                "forecast_emoji",
+                "forecast_min",
+                "forecast_max",
+                "forecast_uv",
+                "forecast_rain_probability",
+                "forecast_rain_range",
+                "forecast_wind_max_speed",
+                "forecast_sunset",
             ],
         }
     }

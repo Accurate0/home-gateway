@@ -9,3 +9,5 @@
 - !include woolworths.yaml
 - !include solar.yaml
 - !include fuel.yaml
+- !include rain.yaml
+- !include forecast.yaml

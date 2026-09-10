@@ -16,10 +16,12 @@ configMapGenerator:
       - workflows/bins.yaml
       - workflows/closet-presence.yaml
       - workflows/control-switch.yaml
+      - workflows/forecast.yaml
       - workflows/fuel.yaml
       - workflows/hallway-plant.yaml
       - workflows/living-room-lamp.yaml
       - workflows/living-room-plant.yaml
+      - workflows/rain.yaml
       - workflows/small-switch.yaml
       - workflows/solar.yaml
       - workflows/woolworths.yaml

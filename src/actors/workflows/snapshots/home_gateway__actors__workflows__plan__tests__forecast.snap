@@ -1,0 +1,10 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# weather-forecast  (reusable)
+  context: [willyweather]
+  notify: notify(AndroidApp, general): ${forecast_emoji} ${forecast_description}, ${forecast_min}–${forecast_max}°C. Rain ${forecast_rain_probability}% (${forecast_rain_range}mm), wind up to ${forecast_wind_max_speed}km/h, UV ${forecast_uv}, sunset ${forecast_sunset}
+
+# Morning Forecast  (on: cron(0 9 * * *))
+    notify: notify(AndroidApp, general): ${forecast_emoji} ${forecast_description}, ${forecast_min}–${forecast_max}°C. Rain ${forecast_rain_probability}% (${forecast_rain_range}mm), wind up to ${forecast_wind_max_speed}km/h, UV ${forecast_uv}, sunset ${forecast_sunset}

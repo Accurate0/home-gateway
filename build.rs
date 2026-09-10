@@ -23,6 +23,17 @@ fn context_vars(source: &str) -> Option<Vec<&'static str>> {
             "fuel_suburb",
             "fuel_address",
         ],
+        "willyweather" => vec![
+            "forecast_description",
+            "forecast_emoji",
+            "forecast_min",
+            "forecast_max",
+            "forecast_uv",
+            "forecast_rain_probability",
+            "forecast_rain_range",
+            "forecast_wind_max_speed",
+            "forecast_sunset",
+        ],
         _ => return None,
     })
 }
@@ -113,9 +124,15 @@ fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
             "today_max_temp",
             "today_min_temp",
             "today_uv_max",
+            "today_rain_probability",
+            "today_rain_max",
+            "today_wind_max_speed",
             "tomorrow_max_temp",
             "tomorrow_min_temp",
             "tomorrow_uv_max",
+            "tomorrow_rain_probability",
+            "tomorrow_rain_max",
+            "tomorrow_wind_max_speed",
         ],
         _ => return None,
     })
@@ -307,10 +324,14 @@ fn validate_semantics(value: &serde_json::Value) {
             })
             .collect();
 
-        let available = trigger_type.and_then(trigger_vars).map(|mut vars| {
-            vars.extend(context.iter().copied());
-            vars
-        });
+        let available = match trigger_type {
+            Some(trigger_type) => trigger_vars(trigger_type).map(|mut vars| {
+                vars.extend(context.iter().copied());
+                vars
+            }),
+            None if !context.is_empty() => Some(context.clone()),
+            None => None,
+        };
 
         check_device_refs(wf.get("on"), &device_ids, name);
         check_device_refs(wf.get("when"), &device_ids, name);

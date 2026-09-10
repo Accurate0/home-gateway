@@ -1,0 +1,17 @@
+- name: weather-forecast
+  slug: weather-forecast
+  group: Weather
+  context: [willyweather]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "${forecast_emoji} ${forecast_description}, ${forecast_min}–${forecast_max}°C. Rain ${forecast_rain_probability}% (${forecast_rain_range}mm), wind up to ${forecast_wind_max_speed}km/h, UV ${forecast_uv}, sunset ${forecast_sunset}"
+
+- name: Morning Forecast
+  slug: morning-forecast
+  group: Weather
+  on: { type: cron, schedule: "0 9 * * *" }
+  run:
+    - type: run_workflow
+      workflow: weather-forecast
