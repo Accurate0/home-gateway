@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<03a2ee5272e8fd7488c0cd1772c15887>>
+ * @generated SignedSource<<0649e9aa328ffdabf55f2484504fcd98>>
  * @lightSyntaxTransform
  */
 
@@ -8,6 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type Mode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
 export type WorkflowsPageQuery$variables = Record<PropertyKey, never>;
 export type WorkflowsPageQuery$data = {
   readonly workflows: ReadonlyArray<{
@@ -16,6 +17,7 @@ export type WorkflowsPageQuery$data = {
     readonly enabled: boolean;
     readonly group: string;
     readonly id: string;
+    readonly modes: ReadonlyArray<Mode>;
     readonly name: string;
     readonly reusable: boolean;
     readonly slug: string;
@@ -91,6 +93,13 @@ var v0 = [
         "kind": "ScalarField",
         "name": "reusable",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modes",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -114,16 +123,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "26cac6d2689bc6c7dc7595d003e505a4",
+    "cacheID": "d09031b9363f1db4280df45d94197d44",
     "id": null,
     "metadata": {},
     "name": "WorkflowsPageQuery",
     "operationKind": "query",
-    "text": "query WorkflowsPageQuery {\n  workflows {\n    id\n    slug\n    name\n    group\n    enabled\n    configEnabled\n    dryRun\n    reusable\n  }\n}\n"
+    "text": "query WorkflowsPageQuery {\n  workflows {\n    id\n    slug\n    name\n    group\n    enabled\n    configEnabled\n    dryRun\n    reusable\n    modes\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b159c040e84c60e37cd27792dfb05168";
+(node as any).hash = "5dd48f5bb7e8ec9b54603070983fe8d0";
 
 export default node;

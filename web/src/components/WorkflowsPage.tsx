@@ -15,6 +15,7 @@ const WorkflowsQuery = graphql`
       configEnabled
       dryRun
       reusable
+      modes
     }
   }
 `;
@@ -97,6 +98,15 @@ export default function WorkflowsPage() {
                         reusable
                       </span>
                     )}
+                    {w.modes.map((mode) => (
+                      <span
+                        key={mode}
+                        title="only fires in this mode"
+                        className="rounded-full border border-sky-500/40 px-1.5 py-0.5 text-[10px] tracking-wide text-sky-600 uppercase dark:text-sky-400"
+                      >
+                        {mode.toLowerCase()}
+                      </span>
+                    ))}
                   </div>
                   <span className="text-muted-foreground font-mono text-xs">
                     {w.slug}
