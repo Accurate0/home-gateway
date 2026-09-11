@@ -8,6 +8,7 @@ use home_gateway::cli::oauth::{self, DEFAULT_CLIENT_ID, DEFAULT_ISSUER};
 use home_gateway::http::get_traced_http_client;
 use reqwest::{Method, StatusCode};
 use serde_json::{Value, json};
+use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Parser)]
@@ -104,6 +105,9 @@ enum WorkflowCommand {
     List,
     Run {
         slug: String,
+    },
+    Exec {
+        file: PathBuf,
     },
     Enable {
         slug: String,
@@ -490,6 +494,28 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
                 .await?;
 
             report(&data, as_json, &format!("ran {slug}"))
+        }
+        WorkflowCommand::Exec { file } => {
+            let source = std::fs::read_to_string(file)
+                .with_context(|| format!("failed to read {}", file.display()))?;
+            let workflow: Value = serde_yaml::from_str(&source)
+                .with_context(|| format!("failed to parse {}", file.display()))?;
+
+            let response = client
+                .send(
+                    Method::POST,
+                    "/v1/workflow/execute",
+                    Some(&json!({ "workflow": workflow })),
+                )
+                .await?;
+
+            let status = response.status();
+            if !status.is_success() {
+                let body = response.text().await.unwrap_or_default();
+                anyhow::bail!("workflow execution failed with {status}: {body}");
+            }
+
+            report(&json!({ "dispatched": true }), as_json, "dispatched")
         }
         WorkflowCommand::Enable { slug } => set_enabled(client, slug, true, as_json).await,
         WorkflowCommand::Disable { slug } => set_enabled(client, slug, false, as_json).await,

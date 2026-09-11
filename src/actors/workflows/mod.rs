@@ -7,6 +7,7 @@ use crate::integrations::mqtt::MqttClient;
 use crate::settings::TemplateString;
 use crate::settings::http_method::HttpMethod;
 use crate::settings::vacuum_command::VacuumCommand;
+use crate::settings::workflow_context::ContextSource;
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
@@ -84,6 +85,7 @@ struct WorkflowContext<'a> {
     /// Template variables carried from the triggering event, substituted into
     /// `notify` messages.
     vars: &'a HashMap<String, String>,
+    sources: &'a [ContextSource],
 }
 
 pub enum WorkflowWorkerMessage {
@@ -147,6 +149,7 @@ impl WorkflowWorker {
                     dry_run: workflow.dry_run,
                     origin_slug: &workflow.slug,
                     vars: &vars,
+                    sources: &workflow.context,
                 };
 
                 self.run_steps(ctx, &workflow.run).await
@@ -534,12 +537,23 @@ impl WorkflowWorker {
             return Ok(());
         }
 
+        let missing: Vec<ContextSource> = workflow
+            .context
+            .iter()
+            .copied()
+            .filter(|source| !ctx.sources.contains(source))
+            .collect();
+
+        let vars = context::resolve(&self.shared_actor_state, &missing, ctx.vars).await?;
+        let sources: Vec<ContextSource> = ctx.sources.iter().chain(&missing).copied().collect();
+
         let child = WorkflowContext {
             event_id: ctx.event_id,
             depth: ctx.depth + 1,
             dry_run: ctx.dry_run || workflow.dry_run,
             origin_slug: ctx.origin_slug,
-            vars: ctx.vars,
+            vars: &vars,
+            sources: &sources,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }
