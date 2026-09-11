@@ -1,6 +1,9 @@
 # yaml-language-server: $schema=config.schema.json
 version: "1"
 
+http_listen_addr: "[::]:8000"
+mqtt_port: 1883
+
 s3:
   bucket: home-gateway-bucket
   region: ap-southeast-2

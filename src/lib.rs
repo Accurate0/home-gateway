@@ -20,6 +20,7 @@ pub mod repo;
 pub mod routes;
 pub mod serde_lenient;
 pub mod settings;
+pub mod startup;
 pub mod state;
 pub mod templating;
 pub mod timedelta_format;

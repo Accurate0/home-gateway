@@ -2,6 +2,7 @@ use config::builder::{ConfigBuilder, DefaultState};
 use config::{Config, ConfigError, Environment, File, FileFormat};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use std::{
@@ -99,9 +100,11 @@ pub struct Settings {
     pub version: String,
     pub api_key: String,
     pub database_url: String,
+    pub http_listen_addr: SocketAddr,
     pub fcm_project_id: String,
     pub fcm_service_account_json: String,
     pub mqtt_url: String,
+    pub mqtt_port: u16,
     pub mqtt_username: String,
     pub mqtt_password: String,
     pub unifi_webhook_secret: String,
@@ -139,11 +142,13 @@ pub struct RawSettings {
     version: String,
     api_key: String,
     database_url: String,
+    http_listen_addr: SocketAddr,
     #[serde(default)]
     fcm_project_id: String,
     #[serde(default)]
     fcm_service_account_json: String,
     mqtt_url: String,
+    mqtt_port: u16,
     mqtt_username: String,
     mqtt_password: String,
     unifi_webhook_secret: String,
@@ -196,9 +201,11 @@ impl RawSettings {
             version,
             api_key,
             database_url,
+            http_listen_addr,
             fcm_project_id,
             fcm_service_account_json,
             mqtt_url,
+            mqtt_port,
             mqtt_username,
             mqtt_password,
             unifi_webhook_secret,
@@ -390,9 +397,11 @@ impl RawSettings {
                 version,
                 api_key,
                 database_url,
+                http_listen_addr,
                 fcm_project_id,
                 fcm_service_account_json,
                 mqtt_url,
+                mqtt_port,
                 mqtt_username,
                 mqtt_password,
                 unifi_webhook_secret,
@@ -771,6 +780,8 @@ database_url: x
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 willyweather:
@@ -801,6 +812,8 @@ database_url: x
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 willyweather:
@@ -1060,6 +1073,8 @@ database_url: x
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 willyweather:
@@ -1093,6 +1108,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1125,6 +1142,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1164,6 +1183,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1202,6 +1223,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1241,6 +1264,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1440,6 +1465,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1477,6 +1504,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1513,6 +1542,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1550,6 +1581,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1586,6 +1619,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1663,6 +1698,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
@@ -1723,6 +1760,8 @@ zigbee_models: {}
 mqtt_url: x
 mqtt_username: x
 mqtt_password: x
+mqtt_port: 1883
+http_listen_addr: "[::]:8000"
 unifi_webhook_secret: x
 android_app_webhook_secret: x
 s3: { bucket: b, region: r }
