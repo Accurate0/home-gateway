@@ -4,7 +4,9 @@ version: "1"
 # settings to resolve without one.
 api_key: ""
 database_url: postgres://postgres:test@127.0.0.1:5432/home
+http_listen_addr: "[::]:8000"
 mqtt_url: 127.0.0.1
+mqtt_port: 1883
 mqtt_username: ""
 mqtt_password: ""
 unifi_webhook_secret: test-unifi-secret

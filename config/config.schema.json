@@ -14,6 +14,9 @@
     "database_url": {
       "type": "string"
     },
+    "http_listen_addr": {
+      "type": "string"
+    },
     "fcm_project_id": {
       "type": "string",
       "default": ""
@@ -24,6 +27,12 @@
     },
     "mqtt_url": {
       "type": "string"
+    },
+    "mqtt_port": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0,
+      "maximum": 65535
     },
     "mqtt_username": {
       "type": "string"
@@ -173,7 +182,9 @@
   "required": [
     "api_key",
     "database_url",
+    "http_listen_addr",
     "mqtt_url",
+    "mqtt_port",
     "mqtt_username",
     "mqtt_password",
     "unifi_webhook_secret",
