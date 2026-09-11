@@ -11,6 +11,7 @@ use async_graphql::{Enum, SimpleObject, Union, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
 use crate::graphql::dataloader::last_seen::LastSeenDataLoader;
+use crate::settings::SettingsContainer;
 
 pub mod battery;
 pub mod door;
@@ -33,7 +34,9 @@ pub use media_player::MediaPlayerEntity;
 pub use presence::PresenceEntity;
 pub use robot_vacuum::RobotVacuumEntity;
 
-pub(super) const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
+pub(super) fn query_timeout(ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Duration> {
+    Ok(ctx.data::<SettingsContainer>()?.graphql.query_timeout())
+}
 
 /// Most recent time the device behind `address` was heard from, resolved via the
 /// batched `device_last_seen` dataloader. Nullable when the device has never been

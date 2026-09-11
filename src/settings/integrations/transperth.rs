@@ -1,3 +1,4 @@
+use super::transperth_cache::TransperthCacheSettings;
 use crate::timedelta_format::time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
 use schemars::JsonSchema;
@@ -74,6 +75,8 @@ pub struct RawTransperthSettings {
     pub peak: Vec<RawPeakWindow>,
 
     pub routes: Vec<TransperthRoute>,
+
+    pub cache: TransperthCacheSettings,
 }
 
 impl RawTransperthSettings {
@@ -86,6 +89,7 @@ impl RawTransperthSettings {
             horizon,
             peak,
             routes,
+            cache,
         } = self;
 
         let peak = peak
@@ -101,6 +105,7 @@ impl RawTransperthSettings {
             horizon,
             peak,
             routes,
+            cache,
         })
     }
 }
@@ -114,6 +119,7 @@ pub struct TransperthSettings {
     pub horizon: TimeDelta,
     pub peak: Vec<PeakWindow>,
     pub routes: Vec<TransperthRoute>,
+    pub cache: TransperthCacheSettings,
 }
 
 impl TransperthSettings {

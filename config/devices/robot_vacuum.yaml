@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: roborock
+  room: dining-room
+  transport: home_assistant
+  address: vacuum.robot
+  roles:
+    - type: roborock
+      config:
+        name: Roborock
+        status_entity: sensor.robot_status
+        battery_entity: sensor.robot_battery
+        room_entity: sensor.robot_current_room
+        control_entity: vacuum.robot
+        start_service: vacuum.start
+        stop_service: vacuum.stop
+        dock_service: vacuum.return_to_base
+    - type: battery
+
+- id: valetudo
+  room: spare-room
+  transport: valetudo
+  address: rockrobo
+  roles:
+    - type: valetudo
+      config:
+        name: Vacuum
+    - type: battery

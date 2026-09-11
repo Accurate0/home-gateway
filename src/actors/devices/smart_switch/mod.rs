@@ -135,13 +135,16 @@ impl SmartSwitchHandler {
 
 impl DeviceHandler for SmartSwitchHandler {
     const NAME: &'static str = SmartSwitchHandler::NAME;
-    const WORKERS: usize = 3;
 
     type Message = Message;
     type State = ();
 
     fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
+    }
+
+    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
+        workers.smart_switch
     }
 
     async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {

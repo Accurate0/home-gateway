@@ -22,13 +22,13 @@ pub enum TrmnlError {
 }
 
 impl Trmnl {
-    pub fn new(api_key: String, base_url: String) -> Self {
+    pub fn new(api_key: String, base_url: String, timeout: std::time::Duration) -> Self {
         Self {
             api_key,
             base_url,
             client: wrap_client_in_middleware_no_tracing(
                 reqwest::ClientBuilder::new()
-                    .timeout(crate::http::REQUEST_TIMEOUT)
+                    .timeout(timeout)
                     .build()
                     .unwrap(),
             )

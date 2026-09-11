@@ -7,7 +7,7 @@ use crate::{
         system::rpc,
     },
     device_registry::{Capability, DeviceRegistry},
-    graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
+    graphql::objects::entity_object::{last_seen_for, query_timeout},
     repo::{
         RepoRegistry,
         intent::{DeviceIntent, DeviceKind},
@@ -44,10 +44,12 @@ impl LightEntity {
         })
     }
 
-    async fn state(&self) -> async_graphql::Result<&LightState> {
+    async fn state(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<&LightState> {
+        let timeout = query_timeout(ctx)?;
+
         self.state
             .get_or_try_init(|| async {
-                rpc::query_factory(LightHandler::NAME, QUERY_TIMEOUT, |reply| {
+                rpc::query_factory(LightHandler::NAME, timeout, |reply| {
                     LightHandlerMessage::QueryState {
                         ieee_addr: self.address.clone(),
                         reply,
@@ -91,23 +93,32 @@ impl LightEntity {
 
     /// Current power state. Nullable so an unreachable light actor reports the
     /// error against this field without nulling the whole entity.
-    async fn on(&self) -> async_graphql::Result<Option<bool>> {
-        Ok(Some(self.state().await?.on))
+    async fn on(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<bool>> {
+        Ok(Some(self.state(ctx).await?.on))
     }
 
     /// Current brightness, 0-254. Null when the light has not reported one.
-    async fn brightness(&self) -> async_graphql::Result<Option<i32>> {
-        Ok(self.state().await?.brightness)
+    async fn brightness(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<i32>> {
+        Ok(self.state(ctx).await?.brightness)
     }
 
     /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
-    async fn colour_temperature(&self) -> async_graphql::Result<Option<i32>> {
-        Ok(self.state().await?.colour_temp)
+    async fn colour_temperature(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<i32>> {
+        Ok(self.state(ctx).await?.colour_temp)
     }
 
     /// Current colour as `#rrggbb`. Null when the light has not reported one.
-    async fn colour(&self) -> async_graphql::Result<Option<&str>> {
-        Ok(self.state().await?.colour.as_deref())
+    async fn colour(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<&str>> {
+        Ok(self.state(ctx).await?.colour.as_deref())
     }
 
     async fn last_seen(

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: front-door
+  room: entry
+  transport: zigbee
+  address: "0x54ef441000d2b0b0"
+  model: aqara_mccgq12lm
+  watchdog:
+    timeout: 1h
+    notify: [android_app]
+  roles:
+    - type: door
+      config:
+        name: Front Door
+        id: front-door
+        state: armed
+        timeout: 3m
+        notify: [android_app]
+    - type: battery
+
+- id: garage-door
+  room: garage
+  transport: zigbee
+  address: "0x54ef441000d2b1ba"
+  model: aqara_mccgq12lm
+  roles:
+    - type: door
+      config:
+        name: Garage Door
+        id: garage-door
+        state: unarmed
+        notify: [android_app]
+    - type: battery

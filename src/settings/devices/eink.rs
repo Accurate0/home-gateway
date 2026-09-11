@@ -4,6 +4,7 @@ use chrono::{NaiveTime, TimeDelta};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use super::eink_defaults::EinkDefaults;
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::timedelta_format::{humanize, time_delta_from_str};
 
@@ -152,12 +153,16 @@ pub const PALETTE_COLORS: [(&str, f32, f32, f32, u8); 6] = [
     ("green", 0.0, 255.0, 0.0, 6),
 ];
 
-#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawEinkGlobal {
     #[serde(default)]
     views: HashMap<String, RawDashboardView>,
     #[serde(default)]
     albums: HashMap<String, RawAlbum>,
+    #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    prepare_render_timeout: TimeDelta,
+    defaults: EinkDefaults,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
@@ -172,10 +177,12 @@ struct RawAlbum {
     prefix: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct EinkGlobalSettings {
     pub views: HashMap<String, DashboardView>,
     pub albums: HashMap<String, Album>,
+    pub prepare_render_timeout: TimeDelta,
+    pub defaults: EinkDefaults,
 }
 
 impl RawEinkGlobal {
@@ -203,11 +210,20 @@ impl RawEinkGlobal {
                 (name.clone(), Album { name, prefix })
             })
             .collect();
-        EinkGlobalSettings { views, albums }
+        EinkGlobalSettings {
+            views,
+            albums,
+            prepare_render_timeout: self.prepare_render_timeout,
+            defaults: self.defaults,
+        }
     }
 }
 
 impl EinkGlobalSettings {
+    pub fn prepare_render_timeout(&self) -> std::time::Duration {
+        self.prepare_render_timeout.to_std().unwrap_or_default()
+    }
+
     pub fn view(&self, name: &str) -> Option<&DashboardView> {
         self.views.get(name)
     }

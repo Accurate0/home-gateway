@@ -1,4 +1,5 @@
 use crate::actors::root::RootMessage;
+use crate::settings::ActorWorkerSettings;
 use crate::state::AppState;
 use crate::tracing_context::TracedMessage;
 use ractor::{
@@ -14,12 +15,13 @@ pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 5;
 
 pub trait DeviceHandler: Send + Sync + Sized + 'static {
     const NAME: &'static str;
-    const WORKERS: usize = 1;
 
     type Message: ractor::Message + crate::tracing_context::TracedMessage;
     type State: ractor::State + Default;
 
     fn new(shared_actor_state: AppState) -> Self;
+
+    fn workers(workers: &ActorWorkerSettings) -> usize;
 
     fn handle(
         &self,
@@ -141,6 +143,8 @@ pub async fn spawn_handler<T: DeviceHandler>(
         queues::DefaultQueue<(), T::Message>,
     >::default();
 
+    let workers = T::workers(&shared_actor_state.settings.actors.workers);
+
     let factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(HandlerBuilder::<T> {
             shared_actor_state,
@@ -148,7 +152,7 @@ pub async fn spawn_handler<T: DeviceHandler>(
         }))
         .queue(Default::default())
         .router(Default::default())
-        .num_initial_workers(T::WORKERS)
+        .num_initial_workers(workers)
         .build();
 
     let (actor_ref, _) = root_supervisor_ref

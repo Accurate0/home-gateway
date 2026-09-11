@@ -4,6 +4,7 @@ use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::startup::{self, Handles, Tasks};
 use home_gateway::state::{ApiState, AppState};
+use home_gateway::tracing_setup::SampleRatios;
 use home_gateway::utils::handle_cancellation;
 use ractor::Actor;
 use tokio_util::sync::CancellationToken;
@@ -14,6 +15,10 @@ async fn main() -> anyhow::Result<()> {
 
     let storage = startup::storage::init().await?;
 
+    telemetry
+        .sampling
+        .replace(SampleRatios::from(&storage.settings.tracing.sampling));
+
     let feature_flag_client = FeatureFlagClient::new().await;
 
     let cancellation_token = CancellationToken::new();
@@ -22,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
     let Handles { registry, mqtt } =
         startup::handles::build(&storage, &feature_flag_client).await?;
 
-    let listen_addr = storage.settings.http_listen_addr;
+    let listen_addr = storage.settings.http.listen_address;
     let devices = storage.devices.clone();
 
     let state = AppState {

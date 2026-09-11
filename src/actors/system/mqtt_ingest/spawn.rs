@@ -18,11 +18,13 @@ pub async fn spawn_mqtt_ingest(
         queues::DefaultQueue<(), Message>,
     >::default();
 
+    let workers = shared_actor_state.settings.actors.workers.mqtt_ingest;
+
     let door_handler_factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(MqttMessageHandlerBuilder { shared_actor_state }))
         .queue(Default::default())
         .router(Default::default())
-        .num_initial_workers(5)
+        .num_initial_workers(workers)
         .build();
 
     let (actor_ref, _) = root_supervisor_ref

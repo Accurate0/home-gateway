@@ -1,8 +1,10 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use chrono::TimeDelta;
 use home_gateway::device_registry::DeviceRegistry;
 use home_gateway::integrations::mqtt::{Mqtt, MqttClient};
+use home_gateway::settings::{BackoffSettings, MqttSettings};
 use testcontainers::{ContainerAsync, ImageExt, ReuseDirective, runners::AsyncRunner};
 use testcontainers_modules::mosquitto::Mosquitto;
 use tokio::sync::OnceCell;
@@ -122,14 +124,23 @@ pub async fn start(devices: DeviceRegistry) -> TestBroker {
     let broker = broker().await;
     let cancellation_token = CancellationToken::new();
 
-    let (client, mut mqtt) = Mqtt::new(
-        broker.host.clone(),
-        broker.port,
-        String::new(),
-        String::new(),
-    )
-    .await
-    .expect("failed to build the gateway mqtt client");
+    let settings = MqttSettings {
+        url: broker.host.clone(),
+        port: broker.port,
+        username: String::new(),
+        password: String::new(),
+        keep_alive: TimeDelta::seconds(5),
+        max_packet_size: 100_000,
+        channel_capacity: 100,
+        reconnect: BackoffSettings {
+            min: TimeDelta::seconds(1),
+            max: TimeDelta::seconds(60),
+        },
+    };
+
+    let (client, mut mqtt) = Mqtt::new(&settings)
+        .await
+        .expect("failed to build the gateway mqtt client");
 
     let ingest_token = cancellation_token.child_token();
     tokio::spawn(async move {

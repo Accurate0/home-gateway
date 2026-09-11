@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::HashSet, str::FromStr, sync::Arc};
 
 use http::StatusCode;
 use jsonwebtoken::{
@@ -13,23 +13,11 @@ use crate::{http::get_traced_http_client, settings::OAuthSettings};
 
 use super::AuthContext;
 
-const CACHE_CAPACITY: u64 = 32;
-const CACHE_TTL: Duration = Duration::from_secs(3600);
-
-const USERINFO_CACHE_CAPACITY: u64 = 256;
-const USERINFO_CACHE_TTL: Duration = Duration::from_secs(15 * 60);
-
-/// Claims we read out of a Kanidm access token. `aud`/`iss`/`exp` are validated
-/// by `jsonwebtoken` itself; the access token only carries identity, so group
-/// membership is fetched separately from the userinfo endpoint.
 #[derive(Debug, Deserialize)]
 struct Claims {
     sub: String,
 }
 
-/// Identity and group membership from the OIDC userinfo endpoint. Kanidm omits
-/// `groups` from the access token, so it must be read from userinfo. `groups`
-/// is deserialized dynamically since the claim name is configurable.
 #[derive(Debug, Deserialize)]
 struct UserInfo {
     #[serde(default)]
@@ -46,25 +34,30 @@ pub struct VerifyingKey {
 pub struct OAuthValidator {
     settings: OAuthSettings,
     http: ClientWithMiddleware,
-    // kid -> verifying key. Missing/rotated keys trigger a JWKS refetch.
     keys: Cache<String, Arc<VerifyingKey>>,
-    // bearer token -> userinfo, to avoid a userinfo round-trip on every request.
     userinfo: Cache<String, Arc<UserInfo>>,
 }
 
 impl OAuthValidator {
-    pub fn new(settings: OAuthSettings) -> Result<Self, crate::http::HttpCreationError> {
+    pub fn new(
+        settings: OAuthSettings,
+        timeout: std::time::Duration,
+    ) -> Result<Self, crate::http::HttpCreationError> {
+        let keys = Cache::builder()
+            .max_capacity(settings.cache.keys.capacity)
+            .time_to_live(settings.cache.keys.ttl())
+            .build();
+
+        let userinfo = Cache::builder()
+            .max_capacity(settings.cache.userinfo.capacity)
+            .time_to_live(settings.cache.userinfo.ttl())
+            .build();
+
         Ok(Self {
             settings,
-            http: get_traced_http_client()?,
-            keys: Cache::builder()
-                .max_capacity(CACHE_CAPACITY)
-                .time_to_live(CACHE_TTL)
-                .build(),
-            userinfo: Cache::builder()
-                .max_capacity(USERINFO_CACHE_CAPACITY)
-                .time_to_live(USERINFO_CACHE_TTL)
-                .build(),
+            http: get_traced_http_client(timeout)?,
+            keys,
+            userinfo,
         })
     }
 
@@ -97,8 +90,6 @@ impl OAuthValidator {
         Ok(())
     }
 
-    /// Returns the decoding key for `kid`, refetching the JWKS once on a miss so
-    /// key rotation is picked up without a restart.
     async fn key_for(&self, kid: &str) -> Result<Arc<VerifyingKey>, StatusCode> {
         if let Some(key) = self.keys.get(kid).await {
             return Ok(key);
@@ -112,8 +103,6 @@ impl OAuthValidator {
         })
     }
 
-    /// Validate a bearer JWT and turn the caller's groups into an `AuthContext`.
-    /// Returns 401 for an invalid token and 403 when no group maps to any scope.
     pub async fn validate(&self, token: &str) -> Result<AuthContext, StatusCode> {
         let header = decode_header(token).map_err(|e| {
             tracing::error!("invalid jwt header: {e}");
@@ -154,10 +143,6 @@ impl OAuthValidator {
         Ok(AuthContext::from_scopes(None, name, &scopes))
     }
 
-    /// Fetch the caller's userinfo from the OIDC endpoint using their bearer
-    /// token. Kanidm does not include `groups` in the access token, so this is
-    /// where group membership comes from. Results are cached per token for
-    /// `USERINFO_CACHE_TTL` to avoid a round-trip on every request.
     async fn fetch_userinfo(&self, token: &str) -> Result<Arc<UserInfo>, StatusCode> {
         if let Some(userinfo) = self.userinfo.get(token).await {
             return Ok(userinfo);
@@ -193,8 +178,6 @@ impl OAuthValidator {
             })
     }
 
-    /// Map the userinfo group claim through `group_scopes`, flattening and
-    /// de-duplicating the granted scope strings.
     fn scopes_for(&self, userinfo: &UserInfo) -> Vec<String> {
         let groups = userinfo
             .extra
@@ -214,8 +197,6 @@ impl OAuthValidator {
     }
 }
 
-/// Kanidm uses RSA (RS256) signing keys by default but may rotate to EC; let
-/// `jsonwebtoken` derive the key from whatever the JWK declares.
 fn decoding_key(jwk: &Jwk) -> Result<VerifyingKey, jsonwebtoken::errors::Error> {
     let key = DecodingKey::from_jwk(jwk)?;
     let alg = jwk_algorithm(jwk)?;
@@ -254,8 +235,18 @@ mod tests {
                 audience: "home-gateway".into(),
                 groups_claim: "groups".into(),
                 group_scopes,
+                cache: crate::settings::OAuthCacheSettings {
+                    keys: crate::settings::CacheSettings {
+                        capacity: 32,
+                        ttl: chrono::TimeDelta::hours(1),
+                    },
+                    userinfo: crate::settings::CacheSettings {
+                        capacity: 256,
+                        ttl: chrono::TimeDelta::minutes(15),
+                    },
+                },
             },
-            http: get_traced_http_client().unwrap(),
+            http: get_traced_http_client(std::time::Duration::from_secs(30)).unwrap(),
             keys: Cache::builder().build(),
             userinfo: Cache::builder().build(),
         }

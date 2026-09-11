@@ -30,7 +30,7 @@ pub struct Jellyfin {
 }
 
 impl Jellyfin {
-    pub fn new(settings: &JellyfinSettings) -> Option<Self> {
+    pub fn new(settings: &JellyfinSettings, timeout: std::time::Duration) -> Option<Self> {
         let base_url = settings.url.trim().trim_end_matches('/').to_owned();
         if base_url.is_empty() {
             tracing::warn!("jellyfin url is empty; disabling integration");
@@ -47,7 +47,7 @@ impl Jellyfin {
             }
         };
 
-        let client = match get_traced_http_client() {
+        let client = match get_traced_http_client(timeout) {
             Ok(client) => client,
             Err(e) => {
                 tracing::error!("failed to build jellyfin http client: {e}");

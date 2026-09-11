@@ -83,7 +83,10 @@ pub fn precis_emoji(code: &str) -> String {
 }
 
 impl WillyWeather {
-    pub fn new(settings: &WillyWeatherSettings) -> Result<Self, WillyWeatherError> {
+    pub fn new(
+        settings: &WillyWeatherSettings,
+        timeout: std::time::Duration,
+    ) -> Result<Self, WillyWeatherError> {
         tracing::info!(
             "willyweather integration enabled for {} location(s)",
             settings.locations.len()
@@ -91,7 +94,7 @@ impl WillyWeather {
 
         Ok(Self {
             api_key: settings.api_key.clone().unwrap_or_default(),
-            client: get_traced_http_client()?,
+            client: get_traced_http_client(timeout)?,
         })
     }
 

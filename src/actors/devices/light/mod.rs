@@ -639,13 +639,16 @@ impl LightHandler {
 
 impl DeviceHandler for LightHandler {
     const NAME: &'static str = LightHandler::NAME;
-    const WORKERS: usize = 1;
 
     type Message = LightHandlerMessage;
     type State = ();
 
     fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
+    }
+
+    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
+        workers.light
     }
 
     async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {

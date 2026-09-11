@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::mode::Mode;
 use crate::repo::WorkflowRepo;
 use crate::repo::workflow::NewWorkflowRun;
+use crate::settings::CacheSettings;
 
 #[derive(Clone)]
 pub struct WorkflowManager {
@@ -24,10 +25,10 @@ pub struct WorkflowRun {
 }
 
 impl WorkflowManager {
-    pub fn new(db: Pool<Postgres>) -> Self {
+    pub fn new(db: Pool<Postgres>, enabled_cache: &CacheSettings) -> Self {
         let enabled_cache = Cache::builder()
-            .max_capacity(1024)
-            .time_to_live(Duration::from_secs(300))
+            .max_capacity(enabled_cache.capacity)
+            .time_to_live(enabled_cache.ttl())
             .build();
 
         Self {

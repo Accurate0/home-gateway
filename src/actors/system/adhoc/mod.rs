@@ -13,8 +13,6 @@ use crate::state::AppState;
 
 use subscriber::AdhocSubscriber;
 
-const CRON_JITTER_SECS: u64 = 60;
-
 pub enum AdhocTaskActorMessage {
     Recheck,
     CronFire { name: &'static str },
@@ -32,10 +30,12 @@ impl AdhocTaskActor {
     fn schedule_next(
         myself: &ractor::ActorRef<AdhocTaskActorMessage>,
         task: &'static dyn AdhocCronTask,
+        max_jitter: Duration,
     ) {
         match task.schedule().time_until_next() {
             Ok(delay) => {
-                let jitter = Duration::from_secs(rand::rng().random_range(0..=CRON_JITTER_SECS));
+                let jitter =
+                    Duration::from_secs(rand::rng().random_range(0..=max_jitter.as_secs()));
                 let name = task.name();
 
                 tracing::debug!(
@@ -94,7 +94,11 @@ impl Actor for AdhocTaskActor {
                 task.name(),
                 task.schedule().expression()
             );
-            Self::schedule_next(&myself, task);
+            Self::schedule_next(
+                &myself,
+                task,
+                self.shared_actor_state.settings.adhoc.cron_jitter(),
+            );
         }
 
         let _ = myself.cast(AdhocTaskActorMessage::Recheck);
@@ -126,7 +130,11 @@ impl Actor for AdhocTaskActor {
                 match cron_registry().into_iter().find(|task| task.name() == name) {
                     Some(task) => {
                         run_cron(&self.shared_actor_state, task, false).await;
-                        Self::schedule_next(&myself, task);
+                        Self::schedule_next(
+                            &myself,
+                            task,
+                            self.shared_actor_state.settings.adhoc.cron_jitter(),
+                        );
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} fired but is no longer registered");

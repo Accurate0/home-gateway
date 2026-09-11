@@ -1,18 +1,19 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use crate::auth::api_types::{ApiKeyInfo, CreatedKey};
+use crate::settings::CacheSettings;
 use chrono::{DateTime, Utc};
 use moka::future::Cache;
 use rand::{RngExt, distr::Alphanumeric};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use super::{OAuthValidator, hash_key};
+use axum::http::StatusCode;
+
+use super::{AuthContext, OAuthValidator, hash_key};
 
 const KEY_PREFIX: &str = "hg_";
 const KEY_RANDOM_LEN: usize = 40;
-const CACHE_CAPACITY: u64 = 1024;
-const CACHE_TTL: Duration = Duration::from_secs(3600);
 
 #[derive(Debug, Clone)]
 pub struct CachedKey {
@@ -27,18 +28,27 @@ pub struct CachedKey {
 pub struct AuthManager {
     db: Pool<Postgres>,
     cache: Cache<String, Option<Arc<CachedKey>>>,
-    /// OAuth (OIDC) validator, present when the `oauth` config section is set.
-    pub oauth: Option<Arc<OAuthValidator>>,
+    oauth: Option<Arc<OAuthValidator>>,
 }
 
 impl AuthManager {
-    pub fn new(db: Pool<Postgres>, oauth: Option<Arc<OAuthValidator>>) -> Self {
+    pub fn new(
+        db: Pool<Postgres>,
+        oauth: Option<Arc<OAuthValidator>>,
+        cache: &CacheSettings,
+    ) -> Self {
         let cache = Cache::builder()
-            .max_capacity(CACHE_CAPACITY)
-            .time_to_live(CACHE_TTL)
+            .max_capacity(cache.capacity)
+            .time_to_live(cache.ttl())
             .build();
 
         Self { db, cache, oauth }
+    }
+
+    pub async fn validate_oauth(&self, token: &str) -> Option<Result<AuthContext, StatusCode>> {
+        let oauth = self.oauth.as_ref()?;
+
+        Some(oauth.validate(token).await)
     }
 
     pub async fn lookup_by_hash(

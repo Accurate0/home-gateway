@@ -27,7 +27,10 @@ pub struct HomeAssistant {
 }
 
 impl HomeAssistant {
-    pub fn from_settings(settings: &HomeAssistantSettings) -> Option<Self> {
+    pub fn from_settings(
+        settings: &HomeAssistantSettings,
+        timeout: std::time::Duration,
+    ) -> Option<Self> {
         let base_url = match settings.url.as_deref() {
             Some(url) if !url.trim().is_empty() => url.trim().trim_end_matches('/').to_owned(),
             _ => return None,
@@ -43,7 +46,7 @@ impl HomeAssistant {
             }
         };
 
-        let client = match get_traced_http_client() {
+        let client = match get_traced_http_client(timeout) {
             Ok(client) => client,
             Err(e) => {
                 tracing::error!("failed to build home assistant http client: {e}");

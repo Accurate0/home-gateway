@@ -8,7 +8,7 @@ use crate::{
     },
     db::DoorState,
     device_registry::{Capability, DeviceRegistry},
-    graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
+    graphql::objects::entity_object::{last_seen_for, query_timeout},
 };
 
 pub struct DoorEntity {
@@ -65,9 +65,9 @@ impl DoorEntity {
 
     /// Whether the door is open. Nullable so an unreachable door-events actor
     /// reports the error against this field without nulling the whole entity.
-    async fn open(&self) -> async_graphql::Result<Option<bool>> {
+    async fn open(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<bool>> {
         let state: Option<DoorState> =
-            rpc::query(DerivedDoorEvents::NAME, QUERY_TIMEOUT, |reply| {
+            rpc::query(DerivedDoorEvents::NAME, query_timeout(ctx)?, |reply| {
                 DoorEventsMessage::QueryState {
                     ieee_addr: self.address.clone(),
                     reply,

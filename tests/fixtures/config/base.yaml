@@ -4,13 +4,55 @@ version: "1"
 # settings to resolve without one.
 api_key: ""
 database_url: postgres://postgres:test@127.0.0.1:5432/home
-http_listen_addr: "[::]:8000"
-mqtt_url: 127.0.0.1
-mqtt_port: 1883
-mqtt_username: ""
-mqtt_password: ""
-unifi_webhook_secret: test-unifi-secret
-android_app_webhook_secret: test-android-secret
+mqtt:
+  url: 127.0.0.1
+  port: 1883
+  username: ""
+  password: ""
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect:
+    min: 1s
+    max: 60s
+
+database:
+  min_connections: 0
+  max_connections: 10
+  slow_statement_threshold: 6s
+
+http:
+  listen_address: "[::]:8000"
+  clients:
+    default:
+      timeout: 30s
+
+graphql:
+  max_depth: 20
+  max_complexity: 5000
+  query_timeout: 10s
+
+actors:
+  restart:
+    backoff_base: 1s
+    backoff_max: 60s
+    healthy_after: 5m
+  workers:
+    mqtt_ingest: 5
+    control_switch: 3
+    door_sensor: 1
+    environment_sensor: 1
+    light: 1
+    media_player: 1
+    plant_sensor: 1
+    presence_sensor: 1
+    robot_vacuum: 2
+    smart_switch: 3
+
+tracing:
+  sampling:
+    default: 1.0
+    spans: {}
 
 s3:
   bucket: home-gateway-bucket
@@ -31,6 +73,10 @@ sun:
 
 workflow:
   workers: 12
+  enabled_cache:
+    capacity: 1024
+    ttl: 5m
+  condition_timeout: 10s
   timers:
     catch_up_within: 10m
 
@@ -50,11 +96,15 @@ watchdog:
   check_interval: 5m
   realert_after: 6h
 
-api_keys:
-  - name: test-reader
-    scopes: ["epd:read"]
-  - name: test-admin
-    scopes: ["**:*"]
+auth:
+  api_key_cache:
+    capacity: 1024
+    ttl: 1h
+  api_keys:
+    - name: test-reader
+      scopes: ["epd:read"]
+    - name: test-admin
+      scopes: ["**:*"]
 
 woolworths:
   refresh: 1h
@@ -73,10 +123,22 @@ willyweather:
   locations:
     perth: "14576"
 
+home_assistant:
+  websocket:
+    keep_alive: 30s
+    silence_timeout: 90s
+    reconnect_delay: 5s
+
 solar:
   refresh: 1m
 
 eink_display:
+  prepare_render_timeout: 15s
+  defaults:
+    reddit_limit: 25
+    settle: 10s
+    fallback_refresh: 15m
+    min_refresh: 60s
   views:
     home:
       query: view=home
@@ -97,6 +159,9 @@ eink_display:
 
 adhoc:
   recheck_interval: 15m
+  task_timeout: 5m
+  cron_jitter: 60s
+  batch_size: 10000
 
 vacation:
   enabled: true
@@ -107,5 +172,5 @@ vacation:
   seed: 20260908
 
 zigbee_models: !include zigbee_models.yaml
-devices: !include devices.yaml
+devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

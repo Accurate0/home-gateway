@@ -30,11 +30,14 @@ pub struct FuelWatch {
 }
 
 impl FuelWatch {
-    pub fn new(settings: &FuelWatchSettings) -> Result<Self, FuelWatchError> {
+    pub fn new(
+        settings: &FuelWatchSettings,
+        timeout: std::time::Duration,
+    ) -> Result<Self, FuelWatchError> {
         tracing::info!("fuelwatch integration enabled for {}", settings.postcode);
 
         Ok(Self {
-            client: get_traced_http_client()?,
+            client: get_traced_http_client(timeout)?,
         })
     }
 

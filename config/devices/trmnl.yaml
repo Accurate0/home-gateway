@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: fridge-trmnl
+  room: kitchen
+  transport: trmnl
+  address: "653VZN"
+  roles:
+    - type: trmnl
+      config:
+        name: Fridge TRMNL
+    - type: battery

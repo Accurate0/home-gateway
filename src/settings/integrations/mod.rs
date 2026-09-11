@@ -1,8 +1,12 @@
 pub mod fuelwatch;
 pub mod home_assistant;
+pub mod home_assistant_websocket;
 pub mod jellyfin;
+pub mod jellyfin_reconnect;
+pub mod jellyfin_websocket;
 pub mod s3;
 pub mod solar;
 pub mod transperth;
+pub mod transperth_cache;
 pub mod willyweather;
 pub mod woolworths;

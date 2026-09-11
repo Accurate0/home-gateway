@@ -7,6 +7,7 @@ use crate::{
     event_bus::{FeatureFlagState, Recipient, Subscription},
     state::AppState,
     tracing_flag,
+    tracing_setup::SampleRatios,
 };
 
 use subscriber::SamplingSubscriber;
@@ -63,8 +64,11 @@ impl Actor for SamplingActor {
                     state.as_str()
                 );
 
+                let baseline =
+                    SampleRatios::from(&self.shared_actor_state.settings.tracing.sampling);
                 let ratios =
-                    tracing_flag::evaluate(&self.shared_actor_state.feature_flag_client).await;
+                    tracing_flag::evaluate(&self.shared_actor_state.feature_flag_client, &baseline)
+                        .await;
 
                 self.shared_actor_state.sampling.replace(ratios);
             }

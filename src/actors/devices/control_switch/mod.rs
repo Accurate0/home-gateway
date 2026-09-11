@@ -62,13 +62,16 @@ impl ControlSwitchHandler {
 
 impl DeviceHandler for ControlSwitchHandler {
     const NAME: &'static str = ControlSwitchHandler::NAME;
-    const WORKERS: usize = 3;
 
     type Message = ControlSwitchMessage;
     type State = ();
 
     fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
+    }
+
+    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
+        workers.control_switch
     }
 
     async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {

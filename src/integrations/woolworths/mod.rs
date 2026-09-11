@@ -33,7 +33,7 @@ impl Woolworths {
     const BASE_URL: &str = "https://www.woolworths.com.au";
     const PRODUCT_SUFFIX: &str = "apis/ui/product/detail";
 
-    pub fn new(db: Pool<Postgres>) -> Self {
+    pub fn new(db: Pool<Postgres>, timeout: std::time::Duration) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(
             http::header::USER_AGENT,
@@ -48,7 +48,7 @@ impl Woolworths {
                 reqwest::ClientBuilder::new()
                     .default_headers(headers)
                     .cookie_store(true)
-                    .timeout(crate::http::REQUEST_TIMEOUT)
+                    .timeout(timeout)
                     .build()
                     .unwrap(),
             )

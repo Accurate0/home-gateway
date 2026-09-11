@@ -127,13 +127,16 @@ impl DoorSensorHandler {
 
 impl DeviceHandler for DoorSensorHandler {
     const NAME: &'static str = DoorSensorHandler::NAME;
-    const WORKERS: usize = 1;
 
     type Message = Message;
     type State = ();
 
     fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
+    }
+
+    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
+        workers.door_sensor
     }
 
     async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {

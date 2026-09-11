@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: control-switch
+  transport: zigbee
+  address: "0x64028ffffe638218"
+  model: ikea_e2001
+  roles:
+    - type: control_switch
+    - type: battery
+
+- id: small-switch
+  transport: zigbee
+  address: "0x00158d008bbe0316"
+  model: aqara_wxkg11lm
+  roles:
+    - type: control_switch
+    - type: battery

@@ -11,8 +11,6 @@ use super::registry;
 use super::task::{AdhocTask, checksum};
 use crate::state::AppState;
 
-const TASK_TIMEOUT: Duration = Duration::from_secs(300);
-
 enum Step {
     Continue,
     Park,
@@ -203,7 +201,7 @@ async fn execute_cron(
         let mut ctx = AdhocTaskContext::new(state, &mut tx);
 
         match tokio::time::timeout(
-            TASK_TIMEOUT,
+            state.settings.adhoc.task_timeout(),
             AssertUnwindSafe(task.run(&mut ctx)).catch_unwind(),
         )
         .await
@@ -248,7 +246,7 @@ async fn execute(
         let mut ctx = AdhocTaskContext::new(state, &mut tx);
 
         match tokio::time::timeout(
-            TASK_TIMEOUT,
+            state.settings.adhoc.task_timeout(),
             AssertUnwindSafe(task.run(&mut ctx)).catch_unwind(),
         )
         .await

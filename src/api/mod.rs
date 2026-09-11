@@ -49,9 +49,6 @@ use crate::routes::{
 };
 use crate::state::{ApiState, AppState};
 
-const GRAPHQL_MAX_DEPTH: usize = 20;
-const GRAPHQL_MAX_COMPLEXITY: usize = 5000;
-
 async fn log_request(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
     if path.contains("/health") {
@@ -144,8 +141,8 @@ pub fn build_schema(state: &AppState) -> FinalSchema {
     .data(state.handles.expect::<WorkflowManager>().clone())
     .data(state.repos.clone())
     .extension(crate::graphql_tracing::Tracing)
-    .limit_depth(GRAPHQL_MAX_DEPTH)
-    .limit_complexity(GRAPHQL_MAX_COMPLEXITY)
+    .limit_depth(state.settings.graphql.max_depth)
+    .limit_complexity(state.settings.graphql.max_complexity)
     .finish()
 }
 

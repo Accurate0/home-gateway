@@ -199,6 +199,10 @@ impl DeviceHandler for MediaPlayerHandler {
         Self { shared_actor_state }
     }
 
+    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
+        workers.media_player
+    }
+
     async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
         match message {
             Message::HomeAssistant(update) => self.handle_update(update, state).await,

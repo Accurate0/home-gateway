@@ -131,17 +131,19 @@ fn esphome_environment_without_entities_is_rejected() {
     );
 }
 
-/// Rebuilds the fixture config with `devices.yaml` swapped out, so the
+/// Rebuilds the fixture config with `devices/test.yaml` swapped out, so the
 /// startup validation errors can be asserted without a whole config tree.
 fn build_with_devices(devices_yaml: &str) -> String {
     let dir = tempdir();
     std::fs::create_dir_all(dir.join("workflows")).unwrap();
+    std::fs::create_dir_all(dir.join("devices")).unwrap();
 
     for file in ["base.yaml", "zigbee_models.yaml"] {
         std::fs::copy(Path::new(FIXTURE_CONFIG).join(file), dir.join(file)).unwrap();
     }
     std::fs::write(dir.join("workflows/index.yaml"), "[]\n").unwrap();
-    std::fs::write(dir.join("devices.yaml"), devices_yaml).unwrap();
+    std::fs::write(dir.join("devices/index.yaml"), "- !include test.yaml\n").unwrap();
+    std::fs::write(dir.join("devices/test.yaml"), devices_yaml).unwrap();
 
     let error = SettingsContainer::load_from_dir(&dir)
         .err()

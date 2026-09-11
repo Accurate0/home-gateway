@@ -140,6 +140,10 @@ impl DeviceHandler for PresenceSensorHandler {
         Self { shared_actor_state }
     }
 
+    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
+        workers.presence_sensor
+    }
+
     async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
         Self::handle(self, message, state).await
     }

@@ -33,8 +33,14 @@ impl AdhocCronTask for RefreshTransperthTimetable {
             return Ok(0);
         };
 
-        let transperth = Transperth::new(&settings)
-            .map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
+        let transperth = Transperth::new(
+            &settings,
+            ctx.settings
+                .http
+                .clients
+                .timeout_for(crate::settings::HttpClientKind::Transperth),
+        )
+        .map_err(|error| AdhocTaskError::Failed(error.to_string()))?;
 
         let stored = ctx
             .s3

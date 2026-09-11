@@ -1,8 +1,5 @@
 use crate::actors::system::rpc;
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, time::Instant};
 
 use futures_util::{SinkExt, StreamExt};
 use ractor::Actor;
@@ -30,17 +27,17 @@ impl HomeAssistantActor {
     const SUBSCRIBE_ID: u64 = 1;
     const GET_STATES_ID: u64 = 2;
 
-    const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(30);
-    const SILENCE_TIMEOUT: Duration = Duration::from_secs(90);
-
     async fn run(&self, home_assistant: &HomeAssistant) -> Result<(), anyhow::Error> {
+        let websocket = self.shared_actor_state.settings.home_assistant.websocket;
+        let silence_timeout = websocket.silence_timeout();
+
         let url = home_assistant.ws_url();
         tracing::info!("connecting to home assistant websocket at {url}");
         let (socket, _) = tokio_tungstenite::connect_async(&url).await?;
         let (mut write, mut read) = socket.split();
         let mut last_latest_state_write: HashMap<String, Instant> = HashMap::new();
 
-        let mut keep_alive = tokio::time::interval(Self::KEEP_ALIVE_INTERVAL);
+        let mut keep_alive = tokio::time::interval(websocket.keep_alive());
         keep_alive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         keep_alive.tick().await;
 
@@ -50,7 +47,7 @@ impl HomeAssistantActor {
                     write.send(WsMessage::Ping(Vec::new().into())).await?;
                     continue;
                 }
-                message = tokio::time::timeout(Self::SILENCE_TIMEOUT, read.next()) => message,
+                message = tokio::time::timeout(silence_timeout, read.next()) => message,
             };
 
             let message = match message {
@@ -58,8 +55,7 @@ impl HomeAssistantActor {
                 Ok(None) => break,
                 Err(_) => {
                     return Err(anyhow::anyhow!(
-                        "no home assistant message for {:?}, assuming the connection is dead",
-                        Self::SILENCE_TIMEOUT
+                        "no home assistant message for {silence_timeout:?}, assuming the connection is dead"
                     ));
                 }
             };
@@ -318,13 +314,20 @@ impl Actor for HomeAssistantActor {
             return Err(anyhow::anyhow!("home assistant is not configured").into());
         };
 
+        let reconnect_delay = self
+            .shared_actor_state
+            .settings
+            .home_assistant
+            .websocket
+            .reconnect_delay();
+
         let shared_actor_state = self.shared_actor_state.clone();
         tokio::spawn(async move {
             let actor = HomeAssistantActor { shared_actor_state };
             if let Err(e) = actor.run(&home_assistant).await {
                 tracing::error!("home assistant websocket error: {e}");
             }
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(reconnect_delay).await;
             myself.stop(Some("home assistant websocket disconnected".to_owned()));
         });
 

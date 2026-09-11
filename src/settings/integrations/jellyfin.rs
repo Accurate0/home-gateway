@@ -3,6 +3,8 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use super::jellyfin_websocket::JellyfinWebsocketSettings;
+
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct JellyfinSettings {
     pub url: String,
@@ -11,4 +13,5 @@ pub struct JellyfinSettings {
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     pub poll_interval: TimeDelta,
+    pub websocket: JellyfinWebsocketSettings,
 }

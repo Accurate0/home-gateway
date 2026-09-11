@@ -7,7 +7,7 @@ use crate::{
         system::rpc,
     },
     device_registry::{Capability, DeviceRegistry},
-    graphql::objects::entity_object::{QUERY_TIMEOUT, last_seen_for},
+    graphql::objects::entity_object::{last_seen_for, query_timeout},
 };
 
 pub struct PresenceEntity {
@@ -74,9 +74,12 @@ impl PresenceEntity {
 
     /// Whether presence is detected. Nullable so an unreachable presence actor
     /// reports the error against this field without nulling the whole entity.
-    async fn present(&self) -> async_graphql::Result<Option<bool>> {
+    async fn present(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<bool>> {
         let present: Option<bool> =
-            rpc::query_factory(PresenceSensorHandler::NAME, QUERY_TIMEOUT, |reply| {
+            rpc::query_factory(PresenceSensorHandler::NAME, query_timeout(ctx)?, |reply| {
                 PresenceMessage::QueryLatest {
                     sensor: self.address.clone(),
                     reply,

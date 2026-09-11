@@ -25,10 +25,6 @@ pub const GTFS_URL: &str =
 pub const USER_AGENT: &str = "okhttp/4.9.2";
 
 const EARLY_HOURS: u32 = 5;
-const ROUTE_CAPACITY: u64 = 32;
-const ROUTE_TTL_REFRESHES: i32 = 4;
-const PTA_TIMETABLE_CAPACITY: u64 = 16;
-const PTA_TIMETABLE_TTL: std::time::Duration = std::time::Duration::from_secs(6 * 3600);
 
 #[derive(thiserror::Error, Debug)]
 pub enum TransperthError {
@@ -59,8 +55,6 @@ pub enum TransperthError {
     MissingTimetable,
     #[error("unknown transperth routes id: {0}")]
     UnknownRoute(String),
-    #[error("transperth refresh intervals must be positive")]
-    InvalidRefresh,
 }
 
 pub struct GtfsArchive {
@@ -115,7 +109,10 @@ pub struct Transperth {
 }
 
 impl Transperth {
-    pub fn new(settings: &TransperthSettings) -> Result<Self, TransperthError> {
+    pub fn new(
+        settings: &TransperthSettings,
+        timeout: std::time::Duration,
+    ) -> Result<Self, TransperthError> {
         let realtime_api_key = settings
             .realtime_api_key
             .as_deref()
@@ -132,14 +129,8 @@ impl Transperth {
             settings.routes.len()
         );
 
-        let route_ttl = settings
-            .refresh_off_peak
-            .checked_mul(ROUTE_TTL_REFRESHES)
-            .and_then(|ttl| ttl.to_std().ok())
-            .ok_or(TransperthError::InvalidRefresh)?;
-
         Ok(Self {
-            client: get_traced_http_client()?,
+            client: get_traced_http_client(timeout)?,
             realtime_api_key,
             reference_data_api_key: settings
                 .reference_data_api_key
@@ -151,12 +142,12 @@ impl Transperth {
             horizon: settings.horizon,
             index: Arc::new(ArcSwap::from_pointee(None)),
             route_departures: Cache::builder()
-                .max_capacity(ROUTE_CAPACITY)
-                .time_to_live(route_ttl)
+                .max_capacity(settings.cache.routes.capacity)
+                .time_to_live(settings.cache.routes.ttl())
                 .build(),
             pta_timetables: Cache::builder()
-                .max_capacity(PTA_TIMETABLE_CAPACITY)
-                .time_to_live(PTA_TIMETABLE_TTL)
+                .max_capacity(settings.cache.timetables.capacity)
+                .time_to_live(settings.cache.timetables.ttl())
                 .build(),
         })
     }

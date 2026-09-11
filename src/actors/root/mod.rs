@@ -6,12 +6,10 @@ use ractor::Actor;
 
 use crate::actors::health::Lifecycle;
 use crate::actors::manifest::{ACTORS, Spawned, find};
+use crate::settings::RestartSettings;
 use crate::state::AppState;
 
-const RESTART_BACKOFF_BASE: Duration = Duration::from_secs(1);
-const RESTART_BACKOFF_MAX: Duration = Duration::from_secs(60);
 const RESTART_BACKOFF_MAX_SHIFT: u32 = 16;
-const HEALTHY_AFTER: Duration = Duration::from_secs(300);
 
 pub enum RootMessage {
     Restart(String),
@@ -57,11 +55,16 @@ impl RootSupervisor {
             .record(spec.name, lifecycle);
     }
 
+    fn restart_settings(&self) -> &RestartSettings {
+        &self.shared_actor_state.settings.actors.restart
+    }
+
     fn attempts_for(&self, state: &mut RootState, name: &str) -> u32 {
+        let healthy_after = self.restart_settings().healthy_after();
         let healthy = state
             .started_at
             .get(name)
-            .is_some_and(|started| started.elapsed() >= HEALTHY_AFTER);
+            .is_some_and(|started| started.elapsed() >= healthy_after);
 
         if healthy {
             state.attempts.remove(name);
@@ -136,7 +139,7 @@ impl Actor for RootSupervisor {
                 };
 
                 let attempts = self.attempts_for(state, &name);
-                let backoff = restart_backoff(attempts);
+                let backoff = restart_backoff(attempts, self.restart_settings());
 
                 self.record_health(&name, Lifecycle::Unavailable);
                 crate::metrics::record_actor_restart(&name, "failed");
@@ -174,7 +177,7 @@ impl Actor for RootSupervisor {
                     }
                     Err(e) => {
                         let attempts = self.attempts_for(state, &name);
-                        let backoff = restart_backoff(attempts);
+                        let backoff = restart_backoff(attempts, self.restart_settings());
 
                         crate::metrics::record_actor_restart(&name, "respawn-failed");
                         tracing::error!(
@@ -194,30 +197,44 @@ impl Actor for RootSupervisor {
     }
 }
 
-fn restart_backoff(attempts: u32) -> Duration {
-    RESTART_BACKOFF_BASE
+fn restart_backoff(attempts: u32, restart: &RestartSettings) -> Duration {
+    restart
+        .backoff_base()
         .saturating_mul(
             2u32.saturating_pow(attempts.saturating_sub(1).min(RESTART_BACKOFF_MAX_SHIFT)),
         )
-        .min(RESTART_BACKOFF_MAX)
+        .min(restart.backoff_max())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeDelta;
+
+    fn restart() -> RestartSettings {
+        RestartSettings {
+            backoff_base: TimeDelta::seconds(1),
+            backoff_max: TimeDelta::seconds(60),
+            healthy_after: TimeDelta::minutes(5),
+        }
+    }
 
     #[test]
     fn restart_backoff_grows_and_saturates() {
-        assert_eq!(restart_backoff(1), RESTART_BACKOFF_BASE);
-        assert_eq!(restart_backoff(2), RESTART_BACKOFF_BASE * 2);
-        assert_eq!(restart_backoff(3), RESTART_BACKOFF_BASE * 4);
-        assert_eq!(restart_backoff(u32::MAX), RESTART_BACKOFF_MAX);
+        let restart = restart();
+
+        assert_eq!(restart_backoff(1, &restart), restart.backoff_base());
+        assert_eq!(restart_backoff(2, &restart), restart.backoff_base() * 2);
+        assert_eq!(restart_backoff(3, &restart), restart.backoff_base() * 4);
+        assert_eq!(restart_backoff(u32::MAX, &restart), restart.backoff_max());
     }
 
     #[test]
     fn restart_backoff_never_exceeds_the_cap() {
+        let restart = restart();
+
         for attempts in 1..64 {
-            assert!(restart_backoff(attempts) <= RESTART_BACKOFF_MAX);
+            assert!(restart_backoff(attempts, &restart) <= restart.backoff_max());
         }
     }
 }

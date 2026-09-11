@@ -24,8 +24,6 @@ pub use crate::eink::panel::PartialWindow;
 
 const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 
-const PREPARE_RENDER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
-
 #[derive(Debug, Serialize, Deserialize, async_graphql::SimpleObject)]
 #[graphql(rename_fields = "camelCase")]
 pub struct EpdConfig {
@@ -175,7 +173,7 @@ pub async fn config(
     if !registered {
         tracing::warn!(
             device_id = %request.device_id,
-            "epd config request from unregistered display, add it to devices.yaml"
+            "epd config request from unregistered display, add it to config/devices/eink_display.yaml"
         );
     }
 
@@ -183,7 +181,7 @@ pub async fn config(
 
     let prepared = crate::actors::system::rpc::query(
         EInkDisplayActor::NAME,
-        PREPARE_RENDER_TIMEOUT,
+        state.settings.eink_display.prepare_render_timeout(),
         |reply| EInkDisplayMessage::PrepareRender {
             device_id: request.device_id.clone(),
             reply,

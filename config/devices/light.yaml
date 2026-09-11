@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: closet-light
+  room: bedroom
+  transport: zigbee
+  address: "0x54ef441000d4f05c"
+  model: aqara_t1
+  roles:
+    - type: light
+      config: { name: Closet Light }
+      capabilities: [brightness, colour_temp]
+
+- id: table-lamp-bedroom
+  room: bedroom
+  transport: zigbee
+  address: "0x001788010381ef5d"
+  model: phillips_9290012573a
+  roles:
+    - type: light
+      config: { name: Bedroom Table Lamp }
+      capabilities: [brightness, colour_temp, rgb]
+
+- id: floor-lamp-living-room
+  room: living-room
+  transport: zigbee
+  address: "0x94a081fffe2eedc0"
+  model: ikea_led2201g8
+  roles:
+    - type: light
+      config: { name: Living Room Floor Lamp }
+      capabilities: [brightness, colour_temp]

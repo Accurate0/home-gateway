@@ -1,11 +1,20 @@
+use chrono::TimeDelta;
 use home_gateway::auth::{AuthManager, hash_key};
+use home_gateway::settings::CacheSettings;
 use pretty_assertions::assert_eq;
 use uuid::Uuid;
 
 use crate::common::db::fresh_database;
 
 async fn manager() -> AuthManager {
-    AuthManager::new(fresh_database().await.pool, None)
+    AuthManager::new(
+        fresh_database().await.pool,
+        None,
+        &CacheSettings {
+            capacity: 1024,
+            ttl: TimeDelta::hours(1),
+        },
+    )
 }
 
 #[tokio::test]

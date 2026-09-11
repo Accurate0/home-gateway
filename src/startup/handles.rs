@@ -17,6 +17,7 @@ use crate::integrations::{
     transperth::Transperth,
     willyweather::WillyWeather,
 };
+use crate::settings::HttpClientKind;
 use crate::state::HandleRegistry;
 
 use super::Storage;
@@ -33,15 +34,11 @@ pub async fn build(
     let settings = &storage.settings;
     let pool = &storage.pool;
 
-    let workflow_manager = WorkflowManager::new(pool.clone());
+    let http = &settings.http.clients;
 
-    let (mqtt_client, mqtt) = Mqtt::new(
-        settings.mqtt_url.clone(),
-        settings.mqtt_port,
-        settings.mqtt_username.clone(),
-        settings.mqtt_password.clone(),
-    )
-    .await?;
+    let workflow_manager = WorkflowManager::new(pool.clone(), &settings.workflow.enabled_cache);
+
+    let (mqtt_client, mqtt) = Mqtt::new(&settings.mqtt).await?;
 
     let s3 = S3::new(
         &settings.s3.bucket,
@@ -58,24 +55,33 @@ pub async fn build(
         Reddit::new(),
     );
 
-    let home_assistant = HomeAssistant::from_settings(&settings.home_assistant);
+    let home_assistant = HomeAssistant::from_settings(
+        &settings.home_assistant,
+        http.timeout_for(HttpClientKind::HomeAssistant),
+    );
 
-    let jellyfin = settings.jellyfin.as_ref().and_then(Jellyfin::new);
+    let jellyfin = settings
+        .jellyfin
+        .as_ref()
+        .and_then(|jellyfin| Jellyfin::new(jellyfin, http.timeout_for(HttpClientKind::Jellyfin)));
 
     let transperth = settings
         .transperth
         .as_ref()
-        .map(Transperth::new)
+        .map(|transperth| Transperth::new(transperth, http.timeout_for(HttpClientKind::Transperth)))
         .transpose()?;
 
-    let http_client = get_traced_http_client()?;
+    let http_client = get_traced_http_client(http.timeout())?;
 
-    let willyweather = WillyWeather::new(&settings.willyweather)?;
+    let willyweather = WillyWeather::new(
+        &settings.willyweather,
+        http.timeout_for(HttpClientKind::WillyWeather),
+    )?;
 
     let fuelwatch = settings
         .fuelwatch
         .as_ref()
-        .map(FuelWatch::new)
+        .map(|fuelwatch| FuelWatch::new(fuelwatch, http.timeout_for(HttpClientKind::FuelWatch)))
         .transpose()?;
 
     let goodwe = settings
@@ -84,9 +90,12 @@ pub async fn build(
         .and_then(|solar| GoodWeSemsAPI::new(pool.clone(), solar));
 
     let oauth = settings
+        .auth
         .oauth
         .clone()
-        .map(|oauth| OAuthValidator::new(oauth).map(Arc::new))
+        .map(|oauth| {
+            OAuthValidator::new(oauth, http.timeout_for(HttpClientKind::OAuth)).map(Arc::new)
+        })
         .transpose()?;
 
     let registry = HandleRegistry::builder()
@@ -95,7 +104,11 @@ pub async fn build(
         .insert(eink)
         .insert(workflow_manager)
         .insert(ActorHealthRegistry::new())
-        .insert(AuthManager::new(pool.clone(), oauth))
+        .insert(AuthManager::new(
+            pool.clone(),
+            oauth,
+            &settings.auth.api_key_cache,
+        ))
         .insert(willyweather)
         .insert(http_client)
         .insert_optional(home_assistant)

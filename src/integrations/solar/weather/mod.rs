@@ -30,9 +30,9 @@ impl WeatherAPI {
     pub const PERTH_NAME: &str = "per";
     pub const JANDAKOT_GEOCODE: &str = "qd63he";
 
-    pub fn new() -> Result<Self, WeatherAPIError> {
+    pub fn new(timeout: std::time::Duration) -> Result<Self, WeatherAPIError> {
         Ok(Self {
-            http: get_traced_http_client()?,
+            http: get_traced_http_client(timeout)?,
         })
     }
 

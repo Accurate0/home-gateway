@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: hallway-plant
+  room: hallway
+  transport: esphome
+  address: apollo-plt-1-hallway
+  roles:
+    - type: environment
+      config:
+        id: hallway-plant
+        name: Hallway Plant
+        entities:
+          temperature: air_temperature
+          humidity: air_humidity
+          lux: ltr390_light
+          uv_index: ltr390_uv_index
+      capabilities: [temperature, humidity, lux, uv_index]
+    - type: plant
+      config: { id: hallway-plant, entities: [soil_moisture] }

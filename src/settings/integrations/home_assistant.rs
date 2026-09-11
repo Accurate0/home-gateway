@@ -2,6 +2,7 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use super::home_assistant_websocket::HomeAssistantWebsocketSettings;
 use crate::{settings::yes, timedelta_format::time_delta_from_str};
 
 pub(crate) fn no_throttle() -> TimeDelta {
@@ -31,7 +32,7 @@ impl Default for EntitySettings {
     }
 }
 
-#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct HomeAssistantSettings {
     #[serde(default)]
     pub url: Option<String>,
@@ -39,6 +40,7 @@ pub struct HomeAssistantSettings {
     pub token: Option<String>,
     #[serde(default)]
     pub entities: Vec<EntitySettings>,
+    pub websocket: HomeAssistantWebsocketSettings,
 }
 
 impl HomeAssistantSettings {
@@ -70,6 +72,11 @@ mod tests {
         HomeAssistantSettings {
             url: None,
             token: None,
+            websocket: HomeAssistantWebsocketSettings {
+                keep_alive: TimeDelta::seconds(30),
+                silence_timeout: TimeDelta::seconds(90),
+                reconnect_delay: TimeDelta::seconds(5),
+            },
             entities: vec![
                 EntitySettings {
                     id: "sensor.apollo_mtr_1_living_room_target_*".to_owned(),

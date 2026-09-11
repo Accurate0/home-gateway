@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::{
     event_bus::{EventBusMessage, PlaybackState},
     integrations::jellyfin::{Jellyfin, types::Session},
+    settings::JellyfinWebsocketSettings,
     state::AppState,
 };
 
@@ -39,18 +40,16 @@ pub struct JellyfinActor {
 impl JellyfinActor {
     pub const NAME: &str = "jellyfin";
 
-    const SESSIONS_INTERVAL_MS: u64 = 1500;
-    const RECONNECT_MIN_DELAY: Duration = Duration::from_secs(1);
-    const RECONNECT_MAX_DELAY: Duration = Duration::from_secs(60);
-    const STABLE_CONNECTION: Duration = Duration::from_secs(60);
-    const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(30);
-    const SILENCE_TIMEOUT: Duration = Duration::from_secs(60);
-
     /// Keep a socket up for as long as the actor lives, reconnecting with
     /// exponential backoff. Deliberately never stops the actor: the `/Sessions`
     /// poll is the fallback that keeps state fresh while the socket is down.
-    async fn run(jellyfin: Jellyfin, myself: ractor::ActorRef<JellyfinMessage>) {
-        let mut delay = Self::RECONNECT_MIN_DELAY;
+    async fn run(
+        jellyfin: Jellyfin,
+        websocket: JellyfinWebsocketSettings,
+        myself: ractor::ActorRef<JellyfinMessage>,
+    ) {
+        let reconnect = websocket.reconnect;
+        let mut delay = reconnect.min();
 
         while ACTIVE_STATES.contains(&myself.get_status()) {
             let connected_at = Instant::now();
@@ -61,18 +60,18 @@ impl JellyfinActor {
                     .is_ok()
             };
 
-            match Self::listen(&jellyfin, &forward).await {
+            match Self::listen(&jellyfin, &websocket, &forward).await {
                 Ok(()) => return,
                 Err(e) => tracing::warn!("jellyfin websocket disconnected: {e}"),
             }
 
-            if connected_at.elapsed() >= Self::STABLE_CONNECTION {
-                delay = Self::RECONNECT_MIN_DELAY;
+            if connected_at.elapsed() >= reconnect.stable_after() {
+                delay = reconnect.min();
             }
 
             tracing::info!("reconnecting to jellyfin in {delay:?}");
             tokio::time::sleep(delay).await;
-            delay = (delay * 2).min(Self::RECONNECT_MAX_DELAY);
+            delay = (delay * 2).min(reconnect.max());
         }
     }
 
@@ -81,8 +80,11 @@ impl JellyfinActor {
     /// on anything the caller should reconnect after.
     async fn listen(
         jellyfin: &Jellyfin,
+        websocket: &JellyfinWebsocketSettings,
         on_sessions: &impl Fn(Vec<Session>) -> bool,
     ) -> Result<(), anyhow::Error> {
+        let silence_timeout = websocket.silence_timeout();
+
         tracing::info!("connecting to jellyfin websocket");
         let (socket, _) = tokio_tungstenite::connect_async(jellyfin.ws_url()).await?;
         let (mut write, mut read) = socket.split();
@@ -91,13 +93,13 @@ impl JellyfinActor {
             .send(WsMessage::text(
                 json!({
                     "MessageType": "SessionsStart",
-                    "Data": format!("0,{}", Self::SESSIONS_INTERVAL_MS),
+                    "Data": format!("0,{}", websocket.sessions_interval.num_milliseconds()),
                 })
                 .to_string(),
             ))
             .await?;
 
-        let mut keep_alive = tokio::time::interval(Self::KEEP_ALIVE_INTERVAL);
+        let mut keep_alive = tokio::time::interval(websocket.keep_alive());
         let mut saw_sessions = false;
 
         loop {
@@ -106,7 +108,7 @@ impl JellyfinActor {
                     write.send(WsMessage::text(json!({ "MessageType": "KeepAlive" }).to_string())).await?;
                     continue;
                 }
-                message = tokio::time::timeout(Self::SILENCE_TIMEOUT, read.next()) => message,
+                message = tokio::time::timeout(silence_timeout, read.next()) => message,
             };
 
             let message = match message {
@@ -114,8 +116,7 @@ impl JellyfinActor {
                 Ok(None) => return Err(anyhow::anyhow!("jellyfin websocket stream ended")),
                 Err(_) if saw_sessions => {
                     return Err(anyhow::anyhow!(
-                        "no jellyfin message for {:?}, assuming the connection is dead",
-                        Self::SILENCE_TIMEOUT
+                        "no jellyfin message for {silence_timeout:?}, assuming the connection is dead"
                     ));
                 }
                 Err(_) => {
@@ -283,6 +284,8 @@ impl Actor for JellyfinActor {
             .to_std()
             .map_err(|e| anyhow::anyhow!("invalid jellyfin poll_interval: {e}"))?;
 
+        let websocket = settings.websocket;
+
         self.shared_actor_state
             .repos
             .jellyfin()
@@ -293,7 +296,7 @@ impl Actor for JellyfinActor {
         myself.send_message(JellyfinMessage::Poll)?;
 
         let jellyfin = self.jellyfin.clone();
-        tokio::spawn(Self::run(jellyfin, myself));
+        tokio::spawn(Self::run(jellyfin, websocket, myself));
 
         Ok(Sessions::new())
     }
@@ -324,7 +327,8 @@ impl Actor for JellyfinActor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::settings::JellyfinSettings;
+    use crate::settings::{JellyfinReconnectSettings, JellyfinSettings};
+    use chrono::TimeDelta;
     use tokio::net::TcpListener;
 
     const SESSIONS_FRAME: &str = r#"{"MessageType":"Sessions","Data":[{"Id":"s1","UserName":"anurag","Client":"Jellyfin Web","DeviceName":"Living Room TV","NowPlayingItem":{"Id":"m1","Name":"Arrival","Type":"Movie"},"PlayState":{"IsPaused":false,"PositionTicks":0}}]}"#;
@@ -342,12 +346,29 @@ mod tests {
         socket.close(None).await.unwrap();
     }
 
+    fn websocket() -> JellyfinWebsocketSettings {
+        JellyfinWebsocketSettings {
+            keep_alive: TimeDelta::seconds(30),
+            silence_timeout: TimeDelta::seconds(60),
+            sessions_interval: TimeDelta::milliseconds(1500),
+            reconnect: JellyfinReconnectSettings {
+                min: TimeDelta::seconds(1),
+                max: TimeDelta::seconds(60),
+                stable_after: TimeDelta::seconds(60),
+            },
+        }
+    }
+
     async fn jellyfin_at(port: u16) -> Jellyfin {
-        Jellyfin::new(&JellyfinSettings {
-            url: format!("http://127.0.0.1:{port}"),
-            api_key: Some("test-key".to_owned()),
-            poll_interval: chrono::TimeDelta::seconds(30),
-        })
+        Jellyfin::new(
+            &JellyfinSettings {
+                url: format!("http://127.0.0.1:{port}"),
+                api_key: Some("test-key".to_owned()),
+                poll_interval: TimeDelta::seconds(30),
+                websocket: websocket(),
+            },
+            Duration::from_secs(30),
+        )
         .expect("client")
     }
 
@@ -360,9 +381,10 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         let client = jellyfin_at(port).await;
 
-        let error = JellyfinActor::listen(&client, &|sessions| tx.send(sessions).is_ok())
-            .await
-            .expect_err("a server hang-up must surface as an error so the caller reconnects");
+        let error =
+            JellyfinActor::listen(&client, &websocket(), &|sessions| tx.send(sessions).is_ok())
+                .await
+                .expect_err("a server hang-up must surface as an error so the caller reconnects");
         assert!(error.to_string().contains("jellyfin"), "{error}");
 
         let sessions = rx.recv().await.expect("a session snapshot");
@@ -382,7 +404,7 @@ mod tests {
 
         let client = jellyfin_at(port).await;
 
-        JellyfinActor::listen(&client, &|_| false)
+        JellyfinActor::listen(&client, &websocket(), &|_| false)
             .await
             .expect("a dead consumer ends the loop without asking for a reconnect");
     }
@@ -395,7 +417,7 @@ mod tests {
 
         let client = jellyfin_at(port).await;
 
-        JellyfinActor::listen(&client, &|_| true)
+        JellyfinActor::listen(&client, &websocket(), &|_| true)
             .await
             .expect_err("a refused connection must surface as an error");
     }

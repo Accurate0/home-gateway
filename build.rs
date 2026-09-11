@@ -7,11 +7,9 @@ use yaml_include::Transformer;
 const INJECTED_SECRETS: &[&str] = &[
     "api_key",
     "database_url",
-    "mqtt_url",
-    "mqtt_username",
-    "mqtt_password",
-    "unifi_webhook_secret",
-    "android_app_webhook_secret",
+    "mqtt.url",
+    "mqtt.username",
+    "mqtt.password",
 ];
 
 fn git_short_sha(manifest_dir: &Path) -> Option<String> {
@@ -97,11 +95,8 @@ fn validate_schema(config_dir: &Path, mut value: serde_json::Value) {
     let schema: serde_json::Value =
         serde_json::from_str(&schema_str).expect("config.schema.json is not valid JSON");
 
-    if let Some(obj) = value.as_object_mut() {
-        for secret in INJECTED_SECRETS {
-            obj.entry(*secret)
-                .or_insert_with(|| serde_json::Value::String("x".to_owned()));
-        }
+    for secret in INJECTED_SECRETS {
+        inject_secret(&mut value, secret);
     }
 
     let validator = jsonschema::validator_for(&schema).expect("config.schema.json is not valid");
@@ -114,13 +109,39 @@ fn validate_schema(config_dir: &Path, mut value: serde_json::Value) {
     }
 }
 
+fn inject_secret(value: &mut serde_json::Value, path: &str) {
+    let (parents, leaf) = match path.rsplit_once('.') {
+        Some((parents, leaf)) => (parents.split('.').collect::<Vec<_>>(), leaf),
+        None => (Vec::new(), path),
+    };
+
+    let mut node = value;
+
+    for parent in parents {
+        let Some(obj) = node.as_object_mut() else {
+            return;
+        };
+
+        node = obj
+            .entry(parent)
+            .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+    }
+
+    if let Some(obj) = node.as_object_mut() {
+        obj.entry(leaf)
+            .or_insert_with(|| serde_json::Value::String("x".to_owned()));
+    }
+}
+
 fn validate_semantics(value: &serde_json::Value) {
     let device_ids: HashSet<String> = value
         .get("devices")
         .and_then(|d| d.as_array())
-        .map(|devices| {
-            devices
+        .map(|outer| {
+            outer
                 .iter()
+                .filter_map(|inner| inner.as_array())
+                .flatten()
                 .filter_map(|d| d.get("id").and_then(|i| i.as_str()).map(String::from))
                 .collect()
         })

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
-use home_gateway::cli::client::{Client, DEFAULT_BASE_URL};
+use home_gateway::cli::client::{Client, DEFAULT_BASE_URL, REQUEST_TIMEOUT};
 use home_gateway::cli::credentials;
 use home_gateway::cli::oauth::{self, DEFAULT_CLIENT_ID, DEFAULT_ISSUER};
 use home_gateway::http::get_traced_http_client;
@@ -255,7 +255,7 @@ async fn main() -> Result<()> {
 }
 
 async fn login(cli: &Cli) -> Result<()> {
-    let http = get_traced_http_client()?;
+    let http = get_traced_http_client(REQUEST_TIMEOUT)?;
     let credentials = oauth::login(&http, &cli.issuer, &cli.client_id).await?;
     let path = credentials::store(&credentials)?;
 

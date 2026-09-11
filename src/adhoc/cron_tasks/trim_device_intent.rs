@@ -3,8 +3,6 @@ use crate::adhoc::{AdhocCronTask, AdhocTaskContext, AdhocTaskError};
 use crate::adhoc_task_source;
 use sqlx::{Postgres, Transaction};
 
-const BATCH_SIZE: i64 = 10_000;
-
 pub struct TrimDeviceIntent;
 
 #[async_trait::async_trait]
@@ -22,11 +20,16 @@ impl AdhocCronTask for TrimDeviceIntent {
     }
 
     async fn run(&self, ctx: &mut AdhocTaskContext<'_>) -> Result<u64, AdhocTaskError> {
-        Ok(trim(ctx.tx).await?)
+        let batch_size = ctx.settings.adhoc.batch_size;
+
+        Ok(trim(ctx.tx, batch_size).await?)
     }
 }
 
-async fn trim(tx: &mut Transaction<'static, Postgres>) -> Result<u64, sqlx::Error> {
+async fn trim(
+    tx: &mut Transaction<'static, Postgres>,
+    batch_size: i64,
+) -> Result<u64, sqlx::Error> {
     let mut deleted = 0;
 
     loop {
@@ -42,7 +45,7 @@ async fn trim(tx: &mut Transaction<'static, Postgres>) -> Result<u64, sqlx::Erro
                 LIMIT $1
             )
             "#,
-            BATCH_SIZE,
+            batch_size,
         )
         .execute(&mut **tx)
         .await?
@@ -50,7 +53,7 @@ async fn trim(tx: &mut Transaction<'static, Postgres>) -> Result<u64, sqlx::Erro
 
         deleted += batch;
 
-        if batch < BATCH_SIZE as u64 {
+        if batch < batch_size as u64 {
             break;
         }
     }

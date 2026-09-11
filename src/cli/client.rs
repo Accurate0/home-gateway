@@ -8,6 +8,7 @@ use super::credentials;
 use super::oauth;
 
 pub const DEFAULT_BASE_URL: &str = "https://home.anurag.sh";
+pub const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -48,7 +49,7 @@ pub struct Client {
 
 impl Client {
     pub async fn new(base_url: &str, api_key: Option<String>) -> Result<Self, ClientError> {
-        let http = crate::http::get_traced_http_client()?;
+        let http = crate::http::get_traced_http_client(REQUEST_TIMEOUT)?;
         let auth = resolve_auth(&http, api_key).await?;
 
         Ok(Self {

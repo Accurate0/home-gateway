@@ -98,15 +98,28 @@ impl Harness {
             .insert(test_broker.client.clone())
             .insert(s3)
             .insert(eink)
-            .insert(WorkflowManager::new(db.clone()))
+            .insert(WorkflowManager::new(
+                db.clone(),
+                &settings.workflow.enabled_cache,
+            ))
             .insert(ActorHealthRegistry::new())
-            .insert(AuthManager::new(db.clone(), None))
+            .insert(AuthManager::new(
+                db.clone(),
+                None,
+                &settings.auth.api_key_cache,
+            ))
             .insert(
-                WillyWeather::new(&settings.willyweather)
-                    .expect("failed to build the willyweather client"),
+                WillyWeather::new(
+                    &settings.willyweather,
+                    settings
+                        .http
+                        .clients
+                        .timeout_for(home_gateway::settings::HttpClientKind::WillyWeather),
+                )
+                .expect("failed to build the willyweather client"),
             )
             .insert(
-                home_gateway::http::get_traced_http_client()
+                home_gateway::http::get_traced_http_client(settings.http.clients.timeout())
                     .expect("failed to build the http client"),
             )
             .build();

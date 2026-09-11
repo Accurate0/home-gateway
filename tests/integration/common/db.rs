@@ -1,3 +1,5 @@
+use chrono::TimeDelta;
+use home_gateway::settings::DatabaseSettings;
 use sqlx::{Executor, Pool, Postgres};
 use std::time::Duration;
 use testcontainers::{
@@ -15,6 +17,11 @@ const CONTAINER_NAME: &str = "home-gateway-test-postgres";
 const TEMPLATE_DATABASE: &str = "home_gateway_test_template";
 const CONNECT_ATTEMPTS: u32 = 60;
 const CREATE_ATTEMPTS: u32 = 50;
+const DATABASE: DatabaseSettings = DatabaseSettings {
+    min_connections: 0,
+    max_connections: 10,
+    slow_statement_threshold: TimeDelta::seconds(6),
+};
 
 static SERVER: OnceCell<Server> = OnceCell::const_new();
 
@@ -44,7 +51,7 @@ async fn connect_with_retry(url: &str) -> Pool<Postgres> {
     let mut last_error = None;
 
     for _ in 0..CONNECT_ATTEMPTS {
-        match home_gateway::db::connect(url).await {
+        match home_gateway::db::connect(url, &DATABASE).await {
             Ok(pool) => match pool.acquire().await {
                 Ok(_) => return pool,
                 Err(e) => last_error = Some(e.to_string()),

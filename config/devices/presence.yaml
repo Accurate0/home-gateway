@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: livingroom-motion
+  room: living-room
+  transport: esphome
+  address: apollo-mtr-1-livingroom
+  roles:
+    - type: light
+      config:
+        name: Living Room MTR-1 RGB
+        entity: rgb_light
+      capabilities: [brightness, rgb]
+    - type: presence
+      config:
+        name: Living Room Motion
+        motion_entity:
+          [ld2450_presence, ld2450_moving_target, ld2450_still_target]
+    - type: environment
+      config:
+        id: living-room-mtr-1
+        name: Living Room
+        entities:
+          temperature: dps310_temperature
+          pressure: dps310_pressure
+          lux: ltr390_light
+      capabilities: [temperature, pressure, lux]
+
+- id: closet-presence
+  room: bedroom
+  transport: zigbee
+  address: "0x54ef441000dbc81c"
+  model: aqara_fp1e
+  roles:
+    - type: presence
+      config: { name: Closet Presence Sensor }

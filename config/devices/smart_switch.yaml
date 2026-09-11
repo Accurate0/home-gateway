@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../devices.schema.json
+- id: living-room-table-lamp
+  room: living-room
+  transport: zigbee
+  address: "0xa4c1389fe5cea26e"
+  model: ts011f_plug
+  roles:
+    - type: smart_switch
+      config:
+        name: Living Room Table Lamp
+        as: light

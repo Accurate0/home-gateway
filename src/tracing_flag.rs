@@ -12,8 +12,8 @@ fn ratio(value: &Value) -> Option<f64> {
         .map(|ratio| ratio.clamp(0.0, 1.0))
 }
 
-fn ratios_from(value: StructValue) -> SampleRatios {
-    let fallback = SampleRatios::default();
+fn ratios_from(value: StructValue, baseline: &SampleRatios) -> SampleRatios {
+    let fallback = baseline.clone();
 
     let default = match value.fields.get("default") {
         Some(field) => ratio(field).unwrap_or_else(|| {
@@ -51,14 +51,14 @@ fn ratios_from(value: StructValue) -> SampleRatios {
     SampleRatios { default, by_span }
 }
 
-pub async fn evaluate(client: &FeatureFlagClient) -> SampleRatios {
+pub async fn evaluate(client: &FeatureFlagClient, baseline: &SampleRatios) -> SampleRatios {
     match client
         .get_struct(TRACING_FLAG, EvaluationContext::default())
         .await
     {
-        Ok(value) => ratios_from(value),
+        Ok(value) => ratios_from(value, baseline),
         Err(e) => {
-            let fallback = SampleRatios::default();
+            let fallback = baseline.clone();
             tracing::error!("error evaluating {TRACING_FLAG}: {e:?}, using {fallback:?}");
 
             fallback
@@ -69,7 +69,15 @@ pub async fn evaluate(client: &FeatureFlagClient) -> SampleRatios {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tracing_setup::{DEFAULT_MQTT_SAMPLE_RATIO, DEFAULT_SAMPLE_RATIO};
+    use crate::tracing_setup::MQTT_INGEST_SPAN;
+    use std::collections::HashMap;
+
+    fn baseline() -> SampleRatios {
+        SampleRatios {
+            default: 1.0,
+            by_span: HashMap::from([(MQTT_INGEST_SPAN.to_owned(), 0.05)]),
+        }
+    }
 
     fn struct_value(fields: Vec<(&str, Value)>) -> StructValue {
         let mut value = StructValue::default();
@@ -87,16 +95,19 @@ mod tests {
 
     #[test]
     fn per_span_ratios_are_read_from_the_flag() {
-        let ratios = ratios_from(struct_value(vec![
-            ("default", Value::Float(1.0)),
-            (
-                "spans",
-                spans(vec![
-                    ("mqtt.ingest", Value::Float(0.25)),
-                    ("dispatch_event", Value::Float(0.0)),
-                ]),
-            ),
-        ]));
+        let ratios = ratios_from(
+            struct_value(vec![
+                ("default", Value::Float(1.0)),
+                (
+                    "spans",
+                    spans(vec![
+                        ("mqtt.ingest", Value::Float(0.25)),
+                        ("dispatch_event", Value::Float(0.0)),
+                    ]),
+                ),
+            ]),
+            &baseline(),
+        );
 
         assert_eq!(ratios.default, 1.0);
         assert_eq!(ratios.ratio_for("mqtt.ingest"), 0.25);
@@ -106,39 +117,45 @@ mod tests {
 
     #[test]
     fn an_out_of_range_ratio_is_clamped() {
-        let ratios = ratios_from(struct_value(vec![(
-            "spans",
-            spans(vec![("mqtt.ingest", Value::Float(7.0))]),
-        )]));
+        let ratios = ratios_from(
+            struct_value(vec![(
+                "spans",
+                spans(vec![("mqtt.ingest", Value::Float(7.0))]),
+            )]),
+            &baseline(),
+        );
 
         assert_eq!(ratios.ratio_for("mqtt.ingest"), 1.0);
     }
 
     #[test]
     fn an_integer_ratio_is_accepted() {
-        let ratios = ratios_from(struct_value(vec![("default", Value::Int(1))]));
+        let ratios = ratios_from(struct_value(vec![("default", Value::Int(1))]), &baseline());
 
         assert_eq!(ratios.default, 1.0);
     }
 
     #[test]
-    fn an_empty_flag_keeps_the_built_in_defaults() {
-        let ratios = ratios_from(struct_value(vec![]));
+    fn an_empty_flag_keeps_the_configured_baseline() {
+        let ratios = ratios_from(struct_value(vec![]), &baseline());
 
-        assert_eq!(ratios, SampleRatios::default());
-        assert_eq!(ratios.ratio_for("mqtt.ingest"), DEFAULT_MQTT_SAMPLE_RATIO);
-        assert_eq!(ratios.ratio_for("anything_else"), DEFAULT_SAMPLE_RATIO);
+        assert_eq!(ratios, baseline());
+        assert_eq!(ratios.ratio_for("mqtt.ingest"), 0.05);
+        assert_eq!(ratios.ratio_for("anything_else"), 1.0);
     }
 
     #[test]
     fn a_wrongly_typed_span_is_ignored_without_dropping_the_rest() {
-        let ratios = ratios_from(struct_value(vec![(
-            "spans",
-            spans(vec![
-                ("bad", Value::String("half".to_owned())),
-                ("good", Value::Float(0.5)),
-            ]),
-        )]));
+        let ratios = ratios_from(
+            struct_value(vec![(
+                "spans",
+                spans(vec![
+                    ("bad", Value::String("half".to_owned())),
+                    ("good", Value::Float(0.5)),
+                ]),
+            )]),
+            &baseline(),
+        );
 
         assert_eq!(ratios.ratio_for("good"), 0.5);
         assert_eq!(ratios.ratio_for("bad"), ratios.default);

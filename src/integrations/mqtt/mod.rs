@@ -1,12 +1,12 @@
 use crate::actors::system::mqtt_ingest;
 use crate::device_registry::DeviceRegistry;
+use crate::settings::{BackoffSettings, MqttSettings};
 use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, JobOptions},
 };
 use rumqttc::MqttOptions;
 use serde::Serialize;
-use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 fn mqtt_ingest_actor() -> Option<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
@@ -23,12 +23,10 @@ const STATIC_TOPICS: [&str; 5] = [
     "valetudo/+/attributes",
 ];
 
-const RECONNECT_BACKOFF_MIN: Duration = Duration::from_secs(1);
-const RECONNECT_BACKOFF_MAX: Duration = Duration::from_secs(60);
-
 pub struct Mqtt {
     client: rumqttc::AsyncClient,
     connection: rumqttc::EventLoop,
+    reconnect: BackoffSettings,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -94,31 +92,30 @@ impl MqttClient {
 }
 
 impl Mqtt {
-    pub async fn new(
-        host: String,
-        port: u16,
-        username: String,
-        password: String,
-    ) -> Result<(MqttClient, Self), MqttError> {
+    pub async fn new(settings: &MqttSettings) -> Result<(MqttClient, Self), MqttError> {
         let client_id = if cfg!(debug_assertions) {
             "home-gateway-dev"
         } else {
             "home-gateway"
         };
 
-        let mut mqttoptions = MqttOptions::new(client_id, host, port);
-        mqttoptions.set_keep_alive(Duration::from_secs(5));
-        // for devices packet
-        mqttoptions.set_max_packet_size(100_000, 100_000);
-        mqttoptions.set_credentials(username, password);
+        let mut mqttoptions = MqttOptions::new(client_id, settings.url.clone(), settings.port);
+        mqttoptions.set_keep_alive(settings.keep_alive());
+        mqttoptions.set_max_packet_size(settings.max_packet_size, settings.max_packet_size);
+        mqttoptions.set_credentials(settings.username.clone(), settings.password.clone());
 
-        let (client, connection) = rumqttc::AsyncClient::new(mqttoptions, 100);
+        let (client, connection) =
+            rumqttc::AsyncClient::new(mqttoptions, settings.channel_capacity);
 
         Ok((
             MqttClient {
                 client: client.clone(),
             },
-            Self { client, connection },
+            Self {
+                client,
+                connection,
+                reconnect: settings.reconnect,
+            },
         ))
     }
 
@@ -127,7 +124,7 @@ impl Mqtt {
         cancellation_token: CancellationToken,
         devices: DeviceRegistry,
     ) -> Result<(), MqttError> {
-        let mut backoff = RECONNECT_BACKOFF_MIN;
+        let mut backoff = self.reconnect.min();
 
         loop {
             tokio::select! {
@@ -135,7 +132,7 @@ impl Mqtt {
                     match event {
                         Ok(event) => match event {
                             rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_)) => {
-                                backoff = RECONNECT_BACKOFF_MIN;
+                                backoff = self.reconnect.min();
 
                                 let topics: Vec<(&'static str, String)> = STATIC_TOPICS
                                     .iter()
@@ -188,7 +185,7 @@ impl Mqtt {
                         Err(e) => {
                             tracing::error!("error with event, reconnecting in {backoff:?}: {e}");
                             tokio::time::sleep(backoff).await;
-                            backoff = (backoff * 2).min(RECONNECT_BACKOFF_MAX);
+                            backoff = (backoff * 2).min(self.reconnect.max());
                         }
                     };
                 }

@@ -15,7 +15,7 @@ pub struct Storage {
 pub async fn init() -> anyhow::Result<Storage> {
     let (settings, devices) = SettingsContainer::new()?;
 
-    let pool = db::connect(&settings.database_url).await?;
+    let pool = db::connect(&settings.database_url, &settings.database).await?;
     db::migrate(&pool).await?;
 
     let repos = RepoRegistry::new(pool.clone());

@@ -3,12 +3,10 @@ use super::resolve::ResolvedDisplay;
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::eink::partial::resolve_partial_window;
 use crate::routes::epd::{DeviceReport, EpdConfig};
+use crate::settings::EinkDefaults;
 use chrono::{DateTime, TimeDelta};
 use chrono_tz::Australia::Perth;
 use chrono_tz::Tz;
-
-const FALLBACK_REFRESH_SECS: u32 = 15 * 60;
-const MIN_REFRESH_SECS: u32 = 60;
 
 #[cfg(debug_assertions)]
 const HOST: &str = "http://192.168.0.149:8000/v1/epd";
@@ -25,7 +23,12 @@ impl EinkDisplayManager {
 
         let refresh_secs = match resolved.sleep {
             Some(sleep) => sleep.secs_until_end(now.time()),
-            None => drift_biased_refresh_secs(&resolved.refresh, resolved.grace, now),
+            None => drift_biased_refresh_secs(
+                &resolved.refresh,
+                resolved.grace,
+                now,
+                &self.settings.eink_display.defaults,
+            ),
         };
 
         let mut config = EpdConfig {
@@ -92,7 +95,12 @@ impl EinkDisplayManager {
     }
 }
 
-fn drift_biased_refresh_secs(refresh: &CronSchedule, grace: TimeDelta, now: DateTime<Tz>) -> u32 {
+fn drift_biased_refresh_secs(
+    refresh: &CronSchedule,
+    grace: TimeDelta,
+    now: DateTime<Tz>,
+    defaults: &EinkDefaults,
+) -> u32 {
     let secs = match refresh.secs_until_next_from(now, grace) {
         Ok(secs) => secs,
         Err(e) => {
@@ -100,13 +108,13 @@ fn drift_biased_refresh_secs(refresh: &CronSchedule, grace: TimeDelta, now: Date
                 "refresh schedule `{}` has no next occurrence ({e}), retrying shortly",
                 refresh.expression()
             );
-            return FALLBACK_REFRESH_SECS;
+            return defaults.fallback_refresh_secs();
         }
     };
 
     let bias = (grace.num_seconds().max(0) / 2) as u32;
 
-    secs.saturating_sub(bias).max(MIN_REFRESH_SECS)
+    secs.saturating_sub(bias).max(defaults.min_refresh_secs())
 }
 
 #[cfg(test)]
@@ -119,6 +127,15 @@ mod tests {
         CronSchedule::parse("0 * * * *").unwrap()
     }
 
+    fn defaults() -> EinkDefaults {
+        EinkDefaults {
+            reddit_limit: 25,
+            settle: TimeDelta::seconds(10),
+            fallback_refresh: TimeDelta::minutes(15),
+            min_refresh: TimeDelta::seconds(60),
+        }
+    }
+
     fn perth(hour: u32, minute: u32) -> DateTime<Tz> {
         Perth
             .with_ymd_and_hms(2026, 8, 16, hour, minute, 0)
@@ -128,7 +145,7 @@ mod tests {
     #[test]
     fn a_wake_sleeps_to_just_before_the_next_slot() {
         assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(10, 0)),
+            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(10, 0), &defaults()),
             55 * 60
         );
     }
@@ -136,7 +153,12 @@ mod tests {
     #[test]
     fn an_early_wake_holds_the_same_phase_rather_than_compounding() {
         assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(10, 55)),
+            drift_biased_refresh_secs(
+                &hourly(),
+                TimeDelta::minutes(10),
+                perth(10, 55),
+                &defaults()
+            ),
             60 * 60
         );
     }
@@ -144,7 +166,7 @@ mod tests {
     #[test]
     fn a_late_wake_corrects_back_onto_the_phase() {
         assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(11, 2)),
+            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(11, 2), &defaults()),
             53 * 60
         );
     }
@@ -152,7 +174,7 @@ mod tests {
     #[test]
     fn a_zero_grace_targets_the_slot_exactly() {
         assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::zero(), perth(10, 30)),
+            drift_biased_refresh_secs(&hourly(), TimeDelta::zero(), perth(10, 30), &defaults()),
             30 * 60
         );
     }

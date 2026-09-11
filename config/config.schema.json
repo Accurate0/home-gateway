@@ -14,8 +14,20 @@
     "database_url": {
       "type": "string"
     },
-    "http_listen_addr": {
-      "type": "string"
+    "database": {
+      "$ref": "#/$defs/DatabaseSettings"
+    },
+    "http": {
+      "$ref": "#/$defs/HttpSettings"
+    },
+    "graphql": {
+      "$ref": "#/$defs/GraphqlSettings"
+    },
+    "actors": {
+      "$ref": "#/$defs/ActorSettings"
+    },
+    "tracing": {
+      "$ref": "#/$defs/TracingSettings"
     },
     "fcm_project_id": {
       "type": "string",
@@ -25,26 +37,8 @@
       "type": "string",
       "default": ""
     },
-    "mqtt_url": {
-      "type": "string"
-    },
-    "mqtt_port": {
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0,
-      "maximum": 65535
-    },
-    "mqtt_username": {
-      "type": "string"
-    },
-    "mqtt_password": {
-      "type": "string"
-    },
-    "unifi_webhook_secret": {
-      "type": "string"
-    },
-    "android_app_webhook_secret": {
-      "type": "string"
+    "mqtt": {
+      "$ref": "#/$defs/MqttSettings"
     },
     "notify_targets": {
       "type": "object",
@@ -55,7 +49,10 @@
     "devices": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/RawSensor"
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/RawSensor"
+        }
       }
     },
     "zigbee_models": {
@@ -85,21 +82,8 @@
     "reconciler": {
       "$ref": "#/$defs/ReconcilerSettings"
     },
-    "oauth": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/OAuthSettings"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "api_keys": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/ApiKeySettings"
-      }
+    "auth": {
+      "$ref": "#/$defs/AuthSettings"
     },
     "location": {
       "$ref": "#/$defs/LocationSettings"
@@ -182,25 +166,344 @@
   "required": [
     "api_key",
     "database_url",
-    "http_listen_addr",
-    "mqtt_url",
-    "mqtt_port",
-    "mqtt_username",
-    "mqtt_password",
-    "unifi_webhook_secret",
-    "android_app_webhook_secret",
+    "database",
+    "http",
+    "graphql",
+    "actors",
+    "tracing",
+    "mqtt",
     "zigbee_models",
     "s3",
     "watchdog",
     "workflow",
     "reconciler",
-    "location",
+    "auth",
     "sun",
+    "home_assistant",
     "willyweather",
+    "eink_display",
     "adhoc",
     "vacation"
   ],
   "$defs": {
+    "DatabaseSettings": {
+      "type": "object",
+      "properties": {
+        "min_connections": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "max_connections": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "slow_statement_threshold": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "min_connections",
+        "max_connections",
+        "slow_statement_threshold"
+      ]
+    },
+    "HttpSettings": {
+      "type": "object",
+      "properties": {
+        "listen_address": {
+          "type": "string"
+        },
+        "clients": {
+          "$ref": "#/$defs/HttpClientsSettings"
+        }
+      },
+      "required": [
+        "listen_address",
+        "clients"
+      ]
+    },
+    "HttpClientsSettings": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/HttpClientSettings"
+        },
+        "bom": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "fuelwatch": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "home_assistant": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "jellyfin": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "oauth": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "push": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "transperth": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "trmnl": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "willyweather": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "woolworths": {
+          "$ref": "#/$defs/HttpClientOverride"
+        }
+      },
+      "required": [
+        "default"
+      ]
+    },
+    "HttpClientSettings": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "timeout"
+      ]
+    },
+    "HttpClientOverride": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "GraphqlSettings": {
+      "type": "object",
+      "properties": {
+        "max_depth": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "max_complexity": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "query_timeout": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "max_depth",
+        "max_complexity",
+        "query_timeout"
+      ]
+    },
+    "ActorSettings": {
+      "type": "object",
+      "properties": {
+        "restart": {
+          "$ref": "#/$defs/RestartSettings"
+        },
+        "workers": {
+          "$ref": "#/$defs/ActorWorkerSettings"
+        }
+      },
+      "required": [
+        "restart",
+        "workers"
+      ]
+    },
+    "RestartSettings": {
+      "type": "object",
+      "properties": {
+        "backoff_base": {
+          "type": "string"
+        },
+        "backoff_max": {
+          "type": "string"
+        },
+        "healthy_after": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "backoff_base",
+        "backoff_max",
+        "healthy_after"
+      ]
+    },
+    "ActorWorkerSettings": {
+      "type": "object",
+      "properties": {
+        "mqtt_ingest": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "control_switch": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "door_sensor": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "environment_sensor": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "light": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "media_player": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "plant_sensor": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "presence_sensor": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "robot_vacuum": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "smart_switch": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "mqtt_ingest",
+        "control_switch",
+        "door_sensor",
+        "environment_sensor",
+        "light",
+        "media_player",
+        "plant_sensor",
+        "presence_sensor",
+        "robot_vacuum",
+        "smart_switch"
+      ]
+    },
+    "TracingSettings": {
+      "type": "object",
+      "properties": {
+        "sampling": {
+          "$ref": "#/$defs/SamplingSettings"
+        }
+      },
+      "required": [
+        "sampling"
+      ]
+    },
+    "SamplingSettings": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "number",
+          "format": "double"
+        },
+        "spans": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "required": [
+        "default",
+        "spans"
+      ]
+    },
+    "MqttSettings": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "keep_alive": {
+          "type": "string"
+        },
+        "max_packet_size": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "channel_capacity": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "reconnect": {
+          "$ref": "#/$defs/BackoffSettings"
+        }
+      },
+      "required": [
+        "url",
+        "port",
+        "username",
+        "password",
+        "keep_alive",
+        "max_packet_size",
+        "channel_capacity",
+        "reconnect"
+      ]
+    },
+    "BackoffSettings": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ]
+    },
     "NotifySource": {
       "oneOf": [
         {
@@ -3017,13 +3320,38 @@
           "format": "uint",
           "minimum": 0
         },
+        "enabled_cache": {
+          "$ref": "#/$defs/CacheSettings"
+        },
+        "condition_timeout": {
+          "type": "string"
+        },
         "timers": {
           "$ref": "#/$defs/WorkflowTimerSettings"
         }
       },
       "required": [
         "workers",
+        "enabled_cache",
+        "condition_timeout",
         "timers"
+      ]
+    },
+    "CacheSettings": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "ttl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "capacity",
+        "ttl"
       ]
     },
     "WorkflowTimerSettings": {
@@ -3080,6 +3408,59 @@
         "batch_size"
       ]
     },
+    "AuthSettings": {
+      "type": "object",
+      "properties": {
+        "api_key_cache": {
+          "$ref": "#/$defs/CacheSettings"
+        },
+        "api_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiKeySettings"
+          }
+        },
+        "oauth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OAuthSettings"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "api_key_cache"
+      ]
+    },
+    "ApiKeySettings": {
+      "description": "Declarative API key: config is the source of truth for a key's name + scopes.\nSecret material is never here — the admin API mints/regenerates the token and\nstartup reconciles these scopes onto the matching DB row by `name`.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "scopes"
+      ]
+    },
     "OAuthSettings": {
       "description": "OAuth (OIDC) settings. Access tokens are JWTs validated locally against the\nprovider's JWKS — no client secret is needed. A caller's scopes are derived\nfrom their group memberships (the `groups_claim`) via `group_scopes`.",
       "type": "object",
@@ -3109,6 +3490,9 @@
               "type": "string"
             }
           }
+        },
+        "cache": {
+          "$ref": "#/$defs/OAuthCacheSettings"
         }
       },
       "required": [
@@ -3116,33 +3500,23 @@
         "jwks_url",
         "userinfo_url",
         "audience",
-        "group_scopes"
+        "group_scopes",
+        "cache"
       ]
     },
-    "ApiKeySettings": {
-      "description": "Declarative API key: config is the source of truth for a key's name + scopes.\nSecret material is never here — the admin API mints/regenerates the token and\nstartup reconciles these scopes onto the matching DB row by `name`.",
+    "OAuthCacheSettings": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
+        "keys": {
+          "$ref": "#/$defs/CacheSettings"
         },
-        "scopes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "expires_at": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+        "userinfo": {
+          "$ref": "#/$defs/CacheSettings"
         }
       },
       "required": [
-        "name",
-        "scopes"
+        "keys",
+        "userinfo"
       ]
     },
     "LocationSettings": {
@@ -3150,17 +3524,15 @@
       "properties": {
         "latitude": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "default": -31.952429
         },
         "longitude": {
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "default": 115.842283
         }
-      },
-      "required": [
-        "latitude",
-        "longitude"
-      ]
+      }
     },
     "SunSettings": {
       "type": "object",
@@ -3234,8 +3606,14 @@
           "items": {
             "$ref": "#/$defs/EntitySettings"
           }
+        },
+        "websocket": {
+          "$ref": "#/$defs/HomeAssistantWebsocketSettings"
         }
-      }
+      },
+      "required": [
+        "websocket"
+      ]
     },
     "EntitySettings": {
       "type": "object",
@@ -3260,6 +3638,25 @@
         "id"
       ]
     },
+    "HomeAssistantWebsocketSettings": {
+      "type": "object",
+      "properties": {
+        "keep_alive": {
+          "type": "string"
+        },
+        "silence_timeout": {
+          "type": "string"
+        },
+        "reconnect_delay": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "keep_alive",
+        "silence_timeout",
+        "reconnect_delay"
+      ]
+    },
     "JellyfinSettings": {
       "type": "object",
       "properties": {
@@ -3275,11 +3672,57 @@
         },
         "poll_interval": {
           "type": "string"
+        },
+        "websocket": {
+          "$ref": "#/$defs/JellyfinWebsocketSettings"
         }
       },
       "required": [
         "url",
-        "poll_interval"
+        "poll_interval",
+        "websocket"
+      ]
+    },
+    "JellyfinWebsocketSettings": {
+      "type": "object",
+      "properties": {
+        "keep_alive": {
+          "type": "string"
+        },
+        "silence_timeout": {
+          "type": "string"
+        },
+        "sessions_interval": {
+          "type": "string"
+        },
+        "reconnect": {
+          "$ref": "#/$defs/JellyfinReconnectSettings"
+        }
+      },
+      "required": [
+        "keep_alive",
+        "silence_timeout",
+        "sessions_interval",
+        "reconnect"
+      ]
+    },
+    "JellyfinReconnectSettings": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "stable_after": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "min",
+        "max",
+        "stable_after"
       ]
     },
     "SolarSettings": {
@@ -3351,13 +3794,17 @@
           "items": {
             "$ref": "#/$defs/TransperthRoute"
           }
+        },
+        "cache": {
+          "$ref": "#/$defs/TransperthCacheSettings"
         }
       },
       "required": [
         "refresh_peak",
         "refresh_off_peak",
         "horizon",
-        "routes"
+        "routes",
+        "cache"
       ]
     },
     "RawPeakWindow": {
@@ -3407,6 +3854,21 @@
         "limit"
       ]
     },
+    "TransperthCacheSettings": {
+      "type": "object",
+      "properties": {
+        "routes": {
+          "$ref": "#/$defs/CacheSettings"
+        },
+        "timetables": {
+          "$ref": "#/$defs/CacheSettings"
+        }
+      },
+      "required": [
+        "routes",
+        "timetables"
+      ]
+    },
     "WillyWeatherSettings": {
       "type": "object",
       "properties": {
@@ -3446,14 +3908,14 @@
       "properties": {
         "postcode": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "default": 6000
         },
         "refresh": {
           "type": "string"
         }
       },
       "required": [
-        "postcode",
         "refresh"
       ]
     },
@@ -3471,8 +3933,18 @@
           "additionalProperties": {
             "$ref": "#/$defs/RawAlbum"
           }
+        },
+        "prepare_render_timeout": {
+          "type": "string"
+        },
+        "defaults": {
+          "$ref": "#/$defs/EinkDefaults"
         }
-      }
+      },
+      "required": [
+        "prepare_render_timeout",
+        "defaults"
+      ]
     },
     "RawDashboardView": {
       "type": "object",
@@ -3498,15 +3970,53 @@
         }
       }
     },
+    "EinkDefaults": {
+      "type": "object",
+      "properties": {
+        "reddit_limit": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "settle": {
+          "type": "string"
+        },
+        "fallback_refresh": {
+          "type": "string"
+        },
+        "min_refresh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reddit_limit",
+        "settle",
+        "fallback_refresh",
+        "min_refresh"
+      ]
+    },
     "AdhocSettings": {
       "type": "object",
       "properties": {
         "recheck_interval": {
           "type": "string"
+        },
+        "task_timeout": {
+          "type": "string"
+        },
+        "cron_jitter": {
+          "type": "string"
+        },
+        "batch_size": {
+          "type": "integer",
+          "format": "int64"
         }
       },
       "required": [
-        "recheck_interval"
+        "recheck_interval",
+        "task_timeout",
+        "cron_jitter",
+        "batch_size"
       ]
     },
     "VacationSettings": {

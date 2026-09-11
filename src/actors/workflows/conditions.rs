@@ -42,8 +42,6 @@ impl From<RpcError> for WorkflowError {
     }
 }
 
-const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
-
 /// Evaluate a condition against current state. Recursive via `all`/`any`/`not`.
 pub async fn eval(state: &AppState, vars: &Vars, cond: &Condition) -> Result<bool, WorkflowError> {
     match cond {
@@ -104,20 +102,30 @@ async fn eval_leaf(
     vars: &Vars,
     cond: &LeafCondition,
 ) -> Result<bool, WorkflowError> {
+    let timeout = state.settings.workflow.condition_timeout();
+
     match cond {
         LeafCondition::Light { ieee_addr, on } => {
-            Ok(query_light_on(state.devices.address_or_self(ieee_addr)).await? == *on)
+            Ok(query_light_on(state.devices.address_or_self(ieee_addr), timeout).await? == *on)
         }
         LeafCondition::Environment {
             sensor,
             metric,
             cmp,
-        } => eval_environment(state.devices.address_or_self(sensor), *metric, *cmp).await,
+        } => {
+            eval_environment(
+                state.devices.address_or_self(sensor),
+                *metric,
+                *cmp,
+                timeout,
+            )
+            .await
+        }
         LeafCondition::Door { ieee_addr, open } => {
-            Ok(query_door_open(state.devices.address_or_self(ieee_addr)).await? == *open)
+            Ok(query_door_open(state.devices.address_or_self(ieee_addr), timeout).await? == *open)
         }
         LeafCondition::Presence { sensor, present } => {
-            Ok(query_presence(state.devices.address_or_self(sensor)).await? == *present)
+            Ok(query_presence(state.devices.address_or_self(sensor), timeout).await? == *present)
         }
         LeafCondition::TimeOfDay { after, before } => {
             let now = Local::now().time();
@@ -175,11 +183,12 @@ async fn eval_weather(
 ) -> Result<bool, WorkflowError> {
     let value = match (source, day) {
         (WeatherSource::Bom, _) => {
-            let readings: Vec<WeatherReading> =
-                rpc::query(SolarActor::NAME, QUERY_TIMEOUT, |reply| {
-                    SolarMessage::LatestWeather { reply }
-                })
-                .await?;
+            let readings: Vec<WeatherReading> = rpc::query(
+                SolarActor::NAME,
+                state.settings.workflow.condition_timeout(),
+                |reply| SolarMessage::LatestWeather { reply },
+            )
+            .await?;
 
             readings
                 .iter()
@@ -294,25 +303,24 @@ async fn eval_smart_switch(
     Ok(cmp.matches(value))
 }
 
-async fn query_light_on(ieee_addr: &str) -> Result<bool, WorkflowError> {
-    Ok(
-        rpc::query_factory(LightHandler::NAME, QUERY_TIMEOUT, |reply| {
-            LightHandlerMessage::QueryPowerState {
-                ieee_addr: ieee_addr.to_owned(),
-                reply,
-            }
-        })
-        .await?,
-    )
+async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {
+    Ok(rpc::query_factory(LightHandler::NAME, timeout, |reply| {
+        LightHandlerMessage::QueryPowerState {
+            ieee_addr: ieee_addr.to_owned(),
+            reply,
+        }
+    })
+    .await?)
 }
 
 async fn eval_environment(
     sensor: &str,
     metric: EnvMetric,
     cmp: Comparison,
+    timeout: Duration,
 ) -> Result<bool, WorkflowError> {
     let reading: Option<LatestReading> =
-        rpc::query_factory(EnvironmentSensorHandler::NAME, QUERY_TIMEOUT, |reply| {
+        rpc::query_factory(EnvironmentSensorHandler::NAME, timeout, |reply| {
             EnvironmentMessage::QueryLatest {
                 entity_id: sensor.to_owned(),
                 reply,
@@ -341,15 +349,14 @@ async fn eval_environment(
     Ok(cmp.matches(value))
 }
 
-async fn query_presence(sensor: &str) -> Result<bool, WorkflowError> {
-    let present: Option<bool> =
-        rpc::query_factory(PresenceSensorHandler::NAME, QUERY_TIMEOUT, |reply| {
-            PresenceMessage::QueryLatest {
-                sensor: sensor.to_owned(),
-                reply,
-            }
-        })
-        .await?;
+async fn query_presence(sensor: &str, timeout: Duration) -> Result<bool, WorkflowError> {
+    let present: Option<bool> = rpc::query_factory(PresenceSensorHandler::NAME, timeout, |reply| {
+        PresenceMessage::QueryLatest {
+            sensor: sensor.to_owned(),
+            reply,
+        }
+    })
+    .await?;
 
     match present {
         Some(present) => Ok(present),
@@ -360,8 +367,8 @@ async fn query_presence(sensor: &str) -> Result<bool, WorkflowError> {
     }
 }
 
-async fn query_door_open(ieee_addr: &str) -> Result<bool, WorkflowError> {
-    let state: Option<DoorState> = rpc::query(DerivedDoorEvents::NAME, QUERY_TIMEOUT, |reply| {
+async fn query_door_open(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {
+    let state: Option<DoorState> = rpc::query(DerivedDoorEvents::NAME, timeout, |reply| {
         DoorEventsMessage::QueryState {
             ieee_addr: ieee_addr.to_owned(),
             reply,

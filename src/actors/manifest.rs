@@ -355,7 +355,15 @@ pub static ACTORS: &[ActorSpec] = &[
                     .clone()
                     .expect("trmnl_api_key was required");
 
-                let trmnl = Trmnl::new(api_key, shared_actor_state.settings.trmnl.base_url.clone());
+                let trmnl = Trmnl::new(
+                    api_key,
+                    shared_actor_state.settings.trmnl.base_url.clone(),
+                    shared_actor_state
+                        .settings
+                        .http
+                        .clients
+                        .timeout_for(crate::settings::HttpClientKind::Trmnl),
+                );
 
                 root.spawn_linked(
                     Some(TrmnlActor::NAME.to_owned()),
@@ -435,7 +443,14 @@ pub static ACTORS: &[ActorSpec] = &[
         requires: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                let woolworths = Woolworths::new(shared_actor_state.db.clone());
+                let woolworths = Woolworths::new(
+                    shared_actor_state.db.clone(),
+                    shared_actor_state
+                        .settings
+                        .http
+                        .clients
+                        .timeout_for(crate::settings::HttpClientKind::Woolworths),
+                );
 
                 root.spawn_linked(
                     Some(WoolworthsActor::NAME.to_owned()),
@@ -463,7 +478,13 @@ pub static ACTORS: &[ActorSpec] = &[
             Box::pin(async move {
                 let goodwe = shared_actor_state.handles.expect::<GoodWeSemsAPI>().clone();
 
-                let weather = WeatherAPI::new()?;
+                let weather = WeatherAPI::new(
+                    shared_actor_state
+                        .settings
+                        .http
+                        .clients
+                        .timeout_for(crate::settings::HttpClientKind::Bom),
+                )?;
 
                 root.spawn_linked(
                     Some(SolarActor::NAME.to_owned()),

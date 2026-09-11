@@ -1,6 +1,7 @@
 pub mod device;
 pub mod door;
 pub mod eink;
+pub mod eink_defaults;
 pub mod environment;
 pub mod light;
 pub mod media_player;

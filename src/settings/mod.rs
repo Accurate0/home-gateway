@@ -2,7 +2,6 @@ use config::builder::{ConfigBuilder, DefaultState};
 use config::{Config, ConfigError, Environment, File, FileFormat};
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use std::{
@@ -10,29 +9,54 @@ use std::{
     path::PathBuf,
 };
 
+pub mod actor_workers;
+pub mod actors;
 pub mod adhoc;
 pub mod alarm;
+pub mod api_key;
 pub mod auth;
+pub mod backoff;
+pub mod cache;
+pub mod database;
 pub mod de;
 pub mod devices;
+pub mod graphql;
+pub mod http;
+pub mod http_client;
+pub mod http_client_kind;
+pub mod http_client_override;
+pub mod http_clients;
 pub mod integrations;
 pub mod location;
+pub mod mqtt;
 pub mod notify;
+pub mod oauth;
+pub mod oauth_cache;
 pub mod reconciler;
+pub mod restart;
+pub mod sampling;
 pub mod sun;
+pub mod tracing_settings;
 pub mod vacation;
 pub mod watchdog;
 pub mod workflow;
 
+pub use actor_workers::ActorWorkerSettings;
+pub use actors::ActorSettings;
 pub use adhoc::AdhocSettings;
 pub use alarm::AlarmSettings;
-pub use auth::{ApiKeySettings, OAuthSettings};
+pub use api_key::ApiKeySettings;
+pub use auth::AuthSettings;
+pub use backoff::BackoffSettings;
+pub use cache::CacheSettings;
+pub use database::DatabaseSettings;
 pub use devices::device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use devices::door::{ArmedDoorStates, DoorSettings};
 pub use devices::eink::{
     Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig,
     Orientation, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan, SleepWindow,
 };
+pub use devices::eink_defaults::EinkDefaults;
 pub use devices::environment::{
     EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
 };
@@ -47,23 +71,39 @@ pub use devices::valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use devices::zigbee_model::{
     RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile,
 };
+pub use graphql::GraphqlSettings;
+pub use http::HttpSettings;
+pub use http_client::HttpClientSettings;
+pub use http_client_kind::HttpClientKind;
+pub use http_client_override::HttpClientOverride;
+pub use http_clients::HttpClientsSettings;
 pub use integrations::fuelwatch::FuelWatchSettings;
 pub use integrations::home_assistant::{EntitySettings, HomeAssistantSettings};
+pub use integrations::home_assistant_websocket::HomeAssistantWebsocketSettings;
 pub use integrations::jellyfin::JellyfinSettings;
+pub use integrations::jellyfin_reconnect::JellyfinReconnectSettings;
+pub use integrations::jellyfin_websocket::JellyfinWebsocketSettings;
 pub use integrations::s3::S3Settings;
 pub use integrations::solar::SolarSettings;
 pub use integrations::transperth::{
     PeakWindow, RawTransperthSettings, TransperthRoute, TransperthSettings,
 };
+pub use integrations::transperth_cache::TransperthCacheSettings;
 pub use integrations::willyweather::WillyWeatherSettings;
 pub use integrations::woolworths::WoolworthsSettings;
 pub use location::LocationSettings;
+pub use mqtt::MqttSettings;
 pub use notify::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
     validate_acknowledge,
 };
+pub use oauth::OAuthSettings;
+pub use oauth_cache::OAuthCacheSettings;
 pub use reconciler::ReconcilerSettings;
+pub use restart::RestartSettings;
+pub use sampling::SamplingSettings;
 pub use sun::SunSettings;
+pub use tracing_settings::TracingSettings;
 pub use vacation::VacationSettings;
 pub use watchdog::WatchdogSettings;
 pub use workflow::{
@@ -100,22 +140,20 @@ pub struct Settings {
     pub version: String,
     pub api_key: String,
     pub database_url: String,
-    pub http_listen_addr: SocketAddr,
+    pub database: DatabaseSettings,
+    pub http: HttpSettings,
+    pub graphql: GraphqlSettings,
+    pub actors: ActorSettings,
+    pub tracing: TracingSettings,
     pub fcm_project_id: String,
     pub fcm_service_account_json: String,
-    pub mqtt_url: String,
-    pub mqtt_port: u16,
-    pub mqtt_username: String,
-    pub mqtt_password: String,
-    pub unifi_webhook_secret: String,
-    pub android_app_webhook_secret: String,
+    pub mqtt: MqttSettings,
     pub workflows: HashMap<String, WorkflowDefinition>,
     pub workflow: WorkflowSettings,
     pub reconciler: ReconcilerSettings,
     pub s3: S3Settings,
     pub watchdog: WatchdogSettings,
-    pub oauth: Option<OAuthSettings>,
-    pub api_keys: Vec<ApiKeySettings>,
+    pub auth: AuthSettings,
     pub location: LocationSettings,
     pub sun: SunSettings,
     pub alarm: AlarmSettings,
@@ -142,21 +180,20 @@ pub struct RawSettings {
     version: String,
     api_key: String,
     database_url: String,
-    http_listen_addr: SocketAddr,
+    database: DatabaseSettings,
+    http: HttpSettings,
+    graphql: GraphqlSettings,
+    actors: ActorSettings,
+    tracing: TracingSettings,
     #[serde(default)]
     fcm_project_id: String,
     #[serde(default)]
     fcm_service_account_json: String,
-    mqtt_url: String,
-    mqtt_port: u16,
-    mqtt_username: String,
-    mqtt_password: String,
-    unifi_webhook_secret: String,
-    android_app_webhook_secret: String,
+    mqtt: MqttSettings,
     #[serde(default)]
     notify_targets: NotifyTargets,
     #[serde(default)]
-    devices: Vec<RawSensor>,
+    devices: Vec<Vec<RawSensor>>,
     zigbee_models: HashMap<String, RawZigbeeModelProfile>,
     #[serde(default)]
     workflows: Vec<Vec<WorkflowDefinition>>,
@@ -164,10 +201,8 @@ pub struct RawSettings {
     watchdog: WatchdogSettings,
     workflow: WorkflowSettings,
     reconciler: ReconcilerSettings,
+    auth: AuthSettings,
     #[serde(default)]
-    oauth: Option<OAuthSettings>,
-    #[serde(default)]
-    api_keys: Vec<ApiKeySettings>,
     location: LocationSettings,
     sun: SunSettings,
     #[serde(default)]
@@ -178,7 +213,6 @@ pub struct RawSettings {
     trmnl: TrmnlSettings,
     #[serde(default)]
     trmnl_api_key: Option<String>,
-    #[serde(default)]
     home_assistant: HomeAssistantSettings,
     #[serde(default)]
     jellyfin: Option<JellyfinSettings>,
@@ -189,7 +223,6 @@ pub struct RawSettings {
     willyweather: WillyWeatherSettings,
     #[serde(default)]
     fuelwatch: Option<FuelWatchSettings>,
-    #[serde(default)]
     eink_display: devices::eink::RawEinkGlobal,
     adhoc: AdhocSettings,
     vacation: VacationSettings,
@@ -201,15 +234,14 @@ impl RawSettings {
             version,
             api_key,
             database_url,
-            http_listen_addr,
+            database,
+            http,
+            graphql,
+            actors,
+            tracing: tracing_settings,
             fcm_project_id,
             fcm_service_account_json,
-            mqtt_url,
-            mqtt_port,
-            mqtt_username,
-            mqtt_password,
-            unifi_webhook_secret,
-            android_app_webhook_secret,
+            mqtt,
             notify_targets,
             devices,
             zigbee_models,
@@ -218,8 +250,7 @@ impl RawSettings {
             watchdog,
             workflow,
             reconciler,
-            oauth,
-            api_keys,
+            auth,
             location,
             sun,
             alarm,
@@ -306,8 +337,10 @@ impl RawSettings {
             }
         }
 
+        tracing_settings.sampling.validate()?;
+
         let mut seen_key_names = HashSet::new();
-        for key in &api_keys {
+        for key in &auth.api_keys {
             if !seen_key_names.insert(key.name.clone()) {
                 return Err(format!("duplicate api_keys name: {}", key.name));
             }
@@ -315,13 +348,17 @@ impl RawSettings {
             validate_scopes(&format!("api key '{}'", key.name), &key.scopes)?;
         }
 
-        if let Some(oauth) = &oauth {
+        if let Some(oauth) = &auth.oauth {
             for (group, scopes) in &oauth.group_scopes {
                 validate_scopes(&format!("oauth group '{group}'"), scopes)?;
             }
         }
 
-        let registry = DeviceRegistry::build(devices, &notify_targets, zigbee_models)?;
+        let registry = DeviceRegistry::build(
+            devices.into_iter().flatten().collect(),
+            &notify_targets,
+            zigbee_models,
+        )?;
         let aliases = registry.aliases();
 
         let mut resolved = HashMap::new();
@@ -397,22 +434,20 @@ impl RawSettings {
                 version,
                 api_key,
                 database_url,
-                http_listen_addr,
+                database,
+                http,
+                graphql,
+                actors,
+                tracing: tracing_settings,
                 fcm_project_id,
                 fcm_service_account_json,
-                mqtt_url,
-                mqtt_port,
-                mqtt_username,
-                mqtt_password,
-                unifi_webhook_secret,
-                android_app_webhook_secret,
+                mqtt,
                 workflows: resolved,
                 s3,
                 watchdog,
                 workflow,
                 reconciler,
-                oauth,
-                api_keys,
+                auth,
                 location,
                 sun,
                 alarm,
@@ -777,13 +812,13 @@ ts011f_plug:
         let secrets = r#"
 api_key: x
 database_url: x
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+http:
+  listen_address: "[::]:8000"
 willyweather:
   api_key: x
 transperth:
@@ -809,13 +844,13 @@ transperth:
         let secrets = r#"
 api_key: x
 database_url: x
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+http:
+  listen_address: "[::]:8000"
 willyweather:
   api_key: x
 transperth:
@@ -1070,13 +1105,13 @@ transperth:
         let secrets = r#"
 api_key: x
 database_url: x
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+http:
+  listen_address: "[::]:8000"
 willyweather:
   api_key: x
 transperth:
@@ -1091,6 +1126,7 @@ transperth:
         let (settings, _registry) = SettingsContainer::build(config).unwrap();
         assert!(
             settings
+                .auth
                 .api_keys
                 .iter()
                 .any(|k| k.name == "eink-display-living-room" && k.scopes == ["epd:read"]),
@@ -1105,25 +1141,38 @@ transperth:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
-api_keys:
-  - name: bad-key
-    scopes: ["bogus:read"]
+auth:
+  api_key_cache: { capacity: 1024, ttl: 1h }
+  api_keys:
+    - name: bad-key
+      scopes: ["bogus:read"]
 "#,
         )
         .unwrap();
@@ -1139,29 +1188,45 @@ api_keys:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
-oauth:
-  issuer: i
-  jwks_url: j
-  userinfo_url: u
-  audience: a
-  group_scopes:
-    admins@idm: ["graphql:solar:read"]
+auth:
+  api_key_cache: { capacity: 1024, ttl: 1h }
+  oauth:
+    issuer: i
+    jwks_url: j
+    userinfo_url: u
+    audience: a
+    cache:
+      keys: { capacity: 32, ttl: 1h }
+      userinfo: { capacity: 256, ttl: 15m }
+    group_scopes:
+      admins@idm: ["graphql:solar:read"]
 "#,
         )
         .unwrap();
@@ -1173,6 +1238,71 @@ oauth:
         );
     }
 
+    fn secrets_over_config(secrets: &str) -> Result<(Settings, DeviceRegistry), ConfigError> {
+        let base = r#"
+api_key: x
+database_url: x
+mqtt:
+  url: x
+  username: x
+  password: x
+willyweather:
+  api_key: x
+transperth:
+  reference_data_api_key: x
+"#;
+
+        let config = SettingsContainer::config_sources(Path::new("./config"))
+            .unwrap()
+            .add_source(File::from_str(base, FileFormat::Yaml))
+            .add_source(File::from_str(secrets, FileFormat::Yaml))
+            .build()
+            .unwrap();
+
+        SettingsContainer::build(config)
+    }
+
+    #[test]
+    fn an_out_of_range_sampling_ratio_is_rejected() {
+        let err = secrets_over_config("tracing: { sampling: { default: 1.5 } }")
+            .map(|_| ())
+            .unwrap_err();
+
+        assert!(
+            err.to_string().contains("tracing.sampling.default"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn fuelwatch_postcode_and_location_fall_back_to_perth() {
+        let (settings, _registry) = secrets_over_config("").unwrap();
+
+        assert_eq!(
+            settings.fuelwatch.map(|fuelwatch| fuelwatch.postcode),
+            Some(6000)
+        );
+        assert_eq!(settings.location.latitude, -31.952429);
+        assert_eq!(settings.location.longitude, 115.842283);
+    }
+
+    #[test]
+    fn http_clients_fall_back_to_the_default_timeout() {
+        let clients: HttpClientsSettings = serde_yaml::from_str(
+            "{ default: { timeout: 7s }, fuelwatch: { timeout: 2s }, bom: {} }",
+        )
+        .unwrap();
+
+        assert_eq!(
+            clients.timeout_for(HttpClientKind::FuelWatch),
+            std::time::Duration::from_secs(2)
+        );
+        assert_eq!(
+            clients.timeout_for(HttpClientKind::Bom),
+            std::time::Duration::from_secs(7)
+        );
+    }
+
     #[test]
     fn run_workflow_rejects_an_unknown_target() {
         let raw: RawSettings = serde_yaml::from_str(
@@ -1180,21 +1310,33 @@ oauth:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -1220,21 +1362,33 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -1261,21 +1415,33 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 "#;
 
@@ -1462,21 +1628,33 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -1501,21 +1679,33 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -1539,21 +1729,33 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -1578,21 +1780,33 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -1616,30 +1830,44 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 eink_display:
+  prepare_render_timeout: 15s
+  defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s }
   views:
     home: { query: "view=home" }
   albums:
     family: { prefix: "eink-display/album/family/" }
     art: {}
 devices:
+-
   - id: epd
     transport: eink_display_firmware
     address: "abc123"
@@ -1695,24 +1923,37 @@ devices:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
+-
   - id: epd
     transport: eink_display_firmware
     address: "abc123"
@@ -1757,24 +1998,37 @@ devices:
 api_key: x
 database_url: x
 zigbee_models: {}
-mqtt_url: x
-mqtt_username: x
-mqtt_password: x
-mqtt_port: 1883
-http_listen_addr: "[::]:8000"
-unifi_webhook_secret: x
-android_app_webhook_secret: x
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+  keep_alive: 5s
+  max_packet_size: 100000
+  channel_capacity: 100
+  reconnect: { min: 1s, max: 60s }
+http:
+  listen_address: "[::]:8000"
+  clients: { default: { timeout: 30s } }
+database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+tracing: { sampling: { default: 1.0, spans: {} } }
+home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
 s3: { bucket: b, region: r }
 watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, timers: { catch_up_within: 10m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-adhoc: { recheck_interval: 15m }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
+eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
+-
   - id: epd
     transport: eink_display_firmware
     address: "abc123"
@@ -1844,7 +2098,7 @@ devices:
 
         let mut missing = Vec::new();
 
-        for dir in ["", "workflows/"] {
+        for dir in ["", "devices/", "workflows/"] {
             for entry in std::fs::read_dir(Path::new("./config").join(dir)).unwrap() {
                 let name = entry.unwrap().file_name().to_string_lossy().into_owned();
                 let is_yaml = name.ends_with(".yaml") && name != "kustomization.yaml";

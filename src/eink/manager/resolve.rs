@@ -1,15 +1,13 @@
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::eink::flag::EpdFlagConfig;
 use crate::settings::{
-    Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, Orientation,
-    PartialRefresh, RedditFeed, RedditTimespan, SleepWindow,
+    Album, DashboardView, EinkDefaults, EinkDisplaySettings, EinkGlobalSettings, EinkMode,
+    Orientation, PartialRefresh, RedditFeed, RedditTimespan, SleepWindow,
 };
 use chrono_tz::Australia::Perth;
 use std::time::Duration;
 
 const DEFAULT_REDDIT_TIMESPAN: RedditTimespan = RedditTimespan::Day;
-const DEFAULT_REDDIT_LIMIT: u32 = 25;
-const DEFAULT_SETTLE: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone)]
 pub struct ResolvedDisplay {
@@ -49,14 +47,14 @@ impl ResolvedDisplay {
             orientation: display.orientation,
             view: view(flag, global, display).cloned(),
             album: album(flag, global, display),
-            feed: feed(flag, display),
+            feed: feed(flag, display, &global.defaults),
             sleep: active_sleep(display, flag.force_sleep, device_id),
             lead: display.mode.lead(),
             settle: display
                 .mode
                 .settle()
                 .and_then(|settle| settle.to_std().ok())
-                .unwrap_or(DEFAULT_SETTLE),
+                .unwrap_or_else(|| global.defaults.settle()),
             partial: display.partial,
             partial_enabled: flag.partial_refresh.unwrap_or(display.partial.enabled),
             clear_screen: flag.clear_screen,
@@ -123,7 +121,11 @@ fn album(
     })
 }
 
-fn feed(flag: &EpdFlagConfig, display: &EinkDisplaySettings) -> Option<RedditFeed> {
+fn feed(
+    flag: &EpdFlagConfig,
+    display: &EinkDisplaySettings,
+    defaults: &EinkDefaults,
+) -> Option<RedditFeed> {
     let configured = display.mode.feed();
 
     let subreddit = flag
@@ -140,7 +142,7 @@ fn feed(flag: &EpdFlagConfig, display: &EinkDisplaySettings) -> Option<RedditFee
         limit: flag
             .limit
             .or_else(|| configured.map(|feed| feed.limit))
-            .unwrap_or(DEFAULT_REDDIT_LIMIT),
+            .unwrap_or(defaults.reddit_limit),
     })
 }
 
@@ -181,6 +183,15 @@ mod tests {
 
     const HOURLY: &str = "0 * * * *";
 
+    fn defaults() -> EinkDefaults {
+        EinkDefaults {
+            reddit_limit: 25,
+            settle: chrono::TimeDelta::seconds(10),
+            fallback_refresh: chrono::TimeDelta::minutes(15),
+            min_refresh: chrono::TimeDelta::seconds(60),
+        }
+    }
+
     fn display_with_refresh(refresh: &str) -> EinkDisplaySettings {
         EinkDisplaySettings {
             name: "Test Display".to_owned(),
@@ -220,7 +231,8 @@ mod tests {
         assert_eq!(
             feed(
                 &EpdFlagConfig::default(),
-                &display_with_feed(configured.clone())
+                &display_with_feed(configured.clone()),
+                &defaults()
             ),
             Some(configured)
         );
@@ -240,7 +252,7 @@ mod tests {
         });
 
         assert_eq!(
-            feed(&flag, &display),
+            feed(&flag, &display, &defaults()),
             Some(RedditFeed {
                 subreddit: "ImaginaryLandscapes".to_owned(),
                 timespan: RedditTimespan::Day,
@@ -252,7 +264,11 @@ mod tests {
     #[test]
     fn reddit_feed_without_a_subreddit_is_skipped() {
         assert_eq!(
-            feed(&EpdFlagConfig::default(), &display_with_refresh(HOURLY)),
+            feed(
+                &EpdFlagConfig::default(),
+                &display_with_refresh(HOURLY),
+                &defaults()
+            ),
             None
         );
     }
@@ -265,11 +281,11 @@ mod tests {
         };
 
         assert_eq!(
-            feed(&flag, &display_with_refresh(HOURLY)),
+            feed(&flag, &display_with_refresh(HOURLY), &defaults()),
             Some(RedditFeed {
                 subreddit: "EarthPorn".to_owned(),
                 timespan: DEFAULT_REDDIT_TIMESPAN,
-                limit: DEFAULT_REDDIT_LIMIT,
+                limit: defaults().reddit_limit,
             })
         );
     }

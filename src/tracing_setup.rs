@@ -26,15 +26,14 @@ use std::time::Duration;
 use tracing::{Level, level_filters::LevelFilter};
 use tracing_subscriber::{Layer, filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::settings::SamplingSettings;
+
 pub const VERSION: &str = env!("HOME_GATEWAY_VERSION");
 
 pub const SQLX_QUERY_TARGET: &str = "sqlx::query";
 
 pub const MQTT_INGEST_SPAN: &str = "mqtt.ingest";
 pub const FORCE_SAMPLE: &str = "force_sample";
-
-pub const DEFAULT_SAMPLE_RATIO: f64 = 1.0;
-pub const DEFAULT_MQTT_SAMPLE_RATIO: f64 = 0.05;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SampleRatios {
@@ -51,8 +50,17 @@ impl SampleRatios {
 impl Default for SampleRatios {
     fn default() -> Self {
         Self {
-            default: DEFAULT_SAMPLE_RATIO,
-            by_span: HashMap::from([(MQTT_INGEST_SPAN.to_owned(), DEFAULT_MQTT_SAMPLE_RATIO)]),
+            default: 1.0,
+            by_span: HashMap::new(),
+        }
+    }
+}
+
+impl From<&SamplingSettings> for SampleRatios {
+    fn from(settings: &SamplingSettings) -> Self {
+        Self {
+            default: settings.default,
+            by_span: settings.spans.clone(),
         }
     }
 }
@@ -320,9 +328,9 @@ mod tests {
     }
 
     #[test]
-    fn mqtt_is_sampled_out_of_the_box_while_everything_else_is_kept() {
+    fn mqtt_is_sampled_at_its_configured_ratio_while_everything_else_is_kept() {
         let sampler = RatioSampler {
-            control: SamplingControl::default(),
+            control: control_with(1.0, &[(MQTT_INGEST_SPAN, 0.05)]),
         };
 
         assert!(decide(&sampler, "dispatch_event", &[], u64::MAX));

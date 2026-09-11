@@ -1,0 +1,11 @@
+- !include door.yaml
+- !include environment.yaml
+- !include presence.yaml
+- !include plant.yaml
+- !include light.yaml
+- !include smart_switch.yaml
+- !include control_switch.yaml
+- !include eink_display.yaml
+- !include trmnl.yaml
+- !include robot_vacuum.yaml
+- !include media_player.yaml

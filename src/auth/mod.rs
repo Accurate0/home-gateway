@@ -91,9 +91,13 @@ pub async fn resolve_ws_auth(
         }
         // ws sends a single token field; a JWT (has dots) is an OAuth access token.
         if token.contains('.')
-            && let Some(oauth) = &state.handles.expect::<AuthManager>().oauth
+            && let Some(result) = state
+                .handles
+                .expect::<AuthManager>()
+                .validate_oauth(token)
+                .await
         {
-            return oauth.validate(token).await;
+            return result;
         }
     }
 
@@ -107,8 +111,6 @@ pub async fn resolve_auth(
     if dev_bypass_enabled() {
         return Ok(AuthContext::full_access(false));
     }
-
-    let settings = &state.settings;
 
     let api_key = headers
         .get("X-Api-Key")
@@ -129,34 +131,13 @@ pub async fn resolve_auth(
         .filter(|s| !s.is_empty());
 
     if let Some(token) = bearer
-        && let Some(oauth) = &state.handles.expect::<AuthManager>().oauth
+        && let Some(result) = state
+            .handles
+            .expect::<AuthManager>()
+            .validate_oauth(token)
+            .await
     {
-        return oauth.validate(token).await;
-    }
-
-    let webhook_secret = headers
-        .get("X-Webhook-Secret")
-        .and_then(|value| value.to_str().ok())
-        .map(|s| s.trim());
-
-    if let Some(secret) = webhook_secret {
-        if !settings.android_app_webhook_secret.is_empty()
-            && secret == settings.android_app_webhook_secret
-        {
-            return Ok(AuthContext::from_scopes(
-                None,
-                Some("android-webhook".to_owned()),
-                &["ingest.home:write".to_owned()],
-            ));
-        }
-
-        if !settings.unifi_webhook_secret.is_empty() && secret == settings.unifi_webhook_secret {
-            return Ok(AuthContext::from_scopes(
-                None,
-                Some("unifi-webhook".to_owned()),
-                &["ingest.unifi:write".to_owned()],
-            ));
-        }
+        return result;
     }
 
     Err(StatusCode::UNAUTHORIZED)
