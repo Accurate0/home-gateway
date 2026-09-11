@@ -1,15 +1,21 @@
-use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::fuel_change::FuelChange;
 use super::playback::PlaybackState;
-use super::reading::{SensorReading, metric_var_name};
+use super::reading::SensorReading;
+use super::variables::{
+    CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
+    HomeAssistantVariables, JellyfinVariables, MediaPlayerVariables, ModeVariables,
+    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, WeatherVariables,
+    WoolworthsVariables,
+};
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
 use crate::actors::sun::calc::SunTransition;
 use crate::mode::Mode;
 use crate::repo::intent::{DeviceKind, IntentAttributes};
 use crate::settings::IEEEAddress;
+use crate::variables::{Node, WorkflowContextVariables};
 
 /// Every event that can flow through the bus. New producers (webhooks,
 /// schedules, manual triggers, …) add a variant here; matching lives in the
@@ -342,85 +348,63 @@ impl EventBusMessage {
         }
     }
 
-    /// Named variables carried by the event, substituted into templated workflow
-    /// strings (e.g. a `notify` message). The keys each event kind can provide
-    /// are declared in [`crate::settings::TriggerMatcher::available_vars`], which
-    /// the config loader validates templates against.
-    pub fn vars(&self) -> HashMap<String, String> {
+    pub fn vars(&self) -> Node {
         match self {
             EventBusMessage::Presence {
                 sensor, present, ..
-            } => HashMap::from([
-                ("sensor".to_owned(), sensor.clone()),
-                ("present".to_owned(), present.to_string()),
-            ]),
+            } => PresenceVariables {
+                sensor: sensor.clone(),
+                present: *present,
+            }
+            .to_node(),
             EventBusMessage::Door {
                 ieee_addr, open, ..
-            } => HashMap::from([
-                ("device".to_owned(), ieee_addr.clone()),
-                ("open".to_owned(), open.to_string()),
-            ]),
+            } => DoorVariables {
+                device: ieee_addr.clone(),
+                open: *open,
+            }
+            .to_node(),
             EventBusMessage::SwitchAction {
                 ieee_addr, action, ..
-            } => HashMap::from([
-                ("device".to_owned(), ieee_addr.clone()),
-                ("action".to_owned(), action.clone()),
-            ]),
+            } => SwitchVariables {
+                device: ieee_addr.clone(),
+                action: action.clone(),
+            }
+            .to_node(),
             EventBusMessage::Environment {
                 sensor, readings, ..
-            } => {
-                let mut vars = HashMap::from([("sensor".to_owned(), sensor.clone())]);
-                for reading in readings {
-                    vars.insert(
-                        metric_var_name(&reading.metric()),
-                        reading.value().to_string(),
-                    );
-                }
-                vars
+            } => EnvironmentVariables::node(sensor, readings),
+            EventBusMessage::Cron { name, .. } => CronVariables { name: name.clone() }.to_node(),
+            EventBusMessage::Sun { transition, .. } => SunVariables {
+                transition: transition.as_str().to_owned(),
             }
-            EventBusMessage::Cron { name, .. } => {
-                HashMap::from([("name".to_owned(), name.clone())])
+            .to_node(),
+            EventBusMessage::Mode { mode, previous, .. } => ModeVariables {
+                mode: mode.as_str().to_owned(),
+                previous: previous.as_str().to_owned(),
             }
-            EventBusMessage::Sun { transition, .. } => {
-                HashMap::from([("transition".to_owned(), format!("{transition:?}"))])
-            }
-            EventBusMessage::Light { ieee_addr, on, .. } => HashMap::from([
-                ("device".to_owned(), ieee_addr.clone()),
-                ("on".to_owned(), on.to_string()),
-            ]),
-            EventBusMessage::Unifi {
-                mac_address,
-                client,
-                connected,
-                ..
-            } => HashMap::from([
-                ("mac_address".to_owned(), mac_address.clone()),
-                ("client".to_owned(), client.clone()),
-                ("connected".to_owned(), connected.to_string()),
-            ]),
-            EventBusMessage::Mode { mode, previous, .. } => HashMap::from([
-                ("mode".to_owned(), mode.as_str().to_owned()),
-                ("previous".to_owned(), previous.as_str().to_owned()),
-            ]),
+            .to_node(),
             EventBusMessage::HomeAssistant {
                 entity_id, state, ..
-            } => HashMap::from([
-                ("entity_id".to_owned(), entity_id.clone()),
-                ("state".to_owned(), state.clone()),
-            ]),
+            } => HomeAssistantVariables {
+                entity_id: entity_id.clone(),
+                state: state.clone(),
+            }
+            .to_node(),
             EventBusMessage::Woolworths {
                 product_id,
                 name,
                 old_price,
                 new_price,
                 ..
-            } => HashMap::from([
-                ("product_id".to_owned(), product_id.to_string()),
-                ("name".to_owned(), name.clone()),
-                ("old_price".to_owned(), format!("{old_price:.2}")),
-                ("new_price".to_owned(), format!("{new_price:.2}")),
-                ("drop".to_owned(), format!("{:.2}", old_price - new_price)),
-            ]),
+            } => WoolworthsVariables {
+                product_id: *product_id,
+                name: name.clone(),
+                old_price: *old_price,
+                new_price: *new_price,
+                drop: old_price - new_price,
+            }
+            .to_node(),
             EventBusMessage::DeviceBattery {
                 device_id,
                 kind,
@@ -428,19 +412,14 @@ impl EventBusMessage {
                 battery_voltage,
                 battery_percent,
                 ..
-            } => HashMap::from([
-                ("device_id".to_owned(), device_id.clone()),
-                ("kind".to_owned(), kind.clone()),
-                ("name".to_owned(), name.clone()),
-                (
-                    "battery_voltage".to_owned(),
-                    battery_voltage.map_or_else(String::new, |v| format!("{v:.3}")),
-                ),
-                (
-                    "battery_percent".to_owned(),
-                    battery_percent.map_or_else(String::new, |v| format!("{v:.0}")),
-                ),
-            ]),
+            } => DeviceBatteryVariables {
+                device_id: device_id.clone(),
+                kind: kind.clone(),
+                name: name.clone(),
+                battery_voltage: *battery_voltage,
+                battery_percent: *battery_percent,
+            }
+            .to_node(),
             EventBusMessage::Jellyfin {
                 state,
                 session_id,
@@ -456,29 +435,22 @@ impl EventBusMessage {
                 runtime_seconds,
                 play_method,
                 ..
-            } => {
-                let number = |n: &Option<i32>| n.map_or_else(String::new, |n| n.to_string());
-                let seconds = |s: &Option<f64>| s.map_or_else(String::new, |s| format!("{s:.0}"));
-
-                HashMap::from([
-                    ("state".to_owned(), state.as_str().to_owned()),
-                    ("session_id".to_owned(), session_id.clone()),
-                    ("user".to_owned(), user.clone()),
-                    ("device".to_owned(), device.clone()),
-                    ("client".to_owned(), client.clone()),
-                    ("item".to_owned(), item_name.clone()),
-                    ("item_type".to_owned(), item_type.clone()),
-                    ("series".to_owned(), series_name.clone().unwrap_or_default()),
-                    ("season".to_owned(), number(season)),
-                    ("episode".to_owned(), number(episode)),
-                    ("position".to_owned(), seconds(position_seconds)),
-                    ("runtime".to_owned(), seconds(runtime_seconds)),
-                    (
-                        "play_method".to_owned(),
-                        play_method.clone().unwrap_or_default(),
-                    ),
-                ])
+            } => JellyfinVariables {
+                state: state.as_str().to_owned(),
+                session_id: session_id.clone(),
+                user: user.clone(),
+                device: device.clone(),
+                client: client.clone(),
+                item: item_name.clone(),
+                item_type: item_type.clone(),
+                series: series_name.clone(),
+                season: *season,
+                episode: *episode,
+                position: *position_seconds,
+                runtime: *runtime_seconds,
+                play_method: play_method.clone(),
             }
+            .to_node(),
             EventBusMessage::MediaPlayer {
                 device_id,
                 name,
@@ -497,50 +469,31 @@ impl EventBusMessage {
                 volume_level,
                 muted,
                 ..
-            } => {
-                let number = |n: &Option<i32>| n.map_or_else(String::new, |n| n.to_string());
-                let seconds = |s: &Option<f64>| s.map_or_else(String::new, |s| format!("{s:.0}"));
-                let text = |t: &Option<String>| t.clone().unwrap_or_default();
-
-                HashMap::from([
-                    ("device".to_owned(), device_id.clone()),
-                    ("name".to_owned(), name.clone()),
-                    ("room".to_owned(), text(room)),
-                    ("state".to_owned(), state.as_str().to_owned()),
-                    ("entity_state".to_owned(), entity_state.clone()),
-                    ("app".to_owned(), text(app_name)),
-                    ("source".to_owned(), text(source)),
-                    ("item".to_owned(), text(media_title)),
-                    ("series".to_owned(), text(media_series_title)),
-                    ("item_type".to_owned(), text(media_content_type)),
-                    ("season".to_owned(), number(season)),
-                    ("episode".to_owned(), number(episode)),
-                    ("position".to_owned(), seconds(position_seconds)),
-                    ("duration".to_owned(), seconds(duration_seconds)),
-                    (
-                        "volume".to_owned(),
-                        volume_level.map_or_else(String::new, |v| format!("{v:.2}")),
-                    ),
-                    (
-                        "muted".to_owned(),
-                        muted.map_or_else(String::new, |m| m.to_string()),
-                    ),
-                ])
+            } => MediaPlayerVariables {
+                device: device_id.clone(),
+                name: name.clone(),
+                room: room.clone(),
+                state: state.as_str().to_owned(),
+                entity_state: entity_state.clone(),
+                app: app_name.clone(),
+                source: source.clone(),
+                item: media_title.clone(),
+                series: media_series_title.clone(),
+                item_type: media_content_type.clone(),
+                season: *season,
+                episode: *episode,
+                position: *position_seconds,
+                duration: *duration_seconds,
+                volume: *volume_level,
+                muted: *muted,
             }
+            .to_node(),
             EventBusMessage::Solar { current_wh, .. } => {
-                HashMap::from([("current".to_owned(), format!("{current_wh:.0}"))])
+                SolarVariables::new(*current_wh, None).to_node()
             }
             EventBusMessage::Weather {
                 source, readings, ..
-            } => {
-                let mut vars = HashMap::from([("source".to_owned(), source.as_str().to_owned())]);
-
-                for reading in readings {
-                    vars.insert(reading.var_name(), format!("{:.1}", reading.value));
-                }
-
-                vars
-            }
+            } => WeatherVariables::node(*source, readings),
             EventBusMessage::FuelWatch {
                 change,
                 site_id,
@@ -551,36 +504,22 @@ impl EventBusMessage {
                 old_price,
                 new_price,
                 ..
-            } => HashMap::from([
-                ("change".to_owned(), change.as_str().to_owned()),
-                ("site_id".to_owned(), site_id.to_string()),
-                ("name".to_owned(), name.clone()),
-                ("brand".to_owned(), brand.clone()),
-                ("suburb".to_owned(), suburb.clone()),
-                ("address".to_owned(), address.clone()),
-                ("old_price".to_owned(), format!("{old_price:.1}")),
-                ("new_price".to_owned(), format!("{new_price:.1}")),
-                ("drop".to_owned(), format!("{:.1}", old_price - new_price)),
-            ]),
-            EventBusMessage::CommandFailed {
-                kind,
-                address,
-                device_id,
-                attempts,
-                ..
-            } => HashMap::from([
-                ("device".to_owned(), address.clone()),
-                (
-                    "device_id".to_owned(),
-                    device_id.clone().unwrap_or_else(|| address.clone()),
-                ),
-                ("kind".to_owned(), kind.as_str().to_owned()),
-                ("attempts".to_owned(), attempts.to_string()),
-            ]),
-            EventBusMessage::FeatureFlag { state, version, .. } => HashMap::from([
-                ("state".to_owned(), state.as_str().to_owned()),
-                ("version".to_owned(), version.clone().unwrap_or_default()),
-            ]),
+            } => FuelWatchVariables {
+                change: change.as_str().to_owned(),
+                site_id: *site_id,
+                name: name.clone(),
+                brand: brand.clone(),
+                suburb: suburb.clone(),
+                address: address.clone(),
+                old_price: *old_price,
+                new_price: *new_price,
+                drop: old_price - new_price,
+            }
+            .to_node(),
+            EventBusMessage::Light { .. }
+            | EventBusMessage::Unifi { .. }
+            | EventBusMessage::CommandFailed { .. }
+            | EventBusMessage::FeatureFlag { .. } => Node::empty(),
         }
     }
 }

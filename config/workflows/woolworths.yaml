@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../workflows.schema.json
 - name: Woolworths Price Drop
   slug: woolworths-price-drop
   group: Shopping
@@ -7,4 +8,4 @@
     - type: notify
       notify: { type: android_app }
       category: general
-      message: "${name} dropped to $${new_price} (was $${old_price}, -$${drop})"
+      message: "${event.name} dropped to $${event.new_price | round(2)} (was $${event.old_price | round(2)}, -$${event.drop | round(2)})"

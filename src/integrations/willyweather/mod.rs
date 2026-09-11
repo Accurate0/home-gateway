@@ -11,7 +11,9 @@ use crate::integrations::willyweather::types::{
 };
 use crate::settings::WillyWeatherSettings;
 
+pub mod day_variables;
 pub mod types;
+pub mod variables;
 
 const FORECAST_API_TEMPLATE: &str =
     "https://api.willyweather.com.au/v2/{API_KEY}/locations/{LOCATION_ID}/weather.json";

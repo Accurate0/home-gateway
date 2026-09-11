@@ -8,7 +8,7 @@ use crate::{
     },
     device_registry::{DeviceRegistry, ZigbeeDevice},
     repo::light::LightAttributes,
-    settings::zigbee_model::{payload_bool, payload_f64, payload_i64, payload_string},
+    settings::devices::zigbee_model::{payload_bool, payload_f64, payload_i64, payload_string},
 };
 
 use serde_json::{Map, Value};
@@ -346,7 +346,7 @@ pub fn metrics(
     let mut out = Vec::new();
 
     for (name, field) in &device.profile.metrics {
-        match crate::settings::zigbee_model::extract_metric(payload, field) {
+        match crate::settings::devices::zigbee_model::extract_metric(payload, field) {
             Some(value) => out.push((name.clone(), value)),
             None => tracing::info!("no {} in payload for {}", field.key, device.address),
         }
@@ -362,7 +362,7 @@ mod tests {
         device_metric::MetricValue,
         settings::{
             Metric,
-            zigbee_model::{RawZigbeeModelProfile, ZigbeeModelProfile},
+            devices::zigbee_model::{RawZigbeeModelProfile, ZigbeeModelProfile},
         },
     };
     use std::sync::Arc;

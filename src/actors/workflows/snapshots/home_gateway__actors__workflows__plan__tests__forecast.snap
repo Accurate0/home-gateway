@@ -4,7 +4,8 @@ expression: out
 ---
 # weather-forecast  (reusable)
   context: [willyweather]
-  notify: notify(AndroidApp, general): ${forecast_emoji} ${forecast_description}, ${forecast_min}–${forecast_max}°C. Rain ${forecast_rain_probability}% (${forecast_rain_range}mm), wind up to ${forecast_wind_max_speed}km/h, UV ${forecast_uv}, sunset ${forecast_sunset}
+  inputs: {}
+  notify: notify(AndroidApp, general): ${willyweather.today.emoji} ${willyweather.today.description}, ${willyweather.today.min}–${willyweather.today.max}°C. Rain ${willyweather.today.rain_probability | default("n/a")}% (${willyweather.today.rain_range | default("n/a")}mm), wind up to ${willyweather.today.wind_max_speed | int | default("n/a")}km/h, UV ${willyweather.today.uv | round(1) | default("n/a")}, sunset ${willyweather.today.sunset | default("n/a")}
 
 # Morning Forecast  (on: cron(0 9 * * *))
-    notify: notify(AndroidApp, general): ${forecast_emoji} ${forecast_description}, ${forecast_min}–${forecast_max}°C. Rain ${forecast_rain_probability}% (${forecast_rain_range}mm), wind up to ${forecast_wind_max_speed}km/h, UV ${forecast_uv}, sunset ${forecast_sunset}
+    notify: notify(AndroidApp, general): ${willyweather.today.emoji} ${willyweather.today.description}, ${willyweather.today.min}–${willyweather.today.max}°C. Rain ${willyweather.today.rain_probability | default("n/a")}% (${willyweather.today.rain_range | default("n/a")}mm), wind up to ${willyweather.today.wind_max_speed | int | default("n/a")}km/h, UV ${willyweather.today.uv | round(1) | default("n/a")}, sunset ${willyweather.today.sunset | default("n/a")}

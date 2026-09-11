@@ -13,87 +13,61 @@ pub mod adhoc;
 pub mod alarm;
 pub mod auth;
 pub mod de;
-pub mod device;
-pub mod door;
-pub mod eink;
-pub mod environment;
-pub mod fuelwatch;
-pub mod home_assistant;
-pub mod http_method;
-pub mod jellyfin;
-pub mod light;
+pub mod devices;
+pub mod integrations;
 pub mod location;
-pub mod media_player;
 pub mod notify;
-pub mod plant;
-pub mod presence;
 pub mod reconciler;
-pub mod reusable_workflow;
-pub mod roborock;
-pub mod s3;
-pub mod solar;
 pub mod sun;
-pub mod switch;
-pub mod switch_metric;
-pub mod template;
-pub mod transperth;
-pub mod trigger;
-pub mod trmnl;
 pub mod vacation;
-pub mod vacuum_command;
-pub mod valetudo;
 pub mod watchdog;
-pub mod willyweather;
-pub mod woolworths;
 pub mod workflow;
-pub mod workflow_context;
-pub mod workflow_definition;
-pub mod workflow_timers;
-pub mod zigbee_model;
 
 pub use adhoc::AdhocSettings;
 pub use alarm::AlarmSettings;
 pub use auth::{ApiKeySettings, OAuthSettings};
-pub use device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
-pub use door::{ArmedDoorStates, DoorSettings};
-pub use eink::{
+pub use devices::device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
+pub use devices::door::{ArmedDoorStates, DoorSettings};
+pub use devices::eink::{
     Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig,
     Orientation, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan, SleepWindow,
 };
-pub use environment::{
+pub use devices::environment::{
     EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
 };
-pub use fuelwatch::FuelWatchSettings;
-pub use home_assistant::{EntitySettings, HomeAssistantSettings};
-pub use jellyfin::JellyfinSettings;
-pub use light::RawLightBlock;
+pub use devices::light::RawLightBlock;
+pub use devices::media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
+pub use devices::plant::{PlantSensorSettings, RawPlantBlock};
+pub use devices::presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
+pub use devices::roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
+pub use devices::switch::{RawSmartSwitchBlock, SwitchRole};
+pub use devices::trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
+pub use devices::valetudo::{RawValetudoBlock, ValetudoSettings};
+pub use devices::zigbee_model::{
+    RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile,
+};
+pub use integrations::fuelwatch::FuelWatchSettings;
+pub use integrations::home_assistant::{EntitySettings, HomeAssistantSettings};
+pub use integrations::jellyfin::JellyfinSettings;
+pub use integrations::s3::S3Settings;
+pub use integrations::solar::SolarSettings;
+pub use integrations::transperth::{
+    PeakWindow, RawTransperthSettings, TransperthRoute, TransperthSettings,
+};
+pub use integrations::willyweather::WillyWeatherSettings;
+pub use integrations::woolworths::WoolworthsSettings;
 pub use location::LocationSettings;
-pub use media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use notify::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
     validate_acknowledge,
 };
-pub use plant::{PlantSensorSettings, RawPlantBlock};
-pub use presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
 pub use reconciler::ReconcilerSettings;
-pub use reusable_workflow::ReusableWorkflow;
-pub use roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
-pub use s3::S3Settings;
-pub use solar::SolarSettings;
 pub use sun::SunSettings;
-pub use switch::{RawSmartSwitchBlock, SwitchRole};
-pub use template::TemplateString;
-pub use transperth::{PeakWindow, RawTransperthSettings, TransperthRoute, TransperthSettings};
-pub use trigger::TriggerMatcher;
-pub use trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use vacation::VacationSettings;
-pub use valetudo::{RawValetudoBlock, ValetudoSettings};
 pub use watchdog::WatchdogSettings;
-pub use willyweather::WillyWeatherSettings;
-pub use woolworths::WoolworthsSettings;
-pub use workflow::{Workflow, WorkflowSettings};
-pub use workflow_definition::WorkflowDefinition;
-pub use zigbee_model::{RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile};
+pub use workflow::{
+    ReusableWorkflow, TriggerMatcher, Workflow, WorkflowDefinition, WorkflowSettings,
+};
 
 use crate::auth::scope::ScopePattern;
 use crate::device_registry::{DeviceRegistry, RawSensor};
@@ -211,7 +185,7 @@ pub struct RawSettings {
     #[serde(default)]
     fuelwatch: Option<FuelWatchSettings>,
     #[serde(default)]
-    eink_display: eink::RawEinkGlobal,
+    eink_display: devices::eink::RawEinkGlobal,
     adhoc: AdhocSettings,
     vacation: VacationSettings,
 }
@@ -344,6 +318,7 @@ impl RawSettings {
         let aliases = registry.aliases();
 
         let mut resolved = HashMap::new();
+        let mut scopes = HashMap::new();
         let mut slugs = HashSet::new();
         for mut workflow in workflows.into_iter().flatten() {
             workflow.resolve_devices(aliases)?;
@@ -351,11 +326,7 @@ impl RawSettings {
             let body = workflow.body();
             body.validate_capabilities(&registry)?;
 
-            if body
-                .context
-                .contains(&workflow_context::ContextSource::Fuelwatch)
-                && fuelwatch.is_none()
-            {
+            if body.context.contains(&workflow::ContextSource::Fuelwatch) && fuelwatch.is_none() {
                 return Err(format!(
                     "workflow '{}' uses `context: [fuelwatch]` but fuelwatch is not configured",
                     body.name
@@ -376,27 +347,10 @@ impl RawSettings {
                         triggered.name
                     ));
                 }
-
-                let mut available = triggered.on.available_vars();
-                available.extend(
-                    triggered
-                        .context
-                        .iter()
-                        .flat_map(|source| source.available_vars())
-                        .map(|var| (*var).to_owned()),
-                );
-
-                for var in triggered.template_placeholders() {
-                    if !available.contains(&var) {
-                        tracing::warn!(
-                            "workflow '{}' references unknown template var ${{{var}}}; \
-                             its trigger provides: [{}]",
-                            triggered.name,
-                            available.join(", ")
-                        );
-                    }
-                }
             }
+
+            let scope = workflow::scope::scope_for(&workflow, &registry)?;
+            workflow::scope::check_steps(body, &scope)?;
 
             if body.slug.trim().is_empty() {
                 return Err(format!("workflow '{}' has an empty slug", body.name));
@@ -405,32 +359,30 @@ impl RawSettings {
                 return Err(format!("duplicate workflow slug: {}", body.slug));
             }
             let name = body.name.clone();
+            scopes.insert(name.clone(), scope);
             if resolved.insert(name.clone(), workflow).is_some() {
                 return Err(format!("duplicate workflow name: {name}"));
             }
         }
 
         for workflow in resolved.values().map(WorkflowDefinition::body) {
-            for target in workflow.run_workflow_targets() {
-                if !resolved.contains_key(target) {
-                    return Err(format!(
-                        "workflow '{}': run_workflow references unknown workflow '{target}'",
-                        workflow.name
-                    ));
-                }
-            }
-            for target in workflow.notify_action_targets() {
-                if !resolved.contains_key(target) {
-                    return Err(format!(
-                        "workflow '{}': notify action references unknown workflow '{target}'",
-                        workflow.name
-                    ));
-                }
-            }
+            workflow::scope::check_calls(workflow, &scopes[&workflow.name], &resolved)?;
 
             workflow
                 .validate_acknowledgements()
                 .map_err(|e| format!("workflow '{}': {e}", workflow.name))?;
+        }
+
+        if let Some(definition) = resolved.get(&alarm.workflow) {
+            let inputs = workflow::scope::callable_inputs(definition)
+                .map_err(|error| format!("alarm workflow {error}"))?;
+
+            if !inputs.is_empty() {
+                return Err(format!(
+                    "alarm workflow '{}' needs inputs the alarm cannot pass",
+                    alarm.workflow
+                ));
+            }
         }
 
         Ok((
@@ -869,7 +821,7 @@ transperth:
             .values()
             .filter_map(WorkflowDefinition::triggered)
             .find(|w| {
-                matches!(&w.on, trigger::TriggerMatcher::Switch { ieee_addr, action }
+                matches!(&w.on, TriggerMatcher::Switch { ieee_addr, action }
                 if ieee_addr == "small-switch" && action == "single")
             })
             .expect("expected a switch workflow for the small switch");
@@ -906,7 +858,7 @@ transperth:
                 .workflows
                 .values()
                 .filter_map(WorkflowDefinition::triggered)
-                .any(|w| w.name == "Bins" && matches!(w.on, trigger::TriggerMatcher::Cron { .. }))
+                .any(|w| w.name == "Bins" && matches!(w.on, TriggerMatcher::Cron { .. }))
         );
 
         let roborock_address = registry.address_or_self("roborock");
@@ -1227,9 +1179,11 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 workflows:
   - - name: Caller
       slug: caller
+      inputs: {}
       run:
         - type: run_workflow
           workflow: does-not-exist
+          with: {}
 "#,
         )
         .unwrap();
@@ -1263,17 +1217,217 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 workflows:
   - - name: Callee
       slug: callee
+      inputs: {}
       run: []
     - name: Caller
       slug: caller
+      inputs: {}
       run:
         - type: run_workflow
           workflow: Callee
+          with: {}
 "#,
         )
         .unwrap();
 
         raw.resolve().expect("a known target resolves");
+    }
+
+    fn raw_with_workflows(workflows: &str) -> RawSettings {
+        let base = r#"
+api_key: x
+database_url: x
+zigbee_models: {}
+mqtt_url: x
+mqtt_username: x
+mqtt_password: x
+unifi_webhook_secret: x
+android_app_webhook_secret: x
+s3: { bucket: b, region: r }
+watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+workflow: { workers: 12, timers: { catch_up_within: 10m } }
+reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+location: { latitude: 0.0, longitude: 0.0 }
+sun: { catch_up_within: 2h }
+willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+adhoc: { recheck_interval: 15m }
+vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+"#;
+
+        serde_yaml::from_str(&format!("{base}\nworkflows:\n{workflows}")).unwrap()
+    }
+
+    fn resolve_error(workflows: &str) -> String {
+        raw_with_workflows(workflows).resolve().unwrap_err()
+    }
+
+    #[test]
+    fn an_unknown_template_variable_is_rejected() {
+        let err = resolve_error(
+            r#"
+  - - name: Cron notify
+      slug: cron-notify
+      on: { type: cron, schedule: "0 13 * * TUE" }
+      modes: [home]
+      run:
+        - type: notify
+          notify: { type: android_app }
+          category: general
+          message: "${event.bogus}"
+"#,
+        );
+
+        assert!(err.contains("unknown variable `event.bogus`"), "{err}");
+        assert!(err.contains("event.name"), "{err}");
+    }
+
+    #[test]
+    fn an_optional_variable_without_a_default_is_rejected() {
+        let err = resolve_error(
+            r#"
+  - - name: Low battery
+      slug: low-battery
+      on: { type: device_battery, below: 3.4 }
+      modes: [home]
+      run:
+        - type: notify
+          notify: { type: android_app }
+          category: general
+          message: "${event.name} at ${event.battery_percent}%"
+"#,
+        );
+
+        assert!(err.contains("may be missing"), "{err}");
+    }
+
+    #[test]
+    fn a_reusable_workflow_must_declare_inputs() {
+        let err = resolve_error(
+            r#"
+  - - name: Callee
+      slug: callee
+      run: []
+"#,
+        );
+
+        assert!(err.contains("must declare `inputs:`"), "{err}");
+    }
+
+    #[test]
+    fn a_workflow_reading_event_variables_cannot_be_run_workflow_target() {
+        let err = resolve_error(
+            r#"
+  - - name: Cron notify
+      slug: cron-notify
+      on: { type: cron, schedule: "0 13 * * TUE" }
+      modes: [home]
+      run:
+        - type: notify
+          notify: { type: android_app }
+          category: general
+          message: "${event.name}"
+    - name: Caller
+      slug: caller
+      inputs: {}
+      run:
+        - type: run_workflow
+          workflow: Cron notify
+          with: {}
+"#,
+        );
+
+        assert!(err.contains("reads `event.*`"), "{err}");
+    }
+
+    #[test]
+    fn run_workflow_inputs_are_type_checked() {
+        let workflows = |with: &str| {
+            format!(
+                r#"
+  - - name: Callee
+      slug: callee
+      inputs: {{ count: int }}
+      run:
+        - type: notify
+          notify: {{ type: android_app }}
+          category: general
+          message: "count ${{input.count}}"
+    - name: Caller
+      slug: caller
+      on: {{ type: woolworths }}
+      modes: [home]
+      run:
+        - type: run_workflow
+          workflow: Callee
+          with: {with}
+"#
+            )
+        };
+
+        let err = resolve_error(&workflows(r#"{ count: "${event.name}" }"#));
+        assert!(err.contains("is a string but the input is a int"), "{err}");
+
+        let err = resolve_error(&workflows("{}"));
+        assert!(err.contains("missing input `count`"), "{err}");
+
+        let err = resolve_error(&workflows(
+            r#"{ count: "${event.product_id}", extra: "x" }"#,
+        ));
+        assert!(err.contains("unknown input `extra`"), "{err}");
+
+        raw_with_workflows(&workflows(r#"{ count: "${event.product_id}" }"#))
+            .resolve()
+            .expect("typed inputs resolve");
+    }
+
+    #[test]
+    fn a_trigger_when_only_sees_event_variables() {
+        let err = resolve_error(
+            r#"
+  - - name: Hot day
+      slug: hot-day
+      on: { type: cron, schedule: "0 7 * * *" }
+      when: { type: var, var: willyweather.today.max, op: gt, value: 35 }
+      context: [willyweather]
+      modes: [home]
+      run: []
+"#,
+        );
+
+        assert!(
+            err.contains("unknown variable `willyweather.today.max`"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn a_var_guard_is_type_checked_against_the_full_scope() {
+        let workflows = |when: &str| {
+            format!(
+                r#"
+  - - name: Hot day
+      slug: hot-day
+      on: {{ type: woolworths }}
+      context: [willyweather]
+      modes: [home]
+      run:
+        - type: delay
+          seconds: 1
+          when: {when}
+"#
+            )
+        };
+
+        let err = resolve_error(&workflows(
+            "{ type: var, var: event.name, op: gt, value: 3 }",
+        ));
+        assert!(err.contains("cannot compare `event.name`"), "{err}");
+
+        raw_with_workflows(&workflows(
+            "{ type: var, var: willyweather.today.max, op: gt, value: 35 }",
+        ))
+        .resolve()
+        .expect("guards see context variables");
     }
 
     #[test]

@@ -1,14 +1,14 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::workflow::{Comparison, EnvMetric, LeafCondition};
-use super::{DeviceAliases, IEEEAddress, validate_device};
+use super::{Comparison, EnvMetric, LeafCondition};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::event_bus::{
     ForecastDay, FuelChange, PlaybackState, SensorMetric, SolarMetric, WeatherMetric, WeatherSource,
 };
 use crate::mode::Mode;
+use crate::settings::{DeviceAliases, IEEEAddress, validate_device};
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
 /// variants; the dispatcher matches messages against these.
@@ -193,7 +193,10 @@ impl TriggerMatcher {
                     SensorMetric::Pressure => EnvMetric::Pressure,
                     SensorMetric::Lux => EnvMetric::Lux,
                     SensorMetric::UvIndex => EnvMetric::UvIndex,
-                    SensorMetric::SoilMoisture | SensorMetric::Other(_) => return None,
+                    SensorMetric::Pm25
+                    | SensorMetric::VocIndex
+                    | SensorMetric::SoilMoisture
+                    | SensorMetric::Other(_) => return None,
                 };
 
                 Some(LeafCondition::Environment {
@@ -346,7 +349,7 @@ impl TriggerMatcher {
                 }
             }
             TriggerMatcher::Solar { metric, cmp } => {
-                format!("solar.{} {:?} {}", metric.var_name(), cmp.op, cmp.value)
+                format!("solar.{metric} {:?} {}", cmp.op, cmp.value)
             }
             TriggerMatcher::Weather {
                 source,
@@ -356,7 +359,7 @@ impl TriggerMatcher {
             } => format!(
                 "weather({}).{} {:?} {}",
                 source.as_str(),
-                metric.var_name(*day),
+                metric.label(*day),
                 cmp.op,
                 cmp.value
             ),
@@ -374,89 +377,7 @@ impl TriggerMatcher {
         }
     }
 
-    /// Template variable names this trigger's event can supply to a `notify`
-    /// message, mirroring [`crate::event_bus::EventBusMessage::vars`]. Used by the
-    /// config loader to warn about `${unknown}` placeholders.
-    pub fn available_vars(&self) -> Vec<String> {
-        let strs = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect();
-        match self {
-            TriggerMatcher::Presence { .. } => strs(&["sensor", "present"]),
-            TriggerMatcher::Door { .. } => strs(&["device", "open"]),
-            TriggerMatcher::Switch { .. } => strs(&["device", "action"]),
-            TriggerMatcher::Environment { metric, .. } => {
-                vec![
-                    "sensor".to_owned(),
-                    crate::event_bus::metric_var_name(metric),
-                ]
-            }
-            TriggerMatcher::Cron { .. } => strs(&["name"]),
-            TriggerMatcher::Sun { .. } => strs(&["transition"]),
-            TriggerMatcher::Mode { .. } => strs(&["mode", "previous"]),
-            TriggerMatcher::HomeAssistant { .. } => strs(&["entity_id", "state"]),
-            TriggerMatcher::Woolworths { .. } => {
-                strs(&["product_id", "name", "old_price", "new_price", "drop"])
-            }
-            TriggerMatcher::FuelWatch { .. } => strs(&[
-                "change",
-                "site_id",
-                "name",
-                "brand",
-                "suburb",
-                "address",
-                "old_price",
-                "new_price",
-                "drop",
-            ]),
-            TriggerMatcher::DeviceBattery { .. } => strs(&[
-                "device_id",
-                "kind",
-                "name",
-                "battery_voltage",
-                "battery_percent",
-            ]),
-            TriggerMatcher::Jellyfin { .. } => strs(&[
-                "state",
-                "session_id",
-                "user",
-                "device",
-                "client",
-                "item",
-                "item_type",
-                "series",
-                "season",
-                "episode",
-                "position",
-                "runtime",
-                "play_method",
-            ]),
-            TriggerMatcher::MediaPlayer { .. } => strs(&[
-                "device",
-                "name",
-                "room",
-                "state",
-                "entity_state",
-                "app",
-                "source",
-                "item",
-                "series",
-                "item_type",
-                "season",
-                "episode",
-                "position",
-                "duration",
-                "volume",
-                "muted",
-            ]),
-            TriggerMatcher::Solar { .. } => strs(&["current", "avg_15m", "avg_1h", "avg_3h"]),
-            TriggerMatcher::Weather { source, .. } => {
-                let mut vars = vec!["source".to_owned()];
-                vars.extend(WeatherMetric::var_names(*source));
-                vars
-            }
-        }
-    }
-
-    pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         match self {
             TriggerMatcher::Door { ieee_addr, .. } | TriggerMatcher::Switch { ieee_addr, .. } => {
                 validate_device(ieee_addr, devices)?;

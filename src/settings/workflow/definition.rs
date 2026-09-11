@@ -2,9 +2,8 @@ use schemars::JsonSchema;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
-use super::DeviceAliases;
-use super::reusable_workflow::ReusableWorkflow;
-use super::workflow::Workflow;
+use super::{ReusableWorkflow, Workflow};
+use crate::settings::DeviceAliases;
 
 const TRIGGER_KEYS: &[&str] = &["modes", "when", "cooldown", "delay", "for"];
 
@@ -30,7 +29,7 @@ impl WorkflowDefinition {
         }
     }
 
-    pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
         match self {
             WorkflowDefinition::Triggered(workflow) => workflow.resolve_devices(devices),
             WorkflowDefinition::Reusable(workflow) => workflow.resolve_devices(devices),

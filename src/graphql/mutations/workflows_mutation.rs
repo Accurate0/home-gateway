@@ -1,5 +1,5 @@
-use async_graphql::Object;
-use std::collections::HashMap;
+use async_graphql::{Json, Object};
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use crate::actors::system::rpc;
@@ -11,6 +11,9 @@ use crate::event_bus::{EventBus, EventBusMessage};
 use crate::graphql::guard::ScopeGuard;
 use crate::mode::Mode;
 use crate::settings::SettingsContainer;
+use crate::settings::workflow::scope::callable_inputs;
+use crate::variables::Vars;
+use crate::variables::input::input_node;
 
 #[derive(Default)]
 pub struct WorkflowsMutation;
@@ -62,20 +65,23 @@ impl WorkflowsMutation {
         &self,
         ctx: &async_graphql::Context<'_>,
         slug: String,
+        inputs: Option<Json<BTreeMap<String, serde_json::Value>>>,
     ) -> async_graphql::Result<bool> {
         let settings = ctx.data::<SettingsContainer>()?;
-        let workflow = settings
+        let definition = settings
             .workflows
             .values()
-            .map(crate::settings::WorkflowDefinition::body)
-            .find(|w| w.slug == slug)
-            .ok_or_else(|| async_graphql::Error::new(format!("unknown workflow slug: {slug}")))?
-            .clone();
+            .find(|w| w.body().slug == slug)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown workflow slug: {slug}")))?;
+
+        let declared = callable_inputs(definition).map_err(async_graphql::Error::new)?;
+        let given = inputs.map(|inputs| inputs.0).unwrap_or_default();
+        let input = input_node(&declared, &given).map_err(async_graphql::Error::new)?;
 
         let message = WorkflowWorkerMessage::Execute {
             event_id: Uuid::new_v4(),
-            workflow,
-            vars: HashMap::new(),
+            workflow: definition.body().clone(),
+            vars: Vars::default().with("input", input),
             traceparent: crate::tracing_context::inject_current(),
         };
 

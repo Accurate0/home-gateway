@@ -1,7 +1,6 @@
 ---
 source: src/actors/workflows/plan.rs
-assertion_line: 243
 expression: out
 ---
 # Solar Surplus  (on: solar.avg_15m Gt 3000)
-  notify: notify(AndroidApp, general): Solar averaging ${avg_15m}W over the last 15 minutes (now ${current}W)
+  notify: notify(AndroidApp, general): Solar averaging ${event.avg_15m | int}W over the last 15 minutes (now ${event.current | int}W)

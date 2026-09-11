@@ -2,7 +2,7 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
+use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 use crate::timedelta_format::option_time_delta_from_str;
 
 #[derive(Debug, Clone)]

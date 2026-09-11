@@ -5,10 +5,11 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
+use crate::event_bus::SensorMetric;
 use crate::integrations::esphome::{
     EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic,
 };
-use crate::settings::door::RawDoorSettings;
+use crate::settings::devices::door::RawDoorSettings;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
@@ -654,6 +655,38 @@ impl DeviceRegistryInner {
 
     pub fn environment(&self, address: &str) -> Option<&EnvironmentSensorSettings> {
         self.environment.get(address)
+    }
+
+    pub fn sensor_metrics(&self, address: &str) -> Vec<SensorMetric> {
+        let esphome = self
+            .environment
+            .get(address)
+            .into_iter()
+            .flat_map(|settings| settings.entities.values().copied().map(SensorMetric::from));
+
+        let zigbee = self
+            .zigbee_devices
+            .get(address)
+            .and_then(|device| device.profile.environment.as_ref())
+            .into_iter()
+            .flatten()
+            .map(|(metric, _)| SensorMetric::from(*metric));
+
+        let plant = self
+            .plant
+            .get(address)
+            .into_iter()
+            .flat_map(|settings| settings.entities.iter().cloned().map(SensorMetric::from));
+
+        let mut metrics = Vec::new();
+
+        for metric in esphome.chain(zigbee).chain(plant) {
+            if !metrics.contains(&metric) {
+                metrics.push(metric);
+            }
+        }
+
+        metrics
     }
 
     #[allow(unused)]

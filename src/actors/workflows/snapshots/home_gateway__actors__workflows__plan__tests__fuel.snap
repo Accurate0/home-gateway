@@ -4,4 +4,4 @@ expression: out
 ---
 # Fuel Tuesday  (on: cron(0 13 * * 2))
   context: [fuelwatch]
-  notify: notify(AndroidApp, general): Cheapest ULP91 near ${fuel_suburb}: ${fuel_price}c/L at ${fuel_brand} ${fuel_name}
+  notify: notify(AndroidApp, general): Cheapest ULP91 near ${fuelwatch.suburb}: ${fuelwatch.price | round(1)}c/L at ${fuelwatch.brand} ${fuelwatch.name}

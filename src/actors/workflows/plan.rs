@@ -211,6 +211,7 @@ mod tests {
                   state: "ON"
                 - type: run_workflow
                   workflow: leaf
+                  with: {}
                   when: { type: time_of_day, after: "22:00:00" }
             leaf:
               run:
@@ -232,6 +233,7 @@ mod tests {
               run:
                 - type: run_workflow
                   workflow: loop
+                  with: {}
             "#,
         );
         let entry = all.get("loop").unwrap().clone();
@@ -273,6 +275,13 @@ mod tests {
             if !wf.context.is_empty() {
                 let sources: Vec<&str> = wf.context.iter().map(|s| s.as_str()).collect();
                 out.push_str(&format!("  context: [{}]\n", sources.join(", ")));
+            }
+            if let Some(inputs) = &wf.inputs {
+                let inputs: Vec<String> = inputs
+                    .iter()
+                    .map(|(name, ty)| format!("{name}: {ty}"))
+                    .collect();
+                out.push_str(&format!("  inputs: {{{}}}\n", inputs.join(", ")));
             }
             let rendered = render(&plan(&workflows, &wf.run));
             if rendered.is_empty() {
@@ -391,8 +400,10 @@ mod tests {
             run:
               - type: run_workflow
                 workflow: missing
+                with: {}
               - type: run_workflow
                 workflow: off_wf
+                with: {}
             "#,
         );
         insta::assert_snapshot!(rendered(&all, &entry));

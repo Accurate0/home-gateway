@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::settings::Metric;
+
 /// A named scalar sensor reading. Known metrics are typed; anything else (an
 /// esphome object_id we don't model) falls back to [`SensorMetric::Other`] so
 /// producers and config stay honest without an exhaustive list.
@@ -12,8 +14,28 @@ pub enum SensorMetric {
     Pressure,
     Lux,
     UvIndex,
+    Pm25,
+    VocIndex,
     SoilMoisture,
     Other(String),
+}
+
+impl std::fmt::Display for SensorMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            SensorMetric::Temperature => "temperature",
+            SensorMetric::Humidity => "humidity",
+            SensorMetric::Pressure => "pressure",
+            SensorMetric::Lux => "lux",
+            SensorMetric::UvIndex => "uv_index",
+            SensorMetric::Pm25 => "pm25",
+            SensorMetric::VocIndex => "voc_index",
+            SensorMetric::SoilMoisture => "soil_moisture",
+            SensorMetric::Other(name) => name,
+        };
+
+        f.write_str(name)
+    }
 }
 
 impl From<String> for SensorMetric {
@@ -24,8 +46,24 @@ impl From<String> for SensorMetric {
             "pressure" => SensorMetric::Pressure,
             "lux" => SensorMetric::Lux,
             "uv_index" => SensorMetric::UvIndex,
+            "pm25" => SensorMetric::Pm25,
+            "voc_index" => SensorMetric::VocIndex,
             "soil_moisture" => SensorMetric::SoilMoisture,
             _ => SensorMetric::Other(s),
+        }
+    }
+}
+
+impl From<Metric> for SensorMetric {
+    fn from(metric: Metric) -> Self {
+        match metric {
+            Metric::Temperature => SensorMetric::Temperature,
+            Metric::Humidity => SensorMetric::Humidity,
+            Metric::Pressure => SensorMetric::Pressure,
+            Metric::Lux => SensorMetric::Lux,
+            Metric::UvIndex => SensorMetric::UvIndex,
+            Metric::Pm25 => SensorMetric::Pm25,
+            Metric::VocIndex => SensorMetric::VocIndex,
         }
     }
 }
@@ -39,22 +77,10 @@ pub enum SensorReading {
     Pressure { value: f64 },
     Lux { value: f64 },
     UvIndex { value: f64 },
+    Pm25 { value: f64 },
+    VocIndex { value: f64 },
     SoilMoisture { value: f64 },
     Other { name: String, value: f64 },
-}
-
-/// Template variable name for a metric, matching the config metric strings
-/// (`temperature`, `soil_moisture`, …) so `${temperature}` works in a notify.
-pub fn metric_var_name(metric: &SensorMetric) -> String {
-    match metric {
-        SensorMetric::Temperature => "temperature".to_owned(),
-        SensorMetric::Humidity => "humidity".to_owned(),
-        SensorMetric::Pressure => "pressure".to_owned(),
-        SensorMetric::Lux => "lux".to_owned(),
-        SensorMetric::UvIndex => "uv_index".to_owned(),
-        SensorMetric::SoilMoisture => "soil_moisture".to_owned(),
-        SensorMetric::Other(name) => name.clone(),
-    }
 }
 
 impl SensorReading {
@@ -67,6 +93,8 @@ impl SensorReading {
             SensorMetric::Pressure => SensorReading::Pressure { value },
             SensorMetric::Lux => SensorReading::Lux { value },
             SensorMetric::UvIndex => SensorReading::UvIndex { value },
+            SensorMetric::Pm25 => SensorReading::Pm25 { value },
+            SensorMetric::VocIndex => SensorReading::VocIndex { value },
             SensorMetric::SoilMoisture => SensorReading::SoilMoisture { value },
             SensorMetric::Other(name) => SensorReading::Other { name, value },
         }
@@ -79,6 +107,8 @@ impl SensorReading {
             SensorReading::Pressure { .. } => SensorMetric::Pressure,
             SensorReading::Lux { .. } => SensorMetric::Lux,
             SensorReading::UvIndex { .. } => SensorMetric::UvIndex,
+            SensorReading::Pm25 { .. } => SensorMetric::Pm25,
+            SensorReading::VocIndex { .. } => SensorMetric::VocIndex,
             SensorReading::SoilMoisture { .. } => SensorMetric::SoilMoisture,
             SensorReading::Other { name, .. } => SensorMetric::Other(name.clone()),
         }
@@ -91,6 +121,8 @@ impl SensorReading {
             | SensorReading::Pressure { value }
             | SensorReading::Lux { value }
             | SensorReading::UvIndex { value }
+            | SensorReading::Pm25 { value }
+            | SensorReading::VocIndex { value }
             | SensorReading::SoilMoisture { value }
             | SensorReading::Other { value, .. } => *value,
         }

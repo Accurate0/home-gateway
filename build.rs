@@ -14,146 +14,6 @@ const INJECTED_SECRETS: &[&str] = &[
     "android_app_webhook_secret",
 ];
 
-fn context_vars(source: &str) -> Option<Vec<&'static str>> {
-    Some(match source {
-        "fuelwatch" => vec![
-            "fuel_price",
-            "fuel_brand",
-            "fuel_name",
-            "fuel_suburb",
-            "fuel_address",
-        ],
-        "willyweather" => vec![
-            "forecast_description",
-            "forecast_emoji",
-            "forecast_min",
-            "forecast_max",
-            "forecast_uv",
-            "forecast_rain_probability",
-            "forecast_rain_range",
-            "forecast_wind_max_speed",
-            "forecast_sunset",
-        ],
-        _ => return None,
-    })
-}
-
-fn trigger_vars(trigger_type: &str) -> Option<Vec<&'static str>> {
-    Some(match trigger_type {
-        "presence" => vec!["sensor", "present"],
-        "door" => vec!["device", "open"],
-        "switch" => vec!["device", "action"],
-        "environment" => vec![
-            "sensor",
-            "temperature",
-            "humidity",
-            "pressure",
-            "lux",
-            "uv_index",
-            "soil_moisture",
-        ],
-        "cron" => vec!["name"],
-        "sun" => vec!["transition"],
-        "mode" => vec!["mode", "active"],
-        "home_assistant" => vec!["entity_id", "state"],
-        "woolworths" => vec!["product_id", "name", "old_price", "new_price", "drop"],
-        "fuelwatch" => vec![
-            "change",
-            "site_id",
-            "name",
-            "brand",
-            "suburb",
-            "address",
-            "old_price",
-            "new_price",
-            "drop",
-        ],
-        "device_battery" => vec![
-            "device_id",
-            "kind",
-            "name",
-            "battery_voltage",
-            "battery_percent",
-        ],
-        "jellyfin" => vec![
-            "state",
-            "session_id",
-            "user",
-            "device",
-            "client",
-            "item",
-            "item_type",
-            "series",
-            "season",
-            "episode",
-            "position",
-            "runtime",
-            "play_method",
-        ],
-        "media_player" => vec![
-            "device",
-            "name",
-            "room",
-            "state",
-            "entity_state",
-            "app",
-            "source",
-            "item",
-            "series",
-            "item_type",
-            "season",
-            "episode",
-            "position",
-            "duration",
-            "volume",
-            "muted",
-        ],
-        "solar" => vec!["current", "avg_15m", "avg_1h", "avg_3h"],
-        "weather" => vec![
-            "source",
-            "temperature",
-            "feels_like",
-            "humidity",
-            "wind_speed",
-            "gust_speed",
-            "max_gust_speed",
-            "rain_since_9am",
-            "uv",
-            "max_temp",
-            "min_temp",
-            "today_max_temp",
-            "today_min_temp",
-            "today_uv_max",
-            "today_rain_probability",
-            "today_rain_max",
-            "today_wind_max_speed",
-            "tomorrow_max_temp",
-            "tomorrow_min_temp",
-            "tomorrow_uv_max",
-            "tomorrow_rain_probability",
-            "tomorrow_rain_max",
-            "tomorrow_wind_max_speed",
-        ],
-        _ => return None,
-    })
-}
-
-fn placeholders(message: &str) -> Vec<&str> {
-    let mut names = Vec::new();
-    let mut rest = message;
-    while let Some(start) = rest.find("${") {
-        let after = &rest[start + 2..];
-        match after.find('}') {
-            Some(end) => {
-                names.push(&after[..end]);
-                rest = &after[end + 1..];
-            }
-            None => break,
-        }
-    }
-    names
-}
-
 fn git_short_sha(manifest_dir: &Path) -> Option<String> {
     println!("cargo:rerun-if-env-changed=GIT_SHA");
 
@@ -306,39 +166,11 @@ fn validate_semantics(value: &serde_json::Value) {
             panic!("duplicate workflow name '{name}'");
         }
 
-        let trigger_type = wf
-            .get("on")
-            .and_then(|o| o.get("type"))
-            .and_then(|t| t.as_str());
-
-        let context: Vec<&'static str> = wf
-            .get("context")
-            .and_then(|c| c.as_array())
-            .into_iter()
-            .flatten()
-            .flat_map(|source| {
-                let source = source.as_str().unwrap_or("<non-string>");
-                context_vars(source).unwrap_or_else(|| {
-                    panic!("workflow '{name}': unknown context source '{source}'")
-                })
-            })
-            .collect();
-
-        let available = match trigger_type {
-            Some(trigger_type) => trigger_vars(trigger_type).map(|mut vars| {
-                vars.extend(context.iter().copied());
-                vars
-            }),
-            None if !context.is_empty() => Some(context.clone()),
-            None => None,
-        };
-
         check_device_refs(wf.get("on"), &device_ids, name);
         check_device_refs(wf.get("when"), &device_ids, name);
         if let Some(run) = wf.get("run") {
             check_device_refs(Some(run), &device_ids, name);
             check_run_workflow_refs(run, &names, name);
-            check_template_vars(run, available.as_deref(), name);
         }
     }
 }
@@ -381,56 +213,6 @@ fn check_run_workflow_refs(run: &serde_json::Value, names: &HashSet<String>, wor
         }
         if let Some(nested) = step.get("run") {
             check_run_workflow_refs(nested, names, workflow);
-        }
-    }
-}
-
-fn templated_strings(step: &serde_json::Value) -> Vec<&str> {
-    let fields: &[&str] = match step.get("type").and_then(|t| t.as_str()) {
-        Some("notify") => &["message", "title"],
-        Some("mqtt_publish") => &["topic", "payload"],
-        Some("http") => &["url", "body"],
-        _ => return Vec::new(),
-    };
-
-    let headers = step
-        .get("headers")
-        .and_then(|h| h.as_object())
-        .into_iter()
-        .flat_map(|h| h.values());
-
-    fields
-        .iter()
-        .filter_map(|field| step.get(*field))
-        .chain(headers)
-        .filter_map(|value| value.as_str())
-        .collect()
-}
-
-fn check_template_vars(run: &serde_json::Value, available: Option<&[&str]>, workflow: &str) {
-    let Some(steps) = run.as_array() else { return };
-    for step in steps {
-        let kind = step
-            .get("type")
-            .and_then(|t| t.as_str())
-            .unwrap_or("<untyped>");
-
-        for template in templated_strings(step) {
-            for var in placeholders(template) {
-                let known = available.is_some_and(|vars| vars.contains(&var));
-                if !known {
-                    let listed = available
-                        .map(|v| v.join(", "))
-                        .unwrap_or_else(|| "none (reusable workflow)".to_owned());
-                    panic!(
-                        "workflow '{workflow}': {kind} references unknown template var \
-                         ${{{var}}}; trigger and context provide: [{listed}]"
-                    );
-                }
-            }
-        }
-        if let Some(nested) = step.get("run") {
-            check_template_vars(nested, available, workflow);
         }
     }
 }

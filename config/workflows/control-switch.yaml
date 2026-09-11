@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../workflows.schema.json
 - name: Control Switch on
   slug: control-switch-on
   group: Control Switch

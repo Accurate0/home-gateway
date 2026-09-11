@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../workflows.schema.json
 - name: Living room plant moisture check
   slug: living-room-plant-moisture-check
   group: Plants

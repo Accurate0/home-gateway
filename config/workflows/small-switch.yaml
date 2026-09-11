@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../workflows.schema.json
 - name: Small Switch single toggles living room
   slug: small-switch-single-toggle
   group: Living Room
@@ -7,9 +8,11 @@
     - type: run_workflow
       when: { type: light, device: floor-lamp-living-room, on: true }
       workflow: living-room-lamps-off
+      with: {}
     - type: run_workflow
       when: { type: light, device: floor-lamp-living-room, on: false }
       workflow: living-room-lamps-on
+      with: {}
 
 - name: Small Switch double toggles living room automations
   slug: small-switch-double-toggle-automations

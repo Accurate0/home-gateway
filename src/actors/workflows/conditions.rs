@@ -23,9 +23,12 @@ use crate::{
     db::DoorState,
     event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherReading, WeatherSource},
     integrations::{home_assistant::HomeAssistant, solar},
-    settings::switch_metric::SwitchMetric,
-    settings::workflow::{Combinator, Comparison, Condition, EnvMetric, LeafCondition},
+    settings::workflow::{
+        Combinator, CompareOp, Comparison, Condition, EnvMetric, LeafCondition, SwitchMetric,
+    },
     state::AppState,
+    templating::{Expr, Literal},
+    variables::Vars,
 };
 use chrono::{Local, Utc};
 use std::time::Duration;
@@ -42,18 +45,22 @@ impl From<RpcError> for WorkflowError {
 const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Evaluate a condition against current state. Recursive via `all`/`any`/`not`.
-pub async fn eval(state: &AppState, cond: &Condition) -> Result<bool, WorkflowError> {
+pub async fn eval(state: &AppState, vars: &Vars, cond: &Condition) -> Result<bool, WorkflowError> {
     match cond {
-        Condition::Combinator(c) => eval_combinator(state, c).await,
-        Condition::Leaf(l) => eval_leaf(state, l).await,
+        Condition::Combinator(c) => eval_combinator(state, vars, c).await,
+        Condition::Leaf(l) => eval_leaf(state, vars, l).await,
     }
 }
 
-async fn eval_combinator(state: &AppState, cond: &Combinator) -> Result<bool, WorkflowError> {
+async fn eval_combinator(
+    state: &AppState,
+    vars: &Vars,
+    cond: &Combinator,
+) -> Result<bool, WorkflowError> {
     match cond {
         Combinator::All(conditions) => {
             for c in conditions {
-                if !Box::pin(eval(state, c)).await? {
+                if !Box::pin(eval(state, vars, c)).await? {
                     return Ok(false);
                 }
             }
@@ -61,17 +68,42 @@ async fn eval_combinator(state: &AppState, cond: &Combinator) -> Result<bool, Wo
         }
         Combinator::Any(conditions) => {
             for c in conditions {
-                if Box::pin(eval(state, c)).await? {
+                if Box::pin(eval(state, vars, c)).await? {
                     return Ok(true);
                 }
             }
             Ok(false)
         }
-        Combinator::Not(condition) => Ok(!Box::pin(eval(state, condition)).await?),
+        Combinator::Not(condition) => Ok(!Box::pin(eval(state, vars, condition)).await?),
     }
 }
 
-async fn eval_leaf(state: &AppState, cond: &LeafCondition) -> Result<bool, WorkflowError> {
+fn eval_var(
+    vars: &Vars,
+    var: &Expr,
+    op: CompareOp,
+    expected: &Literal,
+) -> Result<bool, WorkflowError> {
+    let actual = var.value(vars).map_err(WorkflowError::Template)?;
+    let expected = expected.to_value();
+
+    let matched = match (actual.as_f64(), expected.as_f64()) {
+        (Some(actual), Some(expected)) => Comparison {
+            op,
+            value: expected,
+        }
+        .matches(actual),
+        _ => matches!(op, CompareOp::Eq) && actual == expected,
+    };
+
+    Ok(matched)
+}
+
+async fn eval_leaf(
+    state: &AppState,
+    vars: &Vars,
+    cond: &LeafCondition,
+) -> Result<bool, WorkflowError> {
     match cond {
         LeafCondition::Light { ieee_addr, on } => {
             Ok(query_light_on(state.devices.address_or_self(ieee_addr)).await? == *on)
@@ -130,6 +162,7 @@ async fn eval_leaf(state: &AppState, cond: &LeafCondition) -> Result<bool, Workf
             day,
             cmp,
         } => eval_weather(state, *source, *metric, *day, *cmp).await,
+        LeafCondition::Var { var, op, value } => eval_var(vars, var, *op, value),
     }
 }
 
@@ -175,7 +208,7 @@ async fn eval_weather(
         tracing::warn!(
             "no {} weather reading for {}",
             source.as_str(),
-            metric.var_name(day)
+            metric.label(day)
         );
         return Ok(false);
     };
@@ -207,7 +240,7 @@ async fn eval_solar(
     };
 
     let Some(value) = value else {
-        tracing::warn!("no solar reading for {}", metric.var_name());
+        tracing::warn!("no solar reading for {metric}");
         return Ok(false);
     };
 
@@ -342,5 +375,76 @@ async fn query_door_open(ieee_addr: &str) -> Result<bool, WorkflowError> {
             tracing::warn!("no door state for {ieee_addr}");
             Ok(false)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::variables::{Node, Value};
+
+    fn vars() -> Vars {
+        let mut event = Node::empty();
+        event.insert("new_price", Node::Value(Some(Value::Float(2.5))));
+        event.insert("name", Node::Value(Some(Value::String("Milk".to_owned()))));
+        event.insert("percent", Node::Value(None));
+
+        Vars::default().with("event", event)
+    }
+
+    fn expr(raw: &str) -> Expr {
+        Expr::parse(raw).expect("valid expression")
+    }
+
+    #[test]
+    fn var_leaf_compares_numbers_across_int_and_float() {
+        assert!(
+            eval_var(
+                &vars(),
+                &expr("event.new_price"),
+                CompareOp::Lt,
+                &Literal::Int(3)
+            )
+            .unwrap()
+        );
+        assert!(
+            !eval_var(
+                &vars(),
+                &expr("event.new_price"),
+                CompareOp::Gte,
+                &Literal::Float(2.6)
+            )
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn var_leaf_compares_strings_for_equality() {
+        let milk = Literal::String("Milk".to_owned());
+
+        assert!(eval_var(&vars(), &expr("event.name"), CompareOp::Eq, &milk).unwrap());
+        assert!(!eval_var(&vars(), &expr("event.name"), CompareOp::Gt, &milk).unwrap());
+    }
+
+    #[test]
+    fn var_leaf_uses_the_default_for_a_missing_value() {
+        assert!(
+            eval_var(
+                &vars(),
+                &expr("event.percent | default(100)"),
+                CompareOp::Gt,
+                &Literal::Int(50)
+            )
+            .unwrap()
+        );
+        assert!(
+            eval_var(
+                &vars(),
+                &expr("event.percent"),
+                CompareOp::Gt,
+                &Literal::Int(50)
+            )
+            .is_err()
+        );
     }
 }

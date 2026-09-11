@@ -1,5 +1,5 @@
 use crate::eink::manager::frame::{FrameContext, FrameEncoder};
-use crate::settings::eink::PALETTE_COLORS;
+use crate::settings::devices::eink::PALETTE_COLORS;
 use image::RgbImage;
 use image::imageops::ColorMap;
 

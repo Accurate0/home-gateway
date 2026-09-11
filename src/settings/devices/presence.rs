@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::de::de_string_or_vec;
+use crate::settings::de::de_string_or_vec;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum PresenceSensorType {

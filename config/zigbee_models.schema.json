@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Map_of_RawZigbeeModelProfile",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/$defs/RawZigbeeModelProfile"
+  },
+  "$defs": {
+    "RawZigbeeModelProfile": {
+      "type": "object",
+      "properties": {
+        "battery": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "door": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "light": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "smart_switch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "presence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "control_switch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawFieldBlock"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ZigbeeField"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RawFieldBlock": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "ZigbeeField": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ZigbeeFieldType"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "type"
+      ]
+    },
+    "ZigbeeFieldType": {
+      "type": "string",
+      "enum": [
+        "bool",
+        "int",
+        "float",
+        "string"
+      ]
+    }
+  }
+}

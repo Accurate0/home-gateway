@@ -12,13 +12,15 @@ pub enum SolarMetric {
     Avg3h,
 }
 
-impl SolarMetric {
-    pub fn var_name(&self) -> &'static str {
-        match self {
+impl std::fmt::Display for SolarMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
             SolarMetric::Current => "current",
             SolarMetric::Avg15m => "avg_15m",
             SolarMetric::Avg1h => "avg_1h",
             SolarMetric::Avg3h => "avg_3h",
-        }
+        };
+
+        f.write_str(name)
     }
 }

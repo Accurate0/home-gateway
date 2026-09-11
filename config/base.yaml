@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=config.schema.json
 version: "1"
 
 s3:

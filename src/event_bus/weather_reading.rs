@@ -7,9 +7,3 @@ pub struct WeatherReading {
     pub day: Option<ForecastDay>,
     pub value: f64,
 }
-
-impl WeatherReading {
-    pub fn var_name(&self) -> String {
-        self.metric.var_name(self.day)
-    }
-}

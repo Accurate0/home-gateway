@@ -105,9 +105,13 @@ enum WorkflowCommand {
     List,
     Run {
         slug: String,
+        #[arg(long = "input", value_parser = parse_input)]
+        inputs: Vec<(String, Value)>,
     },
     Exec {
         file: PathBuf,
+        #[arg(long = "input", value_parser = parse_input)]
+        inputs: Vec<(String, Value)>,
     },
     Enable {
         slug: String,
@@ -121,6 +125,20 @@ enum WorkflowCommand {
         #[arg(long)]
         limit: Option<i64>,
     },
+}
+
+fn parse_input(raw: &str) -> Result<(String, Value), String> {
+    let (key, value) = raw
+        .split_once('=')
+        .ok_or_else(|| format!("expected key=value, got `{raw}`"))?;
+
+    let value = serde_json::from_str(value).unwrap_or_else(|_| Value::String(value.to_owned()));
+
+    Ok((key.to_owned(), value))
+}
+
+fn input_map(inputs: &[(String, Value)]) -> Value {
+    Value::Object(inputs.iter().cloned().collect())
 }
 
 #[derive(Subcommand)]
@@ -485,17 +503,17 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
 
             Ok(())
         }
-        WorkflowCommand::Run { slug } => {
+        WorkflowCommand::Run { slug, inputs } => {
             let data = client
                 .graphql(
-                    "mutation($slug: String!) { runWorkflow(slug: $slug) }",
-                    json!({ "slug": slug }),
+                    "mutation($slug: String!, $inputs: JSON) { runWorkflow(slug: $slug, inputs: $inputs) }",
+                    json!({ "slug": slug, "inputs": input_map(inputs) }),
                 )
                 .await?;
 
             report(&data, as_json, &format!("ran {slug}"))
         }
-        WorkflowCommand::Exec { file } => {
+        WorkflowCommand::Exec { file, inputs } => {
             let source = std::fs::read_to_string(file)
                 .with_context(|| format!("failed to read {}", file.display()))?;
             let workflow: Value = serde_yaml::from_str(&source)
@@ -505,7 +523,7 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
                 .send(
                     Method::POST,
                     "/v1/workflow/execute",
-                    Some(&json!({ "workflow": workflow })),
+                    Some(&json!({ "workflow": workflow, "inputs": input_map(inputs) })),
                 )
                 .await?;
 

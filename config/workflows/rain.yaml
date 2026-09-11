@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../workflows.schema.json
 - name: Rain Today
   slug: rain-today
   group: Weather
@@ -8,4 +9,4 @@
     - type: notify
       notify: { type: android_app }
       category: general
-      message: "Rain likely today: ${today_rain_probability}% chance"
+      message: "Rain likely today: ${event.today.rain_probability | int}% chance"

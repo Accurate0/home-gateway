@@ -24,7 +24,7 @@ pub enum WeatherMetric {
 }
 
 impl WeatherMetric {
-    const BOM: &'static [WeatherMetric] = &[
+    pub const BOM: &'static [WeatherMetric] = &[
         WeatherMetric::Temperature,
         WeatherMetric::FeelsLike,
         WeatherMetric::Humidity,
@@ -74,27 +74,10 @@ impl WeatherMetric {
         metrics.contains(self)
     }
 
-    pub fn var_name(&self, day: Option<ForecastDay>) -> String {
+    pub fn label(&self, day: Option<ForecastDay>) -> String {
         match day {
             Some(day) => format!("{}_{}", day.as_str(), self.as_str()),
             None => self.as_str().to_owned(),
-        }
-    }
-
-    pub fn var_names(source: WeatherSource) -> Vec<String> {
-        match source {
-            WeatherSource::Bom => Self::BOM
-                .iter()
-                .map(|metric| metric.var_name(None))
-                .collect(),
-            WeatherSource::WillyWeather => ForecastDay::ALL
-                .iter()
-                .flat_map(|day| {
-                    Self::WILLYWEATHER
-                        .iter()
-                        .map(|metric| metric.var_name(Some(*day)))
-                })
-                .collect(),
         }
     }
 
@@ -179,23 +162,5 @@ mod tests {
             assert!(metric.validate(WeatherSource::WillyWeather, None).is_err());
             assert!(metric.validate(WeatherSource::Bom, None).is_err());
         }
-
-        let names = WeatherMetric::var_names(WeatherSource::WillyWeather);
-        assert!(names.contains(&"tomorrow_rain_probability".to_owned()));
-        assert!(names.contains(&"today_rain_max".to_owned()));
-        assert!(names.contains(&"today_wind_max_speed".to_owned()));
-    }
-
-    #[test]
-    fn var_names_cover_each_source() {
-        let bom = WeatherMetric::var_names(WeatherSource::Bom);
-        assert!(bom.contains(&"rain_since_9am".to_owned()));
-        assert!(bom.contains(&"max_gust_speed".to_owned()));
-        assert!(!bom.contains(&"uv_max".to_owned()));
-
-        assert!(
-            WeatherMetric::var_names(WeatherSource::WillyWeather)
-                .contains(&"tomorrow_max_temp".to_owned())
-        );
     }
 }

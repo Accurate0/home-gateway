@@ -2,7 +2,7 @@ use serde_json::json;
 
 use crate::integrations::home_assistant::{HomeAssistant, HomeAssistantError};
 use crate::integrations::mqtt::{MqttClient, MqttError};
-use crate::settings::vacuum_command::VacuumCommand;
+use crate::settings::workflow::VacuumCommand;
 use crate::settings::{RoborockSettings, ValetudoSettings};
 
 pub async fn roborock(

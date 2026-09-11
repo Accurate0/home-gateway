@@ -1,6 +1,7 @@
 - name: test-lamp-on
   slug: test-lamp-on
   group: Test
+  inputs: {}
   run:
     - type: light
       device: test-lamp
@@ -14,6 +15,7 @@
   run:
     - type: run_workflow
       workflow: test-lamp-on
+      with: {}
 
 - name: Test lamp off when motion clears
   slug: test-motion-clear-lamp-off

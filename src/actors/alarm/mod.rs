@@ -1,11 +1,11 @@
 use crate::actors::system::rpc;
+use crate::variables::Vars;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     state::AppState,
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use ractor::Actor;
-use std::collections::HashMap;
 use std::time::Duration;
 use tracing::Level;
 use types::AndroidAppAlarmPayload;
@@ -102,7 +102,7 @@ impl Actor for AlarmActor {
                         let message = WorkflowWorkerMessage::Execute {
                             event_id,
                             workflow,
-                            vars: HashMap::new(),
+                            vars: Vars::default(),
                             traceparent: crate::tracing_context::inject_current(),
                         };
 

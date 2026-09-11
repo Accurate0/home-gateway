@@ -385,6 +385,11 @@ type HomeAssistantUpdate {
 	id: ID!
 }
 
+"""
+A scalar that can represent any JSON value.
+"""
+scalar JSON
+
 type JellyfinObject {
 	nowPlaying: [JellyfinSession!]!
 }
@@ -635,7 +640,7 @@ type MutationRoot {
 	einkDisplay(id: String!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!): Mode!
-	runWorkflow(slug: String!): Boolean!
+	runWorkflow(slug: String!, inputs: JSON): Boolean!
 	runPendingAdhocTasks: Boolean!
 	runAdhocCronTask(name: String!): Boolean!
 	sendPushNotification(input: SendPushNotificationInput!): Boolean!

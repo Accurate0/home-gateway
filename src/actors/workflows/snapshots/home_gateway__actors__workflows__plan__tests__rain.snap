@@ -3,4 +3,4 @@ source: src/actors/workflows/plan.rs
 expression: out
 ---
 # Rain Today  (on: weather(willyweather).today_rain_probability Gte 70)
-  notify: notify(AndroidApp, general): Rain likely today: ${today_rain_probability}% chance
+  notify: notify(AndroidApp, general): Rain likely today: ${event.today.rain_probability | int}% chance

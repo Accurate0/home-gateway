@@ -5,7 +5,7 @@ use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
-use crate::settings::vacuum_command::VacuumCommand;
+use crate::settings::workflow::VacuumCommand;
 use crate::settings::{RoborockSettings, ValetudoSettings};
 
 enum Backend {

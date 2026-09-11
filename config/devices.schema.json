@@ -1,0 +1,828 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Array_of_RawSensor",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/RawSensor"
+  },
+  "$defs": {
+    "RawSensor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "transport": {
+          "$ref": "#/$defs/Transport"
+        },
+        "address": {
+          "type": "string"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RawRole"
+          }
+        },
+        "watchdog": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawDeviceWatchdog"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "room": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "transport",
+        "address",
+        "roles"
+      ]
+    },
+    "Transport": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "zigbee",
+            "esphome"
+          ]
+        },
+        {
+          "description": "Devices we never poll: they check in on their own schedule and push\nstate to us over HTTP (e.g. the battery-powered eink display firmware\nhitting `/epd/config`).",
+          "type": "string",
+          "const": "eink_display_firmware"
+        },
+        {
+          "description": "Devices whose state we fetch from the TRMNL cloud API on our own schedule.",
+          "type": "string",
+          "const": "trmnl"
+        },
+        {
+          "description": "Devices whose state we read from Home Assistant entities and control via\nHome Assistant service calls.",
+          "type": "string",
+          "const": "home_assistant"
+        },
+        {
+          "description": "Valetudo-flashed robots that publish state and accept commands directly\nover MQTT under `valetudo/<identifier>/...`.",
+          "type": "string",
+          "const": "valetudo"
+        }
+      ]
+    },
+    "RawRole": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Capability"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "door"
+            },
+            "config": {
+              "$ref": "#/$defs/RawDoorSettings"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "presence"
+            },
+            "config": {
+              "$ref": "#/$defs/RawPresenceBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "environment"
+            },
+            "config": {
+              "$ref": "#/$defs/RawEnvironmentBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "plant"
+            },
+            "config": {
+              "$ref": "#/$defs/RawPlantBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "light"
+            },
+            "config": {
+              "$ref": "#/$defs/RawLightBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "control_switch"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "smart_switch"
+            },
+            "config": {
+              "$ref": "#/$defs/RawSmartSwitchBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "eink_display_firmware"
+            },
+            "config": {
+              "$ref": "#/$defs/RawEinkDisplayBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "trmnl"
+            },
+            "config": {
+              "$ref": "#/$defs/RawTrmnlBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "roborock"
+            },
+            "config": {
+              "$ref": "#/$defs/RawRoborockBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "media_player"
+            },
+            "config": {
+              "$ref": "#/$defs/RawMediaPlayerBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "valetudo"
+            },
+            "config": {
+              "$ref": "#/$defs/RawValetudoBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "battery"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "RawDoorSettings": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NotifyRef"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "id"
+      ],
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "timeout": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string",
+              "const": "armed"
+            }
+          },
+          "required": [
+            "state",
+            "timeout"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "const": "unarmed"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        }
+      ]
+    },
+    "NotifyRef": {
+      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify_targets:`, or an inline source.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/NotifySource"
+        }
+      ]
+    },
+    "NotifySource": {
+      "oneOf": [
+        {
+          "description": "Push notification to all registered HomeGateway Android devices.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "android_app"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "RawPresenceBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "motion_entity": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
+    },
+    "RawEnvironmentBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "entities": {
+          "type": "object",
+          "properties": {
+            "humidity": {
+              "type": "string"
+            },
+            "lux": {
+              "type": "string"
+            },
+            "pm25": {
+              "type": "string"
+            },
+            "pressure": {
+              "type": "string"
+            },
+            "temperature": {
+              "type": "string"
+            },
+            "uv_index": {
+              "type": "string"
+            },
+            "voc_index": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "RawPlantBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "soil_moisture"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "RawLightBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "entity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RawSmartSwitchBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "as": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SwitchRole"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "SwitchRole": {
+      "type": "string",
+      "enum": [
+        "light"
+      ]
+    },
+    "RawEinkDisplayBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "firmware_version": {
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/RawEinkMode"
+        },
+        "orientation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Orientation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "refresh": {
+          "$ref": "#/$defs/CronSchedule"
+        },
+        "grace": {
+          "type": "string"
+        },
+        "sleep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawSleepWindow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "partial": {
+          "$ref": "#/$defs/RawPartialRefresh"
+        }
+      },
+      "required": [
+        "name",
+        "firmware_version",
+        "mode",
+        "refresh",
+        "grace",
+        "partial"
+      ]
+    },
+    "RawEinkMode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "view": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "settle": {
+              "type": "string"
+            },
+            "lead": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string",
+              "const": "dashboard"
+            }
+          },
+          "required": [
+            "name",
+            "settle",
+            "lead"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "album": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "name": {
+              "type": "string",
+              "const": "album"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "subreddit": {
+              "type": "string"
+            },
+            "timespan": {
+              "$ref": "#/$defs/RedditTimespan"
+            },
+            "limit": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "name": {
+              "type": "string",
+              "const": "reddit"
+            }
+          },
+          "required": [
+            "name",
+            "subreddit",
+            "timespan",
+            "limit"
+          ]
+        }
+      ]
+    },
+    "RedditTimespan": {
+      "type": "string",
+      "enum": [
+        "hour",
+        "day",
+        "week",
+        "month",
+        "year",
+        "all"
+      ]
+    },
+    "Orientation": {
+      "type": "string",
+      "enum": [
+        "portrait",
+        "landscape"
+      ]
+    },
+    "CronSchedule": {
+      "description": "Deserialized straight from a cron string by croner's `serde` feature, so the\nconfig accepts the full readable syntax: day/month aliases (`THU`, `JAN`),\nnicknames (`@weekly`, `@daily`), ranges (`MON-FRI`) and steps (`*/15`).",
+      "type": "string"
+    },
+    "RawSleepWindow": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "RawPartialRefresh": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "max_area_pct": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "max_consecutive": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "required": [
+        "enabled",
+        "max_area_pct",
+        "max_consecutive"
+      ]
+    },
+    "RawTrmnlBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RawRoborockBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "status_entity": {
+          "type": "string"
+        },
+        "battery_entity": {
+          "type": "string"
+        },
+        "room_entity": {
+          "type": "string"
+        },
+        "control_entity": {
+          "type": "string"
+        },
+        "start_service": {
+          "type": "string"
+        },
+        "stop_service": {
+          "type": "string"
+        },
+        "dock_service": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status_entity",
+        "battery_entity",
+        "room_entity",
+        "control_entity",
+        "start_service",
+        "stop_service",
+        "dock_service"
+      ]
+    },
+    "RawMediaPlayerBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RawValetudoBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "mqtt_prefix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "start_payload": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "stop_payload": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "dock_payload": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "Capability": {
+      "type": "string",
+      "enum": [
+        "brightness",
+        "colour_temp",
+        "rgb",
+        "temperature",
+        "humidity",
+        "pressure",
+        "lux",
+        "uv_index",
+        "pm25",
+        "voc_index"
+      ]
+    },
+    "RawDeviceWatchdog": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NotifyRef"
+          }
+        }
+      }
+    }
+  }
+}

@@ -10,9 +10,11 @@
 
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
+use crate::event_bus::variables::SolarVariables;
 use crate::repo::timer_kind::TimerKind;
 use crate::repo::workflow::{NewPendingTimer, PendingTimerRow};
 use crate::settings::workflow::Condition;
+use crate::variables::{Node, Vars, WorkflowContextVariables};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -110,6 +112,15 @@ fn latch_for(workflow: &Workflow, subject_entity: &str) -> Option<PendingLatch> 
             *day,
         ))),
         _ => None,
+    }
+}
+
+fn event_node(msg: &EventBusMessage, averages: Option<&SolarCurrentStatisticsAverages>) -> Node {
+    match msg {
+        EventBusMessage::Solar { current_wh, .. } => {
+            SolarVariables::new(*current_wh, averages).to_node()
+        }
+        other => other.vars(),
     }
 }
 
@@ -496,17 +507,11 @@ impl WorkflowDispatcher {
         let event_id = msg.event_id();
         crate::metrics::record_event(msg.kind());
         let settings = self.shared_actor_state.settings.clone();
-        let mut vars = msg.vars();
-
         let averages = self
             .solar_averages(&msg, &settings, traceparent.as_deref())
             .await;
-        if let Some(averages) = &averages {
-            let watts = |w: Option<f64>| w.map_or_else(String::new, |w| format!("{w:.0}"));
-            vars.insert("avg_15m".to_owned(), watts(averages.last_15_mins));
-            vars.insert("avg_1h".to_owned(), watts(averages.last_1_hour));
-            vars.insert("avg_3h".to_owned(), watts(averages.last_3_hours));
-        }
+
+        let vars = Vars::default().with("event", event_node(&msg, averages.as_ref()));
 
         let subject: EventSubject = (msg.kind().to_string(), msg.entity());
 
@@ -581,11 +586,11 @@ impl WorkflowDispatcher {
         event_id: uuid::Uuid,
         workflow: &Workflow,
         subject: &EventSubject,
-        vars: &HashMap<String, String>,
+        vars: &Vars,
         state: &mut WorkflowDispatcherState,
         pending: Option<PendingLatch>,
     ) -> Result<(), ActorProcessingErr> {
-        if !self.when_satisfied(event_id, workflow).await {
+        if !self.when_satisfied(event_id, workflow, vars).await {
             return Ok(());
         }
 
@@ -633,7 +638,7 @@ impl WorkflowDispatcher {
         event_id: Uuid,
         workflow: &Workflow,
         subject: &EventSubject,
-        vars: &HashMap<String, String>,
+        vars: &Vars,
     ) -> Result<(), ActorProcessingErr> {
         match workflow.delay {
             Some(delay) => {
@@ -672,12 +677,12 @@ impl WorkflowDispatcher {
         active
     }
 
-    async fn when_satisfied(&self, event_id: Uuid, workflow: &Workflow) -> bool {
+    async fn when_satisfied(&self, event_id: Uuid, workflow: &Workflow, vars: &Vars) -> bool {
         let Some(when) = &workflow.when else {
             return true;
         };
 
-        match conditions::eval(&self.shared_actor_state, when).await {
+        match conditions::eval(&self.shared_actor_state, vars, when).await {
             Ok(true) => true,
             Ok(false) => {
                 tracing::info!(
@@ -713,7 +718,7 @@ impl WorkflowDispatcher {
         kind: TimerKind,
         duration: chrono::TimeDelta,
         subject: &EventSubject,
-        vars: &HashMap<String, String>,
+        vars: &Vars,
     ) {
         let vars = match serde_json::to_value(vars) {
             Ok(vars) => vars,
@@ -826,7 +831,17 @@ impl WorkflowDispatcher {
         };
 
         let event_id = timer.event_id;
-        let vars: HashMap<String, String> = serde_json::from_value(timer.vars)?;
+        let vars: Vars = match serde_json::from_value(timer.vars) {
+            Ok(vars) => vars,
+            Err(e) => {
+                tracing::warn!(
+                    "[{event_id}] dropping {} timer for '{}' with unreadable vars: {e}",
+                    timer.timer_kind,
+                    timer.workflow
+                );
+                return Ok(());
+            }
+        };
         let subject: EventSubject = (timer.subject_kind, timer.subject_entity);
 
         match TimerKind::parse(&timer.timer_kind) {
@@ -858,7 +873,7 @@ impl WorkflowDispatcher {
         event_id: Uuid,
         workflow: &Workflow,
         subject: &EventSubject,
-        vars: &HashMap<String, String>,
+        vars: &Vars,
         state: &mut WorkflowDispatcherState,
     ) -> Result<(), ActorProcessingErr> {
         let Some(condition) = workflow.on.as_condition() else {
@@ -869,7 +884,7 @@ impl WorkflowDispatcher {
             return Ok(());
         };
 
-        match conditions::eval(&self.shared_actor_state, &Condition::Leaf(condition)).await {
+        match conditions::eval(&self.shared_actor_state, vars, &Condition::Leaf(condition)).await {
             Ok(true) => {}
             Ok(false) => {
                 tracing::info!(
@@ -887,7 +902,7 @@ impl WorkflowDispatcher {
             }
         }
 
-        if !self.when_satisfied(event_id, workflow).await {
+        if !self.when_satisfied(event_id, workflow, vars).await {
             return Ok(());
         }
 
@@ -986,7 +1001,7 @@ impl WorkflowDispatcher {
         &self,
         event_id: uuid::Uuid,
         workflow: ReusableWorkflow,
-        vars: HashMap<String, String>,
+        vars: Vars,
     ) -> Result<(), ActorProcessingErr> {
         Self::send_to_factory(event_id, workflow, vars)
     }
@@ -994,7 +1009,7 @@ impl WorkflowDispatcher {
     fn send_to_factory(
         event_id: uuid::Uuid,
         workflow: ReusableWorkflow,
-        vars: HashMap<String, String>,
+        vars: Vars,
     ) -> Result<(), ActorProcessingErr> {
         let message = WorkflowWorkerMessage::Execute {
             event_id,

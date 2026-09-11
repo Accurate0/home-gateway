@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=devices.schema.json
 - id: front-door
   room: entry
   transport: zigbee

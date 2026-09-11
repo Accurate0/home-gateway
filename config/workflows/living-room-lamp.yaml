@@ -1,6 +1,8 @@
+# yaml-language-server: $schema=../workflows.schema.json
 - name: living-room-lamps-on
   slug: living-room-lamps-on
   group: Living Room
+  inputs: {}
   run:
     - type: light
       when: { type: light, device: floor-lamp-living-room, on: false }
@@ -13,6 +15,7 @@
 - name: living-room-lamps-off
   slug: living-room-lamps-off
   group: Living Room
+  inputs: {}
   run:
     - type: light
       device: floor-lamp-living-room
@@ -31,6 +34,7 @@
   run:
     - type: run_workflow
       workflow: living-room-lamps-on
+      with: {}
 
 - name: Living room lamp on (sunset while occupied)
   slug: living-room-lamp-on-sunset
@@ -65,3 +69,4 @@
   run:
     - type: run_workflow
       workflow: living-room-lamps-off
+      with: {}

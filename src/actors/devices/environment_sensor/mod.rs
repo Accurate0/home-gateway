@@ -261,6 +261,12 @@ impl EnvironmentSensorHandler {
             pressure.map(|value| SensorReading::Pressure { value }),
             lux.map(|value| SensorReading::Lux { value }),
             uv_index.map(|value| SensorReading::UvIndex { value }),
+            pm25.map(|value| SensorReading::Pm25 {
+                value: value as f64,
+            }),
+            voc_index.map(|value| SensorReading::VocIndex {
+                value: value as f64,
+            }),
         ]
         .into_iter()
         .flatten()

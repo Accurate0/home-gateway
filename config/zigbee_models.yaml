@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=zigbee_models.schema.json
 aqara_mccgq12lm:
   battery: battery
   door: [contact]

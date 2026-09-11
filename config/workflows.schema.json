@@ -1,0 +1,1855 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Array_of_WorkflowDefinition",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/WorkflowDefinition"
+  },
+  "$defs": {
+    "WorkflowDefinition": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Workflow"
+        },
+        {
+          "$ref": "#/$defs/ReusableWorkflow"
+        }
+      ]
+    },
+    "Workflow": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContextSource"
+          }
+        },
+        "inputs": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/VarType"
+          },
+          "default": null
+        },
+        "run": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          }
+        },
+        "on": {
+          "$ref": "#/$defs/TriggerMatcher"
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mode"
+          }
+        },
+        "when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Condition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cooldown": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "delay": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "for": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "run",
+        "on",
+        "modes"
+      ]
+    },
+    "ContextSource": {
+      "type": "string",
+      "enum": [
+        "fuelwatch",
+        "willyweather"
+      ]
+    },
+    "VarType": {
+      "type": "string",
+      "enum": [
+        "string",
+        "int",
+        "float",
+        "bool"
+      ]
+    },
+    "Step": {
+      "description": "A single workflow step: one action, optionally guarded by a `when` condition.\nNesting (the old `conditional` block) is expressed as a guarded `scene`.",
+      "oneOf": [
+        {
+          "description": "Brightness / colour-temperature mutations applied to a light. Kept in\n`SCREAMING_SNAKE_CASE` to match the long-standing on-disk config.",
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "light"
+            }
+          },
+          "required": [
+            "type",
+            "device"
+          ],
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "ON"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "OFF"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "TOGGLE"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0
+                },
+                "state": {
+                  "type": "string",
+                  "const": "SET_BRIGHTNESS"
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0
+                },
+                "on_off": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "state": {
+                  "type": "string",
+                  "const": "INCREASE_BRIGHTNESS"
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0
+                },
+                "on_off": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "state": {
+                  "type": "string",
+                  "const": "DECREASE_BRIGHTNESS"
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0
+                },
+                "state": {
+                  "type": "string",
+                  "const": "INCREASE_COLOUR_TEMPERATURE"
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0
+                },
+                "state": {
+                  "type": "string",
+                  "const": "DECREASE_COLOUR_TEMPERATURE"
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "STOP_COLOUR_TEMPERATURE"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "const": "STOP_BRIGHTNESS"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "state": {
+              "$ref": "#/$defs/SwitchState"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "switch"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "state"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Step"
+              }
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "scene"
+            }
+          },
+          "required": [
+            "type",
+            "run"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "notify": {
+              "$ref": "#/$defs/NotifySource"
+            },
+            "message": {
+              "type": "string"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "category": {
+              "$ref": "#/$defs/NotifyCategory"
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NotifyAction"
+              }
+            },
+            "acknowledge": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NotifyAcknowledge"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "notify"
+            }
+          },
+          "required": [
+            "type",
+            "notify",
+            "message",
+            "category"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "seconds": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "delay"
+            }
+          },
+          "required": [
+            "type",
+            "seconds"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "workflow": {
+              "type": "string"
+            },
+            "with": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "run_workflow"
+            }
+          },
+          "required": [
+            "type",
+            "workflow",
+            "with"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "$ref": "#/$defs/Mode"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "set_mode"
+            }
+          },
+          "required": [
+            "type",
+            "mode"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "tag": {
+              "type": "string"
+            },
+            "state": {
+              "$ref": "#/$defs/EnableState"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "set_workflows_enabled"
+            }
+          },
+          "required": [
+            "type",
+            "tag",
+            "state"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "call_service": {
+              "type": "string"
+            },
+            "data": {
+              "default": null
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "home_assistant"
+            }
+          },
+          "required": [
+            "type",
+            "call_service"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string"
+            },
+            "payload": {
+              "type": "string"
+            },
+            "retain": {
+              "type": "boolean"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "mqtt_publish"
+            }
+          },
+          "required": [
+            "type",
+            "topic",
+            "payload",
+            "retain"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "$ref": "#/$defs/HttpMethod"
+            },
+            "url": {
+              "type": "string"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "body": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "http"
+            }
+          },
+          "required": [
+            "type",
+            "method",
+            "url"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "command": {
+              "$ref": "#/$defs/VacuumCommand"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "robot_vacuum"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "command"
+          ]
+        }
+      ]
+    },
+    "Condition": {
+      "description": "A boolean predicate evaluated against current device/sensor state. Either a\nnested boolean combinator (`all`/`and`, `any`/`or`, `not`) or a leaf test.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Combinator"
+        },
+        {
+          "$ref": "#/$defs/LeafCondition"
+        }
+      ]
+    },
+    "Combinator": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Condition"
+              }
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Condition"
+              }
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Condition"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "LeafCondition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "light"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "on"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "sensor": {
+              "type": "string"
+            },
+            "metric": {
+              "$ref": "#/$defs/EnvMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "environment"
+            }
+          },
+          "required": [
+            "type",
+            "sensor",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sensor": {
+              "type": "string"
+            },
+            "present": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "presence"
+            }
+          },
+          "required": [
+            "type",
+            "sensor",
+            "present"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "open": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "door"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "open"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "partial-time",
+              "default": null
+            },
+            "before": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "partial-time",
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "time_of_day"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "is": {
+              "$ref": "#/$defs/SunPeriod"
+            },
+            "offset": {
+              "type": "string",
+              "default": [
+                0,
+                0
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "sun"
+            }
+          },
+          "required": [
+            "type",
+            "is"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "is": {
+              "$ref": "#/$defs/Mode"
+            },
+            "type": {
+              "type": "string",
+              "const": "mode"
+            }
+          },
+          "required": [
+            "type",
+            "is"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "metric": {
+              "$ref": "#/$defs/SolarMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "solar"
+            }
+          },
+          "required": [
+            "type",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entity_id": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "home_assistant"
+            }
+          },
+          "required": [
+            "type",
+            "entity_id",
+            "state"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "metric": {
+              "$ref": "#/$defs/SwitchMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "smart_switch"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/WeatherSource"
+            },
+            "metric": {
+              "$ref": "#/$defs/WeatherMetric"
+            },
+            "day": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "weather"
+            }
+          },
+          "required": [
+            "type",
+            "source",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "var": {
+              "type": "string"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "$ref": "#/$defs/Literal"
+            },
+            "type": {
+              "type": "string",
+              "const": "var"
+            }
+          },
+          "required": [
+            "type",
+            "var",
+            "op",
+            "value"
+          ]
+        }
+      ]
+    },
+    "EnvMetric": {
+      "description": "Which reading of an environment sensor a condition compares against.",
+      "type": "string",
+      "enum": [
+        "temperature",
+        "humidity",
+        "pressure",
+        "lux",
+        "uv_index"
+      ]
+    },
+    "CompareOp": {
+      "type": "string",
+      "enum": [
+        "gt",
+        "lt",
+        "gte",
+        "lte",
+        "eq"
+      ]
+    },
+    "SunPeriod": {
+      "type": "string",
+      "enum": [
+        "day",
+        "night"
+      ]
+    },
+    "Mode": {
+      "type": "string",
+      "enum": [
+        "home",
+        "away",
+        "vacation",
+        "guest"
+      ]
+    },
+    "SolarMetric": {
+      "type": "string",
+      "enum": [
+        "current",
+        "avg_15m",
+        "avg_1h",
+        "avg_3h"
+      ]
+    },
+    "SwitchMetric": {
+      "type": "string",
+      "enum": [
+        "power",
+        "voltage",
+        "current",
+        "energy"
+      ]
+    },
+    "WeatherSource": {
+      "type": "string",
+      "enum": [
+        "bom",
+        "willyweather"
+      ]
+    },
+    "WeatherMetric": {
+      "type": "string",
+      "enum": [
+        "temperature",
+        "feels_like",
+        "humidity",
+        "wind_speed",
+        "gust_speed",
+        "max_gust_speed",
+        "rain_since_9am",
+        "uv",
+        "max_temp",
+        "min_temp",
+        "uv_max",
+        "rain_probability",
+        "rain_max",
+        "wind_max_speed"
+      ]
+    },
+    "ForecastDay": {
+      "type": "string",
+      "enum": [
+        "today",
+        "tomorrow"
+      ]
+    },
+    "Literal": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "type": "number",
+          "format": "double"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "SwitchState": {
+      "description": "On/off set command for a smart switch / plug.",
+      "type": "string",
+      "enum": [
+        "ON",
+        "OFF",
+        "TOGGLE"
+      ]
+    },
+    "NotifySource": {
+      "oneOf": [
+        {
+          "description": "Push notification to all registered HomeGateway Android devices.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "android_app"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "NotifyCategory": {
+      "type": "string",
+      "enum": [
+        "alarm",
+        "door",
+        "watchdog",
+        "general"
+      ]
+    },
+    "NotifyAction": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/NotifyActionKind"
+        }
+      },
+      "required": [
+        "label",
+        "action"
+      ]
+    },
+    "NotifyActionKind": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "workflow": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "run_workflow"
+            }
+          },
+          "required": [
+            "type",
+            "workflow"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "seconds": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "snooze"
+            }
+          },
+          "required": [
+            "type",
+            "seconds"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "dismiss"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "acknowledge"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "NotifyAcknowledge": {
+      "type": "object",
+      "properties": {
+        "remind_after": {
+          "type": "string"
+        },
+        "reminders": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "remind_after",
+        "reminders"
+      ]
+    },
+    "EnableState": {
+      "description": "Target enablement for a `set_workflows_enabled` step. `Toggle` flips the\nwhole tagged set together, based on whether any member is currently enabled.",
+      "type": "string",
+      "enum": [
+        "ENABLED",
+        "DISABLED",
+        "TOGGLE"
+      ]
+    },
+    "HttpMethod": {
+      "type": "string",
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    "VacuumCommand": {
+      "type": "string",
+      "enum": [
+        "start",
+        "stop",
+        "dock"
+      ]
+    },
+    "TriggerMatcher": {
+      "description": "Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]\nvariants; the dispatcher matches messages against these.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "sensor": {
+              "type": "string"
+            },
+            "present": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "presence"
+            }
+          },
+          "required": [
+            "type",
+            "sensor",
+            "present"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "open": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "door"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "open"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "switch"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "action"
+          ]
+        },
+        {
+          "description": "Fires on a scalar sensor reading. `metric` is the reading/object_id name\n(e.g. `soil_moisture`, `temperature`); the flattened comparison is the\nthreshold. The dispatcher fires on the rising edge of the comparison.",
+          "type": "object",
+          "properties": {
+            "sensor": {
+              "type": "string"
+            },
+            "metric": {
+              "$ref": "#/$defs/SensorMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "environment"
+            }
+          },
+          "required": [
+            "type",
+            "sensor",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "description": "Fires on a recurring schedule. `schedule` is a standard 5-field cron\nexpression (e.g. `\"0 20 * * THU\"`), evaluated in local time. Driven by the\n[`crate::actors::system::cron::CronActor`] producer, which matches by trigger name.",
+          "type": "object",
+          "properties": {
+            "schedule": {
+              "$ref": "#/$defs/CronSchedule"
+            },
+            "type": {
+              "type": "string",
+              "const": "cron"
+            }
+          },
+          "required": [
+            "type",
+            "schedule"
+          ]
+        },
+        {
+          "description": "Fires at a sun transition (`sunrise`/`sunset`), driven by the\n[`crate::actors::sun::SunActor`] producer.",
+          "type": "object",
+          "properties": {
+            "transition": {
+              "$ref": "#/$defs/SunTransition"
+            },
+            "offset": {
+              "type": "string",
+              "default": [
+                0,
+                0
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "sun"
+            }
+          },
+          "required": [
+            "type",
+            "transition"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "to": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Mode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "from": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Mode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "mode"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fires when a Home Assistant entity changes state, driven by the\n[`crate::actors::integrations::home_assistant`] producer. Optionally gate on the entity\nreaching a specific `state`.",
+          "type": "object",
+          "properties": {
+            "entity_id": {
+              "type": "string"
+            },
+            "state": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "home_assistant"
+            }
+          },
+          "required": [
+            "type",
+            "entity_id"
+          ]
+        },
+        {
+          "description": "Fires when a tracked Woolworths product drops in price, driven by the\n[`crate::actors::integrations::woolworths`] producer. Optionally gate on a specific\n`product_id` and/or a minimum drop amount (in dollars).",
+          "type": "object",
+          "properties": {
+            "product_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64",
+              "default": null
+            },
+            "min_drop": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "woolworths"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "change": {
+              "$ref": "#/$defs/FuelChange"
+            },
+            "site_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32",
+              "default": null
+            },
+            "below": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "min_drop": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "fuelwatch"
+            }
+          },
+          "required": [
+            "type",
+            "change"
+          ]
+        },
+        {
+          "description": "Fires when a poll-transport device reports its battery voltage on\ncheck-in. Optionally gate on a specific `device_id`, device `kind`,\nand/or a `below` voltage threshold for low-battery alerts.",
+          "type": "object",
+          "properties": {
+            "device_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "kind": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "below": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "device_battery"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fires on a Jellyfin playback edge, driven by the\n[`crate::actors::integrations::jellyfin`] producer. Every field is an\noptional gate: `state` (`started`/`stopped`/`paused`/`resumed`), the\nJellyfin `user`, the playing `device`, and the Jellyfin item `item_type`\n(e.g. `Movie`, `Episode`, `Audio`).",
+          "type": "object",
+          "properties": {
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlaybackState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "user": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "item_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "jellyfin"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fires on a `media_player` playback edge, driven by the\n[`crate::actors::devices::media_player`] handler. Every field is an optional\ngate: the configured `device` id, `state`\n(`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.\n`Jellyfin`, `YouTube`).",
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlaybackState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "app": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "media_player"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fires on a solar generation reading, driven by the\n[`crate::actors::integrations::solar`] producer's poll. `metric` picks the\nlive reading (`current`) or a rolling average (`avg_15m`, `avg_1h`,\n`avg_3h`); the flattened comparison is the threshold, in watts. As with\n[`TriggerMatcher::Environment`], the dispatcher fires on the rising edge.",
+          "type": "object",
+          "properties": {
+            "metric": {
+              "$ref": "#/$defs/SolarMetric"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "solar"
+            }
+          },
+          "required": [
+            "type",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/WeatherSource"
+            },
+            "metric": {
+              "$ref": "#/$defs/WeatherMetric"
+            },
+            "day": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastDay"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "weather"
+            }
+          },
+          "required": [
+            "type",
+            "source",
+            "metric",
+            "op",
+            "value"
+          ]
+        }
+      ]
+    },
+    "SensorMetric": {
+      "description": "A named scalar sensor reading. Known metrics are typed; anything else (an\nesphome object_id we don't model) falls back to [`SensorMetric::Other`] so\nproducers and config stay honest without an exhaustive list.",
+      "type": "string"
+    },
+    "CronSchedule": {
+      "description": "Deserialized straight from a cron string by croner's `serde` feature, so the\nconfig accepts the full readable syntax: day/month aliases (`THU`, `JAN`),\nnicknames (`@weekly`, `@daily`), ranges (`MON-FRI`) and steps (`*/15`).",
+      "type": "string"
+    },
+    "SunTransition": {
+      "type": "string",
+      "enum": [
+        "sunrise",
+        "sunset"
+      ]
+    },
+    "FuelChange": {
+      "type": "string",
+      "enum": [
+        "drop",
+        "tomorrow_lower",
+        "tomorrow_higher",
+        "cheapest"
+      ]
+    },
+    "PlaybackState": {
+      "type": "string",
+      "enum": [
+        "started",
+        "stopped",
+        "paused",
+        "resumed"
+      ]
+    },
+    "ReusableWorkflow": {
+      "type": "object",
+      "properties": {
+        "slug": {
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContextSource"
+          }
+        },
+        "inputs": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/VarType"
+          },
+          "default": null
+        },
+        "run": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          }
+        }
+      },
+      "required": [
+        "run"
+      ]
+    }
+  }
+}

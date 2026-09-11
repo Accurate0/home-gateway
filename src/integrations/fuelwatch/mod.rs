@@ -6,6 +6,7 @@ use crate::integrations::fuelwatch::types::{FuelSite, Site};
 use crate::settings::FuelWatchSettings;
 
 pub mod types;
+pub mod variables;
 
 const SITES_URL: &str = "https://www.fuelwatch.wa.gov.au/api/sites";
 const PRODUCT_UNLEADED_91: &str = "1";

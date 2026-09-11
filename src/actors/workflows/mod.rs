@@ -4,10 +4,9 @@ use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
-use crate::settings::TemplateString;
-use crate::settings::http_method::HttpMethod;
-use crate::settings::vacuum_command::VacuumCommand;
-use crate::settings::workflow_context::ContextSource;
+use crate::settings::workflow::{HttpMethod, VacuumCommand};
+use crate::templating::Template;
+use crate::variables::{Node, Vars};
 use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::workflows::manager::WorkflowRun,
@@ -24,7 +23,6 @@ use ractor::{
 };
 use reqwest_middleware::ClientWithMiddleware;
 use std::collections::BTreeMap;
-use std::collections::HashMap;
 use std::time::Duration;
 use tracing::Instrument;
 use uuid::Uuid;
@@ -56,6 +54,8 @@ pub enum WorkflowError {
     HomeAssistantNotConfigured,
     #[error("workflow context `{0}` is unavailable")]
     ContextUnavailable(&'static str),
+    #[error("template error: {0}")]
+    Template(String),
     #[error("`{0}` is not a robot vacuum")]
     NotARobotVacuum(String),
     #[error("http request to {url} returned {status}")]
@@ -82,17 +82,14 @@ struct WorkflowContext<'a> {
     /// Slug of the workflow that was triggered, preserved across `run_workflow`
     /// nesting so a `set_workflows_enabled` step never disables its own origin.
     origin_slug: &'a str,
-    /// Template variables carried from the triggering event, substituted into
-    /// `notify` messages.
-    vars: &'a HashMap<String, String>,
-    sources: &'a [ContextSource],
+    vars: &'a Vars,
 }
 
 pub enum WorkflowWorkerMessage {
     Execute {
         event_id: Uuid,
         workflow: ReusableWorkflow,
-        vars: HashMap<String, String>,
+        vars: Vars,
         traceparent: crate::tracing_context::TraceParent,
     },
 }
@@ -108,7 +105,7 @@ impl WorkflowWorker {
         &self,
         event_id: Uuid,
         workflow: ReusableWorkflow,
-        vars: &HashMap<String, String>,
+        mut vars: Vars,
     ) -> Result<(), WorkflowError> {
         if !self
             .shared_actor_state
@@ -140,16 +137,17 @@ impl WorkflowWorker {
             tracing::info!("[{event_id}] workflow running in dry-run (shadow) mode");
         }
         let start = std::time::Instant::now();
-        let result = match context::resolve(&self.shared_actor_state, &workflow.context, vars).await
-        {
-            Ok(vars) => {
+        let resolved =
+            context::resolve(&self.shared_actor_state, &workflow.context, &mut vars).await;
+
+        let result = match resolved {
+            Ok(()) => {
                 let ctx = WorkflowContext {
                     event_id,
                     depth: 0,
                     dry_run: workflow.dry_run,
                     origin_slug: &workflow.slug,
                     vars: &vars,
-                    sources: &workflow.context,
                 };
 
                 self.run_steps(ctx, &workflow.run).await
@@ -189,7 +187,7 @@ impl WorkflowWorker {
     async fn run_step(&self, ctx: WorkflowContext<'_>, step: &Step) -> Result<(), WorkflowError> {
         // a failed guard skips only this step, not the rest of the workflow
         if let Some(when) = step.guard()
-            && !conditions::eval(&self.shared_actor_state, when).await?
+            && !conditions::eval(&self.shared_actor_state, ctx.vars, when).await?
         {
             tracing::info!("[{}] skipping step, guard not satisfied", ctx.event_id);
             return Ok(());
@@ -240,16 +238,21 @@ impl WorkflowWorker {
                 acknowledge,
                 ..
             } => {
-                let notification = Notification::new(
-                    message.render(ctx.vars),
-                    *category,
-                    format!("workflow:{}", ctx.origin_slug),
-                )
-                .with_actions(self.resolve_push_actions(actions))
-                .with_acknowledge(*acknowledge);
+                let message = message.render(ctx.vars).map_err(WorkflowError::Template)?;
+
+                let title = title
+                    .as_ref()
+                    .map(|title| title.render(ctx.vars))
+                    .transpose()
+                    .map_err(WorkflowError::Template)?;
+
+                let notification =
+                    Notification::new(message, *category, format!("workflow:{}", ctx.origin_slug))
+                        .with_actions(self.resolve_push_actions(actions))
+                        .with_acknowledge(*acknowledge);
 
                 let notification = match title {
-                    Some(title) => notification.with_title(title.render(ctx.vars)),
+                    Some(title) => notification.with_title(title),
                     None => notification,
                 };
 
@@ -260,7 +263,9 @@ impl WorkflowWorker {
                 tokio::time::sleep(Duration::from_secs(*seconds)).await;
                 Ok(())
             }
-            Step::RunWorkflow { workflow, .. } => self.run_named_workflow(ctx, workflow).await,
+            Step::RunWorkflow { workflow, with, .. } => {
+                self.run_named_workflow(ctx, workflow, with).await
+            }
             Step::SetMode { mode, .. } => self.run_set_mode(*mode).await,
             Step::SetWorkflowsEnabled { tag, state, .. } => {
                 self.run_set_workflows_enabled(ctx, tag, *state).await
@@ -347,16 +352,17 @@ impl WorkflowWorker {
     async fn run_mqtt_publish(
         &self,
         ctx: WorkflowContext<'_>,
-        topic: &TemplateString,
-        payload: &TemplateString,
+        topic: &Template,
+        payload: &Template,
         retain: bool,
     ) -> Result<(), WorkflowError> {
-        let topic = topic.render(ctx.vars);
+        let topic = topic.render(ctx.vars).map_err(WorkflowError::Template)?;
+        let payload = payload.render(ctx.vars).map_err(WorkflowError::Template)?;
 
         self.shared_actor_state
             .handles
             .expect::<MqttClient>()
-            .send_event_raw(topic.clone(), &payload.render(ctx.vars), retain)
+            .send_event_raw(topic.clone(), &payload, retain)
             .await?;
 
         tracing::info!("[{}] published to {topic}", ctx.event_id);
@@ -367,11 +373,11 @@ impl WorkflowWorker {
         &self,
         ctx: WorkflowContext<'_>,
         method: HttpMethod,
-        url: &TemplateString,
-        headers: &BTreeMap<String, TemplateString>,
-        body: Option<&TemplateString>,
+        url: &Template,
+        headers: &BTreeMap<String, Template>,
+        body: Option<&Template>,
     ) -> Result<(), WorkflowError> {
-        let url = url.render(ctx.vars);
+        let url = url.render(ctx.vars).map_err(WorkflowError::Template)?;
         let client = self
             .shared_actor_state
             .handles
@@ -380,11 +386,12 @@ impl WorkflowWorker {
         let mut request = client.request(method.as_reqwest(), &url);
 
         for (name, value) in headers {
-            request = request.header(name.as_str(), value.render(ctx.vars));
+            let value = value.render(ctx.vars).map_err(WorkflowError::Template)?;
+            request = request.header(name.as_str(), value);
         }
 
         if let Some(body) = body {
-            request = request.body(body.render(ctx.vars));
+            request = request.body(body.render(ctx.vars).map_err(WorkflowError::Template)?);
         }
 
         let status = request.send().await?.status();
@@ -508,6 +515,7 @@ impl WorkflowWorker {
         &self,
         ctx: WorkflowContext<'_>,
         name: &str,
+        with: &BTreeMap<String, Template>,
     ) -> Result<(), WorkflowError> {
         if ctx.depth >= MAX_DEPTH {
             tracing::error!(
@@ -537,15 +545,35 @@ impl WorkflowWorker {
             return Ok(());
         }
 
-        let missing: Vec<ContextSource> = workflow
-            .context
-            .iter()
-            .copied()
-            .filter(|source| !ctx.sources.contains(source))
-            .collect();
+        let mut input = Node::empty();
 
-        let vars = context::resolve(&self.shared_actor_state, &missing, ctx.vars).await?;
-        let sources: Vec<ContextSource> = ctx.sources.iter().chain(&missing).copied().collect();
+        for (key, ty) in workflow.inputs.iter().flatten() {
+            let template = with.get(key).ok_or_else(|| {
+                WorkflowError::Template(format!("run_workflow `{name}` is missing input `{key}`"))
+            })?;
+
+            let value = template
+                .evaluate(ctx.vars)
+                .map_err(WorkflowError::Template)?
+                .coerce(*ty)
+                .ok_or_else(|| {
+                    WorkflowError::Template(format!(
+                        "run_workflow `{name}` input `{key}` is not a {ty}"
+                    ))
+                })?;
+
+            input.insert(key.clone(), Node::Value(Some(value)));
+        }
+
+        let mut vars = Vars::default().with("input", input);
+
+        for source in &workflow.context {
+            if let Some(node) = ctx.vars.namespace(source.as_str()) {
+                vars.insert(source.as_str(), node.clone());
+            }
+        }
+
+        context::resolve(&self.shared_actor_state, &workflow.context, &mut vars).await?;
 
         let child = WorkflowContext {
             event_id: ctx.event_id,
@@ -553,7 +581,6 @@ impl WorkflowWorker {
             dry_run: ctx.dry_run || workflow.dry_run,
             origin_slug: ctx.origin_slug,
             vars: &vars,
-            sources: &sources,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }
@@ -672,7 +699,7 @@ impl Worker for WorkflowWorker {
                 crate::tracing_context::set_parent(&span, traceparent.as_deref());
 
                 let result = timed_async(|| async {
-                    self.execute_workflow(event_id, workflow, &vars)
+                    self.execute_workflow(event_id, workflow, vars)
                         .await
                         .map_err(anyhow::Error::from)
                 })

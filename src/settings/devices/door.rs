@@ -3,7 +3,7 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
+use crate::settings::notify::{NotifyRef, NotifySource, NotifyTargets, resolve_notify};
 
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
 #[serde(tag = "state", rename_all = "snake_case")]

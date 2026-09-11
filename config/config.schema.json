@@ -1177,6 +1177,16 @@
             "$ref": "#/$defs/ContextSource"
           }
         },
+        "inputs": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/VarType"
+          },
+          "default": null
+        },
         "run": {
           "type": "array",
           "items": {
@@ -1235,6 +1245,15 @@
       "enum": [
         "fuelwatch",
         "willyweather"
+      ]
+    },
+    "VarType": {
+      "type": "string",
+      "enum": [
+        "string",
+        "int",
+        "float",
+        "bool"
       ]
     },
     "Step": {
@@ -1576,6 +1595,12 @@
             "workflow": {
               "type": "string"
             },
+            "with": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
             "when": {
               "anyOf": [
                 {
@@ -1593,7 +1618,8 @@
           },
           "required": [
             "type",
-            "workflow"
+            "workflow",
+            "with"
           ]
         },
         {
@@ -1869,7 +1895,7 @@
           ]
         },
         {
-          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "sensor": {
@@ -2006,7 +2032,7 @@
           ]
         },
         {
-          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "metric": {
@@ -2052,7 +2078,7 @@
           ]
         },
         {
-          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "device": {
@@ -2082,7 +2108,7 @@
           ]
         },
         {
-          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "source": {
@@ -2117,6 +2143,30 @@
             "type",
             "source",
             "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "var": {
+              "type": "string"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "$ref": "#/$defs/Literal"
+            },
+            "type": {
+              "type": "string",
+              "const": "var"
+            }
+          },
+          "required": [
+            "type",
+            "var",
             "op",
             "value"
           ]
@@ -2209,6 +2259,24 @@
       "enum": [
         "today",
         "tomorrow"
+      ]
+    },
+    "Literal": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "type": "number",
+          "format": "double"
+        },
+        {
+          "type": "string"
+        }
       ]
     },
     "SwitchState": {
@@ -2754,7 +2822,7 @@
           ]
         },
         {
-          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`Condition::Environment`] variant.",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "source": {
@@ -2862,6 +2930,16 @@
           "items": {
             "$ref": "#/$defs/ContextSource"
           }
+        },
+        "inputs": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/VarType"
+          },
+          "default": null
         },
         "run": {
           "type": "array",
