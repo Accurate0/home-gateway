@@ -8,6 +8,7 @@
 //! channel, cloned onto [`crate::state::AppState`].
 
 pub mod bus;
+pub mod custom_source;
 pub mod filter;
 pub mod forecast_day;
 pub mod fuel_change;
@@ -22,6 +23,7 @@ pub mod weather_reading;
 pub mod weather_source;
 
 pub use bus::EventBus;
+pub use custom_source::CustomEventSource;
 pub use filter::{EventFilter, FilterSegment};
 pub use forecast_day::ForecastDay;
 pub use fuel_change::FuelChange;

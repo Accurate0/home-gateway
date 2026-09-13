@@ -201,6 +201,22 @@ impl WorkflowRepo {
         Ok(true)
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.cooldown_active", err)]
+    pub async fn cooldown_active(
+        &self,
+        name: &str,
+        cooldown: TimeDelta,
+    ) -> Result<bool, sqlx::Error> {
+        let last = sqlx::query_scalar!(
+            "SELECT last_fired FROM trigger_cooldowns WHERE name = $1",
+            name
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(last.is_some_and(|last_fired| Utc::now() - last_fired < cooldown))
+    }
+
     #[tracing::instrument(skip_all, name = "db.workflow.arm_timer", err)]
     pub async fn arm_timer(
         &self,

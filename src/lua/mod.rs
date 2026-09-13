@@ -7,10 +7,14 @@ mod call_target;
 mod engine;
 mod error;
 pub mod execute;
+pub mod flag;
 mod module;
+pub mod regex;
 mod registry;
 mod script;
 mod signature;
+pub mod state;
+pub mod time;
 pub mod typegen;
 
 pub use authority::LuaAuthority;

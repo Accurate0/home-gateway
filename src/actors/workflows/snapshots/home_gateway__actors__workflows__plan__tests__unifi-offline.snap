@@ -1,0 +1,6 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Homelab Client Offline  (on: unifi(mirror, k8s-pve-1, unraid, k8s-optiplex-4, k8s-optiplex-5, jellyfin, transmission, media-apps, homeassistant, home-gateway-web, pbs, pve, Raspberry Pi) -> disconnected)
+  notify: notify(AndroidApp, general): ${event.client} disconnected from the network

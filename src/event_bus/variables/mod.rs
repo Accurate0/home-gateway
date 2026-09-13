@@ -11,6 +11,7 @@ mod presence_variables;
 mod solar_variables;
 mod sun_variables;
 mod switch_variables;
+mod unifi_variables;
 mod weather_variables;
 mod woolworths_variables;
 
@@ -27,5 +28,6 @@ pub use presence_variables::PresenceVariables;
 pub use solar_variables::SolarVariables;
 pub use sun_variables::SunVariables;
 pub use switch_variables::SwitchVariables;
+pub use unifi_variables::UnifiVariables;
 pub use weather_variables::WeatherVariables;
 pub use woolworths_variables::WoolworthsVariables;

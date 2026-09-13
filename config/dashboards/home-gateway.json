@@ -730,6 +730,29 @@
      "legendFormat": "{{source}} ({{outcome}})"
     }
    ]
+  },
+  {
+   "id": 34,
+   "type": "timeseries",
+   "title": "Lua memory in use at finish (p50 / p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 99 },
+   "fieldConfig": {
+    "defaults": { "unit": "bytes" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, source) (rate(home_gateway_lua_memory_bytes_bucket[15m])))",
+     "legendFormat": "p95 {{source}}"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.50, sum by (le, source) (rate(home_gateway_lua_memory_bytes_bucket[15m])))",
+     "legendFormat": "p50 {{source}}"
+    }
+   ]
   }
  ]
 }

@@ -4,6 +4,7 @@ use ractor::Actor;
 use tracing::instrument;
 use types::{Parameters, UnifiWebhookEvent};
 
+pub mod lua;
 pub mod types;
 
 pub enum UnifiMessage {
@@ -26,38 +27,30 @@ impl UnifiConnectedClientHandler {
     async fn set_client_state(
         &self,
         mac_address: &str,
+        alias: Option<&str>,
+        hostname: Option<&str>,
         state: UnifiState,
     ) -> Result<(), ractor::ActorProcessingErr> {
-        let event_id = uuid::Uuid::new_v4();
-        let response = self
+        let previous = self
             .shared_actor_state
             .repos
             .unifi()
-            .mapping_for(mac_address)
+            .upsert_state(mac_address, alias, hostname, state)
             .await?;
 
-        let name = response
-            .as_ref()
-            .map(|r| r.name.as_str())
-            .unwrap_or("unknown");
+        if previous == Some(state) {
+            tracing::debug!("unifi client {mac_address} already {state:?}, skipping publish");
+            return Ok(());
+        }
 
-        let id = response
-            .as_ref()
-            .map(|r| r.id.to_string())
-            .unwrap_or("unknown".to_owned());
-
-        self.shared_actor_state
-            .repos
-            .unifi()
-            .append_event(event_id, name, &id, state)
-            .await?;
+        let client = alias.or(hostname).unwrap_or(mac_address);
 
         self.shared_actor_state
             .event_bus
             .publish(EventBusMessage::Unifi {
-                event_id,
+                event_id: uuid::Uuid::new_v4(),
                 mac_address: mac_address.to_string(),
-                client: name.to_string(),
+                client: client.to_string(),
                 connected: matches!(state, UnifiState::Connected),
             });
 
@@ -87,22 +80,32 @@ impl Actor for UnifiConnectedClientHandler {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             UnifiMessage::Webhook(event) => {
-                let mac_address = match event.parameters {
-                    Parameters::Connect(p) => p.unificlient_mac,
-                    Parameters::Disconnect(p) => p.unificlient_mac,
+                let (mac_address, alias, hostname) = match event.parameters {
+                    Parameters::Connect(p) => (
+                        p.unificlient_mac,
+                        p.unificlient_alias,
+                        p.unificlient_hostname,
+                    ),
+                    Parameters::Disconnect(p) => (
+                        p.unificlient_mac,
+                        p.unificlient_alias,
+                        p.unificlient_hostname,
+                    ),
                 };
 
-                match event.name.as_str() {
-                    "WiFi Client Connected" => {
-                        self.set_client_state(&mac_address, UnifiState::Connected)
-                            .await?;
+                let state = match event.name.as_str() {
+                    "WiFi Client Connected" | "Wired Client Connected" => UnifiState::Connected,
+                    "WiFi Client Disconnected" | "Wired Client Disconnected" => {
+                        UnifiState::Disconnected
                     }
-                    "WiFi Client Disconnected" => {
-                        self.set_client_state(&mac_address, UnifiState::Disconnected)
-                            .await?;
+                    unknown => {
+                        tracing::warn!("unknown webhook event: {unknown}");
+                        return Ok(());
                     }
-                    unknown => tracing::warn!("unknown webhook event: {unknown}"),
-                }
+                };
+
+                self.set_client_state(&mac_address, alias.as_deref(), hostname.as_deref(), state)
+                    .await?;
             }
         }
 

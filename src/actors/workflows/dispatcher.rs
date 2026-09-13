@@ -11,6 +11,7 @@
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::event_bus::variables::SolarVariables;
+use crate::lua::LuaAuthority;
 use crate::repo::timer_kind::TimerKind;
 use crate::repo::workflow::{NewPendingTimer, PendingTimerRow};
 use crate::settings::workflow::Condition;
@@ -298,6 +299,12 @@ impl WorkflowDispatcher {
                 &workflow.name == name
             }
             (
+                TriggerMatcher::Custom { name, source, .. },
+                EventBusMessage::Custom {
+                    name: n, source: s, ..
+                },
+            ) => name == n && source == s,
+            (
                 TriggerMatcher::Sun { transition, offset },
                 EventBusMessage::Sun {
                     transition: t,
@@ -308,6 +315,15 @@ impl WorkflowDispatcher {
             (TriggerMatcher::Mode { to, from }, EventBusMessage::Mode { mode, previous, .. }) => {
                 to.is_none_or(|to| to == *mode) && from.is_none_or(|from| from == *previous)
             }
+            (
+                TriggerMatcher::Unifi { clients, connected },
+                EventBusMessage::Unifi {
+                    mac_address,
+                    client,
+                    connected: c,
+                    ..
+                },
+            ) => unifi_matches(clients.as_deref(), *connected, client, mac_address, *c),
             (
                 TriggerMatcher::HomeAssistant { entity_id, state },
                 EventBusMessage::HomeAssistant {
@@ -685,7 +701,7 @@ impl WorkflowDispatcher {
             return true;
         };
 
-        match conditions::eval(&self.shared_actor_state, vars, when).await {
+        match conditions::eval(&self.shared_actor_state, vars, when, &LuaAuthority::Trusted).await {
             Ok(true) => true,
             Ok(false) => {
                 tracing::info!(
@@ -887,7 +903,14 @@ impl WorkflowDispatcher {
             return Ok(());
         };
 
-        match conditions::eval(&self.shared_actor_state, vars, &Condition::Leaf(condition)).await {
+        match conditions::eval(
+            &self.shared_actor_state,
+            vars,
+            &Condition::Leaf(condition),
+            &LuaAuthority::Trusted,
+        )
+        .await
+        {
             Ok(true) => {}
             Ok(false) => {
                 tracing::info!(
@@ -1018,6 +1041,7 @@ impl WorkflowDispatcher {
             event_id,
             workflow,
             vars,
+            authority: LuaAuthority::Trusted,
             traceparent: crate::tracing_context::inject_current(),
         };
 
@@ -1074,10 +1098,84 @@ impl Actor for WorkflowDispatcher {
     }
 }
 
+fn unifi_matches(
+    clients: Option<&[String]>,
+    connected: Option<bool>,
+    client: &str,
+    mac_address: &str,
+    is_connected: bool,
+) -> bool {
+    let mac = normalise_mac(mac_address);
+
+    connected.is_none_or(|want| want == is_connected)
+        && clients.is_none_or(|clients| {
+            clients
+                .iter()
+                .any(|want| want.eq_ignore_ascii_case(client) || normalise_mac(want) == mac)
+        })
+}
+
+fn normalise_mac(mac: &str) -> String {
+    mac.to_ascii_lowercase().replace('-', ":")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::settings::workflow::{CompareOp, Comparison};
+
+    #[test]
+    fn unifi_matches_a_listed_client_by_name_ignoring_case() {
+        let clients = vec!["pbs".to_owned(), "Raspberry Pi".to_owned()];
+
+        assert!(unifi_matches(
+            Some(&clients),
+            Some(false),
+            "raspberry pi",
+            "aa:bb:cc:dd:ee:ff",
+            false
+        ));
+    }
+
+    #[test]
+    fn unifi_matches_a_mac_in_a_different_format() {
+        let clients = vec!["AA-BB-CC-DD-EE-FF".to_owned()];
+
+        assert!(unifi_matches(
+            Some(&clients),
+            None,
+            "unknown",
+            "aa:bb:cc:dd:ee:ff",
+            true
+        ));
+    }
+
+    #[test]
+    fn unifi_ignores_unlisted_clients() {
+        let clients = vec!["pbs".to_owned()];
+
+        assert!(!unifi_matches(
+            Some(&clients),
+            Some(false),
+            "Living Room TV",
+            "11:22:33:44:55:66",
+            false
+        ));
+    }
+
+    #[test]
+    fn unifi_filters_on_connected() {
+        let clients = vec!["pbs".to_owned()];
+
+        assert!(!unifi_matches(
+            Some(&clients),
+            Some(false),
+            "pbs",
+            "aa:bb:cc:dd:ee:ff",
+            true
+        ));
+        assert!(unifi_matches(None, None, "pbs", "aa:bb:cc:dd:ee:ff", true));
+    }
 
     fn averages(last_15_mins: Option<f64>) -> SolarCurrentStatisticsAverages {
         SolarCurrentStatisticsAverages {

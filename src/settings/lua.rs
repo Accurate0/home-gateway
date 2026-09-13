@@ -13,6 +13,7 @@ pub struct LuaSettings {
     #[schemars(with = "String")]
     pub timeout: TimeDelta,
     pub max_instructions: u32,
+    pub max_memory: usize,
     #[serde(default)]
     pub library: Option<PathBuf>,
     #[serde(default)]
@@ -30,6 +31,7 @@ impl Default for LuaSettings {
         LuaSettings {
             timeout: TimeDelta::seconds(5),
             max_instructions: 5_000_000,
+            max_memory: 64 * 1024 * 1024,
             library: None,
             scripts: None,
         }

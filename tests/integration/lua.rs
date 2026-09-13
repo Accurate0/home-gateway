@@ -9,7 +9,7 @@ use home_gateway::actors::system::rpc;
 use home_gateway::actors::workflows::spawn::spawn_workflows;
 use home_gateway::actors::workflows::{WorkflowWorker, WorkflowWorkerMessage};
 use home_gateway::auth::AuthContext;
-use home_gateway::lua::{Script, execute};
+use home_gateway::lua::{LuaAuthority, Script, execute};
 use home_gateway::settings::WorkflowDefinition;
 use home_gateway::variables::{Node, Value, Vars};
 use http_body_util::BodyExt;
@@ -53,6 +53,7 @@ fn run_workflow(harness: &Harness, name: &str, input: Node) {
             event_id: Uuid::new_v4(),
             workflow,
             vars: Vars::default().with("input", input),
+            authority: LuaAuthority::Trusted,
             traceparent: None,
         },
     )

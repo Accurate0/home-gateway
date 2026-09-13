@@ -51,6 +51,7 @@ struct Instruments {
     /// Reconciler commands abandoned after `max_attempts`, by kind and device.
     reconciler_give_ups_total: Counter<u64>,
     lua_duration: Histogram<f64>,
+    lua_memory: Histogram<u64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -139,6 +140,21 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
                 0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0,
             ])
             .build(),
+        lua_memory: meter
+            .u64_histogram("home_gateway_lua_memory_bytes")
+            .with_description(
+                "Lua state memory in use when a script finishes, by source and outcome",
+            )
+            .with_boundaries(vec![
+                65_536.0,
+                262_144.0,
+                1_048_576.0,
+                4_194_304.0,
+                16_777_216.0,
+                33_554_432.0,
+                67_108_864.0,
+            ])
+            .build(),
     }
 });
 
@@ -169,14 +185,16 @@ pub fn record_integration_poll(name: &'static str, outcome: &'static str, elapse
         .record(elapsed.as_secs_f64(), &labels);
 }
 
-pub fn record_lua(source: String, outcome: &'static str, elapsed: Duration) {
-    INSTRUMENTS.lua_duration.record(
-        elapsed.as_secs_f64() * 1000.0,
-        &[
-            KeyValue::new("source", source),
-            KeyValue::new("outcome", outcome),
-        ],
-    );
+pub fn record_lua(source: String, outcome: &'static str, elapsed: Duration, memory_bytes: usize) {
+    let labels = [
+        KeyValue::new("source", source),
+        KeyValue::new("outcome", outcome),
+    ];
+
+    INSTRUMENTS
+        .lua_duration
+        .record(elapsed.as_secs_f64() * 1000.0, &labels);
+    INSTRUMENTS.lua_memory.record(memory_bytes as u64, &labels);
 }
 
 pub fn record_mqtt_ingest(topic_kind: &'static str) {

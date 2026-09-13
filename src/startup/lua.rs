@@ -1,21 +1,36 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::actors::alarm::lua::AlarmLua;
 use crate::actors::devices::door_events::lua::DoorLua;
 use crate::actors::devices::environment_sensor::lua::EnvironmentLua;
 use crate::actors::devices::light::lua::LightLua;
+use crate::actors::devices::media_player::lua::MediaLua;
 use crate::actors::devices::presence_sensor::lua::PresenceLua;
+use crate::actors::devices::robot_vacuum::lua::VacuumLua;
 use crate::actors::devices::smart_switch::lua::SwitchLua;
 use crate::actors::integrations::solar::lua::SolarLua;
+use crate::actors::integrations::synergy::lua::EnergyLua;
+use crate::actors::integrations::unifi::lua::UnifiLua;
 use crate::actors::sun::lua::SunLua;
+use crate::actors::system::battery::lua::BatteryLua;
 use crate::actors::system::push::lua::NotifyLua;
+use crate::actors::vacation::lua::VacationLua;
 use crate::actors::workflows::lua::WorkflowLua;
+use crate::device_registry::lua::DeviceLua;
 use crate::integrations::fuelwatch::variables::FuelwatchVariables;
 use crate::integrations::holidays::lua::HolidaysLua;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::home_assistant::lua::HomeAssistantLua;
 use crate::integrations::mqtt::lua::MqttLua;
+use crate::integrations::s3::lua::S3Lua;
+use crate::integrations::transperth::lua::TransperthLua;
 use crate::integrations::willyweather::variables::WillyweatherVariables;
+use crate::integrations::woolworths::lua::WoolworthsLua;
+use crate::lua::flag::FlagLua;
+use crate::lua::regex::RegexLua;
+use crate::lua::state::StateLua;
+use crate::lua::time::TimeLua;
 use crate::lua::{
     LuaApiRegistry, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, schema, typegen,
 };
@@ -58,6 +73,21 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(SunLua)
         .insert(SolarLua)
         .insert(HolidaysLua)
+        .insert(StateLua)
+        .insert(TimeLua)
+        .insert(DeviceLua)
+        .insert(BatteryLua)
+        .insert(VacuumLua)
+        .insert(EnergyLua)
+        .insert(WoolworthsLua)
+        .insert(TransperthLua)
+        .insert(RegexLua)
+        .insert(AlarmLua)
+        .insert(VacationLua)
+        .insert(UnifiLua)
+        .insert(MediaLua)
+        .insert(FlagLua)
+        .insert(S3Lua)
         .insert_optional(home_assistant.then_some(HomeAssistantLua))
         .build()
 }

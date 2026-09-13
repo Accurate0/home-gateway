@@ -15,5 +15,4 @@ trim_light_history  50 3 * * *  -
 trim_robot_vacuum_events  40 3 * * *  -
 trim_smart_switch  30 3 * * *  -
 trim_temperature_sensor  20 3 * * *  -
-trim_unifi_clients  10 3 * * *  -
 trim_workflow_runs  45 3 * * *  -

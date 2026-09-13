@@ -5,6 +5,7 @@ use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::{AuthManager, OAuthValidator};
 use crate::eink::EinkDisplayManager;
 use crate::http::get_traced_http_client;
+use crate::http::public_client::PublicHttpClient;
 use crate::integrations::{
     feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
@@ -72,6 +73,7 @@ pub async fn build(
         .transpose()?;
 
     let http_client = get_traced_http_client(http.timeout())?;
+    let public_http_client = PublicHttpClient::new(http.timeout())?;
 
     let willyweather = WillyWeather::new(
         &settings.willyweather,
@@ -111,6 +113,7 @@ pub async fn build(
         ))
         .insert(willyweather)
         .insert(http_client)
+        .insert(public_http_client)
         .insert_optional(home_assistant)
         .insert_optional(jellyfin)
         .insert_optional(transperth)
@@ -136,6 +139,7 @@ fn assert_required(handles: &HandleRegistry) {
             "http client",
             handles.contains::<reqwest_middleware::ClientWithMiddleware>(),
         ),
+        ("public http client", handles.contains::<PublicHttpClient>()),
     ] {
         if !present {
             panic!("the {label} handle was not registered before startup");

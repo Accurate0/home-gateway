@@ -2,9 +2,11 @@ use crate::actors::devices::robot_vacuum;
 use crate::actors::system::push::types::{PushAction, PushActionKind};
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
+use crate::auth::scope::Scope;
+use crate::http::public_client::PublicHttpClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
-use crate::lua::{LuaCallContext, LuaSource};
+use crate::lua::{LuaAuthority, LuaCallContext, LuaSource};
 use crate::settings::workflow::{HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
@@ -22,7 +24,6 @@ use ractor::{
     ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
-use reqwest_middleware::ClientWithMiddleware;
 use std::collections::BTreeMap;
 use std::time::Duration;
 use tracing::Instrument;
@@ -60,6 +61,8 @@ pub enum WorkflowError {
     Template(String),
     #[error(transparent)]
     Lua(#[from] crate::lua::LuaError),
+    #[error("step `{step}` needs scope `{scope}`")]
+    MissingScope { step: &'static str, scope: Scope },
     #[error("`{0}` is not a robot vacuum")]
     NotARobotVacuum(String),
     #[error("http request to {url} returned {status}")]
@@ -67,6 +70,8 @@ pub enum WorkflowError {
         url: String,
         status: reqwest::StatusCode,
     },
+    #[error("http request refused: {0}")]
+    BlockedUrl(String),
     #[error(transparent)]
     HttpRequest(#[from] reqwest_middleware::Error),
     #[error(transparent)]
@@ -95,6 +100,7 @@ struct WorkflowContext<'a> {
     /// nesting so a `set_workflows_enabled` step never disables its own origin.
     origin_slug: &'a str,
     vars: &'a Vars,
+    authority: &'a LuaAuthority,
 }
 
 pub enum WorkflowWorkerMessage {
@@ -102,6 +108,7 @@ pub enum WorkflowWorkerMessage {
         event_id: Uuid,
         workflow: ReusableWorkflow,
         vars: Vars,
+        authority: LuaAuthority,
         traceparent: crate::tracing_context::TraceParent,
     },
 }
@@ -122,6 +129,7 @@ impl WorkflowWorker {
         event_id: Uuid,
         workflow: ReusableWorkflow,
         mut vars: Vars,
+        authority: LuaAuthority,
     ) -> Result<(), WorkflowError> {
         if !self
             .shared_actor_state
@@ -164,6 +172,7 @@ impl WorkflowWorker {
                     dry_run: workflow.dry_run,
                     origin_slug: &workflow.slug,
                     vars: &vars,
+                    authority: &authority,
                 };
 
                 self.run_steps(ctx, &workflow.run).await
@@ -223,9 +232,24 @@ impl WorkflowWorker {
         ctx: WorkflowContext<'_>,
         step: &Step,
     ) -> Result<Option<Node>, WorkflowError> {
+        if let Some(scope) = step.scope()
+            && !ctx.authority.allows(scope.resource, scope.action)
+        {
+            tracing::warn!(
+                "[{}] refusing step {} for {}: needs {scope}",
+                ctx.event_id,
+                step.kind(),
+                ctx.authority.describe()
+            );
+            return Err(WorkflowError::MissingScope {
+                step: step.kind(),
+                scope,
+            });
+        }
+
         // a failed guard skips only this step, not the rest of the workflow
         if let Some(when) = step.guard()
-            && !conditions::eval(&self.shared_actor_state, ctx.vars, when).await?
+            && !conditions::eval(&self.shared_actor_state, ctx.vars, when, ctx.authority).await?
         {
             tracing::info!("[{}] skipping step, guard not satisfied", ctx.event_id);
             return Ok(None);
@@ -313,7 +337,8 @@ impl WorkflowWorker {
             }
             Step::SetMode { mode, .. } => self.run_set_mode(*mode).await,
             Step::SetWorkflowsEnabled { tag, state, .. } => {
-                self.run_set_workflows_enabled(ctx, tag, *state).await
+                self.run_set_workflows_enabled(ctx.event_id, ctx.origin_slug, tag, *state)
+                    .await
             }
             Step::HomeAssistant {
                 call_service, data, ..
@@ -355,7 +380,8 @@ impl WorkflowWorker {
             ctx.origin_slug,
         )
         .with_depth(ctx.depth)
-        .with_dry_run(ctx.dry_run);
+        .with_dry_run(ctx.dry_run)
+        .with_authority(ctx.authority.clone());
 
         Ok(self
             .shared_actor_state
@@ -447,12 +473,11 @@ impl WorkflowWorker {
         body: Option<&Template>,
     ) -> Result<(), WorkflowError> {
         let url = url.render(ctx.vars).map_err(WorkflowError::Template)?;
-        let client = self
-            .shared_actor_state
-            .handles
-            .expect::<ClientWithMiddleware>();
+        let client = self.shared_actor_state.handles.expect::<PublicHttpClient>();
 
-        let mut request = client.request(method.as_reqwest(), &url);
+        let mut request = client
+            .request(method.as_reqwest(), &url)
+            .map_err(WorkflowError::BlockedUrl)?;
 
         for (name, value) in headers {
             let value = value.render(ctx.vars).map_err(WorkflowError::Template)?;
@@ -473,7 +498,7 @@ impl WorkflowWorker {
         Ok(())
     }
 
-    async fn run_robot_vacuum(
+    pub async fn run_robot_vacuum(
         &self,
         device: &str,
         command: VacuumCommand,
@@ -505,9 +530,10 @@ impl WorkflowWorker {
     /// Enable/disable every workflow carrying `tag`, skipping the workflow the
     /// step originated from so a switch can always undo itself. `Toggle` reads
     /// the current state of the set first and flips it as a unit.
-    async fn run_set_workflows_enabled(
+    pub async fn run_set_workflows_enabled(
         &self,
-        ctx: WorkflowContext<'_>,
+        event_id: Uuid,
+        origin_slug: &str,
         tag: &str,
         state: EnableState,
     ) -> Result<(), WorkflowError> {
@@ -518,11 +544,11 @@ impl WorkflowWorker {
             .workflows
             .values()
             .map(WorkflowDefinition::body)
-            .filter(|w| w.tags.iter().any(|t| t == tag) && w.slug != ctx.origin_slug)
+            .filter(|w| w.tags.iter().any(|t| t == tag) && w.slug != origin_slug)
             .collect::<Vec<_>>();
 
         if targets.is_empty() {
-            tracing::warn!("[{}] no workflows tagged `{tag}`", ctx.event_id);
+            tracing::warn!("[{event_id}] no workflows tagged `{tag}`");
             return Ok(());
         }
 
@@ -548,10 +574,7 @@ impl WorkflowWorker {
                 .map_err(|e| WorkflowError::Other(e.into()))?;
         }
 
-        tracing::info!(
-            "[{}] set workflows tagged `{tag}` to {enabled}",
-            ctx.event_id
-        );
+        tracing::info!("[{event_id}] set workflows tagged `{tag}` to {enabled}");
         Ok(())
     }
 
@@ -666,12 +689,15 @@ impl WorkflowWorker {
 
         context::resolve(&self.shared_actor_state, &workflow.context, &mut vars).await?;
 
+        let trusted = LuaAuthority::Trusted;
+
         let child = WorkflowContext {
             event_id: ctx.event_id,
             depth: ctx.depth + 1,
             dry_run: ctx.dry_run || workflow.dry_run,
             origin_slug: ctx.origin_slug,
             vars: &vars,
+            authority: &trusted,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }
@@ -737,6 +763,7 @@ impl Worker for WorkflowWorker {
                 event_id,
                 workflow,
                 vars,
+                authority,
                 traceparent,
             } => {
                 let span = tracing::info_span!(
@@ -748,7 +775,7 @@ impl Worker for WorkflowWorker {
                 crate::tracing_context::set_parent(&span, traceparent.as_deref());
 
                 let result = timed_async(|| async {
-                    self.execute_workflow(event_id, workflow, vars)
+                    self.execute_workflow(event_id, workflow, vars, authority)
                         .await
                         .map_err(anyhow::Error::from)
                 })

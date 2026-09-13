@@ -74,6 +74,7 @@ sun:
 lua:
   timeout: 5s
   max_instructions: 1000000
+  max_memory: 67108864
 
 ingest:
   sources:

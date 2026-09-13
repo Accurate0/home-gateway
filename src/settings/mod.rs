@@ -1257,6 +1257,7 @@ auth:
     audience: a
     cache:
       keys: { capacity: 32, ttl: 1h }
+      keys_refresh_cooldown: 1m
       userinfo: { capacity: 256, ttl: 15m }
     group_scopes:
       admins@idm: ["graphql:solar:read"]

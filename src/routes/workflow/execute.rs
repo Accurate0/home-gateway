@@ -6,6 +6,7 @@ use crate::{
         scope::{Action, Resource, Scope},
     },
     error::AppError,
+    lua::LuaAuthority,
     settings::{ReusableWorkflow, workflow::scope as workflow_scope},
     state::AppState,
     variables::{Node, Vars, input::input_node},
@@ -44,10 +45,22 @@ pub async fn workflow_execute(
         }
     };
 
+    let missing = workflow.steps().into_iter().find_map(|step| {
+        step.scope()
+            .filter(|scope| !auth.has(scope))
+            .map(|scope| format!("step `{}` needs scope `{scope}`", step.kind()))
+    });
+
+    if let Some(error) = missing {
+        tracing::warn!("rejected ad-hoc workflow: {error}");
+        return Ok((StatusCode::FORBIDDEN, error).into_response());
+    }
+
     let message = WorkflowWorkerMessage::Execute {
         event_id: uuid::Uuid::new_v4(),
         workflow,
         vars: Vars::default().with("input", input),
+        authority: LuaAuthority::delegated(auth),
         traceparent: crate::tracing_context::inject_current(),
     };
 

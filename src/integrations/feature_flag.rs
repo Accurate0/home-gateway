@@ -136,7 +136,7 @@ impl FeatureFlagClient {
 
     pub async fn is_feature_enabled(
         &self,
-        feature_flag: &'static str,
+        feature_flag: &str,
         default: bool,
         mut evaluation_context: EvaluationContext,
     ) -> bool {
@@ -158,7 +158,7 @@ impl FeatureFlagClient {
 
     pub async fn get_struct(
         &self,
-        feature_flag: &'static str,
+        feature_flag: &str,
         mut evaluation_context: EvaluationContext,
     ) -> Result<StructValue, EvaluationError> {
         evaluation_context.merge_missing(&self.evaluation_context);

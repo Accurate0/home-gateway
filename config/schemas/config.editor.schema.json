@@ -3550,6 +3550,62 @@
             "op",
             "value"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/CustomEventSource"
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/VarType"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "custom"
+            }
+          },
+          "required": [
+            "type",
+            "name",
+            "source",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "clients": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "default": null
+            },
+            "connected": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "unifi"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },
@@ -3580,6 +3636,12 @@
         "stopped",
         "paused",
         "resumed"
+      ]
+    },
+    "CustomEventSource": {
+      "type": "string",
+      "enum": [
+        "lua"
       ]
     },
     "ReusableWorkflow": {
@@ -3886,12 +3948,16 @@
         "keys": {
           "$ref": "#/$defs/CacheSettings"
         },
+        "keys_refresh_cooldown": {
+          "type": "string"
+        },
         "userinfo": {
           "$ref": "#/$defs/CacheSettings"
         }
       },
       "required": [
         "keys",
+        "keys_refresh_cooldown",
         "userinfo"
       ]
     },
@@ -4461,6 +4527,11 @@
           "format": "uint32",
           "minimum": 0
         },
+        "max_memory": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
         "library": {
           "type": [
             "string",
@@ -4478,7 +4549,8 @@
       },
       "required": [
         "timeout",
-        "max_instructions"
+        "max_instructions",
+        "max_memory"
       ]
     },
     "IngestSettings": {

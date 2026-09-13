@@ -1,4 +1,5 @@
 use crate::actors::system::rpc;
+use crate::lua::LuaAuthority;
 use crate::variables::Vars;
 use crate::{
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
@@ -11,6 +12,7 @@ use tracing::Level;
 use types::AndroidAppAlarmPayload;
 use uuid::Uuid;
 
+pub mod lua;
 pub mod types;
 
 pub enum AlarmMessage {
@@ -24,7 +26,7 @@ pub struct AlarmActor {
 
 impl AlarmActor {
     pub const NAME: &str = "alarm";
-    const ALARM_STATE_KEY: &str = "next_alarm";
+    pub const ALARM_STATE_KEY: &str = "next_alarm";
 }
 
 impl Actor for AlarmActor {
@@ -103,6 +105,7 @@ impl Actor for AlarmActor {
                             event_id,
                             workflow,
                             vars: Vars::default(),
+                            authority: LuaAuthority::Trusted,
                             traceparent: crate::tracing_context::inject_current(),
                         };
 

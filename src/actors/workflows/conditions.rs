@@ -9,7 +9,7 @@
 use super::WorkflowError;
 use crate::actors::sun::calc;
 use crate::actors::workflows::manager::WorkflowManager;
-use crate::lua::LuaCallContext;
+use crate::lua::{LuaAuthority, LuaCallContext};
 use crate::{
     actors::{
         devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
@@ -46,10 +46,15 @@ impl From<RpcError> for WorkflowError {
 }
 
 /// Evaluate a condition against current state. Recursive via `all`/`any`/`not`.
-pub async fn eval(state: &AppState, vars: &Vars, cond: &Condition) -> Result<bool, WorkflowError> {
+pub async fn eval(
+    state: &AppState,
+    vars: &Vars,
+    cond: &Condition,
+    authority: &LuaAuthority,
+) -> Result<bool, WorkflowError> {
     match cond {
-        Condition::Combinator(c) => eval_combinator(state, vars, c).await,
-        Condition::Leaf(l) => eval_leaf(state, vars, l).await,
+        Condition::Combinator(c) => eval_combinator(state, vars, c, authority).await,
+        Condition::Leaf(l) => eval_leaf(state, vars, l, authority).await,
     }
 }
 
@@ -57,11 +62,12 @@ async fn eval_combinator(
     state: &AppState,
     vars: &Vars,
     cond: &Combinator,
+    authority: &LuaAuthority,
 ) -> Result<bool, WorkflowError> {
     match cond {
         Combinator::All(conditions) => {
             for c in conditions {
-                if !Box::pin(eval(state, vars, c)).await? {
+                if !Box::pin(eval(state, vars, c, authority)).await? {
                     return Ok(false);
                 }
             }
@@ -69,13 +75,13 @@ async fn eval_combinator(
         }
         Combinator::Any(conditions) => {
             for c in conditions {
-                if Box::pin(eval(state, vars, c)).await? {
+                if Box::pin(eval(state, vars, c, authority)).await? {
                     return Ok(true);
                 }
             }
             Ok(false)
         }
-        Combinator::Not(condition) => Ok(!Box::pin(eval(state, vars, condition)).await?),
+        Combinator::Not(condition) => Ok(!Box::pin(eval(state, vars, condition, authority)).await?),
     }
 }
 
@@ -104,6 +110,7 @@ async fn eval_leaf(
     state: &AppState,
     vars: &Vars,
     cond: &LeafCondition,
+    authority: &LuaAuthority,
 ) -> Result<bool, WorkflowError> {
     let timeout = state.settings.workflow.condition_timeout();
 
@@ -175,7 +182,8 @@ async fn eval_leaf(
         } => eval_weather(state, *source, *metric, *day, *cmp).await,
         LeafCondition::Var { var, op, value } => eval_var(vars, var, *op, value),
         LeafCondition::Lua { source } => {
-            let cx = LuaCallContext::new(state.clone(), Uuid::nil(), "condition");
+            let cx = LuaCallContext::new(state.clone(), Uuid::nil(), "condition")
+                .with_authority(authority.clone());
 
             Ok(state.lua.run_bool(&cx, source, vars).await?)
         }

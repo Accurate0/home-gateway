@@ -6,6 +6,7 @@ use crate::auth::scope::{Action, Resource, Scope};
 use crate::lua::bridge::lua_to_value;
 use crate::lua::{LuaCallContext, LuaFunction, LuaModule, LuaParam, LuaType, schema};
 use crate::mode::Mode;
+use crate::settings::workflow::EnableState;
 use crate::variables::Vars;
 
 use super::manager::WorkflowManager;
@@ -44,7 +45,23 @@ const SET_MODE: LuaFunction = LuaFunction {
     scope: Some(Scope::new(Resource::Workflow, Action::Write)),
 };
 
-const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE];
+const SET_ENABLED: LuaFunction = LuaFunction {
+    name: "set_enabled",
+    params: &[
+        LuaParam {
+            name: "tag",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "state",
+            ty: LuaType::Schema(schema::<EnableState>),
+        },
+    ],
+    returns: None,
+    scope: Some(Scope::new(Resource::Workflow, Action::Write)),
+};
+
+const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE, SET_ENABLED];
 
 pub struct WorkflowLua;
 
@@ -129,6 +146,30 @@ impl LuaModule for WorkflowLua {
                     cx.command("workflow.set_mode", mode.as_str(), || async {
                         worker.run_set_mode(mode).await
                     })
+                    .await
+                }
+            })
+        })?;
+
+        let set_enabled_cx = cx.clone();
+        cx.expose(table, &SET_ENABLED, || {
+            lua.create_async_function(move |lua, (tag, state): (String, LuaValue)| {
+                let cx = set_enabled_cx.clone();
+
+                async move {
+                    let state: EnableState = lua.from_value(state)?;
+                    let worker = WorkflowWorker::new(cx.state.clone());
+                    let origin = cx.origin.clone();
+
+                    cx.command(
+                        "workflow.set_enabled",
+                        format!("#{tag} -> {state:?}"),
+                        || async {
+                            worker
+                                .run_set_workflows_enabled(cx.event_id, &origin, &tag, state)
+                                .await
+                        },
+                    )
                     .await
                 }
             })

@@ -3,6 +3,8 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use s3::{Bucket, Region, creds::Credentials};
 use std::collections::HashMap;
 
+pub mod lua;
+
 #[derive(Clone)]
 pub struct S3 {
     bucket: Box<Bucket>,

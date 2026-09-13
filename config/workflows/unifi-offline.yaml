@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../schemas/workflows.schema.json
+- name: Homelab Client Offline
+  slug: homelab-client-offline
+  group: Alerts
+  on:
+    type: unifi
+    connected: false
+    clients:
+      - mirror
+      - k8s-pve-1
+      - unraid
+      - k8s-optiplex-4
+      - k8s-optiplex-5
+      - jellyfin
+      - transmission
+      - media-apps
+      - homeassistant
+      - home-gateway-web
+      - pbs
+      - pve
+      - Raspberry Pi
+  modes: [home, away, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "${event.client} disconnected from the network"

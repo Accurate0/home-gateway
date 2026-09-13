@@ -1,11 +1,16 @@
 use std::collections::BTreeMap;
+use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 
-use mlua::{ExternalError, ExternalResult, Lua, LuaSerdeExt, Table, Value as LuaValue};
-use reqwest_middleware::ClientWithMiddleware;
+use chrono::TimeDelta;
 
 use crate::auth::scope::{Action, Resource, Scope};
+use crate::event_bus::{CustomEventSource, EventBusMessage};
+use crate::http::public_client::PublicHttpClient;
+use crate::lua::bridge::lua_to_value;
+use crate::variables::Node;
+use mlua::{ExternalError, ExternalResult, Lua, LuaSerdeExt, Table, Value as LuaValue};
 
 use super::LuaCallContext;
 use super::signature::{LuaClass, LuaField, LuaFunction, LuaParam, LuaType};
@@ -125,7 +130,39 @@ const LIB: LuaFunction = LuaFunction {
     scope: None,
 };
 
-pub const GW_FUNCTIONS: &[LuaFunction] = &[LOG, SLEEP, HAS, REQUIRE, HTTP, LIB];
+const COOLDOWN: LuaFunction = LuaFunction {
+    name: "cooldown",
+    params: &[
+        LuaParam {
+            name: "key",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "seconds",
+            ty: LuaType::Integer,
+        },
+    ],
+    returns: Some(LuaType::Boolean),
+    scope: Some(Scope::new(Resource::Workflow, Action::Write)),
+};
+
+const EMIT: LuaFunction = LuaFunction {
+    name: "emit",
+    params: &[
+        LuaParam {
+            name: "name",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "payload",
+            ty: LuaType::Optional(&LuaType::Map(&LuaType::Any)),
+        },
+    ],
+    returns: None,
+    scope: Some(Scope::new(Resource::Workflow, Action::Run)),
+};
+
+pub const GW_FUNCTIONS: &[LuaFunction] = &[LOG, SLEEP, HAS, REQUIRE, HTTP, LIB, COOLDOWN, EMIT];
 
 const DECODE: LuaFunction = LuaFunction {
     name: "decode",
@@ -228,6 +265,24 @@ fn gateway_table(
         })
     })?;
 
+    let cooldown_cx = cx.clone();
+    cx.expose(&table, &COOLDOWN, || {
+        lua.create_async_function(move |_, (key, seconds): (String, i64)| {
+            let cx = cooldown_cx.clone();
+
+            async move { cooldown(&cx, &key, seconds).await }
+        })
+    })?;
+
+    let emit_cx = cx.clone();
+    cx.expose(&table, &EMIT, || {
+        lua.create_async_function(move |_, (name, payload): (String, Option<Table>)| {
+            let cx = emit_cx.clone();
+
+            async move { emit(&cx, name, payload).await }
+        })
+    })?;
+
     let library = library.clone();
     cx.expose(&table, &LIB, || {
         lua.create_function(move |lua, name: String| {
@@ -257,8 +312,8 @@ async fn http(lua: &Lua, cx: &LuaCallContext, request: Table) -> mlua::Result<Ta
     let method = method.unwrap_or_else(|| "GET".to_owned());
     let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes()).into_lua_err()?;
 
-    let client = cx.state.handles.expect::<ClientWithMiddleware>();
-    let mut outgoing = client.request(method.clone(), &url);
+    let client = cx.state.handles.expect::<PublicHttpClient>();
+    let mut outgoing = client.request(method.clone(), &url).into_lua_err()?;
 
     if let Some(headers) = headers {
         for pair in headers.pairs::<String, String>() {
@@ -287,6 +342,74 @@ async fn http(lua: &Lua, cx: &LuaCallContext, request: Table) -> mlua::Result<Ta
     result.set("body", text)?;
 
     Ok(result)
+}
+
+async fn emit(cx: &LuaCallContext, name: String, payload: Option<Table>) -> mlua::Result<()> {
+    let mut node = Node::empty();
+
+    if let Some(payload) = payload {
+        for pair in payload.pairs::<String, LuaValue>() {
+            let (key, value) = pair?;
+
+            let value = lua_to_value(&value).ok_or_else(|| {
+                format!("payload `{key}` must be a string, number or boolean").into_lua_err()
+            })?;
+
+            node.insert(key, Node::Value(Some(value)));
+        }
+    }
+
+    let message = EventBusMessage::Custom {
+        event_id: cx.event_id,
+        source: CustomEventSource::Lua,
+        name: name.clone(),
+        payload: node,
+    };
+
+    let bus = &cx.state.event_bus;
+
+    cx.command("gw.emit", &name, move || async move {
+        bus.publish(message);
+
+        Ok::<_, Infallible>(())
+    })
+    .await
+}
+
+async fn cooldown(cx: &LuaCallContext, key: &str, seconds: i64) -> mlua::Result<bool> {
+    let name = format!("lua:{key}");
+    let window = TimeDelta::seconds(seconds.max(0));
+    let repo = cx.state.repos.workflow();
+
+    if cx.dry_run {
+        let active = cx
+            .query("gw.cooldown", || async {
+                repo.cooldown_active(&name, window).await
+            })
+            .await?;
+
+        tracing::info!(
+            "[{}] dry-run lua cooldown {name} would {}",
+            cx.event_id,
+            if active { "block" } else { "pass" }
+        );
+
+        return Ok(!active);
+    }
+
+    let passed = cx
+        .query("gw.cooldown", || async {
+            repo.cooldown_ok(&name, window).await
+        })
+        .await?;
+
+    tracing::info!(
+        "[{}] lua cooldown {name} {}",
+        cx.event_id,
+        if passed { "passed" } else { "blocked" }
+    );
+
+    Ok(passed)
 }
 
 fn json_table(lua: &Lua, cx: &LuaCallContext) -> mlua::Result<Table> {

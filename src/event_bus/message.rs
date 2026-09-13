@@ -6,8 +6,8 @@ use super::reading::SensorReading;
 use super::variables::{
     CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
     HomeAssistantVariables, JellyfinVariables, MediaPlayerVariables, ModeVariables,
-    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, WeatherVariables,
-    WoolworthsVariables,
+    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
+    WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
@@ -193,6 +193,12 @@ pub enum EventBusMessage {
         state: FeatureFlagState,
         version: Option<String>,
     },
+    Custom {
+        event_id: Uuid,
+        source: crate::event_bus::CustomEventSource,
+        name: String,
+        payload: Node,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -271,7 +277,8 @@ impl EventBusMessage {
             | EventBusMessage::Weather { event_id, .. }
             | EventBusMessage::FuelWatch { event_id, .. }
             | EventBusMessage::CommandFailed { event_id, .. }
-            | EventBusMessage::FeatureFlag { event_id, .. } => *event_id,
+            | EventBusMessage::FeatureFlag { event_id, .. }
+            | EventBusMessage::Custom { event_id, .. } => *event_id,
         }
     }
 
@@ -297,6 +304,7 @@ impl EventBusMessage {
             EventBusMessage::FuelWatch { .. } => "fuelwatch",
             EventBusMessage::CommandFailed { .. } => "command_failed",
             EventBusMessage::FeatureFlag { .. } => "feature_flag",
+            EventBusMessage::Custom { .. } => "custom",
         }
     }
 
@@ -319,6 +327,7 @@ impl EventBusMessage {
         "weather",
         "fuelwatch",
         "command_failed",
+        "custom",
     ];
 
     pub fn entity(&self) -> String {
@@ -345,6 +354,7 @@ impl EventBusMessage {
             EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
             EventBusMessage::CommandFailed { address, .. } => address.clone(),
             EventBusMessage::FeatureFlag { state, .. } => state.as_str().to_owned(),
+            EventBusMessage::Custom { name, .. } => name.clone(),
         }
     }
 
@@ -516,8 +526,38 @@ impl EventBusMessage {
                 drop: old_price - new_price,
             }
             .to_node(),
+            EventBusMessage::Custom {
+                source,
+                name,
+                payload,
+                ..
+            } => {
+                let mut node = Node::empty();
+
+                node.insert(
+                    "name",
+                    Node::Value(Some(crate::variables::Value::String(name.clone()))),
+                );
+                node.insert(
+                    "source",
+                    Node::Value(Some(crate::variables::Value::String(source.to_string()))),
+                );
+                node.insert("payload", payload.clone());
+
+                node
+            }
+            EventBusMessage::Unifi {
+                mac_address,
+                client,
+                connected,
+                ..
+            } => UnifiVariables {
+                client: client.clone(),
+                mac_address: mac_address.clone(),
+                connected: *connected,
+            }
+            .to_node(),
             EventBusMessage::Light { .. }
-            | EventBusMessage::Unifi { .. }
             | EventBusMessage::CommandFailed { .. }
             | EventBusMessage::FeatureFlag { .. } => Node::empty(),
         }

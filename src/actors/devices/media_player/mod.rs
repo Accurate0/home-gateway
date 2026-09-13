@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::event_bus::EventBusMessage;
 use crate::state::AppState;
 
+pub mod lua;
 pub mod state;
 
 use state::{Attributes, Prior, edges};

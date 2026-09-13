@@ -1857,6 +1857,62 @@
             "op",
             "value"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/CustomEventSource"
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/VarType"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "custom"
+            }
+          },
+          "required": [
+            "type",
+            "name",
+            "source",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "clients": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "default": null
+            },
+            "connected": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "unifi"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },
@@ -1891,6 +1947,12 @@
         "stopped",
         "paused",
         "resumed"
+      ]
+    },
+    "CustomEventSource": {
+      "type": "string",
+      "enum": [
+        "lua"
       ]
     },
     "ReusableWorkflow": {

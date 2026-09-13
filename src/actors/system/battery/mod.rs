@@ -1,3 +1,5 @@
+pub mod lua;
+
 use crate::repo::battery::BatteryReading;
 use crate::{battery::BatteryChemistry, event_bus::EventBusMessage, state::AppState};
 use ractor::Actor;

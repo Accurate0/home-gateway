@@ -14,6 +14,7 @@ use crate::settings::{TransperthRoute, TransperthSettings};
 pub mod auth;
 pub mod departures;
 pub mod gtfs;
+pub mod lua;
 pub mod realtime;
 
 #[cfg(test)]

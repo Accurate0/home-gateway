@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -5,10 +7,12 @@ use super::{Comparison, EnvMetric, LeafCondition};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::event_bus::{
-    ForecastDay, FuelChange, PlaybackState, SensorMetric, SolarMetric, WeatherMetric, WeatherSource,
+    CustomEventSource, ForecastDay, FuelChange, PlaybackState, SensorMetric, SolarMetric,
+    WeatherMetric, WeatherSource,
 };
 use crate::mode::Mode;
 use crate::settings::{DeviceAliases, IEEEAddress, validate_device};
+use crate::variables::VarType;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
 /// variants; the dispatcher matches messages against these.
@@ -146,6 +150,17 @@ pub enum TriggerMatcher {
         #[serde(flatten)]
         cmp: Comparison,
     },
+    Custom {
+        name: String,
+        source: CustomEventSource,
+        payload: BTreeMap<String, VarType>,
+    },
+    Unifi {
+        #[serde(default)]
+        clients: Option<Vec<String>>,
+        #[serde(default)]
+        connected: Option<bool>,
+    },
 }
 
 impl TriggerMatcher {
@@ -166,6 +181,8 @@ impl TriggerMatcher {
             TriggerMatcher::MediaPlayer { .. } => "media_player",
             TriggerMatcher::Solar { .. } => "solar",
             TriggerMatcher::Weather { .. } => "weather",
+            TriggerMatcher::Custom { .. } => "custom",
+            TriggerMatcher::Unifi { .. } => "unifi",
         }
     }
 
@@ -237,7 +254,9 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::Jellyfin { .. }
-            | TriggerMatcher::MediaPlayer { .. } => None,
+            | TriggerMatcher::MediaPlayer { .. }
+            | TriggerMatcher::Custom { .. }
+            | TriggerMatcher::Unifi { .. } => None,
         }
     }
 
@@ -370,6 +389,19 @@ impl TriggerMatcher {
                 cmp.value
             ),
             TriggerMatcher::Cron { schedule } => format!("cron({})", schedule.expression()),
+            TriggerMatcher::Custom { name, source, .. } => format!("custom({source}:{name})"),
+            TriggerMatcher::Unifi { clients, connected } => {
+                let subject = clients
+                    .as_ref()
+                    .map(|clients| clients.join(", "))
+                    .unwrap_or_else(|| "*".to_owned());
+
+                match connected {
+                    Some(true) => format!("unifi({subject}) -> connected"),
+                    Some(false) => format!("unifi({subject}) -> disconnected"),
+                    None => format!("unifi({subject})"),
+                }
+            }
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
                     format!("sun -> {transition:?}")
@@ -407,7 +439,15 @@ impl TriggerMatcher {
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
-            | TriggerMatcher::Solar { .. } => {}
+            | TriggerMatcher::Solar { .. }
+            | TriggerMatcher::Custom { .. } => {}
+            TriggerMatcher::Unifi {
+                clients: Some(clients),
+                ..
+            } if clients.is_empty() => {
+                return Err("unifi trigger `clients` must not be empty".to_owned());
+            }
+            TriggerMatcher::Unifi { .. } => {}
             TriggerMatcher::Weather {
                 source,
                 metric,

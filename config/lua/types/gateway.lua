@@ -1,5 +1,7 @@
 ---@meta
 
+---@alias gw.EnableState "ENABLED"|"DISABLED"|"TOGGLE"
+
 ---@alias gw.EnvMetric "temperature"|"humidity"|"pressure"|"lux"|"uv_index"
 
 ---@alias gw.FuelwatchVariables { site_id: integer, name: string, brand: string, suburb: string, address: string, price: number, price_tomorrow?: number|nil }
@@ -14,9 +16,16 @@
 
 ---@alias gw.SwitchState "ON"|"OFF"|"TOGGLE"
 
+---@alias gw.VacuumCommand "start"|"stop"|"dock"
+
 ---@alias gw.WillyweatherDayVariables { description: string, emoji: string, min: integer, max: integer, uv?: number|nil, rain_probability?: integer|nil, rain_range?: string|nil, wind_max_speed?: number|nil, sunset?: string|nil }
 
 ---@alias gw.WillyweatherVariables { today: gw.WillyweatherDayVariables, tomorrow: gw.WillyweatherDayVariables }
+
+---@class gw.EnergyInterval
+---@field used number
+---@field exported number
+---@field at integer
 
 ---@class gw.EnvironmentReading
 ---@field temperature? number
@@ -36,6 +45,38 @@
 ---@field ok boolean
 ---@field body string
 
+---@class gw.JellyfinSession
+---@field user string
+---@field device string
+---@field client string
+---@field item string
+---@field item_type string
+---@field series? string
+---@field season? integer
+---@field episode? integer
+---@field position? number
+---@field runtime? number
+---@field paused boolean
+
+---@class gw.LowBattery
+---@field device string
+---@field level number
+
+---@class gw.MediaPlayerState
+---@field state string
+---@field app? string
+---@field source? string
+---@field title? string
+---@field series? string
+---@field content_type? string
+---@field volume? number
+---@field muted? boolean
+---@field updated_at integer
+
+---@class gw.MetricSample
+---@field value any
+---@field at integer
+
 ---@class gw.Notification
 ---@field message string
 ---@field title? string
@@ -45,6 +86,38 @@
 ---@field last_15_mins number
 ---@field last_1_hour number
 ---@field last_3_hours number
+
+---@class gw.TimeNow
+---@field iso string
+---@field epoch integer
+---@field date string
+---@field hour integer
+---@field minute integer
+---@field weekday string
+
+---@class gw.TransperthDeparture
+---@field line string
+---@field headsign string
+---@field platform? string
+---@field minutes integer
+---@field delay? integer
+---@field live boolean
+
+---@class gw.UnifiClient
+---@field name string
+---@field connected boolean
+---@field since integer
+
+---@class gw.VacuumState
+---@field state? string
+---@field battery? integer
+---@field fan_speed? string
+---@field room? string
+---@field updated_at integer
+
+---@class gw.WoolworthsTrackedPrice
+---@field product_id integer
+---@field price? number
 
 ---@type table<string, any>
 event = {}
@@ -88,6 +161,17 @@ function gw.http(request) end
 ---@param name string
 ---@return any
 function gw.lib(name) end
+
+---Requires the `workflow:write` scope.
+---@param key string
+---@param seconds integer
+---@return boolean
+function gw.cooldown(key, seconds) end
+
+---Requires the `workflow:run` scope.
+---@param name string
+---@param payload? table<string, any>
+function gw.emit(name, payload) end
 
 ---@class gw.api.json
 json = {}
@@ -188,6 +272,11 @@ function workflow.mode() end
 ---@param mode gw.Mode
 function workflow.set_mode(mode) end
 
+---Requires the `workflow:write` scope.
+---@param tag string
+---@param state gw.EnableState
+function workflow.set_enabled(tag, state) end
+
 ---@class gw.api.sun
 sun = {}
 
@@ -221,6 +310,236 @@ function holidays.on(date) end
 ---@param date? string
 ---@return boolean
 function holidays.in_week(date) end
+
+---@class gw.api.state
+state = {}
+
+---Requires the `workflow:read` scope.
+---@param key string
+---@return any
+function state.get(key) end
+
+---Requires the `workflow:write` scope.
+---@param key string
+---@param value any
+function state.set(key, value) end
+
+---Requires the `workflow:write` scope.
+---@param key string
+function state.clear(key) end
+
+---Requires the `workflow:write` scope.
+---@param key string
+---@param by? integer
+---@return integer
+function state.incr(key, by) end
+
+---@class gw.api.time
+time = {}
+
+---@return gw.TimeNow
+function time.now() end
+
+---@param start string
+---@param finish string
+---@return boolean
+function time.between(start, finish) end
+
+---@return boolean
+function time.weekend() end
+
+---@param iso string
+---@return integer
+function time.parse(iso) end
+
+---@param epoch integer
+---@param pattern string
+---@return string
+function time.format(epoch, pattern) end
+
+---@class gw.api.device
+device = {}
+
+---Requires the `device:read` scope.
+---@param device string
+---@return integer?
+function device.last_seen(device) end
+
+---Requires the `device:read` scope.
+---@param minutes integer
+---@return string[]
+function device.offline(minutes) end
+
+---Requires the `device:read` scope.
+---@param device string
+---@param key string
+---@return gw.MetricSample?
+function device.metric(device, key) end
+
+---Requires the `device:read` scope.
+---@param device string
+---@param key string
+---@param epoch integer
+---@return gw.MetricSample[]
+function device.metric_since(device, key, epoch) end
+
+---@class gw.api.battery
+battery = {}
+
+---Requires the `device:read` scope.
+---@param device string
+---@return number?
+function battery.level(device) end
+
+---Requires the `device:read` scope.
+---@param threshold number
+---@return gw.LowBattery[]
+function battery.low(threshold) end
+
+---@class gw.api.vacuum
+vacuum = {}
+
+---Requires the `robot_vacuum:read` scope.
+---@param device string
+---@return gw.VacuumState?
+function vacuum.state(device) end
+
+---Requires the `robot_vacuum:write` scope.
+---@param device string
+---@param command gw.VacuumCommand
+function vacuum.command(device, command) end
+
+---@class gw.api.energy
+energy = {}
+
+---Requires the `energy:read` scope.
+---@param epoch integer
+---@return gw.EnergyInterval[]
+function energy.since(epoch) end
+
+---@class gw.api.woolworths
+woolworths = {}
+
+---Requires the `woolworths:read` scope.
+---@param product_id integer
+---@return number?
+function woolworths.price(product_id) end
+
+---Requires the `woolworths:read` scope.
+---@return gw.WoolworthsTrackedPrice[]
+function woolworths.tracked() end
+
+---@class gw.api.transperth
+transperth = {}
+
+---Requires the `transperth:read` scope.
+---@param route string
+---@return gw.TransperthDeparture[]?
+function transperth.next(route) end
+
+---@class gw.api.re
+re = {}
+
+---@param pattern string
+---@param text string
+---@return boolean
+function re.test(pattern, text) end
+
+---@param pattern string
+---@param text string
+---@return table?
+function re.match(pattern, text) end
+
+---@param pattern string
+---@param text string
+---@return string[]
+function re.find_all(pattern, text) end
+
+---@param pattern string
+---@param text string
+---@param replacement string
+---@return string
+function re.replace(pattern, text, replacement) end
+
+---@param pattern string
+---@param text string
+---@return string[]
+function re.split(pattern, text) end
+
+---@class gw.api.alarm
+alarm = {}
+
+---Requires the `alarm:read` scope.
+---@return integer?
+function alarm.next() end
+
+---@class gw.api.vacation
+vacation = {}
+
+---Requires the `vacation:read` scope.
+---@return boolean
+function vacation.active() end
+
+---Requires the `vacation:write` scope.
+---@param armed boolean
+function vacation.arm(armed) end
+
+---@class gw.api.unifi
+unifi = {}
+
+---Requires the `unifi:read` scope.
+---@param client string
+---@return boolean
+function unifi.home(client) end
+
+---Requires the `unifi:read` scope.
+---@return gw.UnifiClient[]
+function unifi.clients() end
+
+---@class gw.api.media
+media = {}
+
+---Requires the `jellyfin:read` scope.
+---@return gw.JellyfinSession[]
+function media.jellyfin() end
+
+---Requires the `media.player:read` scope.
+---@param device string
+---@return gw.MediaPlayerState?
+function media.player(device) end
+
+---@class gw.api.flag
+flag = {}
+
+---Requires the `feature_flag:read` scope.
+---@param name string
+---@param default boolean
+---@return boolean
+function flag.enabled(name, default) end
+
+---Requires the `feature_flag:read` scope.
+---@param name string
+---@return table<string, any>?
+function flag.get(name) end
+
+---@class gw.api.s3
+s3 = {}
+
+---Requires the `s3:read` scope.
+---@param key string
+---@return string?
+function s3.get(key) end
+
+---Requires the `s3:write` scope.
+---@param key string
+---@param body string
+---@param content_type? string
+function s3.put(key, body, content_type) end
+
+---Requires the `s3:read` scope.
+---@param prefix string
+---@return string[]
+function s3.list(prefix) end
 
 ---@class gw.api.home_assistant
 home_assistant = {}

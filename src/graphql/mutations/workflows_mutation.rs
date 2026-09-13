@@ -9,6 +9,7 @@ use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::event_bus::{EventBus, EventBusMessage};
 use crate::graphql::guard::ScopeGuard;
+use crate::lua::LuaAuthority;
 use crate::mode::Mode;
 use crate::settings::SettingsContainer;
 use crate::settings::workflow::scope::callable_inputs;
@@ -82,6 +83,7 @@ impl WorkflowsMutation {
             event_id: Uuid::new_v4(),
             workflow: definition.body().clone(),
             vars: Vars::default().with("input", input),
+            authority: LuaAuthority::Trusted,
             traceparent: crate::tracing_context::inject_current(),
         };
 

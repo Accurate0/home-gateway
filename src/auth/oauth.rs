@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr, sync::Arc};
+use std::{collections::HashSet, str::FromStr, sync::Arc, time::Instant};
 
 use http::StatusCode;
 use jsonwebtoken::{
@@ -35,6 +35,7 @@ pub struct OAuthValidator {
     settings: OAuthSettings,
     http: ClientWithMiddleware,
     keys: Cache<String, Arc<VerifyingKey>>,
+    last_keys_refresh: tokio::sync::Mutex<Option<Instant>>,
     userinfo: Cache<String, Arc<UserInfo>>,
 }
 
@@ -57,6 +58,7 @@ impl OAuthValidator {
             settings,
             http: get_traced_http_client(timeout)?,
             keys,
+            last_keys_refresh: tokio::sync::Mutex::new(None),
             userinfo,
         })
     }
@@ -95,7 +97,22 @@ impl OAuthValidator {
             return Ok(key);
         }
 
+        let mut last_refresh = self.last_keys_refresh.lock().await;
+
+        if let Some(key) = self.keys.get(kid).await {
+            return Ok(key);
+        }
+
+        let cooldown = self.settings.cache.keys_refresh_cooldown();
+
+        if last_refresh.is_some_and(|at| at.elapsed() < cooldown) {
+            tracing::warn!("no jwks key for kid {kid}, skipping refresh during cooldown");
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+
+        *last_refresh = Some(Instant::now());
         self.refresh_jwks().await?;
+        drop(last_refresh);
 
         self.keys.get(kid).await.ok_or_else(|| {
             tracing::warn!("no jwks key for kid {kid}");
@@ -240,6 +257,7 @@ mod tests {
                         capacity: 32,
                         ttl: chrono::TimeDelta::hours(1),
                     },
+                    keys_refresh_cooldown: chrono::TimeDelta::minutes(1),
                     userinfo: crate::settings::CacheSettings {
                         capacity: 256,
                         ttl: chrono::TimeDelta::minutes(15),
@@ -248,6 +266,7 @@ mod tests {
             },
             http: get_traced_http_client(std::time::Duration::from_secs(30)).unwrap(),
             keys: Cache::builder().build(),
+            last_keys_refresh: tokio::sync::Mutex::new(None),
             userinfo: Cache::builder().build(),
         }
     }

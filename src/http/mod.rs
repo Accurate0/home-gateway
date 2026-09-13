@@ -8,6 +8,10 @@ use reqwest_tracing::{
 };
 use tracing::Span;
 
+pub mod nightly;
+pub mod public_client;
+pub mod public_resolver;
+
 #[derive(Clone)]
 pub struct UrlTemplate(pub &'static str);
 

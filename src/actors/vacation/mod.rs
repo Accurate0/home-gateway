@@ -17,6 +17,7 @@ use crate::event_bus::{Recipient, Subscription};
 use crate::state::AppState;
 use crate::vacation::{PlannedAction, build_plan, target_at};
 
+pub mod lua;
 pub mod subscriber;
 
 pub use subscriber::VacationSubscriber;

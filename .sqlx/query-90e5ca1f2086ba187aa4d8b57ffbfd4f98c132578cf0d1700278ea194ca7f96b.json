@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH previous AS (\n                 SELECT state FROM unifi_client_state WHERE mac_address = $1\n               )\n               INSERT INTO unifi_client_state (mac_address, name, hostname, state)\n               VALUES ($1, $2, $3, $4)\n               ON CONFLICT (mac_address) DO UPDATE SET\n                 name = COALESCE(EXCLUDED.name, unifi_client_state.name),\n                 hostname = COALESCE(EXCLUDED.hostname, unifi_client_state.hostname),\n                 state = EXCLUDED.state,\n                 updated_at = CASE\n                   WHEN unifi_client_state.state = EXCLUDED.state THEN unifi_client_state.updated_at\n                   ELSE now()\n                 END\n               RETURNING (SELECT state FROM previous) AS \"previous: UnifiState\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "previous: UnifiState",
+        "type_info": {
+          "Custom": {
+            "name": "unifi_state",
+            "kind": {
+              "Enum": [
+                "connected",
+                "disconnected"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "unifi_state",
+            "kind": {
+              "Enum": [
+                "connected",
+                "disconnected"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "90e5ca1f2086ba187aa4d8b57ffbfd4f98c132578cf0d1700278ea194ca7f96b"
+}

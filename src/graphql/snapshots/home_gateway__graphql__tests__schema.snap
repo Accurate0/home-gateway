@@ -85,6 +85,13 @@ type CronUpdate {
 	name: String!
 }
 
+type CustomUpdate {
+	eventId: UUID!
+	source: String!
+	name: String!
+	payload: JSON!
+}
+
 """
 Implement the DateTime<Utc> scalar
 
@@ -294,7 +301,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!

@@ -1,9 +1,16 @@
 use crate::device_metric::DeviceMetric;
+use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 
 #[derive(Clone)]
 pub struct MetricRepo {
     db: Pool<Postgres>,
+}
+
+pub struct MetricRow {
+    pub value: Option<f64>,
+    pub text_value: Option<String>,
+    pub time: DateTime<Utc>,
 }
 
 impl MetricRepo {
@@ -41,5 +48,44 @@ impl MetricRepo {
         .await?;
 
         tx.commit().await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.metric.latest", err)]
+    pub async fn latest(
+        &self,
+        address: &str,
+        metric: &str,
+    ) -> Result<Option<MetricRow>, sqlx::Error> {
+        sqlx::query_as!(
+            MetricRow,
+            r#"SELECT value, text_value, updated_at AS "time!"
+               FROM latest_device_metric
+               WHERE address = $1 AND metric = $2"#,
+            address,
+            metric,
+        )
+        .fetch_optional(&self.db)
+        .await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.metric.since", err)]
+    pub async fn since(
+        &self,
+        address: &str,
+        metric: &str,
+        earliest: DateTime<Utc>,
+    ) -> Result<Vec<MetricRow>, sqlx::Error> {
+        sqlx::query_as!(
+            MetricRow,
+            r#"SELECT value, text_value, "time"
+               FROM device_metric
+               WHERE address = $1 AND metric = $2 AND "time" >= $3
+               ORDER BY "time" ASC"#,
+            address,
+            metric,
+            earliest,
+        )
+        .fetch_all(&self.db)
+        .await
     }
 }

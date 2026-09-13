@@ -127,13 +127,9 @@ impl Actor for EInkDisplayActor {
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let mut state = EInkActorState {
-            browser: Chromium::launch().await,
+            browser: Chromium,
             scheduled_renders: HashMap::new(),
         };
-
-        if !state.browser.is_available() {
-            return Ok(state);
-        }
 
         for device_id in self.manager().device_ids() {
             let Some(display) = self.manager().resolve(&device_id).await else {
@@ -154,16 +150,6 @@ impl Actor for EInkDisplayActor {
         }
 
         Ok(state)
-    }
-
-    async fn post_stop(
-        &self,
-        _myself: ractor::ActorRef<Self::Msg>,
-        state: &mut Self::State,
-    ) -> Result<(), ractor::ActorProcessingErr> {
-        state.browser.close().await.map_err(AppError::message)?;
-
-        Ok(())
     }
 
     async fn handle(

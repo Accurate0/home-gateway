@@ -1,7 +1,7 @@
 use crate::eink::manager::source::ScreenshotBackend;
 use crate::error::AppError;
 use chromiumoxide::{
-    Browser, BrowserConfig,
+    Browser, BrowserConfig, Page,
     cdp::browser_protocol::{
         emulation::{SetDeviceMetricsOverrideParams, SetLocaleOverrideParams},
         page::CaptureScreenshotFormat,
@@ -11,24 +11,21 @@ use chromiumoxide::{
 };
 use futures::StreamExt;
 use std::time::Duration;
-use tokio::task::JoinHandle;
 
-pub struct Chromium {
-    browser: Option<Browser>,
-    #[allow(unused)]
-    handle: Option<JoinHandle<()>>,
-}
+pub struct Chromium;
 
 impl Chromium {
-    pub async fn launch() -> Self {
-        let config = BrowserConfig::builder()
+    fn config() -> Result<BrowserConfig, String> {
+        BrowserConfig::builder()
             .new_headless_mode()
             .arg("--disable-crash-reporter")
             .arg("--no-crashpad")
             .arg("--no-sandbox")
-            // container has a small /dev/shm; without this Chromium crashes on startup (SIGTRAP)
             .arg("--disable-dev-shm-usage")
             .arg("--disable-gpu")
+            .arg("--disable-extensions")
+            .arg("--disable-background-networking")
+            .arg("--renderer-process-limit=1")
             .env("XDG_CONFIG_HOME", "/tmp/chromium")
             .env("XDG_CACHE_HOME", "/tmp/chromium")
             .viewport(Some(Viewport {
@@ -39,54 +36,61 @@ impl Chromium {
                 is_landscape: false,
                 has_touch: false,
             }))
-            .build();
-
-        let config = match config {
-            Ok(config) => config,
-            Err(e) => {
-                tracing::warn!("chromium config invalid, screenshots disabled: {e}");
-                return Self {
-                    browser: None,
-                    handle: None,
-                };
-            }
-        };
-
-        match Browser::launch(config).await {
-            Ok((browser, mut handler)) => {
-                let handle = tokio::spawn(async move {
-                    while let Some(event) = handler.next().await {
-                        if event.is_err() {
-                            break;
-                        }
-                    }
-                });
-
-                Self {
-                    browser: Some(browser),
-                    handle: Some(handle),
-                }
-            }
-            Err(e) => {
-                tracing::warn!("chromium failed to launch, screenshots disabled: {e}");
-                Self {
-                    browser: None,
-                    handle: None,
-                }
-            }
-        }
+            .build()
     }
 
-    pub fn is_available(&self) -> bool {
-        self.browser.is_some()
+    async fn capture(
+        page: &Page,
+        dims: (u32, u32),
+        settle: Duration,
+    ) -> Result<Vec<u8>, anyhow::Error> {
+        let (width, height) = dims;
+
+        page.execute(
+            SetDeviceMetricsOverrideParams::builder()
+                .width(width as i64)
+                .height(height as i64)
+                .device_scale_factor(1.0)
+                .mobile(false)
+                .build()
+                .map_err(|e| anyhow::anyhow!("{e}"))?,
+        )
+        .await?;
+
+        tracing::info!("setting locale and timezone");
+        let page = page.emulate_timezone("Australia/Perth").await?;
+        let page = page
+            .emulate_locale(SetLocaleOverrideParams::builder().locale("en-AU").build())
+            .await?;
+        page.reload().await?;
+
+        tokio::time::sleep(settle).await;
+
+        let image = page
+            .screenshot(
+                ScreenshotParams::builder()
+                    .format(CaptureScreenshotFormat::Png)
+                    .full_page(false)
+                    .build(),
+            )
+            .await?;
+        tracing::info!("screenshot taken");
+
+        Ok(image)
     }
 
-    pub async fn close(&mut self) -> Result<(), AppError> {
-        if let Some(browser) = &mut self.browser {
-            browser.close().await.map_err(anyhow::Error::from)?;
+    async fn shutdown(mut browser: Browser) {
+        if let Err(e) = browser.close().await {
+            tracing::warn!("chromium close failed, killing: {e}");
+
+            if let Some(Err(e)) = browser.kill().await {
+                tracing::warn!("chromium kill failed: {e}");
+            }
         }
 
-        Ok(())
+        if let Err(e) = browser.wait().await {
+            tracing::warn!("chromium wait failed: {e}");
+        }
     }
 }
 
@@ -98,54 +102,47 @@ impl ScreenshotBackend for Chromium {
         dims: (u32, u32),
         settle: Duration,
     ) -> Result<Option<Vec<u8>>, AppError> {
-        let Some(browser) = &self.browser else {
-            tracing::warn!("skipping screenshot: chromium not available");
-            return Ok(None);
+        let config = match Self::config() {
+            Ok(config) => config,
+            Err(e) => {
+                tracing::warn!("chromium config invalid, skipping screenshot: {e}");
+                return Ok(None);
+            }
         };
 
-        let original_page = browser.new_page(url).await.map_err(anyhow::Error::from)?;
-        tracing::info!("navigating to page");
+        let (browser, mut handler) = match Browser::launch(config).await {
+            Ok(launched) => launched,
+            Err(e) => {
+                tracing::warn!("chromium failed to launch, skipping screenshot: {e}");
+                return Ok(None);
+            }
+        };
 
-        let (width, height) = dims;
-        original_page
-            .execute(
-                SetDeviceMetricsOverrideParams::builder()
-                    .width(width as i64)
-                    .height(height as i64)
-                    .device_scale_factor(1.0)
-                    .mobile(false)
-                    .build()
-                    .map_err(|e| anyhow::anyhow!("{e}"))?,
-            )
-            .await
-            .map_err(anyhow::Error::from)?;
+        let handle = tokio::spawn(async move {
+            while let Some(event) = handler.next().await {
+                if event.is_err() {
+                    break;
+                }
+            }
+        });
 
-        tracing::info!("setting locale and timezone");
-        let page = original_page
-            .emulate_timezone("Australia/Perth")
-            .await
-            .map_err(anyhow::Error::from)?;
-        let page = page
-            .emulate_locale(SetLocaleOverrideParams::builder().locale("en-AU").build())
-            .await
-            .map_err(anyhow::Error::from)?;
-        page.reload().await.map_err(anyhow::Error::from)?;
+        let result = match browser.new_page(url).await {
+            Ok(page) => {
+                tracing::info!("navigating to page");
+                let result = Self::capture(&page, dims, settle).await;
 
-        tokio::time::sleep(settle).await;
+                if let Err(e) = page.close().await {
+                    tracing::warn!("closing screenshot page failed: {e}");
+                }
 
-        let image = page
-            .screenshot(
-                ScreenshotParams::builder()
-                    .format(CaptureScreenshotFormat::Png)
-                    .full_page(false)
-                    .build(),
-            )
-            .await
-            .map_err(anyhow::Error::from)?;
-        tracing::info!("screenshot taken");
+                result
+            }
+            Err(e) => Err(e.into()),
+        };
 
-        original_page.close().await.map_err(anyhow::Error::from)?;
+        Self::shutdown(browser).await;
+        handle.abort();
 
-        Ok(Some(image))
+        Ok(Some(result?))
     }
 }

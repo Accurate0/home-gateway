@@ -11,6 +11,7 @@ oauth:
     keys:
       capacity: 32
       ttl: 1h
+    keys_refresh_cooldown: 1m
     userinfo:
       capacity: 256
       ttl: 15m

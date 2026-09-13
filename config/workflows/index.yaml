@@ -13,3 +13,4 @@
 - !include forecast.yaml
 - !include holidays.yaml
 - !include eink-battery.yaml
+- !include unifi-offline.yaml

@@ -1,3 +1,5 @@
+pub mod lua;
+
 use crate::state::AppState;
 use bytes::Bytes;
 use chrono::DateTime;

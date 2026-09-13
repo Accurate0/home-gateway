@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 use super::condition::resolve_opt;
 use super::{Condition, EnableState, HttpMethod, LightState, SwitchState, VacuumCommand};
+use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
 use crate::lua::LuaSource;
 use crate::mode::Mode;
@@ -136,6 +137,26 @@ impl Step {
             Step::RobotVacuum { .. } => "robot_vacuum",
             Step::Lua { .. } => "lua",
         }
+    }
+
+    pub fn scope(&self) -> Option<Scope> {
+        let (resource, action) = match self {
+            Step::Light { .. } => (Resource::Light, Action::Write),
+            Step::Switch { .. } => (Resource::Switch, Action::Write),
+            Step::Notify { .. } => (Resource::Push, Action::Write),
+            Step::RunWorkflow { .. } => (Resource::Workflow, Action::Run),
+            Step::SetMode { .. } | Step::SetWorkflowsEnabled { .. } => {
+                (Resource::Workflow, Action::Write)
+            }
+            Step::HomeAssistant { .. } => (Resource::HomeAssistant, Action::Write),
+            Step::MqttPublish { .. } => (Resource::Mqtt, Action::Write),
+            Step::Http { .. } => (Resource::Http, Action::Write),
+            Step::RobotVacuum { .. } => (Resource::RobotVacuum, Action::Write),
+            Step::Lua { .. } => (Resource::Lua, Action::Write),
+            Step::Scene { .. } | Step::Delay { .. } => return None,
+        };
+
+        Some(Scope::new(resource, action))
     }
 
     /// The optional guard condition shared across every step variant.

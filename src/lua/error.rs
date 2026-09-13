@@ -8,6 +8,8 @@ pub enum LuaError {
     Timeout(std::time::Duration),
     #[error("lua script exceeded {0} instructions")]
     InstructionLimit(u32),
+    #[error("lua script exceeded its memory limit")]
+    MemoryLimit,
     #[error("lua script returned {got}, expected {expected}")]
     ReturnType {
         got: &'static str,
@@ -31,10 +33,23 @@ impl LuaError {
             return LuaError::InstructionLimit(limit);
         }
 
+        if is_memory_error(&error) {
+            return LuaError::MemoryLimit;
+        }
+
         match error {
             mlua::Error::SyntaxError { message, .. } => LuaError::Syntax(message),
             other => LuaError::Runtime(other.to_string()),
         }
+    }
+}
+
+fn is_memory_error(error: &mlua::Error) -> bool {
+    match error {
+        mlua::Error::MemoryError(_) => true,
+        mlua::Error::CallbackError { cause, .. } => is_memory_error(cause),
+        mlua::Error::WithContext { cause, .. } => is_memory_error(cause),
+        _ => false,
     }
 }
 

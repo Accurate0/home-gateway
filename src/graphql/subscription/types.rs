@@ -1,4 +1,4 @@
-use async_graphql::{ComplexObject, ID, SimpleObject, Union};
+use async_graphql::{ComplexObject, ID, Json, SimpleObject, Union};
 use uuid::Uuid;
 
 use crate::device_registry::DeviceRegistry;
@@ -58,6 +58,14 @@ pub struct EnvironmentUpdate {
 pub struct CronUpdate {
     pub event_id: Uuid,
     pub name: String,
+}
+
+#[derive(SimpleObject)]
+pub struct CustomUpdate {
+    pub event_id: Uuid,
+    pub source: String,
+    pub name: String,
+    pub payload: Json<serde_json::Value>,
 }
 
 #[derive(SimpleObject)]
@@ -269,6 +277,7 @@ pub enum EventUpdate {
     Weather(WeatherUpdate),
     FuelWatch(FuelWatchUpdate),
     CommandFailed(CommandFailedUpdate),
+    Custom(CustomUpdate),
 }
 
 impl EventUpdate {
@@ -287,6 +296,27 @@ impl EventUpdate {
 
         let update = match msg {
             EventBusMessage::FeatureFlag { .. } => return None,
+            EventBusMessage::Custom {
+                event_id,
+                source,
+                name,
+                payload,
+            } => {
+                let payload = match serde_json::to_value(&payload) {
+                    Ok(payload) => payload,
+                    Err(e) => {
+                        tracing::warn!("[{event_id}] custom event {name} payload unencodable: {e}");
+                        serde_json::Value::Null
+                    }
+                };
+
+                EventUpdate::Custom(CustomUpdate {
+                    event_id,
+                    source: source.to_string(),
+                    name,
+                    payload: Json(payload),
+                })
+            }
             EventBusMessage::Presence {
                 event_id,
                 sensor,

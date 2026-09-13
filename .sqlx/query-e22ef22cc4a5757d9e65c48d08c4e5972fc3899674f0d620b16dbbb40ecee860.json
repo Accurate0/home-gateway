@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(name, hostname, mac_address) AS \"name!\",\n                      state AS \"state: UnifiState\",\n                      updated_at AS \"time\"\n               FROM unifi_client_state\n               ORDER BY 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "state: UnifiState",
+        "type_info": {
+          "Custom": {
+            "name": "unifi_state",
+            "kind": {
+              "Enum": [
+                "connected",
+                "disconnected"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "e22ef22cc4a5757d9e65c48d08c4e5972fc3899674f0d620b16dbbb40ecee860"
+}

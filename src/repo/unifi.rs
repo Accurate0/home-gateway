@@ -1,10 +1,11 @@
 use crate::db::UnifiState;
+use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
-use uuid::Uuid;
 
-pub struct UnifiClientMapping {
+pub struct UnifiClientStateRow {
     pub name: String,
-    pub id: Uuid,
+    pub state: UnifiState,
+    pub time: DateTime<Utc>,
 }
 
 #[derive(Clone)]
@@ -17,42 +18,51 @@ impl UnifiRepo {
         Self { db }
     }
 
-    #[tracing::instrument(skip_all, name = "db.unifi.mapping_for", err)]
-    pub async fn mapping_for(
+    #[tracing::instrument(skip_all, name = "db.unifi.upsert_state", err)]
+    pub async fn upsert_state(
         &self,
         mac_address: &str,
-    ) -> Result<Option<UnifiClientMapping>, sqlx::Error> {
-        let row = sqlx::query!(
-            "SELECT name, id FROM unifi_clients_mapping WHERE mac_address = $1",
-            mac_address
-        )
-        .fetch_optional(&self.db)
-        .await?;
-
-        Ok(row.map(|row| UnifiClientMapping {
-            name: row.name,
-            id: row.id,
-        }))
-    }
-
-    #[tracing::instrument(skip_all, name = "db.unifi.append_event", err)]
-    pub async fn append_event(
-        &self,
-        event_id: Uuid,
-        name: &str,
-        id: &str,
+        name: Option<&str>,
+        hostname: Option<&str>,
         state: UnifiState,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "INSERT INTO unifi_clients (event_id, name, id, state) VALUES ($1, $2, $3, $4)",
-            event_id,
+    ) -> Result<Option<UnifiState>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"WITH previous AS (
+                 SELECT state FROM unifi_client_state WHERE mac_address = $1
+               )
+               INSERT INTO unifi_client_state (mac_address, name, hostname, state)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (mac_address) DO UPDATE SET
+                 name = COALESCE(EXCLUDED.name, unifi_client_state.name),
+                 hostname = COALESCE(EXCLUDED.hostname, unifi_client_state.hostname),
+                 state = EXCLUDED.state,
+                 updated_at = CASE
+                   WHEN unifi_client_state.state = EXCLUDED.state THEN unifi_client_state.updated_at
+                   ELSE now()
+                 END
+               RETURNING (SELECT state FROM previous) AS "previous: UnifiState""#,
+            mac_address,
             name,
-            id,
+            hostname,
             state as UnifiState
         )
-        .execute(&self.db)
+        .fetch_one(&self.db)
         .await?;
 
-        Ok(())
+        Ok(row.previous)
+    }
+
+    #[tracing::instrument(skip_all, name = "db.unifi.latest_states", err)]
+    pub async fn latest_states(&self) -> Result<Vec<UnifiClientStateRow>, sqlx::Error> {
+        sqlx::query_as!(
+            UnifiClientStateRow,
+            r#"SELECT COALESCE(name, hostname, mac_address) AS "name!",
+                      state AS "state: UnifiState",
+                      updated_at AS "time"
+               FROM unifi_client_state
+               ORDER BY 1"#
+        )
+        .fetch_all(&self.db)
+        .await
     }
 }

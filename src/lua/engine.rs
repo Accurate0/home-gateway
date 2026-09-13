@@ -17,7 +17,8 @@ fn sandboxed_libs() -> StdLib {
     StdLib::MATH | StdLib::STRING | StdLib::TABLE | StdLib::OS | StdLib::UTF8
 }
 
-const STRIPPED_GLOBALS: [&str; 8] = [
+const STRIPPED_GLOBALS: [&str; 9] = [
+    "collectgarbage",
     "io",
     "package",
     "require",
@@ -173,7 +174,7 @@ impl LuaEngine {
             Err(_) => Err(LuaError::Timeout(timeout)),
         };
 
-        record(&result, call.to_string(), started);
+        record(&result, call.to_string(), started, lua.used_memory());
 
         result
     }
@@ -193,7 +194,7 @@ impl LuaEngine {
             Err(_) => Err(LuaError::Timeout(timeout)),
         };
 
-        record(&result, "script".to_owned(), started);
+        record(&result, "script".to_owned(), started, lua.used_memory());
 
         result
     }
@@ -207,19 +208,26 @@ impl LuaEngine {
         install_vars(&lua, vars)?;
 
         install_instruction_limit(&lua, self.settings.max_instructions)?;
+        lua.set_memory_limit(self.settings.max_memory)?;
 
         Ok(lua)
     }
 }
 
-fn record(result: &Result<LuaValue, LuaError>, source: String, started: Instant) {
+fn record(
+    result: &Result<LuaValue, LuaError>,
+    source: String,
+    started: Instant,
+    memory_bytes: usize,
+) {
     let outcome = match result {
         Ok(_) => "success",
         Err(LuaError::Timeout(_)) => "timeout",
+        Err(LuaError::MemoryLimit) => "memory_limit",
         Err(_) => "error",
     };
 
-    crate::metrics::record_lua(source, outcome, started.elapsed());
+    crate::metrics::record_lua(source, outcome, started.elapsed(), memory_bytes);
 }
 
 #[cfg(test)]
@@ -272,7 +280,14 @@ mod tests {
         let lua = bare_sandboxed_lua().expect("expected a sandboxed state");
 
         for global in [
-            "io", "package", "require", "dofile", "loadfile", "load", "debug",
+            "collectgarbage",
+            "io",
+            "package",
+            "require",
+            "dofile",
+            "loadfile",
+            "load",
+            "debug",
         ] {
             let value: LuaValue = lua
                 .globals()
@@ -298,6 +313,23 @@ mod tests {
 
         assert!(!time.is_nil(), "os.time was stripped");
         assert!(execute.is_nil(), "os.execute is still reachable from lua");
+    }
+
+    #[test]
+    fn the_memory_limit_stops_a_runaway_allocation() {
+        let lua = bare_sandboxed_lua().expect("expected a sandboxed state");
+        lua.set_memory_limit(16 * 1024 * 1024)
+            .expect("expected the memory limit to apply");
+
+        let error = lua
+            .load("return string.rep('x', 64 * 1024 * 1024)")
+            .exec()
+            .expect_err("expected the allocation to be refused");
+
+        assert!(
+            matches!(LuaError::from_mlua(error), LuaError::MemoryLimit),
+            "the allocation was not stopped by the memory limit"
+        );
     }
 
     #[test]

@@ -51,6 +51,7 @@ workflow:
 lua:
   timeout: 5s
   max_instructions: 5000000
+  max_memory: 67108864
   library: lua/lib
   scripts: lua/workflows
 

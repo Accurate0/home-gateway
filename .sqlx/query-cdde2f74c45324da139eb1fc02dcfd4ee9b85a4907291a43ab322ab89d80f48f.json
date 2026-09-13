@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT value, text_value, \"time\"\n               FROM device_metric\n               WHERE address = $1 AND metric = $2 AND \"time\" >= $3\n               ORDER BY \"time\" ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "text_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "time",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "cdde2f74c45324da139eb1fc02dcfd4ee9b85a4907291a43ab322ab89d80f48f"
+}

@@ -1,11 +1,13 @@
+use std::collections::BTreeMap;
+
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::variables::{
     CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
     HomeAssistantVariables, JellyfinVariables, MediaPlayerVariables, ModeVariables,
-    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, WeatherVariables,
-    WoolworthsVariables,
+    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
+    WeatherVariables, WoolworthsVariables,
 };
-use crate::variables::{Shape, WorkflowContextVariables};
+use crate::variables::{Shape, VarType, WorkflowContextVariables};
 
 use super::TriggerMatcher;
 
@@ -24,6 +26,7 @@ impl TriggerMatcher {
             TriggerMatcher::DeviceBattery { .. } => DeviceBatteryVariables::shape(),
             TriggerMatcher::Jellyfin { .. } => JellyfinVariables::shape(),
             TriggerMatcher::MediaPlayer { .. } => MediaPlayerVariables::shape(),
+            TriggerMatcher::Unifi { .. } => UnifiVariables::shape(),
             TriggerMatcher::Environment { sensor, metric, .. } => {
                 let metrics = registry.sensor_metrics(registry.address_or_self(sensor));
 
@@ -41,6 +44,18 @@ impl TriggerMatcher {
                 day,
                 ..
             } => WeatherVariables::shape(*source, *metric, *day)?,
+            TriggerMatcher::Custom { payload, .. } => {
+                let payload = payload
+                    .iter()
+                    .map(|(key, ty)| (key.clone(), Shape::optional(*ty)))
+                    .collect();
+
+                Shape::Object(BTreeMap::from([
+                    ("name".to_owned(), Shape::required(VarType::String)),
+                    ("source".to_owned(), Shape::required(VarType::String)),
+                    ("payload".to_owned(), Shape::Object(payload)),
+                ]))
+            }
         };
 
         Ok(shape)
