@@ -73,8 +73,8 @@ pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<Lu
     let library = match settings.lua.library.as_deref() {
         Some(relative) => {
             let candidates = [
-                SettingsContainer::override_dir().join(relative),
-                SettingsContainer::baked_dir().join(relative),
+                ("override", SettingsContainer::override_dir().join(relative)),
+                ("baked-in", SettingsContainer::baked_dir().join(relative)),
             ];
 
             load_library(&resolve_library(&candidates)?)?
@@ -91,8 +91,8 @@ pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<Lu
     Ok(LuaEngine::new(registry, library, settings.lua.clone()))
 }
 
-fn resolve_library(candidates: &[PathBuf]) -> anyhow::Result<PathBuf> {
-    for (index, candidate) in candidates.iter().enumerate() {
+fn resolve_library(candidates: &[(&str, PathBuf)]) -> anyhow::Result<PathBuf> {
+    for (source, candidate) in candidates {
         if !candidate.is_dir() {
             tracing::warn!(
                 "lua library directory {} does not exist",
@@ -102,7 +102,6 @@ fn resolve_library(candidates: &[PathBuf]) -> anyhow::Result<PathBuf> {
             continue;
         }
 
-        let source = if index == 0 { "override" } else { "baked-in" };
         tracing::info!(
             "loading lua library from {} ({source})",
             candidate.display()
@@ -115,7 +114,7 @@ fn resolve_library(candidates: &[PathBuf]) -> anyhow::Result<PathBuf> {
         "no lua library directory found in [{}]",
         candidates
             .iter()
-            .map(|candidate| candidate.display().to_string())
+            .map(|(_, candidate)| candidate.display().to_string())
             .collect::<Vec<_>>()
             .join(", ")
     )
@@ -187,7 +186,7 @@ mod tests {
         let override_dir = scratch_dir("override");
         let baked_dir = scratch_dir("baked");
 
-        let resolved = resolve_library(&[override_dir.clone(), baked_dir])
+        let resolved = resolve_library(&[("override", override_dir.clone()), ("baked-in", baked_dir)])
             .expect("expected a library directory");
 
         assert_eq!(resolved, override_dir);
@@ -200,7 +199,8 @@ mod tests {
             std::env::temp_dir().join(format!("lua-library-missing-{}", uuid::Uuid::new_v4()));
 
         let resolved =
-            resolve_library(&[missing, baked_dir.clone()]).expect("expected a library directory");
+            resolve_library(&[("override", missing), ("baked-in", baked_dir.clone())])
+                .expect("expected a library directory");
 
         assert_eq!(resolved, baked_dir);
     }
@@ -210,7 +210,7 @@ mod tests {
         let missing =
             std::env::temp_dir().join(format!("lua-library-missing-{}", uuid::Uuid::new_v4()));
 
-        let error = resolve_library(&[missing]).expect_err("expected no library directory");
+        let error = resolve_library(&[("override", missing)]).expect_err("expected no library directory");
 
         assert!(error.to_string().contains("no lua library directory"));
     }

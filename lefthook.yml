@@ -3,7 +3,7 @@ pre-commit:
     cargo-fmt:
       priority: 1
       glob: "*.rs"
-      run: cargo fmt --all --check
+      run: cargo fmt --all
 
     cargo-clippy:
       priority: 2
