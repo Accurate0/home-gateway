@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/RawEinkGlobal
+prepare_render_timeout: 15s
+defaults:
+  reddit_limit: 25
+  settle: 10s
+  fallback_refresh: 15m
+  min_refresh: 60s
+views:
+  home:
+    query: view=home
+  weather:
+    query: view=weather
+albums:
+  world:
+    prefix: eink-display/album/world/
+  cats:
+    prefix: eink-display/album/cats/

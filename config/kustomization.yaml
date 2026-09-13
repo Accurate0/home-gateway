@@ -8,6 +8,16 @@ configMapGenerator:
     files:
       - base.yaml
       - zigbee_models.yaml
+  - name: home-gateway-config-sections
+    files:
+      - sections/actors.yaml
+      - sections/auth.yaml
+      - sections/eink_display.yaml
+      - sections/home_assistant.yaml
+      - sections/http.yaml
+      - sections/jellyfin.yaml
+      - sections/mqtt.yaml
+      - sections/transperth.yaml
   - name: home-gateway-config-devices
     files:
       - devices/index.yaml
@@ -38,6 +48,9 @@ configMapGenerator:
       - workflows/small-switch.yaml
       - workflows/solar.yaml
       - workflows/woolworths.yaml
+  - name: home-gateway-config-lua
+    files:
+      - lua/lights.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

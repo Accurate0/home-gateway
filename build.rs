@@ -85,7 +85,7 @@ fn main() {
 }
 
 fn validate_schema(config_dir: &Path, mut value: serde_json::Value) {
-    let schema_path = config_dir.join("config.schema.json");
+    let schema_path = config_dir.join("schemas").join("config.schema.json");
     let schema_str = std::fs::read_to_string(&schema_path).unwrap_or_else(|e| {
         panic!(
             "read {}: {e} (run `cargo run --bin gen_schema` to regenerate it)",

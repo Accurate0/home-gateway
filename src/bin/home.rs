@@ -42,6 +42,8 @@ enum Command {
     Mode(ModeCommand),
     #[command(subcommand)]
     Keys(KeysCommand),
+    #[command(subcommand)]
+    Lua(LuaCommand),
     Push(PushArgs),
     Curl(CurlArgs),
 }
@@ -139,6 +141,23 @@ fn parse_input(raw: &str) -> Result<(String, Value), String> {
 
 fn input_map(inputs: &[(String, Value)]) -> Value {
     Value::Object(inputs.iter().cloned().collect())
+}
+
+#[derive(Subcommand)]
+enum LuaCommand {
+    Run(LuaRunArgs),
+}
+
+#[derive(Args)]
+struct LuaRunArgs {
+    #[arg(conflicts_with = "expression")]
+    file: Option<PathBuf>,
+    #[arg(short = 'e', long = "expression")]
+    expression: Option<String>,
+    #[arg(long = "var", value_parser = parse_input)]
+    vars: Vec<(String, Value)>,
+    #[arg(long)]
+    dry_run: bool,
 }
 
 #[derive(Subcommand)]
@@ -290,6 +309,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Workflow(command) => workflow(&client, command, cli.json).await,
         Command::Mode(command) => mode(&client, command, cli.json).await,
         Command::Keys(command) => keys(&client, command, cli.json).await,
+        Command::Lua(command) => lua(&client, command, cli.json).await,
         Command::Push(args) => push(&client, args, cli.json).await,
         Command::Curl(args) => curl(&client, args),
     }
@@ -822,6 +842,51 @@ fn curl(client: &Client, args: &CurlArgs) -> Result<()> {
         .context("failed to run curl, is it installed?")?;
 
     std::process::exit(status.code().unwrap_or(1));
+}
+
+async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()> {
+    let LuaCommand::Run(args) = command;
+
+    let script = match (&args.file, &args.expression) {
+        (Some(file), _) => std::fs::read_to_string(file)
+            .with_context(|| format!("failed to read {}", file.display()))?,
+        (None, Some(expression)) => expression.clone(),
+        (None, None) => anyhow::bail!("pass a script file or -e <expression>"),
+    };
+
+    let response = client
+        .send(
+            Method::POST,
+            "/v1/lua/execute",
+            Some(&json!({
+                "script": script,
+                "vars": input_map(&args.vars),
+                "dry_run": args.dry_run,
+            })),
+        )
+        .await?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        anyhow::bail!("lua execution failed with {status}: {body}");
+    }
+
+    let parsed: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+    let result = parsed.get("result").cloned().unwrap_or(Value::Null);
+
+    if as_json {
+        return print_json(&result);
+    }
+
+    match &result {
+        Value::Null => println!("ok"),
+        Value::String(text) => println!("{text}"),
+        other => println!("{}", serde_json::to_string_pretty(other)?),
+    }
+
+    Ok(())
 }
 
 fn report(data: &Value, as_json: bool, message: &str) -> Result<()> {

@@ -26,8 +26,10 @@ pub mod http_client;
 pub mod http_client_kind;
 pub mod http_client_override;
 pub mod http_clients;
+pub mod ingest;
 pub mod integrations;
 pub mod location;
+pub mod lua;
 pub mod mqtt;
 pub mod notify;
 pub mod oauth;
@@ -77,6 +79,7 @@ pub use http_client::HttpClientSettings;
 pub use http_client_kind::HttpClientKind;
 pub use http_client_override::HttpClientOverride;
 pub use http_clients::HttpClientsSettings;
+pub use ingest::{IngestSettings, IngestSource};
 pub use integrations::fuelwatch::FuelWatchSettings;
 pub use integrations::home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use integrations::home_assistant_websocket::HomeAssistantWebsocketSettings;
@@ -92,6 +95,7 @@ pub use integrations::transperth_cache::TransperthCacheSettings;
 pub use integrations::willyweather::WillyWeatherSettings;
 pub use integrations::woolworths::WoolworthsSettings;
 pub use location::LocationSettings;
+pub use lua::LuaSettings;
 pub use mqtt::MqttSettings;
 pub use notify::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
@@ -169,6 +173,8 @@ pub struct Settings {
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
     pub vacation: VacationSettings,
+    pub lua: LuaSettings,
+    pub ingest: IngestSettings,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -226,6 +232,10 @@ pub struct RawSettings {
     eink_display: devices::eink::RawEinkGlobal,
     adhoc: AdhocSettings,
     vacation: VacationSettings,
+    #[serde(default)]
+    lua: LuaSettings,
+    #[serde(default)]
+    ingest: IngestSettings,
 }
 
 impl RawSettings {
@@ -266,6 +276,8 @@ impl RawSettings {
             eink_display,
             adhoc,
             vacation,
+            lua,
+            ingest,
         } = self;
 
         if willyweather
@@ -463,6 +475,8 @@ impl RawSettings {
                 eink_display: eink_display.resolve(),
                 adhoc,
                 vacation,
+                lua,
+                ingest,
             },
             registry,
         ))
@@ -535,16 +549,25 @@ impl SettingsContainer {
         Self::build(config)
     }
 
-    pub fn new() -> Result<(Self, DeviceRegistry), ConfigError> {
-        let override_dir =
-            std::env::var("CONFIG_DIR").unwrap_or_else(|_| "/etc/home-gateway/config".to_string());
-        let baked_dir = PathBuf::from("./config");
+    pub fn override_dir() -> PathBuf {
+        std::env::var("CONFIG_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/etc/home-gateway/config"))
+    }
 
-        let (source, (settings, registry)) = match Self::load_from_dir(Path::new(&override_dir)) {
+    pub fn baked_dir() -> PathBuf {
+        PathBuf::from("./config")
+    }
+
+    pub fn new() -> Result<(Self, DeviceRegistry), ConfigError> {
+        let override_dir = Self::override_dir();
+        let baked_dir = Self::baked_dir();
+
+        let (source, (settings, registry)) = match Self::load_from_dir(&override_dir) {
             Ok(loaded) => ("override", loaded),
             Err(e) => {
                 tracing::warn!(
-                    config_dir = %override_dir,
+                    config_dir = %override_dir.display(),
                     error = %e,
                     "failed to load config from override dir, falling back to baked-in config"
                 );

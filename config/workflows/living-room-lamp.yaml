@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../workflows.schema.json
+# yaml-language-server: $schema=../schemas/workflows.schema.json
 - name: living-room-lamps-on
   slug: living-room-lamps-on
   group: Living Room

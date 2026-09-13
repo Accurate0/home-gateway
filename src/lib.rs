@@ -14,6 +14,7 @@ pub mod graphql;
 pub mod graphql_tracing;
 pub mod http;
 pub mod integrations;
+pub mod lua;
 pub mod metrics;
 pub mod mode;
 pub mod repo;

@@ -1,3 +1,5 @@
+pub mod lua;
+
 use crate::actors::devices::handler::DeviceHandler;
 use crate::actors::system::rpc;
 use crate::repo::smart_switch::SmartSwitchReading;

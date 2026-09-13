@@ -1,3 +1,5 @@
+pub mod lua;
+
 use crate::actors::devices::handler::DeviceHandler;
 use crate::repo::environment::EnvironmentReading;
 use crate::{

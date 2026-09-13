@@ -1,3 +1,5 @@
+pub mod lua;
+
 use reqwest_middleware::ClientWithMiddleware;
 use serde_json::Value;
 

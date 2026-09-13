@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/MqttSettings
+port: 1883
+keep_alive: 5s
+max_packet_size: 100000
+channel_capacity: 100
+reconnect:
+  min: 1s
+  max: 60s

@@ -161,6 +161,12 @@
     },
     "vacation": {
       "$ref": "#/$defs/VacationSettings"
+    },
+    "lua": {
+      "$ref": "#/$defs/LuaSettings"
+    },
+    "ingest": {
+      "$ref": "#/$defs/IngestSettings"
     }
   },
   "required": [
@@ -2126,6 +2132,64 @@
             "device",
             "command"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "returns": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/VarType"
+              }
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "lua"
+            }
+          },
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "script": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "script"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "call": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "array",
+                  "items": true,
+                  "default": []
+                }
+              },
+              "required": [
+                "call"
+              ]
+            }
+          ],
+          "required": [
+            "type",
+            "returns"
+          ]
         }
       ]
     },
@@ -2483,6 +2547,22 @@
             "var",
             "op",
             "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "script": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "lua"
+            }
+          },
+          "required": [
+            "type",
+            "script"
           ]
         }
       ]
@@ -4054,6 +4134,56 @@
         "jitter",
         "min_observations",
         "seed"
+      ]
+    },
+    "LuaSettings": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "string"
+        },
+        "max_instructions": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "library": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "timeout",
+        "max_instructions"
+      ]
+    },
+    "IngestSettings": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IngestSource"
+          }
+        }
+      }
+    },
+    "IngestSource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "script": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "script"
       ]
     }
   }

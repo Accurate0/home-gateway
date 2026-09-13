@@ -29,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
 
     let listen_addr = storage.settings.http.listen_address;
     let devices = storage.devices.clone();
+    let lua = startup::lua::build(&storage.settings, &registry)?;
 
     let state = AppState {
         repos: storage.repos,
@@ -39,6 +40,7 @@ async fn main() -> anyhow::Result<()> {
         sampling: telemetry.sampling,
         event_bus: EventBus::default(),
         handles: registry,
+        lua,
     };
 
     let schema = build_schema(&state);

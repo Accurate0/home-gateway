@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/HomeAssistantSettings
+url: http://home-assistant.internal
+entities:
+  - id: sensor.apollo_mtr_1_living_room_target_*
+    log: false
+    throttle: 30s
+websocket:
+  keep_alive: 30s
+  silence_timeout: 90s
+  reconnect_delay: 5s

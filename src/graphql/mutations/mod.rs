@@ -2,6 +2,7 @@ use async_graphql::MergedObject;
 
 use crate::graphql::mutations::adhoc_mutation::AdhocMutation;
 use crate::graphql::mutations::entities_mutation::EntitiesMutation;
+use crate::graphql::mutations::lua_mutation::LuaMutation;
 use crate::graphql::mutations::push_mutation::PushMutation;
 use crate::graphql::mutations::workflows_mutation::WorkflowsMutation;
 
@@ -9,6 +10,7 @@ pub mod adhoc_mutation;
 pub mod eink_display_mutation;
 pub mod entities_mutation;
 pub mod light_mutation;
+pub mod lua_mutation;
 pub mod media_player_mutation;
 pub mod push_mutation;
 pub mod robot_vacuum_mutation;
@@ -20,4 +22,5 @@ pub struct MutationRoot(
     WorkflowsMutation,
     AdhocMutation,
     PushMutation,
+    LuaMutation,
 );

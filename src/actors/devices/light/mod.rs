@@ -1,3 +1,6 @@
+pub mod command;
+pub mod lua;
+
 use crate::actors::devices::handler::DeviceHandler;
 use crate::integrations::mqtt::MqttClient;
 use crate::{

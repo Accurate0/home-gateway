@@ -1,3 +1,5 @@
+pub mod lua;
+
 use std::collections::HashMap;
 
 use crate::actors::devices::handler::DeviceHandler;

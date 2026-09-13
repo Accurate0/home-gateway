@@ -4,7 +4,7 @@ ARG HOME_GATEWAY_API_SECRET
 FROM lukemathwalker/cargo-chef:0.1.77-rust-1.97.1-slim-bookworm@sha256:29c639ee436bf338c513d262c48ecbc7e3ade3170bf67df3f5dbf562a54ead43 AS chef
 ARG BINARY_NAME
 
-RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc nasm protobuf-compiler libprotobuf-dev
+RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc libc6-dev nasm protobuf-compiler libprotobuf-dev
 
 WORKDIR /app/${BINARY_NAME}-build
 

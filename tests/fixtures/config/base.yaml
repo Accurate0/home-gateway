@@ -71,6 +71,17 @@ location:
 sun:
   catch_up_within: 2h
 
+lua:
+  timeout: 5s
+  max_instructions: 1000000
+
+ingest:
+  sources:
+    - name: test-doorbell
+      script: |
+        local body = json.decode(raw)
+        mqtt.publish("test/ingest/doorbell", json.encode({ event = body.event }), false)
+
 workflow:
   workers: 12
   enabled_cache:

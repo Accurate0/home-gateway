@@ -4,6 +4,8 @@ pub use derived_door_events_actor::DerivedDoorEvents;
 use ractor::{Actor, ActorCell, RpcReplyPort};
 use uuid::Uuid;
 
+pub mod lua;
+
 mod armed_door_actor;
 mod derived_door_events_actor;
 

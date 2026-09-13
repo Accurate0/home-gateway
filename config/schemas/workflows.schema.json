@@ -690,6 +690,64 @@
             "device",
             "command"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "returns": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/VarType"
+              }
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "lua"
+            }
+          },
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "script": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "script"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "call": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "array",
+                  "items": true,
+                  "default": []
+                }
+              },
+              "required": [
+                "call"
+              ]
+            }
+          ],
+          "required": [
+            "type",
+            "returns"
+          ]
         }
       ]
     },
@@ -1047,6 +1105,22 @@
             "var",
             "op",
             "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "script": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "lua"
+            }
+          },
+          "required": [
+            "type",
+            "script"
           ]
         }
       ]

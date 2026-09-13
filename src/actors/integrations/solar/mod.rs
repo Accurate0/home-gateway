@@ -1,3 +1,5 @@
+pub mod lua;
+
 use crate::{
     event_bus::{EventBusMessage, WeatherMetric, WeatherReading, WeatherSource},
     integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},

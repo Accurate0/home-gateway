@@ -40,6 +40,7 @@ use crate::routes::{
     health::{actor_health, health},
     ingest::{
         home::{alarm::alarm, push_token::push_token},
+        lua::lua_ingest,
         synergy::synergy,
         unifi::unifi,
     },
@@ -140,6 +141,7 @@ pub fn build_schema(state: &AppState) -> FinalSchema {
     .data(state.event_bus.clone())
     .data(state.handles.expect::<WorkflowManager>().clone())
     .data(state.repos.clone())
+    .data(state.clone())
     .extension(crate::graphql_tracing::Tracing)
     .limit_depth(state.settings.graphql.max_depth)
     .limit_complexity(state.settings.graphql.max_complexity)
@@ -157,6 +159,7 @@ pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
         .route("/schema", get(schema_route))
         .route("/control/light", post(light_control))
         .route("/workflow/execute", post(workflow_execute))
+        .route("/lua/execute", post(routes::lua::execute::lua_execute))
         .route("/ingest/synergy", post(synergy))
         .route("/epd/config", post(epd::config))
         .route("/epd/image/{hash}", get(epd::image))
@@ -166,6 +169,7 @@ pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/home/push-token", post(push_token))
         .route("/ingest/unifi", post(unifi))
+        .route("/ingest/lua/{name}", post(lua_ingest))
         .route("/admin/keys", post(create_key).get(list_keys))
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route("/admin/keys/{id}/regenerate", post(regenerate_key))

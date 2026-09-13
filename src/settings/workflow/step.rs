@@ -6,12 +6,14 @@ use serde::Deserialize;
 use super::condition::resolve_opt;
 use super::{Condition, EnableState, HttpMethod, LightState, SwitchState, VacuumCommand};
 use crate::device_registry::DeviceRegistry;
+use crate::lua::LuaSource;
 use crate::mode::Mode;
 use crate::settings::{
     DeviceAliases, IEEEAddress, NotifyAcknowledge, NotifyAction, NotifyCategory, NotifySource,
     validate_device,
 };
 use crate::templating::Template;
+use crate::variables::VarType;
 
 /// A single workflow step: one action, optionally guarded by a `when` condition.
 /// Nesting (the old `conditional` block) is expressed as a guarded `scene`.
@@ -107,6 +109,13 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    Lua {
+        #[serde(flatten)]
+        source: LuaSource,
+        returns: BTreeMap<String, VarType>,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
 }
 
 impl Step {
@@ -125,6 +134,7 @@ impl Step {
             Step::MqttPublish { .. } => "mqtt_publish",
             Step::Http { .. } => "http",
             Step::RobotVacuum { .. } => "robot_vacuum",
+            Step::Lua { .. } => "lua",
         }
     }
 
@@ -142,7 +152,8 @@ impl Step {
             | Step::HomeAssistant { when, .. }
             | Step::MqttPublish { when, .. }
             | Step::Http { when, .. }
-            | Step::RobotVacuum { when, .. } => when.as_ref(),
+            | Step::RobotVacuum { when, .. }
+            | Step::Lua { when, .. } => when.as_ref(),
         }
     }
 
@@ -175,7 +186,8 @@ impl Step {
             | Step::SetMode { .. }
             | Step::SetWorkflowsEnabled { .. }
             | Step::HomeAssistant { .. }
-            | Step::RobotVacuum { .. } => Vec::new(),
+            | Step::RobotVacuum { .. }
+            | Step::Lua { .. } => Vec::new(),
         }
     }
 
@@ -238,7 +250,7 @@ impl Step {
             Step::RobotVacuum {
                 ieee_addr, command, ..
             } => Some(format!("robot_vacuum({ieee_addr}) -> {command:?}")),
-            Step::Scene { .. } | Step::RunWorkflow { .. } => None,
+            Step::Scene { .. } | Step::RunWorkflow { .. } | Step::Lua { .. } => None,
         }
     }
 
@@ -269,7 +281,8 @@ impl Step {
             | Step::SetWorkflowsEnabled { when, .. }
             | Step::HomeAssistant { when, .. }
             | Step::MqttPublish { when, .. }
-            | Step::Http { when, .. } => resolve_opt(when, devices)?,
+            | Step::Http { when, .. }
+            | Step::Lua { when, .. } => resolve_opt(when, devices)?,
         }
         Ok(())
     }

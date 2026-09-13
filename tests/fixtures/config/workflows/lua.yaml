@@ -1,0 +1,48 @@
+- name: Test lua step
+  slug: test-lua-step
+  group: Test
+  inputs: {}
+  run:
+    - type: lua
+      returns: { label: string, watts: int }
+      script: |
+        light.set("test-lamp", { state = "ON" })
+
+        return { label = "lit", watts = 3 * 14 }
+    - type: mqtt_publish
+      topic: test/lua/label
+      payload: '{"label": "${lua.label}", "watts": ${lua.watts}}'
+      retain: false
+
+- name: Test lua guard
+  slug: test-lua-guard
+  group: Test
+  inputs: { go: bool }
+  run:
+    - type: mqtt_publish
+      topic: test/lua/guard
+      payload: '{"passed": true}'
+      retain: false
+      when: { type: lua, script: "return input.go and 1 + 1 == 2" }
+
+- name: Test lua dry run
+  slug: test-lua-dry-run
+  group: Test
+  inputs: {}
+  dry_run: true
+  run:
+    - type: lua
+      returns: {}
+      script: |
+        light.set("test-lamp", { state = "ON" })
+        mqtt.publish("test/lua/dry-run", '{"sent": true}', false)
+
+- name: Test lua recursion
+  slug: test-lua-recursion
+  group: Test
+  inputs: {}
+  run:
+    - type: lua
+      returns: {}
+      script: |
+        workflow.run("Test lua recursion", {})

@@ -9,6 +9,7 @@
 use super::WorkflowError;
 use crate::actors::sun::calc;
 use crate::actors::workflows::manager::WorkflowManager;
+use crate::lua::LuaCallContext;
 use crate::{
     actors::{
         devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
@@ -32,6 +33,7 @@ use crate::{
 };
 use chrono::{Local, Utc};
 use std::time::Duration;
+use uuid::Uuid;
 
 impl From<RpcError> for WorkflowError {
     fn from(e: RpcError) -> Self {
@@ -171,6 +173,11 @@ async fn eval_leaf(
             cmp,
         } => eval_weather(state, *source, *metric, *day, *cmp).await,
         LeafCondition::Var { var, op, value } => eval_var(vars, var, *op, value),
+        LeafCondition::Lua { script } => {
+            let cx = LuaCallContext::new(state.clone(), Uuid::nil(), "condition");
+
+            Ok(state.lua.run_bool(&cx, script, vars).await?)
+        }
     }
 }
 
@@ -303,7 +310,7 @@ async fn eval_smart_switch(
     Ok(cmp.matches(value))
 }
 
-async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {
+pub async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {
     Ok(rpc::query_factory(LightHandler::NAME, timeout, |reply| {
         LightHandlerMessage::QueryPowerState {
             ieee_addr: ieee_addr.to_owned(),
@@ -313,35 +320,45 @@ async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, Work
     .await?)
 }
 
-async fn eval_environment(
+pub async fn query_environment(
     sensor: &str,
-    metric: EnvMetric,
-    cmp: Comparison,
     timeout: Duration,
-) -> Result<bool, WorkflowError> {
-    let reading: Option<LatestReading> =
+) -> Result<Option<LatestReading>, WorkflowError> {
+    Ok(
         rpc::query_factory(EnvironmentSensorHandler::NAME, timeout, |reply| {
             EnvironmentMessage::QueryLatest {
                 entity_id: sensor.to_owned(),
                 reply,
             }
         })
-        .await?;
+        .await?,
+    )
+}
+
+pub fn environment_metric(reading: &LatestReading, metric: EnvMetric) -> Option<f64> {
+    match metric {
+        EnvMetric::Temperature => Some(reading.temperature),
+        EnvMetric::Humidity => reading.humidity,
+        EnvMetric::Pressure => reading.pressure,
+        EnvMetric::Lux => reading.lux,
+        EnvMetric::UvIndex => reading.uv_index,
+    }
+}
+
+async fn eval_environment(
+    sensor: &str,
+    metric: EnvMetric,
+    cmp: Comparison,
+    timeout: Duration,
+) -> Result<bool, WorkflowError> {
+    let reading = query_environment(sensor, timeout).await?;
 
     let Some(reading) = reading else {
         tracing::warn!("no readings for environment sensor {sensor}");
         return Ok(false);
     };
 
-    let value = match metric {
-        EnvMetric::Temperature => Some(reading.temperature),
-        EnvMetric::Humidity => reading.humidity,
-        EnvMetric::Pressure => reading.pressure,
-        EnvMetric::Lux => reading.lux,
-        EnvMetric::UvIndex => reading.uv_index,
-    };
-
-    let Some(value) = value else {
+    let Some(value) = environment_metric(&reading, metric) else {
         tracing::warn!("environment sensor {sensor} has no reading for {metric:?}");
         return Ok(false);
     };
@@ -349,7 +366,7 @@ async fn eval_environment(
     Ok(cmp.matches(value))
 }
 
-async fn query_presence(sensor: &str, timeout: Duration) -> Result<bool, WorkflowError> {
+pub async fn query_presence(sensor: &str, timeout: Duration) -> Result<bool, WorkflowError> {
     let present: Option<bool> = rpc::query_factory(PresenceSensorHandler::NAME, timeout, |reply| {
         PresenceMessage::QueryLatest {
             sensor: sensor.to_owned(),
@@ -367,7 +384,7 @@ async fn query_presence(sensor: &str, timeout: Duration) -> Result<bool, Workflo
     }
 }
 
-async fn query_door_open(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {
+pub async fn query_door_open(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {
     let state: Option<DoorState> = rpc::query(DerivedDoorEvents::NAME, timeout, |reply| {
         DoorEventsMessage::QueryState {
             ieee_addr: ieee_addr.to_owned(),

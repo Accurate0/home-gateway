@@ -60,7 +60,7 @@ impl WorkflowsMutation {
         Ok(mode)
     }
 
-    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Run)))]
     async fn run_workflow(
         &self,
         ctx: &async_graphql::Context<'_>,

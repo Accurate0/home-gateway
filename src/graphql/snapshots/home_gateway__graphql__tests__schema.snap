@@ -645,6 +645,7 @@ type MutationRoot {
 	runAdhocCronTask(name: String!): Boolean!
 	sendPushNotification(input: SendPushNotificationInput!): Boolean!
 	recordNotificationInteraction(id: UUID!, kind: NotificationInteractionKind!): Boolean!
+	executeLua(script: String!, vars: JSON, dryRun: Boolean): JSON!
 }
 
 """

@@ -18,6 +18,10 @@ impl Vars {
         self.0.insert(namespace.into(), node);
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Node)> {
+        self.0.iter()
+    }
+
     pub fn contains(&self, namespace: &str) -> bool {
         self.0.contains_key(namespace)
     }

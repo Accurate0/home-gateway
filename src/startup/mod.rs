@@ -1,5 +1,6 @@
 pub mod api_keys;
 pub mod handles;
+pub mod lua;
 pub mod storage;
 pub mod tasks;
 pub mod telemetry;

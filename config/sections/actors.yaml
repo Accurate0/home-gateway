@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/ActorSettings
+restart:
+  backoff_base: 1s
+  backoff_max: 60s
+  healthy_after: 5m
+workers:
+  mqtt_ingest: 5
+  control_switch: 3
+  door_sensor: 1
+  environment_sensor: 1
+  light: 1
+  media_player: 1
+  plant_sensor: 1
+  presence_sensor: 1
+  robot_vacuum: 2
+  smart_switch: 3

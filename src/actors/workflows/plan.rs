@@ -48,6 +48,18 @@ fn plan_steps(
                     Some(wf) => plan_steps(workflows, &wf.body().run, depth + 1, &guards, out),
                 }
             }
+            Step::Lua {
+                source, returns, ..
+            } => out.push(PlannedAction {
+                depth,
+                kind: "lua",
+                detail: format!(
+                    "lua({}) -> [{}]",
+                    source.summary(),
+                    returns.keys().cloned().collect::<Vec<_>>().join(", ")
+                ),
+                guards,
+            }),
             leaf => out.push(PlannedAction {
                 depth,
                 kind: leaf.kind(),

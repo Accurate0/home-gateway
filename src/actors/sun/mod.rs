@@ -20,6 +20,7 @@ use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::AppStat
 use calc::SunTransition;
 
 pub mod calc;
+pub mod lua;
 
 pub enum SunActorMessage {
     Fire {

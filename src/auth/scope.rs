@@ -6,6 +6,7 @@ use thiserror::Error;
 pub enum Action {
     Read,
     Write,
+    Run,
 }
 
 impl Action {
@@ -13,6 +14,7 @@ impl Action {
         Some(match s {
             "read" => Self::Read,
             "write" => Self::Write,
+            "run" => Self::Run,
             _ => return None,
         })
     }
@@ -21,6 +23,7 @@ impl Action {
         match self {
             Self::Read => "read",
             Self::Write => "write",
+            Self::Run => "run",
         }
     }
 }
@@ -60,28 +63,32 @@ macro_rules! scopes {
 scopes! {
     AdhocTask => "adhoc_task" [Read, Write],
     AdminKeys => "admin.keys" [Read, Write],
-    Control => "control" [Write],
     Door => "door" [Read],
     Energy => "energy" [Read],
     Environment => "environment" [Read],
     Epd => "epd" [Read, Write],
     FuelWatch => "fuelwatch" [Read],
-    HomeAssistant => "home_assistant" [Read],
+    HomeAssistant => "home_assistant" [Read, Write],
+    Http => "http" [Write],
     IngestHome => "ingest.home" [Write],
+    IngestLua => "ingest.lua" [Write],
     IngestSynergy => "ingest.synergy" [Write],
     IngestUnifi => "ingest.unifi" [Write],
     Jellyfin => "jellyfin" [Read],
     Light => "light" [Read, Write],
+    Lua => "lua" [Write],
     MediaPlayer => "media.player" [Read, Write],
+    Mqtt => "mqtt" [Write],
     Presence => "presence" [Read],
     Push => "push" [Read, Write],
     RobotVacuum => "robot_vacuum" [Read, Write],
     Schema => "schema" [Read],
     Solar => "solar" [Read],
+    Switch => "switch" [Read, Write],
     Transperth => "transperth" [Read],
     Weather => "weather" [Read],
     Woolworths => "woolworths" [Read],
-    Workflow => "workflow" [Read, Write],
+    Workflow => "workflow" [Read, Write, Run],
 
     EventsBattery => "events.battery" [Read],
     EventsCommandFailed => "events.command_failed" [Read],
@@ -138,6 +145,29 @@ pub struct Scope {
 impl Scope {
     pub const fn new(resource: Resource, action: Action) -> Self {
         Self { resource, action }
+    }
+
+    pub fn parse(raw: &str) -> Result<Self, ScopeParseError> {
+        let raw = raw.trim();
+
+        let (resource, action) = raw
+            .split_once(':')
+            .ok_or_else(|| ScopeParseError::Shape(raw.to_owned()))?;
+
+        let resource = Resource::from_path(resource)
+            .ok_or_else(|| ScopeParseError::UnknownResource(resource.to_owned()))?;
+        let action = Action::from_segment(action)
+            .ok_or_else(|| ScopeParseError::UnknownAction(action.to_owned()))?;
+
+        let scope = Scope::new(resource, action);
+        if !Scope::ALL.contains(&scope) {
+            return Err(ScopeParseError::UnsupportedAction {
+                resource: resource.as_str().to_owned(),
+                action: action.as_str().to_owned(),
+            });
+        }
+
+        Ok(scope)
     }
 }
 
@@ -418,9 +448,48 @@ mod tests {
             Err(ScopeParseError::ReservedTarget)
         );
         assert_eq!(
-            ScopePattern::parse("control:read"),
+            ScopePattern::parse("mqtt:read"),
             Err(ScopeParseError::UnsupportedAction {
-                resource: "control".to_owned(),
+                resource: "mqtt".to_owned(),
+                action: "read".to_owned()
+            })
+        );
+        assert_eq!(
+            ScopePattern::parse("control:write"),
+            Err(ScopeParseError::UnknownResource("control".to_owned()))
+        );
+        assert_eq!(
+            ScopePattern::parse("light:run"),
+            Err(ScopeParseError::UnsupportedAction {
+                resource: "light".to_owned(),
+                action: "run".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn run_is_distinct_from_write() {
+        let run = Scope::new(Resource::Workflow, Action::Run);
+
+        assert!(matches("workflow:run", &run));
+        assert!(!matches("workflow:write", &run));
+        assert!(matches("workflow:*", &run));
+    }
+
+    #[test]
+    fn exact_scopes_parse() {
+        assert_eq!(
+            Scope::parse("switch:write"),
+            Ok(Scope::new(Resource::Switch, Action::Write))
+        );
+        assert_eq!(
+            Scope::parse("light:*"),
+            Err(ScopeParseError::UnknownAction("*".to_owned()))
+        );
+        assert_eq!(
+            Scope::parse("http:read"),
+            Err(ScopeParseError::UnsupportedAction {
+                resource: "http".to_owned(),
                 action: "read".to_owned()
             })
         );

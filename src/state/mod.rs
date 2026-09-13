@@ -5,6 +5,7 @@ use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBus;
 use crate::graphql::FinalSchema;
 use crate::integrations::feature_flag::FeatureFlagClient;
+use crate::lua::LuaEngine;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
 use crate::tracing_setup::SamplingControl;
@@ -23,6 +24,7 @@ pub struct AppState {
     pub feature_flag_client: FeatureFlagClient,
     pub sampling: SamplingControl,
     pub handles: HandleRegistry,
+    pub lua: LuaEngine,
 }
 
 #[derive(Clone)]

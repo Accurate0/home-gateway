@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/JellyfinSettings
+url: http://jellyfin.media.internal
+poll_interval: 30s
+websocket:
+  keep_alive: 30s
+  silence_timeout: 60s
+  sessions_interval: 1500ms
+  reconnect:
+    min: 1s
+    max: 60s
+    stable_after: 60s

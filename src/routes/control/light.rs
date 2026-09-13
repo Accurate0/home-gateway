@@ -33,7 +33,7 @@ pub async fn light_control(
     Auth(auth): Auth,
     Json(control): Json<LightControlPayload>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&Scope::new(Resource::Control, Action::Write))
+    auth.require(&Scope::new(Resource::Light, Action::Write))
         .map_err(AppError::StatusCode)?;
 
     for (ieee_addr, change) in control.change {

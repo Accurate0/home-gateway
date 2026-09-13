@@ -14,6 +14,7 @@ use crate::repo::push::{NewPushNotification, PushNotificationRow};
 use crate::settings::{NotifyAcknowledge, NotifyCategory};
 use crate::state::AppState;
 
+pub mod lua;
 pub mod spawn;
 pub mod types;
 

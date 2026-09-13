@@ -67,21 +67,27 @@ pub fn check_steps(workflow: &ReusableWorkflow, scope: &Scope) -> Result<(), Str
 }
 
 fn check_step_list(steps: &[Step], scope: &Scope) -> Result<(), String> {
+    let mut scope = scope.clone();
+
     for (index, step) in steps.iter().enumerate() {
         if let Some(when) = step.guard() {
-            check_condition(when, scope)
+            check_condition(when, &scope)
                 .map_err(|error| format!("step {index} ({}) when: {error}", step.kind()))?;
         }
 
         for (label, template) in step.templates() {
             template
-                .check(scope)
+                .check(&scope)
                 .map_err(|error| format!("step {index} ({}) {label}: {error}", step.kind()))?;
         }
 
         if let Step::Scene { run, .. } = step {
-            check_step_list(run, scope)
+            check_step_list(run, &scope)
                 .map_err(|error| format!("step {index} (scene) > {error}"))?;
+        }
+
+        if let Step::Lua { returns, .. } = step {
+            scope = scope.with("lua", input_shape(returns));
         }
     }
 
@@ -224,4 +230,93 @@ fn check_with(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use config::{Config, File, FileFormat};
+
+    use super::super::ReusableWorkflow;
+    use super::{check_steps, reusable_scope};
+
+    fn workflow(yaml: &str) -> ReusableWorkflow {
+        Config::builder()
+            .add_source(File::from_str(yaml, FileFormat::Yaml))
+            .build()
+            .expect("the fixture should build")
+            .try_deserialize()
+            .expect("the fixture should deserialize")
+    }
+
+    fn check(yaml: &str) -> Result<(), String> {
+        let workflow = workflow(yaml);
+        let scope = reusable_scope(&workflow)?;
+
+        check_steps(&workflow, &scope)
+    }
+
+    #[test]
+    fn a_later_step_may_reference_what_a_lua_step_declares() {
+        let result = check(
+            r#"
+name: Lua scope
+slug: lua-scope
+inputs: {}
+run:
+  - type: lua
+    returns: { pct: int }
+    script: "return { pct = 1 }"
+  - type: mqtt_publish
+    topic: t
+    payload: "${lua.pct}"
+    retain: false
+"#,
+        );
+
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn an_undeclared_lua_return_is_rejected() {
+        let error = check(
+            r#"
+name: Lua scope
+slug: lua-scope
+inputs: {}
+run:
+  - type: lua
+    returns: { pct: int }
+    script: "return { pct = 1 }"
+  - type: mqtt_publish
+    topic: t
+    payload: "${lua.other}"
+    retain: false
+"#,
+        )
+        .expect_err("an undeclared return should not type-check");
+
+        assert!(error.contains("lua.other"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn a_lua_return_is_not_visible_before_its_step() {
+        let error = check(
+            r#"
+name: Lua scope
+slug: lua-scope
+inputs: {}
+run:
+  - type: mqtt_publish
+    topic: t
+    payload: "${lua.pct}"
+    retain: false
+  - type: lua
+    returns: { pct: int }
+    script: "return { pct = 1 }"
+"#,
+        )
+        .expect_err("a lua return should not be visible to an earlier step");
+
+        assert!(error.contains("lua.pct"), "unexpected error: {error}");
+    }
 }

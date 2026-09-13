@@ -4,11 +4,12 @@ use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
+use crate::lua::{LuaCallContext, Script};
 use crate::settings::workflow::{HttpMethod, VacuumCommand};
 use crate::templating::Template;
-use crate::variables::{Node, Vars};
+use crate::variables::{Node, VarType, Vars};
 use crate::{
-    actors::devices::light::{LightHandler, LightHandlerMessage},
+    actors::devices::light::{LightHandler, command::light_message},
     actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
     integrations::notify::{Notification, notify},
@@ -30,6 +31,7 @@ use uuid::Uuid;
 pub mod conditions;
 pub mod context;
 pub mod dispatcher;
+pub mod lua;
 pub mod manager;
 pub mod plan;
 pub mod spawn;
@@ -56,6 +58,8 @@ pub enum WorkflowError {
     ContextUnavailable(&'static str),
     #[error("template error: {0}")]
     Template(String),
+    #[error(transparent)]
+    Lua(#[from] crate::lua::LuaError),
     #[error("`{0}` is not a robot vacuum")]
     NotARobotVacuum(String),
     #[error("http request to {url} returned {status}")]
@@ -71,6 +75,14 @@ pub enum WorkflowError {
     HomeAssistant(#[from] crate::integrations::home_assistant::HomeAssistantError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+#[derive(Clone, Copy)]
+pub struct ReusableCall<'a> {
+    pub event_id: Uuid,
+    pub depth: u8,
+    pub dry_run: bool,
+    pub origin_slug: &'a str,
 }
 
 /// Per-execution context threaded through the recursive executor.
@@ -99,6 +111,10 @@ pub struct WorkflowWorker {
 }
 
 impl WorkflowWorker {
+    pub fn new(shared_actor_state: AppState) -> Self {
+        WorkflowWorker { shared_actor_state }
+    }
+
     pub const NAME: &str = "workflow";
 
     pub async fn execute_workflow(
@@ -178,19 +194,41 @@ impl WorkflowWorker {
         ctx: WorkflowContext<'_>,
         steps: &[Step],
     ) -> Result<(), WorkflowError> {
-        for step in steps {
-            self.run_step(ctx, step).await?;
+        if !steps.iter().any(|step| matches!(step, Step::Lua { .. })) {
+            for step in steps {
+                self.run_step(ctx, step).await?;
+            }
+
+            return Ok(());
         }
+
+        let mut vars = ctx.vars.clone();
+
+        for step in steps {
+            let mut ctx = ctx;
+            ctx.vars = &vars;
+
+            let produced = self.run_step(ctx, step).await?;
+
+            if let Some(node) = produced {
+                vars.insert("lua", node);
+            }
+        }
+
         Ok(())
     }
 
-    async fn run_step(&self, ctx: WorkflowContext<'_>, step: &Step) -> Result<(), WorkflowError> {
+    async fn run_step(
+        &self,
+        ctx: WorkflowContext<'_>,
+        step: &Step,
+    ) -> Result<Option<Node>, WorkflowError> {
         // a failed guard skips only this step, not the rest of the workflow
         if let Some(when) = step.guard()
             && !conditions::eval(&self.shared_actor_state, ctx.vars, when).await?
         {
             tracing::info!("[{}] skipping step, guard not satisfied", ctx.event_id);
-            return Ok(());
+            return Ok(None);
         }
 
         let span = tracing::info_span!(
@@ -209,7 +247,14 @@ impl WorkflowWorker {
         &self,
         ctx: WorkflowContext<'_>,
         step: &Step,
-    ) -> Result<(), WorkflowError> {
+    ) -> Result<Option<Node>, WorkflowError> {
+        if let Step::Lua {
+            source, returns, ..
+        } = step
+        {
+            return self.run_lua(ctx, source.script(), returns).await.map(Some);
+        }
+
         if ctx.dry_run
             && let Some(detail) = step.describe_action()
         {
@@ -218,10 +263,10 @@ impl WorkflowWorker {
                 ctx.event_id,
                 step.kind()
             );
-            return Ok(());
+            return Ok(None);
         }
 
-        match step {
+        let result = match step {
             Step::Light {
                 ieee_addr, state, ..
             } => self.run_light(ieee_addr.clone(), state.clone()).await,
@@ -292,7 +337,31 @@ impl WorkflowWorker {
             Step::RobotVacuum {
                 ieee_addr, command, ..
             } => self.run_robot_vacuum(ieee_addr, *command).await,
-        }
+            Step::Lua { .. } => unreachable!("a lua step is dispatched before this match"),
+        };
+
+        result.map(|_| None)
+    }
+
+    async fn run_lua(
+        &self,
+        ctx: WorkflowContext<'_>,
+        script: &Script,
+        returns: &BTreeMap<String, VarType>,
+    ) -> Result<Node, WorkflowError> {
+        let cx = LuaCallContext::new(
+            self.shared_actor_state.clone(),
+            ctx.event_id,
+            ctx.origin_slug,
+        )
+        .with_depth(ctx.depth)
+        .with_dry_run(ctx.dry_run);
+
+        Ok(self
+            .shared_actor_state
+            .lua
+            .run_returning(&cx, script, ctx.vars, returns)
+            .await?)
     }
 
     fn resolve_push_actions(&self, actions: &[NotifyAction]) -> Vec<PushAction> {
@@ -486,7 +555,7 @@ impl WorkflowWorker {
         Ok(())
     }
 
-    async fn run_set_mode(&self, mode: crate::mode::Mode) -> Result<(), WorkflowError> {
+    pub async fn run_set_mode(&self, mode: crate::mode::Mode) -> Result<(), WorkflowError> {
         let previous = self
             .shared_actor_state
             .handles
@@ -516,6 +585,32 @@ impl WorkflowWorker {
         ctx: WorkflowContext<'_>,
         name: &str,
         with: &BTreeMap<String, Template>,
+    ) -> Result<(), WorkflowError> {
+        let mut inputs = BTreeMap::new();
+
+        for (key, template) in with {
+            let value = template
+                .evaluate(ctx.vars)
+                .map_err(WorkflowError::Template)?;
+            inputs.insert(key.clone(), value);
+        }
+
+        let call = ReusableCall {
+            event_id: ctx.event_id,
+            depth: ctx.depth,
+            dry_run: ctx.dry_run,
+            origin_slug: ctx.origin_slug,
+        };
+
+        self.run_reusable(call, name, ctx.vars, inputs).await
+    }
+
+    pub async fn run_reusable(
+        &self,
+        ctx: ReusableCall<'_>,
+        name: &str,
+        inherited: &Vars,
+        inputs: BTreeMap<String, crate::variables::Value>,
     ) -> Result<(), WorkflowError> {
         if ctx.depth >= MAX_DEPTH {
             tracing::error!(
@@ -548,19 +643,15 @@ impl WorkflowWorker {
         let mut input = Node::empty();
 
         for (key, ty) in workflow.inputs.iter().flatten() {
-            let template = with.get(key).ok_or_else(|| {
+            let given = inputs.get(key).cloned().ok_or_else(|| {
                 WorkflowError::Template(format!("run_workflow `{name}` is missing input `{key}`"))
             })?;
 
-            let value = template
-                .evaluate(ctx.vars)
-                .map_err(WorkflowError::Template)?
-                .coerce(*ty)
-                .ok_or_else(|| {
-                    WorkflowError::Template(format!(
-                        "run_workflow `{name}` input `{key}` is not a {ty}"
-                    ))
-                })?;
+            let value = given.coerce(*ty).ok_or_else(|| {
+                WorkflowError::Template(format!(
+                    "run_workflow `{name}` input `{key}` is not a {ty}"
+                ))
+            })?;
 
             input.insert(key.clone(), Node::Value(Some(value)));
         }
@@ -568,7 +659,7 @@ impl WorkflowWorker {
         let mut vars = Vars::default().with("input", input);
 
         for source in &workflow.context {
-            if let Some(node) = ctx.vars.namespace(source.as_str()) {
+            if let Some(node) = inherited.namespace(source.as_str()) {
                 vars.insert(source.as_str(), node.clone());
             }
         }
@@ -592,49 +683,7 @@ impl WorkflowWorker {
             .address_or_self(&device)
             .to_owned();
 
-        let light_actor_message = match state {
-            LightState::On => LightHandlerMessage::TurnOn { ieee_addr },
-            LightState::Off => LightHandlerMessage::TurnOff { ieee_addr },
-            LightState::Toggle => LightHandlerMessage::Toggle { ieee_addr },
-            LightState::SetBrightness { value } => {
-                LightHandlerMessage::SetBrightness { ieee_addr, value }
-            }
-            LightState::IncreaseBrightness { value, on_off } => {
-                LightHandlerMessage::BrightnessMove {
-                    ieee_addr,
-                    value: value.try_into().map_err(anyhow::Error::from)?,
-                    on_off,
-                }
-            }
-            LightState::DecreaseBrightness { value, on_off } => {
-                LightHandlerMessage::BrightnessMove {
-                    ieee_addr,
-                    value: -TryInto::<i64>::try_into(value).map_err(anyhow::Error::from)?,
-                    on_off,
-                }
-            }
-            LightState::StopBrightness => LightHandlerMessage::BrightnessMove {
-                ieee_addr,
-                value: 0,
-                on_off: false,
-            },
-            LightState::IncreaseColourTemperature { value } => {
-                LightHandlerMessage::ColourTemperatureMove {
-                    ieee_addr,
-                    value: value.try_into().map_err(anyhow::Error::from)?,
-                }
-            }
-            LightState::DecreaseColourTemperature { value } => {
-                LightHandlerMessage::ColourTemperatureMove {
-                    ieee_addr,
-                    value: -TryInto::<i64>::try_into(value).map_err(anyhow::Error::from)?,
-                }
-            }
-            LightState::StopColourTemperature => LightHandlerMessage::ColourTemperatureMove {
-                ieee_addr,
-                value: 0,
-            },
-        };
+        let light_actor_message = light_message(ieee_addr, state).map_err(anyhow::Error::from)?;
 
         rpc::cast_factory(LightHandler::NAME, light_actor_message)
             .map_err(|e| WorkflowError::Messaging(e.to_string()))

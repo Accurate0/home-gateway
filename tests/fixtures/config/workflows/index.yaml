@@ -1,1 +1,2 @@
 - !include lamp.yaml
+- !include lua.yaml

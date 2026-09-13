@@ -1,3 +1,5 @@
+pub mod lua;
+
 use crate::actors::system::mqtt_ingest;
 use crate::device_registry::DeviceRegistry;
 use crate::settings::{BackoffSettings, MqttSettings};

@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../devices.schema.json
+# yaml-language-server: $schema=../schemas/devices.schema.json
 - id: livingroom-motion
   room: living-room
   transport: esphome

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/RawTransperthSettings
+refresh_peak: 3m
+refresh_off_peak: 15m
+horizon: 2h
+peak:
+  - start: "06:00"
+    end: "09:30"
+  - start: "15:00"
+    end: "18:30"
+routes:
+  - id: aubin-grove-to-perth
+    from: Aubin Grove Stn
+    to: Perth Underground Stn
+    limit: 3
+cache:
+  routes:
+    capacity: 32
+    ttl: 1h
+  timetables:
+    capacity: 16
+    ttl: 6h

@@ -124,6 +124,9 @@ impl Harness {
             )
             .build();
 
+        let lua = home_gateway::startup::lua::build(&settings, &handles)
+            .expect("failed to build the lua engine");
+
         let state = AppState {
             repos: home_gateway::repo::RepoRegistry::new(db.clone()),
             settings: settings.clone(),
@@ -133,6 +136,7 @@ impl Harness {
             sampling: home_gateway::tracing_setup::SamplingControl::default(),
             event_bus: event_bus.clone(),
             handles,
+            lua,
         };
 
         let (root, _) = Actor::spawn(None, TestRoot, ())

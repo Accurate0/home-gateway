@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/HttpSettings
+listen_address: "[::]:8000"
+clients:
+  default:
+    timeout: 30s
+  bom:
+    timeout: 30s
+  fuelwatch:
+    timeout: 30s
+  home_assistant:
+    timeout: 30s
+  jellyfin:
+    timeout: 30s
+  oauth:
+    timeout: 30s
+  push:
+    timeout: 30s
+  transperth:
+    timeout: 30s
+  trmnl:
+    timeout: 30s
+  willyweather:
+    timeout: 30s
+  woolworths:
+    timeout: 30s

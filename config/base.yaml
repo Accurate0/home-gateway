@@ -1,67 +1,24 @@
-# yaml-language-server: $schema=config.schema.json
+# yaml-language-server: $schema=schemas/config.editor.schema.json
 version: "1"
+
+http: !include sections/http.yaml
+mqtt: !include sections/mqtt.yaml
+actors: !include sections/actors.yaml
+auth: !include sections/auth.yaml
+home_assistant: !include sections/home_assistant.yaml
+jellyfin: !include sections/jellyfin.yaml
+transperth: !include sections/transperth.yaml
+eink_display: !include sections/eink_display.yaml
 
 database:
   min_connections: 0
   max_connections: 10
   slow_statement_threshold: 6s
 
-http:
-  listen_address: "[::]:8000"
-  clients:
-    default:
-      timeout: 30s
-    bom:
-      timeout: 30s
-    fuelwatch:
-      timeout: 30s
-    home_assistant:
-      timeout: 30s
-    jellyfin:
-      timeout: 30s
-    oauth:
-      timeout: 30s
-    push:
-      timeout: 30s
-    transperth:
-      timeout: 30s
-    trmnl:
-      timeout: 30s
-    willyweather:
-      timeout: 30s
-    woolworths:
-      timeout: 30s
-
 graphql:
   max_depth: 20
   max_complexity: 5000
   query_timeout: 10s
-
-mqtt:
-  port: 1883
-  keep_alive: 5s
-  max_packet_size: 100000
-  channel_capacity: 100
-  reconnect:
-    min: 1s
-    max: 60s
-
-actors:
-  restart:
-    backoff_base: 1s
-    backoff_max: 60s
-    healthy_after: 5m
-  workers:
-    mqtt_ingest: 5
-    control_switch: 3
-    door_sensor: 1
-    environment_sensor: 1
-    light: 1
-    media_player: 1
-    plant_sensor: 1
-    presence_sensor: 1
-    robot_vacuum: 2
-    smart_switch: 3
 
 tracing:
   sampling:
@@ -91,6 +48,11 @@ workflow:
   timers:
     catch_up_within: 10m
 
+lua:
+  timeout: 5s
+  max_instructions: 5000000
+  library: lua
+
 reconciler:
   enabled: true
   workers: 4
@@ -106,44 +68,6 @@ watchdog:
   timeout: 30m
   check_interval: 5m
   realert_after: 6h
-
-auth:
-  api_key_cache:
-    capacity: 1024
-    ttl: 1h
-  oauth:
-    issuer: https://idm.anurag.sh/oauth2/openid/home-gateway
-    jwks_url: https://idm.anurag.sh/oauth2/openid/home-gateway/public_key.jwk
-    userinfo_url: https://idm.anurag.sh/oauth2/openid/home-gateway/userinfo
-    audience: home-gateway
-    cache:
-      keys:
-        capacity: 32
-        ttl: 1h
-      userinfo:
-        capacity: 256
-        ttl: 15m
-    group_scopes:
-      home_gateway_admins@idm.anurag.sh: ["**:*"]
-      home_gateway_readers@idm.anurag.sh:
-        - "*:read"
-        - "media.player:read"
-        - "events.**:read"
-  api_keys:
-    - name: eink-display-living-room
-      scopes: ["epd:read"]
-    - name: unifi-ingest
-      scopes: ["ingest.unifi:write"]
-    - name: home-gateway-app
-      scopes: ["**:*"]
-    - name: home-ui
-      scopes: ["**:*"]
-    - name: oled-remote
-      scopes:
-        - "light:read"
-        - "light:write"
-        - "media.player:read"
-        - "media.player:write"
 
 woolworths:
   refresh: 1h
@@ -161,74 +85,11 @@ willyweather:
   locations:
     perth: "14576"
 
-transperth:
-  refresh_peak: 3m
-  refresh_off_peak: 15m
-  horizon: 2h
-  peak:
-    - start: "06:00"
-      end: "09:30"
-    - start: "15:00"
-      end: "18:30"
-  routes:
-    - id: aubin-grove-to-perth
-      from: Aubin Grove Stn
-      to: Perth Underground Stn
-      limit: 3
-  cache:
-    routes:
-      capacity: 32
-      ttl: 1h
-    timetables:
-      capacity: 16
-      ttl: 6h
-
 fuelwatch:
   refresh: 1h
 
-home_assistant:
-  url: http://home-assistant.internal
-  entities:
-    - id: sensor.apollo_mtr_1_living_room_target_*
-      log: false
-      throttle: 30s
-  websocket:
-    keep_alive: 30s
-    silence_timeout: 90s
-    reconnect_delay: 5s
-
-jellyfin:
-  url: http://jellyfin.media.internal
-  poll_interval: 30s
-  websocket:
-    keep_alive: 30s
-    silence_timeout: 60s
-    sessions_interval: 1500ms
-    reconnect:
-      min: 1s
-      max: 60s
-      stable_after: 60s
-
 solar:
   refresh: 1m
-
-eink_display:
-  prepare_render_timeout: 15s
-  defaults:
-    reddit_limit: 25
-    settle: 10s
-    fallback_refresh: 15m
-    min_refresh: 60s
-  views:
-    home:
-      query: view=home
-    weather:
-      query: view=weather
-  albums:
-    world:
-      prefix: eink-display/album/world/
-    cats:
-      prefix: eink-display/album/cats/
 
 adhoc:
   recheck_interval: 15m
