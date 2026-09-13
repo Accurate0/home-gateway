@@ -42,6 +42,7 @@ configMapGenerator:
       - workflows/forecast.yaml
       - workflows/fuel.yaml
       - workflows/hallway-plant.yaml
+      - workflows/holidays.yaml
       - workflows/living-room-lamp.yaml
       - workflows/living-room-plant.yaml
       - workflows/rain.yaml
@@ -56,6 +57,7 @@ configMapGenerator:
     files:
       - lua/workflows/brief.lua
       - lua/workflows/buttons.lua
+      - lua/workflows/reminders.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

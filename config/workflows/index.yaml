@@ -11,3 +11,4 @@
 - !include fuel.yaml
 - !include rain.yaml
 - !include forecast.yaml
+- !include holidays.yaml

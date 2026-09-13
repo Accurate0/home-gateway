@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../schemas/workflows.schema.json
+- name: Public Holiday Tomorrow
+  slug: public-holiday-tomorrow
+  group: Reminders
+  on: { type: cron, schedule: "0 18 * * *" }
+  modes: [home, away, guest]
+  run:
+    - type: lua
+      call: reminders.holiday_eve
+      returns: {}

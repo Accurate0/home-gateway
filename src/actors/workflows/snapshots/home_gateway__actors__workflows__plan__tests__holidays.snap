@@ -1,0 +1,6 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# Public Holiday Tomorrow  (on: cron(0 18 * * *))
+  lua: lua(call reminders.holiday_eve) -> []
