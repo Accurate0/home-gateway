@@ -16,7 +16,7 @@ function brief.morning()
 		table.insert(parts, holiday)
 	end
 
-	table.insert(parts, string.format("%s %s, %s–%s°C", today.emoji, today.description, today.min, today.max))
+	table.insert(parts, string.format("%s %s, %s-%s°C", today.emoji, today.description, today.min, today.max))
 
 	if today.rain_probability then
 		local rain = "Rain " .. format.int(today.rain_probability) .. "%"
