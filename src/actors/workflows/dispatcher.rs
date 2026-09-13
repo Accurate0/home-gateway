@@ -256,7 +256,10 @@ impl WorkflowDispatcher {
                     action: ac,
                     ..
                 },
-            ) => devices.address_or_self(ieee_addr) == a.as_str() && action == ac,
+            ) => {
+                devices.address_or_self(ieee_addr) == a.as_str()
+                    && action.as_ref().is_none_or(|action| action == ac)
+            }
             (
                 TriggerMatcher::Environment {
                     sensor,

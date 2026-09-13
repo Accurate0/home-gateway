@@ -68,6 +68,7 @@ scopes! {
     Environment => "environment" [Read],
     Epd => "epd" [Read, Write],
     FuelWatch => "fuelwatch" [Read],
+    Holiday => "holiday" [Read],
     HomeAssistant => "home_assistant" [Read, Write],
     Http => "http" [Write],
     IngestHome => "ingest.home" [Write],

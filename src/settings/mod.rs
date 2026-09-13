@@ -81,6 +81,7 @@ pub use http_client_override::HttpClientOverride;
 pub use http_clients::HttpClientsSettings;
 pub use ingest::{IngestSettings, IngestSource};
 pub use integrations::fuelwatch::FuelWatchSettings;
+pub use integrations::holidays::HolidaySettings;
 pub use integrations::home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use integrations::home_assistant_websocket::HomeAssistantWebsocketSettings;
 pub use integrations::jellyfin::JellyfinSettings;
@@ -170,6 +171,7 @@ pub struct Settings {
     pub transperth: Option<TransperthSettings>,
     pub willyweather: WillyWeatherSettings,
     pub fuelwatch: Option<FuelWatchSettings>,
+    pub holidays: HolidaySettings,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
     pub vacation: VacationSettings,
@@ -229,6 +231,7 @@ pub struct RawSettings {
     willyweather: WillyWeatherSettings,
     #[serde(default)]
     fuelwatch: Option<FuelWatchSettings>,
+    holidays: HolidaySettings,
     eink_display: devices::eink::RawEinkGlobal,
     adhoc: AdhocSettings,
     vacation: VacationSettings,
@@ -273,12 +276,25 @@ impl RawSettings {
             transperth,
             willyweather,
             fuelwatch,
+            holidays,
             eink_display,
             adhoc,
             vacation,
             lua,
             ingest,
         } = self;
+
+        if holidays.url.trim().is_empty() {
+            return Err("holidays.url must not be empty".to_owned());
+        }
+
+        if holidays.refresh <= chrono::TimeDelta::zero() {
+            return Err("holidays.refresh must be positive".to_owned());
+        }
+
+        if holidays.regions.is_empty() {
+            return Err("holidays.regions must declare at least one region".to_owned());
+        }
 
         if willyweather
             .api_key
@@ -472,6 +488,7 @@ impl RawSettings {
                 transperth,
                 willyweather,
                 fuelwatch,
+                holidays,
                 eink_display: eink_display.resolve(),
                 adhoc,
                 vacation,
@@ -893,25 +910,20 @@ transperth:
             .filter_map(WorkflowDefinition::triggered)
             .find(|w| {
                 matches!(&w.on, TriggerMatcher::Switch { ieee_addr, action }
-                if ieee_addr == "small-switch" && action == "single")
+                if ieee_addr == "small-switch" && action.as_deref() == Some("single"))
             })
             .expect("expected a switch workflow for the small switch");
-        let referenced = switch_workflow
-            .run
-            .iter()
-            .map(|step| match step {
-                workflow::Step::RunWorkflow { workflow, .. } => workflow.as_str(),
-                other => panic!("expected a run_workflow step, got {}", other.kind()),
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            referenced,
-            ["living-room-lamps-off", "living-room-lamps-on"]
+        assert!(
+            switch_workflow
+                .run
+                .iter()
+                .all(|step| matches!(step, workflow::Step::Lua { .. })),
+            "expected the small switch to toggle through lua"
         );
-        for name in referenced {
+        for name in ["living-room-lamps-off", "living-room-lamps-on"] {
             assert!(
                 settings.workflows.contains_key(name),
-                "small switch references unknown workflow {name}"
+                "small switch toggles unknown workflow {name}"
             );
         }
 
@@ -1188,6 +1200,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1235,6 +1248,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1358,6 +1372,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1410,6 +1425,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1463,6 +1479,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1676,6 +1693,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1727,6 +1745,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1777,6 +1796,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1828,6 +1848,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -1878,6 +1899,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1971,6 +1993,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
@@ -2046,6 +2069,7 @@ reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s,
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
+holidays: { url: x, refresh: 24h, regions: [Western Australia] }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000 }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }

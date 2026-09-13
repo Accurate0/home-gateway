@@ -8,6 +8,7 @@ use crate::http::get_traced_http_client;
 use crate::integrations::{
     feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
+    holidays::Holidays,
     home_assistant::HomeAssistant,
     jellyfin::Jellyfin,
     mqtt::{Mqtt, MqttClient},
@@ -84,6 +85,11 @@ pub async fn build(
         .map(|fuelwatch| FuelWatch::new(fuelwatch, http.timeout_for(HttpClientKind::FuelWatch)))
         .transpose()?;
 
+    let holidays = Holidays::new(
+        &settings.holidays,
+        http.timeout_for(HttpClientKind::Holidays),
+    )?;
+
     let goodwe = settings
         .solar
         .as_ref()
@@ -111,6 +117,7 @@ pub async fn build(
         ))
         .insert(willyweather)
         .insert(http_client)
+        .insert(holidays)
         .insert_optional(home_assistant)
         .insert_optional(jellyfin)
         .insert_optional(transperth)

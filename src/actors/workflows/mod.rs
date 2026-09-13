@@ -4,7 +4,7 @@ use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
-use crate::lua::{LuaCallContext, Script};
+use crate::lua::{LuaCallContext, LuaSource};
 use crate::settings::workflow::{HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
@@ -252,7 +252,7 @@ impl WorkflowWorker {
             source, returns, ..
         } = step
         {
-            return self.run_lua(ctx, source.script(), returns).await.map(Some);
+            return self.run_lua(ctx, source, returns).await.map(Some);
         }
 
         if ctx.dry_run
@@ -346,7 +346,7 @@ impl WorkflowWorker {
     async fn run_lua(
         &self,
         ctx: WorkflowContext<'_>,
-        script: &Script,
+        source: &LuaSource,
         returns: &BTreeMap<String, VarType>,
     ) -> Result<Node, WorkflowError> {
         let cx = LuaCallContext::new(
@@ -360,7 +360,7 @@ impl WorkflowWorker {
         Ok(self
             .shared_actor_state
             .lua
-            .run_returning(&cx, script, ctx.vars, returns)
+            .run_returning(&cx, source, ctx.vars, returns)
             .await?)
     }
 

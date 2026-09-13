@@ -5,7 +5,7 @@ use serde::Deserialize;
 use super::{CompareOp, Comparison, EnvMetric, SwitchMetric};
 use crate::actors::sun::calc::SunPeriod;
 use crate::event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherSource};
-use crate::lua::Script;
+use crate::lua::LuaSource;
 use crate::mode::Mode;
 use crate::settings::{DeviceAliases, IEEEAddress, validate_device};
 use crate::templating::{Expr, Literal};
@@ -81,7 +81,8 @@ pub enum LeafCondition {
         value: Literal,
     },
     Lua {
-        script: Script,
+        #[serde(flatten)]
+        source: LuaSource,
     },
 }
 
@@ -177,7 +178,7 @@ impl LeafCondition {
                 cmp.value
             ),
             LeafCondition::Var { var, op, value } => format!("{var} {op:?} {value}"),
-            LeafCondition::Lua { script } => format!("lua({})", script.summary()),
+            LeafCondition::Lua { source } => format!("lua({})", source.summary()),
         }
     }
 }

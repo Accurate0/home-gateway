@@ -88,6 +88,7 @@ zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
 curl = "0.4.50"
 workflow-context-variables-derive = { path = "workflow-context-variables-derive" }
 mlua = { version = "0.12.1", features = ["lua54", "vendored", "async", "send", "serialize"] }
+icalendar = { version = "0.17.13", features = ["parser"] }
 
 [build-dependencies]
 serde_yaml = "0.9.34"

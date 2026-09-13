@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM public_holiday WHERE uid <> ALL($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc3eee162fb9e5094be25edb329b358a8fd80685b2381320e199f57d8be0f3a5"
+}

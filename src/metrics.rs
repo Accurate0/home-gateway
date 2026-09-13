@@ -50,6 +50,7 @@ struct Instruments {
     reconciler_retries_total: Counter<u64>,
     /// Reconciler commands abandoned after `max_attempts`, by kind and device.
     reconciler_give_ups_total: Counter<u64>,
+    lua_duration: Histogram<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -131,6 +132,13 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .u64_counter("home_gateway_reconciler_give_ups_total")
             .with_description("Reconciler commands abandoned after max_attempts")
             .build(),
+        lua_duration: meter
+            .f64_histogram("home_gateway_lua_duration_milliseconds")
+            .with_description("Lua execution duration in milliseconds by source and outcome")
+            .with_boundaries(vec![
+                0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0,
+            ])
+            .build(),
     }
 });
 
@@ -159,6 +167,16 @@ pub fn record_integration_poll(name: &'static str, outcome: &'static str, elapse
     INSTRUMENTS
         .integration_poll_duration
         .record(elapsed.as_secs_f64(), &labels);
+}
+
+pub fn record_lua(source: String, outcome: &'static str, elapsed: Duration) {
+    INSTRUMENTS.lua_duration.record(
+        elapsed.as_secs_f64() * 1000.0,
+        &[
+            KeyValue::new("source", source),
+            KeyValue::new("outcome", outcome),
+        ],
+    );
 }
 
 pub fn record_mqtt_ingest(topic_kind: &'static str) {

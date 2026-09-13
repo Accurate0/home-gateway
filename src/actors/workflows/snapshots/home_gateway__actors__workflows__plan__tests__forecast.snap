@@ -5,7 +5,9 @@ expression: out
 # weather-forecast  (reusable)
   context: [willyweather]
   inputs: {}
-  notify: notify(AndroidApp, general): ${willyweather.today.emoji} ${willyweather.today.description}, ${willyweather.today.min}–${willyweather.today.max}°C. Rain ${willyweather.today.rain_probability | default("n/a")}% (${willyweather.today.rain_range | default("n/a")}mm), wind up to ${willyweather.today.wind_max_speed | int | default("n/a")}km/h, UV ${willyweather.today.uv | round(1) | default("n/a")}, sunset ${willyweather.today.sunset | default("n/a")}
+  lua: lua(call brief.morning) -> [message]
+  notify: notify(AndroidApp, general): ${lua.message}
 
 # Morning Forecast  (on: cron(0 9 * * *))
-    notify: notify(AndroidApp, general): ${willyweather.today.emoji} ${willyweather.today.description}, ${willyweather.today.min}–${willyweather.today.max}°C. Rain ${willyweather.today.rain_probability | default("n/a")}% (${willyweather.today.rain_range | default("n/a")}mm), wind up to ${willyweather.today.wind_max_speed | int | default("n/a")}km/h, UV ${willyweather.today.uv | round(1) | default("n/a")}, sunset ${willyweather.today.sunset | default("n/a")}
+    lua: lua(call brief.morning) -> [message]
+    notify: notify(AndroidApp, general): ${lua.message}

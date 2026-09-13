@@ -15,9 +15,9 @@ use crate::actors::devices::{
 };
 use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
-    fuelwatch::FuelWatchActor, home_assistant::HomeAssistantActor, jellyfin::JellyfinActor,
-    solar::SolarActor, synergy::SynergyActor, transperth::TransperthActor, trmnl::TrmnlActor,
-    unifi::UnifiConnectedClientHandler, willyweather::WillyWeatherActor,
+    fuelwatch::FuelWatchActor, holidays::HolidaysActor, home_assistant::HomeAssistantActor,
+    jellyfin::JellyfinActor, solar::SolarActor, synergy::SynergyActor, transperth::TransperthActor,
+    trmnl::TrmnlActor, unifi::UnifiConnectedClientHandler, willyweather::WillyWeatherActor,
     woolworths::WoolworthsActor,
 };
 use crate::actors::root::RootMessage;
@@ -35,6 +35,7 @@ use crate::actors::system::{
 use crate::actors::vacation::VacationActor;
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
 use crate::integrations::fuelwatch::FuelWatch;
+use crate::integrations::holidays::Holidays;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
@@ -400,6 +401,30 @@ pub static ACTORS: &[ActorSpec] = &[
                     FuelWatchActor {
                         shared_actor_state,
                         fuelwatch,
+                    },
+                    settings,
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
+        name: HolidaysActor::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                let holidays = shared_actor_state.handles.expect::<Holidays>().clone();
+                let settings = shared_actor_state.settings.holidays.clone();
+
+                root.spawn_linked(
+                    Some(HolidaysActor::NAME.to_owned()),
+                    HolidaysActor {
+                        shared_actor_state,
+                        holidays,
                     },
                     settings,
                 )

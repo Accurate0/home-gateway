@@ -51,7 +51,8 @@ workflow:
 lua:
   timeout: 5s
   max_instructions: 5000000
-  library: lua
+  library: lua/lib
+  scripts: lua/workflows
 
 reconciler:
   enabled: true
@@ -87,6 +88,11 @@ willyweather:
 
 fuelwatch:
   refresh: 1h
+
+holidays:
+  url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
+  refresh: 24h
+  regions: [Western Australia]
 
 solar:
   refresh: 1m

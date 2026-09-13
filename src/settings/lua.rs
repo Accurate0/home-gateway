@@ -15,6 +15,8 @@ pub struct LuaSettings {
     pub max_instructions: u32,
     #[serde(default)]
     pub library: Option<PathBuf>,
+    #[serde(default)]
+    pub scripts: Option<PathBuf>,
 }
 
 impl LuaSettings {
@@ -29,6 +31,7 @@ impl Default for LuaSettings {
             timeout: TimeDelta::seconds(5),
             max_instructions: 5_000_000,
             library: None,
+            scripts: None,
         }
     }
 }

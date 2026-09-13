@@ -392,8 +392,10 @@ async fn a_delegated_script_cannot_drive_a_device_it_lacks_write_scope_for() {
 async fn a_config_authored_script_keeps_full_access() {
     let harness = start().await;
 
-    let script = Script::parse("return light.set ~= nil and mqtt ~= nil and workflow ~= nil")
-        .expect("the probe should compile");
+    let script = home_gateway::lua::LuaSource::Script {
+        script: Script::parse("return light.set ~= nil and mqtt ~= nil and workflow ~= nil")
+            .expect("the probe should compile"),
+    };
 
     let cx = home_gateway::lua::LuaCallContext::new(
         harness.state.clone(),

@@ -48,9 +48,14 @@ configMapGenerator:
       - workflows/small-switch.yaml
       - workflows/solar.yaml
       - workflows/woolworths.yaml
-  - name: home-gateway-config-lua
+  - name: home-gateway-config-lua-lib
     files:
-      - lua/lights.lua
+      - lua/lib/format.lua
+      - lua/lib/lights.lua
+  - name: home-gateway-config-lua-workflows
+    files:
+      - lua/workflows/brief.lua
+      - lua/workflows/buttons.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

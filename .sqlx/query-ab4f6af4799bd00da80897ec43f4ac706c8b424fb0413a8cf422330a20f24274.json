@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO public_holiday (uid, date, name, public, regions)\n                VALUES ($1, $2, $3, $4, $5)\n                ON CONFLICT (uid) DO UPDATE SET\n                    date = EXCLUDED.date,\n                    name = EXCLUDED.name,\n                    public = EXCLUDED.public,\n                    regions = EXCLUDED.regions,\n                    updated_at = now()\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Text",
+        "Bool",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ab4f6af4799bd00da80897ec43f4ac706c8b424fb0413a8cf422330a20f24274"
+}

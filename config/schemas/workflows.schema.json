@@ -1110,17 +1110,42 @@
         {
           "type": "object",
           "properties": {
-            "script": {
-              "type": "string"
-            },
             "type": {
               "type": "string",
               "const": "lua"
             }
           },
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "script": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "script"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "call": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "array",
+                  "items": true,
+                  "default": []
+                }
+              },
+              "required": [
+                "call"
+              ]
+            }
+          ],
           "required": [
-            "type",
-            "script"
+            "type"
           ]
         }
       ]
@@ -1437,7 +1462,11 @@
               "type": "string"
             },
             "action": {
-              "type": "string"
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
             },
             "type": {
               "type": "string",
@@ -1446,8 +1475,7 @@
           },
           "required": [
             "type",
-            "device",
-            "action"
+            "device"
           ]
         },
         {

@@ -1,7 +1,9 @@
+use schemars::JsonSchema;
+
 use super::types::FuelSite;
 use crate::variables::WorkflowContextVariables;
 
-#[derive(WorkflowContextVariables)]
+#[derive(WorkflowContextVariables, JsonSchema)]
 pub struct FuelwatchVariables {
     pub site_id: i32,
     pub name: String,

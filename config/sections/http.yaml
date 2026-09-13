@@ -7,6 +7,8 @@ clients:
     timeout: 30s
   fuelwatch:
     timeout: 30s
+  holidays:
+    timeout: 30s
   home_assistant:
     timeout: 30s
   jellyfin:

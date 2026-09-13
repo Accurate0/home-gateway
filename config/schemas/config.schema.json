@@ -153,6 +153,9 @@
         }
       ]
     },
+    "holidays": {
+      "$ref": "#/$defs/HolidaySettings"
+    },
     "eink_display": {
       "$ref": "#/$defs/RawEinkGlobal"
     },
@@ -187,6 +190,7 @@
     "sun",
     "home_assistant",
     "willyweather",
+    "holidays",
     "eink_display",
     "adhoc",
     "vacation"
@@ -240,6 +244,9 @@
           "$ref": "#/$defs/HttpClientOverride"
         },
         "fuelwatch": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "holidays": {
           "$ref": "#/$defs/HttpClientOverride"
         },
         "home_assistant": {
@@ -2552,17 +2559,42 @@
         {
           "type": "object",
           "properties": {
-            "script": {
-              "type": "string"
-            },
             "type": {
               "type": "string",
               "const": "lua"
             }
           },
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "script": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "script"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "call": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "array",
+                  "items": true,
+                  "default": []
+                }
+              },
+              "required": [
+                "call"
+              ]
+            }
+          ],
           "required": [
-            "type",
-            "script"
+            "type"
           ]
         }
       ]
@@ -2862,7 +2894,11 @@
               "type": "string"
             },
             "action": {
-              "type": "string"
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
             },
             "type": {
               "type": "string",
@@ -2871,8 +2907,7 @@
           },
           "required": [
             "type",
-            "device",
-            "action"
+            "device"
           ]
         },
         {
@@ -3999,6 +4034,28 @@
         "refresh"
       ]
     },
+    "HolidaySettings": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "refresh": {
+          "type": "string"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "url",
+        "refresh",
+        "regions"
+      ]
+    },
     "RawEinkGlobal": {
       "type": "object",
       "properties": {
@@ -4148,6 +4205,13 @@
           "minimum": 0
         },
         "library": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "scripts": {
           "type": [
             "string",
             "null"

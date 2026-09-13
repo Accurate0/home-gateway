@@ -5,14 +5,10 @@
   on: { type: switch, device: small-switch, action: single }
   modes: [home, away, guest]
   run:
-    - type: run_workflow
-      when: { type: light, device: floor-lamp-living-room, on: true }
-      workflow: living-room-lamps-off
-      with: {}
-    - type: run_workflow
-      when: { type: light, device: floor-lamp-living-room, on: false }
-      workflow: living-room-lamps-on
-      with: {}
+    - type: lua
+      call: buttons.toggle
+      returns: {}
+      args: [floor-lamp-living-room, living-room-lamps-on, living-room-lamps-off]
 
 - name: Small Switch double toggles living room automations
   slug: small-switch-double-toggle-automations

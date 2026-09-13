@@ -1,4 +1,5 @@
 pub mod fuelwatch;
+pub mod holidays;
 pub mod home_assistant;
 pub mod home_assistant_websocket;
 pub mod jellyfin;

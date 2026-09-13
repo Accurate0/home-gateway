@@ -680,6 +680,55 @@
      "limit": 20
     }
    ]
+  },
+  {
+   "id": 31,
+   "type": "row",
+   "title": "Lua",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 90 },
+   "panels": []
+  },
+  {
+   "id": 32,
+   "type": "timeseries",
+   "title": "Lua execution duration (p50 / p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 91 },
+   "fieldConfig": {
+    "defaults": { "unit": "ms" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, source) (rate(home_gateway_lua_duration_milliseconds_bucket[15m])))",
+     "legendFormat": "p95 {{source}}"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.50, sum by (le, source) (rate(home_gateway_lua_duration_milliseconds_bucket[15m])))",
+     "legendFormat": "p50 {{source}}"
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "type": "timeseries",
+   "title": "Lua executions by outcome",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 91 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (source, outcome) (rate(home_gateway_lua_duration_milliseconds_count[15m]))",
+     "legendFormat": "{{source}} ({{outcome}})"
+    }
+   ]
   }
  ]
 }

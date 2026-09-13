@@ -126,6 +126,11 @@ trmnl:
 alarm:
   poll_interval: 60s
 
+holidays:
+  url: http://127.0.0.1:9/holidays.ics
+  refresh: 24h
+  regions: [Western Australia]
+
 willyweather:
   api_key: test
   refresh: 1h

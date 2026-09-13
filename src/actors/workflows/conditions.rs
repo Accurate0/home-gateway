@@ -173,10 +173,10 @@ async fn eval_leaf(
             cmp,
         } => eval_weather(state, *source, *metric, *day, *cmp).await,
         LeafCondition::Var { var, op, value } => eval_var(vars, var, *op, value),
-        LeafCondition::Lua { script } => {
+        LeafCondition::Lua { source } => {
             let cx = LuaCallContext::new(state.clone(), Uuid::nil(), "condition");
 
-            Ok(state.lua.run_bool(&cx, script, vars).await?)
+            Ok(state.lua.run_bool(&cx, source, vars).await?)
         }
     }
 }

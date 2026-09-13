@@ -2,6 +2,7 @@
 pub enum HttpClientKind {
     Bom,
     FuelWatch,
+    Holidays,
     HomeAssistant,
     Jellyfin,
     OAuth,

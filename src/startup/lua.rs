@@ -6,14 +6,19 @@ use crate::actors::devices::environment_sensor::lua::EnvironmentLua;
 use crate::actors::devices::light::lua::LightLua;
 use crate::actors::devices::presence_sensor::lua::PresenceLua;
 use crate::actors::devices::smart_switch::lua::SwitchLua;
+use crate::actors::integrations::holidays::lua::HolidaysLua;
 use crate::actors::integrations::solar::lua::SolarLua;
 use crate::actors::sun::lua::SunLua;
 use crate::actors::system::push::lua::NotifyLua;
 use crate::actors::workflows::lua::WorkflowLua;
+use crate::integrations::fuelwatch::variables::FuelwatchVariables;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::home_assistant::lua::HomeAssistantLua;
 use crate::integrations::mqtt::lua::MqttLua;
-use crate::lua::{LuaApiRegistry, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, typegen};
+use crate::integrations::willyweather::variables::WillyweatherVariables;
+use crate::lua::{
+    LuaApiRegistry, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, schema, typegen,
+};
 use crate::settings::{Settings, SettingsContainer};
 use crate::state::HandleRegistry;
 
@@ -30,6 +35,14 @@ const GLOBALS: &[LuaField] = &[
         name: "lua",
         ty: LuaType::Map(&LuaType::Any),
     },
+    LuaField {
+        name: "willyweather",
+        ty: LuaType::Schema(schema::<WillyweatherVariables>),
+    },
+    LuaField {
+        name: "fuelwatch",
+        ty: LuaType::Schema(schema::<FuelwatchVariables>),
+    },
 ];
 
 pub fn registry(home_assistant: bool) -> LuaApiRegistry {
@@ -44,6 +57,7 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(WorkflowLua)
         .insert(SunLua)
         .insert(SolarLua)
+        .insert(HolidaysLua)
         .insert_optional(home_assistant.then_some(HomeAssistantLua))
         .build()
 }
@@ -70,25 +84,35 @@ pub fn type_definitions() -> String {
 pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<LuaEngine> {
     let registry = registry(handles.contains::<HomeAssistant>());
 
-    let library = match settings.lua.library.as_deref() {
-        Some(relative) => {
-            let candidates = [
-                ("override", SettingsContainer::override_dir().join(relative)),
-                ("baked-in", SettingsContainer::baked_dir().join(relative)),
-            ];
-
-            load_library(&resolve_library(&candidates)?)?
-        }
-        None => BTreeMap::new(),
-    };
+    let library = load_configured(settings.lua.library.as_deref())?;
+    let scripts = load_configured(settings.lua.scripts.as_deref())?;
 
     tracing::info!(
-        "lua namespaces: [{}], library: [{}]",
+        "lua namespaces: [{}], library: [{}], workflow scripts: [{}]",
         registry.namespaces().join(", "),
-        library.keys().cloned().collect::<Vec<_>>().join(", ")
+        library.keys().cloned().collect::<Vec<_>>().join(", "),
+        scripts.keys().cloned().collect::<Vec<_>>().join(", ")
     );
 
-    Ok(LuaEngine::new(registry, library, settings.lua.clone()))
+    Ok(LuaEngine::new(
+        registry,
+        library,
+        scripts,
+        settings.lua.clone(),
+    ))
+}
+
+fn load_configured(relative: Option<&Path>) -> anyhow::Result<BTreeMap<String, String>> {
+    let Some(relative) = relative else {
+        return Ok(BTreeMap::new());
+    };
+
+    let candidates = [
+        ("override", SettingsContainer::override_dir().join(relative)),
+        ("baked-in", SettingsContainer::baked_dir().join(relative)),
+    ];
+
+    load_library(&resolve_library(&candidates)?)
 }
 
 fn resolve_library(candidates: &[(&str, PathBuf)]) -> anyhow::Result<PathBuf> {
@@ -186,8 +210,9 @@ mod tests {
         let override_dir = scratch_dir("override");
         let baked_dir = scratch_dir("baked");
 
-        let resolved = resolve_library(&[("override", override_dir.clone()), ("baked-in", baked_dir)])
-            .expect("expected a library directory");
+        let resolved =
+            resolve_library(&[("override", override_dir.clone()), ("baked-in", baked_dir)])
+                .expect("expected a library directory");
 
         assert_eq!(resolved, override_dir);
     }
@@ -198,9 +223,8 @@ mod tests {
         let missing =
             std::env::temp_dir().join(format!("lua-library-missing-{}", uuid::Uuid::new_v4()));
 
-        let resolved =
-            resolve_library(&[("override", missing), ("baked-in", baked_dir.clone())])
-                .expect("expected a library directory");
+        let resolved = resolve_library(&[("override", missing), ("baked-in", baked_dir.clone())])
+            .expect("expected a library directory");
 
         assert_eq!(resolved, baked_dir);
     }
@@ -210,7 +234,8 @@ mod tests {
         let missing =
             std::env::temp_dir().join(format!("lua-library-missing-{}", uuid::Uuid::new_v4()));
 
-        let error = resolve_library(&[("override", missing)]).expect_err("expected no library directory");
+        let error =
+            resolve_library(&[("override", missing)]).expect_err("expected no library directory");
 
         assert!(error.to_string().contains("no lua library directory"));
     }

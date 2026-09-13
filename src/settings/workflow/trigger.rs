@@ -27,7 +27,8 @@ pub enum TriggerMatcher {
     Switch {
         #[serde(rename = "device", alias = "ieeeAddr")]
         ieee_addr: IEEEAddress,
-        action: String,
+        #[serde(default)]
+        action: Option<String>,
     },
     /// Fires on a scalar sensor reading. `metric` is the reading/object_id name
     /// (e.g. `soil_moisture`, `temperature`); the flattened comparison is the
@@ -253,9 +254,14 @@ impl TriggerMatcher {
                     if *open { "open" } else { "closed" }
                 )
             }
-            TriggerMatcher::Switch { ieee_addr, action } => {
-                format!("switch({ieee_addr}) action={action}")
-            }
+            TriggerMatcher::Switch {
+                ieee_addr,
+                action: Some(action),
+            } => format!("switch({ieee_addr}) action={action}"),
+            TriggerMatcher::Switch {
+                ieee_addr,
+                action: None,
+            } => format!("switch({ieee_addr}) any action"),
             TriggerMatcher::Environment {
                 sensor,
                 metric,

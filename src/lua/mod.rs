@@ -3,6 +3,7 @@ pub mod bridge;
 pub mod builtin;
 mod call;
 mod call_context;
+mod call_target;
 mod engine;
 mod error;
 pub mod execute;
@@ -13,8 +14,9 @@ mod signature;
 pub mod typegen;
 
 pub use authority::LuaAuthority;
-pub use call::{LuaSource, RawLuaSource};
+pub use call::LuaSource;
 pub use call_context::LuaCallContext;
+pub use call_target::CallTarget;
 pub use engine::LuaEngine;
 pub use error::LuaError;
 pub use module::LuaModule;

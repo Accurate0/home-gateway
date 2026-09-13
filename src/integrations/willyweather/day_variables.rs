@@ -1,7 +1,9 @@
+use schemars::JsonSchema;
+
 use super::types::ForecastDetails;
 use crate::variables::WorkflowContextVariables;
 
-#[derive(WorkflowContextVariables)]
+#[derive(WorkflowContextVariables, JsonSchema)]
 pub struct WillyweatherDayVariables {
     pub description: String,
     pub emoji: String,

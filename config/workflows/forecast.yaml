@@ -5,10 +5,13 @@
   context: [willyweather]
   inputs: {}
   run:
+    - type: lua
+      call: brief.morning
+      returns: { message: string }
     - type: notify
       notify: { type: android_app }
       category: general
-      message: "${willyweather.today.emoji} ${willyweather.today.description}, ${willyweather.today.min}–${willyweather.today.max}°C. Rain ${willyweather.today.rain_probability | default(\"n/a\")}% (${willyweather.today.rain_range | default(\"n/a\")}mm), wind up to ${willyweather.today.wind_max_speed | int | default(\"n/a\")}km/h, UV ${willyweather.today.uv | round(1) | default(\"n/a\")}, sunset ${willyweather.today.sunset | default(\"n/a\")}"
+      message: "${lua.message}"
 
 - name: Morning Forecast
   slug: morning-forecast

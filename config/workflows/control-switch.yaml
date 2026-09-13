@@ -1,116 +1,23 @@
 # yaml-language-server: $schema=../schemas/workflows.schema.json
-- name: Control Switch on
-  slug: control-switch-on
+- name: Control Switch
+  slug: control-switch
   group: Control Switch
-  on: { type: switch, device: control-switch, action: on }
+  on: { type: switch, device: control-switch }
   modes: [home, away, guest]
   run:
-    - type: light
-      device: table-lamp-bedroom
-      state: ON
-
-- name: Control Switch off
-  slug: control-switch-off
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: off }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: OFF
-
-- name: Control Switch brightness up
-  slug: control-switch-brightness-up
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: brightness_move_up }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: INCREASE_BRIGHTNESS
-      value: 75
-
-- name: Control Switch brightness down
-  slug: control-switch-brightness-down
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: brightness_move_down }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: DECREASE_BRIGHTNESS
-      value: 75
-
-- name: Control Switch brightness stop
-  slug: control-switch-brightness-stop
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: brightness_stop }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: STOP_BRIGHTNESS
-
-- name: Control Switch colour temp up
-  slug: control-switch-colour-temp-up
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: arrow_right_hold }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: INCREASE_COLOUR_TEMPERATURE
-      value: 120
-
-- name: Control Switch colour temp down
-  slug: control-switch-colour-temp-down
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: arrow_left_hold }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: DECREASE_COLOUR_TEMPERATURE
-      value: 120
-
-- name: Control Switch colour temp stop left
-  slug: control-switch-colour-temp-stop-left
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: arrow_left_release }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: STOP_COLOUR_TEMPERATURE
-
-- name: Control Switch colour temp stop right
-  slug: control-switch-colour-temp-stop-right
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: arrow_right_release }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: STOP_COLOUR_TEMPERATURE
-
-- name: Control Switch set brightness low
-  slug: control-switch-set-brightness-low
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: arrow_left_click }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: SET_BRIGHTNESS
-      value: 50
-
-- name: Control Switch set brightness high
-  slug: control-switch-set-brightness-high
-  group: Control Switch
-  on: { type: switch, device: control-switch, action: arrow_right_click }
-  modes: [home, away, guest]
-  run:
-    - type: light
-      device: table-lamp-bedroom
-      state: SET_BRIGHTNESS
-      value: 254
+    - type: lua
+      call: buttons.dispatch
+      returns: {}
+      args:
+        - table-lamp-bedroom
+        - on: { state: ON }
+          off: { state: OFF }
+          brightness_move_up: { state: INCREASE_BRIGHTNESS, value: 75 }
+          brightness_move_down: { state: DECREASE_BRIGHTNESS, value: 75 }
+          brightness_stop: { state: STOP_BRIGHTNESS }
+          arrow_right_hold: { state: INCREASE_COLOUR_TEMPERATURE, value: 120 }
+          arrow_left_hold: { state: DECREASE_COLOUR_TEMPERATURE, value: 120 }
+          arrow_left_release: { state: STOP_COLOUR_TEMPERATURE }
+          arrow_right_release: { state: STOP_COLOUR_TEMPERATURE }
+          arrow_left_click: { state: SET_BRIGHTNESS, value: 50 }
+          arrow_right_click: { state: SET_BRIGHTNESS, value: 254 }

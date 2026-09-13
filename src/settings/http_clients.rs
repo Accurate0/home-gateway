@@ -12,6 +12,8 @@ pub struct HttpClientsSettings {
     #[serde(default)]
     pub fuelwatch: HttpClientOverride,
     #[serde(default)]
+    pub holidays: HttpClientOverride,
+    #[serde(default)]
     pub home_assistant: HttpClientOverride,
     #[serde(default)]
     pub jellyfin: HttpClientOverride,
@@ -38,6 +40,7 @@ impl HttpClientsSettings {
         let client = match kind {
             HttpClientKind::Bom => self.bom,
             HttpClientKind::FuelWatch => self.fuelwatch,
+            HttpClientKind::Holidays => self.holidays,
             HttpClientKind::HomeAssistant => self.home_assistant,
             HttpClientKind::Jellyfin => self.jellyfin,
             HttpClientKind::OAuth => self.oauth,
