@@ -128,7 +128,6 @@ alarm:
 
 holidays:
   url: http://127.0.0.1:9/holidays.ics
-  refresh: 24h
   regions: [Western Australia]
 
 willyweather:

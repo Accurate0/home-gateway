@@ -5,6 +5,7 @@ use crate::http::get_traced_http_client;
 use crate::settings::HolidaySettings;
 
 pub mod ics;
+pub mod lua;
 pub mod types;
 
 pub use types::Holiday;

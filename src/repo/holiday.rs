@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, Transaction};
 
 use crate::integrations::holidays::Holiday;
 
@@ -14,13 +14,15 @@ impl HolidayRepo {
     }
 
     #[tracing::instrument(skip_all, name = "db.holiday.replace", fields(holidays = holidays.len()), err)]
-    pub async fn replace(&self, holidays: &[Holiday]) -> Result<u64, sqlx::Error> {
-        let mut tx = self.db.begin().await?;
-
+    pub async fn replace(
+        &self,
+        tx: &mut Transaction<'static, Postgres>,
+        holidays: &[Holiday],
+    ) -> Result<u64, sqlx::Error> {
         let uids: Vec<String> = holidays.iter().map(|holiday| holiday.uid.clone()).collect();
 
         sqlx::query!("DELETE FROM public_holiday WHERE uid <> ALL($1)", &uids)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
 
         let mut stored = 0;
@@ -43,12 +45,10 @@ impl HolidayRepo {
                 holiday.public,
                 &holiday.regions,
             )
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?
             .rows_affected();
         }
-
-        tx.commit().await?;
 
         Ok(stored)
     }

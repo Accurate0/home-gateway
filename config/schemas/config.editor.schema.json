@@ -4301,9 +4301,6 @@
         "url": {
           "type": "string"
         },
-        "refresh": {
-          "type": "string"
-        },
         "regions": {
           "type": "array",
           "items": {
@@ -4313,7 +4310,6 @@
       },
       "required": [
         "url",
-        "refresh",
         "regions"
       ]
     },

@@ -91,7 +91,6 @@ fuelwatch:
 
 holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
-  refresh: 24h
   regions: [Western Australia]
 
 solar:
