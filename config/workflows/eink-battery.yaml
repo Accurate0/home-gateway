@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../schemas/workflows.schema.json
+- name: E-ink Display Low Battery
+  slug: eink-display-low-battery
+  group: Reminders
+  on: { type: device_battery, kind: eink_display_firmware }
+  when: { type: var, var: "event.battery_voltage | default(99)", op: lte, value: 3.40 }
+  cooldown: 24h
+  modes: [home, away, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "${event.name} battery low: ${event.battery_voltage | default(0) | round(2)}V"

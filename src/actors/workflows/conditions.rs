@@ -31,7 +31,8 @@ use crate::{
     templating::{Expr, Literal},
     variables::Vars,
 };
-use chrono::{Local, Utc};
+use chrono::Utc;
+use chrono_tz::Australia::Perth;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -130,7 +131,7 @@ async fn eval_leaf(
             Ok(query_presence(state.devices.address_or_self(sensor), timeout).await? == *present)
         }
         LeafCondition::TimeOfDay { after, before } => {
-            let now = Local::now().time();
+            let now = Utc::now().with_timezone(&Perth).time();
             Ok(match (after, before) {
                 (Some(a), Some(b)) if a > b => now >= *a || now < *b, // wraps midnight
                 (Some(a), Some(b)) => now >= *a && now < *b,

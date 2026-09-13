@@ -1,0 +1,7 @@
+---
+source: src/actors/workflows/plan.rs
+expression: out
+---
+# E-ink Display Low Battery  (on: device_battery(eink_display_firmware))
+  when: event.battery_voltage | default(99) Lte 3.4
+  notify: notify(AndroidApp, general): ${event.name} battery low: ${event.battery_voltage | default(0) | round(2)}V

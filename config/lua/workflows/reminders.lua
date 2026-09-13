@@ -1,7 +1,8 @@
 local reminders = {}
 
 function reminders.holiday_eve()
-	local tomorrow = os.date("%Y-%m-%d", os.time() + 24 * 60 * 60)
+	local perth_offset = 8 * 60 * 60
+	local tomorrow = os.date("!%Y-%m-%d", os.time() + perth_offset + 24 * 60 * 60)
 	local holiday = holidays.on(tomorrow)
 
 	if holiday == nil then

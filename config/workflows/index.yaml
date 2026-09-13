@@ -12,3 +12,4 @@
 - !include rain.yaml
 - !include forecast.yaml
 - !include holidays.yaml
+- !include eink-battery.yaml

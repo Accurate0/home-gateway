@@ -47,6 +47,7 @@
     "defaults": {
      "unit": "percentunit",
      "decimals": 2,
+     "noValue": "No runs",
      "thresholds": {
       "mode": "absolute",
       "steps": [
@@ -61,7 +62,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_workflows_total_total{outcome=\"success\"}[1h])) / clamp_min(sum(increase(home_gateway_workflows_total_total[1h])), 1e-9)"
+     "expr": "sum(increase(home_gateway_workflows_total_total{outcome=\"success\"}[1h])) / (sum(increase(home_gateway_workflows_total_total[1h])) > 0)"
     }
    ]
   },
