@@ -11,6 +11,7 @@ cargo test settings::tests::config_yaml_parses_and_resolves   # single test by p
 cargo test <substring>                          # run tests matching a name
 
 docker compose up                               # run the gateway + TimescaleDB (Postgres) locally
+fish scripts/install-completions.fish --regenerate   # regenerate completions/home.fish and install fish completions
 ```
 
 - SQL is checked at compile time by `sqlx` against the cache in `.sqlx/`. After changing any `sqlx::query!`/`query_as!`, regenerate with `cargo sqlx prepare` (needs a live `DATABASE_URL`) or the build will fail offline.

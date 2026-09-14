@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drop_chunks('derived_door_events', older_than => now() - INTERVAL '1 year')::text",
+  "query": "SELECT drop_chunks('door_sensor', older_than => now() - make_interval(secs => $1))::text",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,13 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Float8"
+      ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "ac48efc62d1a98e365ae2e004c4995a7fc76e69f9f83f118451c2b956c69b148"
+  "hash": "22d7c3aac3758b0fd09aae675d465fa7fbff3a9181b29c008da6fdc56cf2eb00"
 }

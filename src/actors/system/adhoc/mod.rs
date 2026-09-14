@@ -5,10 +5,12 @@ use std::time::Duration;
 use ractor::Actor;
 use rand::RngExt;
 
-use crate::adhoc::cron_task::AdhocCronTask;
+use crate::adhoc::AnyAdhocCronTask;
 use crate::adhoc::runner::{run_cron, run_pending};
 use crate::adhoc::{cron_registry, registry};
 use crate::event_bus::{Recipient, Subscription};
+use crate::settings::AdhocSettings;
+use crate::settings::adhoc_task_state::AdhocTaskState;
 use crate::state::AppState;
 
 use subscriber::AdhocSubscriber;
@@ -29,10 +31,21 @@ impl AdhocTaskActor {
 
     fn schedule_next(
         myself: &ractor::ActorRef<AdhocTaskActorMessage>,
-        task: &'static dyn AdhocCronTask,
-        max_jitter: Duration,
+        task: &'static dyn AnyAdhocCronTask,
+        settings: &AdhocSettings,
     ) {
-        match task.schedule().time_until_next() {
+        let config = task.config(&settings.tasks);
+
+        if config.state() == AdhocTaskState::Disabled {
+            tracing::info!("adhoc cron task {} is disabled, not scheduling", task.name());
+            return;
+        }
+
+        let schedule = config.schedule();
+
+        let max_jitter = settings.cron_jitter();
+
+        match schedule.time_until_next() {
             Ok(delay) => {
                 let jitter =
                     Duration::from_secs(rand::rng().random_range(0..=max_jitter.as_secs()));
@@ -89,15 +102,11 @@ impl Actor for AdhocTaskActor {
         );
 
         for task in cron_registry() {
-            tracing::info!(
-                "scheduling adhoc cron task {} on '{}'",
-                task.name(),
-                task.schedule().expression()
-            );
+            tracing::info!("scheduling adhoc cron task {}", task.name());
             Self::schedule_next(
                 &myself,
                 task,
-                self.shared_actor_state.settings.adhoc.cron_jitter(),
+                &self.shared_actor_state.settings.adhoc,
             );
         }
 
@@ -133,7 +142,7 @@ impl Actor for AdhocTaskActor {
                         Self::schedule_next(
                             &myself,
                             task,
-                            self.shared_actor_state.settings.adhoc.cron_jitter(),
+                            &self.shared_actor_state.settings.adhoc,
                         );
                     }
                     None => {

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drop_chunks('device_metric', older_than => now() - INTERVAL '180 days')::text",
+  "query": "SELECT drop_chunks('smart_switch', older_than => now() - make_interval(secs => $1))::text",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,13 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Float8"
+      ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "6d1f7718c67da81d20eb18e54c6d61d68f8000d8a4a3431ce3909a3056fbc153"
+  "hash": "31797acaaee4e665b42734a91bb8aea2c4a15f6496e06e78d88cee0f5b0d53d7"
 }

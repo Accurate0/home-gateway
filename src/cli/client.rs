@@ -70,6 +70,15 @@ impl Client {
         }
     }
 
+    pub fn auth_payload(&self) -> Value {
+        match &self.auth {
+            Auth::ApiKey(key) => serde_json::json!({ "X-Api-Key": key }),
+            Auth::Bearer(token) => {
+                serde_json::json!({ "Authorization": format!("Bearer {token}") })
+            }
+        }
+    }
+
     fn request(&self, method: Method, path: &str) -> RequestBuilder {
         let builder = self
             .http

@@ -178,6 +178,74 @@ adhoc:
   task_timeout: 5m
   cron_jitter: 60s
   batch_size: 10000
+  tasks:
+    refresh_public_holidays:
+      state: enabled
+      schedule: "0 4 1 * *"
+      parameters: {}
+    refresh_transperth_timetable:
+      state: enabled
+      schedule: "20 3 * * *"
+      parameters: {}
+    sample_light_state:
+      state: enabled
+      schedule: "*/5 * * * *"
+      parameters: {}
+    trim_derived_door_events:
+      state: enabled
+      schedule: "0 3 * * *"
+      parameters:
+        retention: 8760h
+    trim_device_intent:
+      state: enabled
+      schedule: "50 3 * * *"
+      parameters:
+        retention: 336h
+    trim_device_metric:
+      state: enabled
+      schedule: "15 3 * * *"
+      parameters:
+        retention: 4320h
+    trim_door_sensor:
+      state: enabled
+      schedule: "5 3 * * *"
+      parameters:
+        retention: 8760h
+    trim_home_assistant_events:
+      state: enabled
+      schedule: "25 3 * * *"
+      parameters:
+        retention: 2160h
+    trim_jellyfin_playback_events:
+      state: enabled
+      schedule: "35 3 * * *"
+      parameters:
+        retention: 4320h
+    trim_light_history:
+      state: enabled
+      schedule: "50 3 * * *"
+      parameters:
+        retention: 2160h
+    trim_robot_vacuum_events:
+      state: enabled
+      schedule: "40 3 * * *"
+      parameters:
+        retention: 4320h
+    trim_smart_switch:
+      state: enabled
+      schedule: "30 3 * * *"
+      parameters:
+        retention: 4320h
+    trim_temperature_sensor:
+      state: enabled
+      schedule: "20 3 * * *"
+      parameters:
+        retention: 4320h
+    trim_workflow_runs:
+      state: enabled
+      schedule: "45 3 * * *"
+      parameters:
+        retention: 2160h
 
 vacation:
   enabled: true

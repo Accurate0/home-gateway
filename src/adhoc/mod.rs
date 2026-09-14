@@ -1,3 +1,4 @@
+pub mod any_cron_task;
 pub mod context;
 pub mod cron_task;
 pub mod cron_tasks;
@@ -6,6 +7,7 @@ pub mod runner;
 pub mod task;
 pub mod tasks;
 
+pub use any_cron_task::AnyAdhocCronTask;
 pub use context::AdhocTaskContext;
 pub use cron_task::AdhocCronTask;
 pub use error::AdhocTaskError;
@@ -18,7 +20,7 @@ pub fn registry() -> Vec<&'static dyn AdhocTask> {
     tasks
 }
 
-pub fn cron_registry() -> Vec<&'static dyn AdhocCronTask> {
+pub fn cron_registry() -> Vec<&'static dyn AnyAdhocCronTask> {
     let mut tasks = cron_tasks::all();
     tasks.sort_by_key(|task| task.name());
 
@@ -47,16 +49,11 @@ mod tests {
             .join("\n")
     }
 
-    fn cron_manifest(tasks: &[&'static dyn AdhocCronTask]) -> String {
+    fn cron_manifest(tasks: &[&'static dyn AnyAdhocCronTask]) -> String {
         tasks
             .iter()
             .map(|task| {
-                format!(
-                    "{}  {}  {}",
-                    task.name(),
-                    task.schedule().expression(),
-                    task.flag().unwrap_or("-"),
-                )
+                format!("{}  {}", task.name(), task.flag().unwrap_or("-"))
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -70,17 +67,6 @@ mod tests {
     #[test]
     fn cron_registry_is_reviewed() {
         insta::assert_snapshot!(cron_manifest(&cron_registry()));
-    }
-
-    #[test]
-    fn cron_schedules_have_a_next_occurrence() {
-        for task in cron_registry() {
-            assert!(
-                task.schedule().time_until_next().is_ok(),
-                "{} has no next occurrence",
-                task.name()
-            );
-        }
     }
 
     #[test]

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM device_intent\n            WHERE id IN (\n                SELECT id\n                FROM device_intent\n                WHERE status <> 'pending'\n                  AND settled_at < now() - make_interval(secs => $2)\n                ORDER BY settled_at\n                LIMIT $1\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dec895b5506adb4d3e1488892192dd8435588b05098b8f7f13b0abce7b6b92ab"
+}

@@ -1,25 +1,36 @@
-use crate::actors::system::cron::schedule::CronSchedule;
 use crate::adhoc::{AdhocCronTask, AdhocTaskContext, AdhocTaskError};
 use crate::adhoc_task_source;
 use crate::repo::light::{HistorySource, LightSample};
+use crate::settings::adhoc_cron_task::AdhocCronTaskSettings;
+use crate::settings::adhoc_tasks::AdhocTasksSettings;
+use crate::settings::no_parameters::NoParameters;
 
 pub struct SampleLightState;
 
 #[async_trait::async_trait]
 impl AdhocCronTask for SampleLightState {
+    type Parameters = NoParameters;
+
     fn name(&self) -> &'static str {
         "sample_light_state"
     }
 
-    fn schedule(&self) -> CronSchedule {
-        CronSchedule::parse("*/5 * * * *").expect("valid cron")
+    fn settings<'a>(
+        &self,
+        tasks: &'a AdhocTasksSettings,
+    ) -> &'a AdhocCronTaskSettings<Self::Parameters> {
+        &tasks.sample_light_state
     }
 
     fn source(&self) -> &'static str {
         adhoc_task_source!()
     }
 
-    async fn run(&self, ctx: &mut AdhocTaskContext<'_>) -> Result<u64, AdhocTaskError> {
+    async fn run(
+        &self,
+        ctx: &mut AdhocTaskContext<'_>,
+        _parameters: &Self::Parameters,
+    ) -> Result<u64, AdhocTaskError> {
         let mut samples = Vec::new();
 
         for (address, _) in ctx.devices.lights() {

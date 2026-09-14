@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drop_chunks('jellyfin_playback_events', older_than => now() - INTERVAL '180 days')::text",
+  "query": "SELECT drop_chunks('light_history', older_than => now() - make_interval(secs => $1))::text",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,13 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Float8"
+      ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "8eed5daa9e96c6cee0d29f6ce1c60acefd98b8c9b32a980273d0f351be72f879"
+  "hash": "bcd18ca4695cc18bec7c01e4232a6ac5475bfd57d451f4e7ec1ebcdf853a7bf4"
 }

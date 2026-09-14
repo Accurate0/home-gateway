@@ -4,6 +4,7 @@ version: "1"
 http: !include sections/http.yaml
 mqtt: !include sections/mqtt.yaml
 actors: !include sections/actors.yaml
+adhoc: !include sections/adhoc.yaml
 auth: !include sections/auth.yaml
 home_assistant: !include sections/home_assistant.yaml
 jellyfin: !include sections/jellyfin.yaml
@@ -96,12 +97,6 @@ holidays:
 
 solar:
   refresh: 1m
-
-adhoc:
-  recheck_interval: 15m
-  task_timeout: 5m
-  cron_jitter: 60s
-  batch_size: 10000
 
 vacation:
   enabled: true

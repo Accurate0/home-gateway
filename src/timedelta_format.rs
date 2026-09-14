@@ -4,6 +4,7 @@ use phf::phf_map;
 
 type TimeDeltaFn = fn(i64) -> Option<TimeDelta>;
 const TIME_DELTA_FN_MAP: phf::Map<&'static str, TimeDeltaFn> = phf_map! {
+    "d" => TimeDelta::try_days,
     "h" => TimeDelta::try_hours,
     "m" => TimeDelta::try_minutes,
     "s" => TimeDelta::try_seconds,
@@ -20,9 +21,9 @@ pub fn parse_datetime_str_with_ms(s: &str) -> anyhow::Result<TimeDelta> {
         if c.is_ascii_alphabetic() {
             let is_milliseconds = c == 'm' && it.peek().is_some_and(|c| *c == 's');
             match c {
-                'h' | 'm' | 's' => {
+                'd' | 'h' | 'm' | 's' => {
                     if number.is_empty() {
-                        anyhow::bail!("missing number before h, m, s or ms")
+                        anyhow::bail!("missing number before d, h, m, s or ms")
                     }
 
                     let time_value = String::from_utf8(number.clone())?.parse()?;
@@ -184,6 +185,8 @@ mod tests {
     #[case("20m", TimeDelta::minutes(20))]
     #[case("20ms", TimeDelta::milliseconds(20))]
     #[case("1s 200ms", TimeDelta::seconds(1) + TimeDelta::milliseconds(200))]
+    #[case("180d", TimeDelta::days(180))]
+    #[case("2d 3h", TimeDelta::days(2) + TimeDelta::hours(3))]
     fn test_parse_datetime_str_with_ms(#[case] s: &str, #[case] expected: TimeDelta) {
         let result = parse_datetime_str_with_ms(s).unwrap();
         assert_eq!(result, expected);

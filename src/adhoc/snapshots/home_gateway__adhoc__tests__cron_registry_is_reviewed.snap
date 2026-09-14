@@ -2,17 +2,17 @@
 source: src/adhoc/mod.rs
 expression: cron_manifest(&cron_registry())
 ---
-refresh_public_holidays  0 4 * * *  -
-refresh_transperth_timetable  20 3 * * *  -
-sample_light_state  */5 * * * *  -
-trim_derived_door_events  0 3 * * *  -
-trim_device_intent  50 3 * * *  -
-trim_device_metric  15 3 * * *  -
-trim_door_sensor  5 3 * * *  -
-trim_home_assistant_events  25 3 * * *  -
-trim_jellyfin_playback_events  35 3 * * *  -
-trim_light_history  50 3 * * *  -
-trim_robot_vacuum_events  40 3 * * *  -
-trim_smart_switch  30 3 * * *  -
-trim_temperature_sensor  20 3 * * *  -
-trim_workflow_runs  45 3 * * *  -
+refresh_public_holidays  -
+refresh_transperth_timetable  -
+sample_light_state  -
+trim_derived_door_events  -
+trim_device_intent  -
+trim_device_metric  -
+trim_door_sensor  -
+trim_home_assistant_events  -
+trim_jellyfin_playback_events  -
+trim_light_history  -
+trim_robot_vacuum_events  -
+trim_smart_switch  -
+trim_temperature_sensor  -
+trim_workflow_runs  -

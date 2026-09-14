@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drop_chunks('robot_vacuum_events', older_than => now() - INTERVAL '180 days')::text",
+  "query": "SELECT drop_chunks('temperature_sensor', older_than => now() - make_interval(secs => $1))::text",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,13 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Float8"
+      ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "f0bc604d057518937425f54c10fa6760fb0c1155a10b29c85a86f75f559ae5f2"
+  "hash": "b67b5bf0094f8ddcf1992653c55b890d66fdd6081d8ea23a3ce6fc2a0a735f36"
 }

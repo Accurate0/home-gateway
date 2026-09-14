@@ -5,7 +5,7 @@ use futures::FutureExt;
 use open_feature::EvaluationContext;
 
 use super::context::AdhocTaskContext;
-use super::cron_task::AdhocCronTask;
+use super::any_cron_task::AnyAdhocCronTask;
 use super::error::AdhocTaskError;
 use super::registry;
 use super::task::{AdhocTask, checksum};
@@ -158,7 +158,7 @@ async fn flag_released(
         .await
 }
 
-pub async fn run_cron(state: &AppState, task: &'static dyn AdhocCronTask, force: bool) {
+pub async fn run_cron(state: &AppState, task: &'static dyn AnyAdhocCronTask, force: bool) {
     if !flag_released(state, task.name(), task.flag(), force).await {
         tracing::info!("adhoc cron task {} is held by its flag", task.name());
         crate::metrics::record_adhoc_task(task.name(), "held");
@@ -193,7 +193,7 @@ pub async fn run_cron(state: &AppState, task: &'static dyn AdhocCronTask, force:
 
 async fn execute_cron(
     state: &AppState,
-    task: &'static dyn AdhocCronTask,
+    task: &'static dyn AnyAdhocCronTask,
 ) -> Result<u64, AdhocTaskError> {
     let mut tx = state.db.begin().await?;
 

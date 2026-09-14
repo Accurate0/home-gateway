@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drop_chunks('light_history', older_than => now() - INTERVAL '90 days')::text",
+  "query": "SELECT drop_chunks('device_metric', older_than => now() - make_interval(secs => $1))::text",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,13 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Float8"
+      ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "ea5fe5c772b2aac643208a04caf8ebcd831639196a3d150069603db6f3d3aec6"
+  "hash": "9385b8286c157a9210a757eb0c0b7dd561df5757071bd578c90019db2ffe45a1"
 }

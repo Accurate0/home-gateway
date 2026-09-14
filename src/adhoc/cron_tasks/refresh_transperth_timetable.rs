@@ -2,10 +2,12 @@ use crate::actors::system::rpc;
 use std::collections::HashMap;
 
 use crate::actors::integrations::transperth::{TransperthActor, TransperthMessage};
-use crate::actors::system::cron::schedule::CronSchedule;
 use crate::adhoc::{AdhocCronTask, AdhocTaskContext, AdhocTaskError};
 use crate::adhoc_task_source;
 use crate::integrations::transperth::{TIMETABLE_KEY, Transperth, gtfs};
+use crate::settings::adhoc_cron_task::AdhocCronTaskSettings;
+use crate::settings::adhoc_tasks::AdhocTasksSettings;
+use crate::settings::no_parameters::NoParameters;
 
 const ETAG_METADATA_KEY: &str = "gtfs-etag";
 const VERSION_METADATA_KEY: &str = "index-version";
@@ -15,19 +17,28 @@ pub struct RefreshTransperthTimetable;
 
 #[async_trait::async_trait]
 impl AdhocCronTask for RefreshTransperthTimetable {
+    type Parameters = NoParameters;
+
     fn name(&self) -> &'static str {
         "refresh_transperth_timetable"
     }
 
-    fn schedule(&self) -> CronSchedule {
-        CronSchedule::parse("20 3 * * *").expect("valid cron")
+    fn settings<'a>(
+        &self,
+        tasks: &'a AdhocTasksSettings,
+    ) -> &'a AdhocCronTaskSettings<Self::Parameters> {
+        &tasks.refresh_transperth_timetable
     }
 
     fn source(&self) -> &'static str {
         adhoc_task_source!()
     }
 
-    async fn run(&self, ctx: &mut AdhocTaskContext<'_>) -> Result<u64, AdhocTaskError> {
+    async fn run(
+        &self,
+        ctx: &mut AdhocTaskContext<'_>,
+        _parameters: &Self::Parameters,
+    ) -> Result<u64, AdhocTaskError> {
         let Some(settings) = ctx.settings.transperth.clone() else {
             tracing::info!("transperth not configured, skipping timetable refresh");
             return Ok(0);

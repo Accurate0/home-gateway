@@ -8,6 +8,7 @@ use crate::adhoc::{cron_registry, registry};
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::adhoc_object::{AdhocCronTaskStatus, AdhocTaskStatus};
+use crate::settings::SettingsContainer;
 
 #[derive(Default)]
 pub struct AdhocQuery;
@@ -20,6 +21,7 @@ impl AdhocQuery {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<AdhocCronTaskStatus>> {
         let repos = ctx.data::<RepoRegistry>()?;
+        let settings = ctx.data::<SettingsContainer>()?;
         let runs = repos.adhoc().cron_runs().await?;
 
         let now = Utc::now();
@@ -27,7 +29,7 @@ impl AdhocQuery {
         Ok(cron_registry()
             .into_iter()
             .map(|task| {
-                let schedule = task.schedule();
+                let schedule = task.config(&settings.adhoc.tasks).schedule();
                 let run = runs.get(task.name());
 
                 AdhocCronTaskStatus {

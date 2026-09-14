@@ -4470,13 +4470,144 @@
         "batch_size": {
           "type": "integer",
           "format": "int64"
+        },
+        "tasks": {
+          "$ref": "#/$defs/AdhocTasksSettings"
         }
       },
       "required": [
         "recheck_interval",
         "task_timeout",
         "cron_jitter",
-        "batch_size"
+        "batch_size",
+        "tasks"
+      ]
+    },
+    "AdhocTasksSettings": {
+      "type": "object",
+      "properties": {
+        "refresh_public_holidays": {
+          "$ref": "#/$defs/AdhocCronTaskSettings"
+        },
+        "refresh_transperth_timetable": {
+          "$ref": "#/$defs/AdhocCronTaskSettings"
+        },
+        "sample_light_state": {
+          "$ref": "#/$defs/AdhocCronTaskSettings"
+        },
+        "trim_derived_door_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_device_intent": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_device_metric": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_door_sensor": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_home_assistant_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_jellyfin_playback_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_light_history": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_robot_vacuum_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_smart_switch": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_temperature_sensor": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
+        "trim_workflow_runs": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "refresh_public_holidays",
+        "refresh_transperth_timetable",
+        "sample_light_state",
+        "trim_derived_door_events",
+        "trim_device_intent",
+        "trim_device_metric",
+        "trim_door_sensor",
+        "trim_home_assistant_events",
+        "trim_jellyfin_playback_events",
+        "trim_light_history",
+        "trim_robot_vacuum_events",
+        "trim_smart_switch",
+        "trim_temperature_sensor",
+        "trim_workflow_runs"
+      ]
+    },
+    "AdhocCronTaskSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/AdhocTaskState"
+        },
+        "schedule": {
+          "$ref": "#/$defs/CronSchedule"
+        },
+        "parameters": {
+          "$ref": "#/$defs/NoParameters"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "schedule",
+        "parameters"
+      ]
+    },
+    "AdhocTaskState": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled"
+      ]
+    },
+    "NoParameters": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "AdhocCronTaskSettings2": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/AdhocTaskState"
+        },
+        "schedule": {
+          "$ref": "#/$defs/CronSchedule"
+        },
+        "parameters": {
+          "$ref": "#/$defs/RetentionParameters"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "schedule",
+        "parameters"
+      ]
+    },
+    "RetentionParameters": {
+      "type": "object",
+      "properties": {
+        "retention": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "retention"
       ]
     },
     "VacationSettings": {

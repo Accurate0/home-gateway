@@ -1,7 +1,7 @@
 use home_gateway::adhoc::cron_tasks::{
     trim_derived_door_events::TrimDerivedDoorEvents, trim_workflow_runs::TrimWorkflowRuns,
 };
-use home_gateway::adhoc::{AdhocCronTask, AdhocTaskContext};
+use home_gateway::adhoc::{AdhocTaskContext, AnyAdhocCronTask};
 use pretty_assertions::assert_eq;
 use serial_test::serial;
 use sqlx::{Pool, Postgres};
@@ -10,7 +10,7 @@ use crate::common::Harness;
 
 /// Runs a cron task through its public entry point, in a committed transaction,
 /// exactly as the adhoc runner does.
-async fn run(harness: &Harness, task: &dyn AdhocCronTask) -> u64 {
+async fn run(harness: &Harness, task: &dyn AnyAdhocCronTask) -> u64 {
     let mut tx = harness.db.begin().await.unwrap();
     let affected = {
         let mut ctx = AdhocTaskContext::new(&harness.state, &mut tx);

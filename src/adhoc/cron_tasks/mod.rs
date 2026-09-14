@@ -1,4 +1,4 @@
-use super::cron_task::AdhocCronTask;
+use super::any_cron_task::AnyAdhocCronTask;
 
 pub mod refresh_public_holidays;
 pub mod refresh_transperth_timetable;
@@ -15,7 +15,7 @@ pub mod trim_smart_switch;
 pub mod trim_temperature_sensor;
 pub mod trim_workflow_runs;
 
-pub fn all() -> Vec<&'static dyn AdhocCronTask> {
+pub fn all() -> Vec<&'static dyn AnyAdhocCronTask> {
     vec![
         &refresh_public_holidays::RefreshPublicHolidays,
         &refresh_transperth_timetable::RefreshTransperthTimetable,

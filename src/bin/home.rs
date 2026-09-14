@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use home_gateway::cli::client::{Client, DEFAULT_BASE_URL, REQUEST_TIMEOUT};
 use home_gateway::cli::credentials;
+use home_gateway::cli::events;
 use home_gateway::cli::oauth::{self, DEFAULT_CLIENT_ID, DEFAULT_ISSUER};
 use home_gateway::http::get_traced_http_client;
 use reqwest::{Method, StatusCode};
@@ -44,8 +46,60 @@ enum Command {
     Keys(KeysCommand),
     #[command(subcommand)]
     Lua(LuaCommand),
-    Push(PushArgs),
+    #[command(subcommand)]
+    Push(PushCommand),
+    #[command(subcommand)]
+    Adhoc(AdhocCommand),
+    #[command(subcommand)]
+    Eink(EinkCommand),
+    Weather {
+        location: String,
+    },
+    Solar,
+    Energy {
+        #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, default_value = "24h")]
+        since: i64,
+    },
+    Transperth {
+        route: Option<String>,
+    },
+    Fuel {
+        #[arg(long)]
+        postcode: Option<i64>,
+        #[arg(long)]
+        limit: Option<i64>,
+    },
+    Events {
+        #[arg(default_value = "*")]
+        filter: String,
+    },
     Curl(CurlArgs),
+    #[command(hide = true)]
+    Completions {
+        shell: Shell,
+    },
+}
+
+#[derive(Subcommand)]
+enum PushCommand {
+    Send(PushArgs),
+    List {
+        #[arg(long)]
+        limit: Option<i64>,
+    },
+}
+
+#[derive(Subcommand)]
+enum AdhocCommand {
+    List,
+    Cron,
+    RunPending,
+    Run { name: String },
+}
+
+#[derive(Subcommand)]
+enum EinkCommand {
+    Screenshot,
 }
 
 #[derive(Args)]
@@ -264,11 +318,17 @@ query {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let cli = Cli::parse();
 
     match &cli.command {
         Command::Login => login(&cli).await,
         Command::Logout => logout(),
+        Command::Completions { shell } => {
+            clap_complete::generate(*shell, &mut Cli::command(), "home", &mut std::io::stdout());
+            Ok(())
+        }
         _ => run(&cli).await,
     }
 }
@@ -299,7 +359,9 @@ async fn run(cli: &Cli) -> Result<()> {
     let client = Client::new(&cli.base_url, cli.api_key.clone()).await?;
 
     match &cli.command {
-        Command::Login | Command::Logout => unreachable!("handled before building a client"),
+        Command::Login | Command::Logout | Command::Completions { .. } => {
+            unreachable!("handled before building a client")
+        }
         Command::Whoami => {
             let data = client.graphql(WHOAMI_QUERY, json!({})).await?;
             print_whoami(&data["auth"], cli.json)
@@ -310,9 +372,316 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Mode(command) => mode(&client, command, cli.json).await,
         Command::Keys(command) => keys(&client, command, cli.json).await,
         Command::Lua(command) => lua(&client, command, cli.json).await,
-        Command::Push(args) => push(&client, args, cli.json).await,
+        Command::Push(command) => push(&client, command, cli.json).await,
+        Command::Adhoc(command) => adhoc(&client, command, cli.json).await,
+        Command::Eink(EinkCommand::Screenshot) => {
+            let data = client
+                .graphql("mutation { takeScreenshot }", json!({}))
+                .await?;
+            report(&data, cli.json, "screenshot requested")
+        }
+        Command::Weather { location } => weather(&client, location, cli.json).await,
+        Command::Solar => solar(&client, cli.json).await,
+        Command::Energy { since } => energy(&client, *since, cli.json).await,
+        Command::Transperth { route } => transperth(&client, route.as_deref(), cli.json).await,
+        Command::Fuel { postcode, limit } => fuel(&client, *postcode, *limit, cli.json).await,
+        Command::Events { filter } => events::tail(&client, filter, cli.json).await,
         Command::Curl(args) => curl(&client, args),
     }
+}
+
+fn text<'a>(value: &'a Value, key: &str) -> &'a str {
+    value[key].as_str().unwrap_or("-")
+}
+
+async fn adhoc(client: &Client, command: &AdhocCommand, as_json: bool) -> Result<()> {
+    match command {
+        AdhocCommand::List => {
+            let data = client
+                .graphql(
+                    "query { adhocTasks { id ordinal name flag completedAt durationMs pending checksumDrifted } }",
+                    json!({}),
+                )
+                .await?;
+
+            if as_json {
+                return print_json(&data["adhocTasks"]);
+            }
+
+            for task in data["adhocTasks"].as_array().cloned().unwrap_or_default() {
+                let status = if task["pending"].as_bool().unwrap_or(false) {
+                    "pending"
+                } else {
+                    "done"
+                };
+                let drift = if task["checksumDrifted"].as_bool().unwrap_or(false) {
+                    " (drifted)"
+                } else {
+                    ""
+                };
+
+                println!(
+                    "{:<4} {status:<8} {:<40} {}{drift}",
+                    task["ordinal"],
+                    text(&task, "name"),
+                    text(&task, "completedAt")
+                );
+            }
+
+            Ok(())
+        }
+        AdhocCommand::Cron => {
+            let data = client
+                .graphql(
+                    "query { adhocCronTasks { id name schedule flag nextRunAt lastRunAt durationMs outcome } }",
+                    json!({}),
+                )
+                .await?;
+
+            if as_json {
+                return print_json(&data["adhocCronTasks"]);
+            }
+
+            for task in data["adhocCronTasks"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+            {
+                println!(
+                    "{:<36} {:<16} next {:<26} last {:<26} {}",
+                    text(&task, "name"),
+                    text(&task, "schedule"),
+                    text(&task, "nextRunAt"),
+                    text(&task, "lastRunAt"),
+                    text(&task, "outcome")
+                );
+            }
+
+            Ok(())
+        }
+        AdhocCommand::RunPending => {
+            let data = client
+                .graphql("mutation { runPendingAdhocTasks }", json!({}))
+                .await?;
+            report(&data, as_json, "running pending adhoc tasks")
+        }
+        AdhocCommand::Run { name } => {
+            let data = client
+                .graphql(
+                    "mutation($name: String!) { runAdhocCronTask(name: $name) }",
+                    json!({ "name": name }),
+                )
+                .await?;
+            report(&data, as_json, &format!("ran {name}"))
+        }
+    }
+}
+
+async fn weather(client: &Client, location: &str, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            "query($location: String!) { weather(input: { location: $location }) { forecast { days { dateTime emoji description min max uv } } } }",
+            json!({ "location": location }),
+        )
+        .await?;
+
+    let days = &data["weather"]["forecast"]["days"];
+
+    if as_json {
+        return print_json(days);
+    }
+
+    for day in days.as_array().cloned().unwrap_or_default() {
+        let uv = day["uv"]
+            .as_f64()
+            .map(|uv| format!(" uv {uv:.0}"))
+            .unwrap_or_default();
+
+        println!(
+            "{:<12} {} {:>3}° - {:>3}°  {}{uv}",
+            text(&day, "dateTime"),
+            text(&day, "emoji"),
+            day["min"],
+            day["max"],
+            text(&day, "description").to_lowercase()
+        );
+    }
+
+    Ok(())
+}
+
+async fn solar(client: &Client, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            "query { solar { current { currentProductionWh todayProductionKwh yesterdayProductionKwh monthProductionKwh allTimeProductionKwh } } }",
+            json!({}),
+        )
+        .await?;
+
+    let current = &data["solar"]["current"];
+
+    if as_json {
+        return print_json(current);
+    }
+
+    let number = |key: &str| current[key].as_f64().unwrap_or_default();
+
+    println!("now        {:.0} W", number("currentProductionWh"));
+    println!("today      {:.2} kWh", number("todayProductionKwh"));
+    println!("yesterday  {:.2} kWh", number("yesterdayProductionKwh"));
+    println!("month      {:.2} kWh", number("monthProductionKwh"));
+    println!("all time   {:.2} kWh", number("allTimeProductionKwh"));
+
+    Ok(())
+}
+
+fn since_timestamp(seconds: i64) -> String {
+    (Utc::now() - chrono::TimeDelta::seconds(seconds)).to_rfc3339()
+}
+
+async fn energy(client: &Client, since: i64, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            "query($since: DateTime!) { energy { history(input: { since: $since }) { time used solarExported } } }",
+            json!({ "since": since_timestamp(since) }),
+        )
+        .await?;
+
+    let history = &data["energy"]["history"];
+
+    if as_json {
+        return print_json(history);
+    }
+
+    let rows = history.as_array().cloned().unwrap_or_default();
+
+    let mut used = 0.0;
+    let mut exported = 0.0;
+
+    for row in &rows {
+        let row_used = row["used"].as_f64().unwrap_or_default();
+        let row_exported = row["solarExported"].as_f64().unwrap_or_default();
+
+        used += row_used;
+        exported += row_exported;
+
+        println!(
+            "{:<32} used {row_used:>8.2}  exported {row_exported:>8.2}",
+            text(row, "time")
+        );
+    }
+
+    println!("total used {used:.2}, exported {exported:.2}");
+    Ok(())
+}
+
+async fn transperth(client: &Client, route: Option<&str>, as_json: bool) -> Result<()> {
+    let fields =
+        "id origin destination stale departures { line headsign platform minutesAway live }";
+
+    let routes = match route {
+        Some(id) => {
+            let data = client
+                .graphql(
+                    &format!(
+                        "query($id: String!) {{ transperth {{ route(id: $id) {{ {fields} }} }} }}"
+                    ),
+                    json!({ "id": id }),
+                )
+                .await?;
+
+            match &data["transperth"]["route"] {
+                Value::Null => anyhow::bail!("no route with id {id}"),
+                found => vec![found.clone()],
+            }
+        }
+        None => {
+            let data = client
+                .graphql(
+                    &format!("query {{ transperth {{ routes {{ {fields} }} }} }}"),
+                    json!({}),
+                )
+                .await?;
+
+            data["transperth"]["routes"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+        }
+    };
+
+    if as_json {
+        return print_json(&Value::Array(routes));
+    }
+
+    for route in &routes {
+        let stale = if route["stale"].as_bool().unwrap_or(false) {
+            " (stale)"
+        } else {
+            ""
+        };
+
+        println!(
+            "{} {} -> {}{stale}",
+            text(route, "id"),
+            text(route, "origin"),
+            text(route, "destination")
+        );
+
+        for departure in route["departures"].as_array().cloned().unwrap_or_default() {
+            let live = if departure["live"].as_bool().unwrap_or(false) {
+                "live"
+            } else {
+                "scheduled"
+            };
+
+            println!(
+                "  {:<8} {:<32} {:>4} min  {live}",
+                text(&departure, "line"),
+                text(&departure, "headsign"),
+                departure["minutesAway"]
+            );
+        }
+    }
+
+    Ok(())
+}
+
+async fn fuel(
+    client: &Client,
+    postcode: Option<i64>,
+    limit: Option<i64>,
+    as_json: bool,
+) -> Result<()> {
+    let data = client
+        .graphql(
+            "query($postcode: Int, $limit: Int) { fuelwatch(postcode: $postcode) { sites(limit: $limit) { siteId name brand suburb price priceTomorrow } } }",
+            json!({ "postcode": postcode, "limit": limit }),
+        )
+        .await?;
+
+    let sites = &data["fuelwatch"]["sites"];
+
+    if as_json {
+        return print_json(sites);
+    }
+
+    for site in sites.as_array().cloned().unwrap_or_default() {
+        let tomorrow = site["priceTomorrow"]
+            .as_f64()
+            .map(|price| format!("{price:.1}"))
+            .unwrap_or_else(|| "-".to_owned());
+
+        println!(
+            "{:>6.1} {tomorrow:>6} {:<16} {:<32} {}",
+            site["price"].as_f64().unwrap_or_default(),
+            text(&site, "brand"),
+            text(&site, "name"),
+            text(&site, "suburb")
+        );
+    }
+
+    Ok(())
 }
 
 fn print_whoami(auth: &Value, as_json: bool) -> Result<()> {
@@ -807,12 +1176,50 @@ fn push_input(args: &PushArgs) -> Value {
     input
 }
 
-async fn push(client: &Client, args: &PushArgs, as_json: bool) -> Result<()> {
-    let data = client
-        .graphql(SEND_PUSH_MUTATION, json!({ "input": push_input(args) }))
-        .await?;
+async fn push(client: &Client, command: &PushCommand, as_json: bool) -> Result<()> {
+    match command {
+        PushCommand::Send(args) => {
+            let data = client
+                .graphql(SEND_PUSH_MUTATION, json!({ "input": push_input(args) }))
+                .await?;
 
-    report(&data, as_json, "sent")
+            report(&data, as_json, "sent")
+        }
+        PushCommand::List { limit } => {
+            let data = client
+                .graphql(
+                    "query($limit: Int) { pushNotifications(limit: $limit) { id tag title body category sendCount acknowledgedAt createdAt } }",
+                    json!({ "limit": limit }),
+                )
+                .await?;
+
+            if as_json {
+                return print_json(&data["pushNotifications"]);
+            }
+
+            for notification in data["pushNotifications"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+            {
+                let acknowledged = if notification["acknowledgedAt"].is_null() {
+                    "open"
+                } else {
+                    "acked"
+                };
+
+                println!(
+                    "{:<26} {acknowledged:<6} {:<10} {} — {}",
+                    text(&notification, "createdAt"),
+                    text(&notification, "category").to_lowercase(),
+                    text(&notification, "title"),
+                    text(&notification, "body")
+                );
+            }
+
+            Ok(())
+        }
+    }
 }
 
 fn curl_args(base_url: &str, args: &[String]) -> Vec<String> {
@@ -1047,6 +1454,48 @@ mod tests {
         assert_eq!(input["actions"][0]["kind"], "ACKNOWLEDGE");
         assert_eq!(input["acknowledge"]["remindAfterSeconds"], 7200);
         assert_eq!(input["acknowledge"]["reminders"], 1);
+    }
+
+    #[test]
+    fn the_cli_definition_is_valid() {
+        Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn push_send_accepts_the_existing_flags() {
+        let cli = Cli::try_parse_from([
+            "home",
+            "push",
+            "send",
+            "Bins",
+            "--action",
+            "Done=acknowledge",
+            "--remind-after",
+            "2h",
+            "--reminders",
+            "1",
+        ])
+        .unwrap();
+
+        let Command::Push(PushCommand::Send(args)) = cli.command else {
+            panic!("expected push send");
+        };
+
+        assert_eq!(push_input(&args)["acknowledge"]["remindAfterSeconds"], 7200);
+    }
+
+    #[test]
+    fn energy_since_resolves_to_a_past_timestamp() {
+        let cli = Cli::try_parse_from(["home", "energy", "--since", "2h"]).unwrap();
+
+        let Command::Energy { since } = cli.command else {
+            panic!("expected energy");
+        };
+
+        let timestamp = DateTime::parse_from_rfc3339(&since_timestamp(since)).unwrap();
+        let elapsed = Utc::now() - timestamp.with_timezone(&Utc);
+
+        assert!(elapsed.num_seconds() >= 7200 && elapsed.num_seconds() < 7260);
     }
 
     #[test]

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM workflow_runs\n            WHERE id IN (\n                SELECT id\n                FROM workflow_runs\n                WHERE started_at < now() - make_interval(secs => $2)\n                ORDER BY started_at\n                LIMIT $1\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6fe2136633bea960e3368f546b538ff8fb4c0bc07b90b607875710ec720fdbf7"
+}

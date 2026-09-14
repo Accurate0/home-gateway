@@ -11,6 +11,7 @@ configMapGenerator:
   - name: home-gateway-config-sections
     files:
       - sections/actors.yaml
+      - sections/adhoc.yaml
       - sections/auth.yaml
       - sections/eink_display.yaml
       - sections/home_assistant.yaml
