@@ -137,22 +137,9 @@ fn build_with_devices(devices_yaml: &str) -> String {
     let dir = tempdir();
     std::fs::create_dir_all(dir.join("workflows")).unwrap();
     std::fs::create_dir_all(dir.join("devices")).unwrap();
-    std::fs::create_dir_all(dir.join("lua/zigbee")).unwrap();
 
-    std::fs::copy(
-        Path::new(FIXTURE_CONFIG).join("base.yaml"),
-        dir.join("base.yaml"),
-    )
-    .unwrap();
-
-    for entry in std::fs::read_dir(Path::new(FIXTURE_CONFIG).join("lua/zigbee")).unwrap() {
-        let path = entry.unwrap().path();
-
-        std::fs::copy(
-            &path,
-            dir.join("lua/zigbee").join(path.file_name().unwrap()),
-        )
-        .unwrap();
+    for file in ["base.yaml", "zigbee_models.yaml"] {
+        std::fs::copy(Path::new(FIXTURE_CONFIG).join(file), dir.join(file)).unwrap();
     }
     std::fs::write(dir.join("workflows/index.yaml"), "[]\n").unwrap();
     std::fs::write(dir.join("devices/index.yaml"), "- !include test.yaml\n").unwrap();

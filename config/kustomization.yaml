@@ -7,6 +7,7 @@ configMapGenerator:
   - name: home-gateway-config
     files:
       - base.yaml
+      - zigbee_models.yaml
   - name: home-gateway-config-sections
     files:
       - sections/actors.yaml
@@ -60,19 +61,6 @@ configMapGenerator:
       - lua/workflows/brief.lua
       - lua/workflows/buttons.lua
       - lua/workflows/reminders.lua
-  - name: home-gateway-config-lua-zigbee
-    files:
-      - lua/zigbee/aqara_fp1e.lua
-      - lua/zigbee/aqara_mccgq12lm.lua
-      - lua/zigbee/aqara_t1.lua
-      - lua/zigbee/aqara_wsdcgq12lm.lua
-      - lua/zigbee/aqara_wxkg11lm.lua
-      - lua/zigbee/ikea_e2001.lua
-      - lua/zigbee/ikea_e2112.lua
-      - lua/zigbee/ikea_led2201g8.lua
-      - lua/zigbee/lumi_wsdcgq11lm.lua
-      - lua/zigbee/phillips_9290012573a.lua
-      - lua/zigbee/ts011f_plug.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

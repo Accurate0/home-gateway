@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     path::PathBuf,
 };
 
@@ -76,9 +76,9 @@ pub use devices::roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
 pub use devices::switch::{RawSmartSwitchBlock, SwitchRole};
 pub use devices::trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use devices::valetudo::{RawValetudoBlock, ValetudoSettings};
-pub use devices::zigbee_model::{ZigbeeModelProfile, ZigbeeModels, load_zigbee_models};
-pub use devices::zigbee_reading::{ZigbeeMetric, ZigbeeReading};
-pub use devices::zigbee_role::ZigbeeRoleName;
+pub use devices::zigbee_model::{
+    RawZigbeeModelProfile, ZigbeeField, ZigbeeFieldType, ZigbeeModelProfile,
+};
 pub use graphql::GraphqlSettings;
 pub use http::HttpSettings;
 pub use http_client::HttpClientSettings;
@@ -208,7 +208,7 @@ pub struct RawSettings {
     notify_targets: NotifyTargets,
     #[serde(default)]
     devices: Vec<Vec<RawSensor>>,
-    zigbee_models: PathBuf,
+    zigbee_models: HashMap<String, RawZigbeeModelProfile>,
     #[serde(default)]
     workflows: Vec<Vec<WorkflowDefinition>>,
     s3: S3Settings,
@@ -248,10 +248,7 @@ pub struct RawSettings {
 }
 
 impl RawSettings {
-    fn resolve(
-        self,
-        zigbee_sources: &BTreeMap<String, String>,
-    ) -> Result<(Settings, DeviceRegistry), String> {
+    fn resolve(self) -> Result<(Settings, DeviceRegistry), String> {
         let RawSettings {
             version,
             api_key,
@@ -266,7 +263,7 @@ impl RawSettings {
             mqtt,
             notify_targets,
             devices,
-            zigbee_models: _,
+            zigbee_models,
             workflows,
             s3,
             watchdog,
@@ -389,12 +386,10 @@ impl RawSettings {
             }
         }
 
-        let zigbee_models = load_zigbee_models(zigbee_sources, &lua)?;
-
         let registry = DeviceRegistry::build(
             devices.into_iter().flatten().collect(),
             &notify_targets,
-            &zigbee_models,
+            zigbee_models,
         )?;
         let aliases = registry.aliases();
 
@@ -525,18 +520,9 @@ pub struct SettingsContainer {
 }
 
 impl SettingsContainer {
-    fn build(config: Config, dir: &Path) -> Result<(Settings, DeviceRegistry), ConfigError> {
+    fn build(config: Config) -> Result<(Settings, DeviceRegistry), ConfigError> {
         let raw: RawSettings = config.try_deserialize()?;
-
-        let zigbee_dir = dir.join(&raw.zigbee_models);
-        let zigbee_sources = crate::lua::sources::load_directory(&zigbee_dir).map_err(|e| {
-            ConfigError::Message(format!(
-                "failed to load zigbee models from {}: {e}",
-                zigbee_dir.display()
-            ))
-        })?;
-
-        raw.resolve(&zigbee_sources).map_err(ConfigError::Message)
+        raw.resolve().map_err(ConfigError::Message)
     }
 
     /// Build a config from a directory of YAML files. `base.yaml` is the entry
@@ -581,7 +567,7 @@ impl SettingsContainer {
             .add_source(Environment::default().separator("__"))
             .build()?;
 
-        Self::build(config, dir)
+        Self::build(config)
     }
 
     pub fn override_dir() -> PathBuf {
@@ -660,22 +646,23 @@ mod tests {
         )
         .unwrap();
 
-        DeviceRegistry::build(devices, &NotifyTargets::default(), &test_models()).unwrap()
+        DeviceRegistry::build(devices, &NotifyTargets::default(), test_models()).unwrap()
     }
 
-    fn test_models() -> ZigbeeModels {
-        let sources = BTreeMap::from([(
-            "ts011f_plug".to_owned(),
-            include_str!("../../config/lua/zigbee/ts011f_plug.lua").to_owned(),
-        )]);
-
-        load_zigbee_models(&sources, &LuaSettings::default()).unwrap()
+    fn test_models() -> HashMap<String, RawZigbeeModelProfile> {
+        serde_yaml::from_str(
+            r#"
+ts011f_plug:
+  smart_switch: [state, voltage, power, current, energy]
+"#,
+        )
+        .unwrap()
     }
 
     fn build_devices(yaml: &str) -> Result<DeviceRegistry, String> {
         let devices: Vec<RawSensor> = serde_yaml::from_str(yaml).unwrap();
 
-        DeviceRegistry::build(devices, &NotifyTargets::default(), &test_models())
+        DeviceRegistry::build(devices, &NotifyTargets::default(), test_models())
     }
 
     #[test]
@@ -805,7 +792,7 @@ mod tests {
         .unwrap();
 
         let err =
-            DeviceRegistry::build(devices, &NotifyTargets::default(), &test_models()).unwrap_err();
+            DeviceRegistry::build(devices, &NotifyTargets::default(), test_models()).unwrap_err();
         assert!(err.contains("has no `entity` object_id"), "{err}");
     }
 
@@ -887,8 +874,7 @@ transperth:
             .build()
             .unwrap();
 
-        let (_settings, registry) =
-            SettingsContainer::build(config, Path::new("./config")).unwrap();
+        let (_settings, registry) = SettingsContainer::build(config).unwrap();
 
         assert!(registry.eink_display("94a990cf8384").is_some(), "eink");
         assert!(registry.battery("94a990cf8384").is_some(), "battery");
@@ -920,7 +906,7 @@ transperth:
             .build()
             .unwrap();
 
-        let (settings, registry) = SettingsContainer::build(config, Path::new("./config")).unwrap();
+        let (settings, registry) = SettingsContainer::build(config).unwrap();
 
         let switch_workflow = settings
             .workflows
@@ -1122,25 +1108,32 @@ transperth:
         assert!(
             registry.door(front_address).is_some() && registry.battery(front_address).is_some()
         );
-        assert!(front.profile.roles.contains(&ZigbeeRoleName::Door));
-        assert!(front.profile.roles.contains(&ZigbeeRoleName::Battery));
+        assert_eq!(front.profile.battery.as_deref(), Some("battery"));
+        assert_eq!(
+            front.profile.door.as_ref().map(|d| d.contact.as_str()),
+            Some("contact")
+        );
 
         let outdoor = registry
             .zigbee_device(registry.address_or_self("env-outdoor"))
             .expect("env-outdoor is a zigbee device");
-        assert!(outdoor.profile.environment.contains(&Metric::Temperature));
+        assert!(
+            outdoor
+                .profile
+                .environment
+                .as_ref()
+                .expect("environment mapping")
+                .iter()
+                .any(|(metric, key)| *metric == Metric::Temperature && key == "temperature")
+        );
 
+        // the free-form metrics escape hatch carries its declared type
         let presence = registry
             .zigbee_device("0x54ef441000dbc81c")
             .expect("closet presence is a zigbee device");
-        let reading = presence
-            .profile
-            .decode(&serde_json::from_str(r#"{"presence":true,"movement":"approach"}"#).unwrap())
-            .expect("closet presence decodes");
-        assert_eq!(
-            reading.metrics.get("movement"),
-            Some(&ZigbeeMetric::Text("approach".to_owned()))
-        );
+        assert!(presence.profile.metrics.iter().any(|(name, field)| {
+            name == "movement" && field.field_type == ZigbeeFieldType::String
+        }));
 
         // esphome devices are not in the zigbee table
         assert!(registry.zigbee_device("apollo-mtr-1-livingroom").is_none());
@@ -1169,8 +1162,7 @@ transperth:
             .build()
             .unwrap();
 
-        let (settings, _registry) =
-            SettingsContainer::build(config, Path::new("./config")).unwrap();
+        let (settings, _registry) = SettingsContainer::build(config).unwrap();
         assert!(
             settings
                 .auth
@@ -1187,7 +1179,7 @@ transperth:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1225,7 +1217,7 @@ auth:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve().unwrap_err();
         assert!(err.contains("unknown resource `bogus`"), "{err}");
     }
 
@@ -1235,7 +1227,7 @@ auth:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1281,7 +1273,7 @@ auth:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve().unwrap_err();
         assert!(
             err.contains("oauth group 'admins@idm' has invalid scope"),
             "{err}"
@@ -1309,7 +1301,7 @@ transperth:
             .build()
             .unwrap();
 
-        SettingsContainer::build(config, Path::new("./config"))
+        SettingsContainer::build(config)
     }
 
     #[test]
@@ -1359,7 +1351,7 @@ transperth:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1402,7 +1394,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve().unwrap_err();
         assert!(err.contains("does-not-exist"), "{err}");
     }
 
@@ -1412,7 +1404,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1459,15 +1451,14 @@ workflows:
         )
         .unwrap();
 
-        raw.resolve(&BTreeMap::new())
-            .expect("a known target resolves");
+        raw.resolve().expect("a known target resolves");
     }
 
     fn raw_with_workflows(workflows: &str) -> RawSettings {
         let base = r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1503,9 +1494,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
     }
 
     fn resolve_error(workflows: &str) -> String {
-        raw_with_workflows(workflows)
-            .resolve(&BTreeMap::new())
-            .unwrap_err()
+        raw_with_workflows(workflows).resolve().unwrap_err()
     }
 
     #[test]
@@ -1623,7 +1612,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
         assert!(err.contains("unknown input `extra`"), "{err}");
 
         raw_with_workflows(&workflows(r#"{ count: "${event.product_id}" }"#))
-            .resolve(&BTreeMap::new())
+            .resolve()
             .expect("typed inputs resolve");
     }
 
@@ -1673,7 +1662,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
         raw_with_workflows(&workflows(
             "{ type: var, var: willyweather.today.max, op: gt, value: 35 }",
         ))
-        .resolve(&BTreeMap::new())
+        .resolve()
         .expect("guards see context variables");
     }
 
@@ -1683,7 +1672,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1725,7 +1714,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve().unwrap_err();
         assert!(err.contains("uses `for:`"), "{err}");
     }
 
@@ -1735,7 +1724,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1776,7 +1765,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve().unwrap_err();
         assert!(err.contains("empty `modes:`"), "{err}");
     }
 
@@ -1786,7 +1775,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1838,7 +1827,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1879,7 +1868,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve().unwrap_err();
         assert!(err.contains("needs `to` or `from`"), "{err}");
     }
 
@@ -1889,7 +1878,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -1951,7 +1940,7 @@ devices:
         )
         .unwrap();
 
-        let (settings, registry) = raw.resolve(&BTreeMap::new()).unwrap();
+        let (settings, registry) = raw.resolve().unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Album);
@@ -1983,7 +1972,7 @@ devices:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -2040,7 +2029,7 @@ devices:
         )
         .unwrap();
 
-        let (_, registry) = raw.resolve(&BTreeMap::new()).unwrap();
+        let (_, registry) = raw.resolve().unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Reddit);
@@ -2059,7 +2048,7 @@ devices:
             r#"
 api_key: x
 database_url: x
-zigbee_models: lua/zigbee
+zigbee_models: {}
 mqtt:
   url: x
   port: 1883
@@ -2114,7 +2103,7 @@ devices:
         )
         .unwrap();
 
-        let (settings, registry) = raw.resolve(&BTreeMap::new()).unwrap();
+        let (settings, registry) = raw.resolve().unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Dashboard);

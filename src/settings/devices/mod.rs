@@ -12,5 +12,3 @@ pub mod switch;
 pub mod trmnl;
 pub mod valetudo;
 pub mod zigbee_model;
-pub mod zigbee_reading;
-pub mod zigbee_role;

@@ -1,7 +1,8 @@
 use home_gateway::device_registry::RawSensor;
-use home_gateway::settings::{RawSettings, WorkflowDefinition};
+use home_gateway::settings::{RawSettings, RawZigbeeModelProfile, WorkflowDefinition};
 use schemars::Schema;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const ENV_PROVIDED_ROOT: &[&str] = &["api_key", "database_url"];
@@ -62,6 +63,11 @@ fn main() {
         &dir,
         "devices.schema.json",
         &to_value(schemars::schema_for!(Vec<RawSensor>)),
+    );
+    write(
+        &dir,
+        "zigbee_models.schema.json",
+        &to_value(schemars::schema_for!(HashMap<String, RawZigbeeModelProfile>)),
     );
 
     let lua_types = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

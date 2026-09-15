@@ -1,124 +1,331 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::sync::Arc;
-
+use crate::{device_metric::MetricValue, settings::Metric};
+use schemars::JsonSchema;
+use serde::Deserialize;
 use serde_json::{Map, Value};
+use std::collections::HashMap;
 
-use crate::lua::{LuaDecoder, LuaError};
-use crate::settings::{LuaSettings, Metric};
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ZigbeeFieldType {
+    Bool,
+    Int,
+    Float,
+    String,
+}
 
-use super::zigbee_reading::ZigbeeReading;
-use super::zigbee_role::ZigbeeRoleName;
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ZigbeeField {
+    pub key: String,
+    #[serde(rename = "type")]
+    pub field_type: ZigbeeFieldType,
+}
 
-pub type ZigbeeModels = HashMap<String, Arc<ZigbeeModelProfile>>;
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum RawFieldBlock {
+    Names(Vec<String>),
+    Renames(HashMap<String, String>),
+}
+
+impl RawFieldBlock {
+    fn normalize(self, slug: &str, block: &str) -> Result<HashMap<String, String>, String> {
+        let mut fields = HashMap::new();
+
+        let pairs = match self {
+            RawFieldBlock::Names(names) => names.into_iter().map(|n| (n.clone(), n)).collect(),
+            RawFieldBlock::Renames(renames) => renames.into_iter().collect::<Vec<_>>(),
+        };
+
+        for (logical, key) in pairs {
+            if fields.insert(logical.clone(), key).is_some() {
+                return Err(format!(
+                    "zigbee model {slug}: `{block}` declares `{logical}` twice"
+                ));
+            }
+        }
+
+        Ok(fields)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RawZigbeeModelProfile {
+    #[serde(default)]
+    pub battery: Option<String>,
+    #[serde(default)]
+    pub door: Option<RawFieldBlock>,
+    #[serde(default)]
+    pub environment: Option<RawFieldBlock>,
+    #[serde(default)]
+    pub light: Option<RawFieldBlock>,
+    #[serde(default)]
+    pub smart_switch: Option<RawFieldBlock>,
+    #[serde(default)]
+    pub presence: Option<RawFieldBlock>,
+    #[serde(default)]
+    pub control_switch: Option<RawFieldBlock>,
+    #[serde(default)]
+    pub metrics: HashMap<String, ZigbeeField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZigbeeDoorFields {
+    pub contact: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZigbeeLightFields {
+    pub state: String,
+    pub brightness: Option<String>,
+    pub colour_temp: Option<String>,
+    pub colour: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZigbeeSmartSwitchFields {
+    pub voltage: String,
+    pub power: String,
+    pub current: String,
+    pub energy: String,
+    pub state: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZigbeePresenceFields {
+    pub presence: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZigbeeControlSwitchFields {
+    pub action: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct ZigbeeModelProfile {
     pub slug: String,
-    pub roles: BTreeSet<ZigbeeRoleName>,
-    pub environment: Vec<Metric>,
-    decoder: Arc<LuaDecoder>,
+    pub battery: Option<String>,
+    pub door: Option<ZigbeeDoorFields>,
+    pub environment: Option<Vec<(Metric, String)>>,
+    pub light: Option<ZigbeeLightFields>,
+    pub smart_switch: Option<ZigbeeSmartSwitchFields>,
+    pub presence: Option<ZigbeePresenceFields>,
+    pub control_switch: Option<ZigbeeControlSwitchFields>,
+    pub metrics: Vec<(String, ZigbeeField)>,
 }
 
 impl ZigbeeModelProfile {
-    pub fn decode(&self, payload: &Map<String, Value>) -> Result<ZigbeeReading, LuaError> {
-        self.decoder.call(&self.slug, "decode", payload)
+    pub fn resolve(slug: String, raw: RawZigbeeModelProfile) -> Result<Self, String> {
+        let RawZigbeeModelProfile {
+            battery,
+            door,
+            environment,
+            light,
+            smart_switch,
+            presence,
+            control_switch,
+            metrics,
+        } = raw;
+
+        let door = door
+            .map(|block| {
+                let mut fields = block.normalize(&slug, "door")?;
+                let contact = take_required(&mut fields, &slug, "door", "contact")?;
+                reject_unknown(fields, &slug, "door", &["contact"])?;
+
+                Ok::<_, String>(ZigbeeDoorFields { contact })
+            })
+            .transpose()?;
+
+        let light = light
+            .map(|block| {
+                let mut fields = block.normalize(&slug, "light")?;
+                let state = take_required(&mut fields, &slug, "light", "state")?;
+                let brightness = fields.remove("brightness");
+                let colour_temp = fields.remove("color_temp");
+                let colour = fields.remove("color");
+                reject_unknown(
+                    fields,
+                    &slug,
+                    "light",
+                    &["state", "brightness", "color_temp", "color"],
+                )?;
+
+                Ok::<_, String>(ZigbeeLightFields {
+                    state,
+                    brightness,
+                    colour_temp,
+                    colour,
+                })
+            })
+            .transpose()?;
+
+        let smart_switch = smart_switch
+            .map(|block| {
+                let mut fields = block.normalize(&slug, "smart_switch")?;
+                let voltage = take_required(&mut fields, &slug, "smart_switch", "voltage")?;
+                let power = take_required(&mut fields, &slug, "smart_switch", "power")?;
+                let current = take_required(&mut fields, &slug, "smart_switch", "current")?;
+                let energy = take_required(&mut fields, &slug, "smart_switch", "energy")?;
+                let state = fields.remove("state");
+                reject_unknown(
+                    fields,
+                    &slug,
+                    "smart_switch",
+                    &["voltage", "power", "current", "energy", "state"],
+                )?;
+
+                Ok::<_, String>(ZigbeeSmartSwitchFields {
+                    voltage,
+                    power,
+                    current,
+                    energy,
+                    state,
+                })
+            })
+            .transpose()?;
+
+        let presence = presence
+            .map(|block| {
+                let mut fields = block.normalize(&slug, "presence")?;
+                let presence = take_required(&mut fields, &slug, "presence", "presence")?;
+                reject_unknown(fields, &slug, "presence", &["presence"])?;
+
+                Ok::<_, String>(ZigbeePresenceFields { presence })
+            })
+            .transpose()?;
+
+        let control_switch = control_switch
+            .map(|block| {
+                let mut fields = block.normalize(&slug, "control_switch")?;
+                let action = take_required(&mut fields, &slug, "control_switch", "action")?;
+                reject_unknown(fields, &slug, "control_switch", &["action"])?;
+
+                Ok::<_, String>(ZigbeeControlSwitchFields { action })
+            })
+            .transpose()?;
+
+        let environment = environment
+            .map(|block| resolve_environment(&slug, block))
+            .transpose()?;
+
+        let mut metrics: Vec<_> = metrics.into_iter().collect();
+        metrics.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        Ok(ZigbeeModelProfile {
+            slug,
+            battery,
+            door,
+            environment,
+            light,
+            smart_switch,
+            presence,
+            control_switch,
+            metrics,
+        })
     }
 }
 
-pub fn load_zigbee_models(
-    sources: &BTreeMap<String, String>,
-    settings: &LuaSettings,
-) -> Result<ZigbeeModels, String> {
-    let decoder = LuaDecoder::load("zigbee", sources, settings)
-        .map_err(|error| format!("zigbee models: {error}"))?;
-    let decoder = Arc::new(decoder);
+fn resolve_environment(slug: &str, block: RawFieldBlock) -> Result<Vec<(Metric, String)>, String> {
+    let fields = block.normalize(slug, "environment")?;
 
-    let mut profiles = HashMap::new();
-
-    for slug in decoder.modules() {
-        let profile = resolve_profile(&decoder, slug)?;
-
-        profiles.insert(slug.to_owned(), Arc::new(profile));
+    if fields.is_empty() {
+        return Err(format!("zigbee model {slug}: `environment` is empty"));
     }
 
-    Ok(profiles)
-}
+    let mut readings = Vec::new();
+    for (logical, key) in fields {
+        let metric = serde_yaml::from_str::<Metric>(&logical).map_err(|_| {
+            format!("zigbee model {slug}: `environment` has unknown metric `{logical}`")
+        })?;
 
-fn resolve_profile(decoder: &Arc<LuaDecoder>, slug: &str) -> Result<ZigbeeModelProfile, String> {
-    let error = |error: LuaError| format!("zigbee model {slug}: {error}");
+        readings.push((metric, key));
+    }
 
-    if !decoder.has_function(slug, "decode").map_err(error)? {
+    if !readings.iter().any(|(m, _)| *m == Metric::Temperature) {
         return Err(format!(
-            "zigbee model {slug}: must define a `decode` function"
+            "zigbee model {slug}: `environment` must define `temperature`"
         ));
     }
 
-    let Some(declared) = decoder
-        .field::<Vec<ZigbeeRoleName>>(slug, "roles")
-        .map_err(error)?
-    else {
-        return Err(format!("zigbee model {slug}: must declare `roles`"));
+    readings.sort_by(|(_, a), (_, b)| a.cmp(b));
+
+    Ok(readings)
+}
+
+fn take_required(
+    fields: &mut HashMap<String, String>,
+    slug: &str,
+    block: &str,
+    logical: &str,
+) -> Result<String, String> {
+    fields
+        .remove(logical)
+        .ok_or_else(|| format!("zigbee model {slug}: `{block}` must define `{logical}`"))
+}
+
+fn reject_unknown(
+    fields: HashMap<String, String>,
+    slug: &str,
+    block: &str,
+    valid: &[&str],
+) -> Result<(), String> {
+    let Some(unknown) = fields.keys().min() else {
+        return Ok(());
     };
 
-    let mut roles = BTreeSet::new();
+    Err(format!(
+        "zigbee model {slug}: `{block}` has unknown field `{unknown}`; valid fields are {}",
+        valid.join(", ")
+    ))
+}
 
-    for role in declared {
-        if !roles.insert(role) {
-            return Err(format!(
-                "zigbee model {slug}: `roles` declares `{role}` twice"
-            ));
+pub fn payload_bool(payload: &Map<String, Value>, key: &str) -> Option<bool> {
+    payload.get(key)?.as_bool()
+}
+
+pub fn payload_i64(payload: &Map<String, Value>, key: &str) -> Option<i64> {
+    let value = payload.get(key)?;
+
+    if let Some(int) = value.as_i64() {
+        return Some(int);
+    }
+
+    let float = value.as_f64()?;
+
+    (float.fract() == 0.0).then_some(float as i64)
+}
+
+pub fn payload_f64(payload: &Map<String, Value>, key: &str) -> Option<f64> {
+    payload.get(key)?.as_f64()
+}
+
+pub fn payload_string(payload: &Map<String, Value>, key: &str) -> Option<String> {
+    payload.get(key)?.as_str().map(str::to_owned)
+}
+
+pub fn extract_metric(payload: &Map<String, Value>, field: &ZigbeeField) -> Option<MetricValue> {
+    match field.field_type {
+        ZigbeeFieldType::Bool => {
+            payload_bool(payload, &field.key).map(|b| MetricValue::Text(b.to_string()))
         }
+        ZigbeeFieldType::Int => {
+            payload_i64(payload, &field.key).map(|i| MetricValue::Numeric(i as f64))
+        }
+        ZigbeeFieldType::Float => payload_f64(payload, &field.key).map(MetricValue::Numeric),
+        ZigbeeFieldType::String => payload_string(payload, &field.key).map(MetricValue::Text),
     }
-
-    if roles.is_empty() {
-        return Err(format!("zigbee model {slug}: `roles` is empty"));
-    }
-
-    let environment = decoder
-        .field::<Vec<Metric>>(slug, "environment")
-        .map_err(error)?
-        .unwrap_or_default();
-
-    let reports_environment = roles.contains(&ZigbeeRoleName::Environment);
-
-    if reports_environment && !environment.contains(&Metric::Temperature) {
-        return Err(format!(
-            "zigbee model {slug}: `environment` must list `temperature`"
-        ));
-    }
-
-    if !reports_environment && !environment.is_empty() {
-        return Err(format!(
-            "zigbee model {slug}: lists `environment` metrics without declaring the `environment` role"
-        ));
-    }
-
-    Ok(ZigbeeModelProfile {
-        slug: slug.to_owned(),
-        roles,
-        environment,
-        decoder: decoder.clone(),
-    })
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use serde_json::{Map, Value};
-
     use super::*;
-    use crate::device_metric::MetricValue;
-    use crate::settings::devices::zigbee_reading::ZigbeeMetric;
 
-    fn load(source: &str) -> Result<ZigbeeModels, String> {
-        let sources = BTreeMap::from([("test_model".to_owned(), source.to_owned())]);
+    fn profile(yaml: &str) -> Result<ZigbeeModelProfile, String> {
+        let raw = serde_yaml::from_str::<RawZigbeeModelProfile>(yaml).expect("profile yaml");
 
-        load_zigbee_models(&sources, &LuaSettings::default())
-    }
-
-    fn profile(source: &str) -> Arc<ZigbeeModelProfile> {
-        load(source).expect("model")["test_model"].clone()
+        ZigbeeModelProfile::resolve("test_model".to_owned(), raw)
     }
 
     fn payload(json: &str) -> Map<String, Value> {
@@ -126,149 +333,141 @@ mod tests {
     }
 
     #[test]
-    fn roles_and_environment_metrics_are_read_at_load() {
-        let profile = profile(
-            r#"return {
-                roles = { "battery", "environment" },
-                environment = { "temperature", "pm25" },
-                decode = function(p) return {} end,
-            }"#,
-        );
+    fn list_and_identity_map_forms_resolve_the_same() {
+        let from_list = profile("smart_switch: [state, voltage, power, current, energy]")
+            .expect("list form")
+            .smart_switch
+            .expect("smart switch block");
 
-        assert!(profile.roles.contains(&ZigbeeRoleName::Battery));
-        assert!(profile.roles.contains(&ZigbeeRoleName::Environment));
-        assert_eq!(profile.environment, [Metric::Temperature, Metric::Pm25]);
+        let from_map = profile(
+            "smart_switch: { state: state, voltage: voltage, power: power, current: current, energy: energy }",
+        )
+        .expect("map form")
+        .smart_switch
+        .expect("smart switch block");
+
+        assert_eq!(from_list.voltage, from_map.voltage);
+        assert_eq!(from_list.energy, from_map.energy);
+        assert_eq!(from_list.state, from_map.state);
     }
 
     #[test]
-    fn a_model_without_roles_is_rejected() {
-        let error = load("return { decode = function(p) return {} end }").expect_err("no roles");
+    fn rename_map_maps_logical_name_to_payload_key() {
+        let fields = profile("smart_switch: { state: state, voltage: voltage, power: active_power, current: current, energy: total_energy }")
+            .expect("rename form")
+            .smart_switch
+            .expect("smart switch block");
 
-        assert!(error.contains("must declare `roles`"), "{error}");
+        assert_eq!(fields.power, "active_power");
+        assert_eq!(fields.energy, "total_energy");
     }
 
     #[test]
-    fn a_model_without_decode_is_rejected() {
-        let error = load(r#"return { roles = { "door" } }"#).expect_err("no decode");
+    fn missing_required_field_is_rejected() {
+        let error = profile("door: []").expect_err("door without contact");
 
-        assert!(error.contains("must define a `decode` function"), "{error}");
+        assert!(error.contains("must define `contact`"), "{error}");
     }
 
     #[test]
-    fn an_unknown_role_is_rejected() {
-        let error = load(r#"return { roles = { "toaster" }, decode = function(p) return {} end }"#)
-            .expect_err("unknown role");
+    fn unknown_logical_name_is_rejected() {
+        let error = profile("door: [contact, nonsense]").expect_err("unknown door field");
 
-        assert!(error.contains("toaster"), "{error}");
-    }
-
-    #[test]
-    fn a_repeated_role_is_rejected() {
-        let error =
-            load(r#"return { roles = { "door", "door" }, decode = function(p) return {} end }"#)
-                .expect_err("repeated role");
-
-        assert!(error.contains("declares `door` twice"), "{error}");
+        assert!(error.contains("unknown field `nonsense`"), "{error}");
+        assert!(error.contains("valid fields are contact"), "{error}");
     }
 
     #[test]
     fn environment_requires_temperature_and_rejects_unknown_metrics() {
-        let missing = load(
-            r#"return { roles = { "environment" }, environment = { "humidity" }, decode = function(p) return {} end }"#,
-        )
-        .expect_err("no temperature");
-        assert!(missing.contains("must list `temperature`"), "{missing}");
+        let missing = profile("environment: [humidity]").expect_err("no temperature");
+        assert!(missing.contains("must define `temperature`"), "{missing}");
 
-        let unknown = load(
-            r#"return { roles = { "environment" }, environment = { "temperature", "wind_speed" }, decode = function(p) return {} end }"#,
-        )
-        .expect_err("bad metric");
-        assert!(unknown.contains("wind_speed"), "{unknown}");
+        let unknown = profile("environment: [temperature, wind_speed]").expect_err("bad metric");
+        assert!(unknown.contains("unknown metric `wind_speed`"), "{unknown}");
     }
 
     #[test]
-    fn environment_metrics_without_the_role_are_rejected() {
-        let error = load(
-            r#"return { roles = { "door" }, environment = { "temperature" }, decode = function(p) return {} end }"#,
-        )
-        .expect_err("environment without role");
+    fn environment_resolves_metric_names_to_payload_keys() {
+        let readings = profile("environment: [temperature, humidity, pm25, voc_index]")
+            .expect("environment")
+            .environment
+            .expect("environment block");
 
-        assert!(
-            error.contains("without declaring the `environment` role"),
-            "{error}"
-        );
+        assert!(readings.contains(&(Metric::Temperature, "temperature".to_owned())));
+        assert!(readings.contains(&(Metric::Pm25, "pm25".to_owned())));
+        assert!(readings.contains(&(Metric::VocIndex, "voc_index".to_owned())));
     }
 
     #[test]
-    fn decode_maps_payload_fields_into_a_typed_reading() {
-        let profile = profile(
-            r#"return {
-                roles = { "battery", "door" },
-                decode = function(p)
-                    return {
-                        battery = p.battery,
-                        door = { contact = p.contact },
-                        metrics = { voltage = p.voltage, open = not p.contact, mode = p.mode },
-                    }
-                end,
-            }"#,
-        );
+    fn payload_accessors_reject_mismatched_types() {
+        let payload = payload(r#"{"battery": 97, "contact": false, "state": "ON", "temp": 18.4}"#);
 
-        let reading = profile
-            .decode(&payload(
-                r#"{"battery": 97, "contact": false, "voltage": 3005, "mode": "eco"}"#,
-            ))
-            .expect("decode");
+        assert_eq!(payload_i64(&payload, "battery"), Some(97));
+        assert_eq!(payload_bool(&payload, "contact"), Some(false));
+        assert_eq!(payload_string(&payload, "state"), Some("ON".to_owned()));
+        assert_eq!(payload_f64(&payload, "temp"), Some(18.4));
 
-        assert_eq!(reading.battery, Some(97));
-        assert_eq!(reading.door.and_then(|door| door.contact), Some(false));
+        assert_eq!(payload_bool(&payload, "state"), None);
+        assert_eq!(payload_i64(&payload, "state"), None);
+        assert_eq!(payload_i64(&payload, "temp"), None);
+        assert_eq!(payload_string(&payload, "battery"), None);
+        assert_eq!(payload_f64(&payload, "missing"), None);
+    }
+
+    #[test]
+    fn payload_i64_accepts_an_integral_float() {
+        let payload = payload(r#"{"device_temperature": 21.0}"#);
+
+        assert_eq!(payload_i64(&payload, "device_temperature"), Some(21));
+    }
+
+    #[test]
+    fn extract_metric_follows_the_declared_type() {
+        let payload = payload(r#"{"distance": 1.4, "movement": "approach", "count": 3}"#);
+
+        let float = ZigbeeField {
+            key: "distance".to_owned(),
+            field_type: ZigbeeFieldType::Float,
+        };
+        let text = ZigbeeField {
+            key: "movement".to_owned(),
+            field_type: ZigbeeFieldType::String,
+        };
+        let int = ZigbeeField {
+            key: "count".to_owned(),
+            field_type: ZigbeeFieldType::Int,
+        };
+
         assert_eq!(
-            MetricValue::from(reading.metrics["voltage"].clone()),
-            MetricValue::Numeric(3005.0)
+            extract_metric(&payload, &float),
+            Some(MetricValue::Numeric(1.4))
         );
-        assert_eq!(reading.metrics["open"], ZigbeeMetric::Flag(true));
         assert_eq!(
-            MetricValue::from(reading.metrics["mode"].clone()),
-            MetricValue::Text("eco".to_owned())
+            extract_metric(&payload, &text),
+            Some(MetricValue::Text("approach".to_owned()))
+        );
+        assert_eq!(
+            extract_metric(&payload, &int),
+            Some(MetricValue::Numeric(3.0))
         );
     }
 
     #[test]
-    fn json_nulls_arrive_in_lua_as_nil() {
-        let profile = profile(
-            r#"return {
-                roles = { "door" },
-                decode = function(p) return { door = { contact = p.contact } } end,
-            }"#,
-        );
+    fn extract_metric_does_not_coerce_across_kinds() {
+        let payload = payload(r#"{"power": "98"}"#);
 
-        let reading = profile
-            .decode(&payload(r#"{"contact": null}"#))
-            .expect("decode");
+        let numeric = ZigbeeField {
+            key: "power".to_owned(),
+            field_type: ZigbeeFieldType::Float,
+        };
 
-        assert_eq!(reading.door.and_then(|door| door.contact), None);
+        assert_eq!(extract_metric(&payload, &numeric), None);
     }
 
     #[test]
-    fn an_unknown_block_in_a_reading_is_an_error() {
-        let profile = profile(
-            r#"return { roles = { "door" }, decode = function(p) return { garage = {} } end }"#,
-        );
+    fn a_metric_written_as_a_bare_string_is_rejected() {
+        let raw = serde_yaml::from_str::<RawZigbeeModelProfile>("metrics: { voltage: voltage }");
 
-        let error = profile.decode(&payload("{}")).expect_err("unknown block");
-
-        assert!(error.to_string().contains("garage"), "{error}");
-    }
-
-    #[test]
-    fn every_committed_model_loads() {
-        let sources =
-            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/zigbee"))
-                .expect("expected the committed zigbee models to be readable");
-
-        let models = load_zigbee_models(&sources, &LuaSettings::default())
-            .expect("expected every committed zigbee model to load");
-
-        assert_eq!(models.len(), sources.len());
+        assert!(raw.is_err());
     }
 }
