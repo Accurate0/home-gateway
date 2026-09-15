@@ -13,7 +13,7 @@ use super::bridge::{install_vars, returned_node};
 use super::error::InstructionLimit;
 use super::{CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSource, Script, builtin};
 
-fn sandboxed_libs() -> StdLib {
+pub(super) fn sandboxed_libs() -> StdLib {
     StdLib::MATH | StdLib::STRING | StdLib::TABLE | StdLib::OS | StdLib::UTF8
 }
 
@@ -248,7 +248,7 @@ pub(super) fn install_instruction_limit(lua: &Lua, limit: u32) -> mlua::Result<(
     lua.set_hook(triggers, trip)
 }
 
-fn sandbox(lua: &Lua) -> mlua::Result<()> {
+pub(super) fn sandbox(lua: &Lua) -> mlua::Result<()> {
     let globals = lua.globals();
 
     for name in STRIPPED_GLOBALS {
