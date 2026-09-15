@@ -37,7 +37,10 @@ impl AdhocTaskActor {
         let config = task.config(&settings.tasks);
 
         if config.state() == AdhocTaskState::Disabled {
-            tracing::info!("adhoc cron task {} is disabled, not scheduling", task.name());
+            tracing::info!(
+                "adhoc cron task {} is disabled, not scheduling",
+                task.name()
+            );
             return;
         }
 
@@ -103,11 +106,7 @@ impl Actor for AdhocTaskActor {
 
         for task in cron_registry() {
             tracing::info!("scheduling adhoc cron task {}", task.name());
-            Self::schedule_next(
-                &myself,
-                task,
-                &self.shared_actor_state.settings.adhoc,
-            );
+            Self::schedule_next(&myself, task, &self.shared_actor_state.settings.adhoc);
         }
 
         let _ = myself.cast(AdhocTaskActorMessage::Recheck);
@@ -139,11 +138,7 @@ impl Actor for AdhocTaskActor {
                 match cron_registry().into_iter().find(|task| task.name() == name) {
                     Some(task) => {
                         run_cron(&self.shared_actor_state, task, false).await;
-                        Self::schedule_next(
-                            &myself,
-                            task,
-                            &self.shared_actor_state.settings.adhoc,
-                        );
+                        Self::schedule_next(&myself, task, &self.shared_actor_state.settings.adhoc);
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} fired but is no longer registered");

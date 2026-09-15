@@ -52,9 +52,7 @@ mod tests {
     fn cron_manifest(tasks: &[&'static dyn AnyAdhocCronTask]) -> String {
         tasks
             .iter()
-            .map(|task| {
-                format!("{}  {}", task.name(), task.flag().unwrap_or("-"))
-            })
+            .map(|task| format!("{}  {}", task.name(), task.flag().unwrap_or("-")))
             .collect::<Vec<_>>()
             .join("\n")
     }

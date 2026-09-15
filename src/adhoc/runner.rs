@@ -4,8 +4,8 @@ use std::time::{Duration, Instant};
 use futures::FutureExt;
 use open_feature::EvaluationContext;
 
-use super::context::AdhocTaskContext;
 use super::any_cron_task::AnyAdhocCronTask;
+use super::context::AdhocTaskContext;
 use super::error::AdhocTaskError;
 use super::registry;
 use super::task::{AdhocTask, checksum};
