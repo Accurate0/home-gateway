@@ -1,4 +1,3 @@
-use axum::extract::FromRef;
 use sqlx::{Pool, Postgres};
 
 use crate::device_registry::DeviceRegistry;
@@ -12,7 +11,7 @@ use crate::tracing_setup::SamplingControl;
 
 pub mod handles;
 
-pub use handles::{HandleRegistry, HandleRegistryBuilder};
+pub use handles::{HandleRegistry, HandleRegistryBuilder, RequiredHandle};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -25,22 +24,5 @@ pub struct AppState {
     pub sampling: SamplingControl,
     pub handles: HandleRegistry,
     pub lua: LuaEngine,
-}
-
-#[derive(Clone)]
-pub struct ApiState {
     pub schema: FinalSchema,
-    pub inner: AppState,
-}
-
-impl FromRef<ApiState> for AppState {
-    fn from_ref(state: &ApiState) -> Self {
-        state.inner.clone()
-    }
-}
-
-impl FromRef<ApiState> for FinalSchema {
-    fn from_ref(state: &ApiState) -> Self {
-        state.schema.clone()
-    }
 }

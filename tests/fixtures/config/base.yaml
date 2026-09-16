@@ -83,6 +83,187 @@ ingest:
         local body = json.decode(raw)
         mqtt.publish("test/ingest/doorbell", json.encode({ event = body.event }), false)
 
+endpoints:
+  routes:
+    - path: /test/plain
+      method: GET
+      script: |
+        return { room = "kitchen", warm = true }
+
+    - path: /test/envelope
+      method: GET
+      script: |
+        return {
+          status = 201,
+          headers = { ["x-source"] = "lua" },
+          body = { created = true },
+        }
+
+    - path: /test/text
+      method: GET
+      script: |
+        return { body = "pong" }
+
+    - path: /test/scoped
+      method: GET
+      scopes: [light:read]
+      script: |
+        return { allowed = true }
+
+    - path: /test/params
+      method: GET
+      params:
+        hours: int
+        room: string?
+      script: |
+        return { hours = request.query.hours, room = request.query.room }
+
+    - path: /test/rooms/{room}/summary
+      method: GET
+      script: |
+        return { room = request.params.room, path = request.path }
+
+    - path: /test/echo
+      method: POST
+      body:
+        name: string
+        count: int?
+      script: |
+        return { name = request.json.name, raw = request.body }
+
+    - path: /test/anything
+      method: POST
+      script: |
+        return { got = request.json }
+
+    - path: /test/graphql
+      method: GET
+      script: |
+        local data = gw.graphql("query { workflows { slug } }")
+
+        return { count = #data.workflows }
+
+    - path: /test/mutation
+      method: GET
+      script: |
+        return gw.graphql("mutation { executeLua(script: \"return 1\") }")
+
+    - path: /test/subscription
+      method: GET
+      script: |
+        return gw.graphql("subscription { events { kind } }")
+
+    - path: /test/light
+      method: GET
+      script: |
+        return { visible = light ~= nil and light.is_on ~= nil }
+
+    - path: /test/weather
+      method: GET
+      scopes: [weather:read]
+      script: |
+        local today = weather.today()
+
+        if today == nil then
+          return { stored = false }
+        end
+
+        return { stored = true, max = today.max, emoji = today.emoji }
+
+    - path: /test/weather-elsewhere
+      method: GET
+      scopes: [weather:read]
+      script: |
+        return weather.today("atlantis")
+
+    - path: /test/fuel
+      method: GET
+      scopes: [fuelwatch:read]
+      script: |
+        local sites = fuel.cheapest(6164, 2)
+        local names = {}
+
+        for _, site in ipairs(sites) do
+          table.insert(names, site.name)
+        end
+
+        return { names = names }
+
+    - path: /test/fuel-default
+      method: GET
+      scopes: [fuelwatch:read]
+      script: |
+        return { sites = fuel.cheapest() }
+
+    - path: /test/notify-actions
+      method: POST
+      scopes: [push:write]
+      script: |
+        notify.send({
+          message = "the back door is open",
+          category = "door",
+          tag = "test-actions",
+          actions = {
+            { label = "Snooze", action = { type = "snooze", seconds = 600 } },
+            { label = "Go away", action = { type = "dismiss" } },
+          },
+        })
+
+        return { sent = true }
+
+    - path: /test/notify-acknowledge
+      method: POST
+      scopes: [push:write]
+      script: |
+        notify.send({
+          message = "take the bins out",
+          category = "general",
+          acknowledge = { remind_after = "10m", reminders = 3 },
+          actions = {
+            { label = "Done", action = { type = "acknowledge" } },
+          },
+        })
+
+        return { sent = true }
+
+    - path: /test/notify-unpaired
+      method: POST
+      scopes: [push:write]
+      script: |
+        notify.send({
+          message = "unpaired",
+          category = "general",
+          acknowledge = { remind_after = "10m", reminders = 3 },
+        })
+
+        return { sent = true }
+
+    - path: /test/notify-unknown-workflow
+      method: POST
+      scopes: [push:write]
+      script: |
+        notify.send({
+          message = "bad target",
+          category = "general",
+          actions = {
+            { label = "Run", action = { type = "run_workflow", workflow = "no-such-workflow" } },
+          },
+        })
+
+        return { sent = true }
+
+    - path: /test/boom
+      method: GET
+      script: |
+        error("this endpoint always fails")
+
+    - path: /test/slow
+      method: GET
+      script: |
+        gw.sleep(30)
+
+        return { done = true }
+
 workflow:
   workers: 12
   enabled_cache:
@@ -255,6 +436,6 @@ vacation:
   min_observations: 8
   seed: 20260908
 
-zigbee_models: !include zigbee_models.yaml
+zigbee_models: lua/zigbee
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

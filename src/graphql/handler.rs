@@ -9,7 +9,6 @@ use serde_json::Value;
 use crate::{
     auth::{Auth, resolve_ws_auth},
     error::AppError,
-    graphql::FinalSchema,
     state::AppState,
 };
 
@@ -39,11 +38,12 @@ pub async fn graphiql() -> impl IntoResponse {
 }
 
 pub async fn graphql_ws_handler(
-    State(schema): State<FinalSchema>,
     State(state): State<AppState>,
     protocol: GraphQLProtocol,
     upgrade: WebSocketUpgrade,
 ) -> Response {
+    let schema = state.schema.clone();
+
     upgrade
         .protocols(ALL_WEBSOCKET_PROTOCOLS)
         .on_upgrade(move |stream| {
@@ -55,6 +55,7 @@ pub async fn graphql_ws_handler(
                         .map_err(|_| async_graphql::Error::new("unauthorized"))?;
                     let mut data = Data::default();
                     data.insert(auth);
+                    data.insert(state.clone());
                     Ok(data)
                 })
                 .serve()
@@ -62,9 +63,11 @@ pub async fn graphql_ws_handler(
 }
 
 pub async fn graphql_handler(
-    State(schema): State<FinalSchema>,
+    State(state): State<AppState>,
     Auth(auth): Auth,
     req: GraphQLRequest,
 ) -> Result<GraphQLResponse, AppError> {
-    Ok(schema.execute(req.into_inner().data(auth)).await.into())
+    let request = req.into_inner().data(auth).data(state.clone());
+
+    Ok(state.schema.execute(request).await.into())
 }

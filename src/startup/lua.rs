@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 
 use crate::actors::alarm::lua::AlarmLua;
 use crate::actors::devices::door_events::lua::DoorLua;
@@ -18,6 +17,7 @@ use crate::actors::system::push::lua::NotifyLua;
 use crate::actors::vacation::lua::VacationLua;
 use crate::actors::workflows::lua::WorkflowLua;
 use crate::device_registry::lua::DeviceLua;
+use crate::integrations::fuelwatch::lua::FuelLua;
 use crate::integrations::fuelwatch::variables::FuelwatchVariables;
 use crate::integrations::holidays::lua::HolidaysLua;
 use crate::integrations::home_assistant::HomeAssistant;
@@ -25,22 +25,81 @@ use crate::integrations::home_assistant::lua::HomeAssistantLua;
 use crate::integrations::mqtt::lua::MqttLua;
 use crate::integrations::s3::lua::S3Lua;
 use crate::integrations::transperth::lua::TransperthLua;
+use crate::integrations::willyweather::lua::WeatherLua;
 use crate::integrations::willyweather::variables::WillyweatherVariables;
 use crate::integrations::woolworths::lua::WoolworthsLua;
+use crate::lua::LuaSource;
 use crate::lua::flag::FlagLua;
 use crate::lua::regex::RegexLua;
+use crate::lua::sources::load_configured;
 use crate::lua::state::StateLua;
 use crate::lua::time::TimeLua;
 use crate::lua::{
-    LuaApiRegistry, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, schema, typegen,
+    LuaApiRegistry, LuaClass, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, schema, typegen,
 };
-use crate::settings::{Settings, SettingsContainer};
+use crate::settings::Settings;
 use crate::state::HandleRegistry;
+
+const REQUEST: LuaClass = LuaClass {
+    name: "Request",
+    fields: &[
+        LuaField {
+            name: "method",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "path",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "params",
+            ty: LuaType::Map(&LuaType::String),
+        },
+        LuaField {
+            name: "query",
+            ty: LuaType::Map(&LuaType::Any),
+        },
+        LuaField {
+            name: "headers",
+            ty: LuaType::Map(&LuaType::String),
+        },
+        LuaField {
+            name: "body",
+            ty: LuaType::Optional(&LuaType::String),
+        },
+        LuaField {
+            name: "json",
+            ty: LuaType::Optional(&LuaType::Any),
+        },
+    ],
+};
+
+const RESPONSE: LuaClass = LuaClass {
+    name: "Response",
+    fields: &[
+        LuaField {
+            name: "status",
+            ty: LuaType::Optional(&LuaType::Integer),
+        },
+        LuaField {
+            name: "headers",
+            ty: LuaType::Optional(&LuaType::Map(&LuaType::String)),
+        },
+        LuaField {
+            name: "body",
+            ty: LuaType::Any,
+        },
+    ],
+};
 
 const GLOBALS: &[LuaField] = &[
     LuaField {
         name: "event",
         ty: LuaType::Map(&LuaType::Any),
+    },
+    LuaField {
+        name: "request",
+        ty: LuaType::Class(&REQUEST),
     },
     LuaField {
         name: "input",
@@ -88,6 +147,8 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(MediaLua)
         .insert(FlagLua)
         .insert(S3Lua)
+        .insert(WeatherLua)
+        .insert(FuelLua)
         .insert_optional(home_assistant.then_some(HomeAssistantLua))
         .build()
 }
@@ -108,7 +169,7 @@ pub fn type_definitions() -> String {
 
     namespaces.extend(registry(true).api());
 
-    typegen::render(&namespaces, GLOBALS)
+    typegen::render(&namespaces, GLOBALS, &[&RESPONSE])
 }
 
 pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<LuaEngine> {
@@ -124,83 +185,61 @@ pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<Lu
         scripts.keys().cloned().collect::<Vec<_>>().join(", ")
     );
 
-    Ok(LuaEngine::new(
-        registry,
-        library,
-        scripts,
-        settings.lua.clone(),
-    ))
+    assert_endpoint_targets(settings, &scripts)?;
+
+    LuaEngine::new(registry, library, scripts, settings.lua.clone())
+        .map_err(|error| anyhow::anyhow!(error))
 }
 
-fn load_configured(relative: Option<&Path>) -> anyhow::Result<BTreeMap<String, String>> {
-    let Some(relative) = relative else {
-        return Ok(BTreeMap::new());
-    };
-
-    let candidates = [
-        ("override", SettingsContainer::override_dir().join(relative)),
-        ("baked-in", SettingsContainer::baked_dir().join(relative)),
-    ];
-
-    load_library(&resolve_library(&candidates)?)
-}
-
-fn resolve_library(candidates: &[(&str, PathBuf)]) -> anyhow::Result<PathBuf> {
-    for (source, candidate) in candidates {
-        if !candidate.is_dir() {
-            tracing::warn!(
-                "lua library directory {} does not exist",
-                candidate.display()
-            );
-
-            continue;
-        }
-
-        tracing::info!(
-            "loading lua library from {} ({source})",
-            candidate.display()
-        );
-
-        return Ok(candidate.clone());
-    }
-
-    anyhow::bail!(
-        "no lua library directory found in [{}]",
-        candidates
-            .iter()
-            .map(|(_, candidate)| candidate.display().to_string())
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
-}
-
-fn load_library(directory: &Path) -> anyhow::Result<BTreeMap<String, String>> {
-    let mut library = BTreeMap::new();
-
-    for entry in std::fs::read_dir(directory)? {
-        let path = entry?.path();
-
-        if path.extension().is_none_or(|ext| ext != "lua") {
-            continue;
-        }
-
-        let Some(name) = path.file_stem().and_then(|name| name.to_str()) else {
+fn assert_endpoint_targets(
+    settings: &Settings,
+    scripts: &BTreeMap<String, String>,
+) -> anyhow::Result<()> {
+    for endpoint in &settings.endpoints.routes {
+        let LuaSource::Call { call, .. } = &endpoint.source else {
             continue;
         };
 
-        library.insert(name.to_owned(), std::fs::read_to_string(&path)?);
+        if !scripts.contains_key(call.script()) {
+            anyhow::bail!(
+                "endpoint `{} {}` calls unknown lua script `{}`; available: [{}]",
+                endpoint.method,
+                endpoint.path,
+                call.script(),
+                scripts.keys().cloned().collect::<Vec<_>>().join(", ")
+            );
+        }
     }
 
-    Ok(library)
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
     use std::path::PathBuf;
 
-    use std::collections::BTreeSet;
+    use super::{registry, type_definitions};
+    use crate::lua::sources::load_directory;
 
-    use super::{registry, resolve_library, type_definitions};
+    #[test]
+    fn every_shipped_lua_file_precompiles() {
+        for directory in [
+            "config/lua/lib",
+            "config/lua/workflows",
+            "config/lua/zigbee",
+        ] {
+            let sources =
+                load_directory(&PathBuf::from(directory)).expect("expected the directory to load");
+
+            assert!(!sources.is_empty(), "{directory} has no lua files");
+
+            for (name, source) in sources {
+                crate::lua::bytecode::compile(&name, &source)
+                    .unwrap_or_else(|error| panic!("{directory}/{name}.lua failed: {error}"));
+            }
+        }
+    }
 
     #[test]
     fn the_committed_lua_types_are_up_to_date() {
@@ -226,47 +265,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    fn scratch_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("lua-library-{}-{name}", uuid::Uuid::new_v4()));
-        std::fs::create_dir_all(&dir).expect("expected the scratch dir to be created");
-
-        dir
-    }
-
-    #[test]
-    fn the_override_library_wins_when_present() {
-        let override_dir = scratch_dir("override");
-        let baked_dir = scratch_dir("baked");
-
-        let resolved =
-            resolve_library(&[("override", override_dir.clone()), ("baked-in", baked_dir)])
-                .expect("expected a library directory");
-
-        assert_eq!(resolved, override_dir);
-    }
-
-    #[test]
-    fn the_baked_library_is_used_when_the_override_is_missing() {
-        let baked_dir = scratch_dir("baked");
-        let missing =
-            std::env::temp_dir().join(format!("lua-library-missing-{}", uuid::Uuid::new_v4()));
-
-        let resolved = resolve_library(&[("override", missing), ("baked-in", baked_dir.clone())])
-            .expect("expected a library directory");
-
-        assert_eq!(resolved, baked_dir);
-    }
-
-    #[test]
-    fn no_library_directory_is_an_error() {
-        let missing =
-            std::env::temp_dir().join(format!("lua-library-missing-{}", uuid::Uuid::new_v4()));
-
-        let error =
-            resolve_library(&[("override", missing)]).expect_err("expected no library directory");
-
-        assert!(error.to_string().contains("no lua library directory"));
     }
 }

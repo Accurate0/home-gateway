@@ -10,9 +10,17 @@ struct Definitions {
     classes: BTreeMap<&'static str, String>,
 }
 
-pub fn render(namespaces: &[LuaNamespace], globals: &[LuaField]) -> String {
+pub fn render(
+    namespaces: &[LuaNamespace],
+    globals: &[LuaField],
+    classes: &[&'static LuaClass],
+) -> String {
     let mut definitions = Definitions::default();
     let mut body = String::new();
+
+    for class in classes {
+        definitions.class(class);
+    }
 
     for global in globals {
         let ty = definitions.lua_type(&global.ty);
@@ -330,6 +338,7 @@ mod tests {
                 name: "event",
                 ty: LuaType::Map(&LuaType::Any),
             }],
+            &[],
         );
 
         assert_eq!(

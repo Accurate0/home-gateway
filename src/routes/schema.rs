@@ -4,16 +4,13 @@ use crate::{
         scope::{Action, Resource, Scope},
     },
     error::AppError,
-    graphql::FinalSchema,
+    state::AppState,
 };
 use axum::extract::State;
 
-pub async fn schema(
-    State(schema): State<FinalSchema>,
-    Auth(auth): Auth,
-) -> Result<String, AppError> {
+pub async fn schema(State(state): State<AppState>, Auth(auth): Auth) -> Result<String, AppError> {
     auth.require(&Scope::new(Resource::Schema, Action::Read))
         .map_err(AppError::StatusCode)?;
 
-    Ok(schema.sdl())
+    Ok(state.schema.sdl())
 }

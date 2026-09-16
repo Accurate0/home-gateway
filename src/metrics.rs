@@ -52,6 +52,7 @@ struct Instruments {
     reconciler_give_ups_total: Counter<u64>,
     lua_duration: Histogram<f64>,
     lua_memory: Histogram<u64>,
+    lua_vm_setup_duration: Histogram<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -155,6 +156,13 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
                 67_108_864.0,
             ])
             .build(),
+        lua_vm_setup_duration: meter
+            .f64_histogram("home_gateway_lua_vm_setup_duration_milliseconds")
+            .with_description("Lua vm creation and api install duration in milliseconds by kind")
+            .with_boundaries(vec![
+                0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0,
+            ])
+            .build(),
     }
 });
 
@@ -195,6 +203,13 @@ pub fn record_lua(source: String, outcome: &'static str, elapsed: Duration, memo
         .lua_duration
         .record(elapsed.as_secs_f64() * 1000.0, &labels);
     INSTRUMENTS.lua_memory.record(memory_bytes as u64, &labels);
+}
+
+pub fn record_lua_vm_setup(kind: &'static str, elapsed: Duration) {
+    INSTRUMENTS.lua_vm_setup_duration.record(
+        elapsed.as_secs_f64() * 1000.0,
+        &[KeyValue::new("kind", kind)],
+    );
 }
 
 pub fn record_mqtt_ingest(topic_kind: &'static str) {

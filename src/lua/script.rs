@@ -1,29 +1,36 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(try_from = "String")]
 #[schemars(with = "String")]
 pub struct Script {
     raw: String,
+    bytecode: Vec<u8>,
+}
+
+impl PartialEq for Script {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw == other.raw
+    }
 }
 
 impl Script {
     pub fn parse(raw: &str) -> Result<Self, String> {
-        let lua = mlua::Lua::new();
-
-        lua.load(raw)
-            .set_name("script")
-            .into_function()
-            .map_err(|error| error.to_string())?;
+        let bytecode = super::bytecode::compile("script", raw)?;
 
         Ok(Script {
             raw: raw.to_owned(),
+            bytecode,
         })
     }
 
     pub fn raw(&self) -> &str {
         &self.raw
+    }
+
+    pub fn bytecode(&self) -> &[u8] {
+        &self.bytecode
     }
 
     pub fn summary(&self) -> String {

@@ -17,6 +17,8 @@ use prometheus::Registry;
 use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 
 use crate::auth::auth_middleware;
+use crate::device_registry::DeviceRegistry;
+use crate::event_bus::EventBus;
 use crate::graphql::{
     FinalSchema, QueryRoot,
     dataloader::device_battery::DeviceBatteryDataLoader,
@@ -32,6 +34,8 @@ use crate::graphql::{
     mutations::MutationRoot,
     subscription::SubscriptionRoot,
 };
+use crate::integrations::feature_flag::FeatureFlagClient;
+use crate::repo::RepoRegistry;
 use crate::routes::{
     self,
     admin::keys::{create_key, list_keys, regenerate_key, revoke_key, update_key},
@@ -48,7 +52,9 @@ use crate::routes::{
     schema::schema as schema_route,
     workflow::execute::workflow_execute,
 };
-use crate::state::{ApiState, AppState};
+use crate::settings::SettingsContainer;
+use crate::state::{AppState, HandleRegistry};
+use sqlx::{Pool, Postgres};
 
 async fn log_request(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
@@ -69,7 +75,17 @@ async fn log_request(req: Request, next: Next) -> Response {
     response
 }
 
-pub fn build_schema(state: &AppState) -> FinalSchema {
+pub struct SchemaParts<'a> {
+    pub db: &'a Pool<Postgres>,
+    pub repos: &'a RepoRegistry,
+    pub settings: &'a SettingsContainer,
+    pub devices: &'a DeviceRegistry,
+    pub event_bus: &'a EventBus,
+    pub feature_flag_client: &'a FeatureFlagClient,
+    pub handles: &'a HandleRegistry,
+}
+
+pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
@@ -130,31 +146,32 @@ pub fn build_schema(state: &AppState) -> FinalSchema {
         tokio::spawn,
     ))
     .data(state.handles.get::<HomeAssistant>().cloned())
-    .data(state.handles.expect::<EinkDisplayManager>().clone())
-    .data(state.handles.expect::<S3>().clone())
+    .data(state.handles.require::<EinkDisplayManager>().clone())
+    .data(state.handles.require::<S3>().clone())
     .data(state.handles.clone())
-    .data(state.handles.expect::<MqttClient>().clone())
+    .data(state.handles.require::<MqttClient>().clone())
     .data(state.db.clone())
     .data(state.settings.clone())
     .data(state.devices.clone())
     .data(state.feature_flag_client.clone())
     .data(state.event_bus.clone())
-    .data(state.handles.expect::<WorkflowManager>().clone())
+    .data(state.handles.require::<WorkflowManager>().clone())
     .data(state.repos.clone())
-    .data(state.clone())
     .extension(crate::graphql_tracing::Tracing)
     .limit_depth(state.settings.graphql.max_depth)
     .limit_complexity(state.settings.graphql.max_complexity)
     .finish()
 }
 
-pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
+pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::any())
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers(AllowHeaders::any());
 
-    let api_routes = Router::new()
+    let scripted = routes::endpoints::mount(&state.settings.endpoints);
+
+    let api_routes = scripted
         .route("/graphql", get(graphiql).post(graphql_handler))
         .route("/schema", get(schema_route))
         .route("/control/light", post(light_control))
@@ -174,7 +191,7 @@ pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route("/admin/keys/{id}/regenerate", post(regenerate_key))
         .route("/weather/forecast", get(routes::weather::forecast))
-        .route_layer(from_fn_with_state(api_state.inner.clone(), auth_middleware))
+        .route_layer(from_fn_with_state(state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
         .route("/solar/current", get(routes::solar::current))
         .route("/solar/history", get(routes::solar::history))
@@ -192,7 +209,59 @@ pub fn build_router(api_state: ApiState, metrics_registry: Registry) -> Router {
         )
         .layer(cors)
         .layer(from_fn(log_request))
-        .with_state(api_state);
+        .with_state(state);
 
     Router::new().nest("/v1", api_routes)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::settings::endpoint::RESERVED_PREFIXES;
+
+    const BUILT_IN: &[&str] = &[
+        "/graphql",
+        "/graphql/ws",
+        "/schema",
+        "/control/light",
+        "/workflow/execute",
+        "/lua/execute",
+        "/ingest/synergy",
+        "/ingest/home/alarm",
+        "/ingest/home/push-token",
+        "/ingest/unifi",
+        "/ingest/lua/{name}",
+        "/epd/config",
+        "/epd/image/{hash}",
+        "/epd/firmware",
+        "/epd/take-screenshot",
+        "/push/notify",
+        "/admin/keys",
+        "/admin/keys/{id}",
+        "/admin/keys/{id}/regenerate",
+        "/weather/forecast",
+        "/solar/current",
+        "/solar/history",
+        "/solar/history/range",
+        "/solar/health",
+        "/health",
+        "/health/actors",
+        "/metrics",
+    ];
+
+    #[test]
+    fn every_built_in_route_is_covered_by_a_reserved_prefix() {
+        for path in BUILT_IN {
+            let covered = RESERVED_PREFIXES.iter().any(|prefix| {
+                path == prefix
+                    || path
+                        .strip_prefix(prefix)
+                        .is_some_and(|rest| rest.starts_with('/'))
+            });
+
+            assert!(
+                covered,
+                "`{path}` is not covered by RESERVED_PREFIXES, so config could shadow it"
+            );
+        }
+    }
 }

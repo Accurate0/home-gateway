@@ -100,7 +100,7 @@ async fn a_graphql_query_produces_one_span_per_top_level_field() {
     let harness = Harness::start().await;
     seed(&harness).await;
 
-    let schema = harness.api_state().schema;
+    let schema = harness.state.schema.clone();
 
     let spans = spans_for(|| async move {
         let response = schema
@@ -150,7 +150,7 @@ async fn the_parse_span_records_the_operation_and_its_top_level_fields() {
     let harness = Harness::start().await;
     seed(&harness).await;
 
-    let schema = harness.api_state().schema;
+    let schema = harness.state.schema.clone();
 
     let spans = spans_for(|| async move {
         schema
@@ -338,7 +338,7 @@ async fn dataloader_and_actor_internals_stay_out_of_the_trace() {
     let harness = Harness::start().await;
     seed(&harness).await;
 
-    let schema = harness.api_state().schema;
+    let schema = harness.state.schema.clone();
 
     let spans = spans_for(|| async move {
         schema

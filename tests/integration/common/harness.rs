@@ -4,7 +4,7 @@ use std::time::Duration;
 use home_gateway::actors::health::ActorHealthRegistry;
 use home_gateway::actors::root::RootMessage;
 use home_gateway::actors::workflows::manager::WorkflowManager;
-use home_gateway::api::{build_router, build_schema};
+use home_gateway::api::{SchemaParts, build_router, build_schema};
 use home_gateway::auth::AuthManager;
 use home_gateway::event_bus::{EventBus, EventBusMessage};
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
@@ -12,7 +12,7 @@ use home_gateway::integrations::reddit::Reddit;
 use home_gateway::integrations::s3::S3;
 use home_gateway::integrations::willyweather::WillyWeather;
 use home_gateway::settings::SettingsContainer;
-use home_gateway::state::{ApiState, AppState, HandleRegistry};
+use home_gateway::state::{AppState, HandleRegistry};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use sqlx::{Pool, Postgres};
 use tokio::sync::broadcast;
@@ -127,8 +127,20 @@ impl Harness {
         let lua = home_gateway::startup::lua::build(&settings, &handles)
             .expect("failed to build the lua engine");
 
+        let repos = home_gateway::repo::RepoRegistry::new(db.clone());
+
+        let schema = build_schema(&SchemaParts {
+            db: &db,
+            repos: &repos,
+            settings: &settings,
+            devices: &devices,
+            event_bus: &event_bus,
+            feature_flag_client: &feature_flag_client,
+            handles: &handles,
+        });
+
         let state = AppState {
-            repos: home_gateway::repo::RepoRegistry::new(db.clone()),
+            repos,
             settings: settings.clone(),
             devices: devices.clone(),
             db: db.clone(),
@@ -137,6 +149,7 @@ impl Harness {
             event_bus: event_bus.clone(),
             handles,
             lua,
+            schema,
         };
 
         let (root, _) = Actor::spawn(None, TestRoot, ())
@@ -154,15 +167,8 @@ impl Harness {
         }
     }
 
-    pub fn api_state(&self) -> ApiState {
-        ApiState {
-            schema: build_schema(&self.state),
-            inner: self.state.clone(),
-        }
-    }
-
     pub fn router(&self) -> axum::Router {
-        build_router(self.api_state(), prometheus::Registry::new())
+        build_router(self.state.clone(), prometheus::Registry::new())
     }
 
     pub fn subscribe(&self) -> EventStream {

@@ -126,23 +126,14 @@ pub async fn build(
     Ok(Handles { registry, mqtt })
 }
 
-fn assert_required(handles: &HandleRegistry) {
-    for (label, present) in [
-        ("mqtt", handles.contains::<MqttClient>()),
-        ("s3", handles.contains::<S3>()),
-        ("eink", handles.contains::<EinkDisplayManager>()),
-        ("workflows", handles.contains::<WorkflowManager>()),
-        ("actor health", handles.contains::<ActorHealthRegistry>()),
-        ("auth", handles.contains::<AuthManager>()),
-        ("willyweather", handles.contains::<WillyWeather>()),
-        (
-            "http client",
-            handles.contains::<reqwest_middleware::ClientWithMiddleware>(),
-        ),
-        ("public http client", handles.contains::<PublicHttpClient>()),
-    ] {
-        if !present {
-            panic!("the {label} handle was not registered before startup");
-        }
-    }
+crate::required_handles! {
+    MqttClient => "mqtt",
+    S3 => "s3",
+    EinkDisplayManager => "eink",
+    WorkflowManager => "workflows",
+    ActorHealthRegistry => "actor health",
+    AuthManager => "auth",
+    WillyWeather => "willyweather",
+    reqwest_middleware::ClientWithMiddleware => "http client",
+    PublicHttpClient => "public http client",
 }

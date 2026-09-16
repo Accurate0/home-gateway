@@ -1,5 +1,5 @@
 use crate::actors::devices::robot_vacuum;
-use crate::actors::system::push::types::{PushAction, PushActionKind};
+use crate::actors::system::push;
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::Scope;
@@ -16,7 +16,7 @@ use crate::{
     event_bus::EventBusMessage,
     integrations::notify::{Notification, notify},
     settings::workflow::{EnableState, LightState, Step, SwitchState},
-    settings::{NotifyAction, NotifyActionKind, ReusableWorkflow, WorkflowDefinition},
+    settings::{ReusableWorkflow, WorkflowDefinition},
     state::AppState,
     timer::timed_async,
 };
@@ -317,7 +317,10 @@ impl WorkflowWorker {
 
                 let notification =
                     Notification::new(message, *category, format!("workflow:{}", ctx.origin_slug))
-                        .with_actions(self.resolve_push_actions(actions))
+                        .with_actions(push::actions::resolve(
+                            &self.shared_actor_state.settings.workflows,
+                            actions,
+                        ))
                         .with_acknowledge(*acknowledge);
 
                 let notification = match title {
@@ -388,37 +391,6 @@ impl WorkflowWorker {
             .lua
             .run_returning(&cx, source, ctx.vars, returns)
             .await?)
-    }
-
-    fn resolve_push_actions(&self, actions: &[NotifyAction]) -> Vec<PushAction> {
-        let settings = &self.shared_actor_state.settings;
-
-        actions
-            .iter()
-            .filter_map(|action| {
-                let kind = match &action.action {
-                    NotifyActionKind::RunWorkflow { workflow } => {
-                        let target = settings
-                            .workflows
-                            .get(workflow)
-                            .map(WorkflowDefinition::body)?;
-                        PushActionKind::RunWorkflow {
-                            slug: target.slug.clone(),
-                        }
-                    }
-                    NotifyActionKind::Snooze { seconds } => {
-                        PushActionKind::Snooze { seconds: *seconds }
-                    }
-                    NotifyActionKind::Dismiss => PushActionKind::Dismiss,
-                    NotifyActionKind::Acknowledge => PushActionKind::Acknowledge,
-                };
-
-                Some(PushAction {
-                    label: action.label.clone(),
-                    kind,
-                })
-            })
-            .collect()
     }
 
     async fn run_home_assistant(

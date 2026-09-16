@@ -5,6 +5,11 @@ use std::time::Duration;
 
 use chrono::TimeDelta;
 
+use async_graphql::Variables;
+use async_graphql::parser::parse_query;
+use async_graphql::parser::types::{DocumentOperations, OperationType};
+
+use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::event_bus::{CustomEventSource, EventBusMessage};
 use crate::http::public_client::PublicHttpClient;
@@ -12,8 +17,8 @@ use crate::lua::bridge::lua_to_value;
 use crate::variables::Node;
 use mlua::{ExternalError, ExternalResult, Lua, LuaSerdeExt, Table, Value as LuaValue};
 
-use super::LuaCallContext;
 use super::signature::{LuaClass, LuaField, LuaFunction, LuaParam, LuaType};
+use super::{LuaAuthority, LuaCallContext};
 
 pub const GW_FIELDS: &[LuaField] = &[
     LuaField {
@@ -162,7 +167,24 @@ const EMIT: LuaFunction = LuaFunction {
     scope: Some(Scope::new(Resource::Workflow, Action::Run)),
 };
 
-pub const GW_FUNCTIONS: &[LuaFunction] = &[LOG, SLEEP, HAS, REQUIRE, HTTP, LIB, COOLDOWN, EMIT];
+const GRAPHQL: LuaFunction = LuaFunction {
+    name: "graphql",
+    params: &[
+        LuaParam {
+            name: "query",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "variables",
+            ty: LuaType::Optional(&LuaType::Map(&LuaType::Any)),
+        },
+    ],
+    returns: Some(LuaType::Any),
+    scope: None,
+};
+
+pub const GW_FUNCTIONS: &[LuaFunction] =
+    &[LOG, SLEEP, HAS, REQUIRE, HTTP, GRAPHQL, LIB, COOLDOWN, EMIT];
 
 const DECODE: LuaFunction = LuaFunction {
     name: "decode",
@@ -189,7 +211,7 @@ pub const JSON_FUNCTIONS: &[LuaFunction] = &[DECODE, ENCODE];
 pub fn install(
     lua: &Lua,
     cx: &LuaCallContext,
-    library: &Arc<BTreeMap<String, String>>,
+    library: &Arc<BTreeMap<String, Vec<u8>>>,
 ) -> mlua::Result<()> {
     let globals = lua.globals();
 
@@ -202,7 +224,7 @@ pub fn install(
 fn gateway_table(
     lua: &Lua,
     cx: &LuaCallContext,
-    library: &Arc<BTreeMap<String, String>>,
+    library: &Arc<BTreeMap<String, Vec<u8>>>,
 ) -> mlua::Result<Table> {
     let table = lua.create_table()?;
 
@@ -265,6 +287,15 @@ fn gateway_table(
         })
     })?;
 
+    let graphql_cx = cx.clone();
+    cx.expose(&table, &GRAPHQL, || {
+        lua.create_async_function(move |lua, (query, variables): (String, Option<Table>)| {
+            let cx = graphql_cx.clone();
+
+            async move { graphql(&lua, &cx, query, variables).await }
+        })
+    })?;
+
     let cooldown_cx = cx.clone();
     cx.expose(&table, &COOLDOWN, || {
         lua.create_async_function(move |_, (key, seconds): (String, i64)| {
@@ -294,9 +325,7 @@ fn gateway_table(
                 .into_lua_err()
             })?;
 
-            lua.load(source.as_str())
-                .set_name(name.as_str())
-                .eval::<LuaValue>()
+            super::bytecode::load(lua, name.as_str(), source)?.call::<LuaValue>(())
         })
     })?;
 
@@ -342,6 +371,83 @@ async fn http(lua: &Lua, cx: &LuaCallContext, request: Table) -> mlua::Result<Ta
     result.set("body", text)?;
 
     Ok(result)
+}
+
+async fn graphql(
+    lua: &Lua,
+    cx: &LuaCallContext,
+    query: String,
+    variables: Option<Table>,
+) -> mlua::Result<LuaValue> {
+    reject_non_queries(&query)?;
+
+    let variables = match variables {
+        Some(table) => {
+            let raw: serde_json::Value = lua.from_value(LuaValue::Table(table))?;
+
+            Variables::from_json(raw)
+        }
+        None => Variables::default(),
+    };
+
+    let auth = match &cx.authority {
+        LuaAuthority::Trusted => AuthContext::full_access(false),
+        LuaAuthority::Delegated(auth) => auth.as_ref().clone(),
+    };
+
+    let request = async_graphql::Request::new(query)
+        .variables(variables)
+        .data(auth)
+        .data(cx.state.clone());
+
+    let response = cx
+        .query("gw.graphql", || async {
+            Ok::<_, Infallible>(cx.state.schema.execute(request).await)
+        })
+        .await?;
+
+    if !response.errors.is_empty() {
+        let joined = response
+            .errors
+            .iter()
+            .map(|error| error.message.clone())
+            .collect::<Vec<_>>()
+            .join("; ");
+
+        tracing::warn!("[{}] lua graphql failed: {joined}", cx.event_id);
+
+        return Err(joined.into_lua_err());
+    }
+
+    lua.to_value(&response.data)
+}
+
+fn reject_non_queries(query: &str) -> mlua::Result<()> {
+    let document = parse_query(query).map_err(|error| error.to_string().into_lua_err())?;
+
+    let operations = match &document.operations {
+        DocumentOperations::Single(operation) => vec![&operation.node],
+        DocumentOperations::Multiple(operations) => operations
+            .values()
+            .map(|operation| &operation.node)
+            .collect(),
+    };
+
+    for operation in operations {
+        if operation.ty != OperationType::Query {
+            return Err(format!(
+                "gw.graphql only runs queries, got a {}",
+                match operation.ty {
+                    OperationType::Mutation => "mutation",
+                    OperationType::Subscription => "subscription",
+                    OperationType::Query => "query",
+                }
+            )
+            .into_lua_err());
+        }
+    }
+
+    Ok(())
 }
 
 async fn emit(cx: &LuaCallContext, name: String, payload: Option<Table>) -> mlua::Result<()> {

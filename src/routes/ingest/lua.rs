@@ -1,6 +1,5 @@
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
-use http::header::HeaderName;
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
@@ -9,6 +8,7 @@ use crate::auth::{
     scope::{Action, Resource, Scope},
 };
 use crate::lua::LuaCallContext;
+use crate::routes::vars::{header_node, string_node};
 use crate::state::AppState;
 use crate::variables::{Node, Value, Vars};
 
@@ -48,31 +48,4 @@ pub async fn lua_ingest(
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
-}
-
-fn string_node(values: BTreeMap<String, String>) -> Node {
-    let mut node = Node::empty();
-
-    for (key, value) in values {
-        node.insert(key, Node::Value(Some(Value::String(value))));
-    }
-
-    node
-}
-
-fn header_node(headers: &HeaderMap) -> Node {
-    let mut node = Node::empty();
-
-    for (name, value) in headers {
-        let Ok(value) = value.to_str() else {
-            continue;
-        };
-
-        node.insert(
-            HeaderName::as_str(name).to_owned(),
-            Node::Value(Some(Value::String(value.to_owned()))),
-        );
-    }
-
-    node
 }

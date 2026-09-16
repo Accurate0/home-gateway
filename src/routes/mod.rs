@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod control;
+pub mod endpoints;
 pub mod epd;
 pub mod health;
 pub mod ingest;
@@ -8,5 +9,6 @@ pub mod metrics;
 pub mod push;
 pub mod schema;
 pub mod solar;
+pub mod vars;
 pub mod weather;
 pub mod workflow;

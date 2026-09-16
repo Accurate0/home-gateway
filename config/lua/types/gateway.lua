@@ -10,6 +10,10 @@
 
 ---@alias gw.Mode "home"|"away"|"vacation"|"guest"
 
+---@alias gw.NotifyAction { label: string, action: gw.NotifyActionKind }
+
+---@alias gw.NotifyActionKind { workflow: string, type: "run_workflow" }|{ seconds: integer, type: "snooze" }|{ type: "dismiss" }|{ type: "acknowledge" }
+
 ---@alias gw.NotifyCategory "alarm"|"door"|"watchdog"|"general"
 
 ---@alias gw.SunPeriod "day"|"night"
@@ -33,6 +37,47 @@
 ---@field pressure? number
 ---@field lux? number
 ---@field uv_index? number
+
+---@class gw.Forecast
+---@field days gw.ForecastDay[]
+---@field hours gw.ForecastHour[]
+
+---@class gw.ForecastDay
+---@field date_time string
+---@field code string
+---@field description string
+---@field emoji string
+---@field min integer
+---@field max integer
+---@field uv? number
+---@field rain_probability? integer
+---@field rain_start_range? integer
+---@field rain_end_range? integer
+---@field rain_range_code? string
+---@field wind_max_speed? number
+---@field first_light? string
+---@field sunrise? string
+---@field sunset? string
+---@field last_light? string
+
+---@class gw.ForecastHour
+---@field date_time string
+---@field temperature? number
+---@field wind_speed? number
+---@field wind_direction? number
+---@field wind_direction_text? string
+
+---@class gw.FuelSite
+---@field site_id integer
+---@field name string
+---@field brand string
+---@field suburb string
+---@field postcode integer
+---@field address string
+---@field price number
+---@field price_tomorrow? number
+---@field latitude number
+---@field longitude number
 
 ---@class gw.HttpRequest
 ---@field url string
@@ -81,6 +126,27 @@
 ---@field message string
 ---@field title? string
 ---@field category gw.NotifyCategory
+---@field tag? string
+---@field actions? gw.NotifyAction[]
+---@field acknowledge? gw.NotifyAcknowledge
+
+---@class gw.NotifyAcknowledge
+---@field remind_after string
+---@field reminders integer
+
+---@class gw.Request
+---@field method string
+---@field path string
+---@field params table<string, string>
+---@field query table<string, any>
+---@field headers table<string, string>
+---@field body? string
+---@field json? any
+
+---@class gw.Response
+---@field status? integer
+---@field headers? table<string, string>
+---@field body any
 
 ---@class gw.SolarAverages
 ---@field last_15_mins number
@@ -122,6 +188,9 @@
 ---@type table<string, any>
 event = {}
 
+---@type gw.Request
+request = {}
+
 ---@type table<string, any>
 input = {}
 
@@ -157,6 +226,11 @@ function gw.require(scope) end
 ---@param request gw.HttpRequest
 ---@return gw.HttpResponse
 function gw.http(request) end
+
+---@param query string
+---@param variables? table<string, any>
+---@return any
+function gw.graphql(query, variables) end
 
 ---@param name string
 ---@return any
@@ -540,6 +614,28 @@ function s3.put(key, body, content_type) end
 ---@param prefix string
 ---@return string[]
 function s3.list(prefix) end
+
+---@class gw.api.weather
+weather = {}
+
+---Requires the `weather:read` scope.
+---@param location? string
+---@return gw.Forecast?
+function weather.forecast(location) end
+
+---Requires the `weather:read` scope.
+---@param location? string
+---@return gw.ForecastDay?
+function weather.today(location) end
+
+---@class gw.api.fuel
+fuel = {}
+
+---Requires the `fuelwatch:read` scope.
+---@param postcode? integer
+---@param limit? integer
+---@return gw.FuelSite[]
+function fuel.cheapest(postcode, limit) end
 
 ---@class gw.api.home_assistant
 home_assistant = {}

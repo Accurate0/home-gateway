@@ -2,6 +2,32 @@ use std::any::{Any, TypeId, type_name};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub trait RequiredHandle: Any + Send + Sync {
+    const LABEL: &'static str;
+}
+
+#[macro_export]
+macro_rules! required_handles {
+    ($($handle:ty => $label:literal),+ $(,)?) => {
+        $(
+            impl $crate::state::RequiredHandle for $handle {
+                const LABEL: &'static str = $label;
+            }
+        )+
+
+        fn assert_required(handles: &$crate::state::HandleRegistry) {
+            $(
+                if !handles.contains::<$handle>() {
+                    panic!(
+                        "the {} handle was not registered before startup",
+                        <$handle as $crate::state::RequiredHandle>::LABEL
+                    );
+                }
+            )+
+        }
+    };
+}
+
 #[derive(Default)]
 pub struct HandleRegistryBuilder {
     inner: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
@@ -44,6 +70,11 @@ impl HandleRegistry {
 
     pub fn contains<T: Any + Send + Sync>(&self) -> bool {
         self.inner.contains_key(&TypeId::of::<T>())
+    }
+
+    pub fn require<T: RequiredHandle>(&self) -> &T {
+        self.get()
+            .unwrap_or_else(|| panic!("the {} handle was never registered", T::LABEL))
     }
 
     pub fn expect<T: Any + Send + Sync>(&self) -> &T {

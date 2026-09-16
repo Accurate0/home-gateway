@@ -11,9 +11,11 @@ use crate::variables::{Node, VarType, Vars};
 
 use super::bridge::{install_vars, returned_node};
 use super::error::InstructionLimit;
-use super::{CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSource, Script, builtin};
+use super::{
+    CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSource, Script, builtin, bytecode,
+};
 
-fn sandboxed_libs() -> StdLib {
+pub(super) fn sandboxed_libs() -> StdLib {
     StdLib::MATH | StdLib::STRING | StdLib::TABLE | StdLib::OS | StdLib::UTF8
 }
 
@@ -34,8 +36,8 @@ const ALLOWED_OS: [&str; 3] = ["time", "date", "clock"];
 #[derive(Clone, Default)]
 pub struct LuaEngine {
     registry: LuaApiRegistry,
-    library: Arc<BTreeMap<String, String>>,
-    scripts: Arc<BTreeMap<String, String>>,
+    library: Arc<BTreeMap<String, Vec<u8>>>,
+    scripts: Arc<BTreeMap<String, Vec<u8>>>,
     settings: LuaSettings,
 }
 
@@ -45,13 +47,13 @@ impl LuaEngine {
         library: BTreeMap<String, String>,
         scripts: BTreeMap<String, String>,
         settings: LuaSettings,
-    ) -> Self {
-        LuaEngine {
+    ) -> Result<Self, String> {
+        Ok(LuaEngine {
             registry,
-            library: Arc::new(library),
-            scripts: Arc::new(scripts),
+            library: Arc::new(precompile("library", library)?),
+            scripts: Arc::new(precompile("workflow script", scripts)?),
             settings,
-        }
+        })
     }
 
     pub fn namespaces(&self) -> Vec<&'static str> {
@@ -114,6 +116,30 @@ impl LuaEngine {
         lua.from_value(value).map_err(LuaError::from_mlua)
     }
 
+    pub async fn run_endpoint(
+        &self,
+        cx: &LuaCallContext,
+        source: &LuaSource,
+        request: &serde_json::Value,
+    ) -> Result<serde_json::Value, LuaError> {
+        let lua = self
+            .prepare(cx, &Vars::default())
+            .map_err(LuaError::from_mlua)?;
+
+        let request = lua.to_value(request).map_err(LuaError::from_mlua)?;
+        lua.globals()
+            .set("request", request)
+            .map_err(LuaError::from_mlua)?;
+
+        let value = self.eval_source(&lua, source).await?;
+
+        if value.is_nil() {
+            return Ok(serde_json::Value::Null);
+        }
+
+        lua.from_value(value).map_err(LuaError::from_mlua)
+    }
+
     pub async fn run_unit(
         &self,
         cx: &LuaCallContext,
@@ -150,10 +176,8 @@ impl LuaEngine {
                 ))
             })?;
 
-            let module: Table = lua
-                .load(source.as_str())
-                .set_name(call.script())
-                .eval_async()
+            let module: Table = bytecode::load(lua, call.script(), source)?
+                .call_async(())
                 .await?;
 
             let function: Option<Function> = module.get(call.function())?;
@@ -181,18 +205,15 @@ impl LuaEngine {
 
     async fn eval_in(&self, lua: &Lua, script: &Script) -> Result<LuaValue, LuaError> {
         let timeout = self.settings.timeout();
-        let chunk = script.raw().to_owned();
         let started = Instant::now();
 
-        let result = match tokio::time::timeout(
-            timeout,
-            lua.load(chunk).set_name("script").eval_async::<LuaValue>(),
-        )
-        .await
-        {
-            Ok(evaluated) => evaluated.map_err(LuaError::from_mlua),
-            Err(_) => Err(LuaError::Timeout(timeout)),
-        };
+        let result =
+            match tokio::time::timeout(timeout, bytecode::eval(lua, "script", script.bytecode()))
+                .await
+            {
+                Ok(evaluated) => evaluated.map_err(LuaError::from_mlua),
+                Err(_) => Err(LuaError::Timeout(timeout)),
+            };
 
         record(&result, "script".to_owned(), started, lua.used_memory());
 
@@ -200,18 +221,42 @@ impl LuaEngine {
     }
 
     fn prepare(&self, cx: &LuaCallContext, vars: &Vars) -> mlua::Result<Lua> {
-        let lua = Lua::new_with(sandboxed_libs(), mlua::LuaOptions::default())?;
+        let started = Instant::now();
 
-        sandbox(&lua)?;
-        builtin::install(&lua, cx, &self.library)?;
-        self.registry.install(&lua, cx)?;
-        install_vars(&lua, vars)?;
+        let prepared = (|| {
+            let lua = Lua::new_with(sandboxed_libs(), mlua::LuaOptions::default())?;
 
-        install_instruction_limit(&lua, self.settings.max_instructions)?;
-        lua.set_memory_limit(self.settings.max_memory)?;
+            sandbox(&lua)?;
+            builtin::install(&lua, cx, &self.library)?;
+            self.registry.install(&lua, cx)?;
+            install_vars(&lua, vars)?;
 
-        Ok(lua)
+            install_instruction_limit(&lua, self.settings.max_instructions)?;
+            lua.set_memory_limit(self.settings.max_memory)?;
+
+            Ok(lua)
+        })();
+
+        crate::metrics::record_lua_vm_setup("script", started.elapsed());
+
+        prepared
     }
+}
+
+fn precompile(
+    label: &str,
+    sources: BTreeMap<String, String>,
+) -> Result<BTreeMap<String, Vec<u8>>, String> {
+    let mut compiled = BTreeMap::new();
+
+    for (name, source) in sources {
+        let bytecode = bytecode::compile(&name, &source)
+            .map_err(|error| format!("lua {label} `{name}` failed to compile: {error}"))?;
+
+        compiled.insert(name, bytecode);
+    }
+
+    Ok(compiled)
 }
 
 fn record(
@@ -248,7 +293,7 @@ pub(super) fn install_instruction_limit(lua: &Lua, limit: u32) -> mlua::Result<(
     lua.set_hook(triggers, trip)
 }
 
-fn sandbox(lua: &Lua) -> mlua::Result<()> {
+pub(super) fn sandbox(lua: &Lua) -> mlua::Result<()> {
     let globals = lua.globals();
 
     for name in STRIPPED_GLOBALS {

@@ -49,6 +49,9 @@ workflow:
   timers:
     catch_up_within: 10m
 
+endpoints:
+  routes: []
+
 lua:
   timeout: 5s
   max_instructions: 5000000
@@ -106,6 +109,6 @@ vacation:
   min_observations: 8
   seed: 20260908
 
-zigbee_models: !include zigbee_models.yaml
+zigbee_models: lua/zigbee
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

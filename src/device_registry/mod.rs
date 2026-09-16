@@ -19,8 +19,8 @@ use crate::settings::{
     PlantSensorSettings, PresenceSensorType, PresenceSettings, RawDeviceWatchdog,
     RawEinkDisplayBlock, RawEnvironmentBlock, RawLightBlock, RawMediaPlayerBlock, RawPlantBlock,
     RawPresenceBlock, RawRoborockBlock, RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock,
-    RawZigbeeModelProfile, RoborockField, RoborockSettings, SwitchRole, TrmnlDeviceSettings,
-    ValetudoSettings, ZigbeeModelProfile,
+    RoborockField, RoborockSettings, SwitchRole, TrmnlDeviceSettings, ValetudoSettings,
+    ZigbeeModelProfile, ZigbeeModels, ZigbeeRoleName,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -187,16 +187,9 @@ impl DeviceRegistry {
     pub fn build(
         raw: Vec<RawSensor>,
         notify: &NotifyTargets,
-        zigbee_models: HashMap<String, RawZigbeeModelProfile>,
+        zigbee_models: &ZigbeeModels,
     ) -> Result<Self, String> {
         let mut reg = DeviceRegistryInner::default();
-
-        let mut profiles = HashMap::new();
-        for (slug, raw_profile) in zigbee_models {
-            let profile = ZigbeeModelProfile::resolve(slug.clone(), raw_profile)?;
-
-            profiles.insert(slug, Arc::new(profile));
-        }
 
         for sensor in raw {
             let RawSensor {
@@ -213,7 +206,7 @@ impl DeviceRegistry {
                 return Err(format!("duplicate sensor id: {id}"));
             }
 
-            let profile = resolve_model(&id, transport, model, &profiles)?;
+            let profile = resolve_model(&id, transport, model, zigbee_models)?;
 
             if let Some(profile) = profile {
                 validate_zigbee_roles(&id, &profile, &roles)?;
@@ -269,24 +262,24 @@ fn validate_zigbee_roles(
     let slug = &profile.slug;
 
     for role in roles {
-        let (name, mapped) = match &role.config {
-            DeviceConfig::Door(_) => ("door", profile.door.is_some()),
-            DeviceConfig::Environment(_) => ("environment", profile.environment.is_some()),
-            DeviceConfig::Light(_) => ("light", profile.light.is_some()),
-            DeviceConfig::SmartSwitch(_) => ("smart_switch", profile.smart_switch.is_some()),
-            DeviceConfig::Presence(_) => ("presence", profile.presence.is_some()),
-            DeviceConfig::ControlSwitch => ("control_switch", profile.control_switch.is_some()),
-            DeviceConfig::Battery => ("battery", profile.battery.is_some()),
+        let name = match &role.config {
+            DeviceConfig::Door(_) => ZigbeeRoleName::Door,
+            DeviceConfig::Environment(_) => ZigbeeRoleName::Environment,
+            DeviceConfig::Light(_) => ZigbeeRoleName::Light,
+            DeviceConfig::SmartSwitch(_) => ZigbeeRoleName::SmartSwitch,
+            DeviceConfig::Presence(_) => ZigbeeRoleName::Presence,
+            DeviceConfig::ControlSwitch => ZigbeeRoleName::ControlSwitch,
+            DeviceConfig::Battery => ZigbeeRoleName::Battery,
             _ => continue,
         };
 
-        if !mapped {
+        if !profile.roles.contains(&name) {
             return Err(format!(
                 "device {id}: model `{slug}` has no `{name}` mapping but the device declares a `{name}` role"
             ));
         }
 
-        if matches!(role.config, DeviceConfig::Door(_)) && profile.battery.is_none() {
+        if name == ZigbeeRoleName::Door && !profile.roles.contains(&ZigbeeRoleName::Battery) {
             return Err(format!(
                 "device {id}: model `{slug}` must map `battery` because `door_sensor.battery` is not nullable"
             ));
@@ -300,7 +293,7 @@ fn resolve_model(
     id: &str,
     transport: Transport,
     model: Option<String>,
-    profiles: &HashMap<String, Arc<ZigbeeModelProfile>>,
+    profiles: &ZigbeeModels,
 ) -> Result<Option<Arc<ZigbeeModelProfile>>, String> {
     if transport != Transport::Zigbee {
         return match model {
@@ -669,10 +662,9 @@ impl DeviceRegistryInner {
         let zigbee = self
             .zigbee_devices
             .get(address)
-            .and_then(|device| device.profile.environment.as_ref())
             .into_iter()
-            .flatten()
-            .map(|(metric, _)| SensorMetric::from(*metric));
+            .flat_map(|device| device.profile.environment.iter().copied())
+            .map(SensorMetric::from);
 
         let plant = self
             .plant

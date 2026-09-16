@@ -4,7 +4,14 @@ use mlua::Lua;
 
 use super::{LuaCallContext, LuaModule, LuaNamespace};
 
-pub const RESERVED_NAMESPACES: [&str; 5] = ["event", "input", "lua", "fuelwatch", "willyweather"];
+pub const RESERVED_NAMESPACES: [&str; 6] = [
+    "event",
+    "input",
+    "lua",
+    "request",
+    "fuelwatch",
+    "willyweather",
+];
 
 #[derive(Default)]
 pub struct LuaApiRegistryBuilder {

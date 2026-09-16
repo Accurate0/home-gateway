@@ -12,6 +12,7 @@ use crate::integrations::willyweather::types::{
 use crate::settings::WillyWeatherSettings;
 
 pub mod day_variables;
+pub mod lua;
 pub mod types;
 pub mod variables;
 

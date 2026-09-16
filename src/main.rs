@@ -1,9 +1,9 @@
 use home_gateway::actors::root::RootSupervisor;
-use home_gateway::api::{build_router, build_schema};
+use home_gateway::api::{SchemaParts, build_router, build_schema};
 use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::startup::{self, Handles, Tasks};
-use home_gateway::state::{ApiState, AppState};
+use home_gateway::state::AppState;
 use home_gateway::tracing_setup::SampleRatios;
 use home_gateway::utils::handle_cancellation;
 use ractor::Actor;
@@ -31,6 +31,18 @@ async fn main() -> anyhow::Result<()> {
     let devices = storage.devices.clone();
     let lua = startup::lua::build(&storage.settings, &registry)?;
 
+    let event_bus = EventBus::default();
+
+    let schema = build_schema(&SchemaParts {
+        db: &storage.pool,
+        repos: &storage.repos,
+        settings: &storage.settings,
+        devices: &storage.devices,
+        event_bus: &event_bus,
+        feature_flag_client: &feature_flag_client,
+        handles: &registry,
+    });
+
     let state = AppState {
         repos: storage.repos,
         settings: storage.settings,
@@ -38,12 +50,11 @@ async fn main() -> anyhow::Result<()> {
         db: storage.pool,
         feature_flag_client: feature_flag_client.clone(),
         sampling: telemetry.sampling,
-        event_bus: EventBus::default(),
+        event_bus,
         handles: registry,
         lua,
+        schema,
     };
-
-    let schema = build_schema(&state);
 
     let (_, root_supervisor) = Actor::spawn(
         None,
@@ -58,13 +69,7 @@ async fn main() -> anyhow::Result<()> {
 
     let event_bus = state.event_bus.clone();
 
-    let router = build_router(
-        ApiState {
-            schema,
-            inner: state,
-        },
-        telemetry.metrics_registry,
-    );
+    let router = build_router(state, telemetry.metrics_registry);
 
     startup::tasks::run(
         listen_addr,

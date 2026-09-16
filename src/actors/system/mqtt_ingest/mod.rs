@@ -246,28 +246,39 @@ impl MqttIngest {
         let address = device.address.clone();
         let devices = &self.shared_actor_state.devices;
 
+        let reading = match device.profile.decode(payload) {
+            Ok(reading) => reading,
+            Err(e) => {
+                tracing::error!(
+                    "failed to decode zigbee payload for {address} with model {}: {e}",
+                    device.profile.slug
+                );
+                return Ok(());
+            }
+        };
+
         if devices.battery(&address).is_some()
-            && let Some(percent) = role::battery(device, payload)
+            && let Some(percent) = reading.battery
         {
             self.record_battery(&address, percent as f64);
         }
 
-        role::run::<door_sensor::Entity>(event_id, devices, device, friendly_name, payload);
-        role::run::<environment_sensor::Entity>(event_id, devices, device, friendly_name, payload);
-        role::run::<light::Entity>(event_id, devices, device, friendly_name, payload);
-        role::run::<smart_switch::Entity>(event_id, devices, device, friendly_name, payload);
-        role::run::<presence_sensor::Entity>(event_id, devices, device, friendly_name, payload);
-        role::run::<control_switch::Entity>(event_id, devices, device, friendly_name, payload);
+        role::run::<door_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
+        role::run::<environment_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
+        role::run::<light::Entity>(event_id, devices, device, friendly_name, &reading);
+        role::run::<smart_switch::Entity>(event_id, devices, device, friendly_name, &reading);
+        role::run::<presence_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
+        role::run::<control_switch::Entity>(event_id, devices, device, friendly_name, &reading);
 
         let device_id = devices.id_for_address(&address).map(str::to_owned);
 
-        for (metric, value) in role::metrics(device, payload) {
+        for (metric, value) in reading.metrics {
             let record = DeviceMetric {
                 event_id,
                 address: address.clone(),
                 device_id: device_id.clone(),
                 metric,
-                value,
+                value: value.into(),
             };
 
             if let Err(e) = self.shared_actor_state.repos.metric().record(&record).await {

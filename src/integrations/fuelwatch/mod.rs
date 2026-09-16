@@ -5,6 +5,7 @@ use crate::http::get_traced_http_client;
 use crate::integrations::fuelwatch::types::{FuelSite, Site};
 use crate::settings::FuelWatchSettings;
 
+pub mod lua;
 pub mod types;
 pub mod variables;
 
