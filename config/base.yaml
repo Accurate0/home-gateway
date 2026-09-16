@@ -10,6 +10,7 @@ home_assistant: !include sections/home_assistant.yaml
 jellyfin: !include sections/jellyfin.yaml
 transperth: !include sections/transperth.yaml
 eink_display: !include sections/eink_display.yaml
+endpoints: !include sections/endpoints.yaml
 
 database:
   min_connections: 0
@@ -48,9 +49,6 @@ workflow:
   condition_timeout: 10s
   timers:
     catch_up_within: 10m
-
-endpoints:
-  routes: []
 
 lua:
   timeout: 5s

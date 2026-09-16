@@ -13,6 +13,7 @@ configMapGenerator:
       - sections/adhoc.yaml
       - sections/auth.yaml
       - sections/eink_display.yaml
+      - sections/endpoints.yaml
       - sections/home_assistant.yaml
       - sections/http.yaml
       - sections/jellyfin.yaml
