@@ -753,6 +753,29 @@
      "legendFormat": "p50 {{source}}"
     }
    ]
+  },
+  {
+   "id": 35,
+   "type": "timeseries",
+   "title": "Lua vm setup duration before execution (p50 / p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 99 },
+   "fieldConfig": {
+    "defaults": { "unit": "ms" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, kind) (rate(home_gateway_lua_vm_setup_duration_milliseconds_bucket[15m])))",
+     "legendFormat": "p95 {{kind}}"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.50, sum by (le, kind) (rate(home_gateway_lua_vm_setup_duration_milliseconds_bucket[15m])))",
+     "legendFormat": "p50 {{kind}}"
+    }
+   ]
   }
  ]
 }
