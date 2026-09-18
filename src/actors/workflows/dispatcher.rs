@@ -512,6 +512,59 @@ impl WorkflowDispatcher {
         }
     }
 
+    async fn cancel_delayed(
+        &self,
+        msg: &EventBusMessage,
+        settings: &crate::settings::Settings,
+        subject: &EventSubject,
+        traceparent: Option<&str>,
+    ) {
+        let event_id = msg.event_id();
+
+        let delayed = settings
+            .workflows
+            .values()
+            .filter_map(WorkflowDefinition::triggered)
+            .any(|workflow| workflow.delay.is_some() && workflow.on.event_kind() == msg.kind());
+
+        if !delayed {
+            tracing::trace!(
+                "[{event_id}] no delayed workflow listens for {}",
+                msg.kind()
+            );
+            return;
+        }
+
+        let span = tracing::info_span!(
+            parent: None,
+            "dispatch.cancel_delayed",
+            event_id = %event_id,
+            event_kind = msg.kind(),
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        );
+        crate::tracing_context::set_parent(&span, traceparent);
+
+        match self
+            .shared_actor_state
+            .repos
+            .workflow()
+            .cancel_timers_for_subject(TimerKind::Delay, &subject.0, &subject.1)
+            .instrument(span.clone())
+            .await
+        {
+            Ok(cancelled) => {
+                for name in cancelled {
+                    tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
+                }
+            }
+            Err(e) => {
+                tracing::error!("[{event_id}] failed to cancel delayed triggers: {e}");
+                crate::tracing_context::record_error(&span, &e.to_string());
+            }
+        }
+    }
+
     async fn handle_event(
         &self,
         myself: &ActorRef<DispatcherMessage>,
@@ -534,20 +587,8 @@ impl WorkflowDispatcher {
 
         let subject: EventSubject = (msg.kind().to_string(), msg.entity());
 
-        match self
-            .shared_actor_state
-            .repos
-            .workflow()
-            .cancel_timers_for_subject(TimerKind::Delay, &subject.0, &subject.1)
-            .await
-        {
-            Ok(cancelled) => {
-                for name in cancelled {
-                    tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
-                }
-            }
-            Err(e) => tracing::error!("[{event_id}] failed to cancel delayed triggers: {e}"),
-        }
+        self.cancel_delayed(&msg, &settings, &subject, traceparent.as_deref())
+            .await;
 
         for workflow in settings
             .workflows
