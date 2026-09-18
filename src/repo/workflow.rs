@@ -64,6 +64,18 @@ impl WorkflowRepo {
             .await
     }
 
+    #[tracing::instrument(skip_all, name = "db.workflow.enabled_overrides", err)]
+    pub async fn enabled_overrides(&self) -> Result<Vec<(String, bool)>, sqlx::Error> {
+        let rows = sqlx::query!("SELECT slug, enabled FROM workflows")
+            .fetch_all(&self.db)
+            .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| (row.slug, row.enabled))
+            .collect())
+    }
+
     #[tracing::instrument(skip_all, name = "db.workflow.set_enabled", err)]
     pub async fn set_enabled(&self, slug: &str, enabled: bool) -> Result<(), sqlx::Error> {
         sqlx::query!(

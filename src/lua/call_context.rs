@@ -3,6 +3,7 @@ use std::future::Future;
 use std::time::{Duration, Instant};
 
 use mlua::ExternalResult;
+use tracing::{Instrument, Span};
 use uuid::Uuid;
 
 use crate::auth::scope::{Action, Resource};
@@ -75,6 +76,19 @@ impl LuaCallContext {
         table.set(function.name, build()?)
     }
 
+    pub fn span(&self, name: &'static str) -> Span {
+        tracing::info_span!(
+            "lua.call",
+            otel.name = format!("lua: {name}"),
+            lua.function = name,
+            event_id = %self.event_id,
+            origin = %self.origin,
+            dry_run = self.dry_run,
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    }
+
     pub fn timeout(&self) -> Duration {
         self.state.settings.workflow.condition_timeout()
     }
@@ -90,21 +104,29 @@ impl LuaCallContext {
         Fut: Future<Output = Result<T, E>>,
         E: std::error::Error + Send + Sync + 'static,
     {
+        let span = self.span(name);
+
         if self.dry_run {
-            tracing::info!(
-                "[{}] dry-run would call lua {name}: {detail}",
-                self.event_id
-            );
+            span.in_scope(|| {
+                tracing::info!(
+                    "[{}] dry-run would call lua {name}: {detail}",
+                    self.event_id
+                )
+            });
             crate::metrics::record_step(name, true, Duration::ZERO);
 
             return Ok(());
         }
 
-        tracing::debug!("[{}] lua {name}: {detail}", self.event_id);
+        span.in_scope(|| tracing::debug!("[{}] lua {name}: {detail}", self.event_id));
 
         let start = Instant::now();
-        let result = run().await;
+        let result = run().instrument(span.clone()).await;
         crate::metrics::record_step(name, result.is_ok(), start.elapsed());
+
+        if let Err(e) = &result {
+            crate::tracing_context::record_error(&span, &e.to_string());
+        }
 
         result.map(|_| ()).into_lua_err()
     }
@@ -115,8 +137,16 @@ impl LuaCallContext {
         Fut: Future<Output = Result<T, E>>,
         E: std::error::Error + Send + Sync + 'static,
     {
-        tracing::debug!("[{}] lua {name}", self.event_id);
+        let span = self.span(name);
 
-        run().await.into_lua_err()
+        span.in_scope(|| tracing::debug!("[{}] lua {name}", self.event_id));
+
+        let result = run().instrument(span.clone()).await;
+
+        if let Err(e) = &result {
+            crate::tracing_context::record_error(&span, &e.to_string());
+        }
+
+        result.into_lua_err()
     }
 }

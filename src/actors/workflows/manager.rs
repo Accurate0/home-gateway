@@ -1,5 +1,6 @@
 use moka::future::Cache;
 use sqlx::{Pool, Postgres};
+use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -53,6 +54,25 @@ impl WorkflowManager {
             Err(err) => {
                 tracing::warn!("failed to read workflow override for '{slug}': {err}");
                 config_default
+            }
+        }
+    }
+
+    pub async fn enabled_overrides(&self) -> HashMap<String, bool> {
+        match self.repo.enabled_overrides().await {
+            Ok(rows) => {
+                for (slug, enabled) in &rows {
+                    self.enabled_cache
+                        .insert(slug.clone(), Some(*enabled))
+                        .await;
+                }
+
+                rows.into_iter().collect()
+            }
+            Err(err) => {
+                tracing::warn!("failed to read workflow overrides: {err}");
+
+                HashMap::new()
             }
         }
     }

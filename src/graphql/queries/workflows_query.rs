@@ -20,10 +20,15 @@ impl WorkflowsQuery {
         let settings = ctx.data::<SettingsContainer>()?;
         let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
 
+        let overrides = manager.enabled_overrides().await;
+
         let mut statuses = Vec::with_capacity(settings.workflows.len());
         for definition in settings.workflows.values() {
             let workflow = definition.body();
-            let enabled = manager.enabled(&workflow.slug, workflow.enabled).await;
+            let enabled = overrides
+                .get(&workflow.slug)
+                .copied()
+                .unwrap_or(workflow.enabled);
             statuses.push(WorkflowStatus {
                 id: workflow.slug.clone(),
                 slug: workflow.slug.clone(),
