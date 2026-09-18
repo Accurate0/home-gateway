@@ -26,10 +26,6 @@ function brief.morning()
 		end
 
 		table.insert(parts, rain)
-
-		if today.rain_probability >= 60 then
-			table.insert(parts, "Take an umbrella")
-		end
 	end
 
 	if today.wind_max_speed then
