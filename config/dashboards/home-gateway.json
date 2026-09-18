@@ -776,6 +776,122 @@
      "legendFormat": "p50 {{kind}}"
     }
    ]
+  },
+  {
+   "id": 36,
+   "type": "row",
+   "title": "Queries",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 107 },
+   "panels": []
+  },
+  {
+   "id": 37,
+   "type": "timeseries",
+   "title": "GraphQL operations by outcome",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 108 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (operation, outcome) (rate(home_gateway_graphql_operations_total_total[15m]))",
+     "legendFormat": "{{operation}} {{outcome}}"
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "type": "timeseries",
+   "title": "GraphQL operation duration (p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 108 },
+   "fieldConfig": {
+    "defaults": { "unit": "ms" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(home_gateway_graphql_operation_duration_milliseconds_bucket[15m])))",
+     "legendFormat": "{{operation}}"
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "type": "timeseries",
+   "title": "DB query rate (top 10)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 116 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (query) (rate(home_gateway_db_queries_total_total[15m])))",
+     "legendFormat": "{{query}}"
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "type": "timeseries",
+   "title": "DB query duration (p95, top 10)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 116 },
+   "fieldConfig": {
+    "defaults": { "unit": "ms" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, histogram_quantile(0.95, sum by (le, query) (rate(home_gateway_db_query_duration_milliseconds_bucket[15m]))))",
+     "legendFormat": "{{query}}"
+    }
+   ]
+  },
+  {
+   "id": 41,
+   "type": "timeseries",
+   "title": "DB query errors",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 124 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (query) (rate(home_gateway_db_queries_total_total{outcome=\"error\"}[15m])) > 0",
+     "legendFormat": "{{query}}"
+    }
+   ]
+  },
+  {
+   "id": 42,
+   "type": "timeseries",
+   "title": "Actor RPC errors",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 124 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (actor, kind) (rate(home_gateway_rpc_errors_total_total[15m]))",
+     "legendFormat": "{{actor}} {{kind}}"
+    }
+   ]
   }
  ]
 }
