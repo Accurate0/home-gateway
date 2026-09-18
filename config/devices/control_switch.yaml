@@ -3,6 +3,7 @@
   transport: zigbee
   address: "0x64028ffffe638218"
   model: ikea_e2001
+  watchdog: { timeout: 24h }
   roles:
     - type: control_switch
     - type: battery
@@ -11,6 +12,7 @@
   transport: zigbee
   address: "0x00158d008bbe0316"
   model: aqara_wxkg11lm
+  watchdog: { timeout: 24h }
   roles:
     - type: control_switch
     - type: battery

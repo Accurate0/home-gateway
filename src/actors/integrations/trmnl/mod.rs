@@ -74,9 +74,17 @@ impl Actor for TrmnlActor {
                 let devices = self.trmnl.list_devices().await?;
 
                 for device in devices {
-                    let Some((_address, settings)) = match_device(&device, registry) else {
+                    let Some((address, settings)) = match_device(&device, registry) else {
                         continue;
                     };
+
+                    crate::device_registry::last_seen::record(
+                        &self.shared_actor_state.devices,
+                        self.shared_actor_state.repos.device(),
+                        address,
+                    )
+                    .await;
+
                     let Some(voltage) = device.battery_voltage else {
                         tracing::debug!(
                             "trmnl device '{}' reported no battery voltage, skipping",

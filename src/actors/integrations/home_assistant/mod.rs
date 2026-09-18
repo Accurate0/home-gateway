@@ -118,7 +118,7 @@ impl HomeAssistantActor {
                 Some("result")
                     if payload.get("id").and_then(Value::as_u64) == Some(Self::GET_STATES_ID) =>
                 {
-                    self.seed_media_players(&payload);
+                    self.seed_media_players(&payload).await;
                 }
                 _ => {}
             }
@@ -167,13 +167,14 @@ impl HomeAssistantActor {
             last_latest_state_write.insert(entity_id.to_owned(), Instant::now());
         }
 
-        self.forward_roborock(event_id, entity_id, &state);
+        self.forward_roborock(event_id, entity_id, &state).await;
         self.forward_media_player(
             event_id,
             entity_id,
             &state,
             &data["new_state"]["attributes"],
-        );
+        )
+        .await;
 
         self.shared_actor_state
             .event_bus
@@ -184,11 +185,18 @@ impl HomeAssistantActor {
             });
     }
 
-    fn forward_roborock(&self, event_id: Uuid, entity_id: &str, state: &str) {
+    async fn forward_roborock(&self, event_id: Uuid, entity_id: &str, state: &str) {
         let Some((device_id, field)) = self.shared_actor_state.devices.roborock_entity(entity_id)
         else {
             return;
         };
+
+        crate::device_registry::last_seen::record(
+            &self.shared_actor_state.devices,
+            self.shared_actor_state.repos.device(),
+            device_id,
+        )
+        .await;
 
         let message = robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
             event_id,
@@ -206,7 +214,7 @@ impl HomeAssistantActor {
     /// `state_changed` only fires on a transition, so a freshly connected gateway
     /// knows nothing about what is already playing. The `get_states` reply fills
     /// that gap for every registered media player.
-    fn seed_media_players(&self, payload: &Value) {
+    async fn seed_media_players(&self, payload: &Value) {
         let Some(states) = payload.get("result").and_then(Value::as_array) else {
             tracing::warn!("home assistant get_states reply carried no result array");
             return;
@@ -232,11 +240,12 @@ impl HomeAssistantActor {
                 .unwrap_or_default();
 
             tracing::info!("seeding media player {entity_id} from get_states ({state})");
-            self.forward_media_player(Uuid::new_v4(), entity_id, state, &entity["attributes"]);
+            self.forward_media_player(Uuid::new_v4(), entity_id, state, &entity["attributes"])
+                .await;
         }
     }
 
-    fn forward_media_player(
+    async fn forward_media_player(
         &self,
         event_id: Uuid,
         entity_id: &str,
@@ -251,6 +260,13 @@ impl HomeAssistantActor {
         {
             return;
         }
+
+        crate::device_registry::last_seen::record(
+            &self.shared_actor_state.devices,
+            self.shared_actor_state.repos.device(),
+            entity_id,
+        )
+        .await;
 
         let message = media_player::Message::HomeAssistant(media_player::Update {
             event_id,

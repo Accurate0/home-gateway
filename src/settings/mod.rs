@@ -1152,6 +1152,45 @@ transperth:
 
         // esphome devices are not in the zigbee table
         assert!(registry.zigbee_device("apollo-mtr-1-livingroom").is_none());
+
+        // watchdog keys are `transport:device_id`, resolvable by address or id
+        assert_eq!(
+            registry.watchdog_key("0x54ef441000d2b0b0"),
+            Some("zigbee:front-door")
+        );
+        assert_eq!(
+            registry.watchdog_key("front-door"),
+            Some("zigbee:front-door")
+        );
+        assert_eq!(
+            registry.watchdog_key("apollo-plt-1-hallway"),
+            Some("esphome:hallway-plant")
+        );
+        assert_eq!(
+            registry.watchdog_key("media_player.living_room_tv"),
+            Some("home_assistant:living-room-tv")
+        );
+        assert_eq!(
+            registry.watchdog_key("roborock"),
+            Some("home_assistant:roborock")
+        );
+        assert_eq!(registry.watchdog_key("rockrobo"), Some("valetudo:valetudo"));
+        assert_eq!(
+            registry.watchdog_key("e83dc1fb1c98"),
+            Some("eink_display_firmware:living-room-epd")
+        );
+        assert_eq!(registry.watchdog_key("653VZN"), Some("trmnl:fridge-trmnl"));
+        assert_eq!(registry.watchdog_key("0xdeadbeef"), None);
+
+        // every device is watched, and under the same key the heartbeat writes
+        let watched: Vec<&String> = registry.watchdog_devices().map(|(key, _)| key).collect();
+        assert_eq!(watched.len(), 21, "every configured device has a watchdog");
+        for key in watched {
+            assert!(
+                key.contains(':'),
+                "watchdog key {key} is not in transport:device_id form"
+            );
+        }
     }
 
     #[test]

@@ -289,16 +289,13 @@ impl MqttIngest {
         Ok(())
     }
 
-    async fn record_last_seen(&self, device_key: &str) {
-        if let Err(e) = self
-            .shared_actor_state
-            .repos
-            .device()
-            .touch_last_seen(device_key)
-            .await
-        {
-            tracing::error!("failed to record last seen for {device_key}: {e}");
-        }
+    async fn record_last_seen(&self, address: &str) {
+        crate::device_registry::last_seen::record(
+            &self.shared_actor_state.devices,
+            self.shared_actor_state.repos.device(),
+            address,
+        )
+        .await;
     }
 
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
@@ -413,8 +410,6 @@ impl MqttIngest {
                     .unwrap_or(&topic)
                     .to_owned();
 
-                self.record_last_seen(&friendly_name).await;
-
                 let value = serde_json::from_slice::<Value>(&payload)?;
                 let Some(object) = value.as_object() else {
                     tracing::warn!("ignoring non-object zigbee payload on {topic}");
@@ -440,6 +435,8 @@ impl MqttIngest {
                     );
                     return Ok(());
                 };
+
+                self.record_last_seen(&address).await;
 
                 tracing::info!(
                     "received zigbee message for {friendly_name} ({}, model {})",

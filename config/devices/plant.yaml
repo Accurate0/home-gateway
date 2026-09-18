@@ -3,6 +3,7 @@
   room: hallway
   transport: esphome
   address: apollo-plt-1-hallway
+  watchdog: { timeout: 1h }
   roles:
     - type: environment
       config:

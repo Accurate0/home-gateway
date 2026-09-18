@@ -3,6 +3,7 @@
   room: living-room
   transport: eink_display_firmware
   address: "e83dc1fb1c98"
+  watchdog: { timeout: 26h }
   roles:
     - type: eink_display_firmware
       config:
@@ -26,6 +27,7 @@
   room: hallway
   transport: eink_display_firmware
   address: "94a990cf8384"
+  watchdog: { timeout: 12h }
   roles:
     - type: eink_display_firmware
       config:

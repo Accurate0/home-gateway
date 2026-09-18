@@ -3,6 +3,7 @@
   room: living-room
   transport: home_assistant
   address: media_player.living_room_tv
+  watchdog: { timeout: 12h }
   roles:
     - type: media_player
       config:

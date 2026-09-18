@@ -1,3 +1,4 @@
+pub mod last_seen;
 pub mod lua;
 
 use std::collections::{HashMap, HashSet};
@@ -40,6 +41,21 @@ pub enum Transport {
     /// Valetudo-flashed robots that publish state and accept commands directly
     /// over MQTT under `valetudo/<identifier>/...`.
     Valetudo,
+}
+
+impl std::fmt::Display for Transport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Transport::Zigbee => "zigbee",
+            Transport::Esphome => "esphome",
+            Transport::EinkDisplayFirmware => "eink_display_firmware",
+            Transport::Trmnl => "trmnl",
+            Transport::HomeAssistant => "home_assistant",
+            Transport::Valetudo => "valetudo",
+        };
+
+        f.write_str(name)
+    }
 }
 
 impl Transport {
@@ -164,6 +180,8 @@ pub struct DeviceRegistryInner {
     valetudos: HashMap<String, ValetudoSettings>,
     battery: HashMap<String, BatterySettings>,
     watchdog: HashMap<String, DeviceWatchdog>,
+    watchdog_keys: HashMap<String, String>,
+    watchdog_keys_by_id: HashMap<String, String>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
 
@@ -226,9 +244,16 @@ impl DeviceRegistry {
                 reg.rooms.insert(address.clone(), room);
             }
 
+            let watchdog_key = format!("{transport}:{id}");
+
+            reg.watchdog_keys
+                .insert(address.clone(), watchdog_key.clone());
+
+            reg.watchdog_keys_by_id
+                .insert(id.clone(), watchdog_key.clone());
+
             if let Some(watchdog) = watchdog {
-                reg.watchdog
-                    .insert(address.clone(), watchdog.resolve(notify)?);
+                reg.watchdog.insert(watchdog_key, watchdog.resolve(notify)?);
             }
 
             for role in roles {
@@ -714,6 +739,13 @@ impl DeviceRegistryInner {
 
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
         self.watchdog.iter()
+    }
+
+    pub fn watchdog_key(&self, address_or_id: &str) -> Option<&str> {
+        self.watchdog_keys
+            .get(address_or_id)
+            .or_else(|| self.watchdog_keys_by_id.get(address_or_id))
+            .map(String::as_str)
     }
 
     pub fn lights(&self) -> impl Iterator<Item = (&String, &String)> {

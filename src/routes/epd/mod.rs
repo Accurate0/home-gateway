@@ -170,7 +170,14 @@ pub async fn config(
         "epd config requested"
     );
 
-    if !registered {
+    if registered {
+        crate::device_registry::last_seen::record(
+            &state.devices,
+            state.repos.device(),
+            &request.device_id,
+        )
+        .await;
+    } else {
         tracing::warn!(
             device_id = %request.device_id,
             "epd config request from unregistered display, add it to config/devices/eink_display.yaml"

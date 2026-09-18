@@ -22,6 +22,7 @@
   transport: zigbee
   address: "0x54ef441000d2b1ba"
   model: aqara_mccgq12lm
+  watchdog: { timeout: 6h }
   roles:
     - type: door
       config:

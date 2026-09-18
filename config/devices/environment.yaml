@@ -4,6 +4,7 @@
   transport: zigbee
   address: "0x00158d008b8798a7"
   model: lumi_wsdcgq11lm
+  watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: living-room, name: Living Room }
@@ -15,6 +16,7 @@
   transport: zigbee
   address: "0x00158d008b879b53"
   model: lumi_wsdcgq11lm
+  watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: bathroom, name: Bathroom }
@@ -26,6 +28,7 @@
   transport: zigbee
   address: "0xb0c7defffef6a9be"
   model: ikea_e2112
+  watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: bedroom, name: Bedroom }
@@ -36,6 +39,7 @@
   transport: zigbee
   address: "0x54ef441000ee2ca3"
   model: aqara_wsdcgq12lm
+  watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: outdoor, name: Outdoor }
