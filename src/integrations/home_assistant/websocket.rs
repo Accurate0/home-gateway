@@ -147,9 +147,7 @@ async fn read_events(
                 return Err(anyhow::anyhow!("home assistant rejected the access token"));
             }
             Some("event") => dispatch_event(&payload),
-            Some("result")
-                if payload.get("id").and_then(Value::as_u64) == Some(GET_STATES_ID) =>
-            {
+            Some("result") if payload.get("id").and_then(Value::as_u64) == Some(GET_STATES_ID) => {
                 dispatch_states(&payload);
             }
             _ => {}

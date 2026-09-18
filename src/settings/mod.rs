@@ -1295,12 +1295,9 @@ transperth:
         let presence = registry
             .zigbee_device("0x54ef441000dbc81c")
             .expect("closet presence is a zigbee device");
-        let decoder = crate::lua::LuaDecoder::load(
-            "zigbee",
-            &settings.model_sources.zigbee,
-            &settings.lua,
-        )
-        .expect("zigbee decoder");
+        let decoder =
+            crate::lua::LuaDecoder::load("zigbee", &settings.model_sources.zigbee, &settings.lua)
+                .expect("zigbee decoder");
         let reading = presence
             .profile
             .decode(

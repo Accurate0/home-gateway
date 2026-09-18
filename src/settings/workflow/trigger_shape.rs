@@ -3,9 +3,8 @@ use std::collections::BTreeMap;
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::variables::{
     CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
-    HomeAssistantVariables, MediaPlayerVariables, ModeVariables,
-    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
-    WeatherVariables, WoolworthsVariables,
+    HomeAssistantVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
+    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
 

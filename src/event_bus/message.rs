@@ -5,9 +5,8 @@ use super::playback::PlaybackState;
 use super::reading::SensorReading;
 use super::variables::{
     CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
-    HomeAssistantVariables, MediaPlayerVariables, ModeVariables,
-    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
-    WeatherVariables, WoolworthsVariables,
+    HomeAssistantVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
+    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;

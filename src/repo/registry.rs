@@ -1,8 +1,8 @@
 use crate::repo::{
     AdhocRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo, EnvironmentRepo,
-    FuelWatchRepo, HolidayRepo, HomeAssistantRepo, IntentRepo, LightRepo,
-    MediaPlayerRepo, MetricRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo,
-    UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
+    FuelWatchRepo, HolidayRepo, HomeAssistantRepo, IntentRepo, LightRepo, MediaPlayerRepo,
+    MetricRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo,
+    WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;

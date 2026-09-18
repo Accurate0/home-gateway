@@ -109,7 +109,13 @@ impl HomeAssistantIngest {
             };
 
         if let Err(e) = self
-            .save_to_db(event_id, entity_id, &entity_state, &entity, write_latest_state)
+            .save_to_db(
+                event_id,
+                entity_id,
+                &entity_state,
+                &entity,
+                write_latest_state,
+            )
             .await
         {
             tracing::error!("failed to persist home assistant state update: {e}");
@@ -119,8 +125,14 @@ impl HomeAssistantIngest {
                 .insert(entity_id.to_owned(), Instant::now());
         }
 
-        self.forward_decoded(&state.decoder, event_id, entity_id, &entity_state, attributes)
-            .await;
+        self.forward_decoded(
+            &state.decoder,
+            event_id,
+            entity_id,
+            &entity_state,
+            attributes,
+        )
+        .await;
 
         self.shared_actor_state
             .event_bus
