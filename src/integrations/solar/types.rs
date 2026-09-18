@@ -37,16 +37,3 @@ pub struct GenerationHistory {
     pub temperature: Option<f64>,
     pub timestamp: i64,
 }
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SolarHistoryResponse {
-    pub history: Vec<GenerationHistory>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SolarHistoryTwoDayResponse {
-    pub today: Vec<GenerationHistory>,
-    pub yesterday: Vec<GenerationHistory>,
-}

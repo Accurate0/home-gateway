@@ -116,7 +116,15 @@ impl Actor for AdhocTaskActor {
         })
     }
 
-    #[tracing::instrument(parent = None, name = "adhoc-task-actor", skip(self, myself, message, _state))]
+    #[tracing::instrument(
+        parent = None,
+        name = "adhoc-task-actor",
+        skip(self, myself, message, _state),
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,
@@ -142,6 +150,9 @@ impl Actor for AdhocTaskActor {
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} fired but is no longer registered");
+                        crate::tracing_context::record_current_error(&format!(
+                            "adhoc cron task {name} is no longer registered"
+                        ));
                     }
                 }
             }
@@ -153,6 +164,9 @@ impl Actor for AdhocTaskActor {
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} is no longer registered");
+                        crate::tracing_context::record_current_error(&format!(
+                            "adhoc cron task {name} is no longer registered"
+                        ));
                     }
                 }
             }

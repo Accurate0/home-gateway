@@ -143,7 +143,15 @@ impl Actor for SolarActor {
         Ok(Vec::new())
     }
 
-    #[tracing::instrument(parent = None, name = "solar-actor", skip(self, _myself, message, state))]
+    #[tracing::instrument(
+        parent = None,
+        name = "solar-actor",
+        skip(self, _myself, message, state),
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
@@ -170,6 +178,7 @@ impl Actor for SolarActor {
                     }
                     Err(e) => {
                         tracing::error!("error polling solar data: {e}");
+                        crate::tracing_context::record_current_error(&e.to_string());
                         crate::metrics::record_integration_poll(
                             "solar",
                             "error",

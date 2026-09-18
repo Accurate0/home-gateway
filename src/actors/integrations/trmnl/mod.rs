@@ -17,6 +17,53 @@ pub struct TrmnlActor {
 
 impl TrmnlActor {
     pub const NAME: &str = "trmnl";
+
+    async fn check_battery(&self) -> Result<(), ractor::ActorProcessingErr> {
+        let registry = self.shared_actor_state.devices.trmnl_devices();
+        let devices = self.trmnl.list_devices().await?;
+
+        for device in devices {
+            let Some((address, settings)) = match_device(&device, registry) else {
+                continue;
+            };
+
+            crate::device_registry::last_seen::record(
+                &self.shared_actor_state.devices,
+                self.shared_actor_state.repos.device(),
+                address,
+            )
+            .await;
+
+            let Some(voltage) = device.battery_voltage else {
+                tracing::debug!(
+                    "trmnl device '{}' reported no battery voltage, skipping",
+                    settings.id
+                );
+                continue;
+            };
+
+            let device_id = settings.id.clone();
+            let name = settings.name.clone();
+            let kind = "trmnl";
+
+            self.shared_actor_state
+                .repos
+                .eink()
+                .store_battery(&device_id, &name, voltage, None)
+                .await?;
+
+            crate::actors::system::battery::BatteryActor::report(
+                device_id,
+                name,
+                kind.to_owned(),
+                Some(voltage),
+                None,
+                None,
+            );
+        }
+
+        Ok(())
+    }
 }
 
 fn normalize(value: &str) -> String {
@@ -62,6 +109,15 @@ impl Actor for TrmnlActor {
         Ok(())
     }
 
+    #[tracing::instrument(
+        parent = None,
+        name = "trmnl-actor",
+        skip(self, _myself, message, _state),
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
@@ -70,50 +126,29 @@ impl Actor for TrmnlActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             TrmnlMessage::CheckBattery => {
-                let registry = self.shared_actor_state.devices.trmnl_devices();
-                let devices = self.trmnl.list_devices().await?;
+                let started = std::time::Instant::now();
 
-                for device in devices {
-                    let Some((address, settings)) = match_device(&device, registry) else {
-                        continue;
-                    };
-
-                    crate::device_registry::last_seen::record(
-                        &self.shared_actor_state.devices,
-                        self.shared_actor_state.repos.device(),
-                        address,
-                    )
-                    .await;
-
-                    let Some(voltage) = device.battery_voltage else {
-                        tracing::debug!(
-                            "trmnl device '{}' reported no battery voltage, skipping",
-                            settings.id
+                match self.check_battery().await {
+                    Ok(()) => {
+                        crate::metrics::record_integration_poll(
+                            "trmnl",
+                            "success",
+                            started.elapsed(),
                         );
-                        continue;
-                    };
-
-                    let device_id = settings.id.clone();
-                    let name = settings.name.clone();
-                    let kind = "trmnl";
-
-                    self.shared_actor_state
-                        .repos
-                        .eink()
-                        .store_battery(&device_id, &name, voltage, None)
-                        .await?;
-
-                    crate::actors::system::battery::BatteryActor::report(
-                        device_id,
-                        name,
-                        kind.to_owned(),
-                        Some(voltage),
-                        None,
-                        None,
-                    );
+                    }
+                    Err(e) => {
+                        tracing::error!("error checking trmnl batteries: {e}");
+                        crate::tracing_context::record_current_error(&e.to_string());
+                        crate::metrics::record_integration_poll(
+                            "trmnl",
+                            "error",
+                            started.elapsed(),
+                        );
+                    }
                 }
             }
         }
+
         Ok(())
     }
 }

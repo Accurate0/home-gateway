@@ -11,7 +11,7 @@ use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::reddit::Reddit;
 use home_gateway::integrations::s3::S3;
 use home_gateway::integrations::willyweather::WillyWeather;
-use home_gateway::settings::SettingsContainer;
+use home_gateway::settings::{HttpClientKind, SettingsContainer};
 use home_gateway::state::{AppState, HandleRegistry};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use sqlx::{Pool, Postgres};
@@ -89,7 +89,7 @@ impl Harness {
             feature_flag_client.clone(),
             devices.clone(),
             settings.clone(),
-            Reddit::new(),
+            Reddit::new(settings.http.clients.timeout_for(HttpClientKind::Reddit)),
         );
 
         let event_bus = EventBus::default();

@@ -112,7 +112,16 @@ impl Actor for WatchdogActor {
         Ok(())
     }
 
-    #[tracing::instrument(parent = None, name = "watchdog-actor", skip(self, _myself, message, _state), level = Level::DEBUG)]
+    #[tracing::instrument(
+        parent = None,
+        name = "watchdog-actor",
+        skip(self, _myself, message, _state),
+        level = Level::DEBUG,
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
@@ -123,6 +132,7 @@ impl Actor for WatchdogActor {
             WatchdogMessage::Check => {
                 if let Err(e) = self.check().await {
                     tracing::error!("watchdog check failed: {e}");
+                    crate::tracing_context::record_current_error(&e.to_string());
                 }
             }
         }

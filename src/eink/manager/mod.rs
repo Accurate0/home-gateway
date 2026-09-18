@@ -254,9 +254,11 @@ impl EinkDisplayManager {
             sleep_label: plan.frame.sleep_label.clone(),
         };
 
-        let packed = tokio::task::spawn_blocking(move || frames.run(&source, &frame))
-            .await
-            .map_err(|e| anyhow::anyhow!("join error: {e}"))??;
+        let span = tracing::info_span!("eink.frame.render", image_key = %plan.image_key);
+        let packed =
+            tokio::task::spawn_blocking(move || span.in_scope(|| frames.run(&source, &frame)))
+                .await
+                .map_err(|e| anyhow::anyhow!("join error: {e}"))??;
 
         Ok(packed)
     }

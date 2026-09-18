@@ -9,6 +9,7 @@ use reqwest::{
 };
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
+use std::time::Duration;
 use tracing::instrument;
 use types::{
     LoginData, LoginRequest, LoginResponse, PlantDetailsByPowerStationIdResponse, SavedSolarData,
@@ -48,7 +49,7 @@ pub struct GoodWeSemsAPI {
 }
 
 impl GoodWeSemsAPI {
-    pub fn new(db: Pool<Postgres>, settings: &SolarSettings) -> Option<Self> {
+    pub fn new(db: Pool<Postgres>, settings: &SolarSettings, timeout: Duration) -> Option<Self> {
         let username = settings.goodwe_username.as_deref().map(str::trim)?;
         let password = settings.goodwe_password.as_deref().map(str::trim)?;
         let powerstation_id = settings.goodwe_powerstation_id.as_deref().map(str::trim)?;
@@ -64,6 +65,7 @@ impl GoodWeSemsAPI {
 
         let client = match reqwest::ClientBuilder::new()
             .default_headers(headers)
+            .timeout(timeout)
             .build()
             .map_err(HttpCreationError::from)
             .and_then(wrap_client_in_middleware_no_tracing)

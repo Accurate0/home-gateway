@@ -253,6 +253,8 @@ impl MqttIngest {
                     "failed to decode zigbee payload for {address} with model {}: {e}",
                     device.profile.slug
                 );
+                crate::tracing_context::record_current_error(&e.to_string());
+
                 return Ok(());
             }
         };
@@ -283,6 +285,7 @@ impl MqttIngest {
 
             if let Err(e) = self.shared_actor_state.repos.metric().record(&record).await {
                 tracing::error!("failed to save device metric for {address}: {e}");
+                crate::tracing_context::record_current_error(&e.to_string());
             }
         }
 
@@ -484,10 +487,13 @@ impl Worker for MqttIngest {
             crate::tracing_setup::MQTT_INGEST_SPAN,
             topic = %topic,
             topic_kind,
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
         );
 
-        if let Err(e) = Self::handle(self, msg).instrument(span).await {
+        if let Err(e) = Self::handle(self, msg).instrument(span.clone()).await {
             tracing::error!("error while handling message: {e}");
+            crate::tracing_context::record_error(&span, &e.to_string());
 
             let _errored = tracing::error_span!(
                 parent: None,

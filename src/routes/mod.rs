@@ -8,7 +8,6 @@ pub mod lua;
 pub mod metrics;
 pub mod push;
 pub mod schema;
-pub mod solar;
 pub mod vars;
 pub mod weather;
 pub mod workflow;

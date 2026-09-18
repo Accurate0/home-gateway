@@ -59,18 +59,30 @@ impl FramePipeline {
     }
 
     pub fn run(&self, source: &[u8], ctx: &FrameContext) -> anyhow::Result<Vec<u8>> {
-        let mut img = image::load_from_memory(source)?.to_rgb8();
+        let mut img = tracing::info_span!("eink.frame.decode", bytes = source.len())
+            .in_scope(|| image::load_from_memory(source))?
+            .to_rgb8();
 
         for step in &self.steps {
             if step.fingerprint(ctx).is_none() {
                 continue;
             }
 
-            step.apply(ctx, &mut img)
-                .map_err(|e| anyhow::anyhow!("eink frame step `{}` failed: {e}", step.name()))?;
+            tracing::info_span!(
+                "eink.frame.step",
+                otel.name = format!("eink step: {}", step.name()),
+                step = step.name(),
+            )
+            .in_scope(|| step.apply(ctx, &mut img))
+            .map_err(|e| anyhow::anyhow!("eink frame step `{}` failed: {e}", step.name()))?;
         }
 
-        self.encoder.encode(ctx, &mut img)
+        tracing::info_span!(
+            "eink.frame.encode",
+            otel.name = format!("eink encode: {}", self.encoder.name()),
+            encoder = self.encoder.name(),
+        )
+        .in_scope(|| self.encoder.encode(ctx, &mut img))
     }
 }
 

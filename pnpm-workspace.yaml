@@ -1,6 +1,5 @@
 packages:
   - web
-  - solar-web
   - eink-display-web
   - packages/*
 

@@ -53,7 +53,7 @@ pub async fn build(
         feature_flag_client.clone(),
         storage.devices.clone(),
         settings.clone(),
-        Reddit::new(),
+        Reddit::new(http.timeout_for(HttpClientKind::Reddit)),
     );
 
     let home_assistant = HomeAssistant::from_settings(
@@ -86,10 +86,13 @@ pub async fn build(
         .map(|fuelwatch| FuelWatch::new(fuelwatch, http.timeout_for(HttpClientKind::FuelWatch)))
         .transpose()?;
 
-    let goodwe = settings
-        .solar
-        .as_ref()
-        .and_then(|solar| GoodWeSemsAPI::new(pool.clone(), solar));
+    let goodwe = settings.solar.as_ref().and_then(|solar| {
+        GoodWeSemsAPI::new(
+            pool.clone(),
+            solar,
+            http.timeout_for(HttpClientKind::GoodWe),
+        )
+    });
 
     let oauth = settings
         .auth

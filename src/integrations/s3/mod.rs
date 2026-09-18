@@ -50,6 +50,7 @@ impl S3 {
         Ok(Self { bucket })
     }
 
+    #[tracing::instrument(skip_all, name = "s3.get_object", fields(key = %key), err)]
     pub async fn get_object(&self, key: &str) -> anyhow::Result<Vec<u8>> {
         let response = self.bucket.get_object(key).await?;
         let status = response.status_code();
@@ -62,6 +63,7 @@ impl S3 {
     /// Conditional GET: if the object's etag matches `etag`, the server returns
     /// 304 and we report [`OptionalObjectResponse::ExistingObjectIsValid`]
     /// without re-downloading the body.
+    #[tracing::instrument(skip_all, name = "s3.get_object_optional", fields(key = %key), err)]
     pub async fn get_object_optional(
         &self,
         key: &str,
@@ -90,6 +92,7 @@ impl S3 {
         }
     }
 
+    #[tracing::instrument(skip_all, name = "s3.list_objects", fields(prefix = %prefix), err)]
     pub async fn list_objects(&self, prefix: &str) -> anyhow::Result<Vec<String>> {
         let results = self.bucket.list(prefix.to_owned(), None).await?;
         Ok(results
@@ -100,6 +103,7 @@ impl S3 {
             .collect())
     }
 
+    #[tracing::instrument(skip_all, name = "s3.put_object", fields(key = %key, bytes = payload.len()), err)]
     pub async fn put_object(
         &self,
         key: &str,
@@ -120,6 +124,7 @@ impl S3 {
 
     /// Returns the object's user metadata (the `x-amz-meta-*` values) via a HEAD
     /// request, or `None` when the object does not exist (404).
+    #[tracing::instrument(skip_all, name = "s3.head_object", fields(key = %key), err)]
     pub async fn get_object_metadata(
         &self,
         key: &str,
@@ -132,6 +137,12 @@ impl S3 {
         }
     }
 
+    #[tracing::instrument(
+        skip_all,
+        name = "s3.put_object_with_metadata",
+        fields(key = %key, bytes = payload.len()),
+        err
+    )]
     pub async fn put_object_with_metadata(
         &self,
         key: &str,

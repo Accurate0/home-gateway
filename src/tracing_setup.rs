@@ -275,6 +275,7 @@ pub fn init() -> SamplingControl {
 
             tracing_subscriber::registry()
                 .with(filter)
+                .with(crate::span_metrics::DbQueryLayer)
                 .with(tracing_subscriber::fmt::layer().with_filter(console_filter()))
                 .with(tracing_opentelemetry::layer().with_tracer(tracer))
                 .init();
@@ -282,6 +283,7 @@ pub fn init() -> SamplingControl {
         _ => {
             tracing_subscriber::registry()
                 .with(filter)
+                .with(crate::span_metrics::DbQueryLayer)
                 .with(tracing_subscriber::fmt::layer().with_filter(console_filter()))
                 .init();
         }

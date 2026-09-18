@@ -20,7 +20,6 @@ pub const RESERVED_PREFIXES: &[&str] = &[
     "/metrics",
     "/push",
     "/schema",
-    "/solar",
     "/weather",
     "/workflow",
 ];

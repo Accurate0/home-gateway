@@ -39,7 +39,9 @@ pub async fn resolve_partial_window(
     let next = s3.get_object(&packed_cache_key(new_hash)?).await.ok();
 
     let window = match (previous.as_deref(), next.as_deref()) {
-        (Some(previous), Some(next)) => dirty_window(previous, next),
+        (Some(previous), Some(next)) => {
+            tracing::info_span!("eink.dirty_window").in_scope(|| dirty_window(previous, next))
+        }
         _ => None,
     };
 

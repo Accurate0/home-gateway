@@ -45,6 +45,7 @@ impl CronActor {
             }
             Err(e) => {
                 tracing::error!("cron trigger '{name}' has no next occurrence: {e}");
+                crate::tracing_context::record_current_error(&e.to_string());
             }
         }
     }
@@ -77,7 +78,15 @@ impl Actor for CronActor {
         Ok(())
     }
 
-    #[tracing::instrument(parent = None, name = "cron-actor", skip(self, myself, message, _state))]
+    #[tracing::instrument(
+        parent = None,
+        name = "cron-actor",
+        skip(self, myself, message, _state),
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

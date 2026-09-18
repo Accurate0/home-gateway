@@ -7,6 +7,8 @@ clients:
     timeout: 30s
   fuelwatch:
     timeout: 30s
+  goodwe:
+    timeout: 30s
   holidays:
     timeout: 30s
   home_assistant:
@@ -16,6 +18,8 @@ clients:
   oauth:
     timeout: 30s
   push:
+    timeout: 30s
+  reddit:
     timeout: 30s
   transperth:
     timeout: 30s

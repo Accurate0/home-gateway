@@ -53,6 +53,11 @@ struct Instruments {
     lua_duration: Histogram<f64>,
     lua_memory: Histogram<u64>,
     lua_vm_setup_duration: Histogram<f64>,
+    rpc_errors_total: Counter<u64>,
+    db_queries_total: Counter<u64>,
+    db_query_duration: Histogram<f64>,
+    graphql_operations_total: Counter<u64>,
+    graphql_operation_duration: Histogram<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -163,8 +168,67 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
                 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0,
             ])
             .build(),
+        rpc_errors_total: meter
+            .u64_counter("home_gateway_rpc_errors_total")
+            .with_description("Actor rpc failures by target actor and kind")
+            .build(),
+        db_queries_total: meter
+            .u64_counter("home_gateway_db_queries_total")
+            .with_description("Repository queries by query name and outcome")
+            .build(),
+        db_query_duration: meter
+            .f64_histogram("home_gateway_db_query_duration_milliseconds")
+            .with_description("Repository query duration in milliseconds by query name and outcome")
+            .with_boundaries(vec![
+                0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0,
+            ])
+            .build(),
+        graphql_operations_total: meter
+            .u64_counter("home_gateway_graphql_operations_total")
+            .with_description("GraphQL operations by operation name and outcome")
+            .build(),
+        graphql_operation_duration: meter
+            .f64_histogram("home_gateway_graphql_operation_duration_milliseconds")
+            .with_description(
+                "GraphQL operation duration in milliseconds by operation name and outcome",
+            )
+            .with_boundaries(vec![
+                1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0,
+            ])
+            .build(),
     }
 });
+
+pub fn record_rpc_error(actor: &'static str, kind: &'static str) {
+    INSTRUMENTS.rpc_errors_total.add(
+        1,
+        &[KeyValue::new("actor", actor), KeyValue::new("kind", kind)],
+    );
+}
+
+pub fn record_db_query(query: &'static str, outcome: &'static str, elapsed: Duration) {
+    let labels = [
+        KeyValue::new("query", query),
+        KeyValue::new("outcome", outcome),
+    ];
+
+    INSTRUMENTS.db_queries_total.add(1, &labels);
+    INSTRUMENTS
+        .db_query_duration
+        .record(elapsed.as_secs_f64() * 1000.0, &labels);
+}
+
+pub fn record_graphql_operation(operation: String, outcome: &'static str, elapsed: Duration) {
+    let labels = [
+        KeyValue::new("operation", operation),
+        KeyValue::new("outcome", outcome),
+    ];
+
+    INSTRUMENTS.graphql_operations_total.add(1, &labels);
+    INSTRUMENTS
+        .graphql_operation_duration
+        .record(elapsed.as_secs_f64() * 1000.0, &labels);
+}
 
 pub fn record_actor_restart(actor: &str, reason: &'static str) {
     INSTRUMENTS.actor_restarts_total.add(

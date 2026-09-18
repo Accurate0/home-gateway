@@ -30,19 +30,12 @@ pub enum RedditError {
     TooLarge(usize),
 }
 
-impl Default for Reddit {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Reddit {
     const BASE_URL: &str = "https://www.reddit.com";
     pub const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
-    const TIMEOUT: Duration = Duration::from_secs(10);
     const MAX_IMAGE_BYTES: usize = 20 * 1024 * 1024;
 
-    pub fn new() -> Self {
+    pub fn new(timeout: Duration) -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(http::header::USER_AGENT, Self::USER_AGENT.parse().unwrap());
 
@@ -50,7 +43,7 @@ impl Reddit {
             client: wrap_client_in_middleware_no_tracing(
                 reqwest::ClientBuilder::new()
                     .default_headers(headers)
-                    .timeout(Self::TIMEOUT)
+                    .timeout(timeout)
                     .build()
                     .unwrap(),
             )

@@ -10,8 +10,6 @@
     "build:eink": "pnpm --filter eink-display-web build",
     "dev:web": "pnpm --filter web dev",
     "dev:eink": "pnpm --filter eink-display-web dev",
-    "lint": "pnpm -r lint",
-    "build:solar": "pnpm --filter solar-web build",
-    "dev:solar": "pnpm --filter solar-web dev"
+    "lint": "pnpm -r lint"
   }
 }

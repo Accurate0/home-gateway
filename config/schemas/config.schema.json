@@ -246,6 +246,9 @@
         "fuelwatch": {
           "$ref": "#/$defs/HttpClientOverride"
         },
+        "goodwe": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
         "holidays": {
           "$ref": "#/$defs/HttpClientOverride"
         },
@@ -259,6 +262,9 @@
           "$ref": "#/$defs/HttpClientOverride"
         },
         "push": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
+        "reddit": {
           "$ref": "#/$defs/HttpClientOverride"
         },
         "transperth": {

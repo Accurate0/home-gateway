@@ -1,6 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
 use home_gateway::integrations::solar::queries::{
-    SolarQueryError, current, history_last_two_days, history_since, statistics,
+    SolarQueryError, current, history_since, statistics,
 };
 use pretty_assertions::assert_eq;
 use sqlx::{Pool, Postgres};
@@ -29,7 +29,11 @@ async fn insert(db: &Pool<Postgres>, at: DateTime<Utc>, kwh: f64, uv: Option<f64
 async fn history_buckets_align_to_five_minute_utc_boundaries() {
     let db = fresh_database().await.pool;
 
-    let base = Utc.with_ymd_and_hms(2026, 3, 1, 4, 2, 30).unwrap();
+    let yesterday = (Utc::now() - chrono::Duration::days(1)).timestamp();
+    let bucket = Utc
+        .timestamp_opt(yesterday - yesterday.rem_euclid(300), 0)
+        .unwrap();
+    let base = bucket + chrono::Duration::seconds(150);
     insert(&db, base, 100.0, Some(5.0)).await;
     insert(&db, base + chrono::Duration::minutes(1), 200.0, Some(7.0)).await;
 
@@ -40,42 +44,30 @@ async fn history_buckets_align_to_five_minute_utc_boundaries() {
     assert_eq!(history.len(), 1);
     let point = &history[0];
 
-    assert_eq!(
-        point.at,
-        Utc.with_ymd_and_hms(2026, 3, 1, 4, 0, 0)
-            .unwrap()
-            .naive_utc()
-    );
+    assert_eq!(point.at, bucket.naive_utc());
     assert_eq!(point.wh, 150.0);
     assert_eq!(point.uv_level, Some(6.0));
     assert_eq!(point.timestamp, point.at.and_utc().timestamp_millis());
 }
 
 #[tokio::test]
-async fn two_day_history_splits_on_perth_local_date() {
+async fn history_is_clamped_to_the_window() {
     let db = fresh_database().await.pool;
 
-    let now_perth = Utc::now().with_timezone(&chrono_tz::Australia::Perth);
+    let now = Utc::now();
+    insert(&db, now - chrono::Duration::days(60), 500.0, None).await;
+    insert(&db, now - chrono::Duration::days(1), 100.0, None).await;
 
-    let today_local_morning = now_perth
-        .date_naive()
-        .and_hms_opt(2, 0, 0)
-        .unwrap()
-        .and_local_timezone(chrono_tz::Australia::Perth)
-        .unwrap()
-        .with_timezone(&Utc);
+    let history = history_since(&db, now - chrono::Duration::days(365))
+        .await
+        .unwrap();
 
-    let yesterday_local_morning = today_local_morning - chrono::Duration::days(1);
-
-    insert(&db, today_local_morning, 100.0, None).await;
-    insert(&db, yesterday_local_morning, 50.0, None).await;
-
-    let (today, yesterday) = history_last_two_days(&db).await.unwrap();
-
-    assert_eq!(today.len(), 1, "expected one bucket today");
-    assert_eq!(today[0].wh, 100.0);
-    assert_eq!(yesterday.len(), 1, "expected one bucket yesterday");
-    assert_eq!(yesterday[0].wh, 50.0);
+    assert_eq!(
+        history.len(),
+        1,
+        "a since older than the window must be clamped"
+    );
+    assert_eq!(history[0].wh, 100.0);
 }
 
 #[tokio::test]

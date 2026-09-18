@@ -12,6 +12,8 @@ pub struct HttpClientsSettings {
     #[serde(default)]
     pub fuelwatch: HttpClientOverride,
     #[serde(default)]
+    pub goodwe: HttpClientOverride,
+    #[serde(default)]
     pub holidays: HttpClientOverride,
     #[serde(default)]
     pub home_assistant: HttpClientOverride,
@@ -21,6 +23,8 @@ pub struct HttpClientsSettings {
     pub oauth: HttpClientOverride,
     #[serde(default)]
     pub push: HttpClientOverride,
+    #[serde(default)]
+    pub reddit: HttpClientOverride,
     #[serde(default)]
     pub transperth: HttpClientOverride,
     #[serde(default)]
@@ -40,11 +44,13 @@ impl HttpClientsSettings {
         let client = match kind {
             HttpClientKind::Bom => self.bom,
             HttpClientKind::FuelWatch => self.fuelwatch,
+            HttpClientKind::GoodWe => self.goodwe,
             HttpClientKind::Holidays => self.holidays,
             HttpClientKind::HomeAssistant => self.home_assistant,
             HttpClientKind::Jellyfin => self.jellyfin,
             HttpClientKind::OAuth => self.oauth,
             HttpClientKind::Push => self.push,
+            HttpClientKind::Reddit => self.reddit,
             HttpClientKind::Transperth => self.transperth,
             HttpClientKind::Trmnl => self.trmnl,
             HttpClientKind::WillyWeather => self.willyweather,

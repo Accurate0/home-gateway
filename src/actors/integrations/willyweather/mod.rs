@@ -103,7 +103,15 @@ impl Actor for WillyWeatherActor {
         Ok(settings)
     }
 
-    #[tracing::instrument(parent = None, name = "willyweather-actor", skip(self, _myself, message, settings))]
+    #[tracing::instrument(
+        parent = None,
+        name = "willyweather-actor",
+        skip(self, _myself, message, settings),
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
@@ -122,6 +130,7 @@ impl Actor for WillyWeatherActor {
                         }
                         Err(e) => {
                             tracing::error!("error polling willyweather for {alias}: {e}");
+                            crate::tracing_context::record_current_error(&e.to_string());
                             failed = true;
                         }
                     }

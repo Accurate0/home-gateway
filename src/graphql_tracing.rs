@@ -111,11 +111,19 @@ impl Extension for TracingExtension {
             otel.status_message = tracing::field::Empty,
         );
 
+        let started = std::time::Instant::now();
         let response = next.run(ctx, operation_name).instrument(span.clone()).await;
 
-        if let Some(error) = response.errors.first() {
-            crate::tracing_context::record_error(&span, &error.message);
-        }
+        let outcome = match response.errors.first() {
+            Some(error) => {
+                crate::tracing_context::record_error(&span, &error.message);
+
+                "error"
+            }
+            None => "success",
+        };
+
+        crate::metrics::record_graphql_operation(operation.to_owned(), outcome, started.elapsed());
 
         response
     }

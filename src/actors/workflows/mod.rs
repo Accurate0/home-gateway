@@ -726,6 +726,8 @@ impl Worker for WorkflowWorker {
                     "workflow-worker",
                     workflow = workflow.name,
                     event_id = %event_id,
+                    otel.status_code = tracing::field::Empty,
+                    otel.status_message = tracing::field::Empty,
                 );
                 crate::tracing_context::set_parent(&span, traceparent.as_deref());
 
@@ -734,11 +736,12 @@ impl Worker for WorkflowWorker {
                         .await
                         .map_err(anyhow::Error::from)
                 })
-                .instrument(span)
+                .instrument(span.clone())
                 .await;
 
                 if let Err(e) = result {
                     tracing::error!("[{event_id}] workflow execution failed: {e}");
+                    crate::tracing_context::record_error(&span, &e.to_string());
                 }
             }
         }

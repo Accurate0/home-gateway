@@ -91,7 +91,7 @@ pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQ
 
 pub const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(30);
 
-pub fn clamp_since(since: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
+fn clamp_since(since: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
     since.max(now - MAX_HISTORY_WINDOW)
 }
 
@@ -99,6 +99,8 @@ pub async fn history_since(
     db: &Pool<Postgres>,
     since: DateTime<Utc>,
 ) -> Result<Vec<GenerationHistory>, SolarQueryError> {
+    let since = clamp_since(since, Utc::now());
+
     let history = SolarRepo::new(db.clone())
         .buckets_since(since)
         .await?
@@ -117,38 +119,6 @@ pub async fn history_since(
         .collect();
 
     Ok(history)
-}
-
-pub async fn history_last_two_days(
-    db: &Pool<Postgres>,
-) -> Result<(Vec<GenerationHistory>, Vec<GenerationHistory>), SolarQueryError> {
-    let today_in_perth = Utc::now()
-        .with_timezone(&chrono_tz::Australia::Perth)
-        .date_naive();
-
-    let (today, yesterday) = SolarRepo::new(db.clone())
-        .buckets_last_two_days()
-        .await?
-        .into_iter()
-        .filter_map(|r| {
-            let bucket_time = r.bucket_time?;
-
-            Some(GenerationHistory {
-                uv_level: r.avg_uv_level,
-                temperature: r.avg_temp,
-                at: bucket_time.naive_utc(),
-                wh: r.avg_wh?,
-                timestamp: bucket_time.timestamp_millis(),
-            })
-        })
-        .partition(|r| {
-            r.at.and_utc()
-                .with_timezone(&chrono_tz::Australia::Perth)
-                .date_naive()
-                == today_in_perth
-        });
-
-    Ok((today, yesterday))
 }
 
 #[cfg(test)]

@@ -21,6 +21,7 @@ pub mod repo;
 pub mod routes;
 pub mod serde_lenient;
 pub mod settings;
+pub mod span_metrics;
 pub mod startup;
 pub mod state;
 pub mod templating;

@@ -193,10 +193,6 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         .route("/weather/forecast", get(routes::weather::forecast))
         .route_layer(from_fn_with_state(state.clone(), auth_middleware))
         .layer(OtelAxumLayer::default())
-        .route("/solar/current", get(routes::solar::current))
-        .route("/solar/history", get(routes::solar::history))
-        .route("/solar/history/range", get(routes::solar::history_since))
-        .route("/solar/health", get(routes::solar::health))
         .route("/graphql/ws", get(graphql_ws_handler))
         .route("/health", get(health))
         .route("/health/actors", get(actor_health))
@@ -239,10 +235,6 @@ mod tests {
         "/admin/keys/{id}",
         "/admin/keys/{id}/regenerate",
         "/weather/forecast",
-        "/solar/current",
-        "/solar/history",
-        "/solar/history/range",
-        "/solar/health",
         "/health",
         "/health/actors",
         "/metrics",

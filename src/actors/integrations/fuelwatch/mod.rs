@@ -157,7 +157,15 @@ impl Actor for FuelWatchActor {
         Ok(state)
     }
 
-    #[tracing::instrument(parent = None, name = "fuelwatch-actor", skip(self, _myself, message, state))]
+    #[tracing::instrument(
+        parent = None,
+        name = "fuelwatch-actor",
+        skip(self, _myself, message, state),
+        fields(
+            otel.status_code = tracing::field::Empty,
+            otel.status_message = tracing::field::Empty,
+        )
+    )]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,
@@ -178,6 +186,7 @@ impl Actor for FuelWatchActor {
                     }
                     Err(e) => {
                         tracing::error!("error polling fuelwatch: {e}");
+                        crate::tracing_context::record_current_error(&e.to_string());
                         crate::metrics::record_integration_poll(
                             "fuelwatch",
                             "error",

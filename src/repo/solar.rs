@@ -107,21 +107,6 @@ impl SolarRepo {
         .await
     }
 
-    #[tracing::instrument(skip_all, name = "db.solar.buckets_last_two_days", err)]
-    pub async fn buckets_last_two_days(&self) -> Result<Vec<SolarBucketRow>, sqlx::Error> {
-        sqlx::query_as!(
-            SolarBucketRow,
-            "SELECT avg(current_kwh) AS avg_wh, avg(uv_level) AS avg_uv_level, \
-                    avg(temperature) AS avg_temp, time_bucket('5 minutes', time) AS bucket_time \
-             FROM solar_data_tsdb \
-             WHERE (time AT TIME ZONE 'Australia/Perth')::date \
-                 > ((now() AT TIME ZONE 'Australia/Perth')::date - 2) \
-             GROUP BY bucket_time ORDER BY bucket_time ASC"
-        )
-        .fetch_all(&self.db)
-        .await
-    }
-
     #[tracing::instrument(skip_all, name = "db.solar.cached_token", err)]
     pub async fn cached_token(&self) -> Result<Option<CachedTokenRow>, sqlx::Error> {
         sqlx::query_as!(

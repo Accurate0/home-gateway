@@ -35,6 +35,18 @@ where
     M: ractor::Message,
     T: Send + 'static,
 {
+    observed(name, send_query(name, timeout, make_msg).await)
+}
+
+async fn send_query<M, T>(
+    name: &'static str,
+    timeout: Duration,
+    make_msg: impl FnOnce(RpcReplyPort<T>) -> M,
+) -> Result<T, RpcError>
+where
+    M: ractor::Message,
+    T: Send + 'static,
+{
     let actor = ractor::registry::where_is(name).ok_or(RpcError::ActorNotFound(name))?;
 
     let (tx, rx) = oneshot();
@@ -57,24 +69,25 @@ where
     M: ractor::Message,
     T: Send + 'static,
 {
-    let actor = ractor::registry::where_is(name).ok_or(RpcError::ActorNotFound(name))?;
-
-    let (tx, rx) = oneshot();
-    let port: RpcReplyPort<T> = (tx, timeout).into();
-    let job = FactoryMessage::Dispatch(Job {
-        key: (),
-        msg: make_msg(port),
-        options: JobOptions::default(),
-        accepted: None,
-    });
-    actor
-        .send_message(job)
-        .map_err(|e| RpcError::Messaging(e.to_string()))?;
-
-    rx.await.map_err(|e| RpcError::Messaging(e.to_string()))
+    query(name, timeout, |port| {
+        FactoryMessage::Dispatch(Job {
+            key: (),
+            msg: make_msg(port),
+            options: JobOptions::default(),
+            accepted: None,
+        })
+    })
+    .await
 }
 
 pub fn cast<M>(name: &'static str, message: M) -> Result<(), RpcError>
+where
+    M: ractor::Message,
+{
+    observed(name, send_cast(name, message))
+}
+
+fn send_cast<M>(name: &'static str, message: M) -> Result<(), RpcError>
 where
     M: ractor::Message,
 {
@@ -83,6 +96,19 @@ where
     actor
         .send_message(message)
         .map_err(|e| RpcError::Messaging(e.to_string()))
+}
+
+fn observed<T>(name: &'static str, result: Result<T, RpcError>) -> Result<T, RpcError> {
+    if let Err(e) = &result {
+        let kind = match e {
+            RpcError::ActorNotFound(_) => "not_found",
+            RpcError::Messaging(_) => "messaging",
+        };
+
+        crate::metrics::record_rpc_error(name, kind);
+    }
+
+    result
 }
 
 pub fn cast_factory<M>(name: &'static str, message: M) -> Result<(), RpcError>
