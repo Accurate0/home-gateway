@@ -249,7 +249,7 @@ impl WorkflowWorker {
 
         let span = tracing::info_span!(
             "step.execute",
-            otel.name = format!("step: {}", step.kind()),
+            otel.name = format!("step.{}", step.kind()),
             step = step.kind(),
             event_id = %ctx.event_id,
         );
@@ -723,7 +723,8 @@ impl Worker for WorkflowWorker {
             } => {
                 let span = tracing::info_span!(
                     parent: None,
-                    "workflow-worker",
+                    "workflow.execute",
+                    otel.name = format!("workflow.{}", workflow.slug),
                     workflow = workflow.name,
                     event_id = %event_id,
                     otel.status_code = tracing::field::Empty,

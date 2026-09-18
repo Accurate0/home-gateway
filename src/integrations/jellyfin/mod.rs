@@ -74,7 +74,7 @@ impl Jellyfin {
         format!("{ws}/socket?api_key={}&deviceId={DEVICE_ID}", self.api_key)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "jellyfin.sessions", skip(self))]
     pub async fn sessions(&self) -> Result<Vec<Session>, JellyfinError> {
         let url = format!("{}/Sessions", self.base_url);
         let response = self

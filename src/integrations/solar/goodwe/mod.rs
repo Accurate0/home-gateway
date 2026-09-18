@@ -86,7 +86,7 @@ impl GoodWeSemsAPI {
         })
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "goodwe.get_latest_saved_solar_data", skip(self))]
     pub async fn get_latest_saved_solar_data(
         &self,
     ) -> Result<Option<SavedSolarData>, GoodWeSemsAPIError> {
@@ -103,7 +103,7 @@ impl GoodWeSemsAPI {
             .transpose()
     }
 
-    #[instrument(skip(self, login))]
+    #[instrument(name = "goodwe.get_solar_data", skip(self, login))]
     pub async fn get_solar_data(
         &self,
         login: LoginData,
@@ -136,7 +136,7 @@ impl GoodWeSemsAPI {
         Ok(response)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "goodwe.get_new_or_cached_login_data", skip(self))]
     pub async fn get_new_or_cached_login_data(&self) -> Result<LoginData, GoodWeSemsAPIError> {
         let latest = SolarRepo::new(self.db.clone()).cached_token().await?;
 
@@ -173,7 +173,7 @@ impl GoodWeSemsAPI {
         Ok(response.data)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "goodwe.login", skip(self))]
     pub async fn login(&self) -> Result<LoginResponse, GoodWeSemsAPIError> {
         let request = self
             .http

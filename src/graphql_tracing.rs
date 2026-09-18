@@ -27,7 +27,7 @@ impl Extension for TracingExtension {
             .instrument(tracing::span!(
                 target: "async_graphql::graphql",
                 tracing::Level::DEBUG,
-                "request",
+                "graphql.request",
             ))
             .await
     }
@@ -42,7 +42,7 @@ impl Extension for TracingExtension {
         let span = tracing::span!(
             target: "async_graphql::graphql",
             tracing::Level::INFO,
-            "parse_query",
+            "graphql.parse",
             source = tracing::field::Empty,
             operation = tracing::field::Empty,
             fields = tracing::field::Empty,
@@ -88,7 +88,7 @@ impl Extension for TracingExtension {
         let span = tracing::span!(
             target: "async_graphql::graphql",
             tracing::Level::INFO,
-            "validation"
+            "graphql.validate"
         );
         next.run(ctx).instrument(span).await
     }
@@ -104,8 +104,8 @@ impl Extension for TracingExtension {
         let span = tracing::span!(
             target: "async_graphql::graphql",
             tracing::Level::INFO,
-            "graphql",
-            otel.name = format!("graphql {operation}"),
+            "graphql.execute",
+            otel.name = format!("graphql.{operation}"),
             operation = operation,
             otel.status_code = tracing::field::Empty,
             otel.status_message = tracing::field::Empty,
@@ -150,8 +150,8 @@ impl Extension for TracingExtension {
         let span = tracing::span!(
             target: "async_graphql::graphql",
             tracing::Level::INFO,
-            "field",
-            otel.name = format!("{}.{}", info.parent_type, info.name),
+            "graphql.field",
+            otel.name = format!("graphql.{}.{}", info.parent_type, info.name),
             path = %info.path_node,
             return_type = info.return_type,
             otel.status_code = tracing::field::Empty,

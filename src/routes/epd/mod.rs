@@ -16,6 +16,7 @@ use axum::{
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
+use tracing::Instrument;
 
 use crate::eink::EinkDisplayManager;
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
@@ -194,6 +195,10 @@ pub async fn config(
             reply,
         },
     )
+    .instrument(tracing::info_span!(
+        "eink.prepare_render",
+        device_id = %request.device_id
+    ))
     .await;
 
     if let Err(e) = prepared {

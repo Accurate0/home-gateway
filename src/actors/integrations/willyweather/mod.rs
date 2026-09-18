@@ -105,7 +105,7 @@ impl Actor for WillyWeatherActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "willyweather-actor",
+        name = "actor.willyweather",
         skip(self, _myself, message, settings),
         fields(
             otel.status_code = tracing::field::Empty,

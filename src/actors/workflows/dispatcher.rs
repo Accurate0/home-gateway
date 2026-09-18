@@ -621,8 +621,9 @@ impl WorkflowDispatcher {
             let trigger_span = tracing::info_span!(
                 parent: None,
                 "trigger.evaluate",
-                otel.name = format!("trigger: {}", workflow.name),
+                otel.name = format!("trigger.{}", workflow.slug),
                 trigger = workflow.name,
+                workflow = workflow.slug,
                 event_kind = msg.kind(),
                 event_id = %event_id,
             );

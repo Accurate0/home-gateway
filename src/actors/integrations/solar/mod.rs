@@ -145,7 +145,7 @@ impl Actor for SolarActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "solar-actor",
+        name = "actor.solar",
         skip(self, _myself, message, state),
         fields(
             otel.status_code = tracing::field::Empty,

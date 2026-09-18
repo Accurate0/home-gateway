@@ -218,7 +218,7 @@ impl Actor for VacationActor {
         Ok(state)
     }
 
-    #[tracing::instrument(parent = None, name = "vacation-actor", skip(self, myself, message, state))]
+    #[tracing::instrument(parent = None, name = "actor.vacation", skip(self, myself, message, state))]
     async fn handle(
         &self,
         myself: ractor::ActorRef<Self::Msg>,

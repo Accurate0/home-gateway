@@ -51,7 +51,7 @@ impl Reddit {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "reddit.top_posts", skip(self))]
     pub async fn top_posts(
         &self,
         subreddit: &str,
@@ -80,7 +80,7 @@ impl Reddit {
         Ok(feed.entries)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "reddit.download_image", skip(self))]
     pub async fn download_image(&self, url: &str) -> Result<Vec<u8>, RedditError> {
         let resp = self
             .client

@@ -45,7 +45,7 @@ impl Notification {
     }
 }
 
-#[instrument]
+#[instrument(name = "notify.send")]
 pub fn notify(notify_sources: &[NotifySource], notification: Notification) {
     for notify in notify_sources {
         match notify {

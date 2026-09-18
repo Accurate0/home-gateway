@@ -42,12 +42,12 @@ impl FuelWatch {
         })
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(name = "fuelwatch.fetch_sites", skip(self), err)]
     pub async fn fetch_sites(&self) -> Result<Vec<FuelSite>, FuelWatchError> {
         Ok(shape_sites(self.get_sites().await?))
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "fuelwatch.get_sites", skip(self))]
     async fn get_sites(&self) -> Result<Vec<Site>, FuelWatchError> {
         let response = self
             .client

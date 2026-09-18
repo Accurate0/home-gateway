@@ -111,7 +111,7 @@ impl Actor for TrmnlActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "trmnl-actor",
+        name = "actor.trmnl",
         skip(self, _myself, message, _state),
         fields(
             otel.status_code = tracing::field::Empty,

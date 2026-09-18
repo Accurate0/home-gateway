@@ -70,7 +70,7 @@ impl FramePipeline {
 
             tracing::info_span!(
                 "eink.frame.step",
-                otel.name = format!("eink step: {}", step.name()),
+                otel.name = format!("eink.frame.step.{}", step.name()),
                 step = step.name(),
             )
             .in_scope(|| step.apply(ctx, &mut img))
@@ -79,7 +79,7 @@ impl FramePipeline {
 
         tracing::info_span!(
             "eink.frame.encode",
-            otel.name = format!("eink encode: {}", self.encoder.name()),
+            otel.name = format!("eink.frame.encode.{}", self.encoder.name()),
             encoder = self.encoder.name(),
         )
         .in_scope(|| self.encoder.encode(ctx, &mut img))

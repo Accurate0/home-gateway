@@ -47,7 +47,7 @@ impl Holidays {
         })
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(name = "holidays.fetch", skip(self), err)]
     pub async fn fetch(&self) -> Result<Vec<Holiday>, HolidaysError> {
         let response = self
             .client

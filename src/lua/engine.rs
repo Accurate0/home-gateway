@@ -272,7 +272,7 @@ impl LuaEngine {
 fn eval_span(cx: &LuaCallContext, source: &str) -> Span {
     tracing::info_span!(
         "lua.eval",
-        otel.name = format!("lua eval: {source}"),
+        otel.name = format!("lua.eval.{source}"),
         lua.source = source,
         event_id = %cx.event_id,
         origin = %cx.origin,

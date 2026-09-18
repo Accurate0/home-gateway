@@ -133,7 +133,7 @@ impl ractor::factory::Worker for ReconcilerWorker {
 
     #[tracing::instrument(
         parent = None,
-        name = "reconciler-worker",
+        name = "actor.reconciler",
         skip(self, _wid, _factory, msg, _state),
         fields(otel.status_code = tracing::field::Empty, otel.status_message = tracing::field::Empty)
     )]

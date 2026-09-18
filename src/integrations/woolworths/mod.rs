@@ -57,7 +57,7 @@ impl Woolworths {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "woolworths.get_all_tracked_products", skip(self))]
     pub async fn get_all_tracked_products(
         &self,
     ) -> Result<Vec<WoolworthsTrackedProduct>, WoolworthsError> {
@@ -67,7 +67,7 @@ impl Woolworths {
             .map_err(WoolworthsError::from)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "woolworths.get_product", skip(self))]
     pub async fn get_product(
         &self,
         product_id: i64,

@@ -88,10 +88,10 @@ fn the_ingest_to_workflow_chain_is_a_single_connected_trace() {
         set_parent(&trigger, from_device.as_deref());
         let from_trigger = trigger.in_scope(inject_current);
 
-        let workflow = tracing::info_span!(parent: None, "workflow-worker", workflow = "lamp on");
+        let workflow = tracing::info_span!(parent: None, "workflow.execute", workflow = "lamp on");
         set_parent(&workflow, from_trigger.as_deref());
         workflow.in_scope(|| {
-            let _step = tracing::info_span!("step: light").entered();
+            let _step = tracing::info_span!("step.light").entered();
         });
     });
 
@@ -105,15 +105,15 @@ fn the_ingest_to_workflow_chain_is_a_single_connected_trace() {
     let ingest = &named["mqtt.ingest"];
     let device = &named["device.handle"];
     let trigger = &named["trigger.evaluate"];
-    let workflow = &named["workflow-worker"];
-    let step = &named["step: light"];
+    let workflow = &named["workflow.execute"];
+    let step = &named["step.light"];
 
     let trace_id = ingest.span_context.trace_id();
     for (name, span) in [
         ("device.handle", device),
         ("trigger.evaluate", trigger),
-        ("workflow-worker", workflow),
-        ("step: light", step),
+        ("workflow.execute", workflow),
+        ("step.light", step),
     ] {
         assert_eq!(
             span.span_context.trace_id(),
@@ -140,15 +140,15 @@ fn a_detached_actor_span_does_not_adopt_an_ambient_parent() {
         let ambient = tracing::info_span!("long-lived-actor-context");
 
         ambient.in_scope(|| {
-            let _first = tracing::info_span!(parent: None, "solar-actor").entered();
+            let _first = tracing::info_span!(parent: None, "actor.solar").entered();
         });
 
         ambient.in_scope(|| {
-            let _second = tracing::info_span!(parent: None, "solar-actor").entered();
+            let _second = tracing::info_span!(parent: None, "actor.solar").entered();
         });
     });
 
-    let polls: Vec<_> = spans.iter().filter(|s| s.name == "solar-actor").collect();
+    let polls: Vec<_> = spans.iter().filter(|s| s.name == "actor.solar").collect();
 
     assert_eq!(polls.len(), 2);
     assert_ne!(
@@ -228,7 +228,7 @@ fn a_device_span_names_the_handler_and_carries_the_device_as_an_attribute() {
             let span = tracing::info_span!(
                 parent: None,
                 "device.handle",
-                otel.name = "device: light",
+                otel.name = "device.light",
                 handler = "light",
                 device = device,
             );
@@ -240,7 +240,7 @@ fn a_device_span_names_the_handler_and_carries_the_device_as_an_attribute() {
 
     assert_eq!(
         names,
-        vec!["device: light", "device: light"],
+        vec!["device.light", "device.light"],
         "the device id must stay out of the span name: names become Prometheus \
          series labels via Tempo's span-metrics generator"
     );
@@ -298,30 +298,30 @@ async fn the_real_extension_produces_a_named_operation_with_phase_and_field_span
     let names: Vec<_> = spans.iter().map(|s| s.name.to_string()).collect();
 
     assert!(
-        names.contains(&"graphql DashboardEntitiesQuery".to_owned()),
+        names.contains(&"graphql.DashboardEntitiesQuery".to_owned()),
         "the operation span must be named: {names:?}"
     );
     assert!(
-        names.contains(&"parse_query".to_owned()),
+        names.contains(&"graphql.parse".to_owned()),
         "parse must be visible: {names:?}"
     );
     assert!(
-        names.contains(&"validation".to_owned()),
+        names.contains(&"graphql.validate".to_owned()),
         "validation must be visible: {names:?}"
     );
     assert!(
-        names.contains(&"TestQuery.lamps".to_owned()),
+        names.contains(&"graphql.TestQuery.lamps".to_owned()),
         "the top-level field gets a span, named by schema coordinate: {names:?}"
     );
     assert!(
-        !names.contains(&"Lamp.name".to_owned()),
+        !names.contains(&"graphql.Lamp.name".to_owned()),
         "nested leaf resolvers are microsecond struct reads and must not each get a \
          span; the top-level field span already covers their subtree: {names:?}"
     );
 
     let parse = spans
         .iter()
-        .find(|s| s.name == "parse_query")
+        .find(|s| s.name == "graphql.parse")
         .expect("parse span");
     let attr = |span: &SpanData, key: &str| {
         span.attributes
@@ -338,13 +338,13 @@ async fn the_real_extension_produces_a_named_operation_with_phase_and_field_span
 
     let lamps = spans
         .iter()
-        .find(|s| s.name == "TestQuery.lamps")
+        .find(|s| s.name == "graphql.TestQuery.lamps")
         .expect("field span");
     assert_eq!(attr(lamps, "path").as_deref(), Some("lamps"));
 
     let operation = spans
         .iter()
-        .find(|s| s.name == "graphql DashboardEntitiesQuery")
+        .find(|s| s.name == "graphql.DashboardEntitiesQuery")
         .expect("operation span");
     assert_eq!(
         lamps.parent_span_id,
@@ -356,8 +356,8 @@ async fn the_real_extension_produces_a_named_operation_with_phase_and_field_span
 fn graphql_operation_span(operation: &str) -> tracing::Span {
     tracing::info_span!(
         parent: None,
-        "graphql",
-        otel.name = format!("graphql {operation}"),
+        "graphql.execute",
+        otel.name = format!("graphql.{operation}"),
         operation = operation,
         otel.status_code = tracing::field::Empty,
         otel.status_message = tracing::field::Empty,
@@ -381,7 +381,7 @@ fn the_graphql_operation_span_is_the_outermost_exported_graphql_span() {
         .find(|s| !s.parent_span_id.to_string().chars().any(|c| c != '0'))
         .expect("a root span was exported");
 
-    assert_eq!(root.name, "graphql EntitiesQuery");
+    assert_eq!(root.name, "graphql.EntitiesQuery");
 
     let operation = root
         .attributes
@@ -409,7 +409,7 @@ fn an_anonymous_operation_still_gets_a_stable_name() {
         graphql_operation_span("anonymous").in_scope(|| {});
     });
 
-    assert_eq!(spans[0].name, "graphql anonymous");
+    assert_eq!(spans[0].name, "graphql.anonymous");
 }
 
 #[test]
@@ -424,7 +424,7 @@ fn a_graphql_error_marks_the_operation_span() {
 
     let span = spans.first().expect("span exported");
 
-    assert_eq!(span.name, "graphql BrokenQuery");
+    assert_eq!(span.name, "graphql.BrokenQuery");
     assert!(
         matches!(span.status, opentelemetry::trace::Status::Error { .. }),
         "a graphql response carrying errors must mark the span, got {:?}",
@@ -437,13 +437,14 @@ fn otel_name_cannot_be_changed_after_a_span_is_entered() {
     let harness = Harness::new(always_on());
 
     let spans = harness.run(|| {
-        let span = tracing::info_span!(parent: None, "graphql", otel.name = tracing::field::Empty);
+        let span =
+            tracing::info_span!(parent: None, "graphql.execute", otel.name = tracing::field::Empty);
         span.in_scope(|| {});
-        span.record("otel.name", "graphql TooLate");
+        span.record("otel.name", "graphql.TooLate");
     });
 
     assert_eq!(
-        spans[0].name, "graphql",
+        spans[0].name, "graphql.execute",
         "tracing-opentelemetry's update_span drops the name once the span has started, so the \
          operation name must be known at span creation"
     );

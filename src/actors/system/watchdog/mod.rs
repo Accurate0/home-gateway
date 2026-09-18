@@ -114,7 +114,7 @@ impl Actor for WatchdogActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "watchdog-actor",
+        name = "actor.watchdog",
         skip(self, _myself, message, _state),
         level = Level::DEBUG,
         fields(

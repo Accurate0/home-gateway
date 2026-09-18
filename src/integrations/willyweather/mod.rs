@@ -99,14 +99,14 @@ impl WillyWeather {
         })
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "willyweather.fetch", skip(self))]
     pub async fn fetch(&self, location_id: &str, days: i64) -> Result<Forecast, WillyWeatherError> {
         let raw = self.get_forecast(location_id, days).await?;
 
         shape_forecast(raw)
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "willyweather.get_forecast", skip(self))]
     pub async fn get_forecast(
         &self,
         location_id: &str,

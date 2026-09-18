@@ -159,7 +159,7 @@ impl Actor for FuelWatchActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "fuelwatch-actor",
+        name = "actor.fuelwatch",
         skip(self, _myself, message, state),
         fields(
             otel.status_code = tracing::field::Empty,

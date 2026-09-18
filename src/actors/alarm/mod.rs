@@ -54,7 +54,7 @@ impl Actor for AlarmActor {
         Ok(())
     }
 
-    #[tracing::instrument(parent = None, name = "alarm-actor", skip(self, _myself, message, _state), level = Level::TRACE)]
+    #[tracing::instrument(parent = None, name = "actor.alarm", skip(self, _myself, message, _state), level = Level::TRACE)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

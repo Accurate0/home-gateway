@@ -23,7 +23,7 @@ impl UnifiConnectedClientHandler {
 }
 
 impl UnifiConnectedClientHandler {
-    #[instrument(skip(self))]
+    #[instrument(name = "unifi.set_client_state", skip(self))]
     async fn set_client_state(
         &self,
         mac_address: &str,
@@ -71,7 +71,7 @@ impl Actor for UnifiConnectedClientHandler {
         Ok(())
     }
 
-    #[tracing::instrument(name = "unifi-connected-clients", skip(self, _myself, message, _state))]
+    #[tracing::instrument(name = "actor.unifi", skip(self, _myself, message, _state))]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

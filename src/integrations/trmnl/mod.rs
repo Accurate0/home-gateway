@@ -36,7 +36,7 @@ impl Trmnl {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "trmnl.list_devices", skip(self))]
     pub async fn list_devices(&self) -> Result<Vec<TrmnlDevice>, TrmnlError> {
         let url = format!("{}/api/devices", self.base_url);
         let resp = self

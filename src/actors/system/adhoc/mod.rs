@@ -118,7 +118,7 @@ impl Actor for AdhocTaskActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "adhoc-task-actor",
+        name = "actor.adhoc",
         skip(self, myself, message, _state),
         fields(
             otel.status_code = tracing::field::Empty,

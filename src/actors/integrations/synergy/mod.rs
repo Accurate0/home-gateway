@@ -94,7 +94,7 @@ impl Actor for SynergyActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "synergy-actor",
+        name = "actor.synergy",
         skip(self, _myself, message, _state),
         fields(
             otel.status_code = tracing::field::Empty,

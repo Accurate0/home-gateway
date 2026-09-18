@@ -50,7 +50,7 @@ impl Actor for SamplingActor {
         })
     }
 
-    #[tracing::instrument(parent = None, name = "sampling-actor", skip(self, _myself, message, _state), level = Level::DEBUG)]
+    #[tracing::instrument(parent = None, name = "actor.sampling", skip(self, _myself, message, _state), level = Level::DEBUG)]
     async fn handle(
         &self,
         _myself: ractor::ActorRef<Self::Msg>,

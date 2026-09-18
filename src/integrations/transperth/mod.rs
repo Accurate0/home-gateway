@@ -194,7 +194,7 @@ impl Transperth {
         &self.routes
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "transperth.download_gtfs", skip(self))]
     pub async fn download_gtfs(
         &self,
         etag: Option<&str>,

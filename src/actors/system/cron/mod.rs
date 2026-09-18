@@ -80,7 +80,7 @@ impl Actor for CronActor {
 
     #[tracing::instrument(
         parent = None,
-        name = "cron-actor",
+        name = "actor.cron",
         skip(self, myself, message, _state),
         fields(
             otel.status_code = tracing::field::Empty,

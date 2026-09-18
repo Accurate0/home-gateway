@@ -14,6 +14,11 @@ const HOST: &str = "http://192.168.0.149:8000/v1/epd";
 const HOST: &str = "https://home.anurag.sh/v1/epd";
 
 impl EinkDisplayManager {
+    #[tracing::instrument(
+        name = "eink.epd_config",
+        skip_all,
+        fields(device_id = %resolved.device_id)
+    )]
     pub async fn epd_config(
         &self,
         resolved: &ResolvedDisplay,
@@ -57,9 +62,9 @@ impl EinkDisplayManager {
             return config;
         };
 
-        if !self.ensure_packed(&plan).await {
+        let Some(packed) = self.ensure_packed(&plan).await else {
             return config;
-        }
+        };
 
         let partial = match resolved.clear_screen || plan.sleep.is_some() {
             true => None,
@@ -70,6 +75,7 @@ impl EinkDisplayManager {
                     resolved,
                     report.current_image_hash,
                     &plan.hash,
+                    packed.bytes(),
                 )
                 .await
             }

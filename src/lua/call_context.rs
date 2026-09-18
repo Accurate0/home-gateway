@@ -79,7 +79,7 @@ impl LuaCallContext {
     pub fn span(&self, name: &'static str) -> Span {
         tracing::info_span!(
             "lua.call",
-            otel.name = format!("lua: {name}"),
+            otel.name = format!("lua.{name}"),
             lua.function = name,
             event_id = %self.event_id,
             origin = %self.origin,

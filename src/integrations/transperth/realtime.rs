@@ -72,7 +72,7 @@ struct PtaRealTimeInfo {
     estimated_departure_time: Option<String>,
 }
 
-#[instrument(skip(client, reference_key))]
+#[instrument(name = "transperth.fetch_timetable", skip(client, reference_key))]
 pub async fn fetch_timetable(
     client: &ClientWithMiddleware,
     reference_key: &str,

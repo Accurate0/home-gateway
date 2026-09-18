@@ -6,7 +6,10 @@ pub mod sources;
 pub mod steps;
 
 mod config;
+mod packed;
 mod store;
+
+pub use packed::Packed;
 
 use crate::device_registry::DeviceRegistry;
 use crate::eink::flag::epd_flag_config;
@@ -164,7 +167,10 @@ impl EinkDisplayManager {
         Ok(prepared)
     }
 
+    #[tracing::instrument(name = "eink.plan", skip_all, fields(device_id = tracing::field::Empty))]
     pub async fn plan(&self, display: &ResolvedDisplay) -> Option<RenderPlan> {
+        tracing::Span::current().record("device_id", display.device_id.as_str());
+
         let sleep_image = match display.sleep {
             Some(sleep) => self.sleep.acquire(&self.s3, display, sleep).await,
             None => None,
@@ -216,18 +222,26 @@ impl EinkDisplayManager {
         })
     }
 
-    pub async fn ensure_packed(&self, plan: &RenderPlan) -> bool {
+    #[tracing::instrument(
+        name = "eink.ensure_packed",
+        skip_all,
+        fields(hash = %plan.hash, cached = tracing::field::Empty)
+    )]
+    pub async fn ensure_packed(&self, plan: &RenderPlan) -> Option<Packed> {
         let Some(key) = packed_cache_key(&plan.hash) else {
             tracing::error!(hash = %plan.hash, "render plan hash is not a frame hash");
-            return false;
+            return None;
         };
 
-        match self.s3.get_object_metadata(&key).await {
-            Ok(Some(_)) => return true,
-            Ok(None) => {}
+        let cached = self.s3.get_object_metadata(&key).await;
+        tracing::Span::current().record("cached", matches!(cached, Ok(Some(_))));
+
+        match cached {
+            Ok(Some(_)) => return Some(Packed::Cached),
+            Ok(None) => tracing::debug!(key = %key, "packed frame not cached, rendering it"),
             Err(e) => {
                 tracing::warn!(key = %key, "failed to check the packed cache: {e}");
-                return false;
+                return None;
             }
         }
 
@@ -236,11 +250,12 @@ impl EinkDisplayManager {
                 if let Err(e) = self.s3.put_object(&key, &packed, None).await {
                     tracing::warn!(key = %key, "failed to cache packed frame: {e}");
                 }
-                true
+
+                Some(Packed::Rendered(packed))
             }
             Err(e) => {
                 tracing::warn!(key = %key, "failed to prepare the packed frame: {}", e.message());
-                false
+                None
             }
         }
     }
