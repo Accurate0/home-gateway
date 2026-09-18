@@ -60,6 +60,7 @@ configMapGenerator:
     files:
       - lua/workflows/brief.lua
       - lua/workflows/buttons.lua
+      - lua/workflows/prices.lua
       - lua/workflows/reminders.lua
   - name: home-gateway-config-lua-zigbee
     files:
@@ -74,6 +75,10 @@ configMapGenerator:
       - lua/zigbee/lumi_wsdcgq11lm.lua
       - lua/zigbee/phillips_9290012573a.lua
       - lua/zigbee/ts011f_plug.lua
+  - name: home-gateway-config-lua-home-assistant
+    files:
+      - lua/home_assistant/media_player.lua
+      - lua/home_assistant/roborock.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

@@ -8,7 +8,7 @@ use ractor::RpcReplyPort;
 use uuid::Uuid;
 
 pub enum Entity {
-    Zigbee {
+    Decoded {
         address: String,
         presence: bool,
     },
@@ -46,7 +46,7 @@ impl crate::tracing_context::TracedMessage for Message {
     fn subject(&self) -> Option<&str> {
         match self {
             Message::NewEvent(event) => match &event.entity {
-                Entity::Zigbee { address, .. } => Some(address),
+                Entity::Decoded { address, .. } => Some(address),
                 Entity::Esphome { node, .. } => Some(node),
             },
             Message::QueryLatest { sensor, .. } => Some(sensor),
@@ -112,7 +112,7 @@ impl PresenceSensorHandler {
                 reply.send(state.last_presence.get(&sensor).copied())?;
             }
             Message::NewEvent(event) => match event.entity {
-                Entity::Zigbee { address, presence } => {
+                Entity::Decoded { address, presence } => {
                     self.process_presence(event.event_id, address, presence, state)?
                 }
                 Entity::Esphome {

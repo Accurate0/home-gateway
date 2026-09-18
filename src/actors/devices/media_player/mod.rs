@@ -9,15 +9,16 @@ use crate::event_bus::EventBusMessage;
 use crate::state::AppState;
 
 pub mod lua;
+mod media_player_reading;
 pub mod state;
+
+pub use media_player_reading::MediaPlayerReading;
 
 use state::{Attributes, Prior, edges};
 
 pub struct Update {
     pub event_id: Uuid,
-    pub address: String,
-    pub state: String,
-    pub attributes: serde_json::Value,
+    pub reading: MediaPlayerReading,
     pub traceparent: crate::tracing_context::TraceParent,
 }
 
@@ -34,7 +35,7 @@ impl crate::tracing_context::TracedMessage for Message {
 
     fn subject(&self) -> Option<&str> {
         match self {
-            Message::HomeAssistant(update) => Some(&update.address),
+            Message::HomeAssistant(update) => Some(&update.reading.address),
         }
     }
 }
@@ -53,9 +54,12 @@ impl MediaPlayerHandler {
     ) -> Result<(), anyhow::Error> {
         let Update {
             event_id,
-            address,
-            state,
-            attributes,
+            reading:
+                MediaPlayerReading {
+                    address,
+                    state,
+                    attributes,
+                },
             ..
         } = update;
 

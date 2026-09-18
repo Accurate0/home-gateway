@@ -8,6 +8,7 @@ pub enum PresenceSensorType {
     #[default]
     Zigbee,
     Esphome,
+    HomeAssistant,
 }
 
 #[derive(Debug, Clone)]

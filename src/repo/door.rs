@@ -9,7 +9,7 @@ pub struct DoorReading {
     pub friendly_name: String,
     pub ieee_addr: String,
     pub contact: bool,
-    pub battery: i64,
+    pub battery: Option<i64>,
 }
 
 pub struct DerivedDoorEvent {

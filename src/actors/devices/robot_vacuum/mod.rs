@@ -1,9 +1,11 @@
 pub mod command;
 pub mod lua;
+mod roborock_reading;
+
+pub use roborock_reading::RoborockReading;
 
 use crate::actors::devices::handler::DeviceHandler;
 use crate::actors::system::battery::BatteryActor;
-use crate::settings::RoborockField;
 use crate::state::AppState;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -24,9 +26,7 @@ pub struct ValetudoEvent {
 
 pub struct RoborockUpdate {
     pub event_id: Uuid,
-    pub device_id: String,
-    pub field: RoborockField,
-    pub value: String,
+    pub reading: RoborockReading,
     pub traceparent: crate::tracing_context::TraceParent,
 }
 
@@ -46,7 +46,7 @@ impl crate::tracing_context::TracedMessage for Message {
     fn subject(&self) -> Option<&str> {
         match self {
             Message::Valetudo(event) => Some(&event.device_id),
-            Message::Roborock(update) => Some(&update.device_id),
+            Message::Roborock(update) => Some(&update.reading.device_id),
         }
     }
 }
@@ -143,42 +143,40 @@ impl RobotVacuumHandler {
     async fn handle_roborock(&self, update: RoborockUpdate) -> Result<(), anyhow::Error> {
         let RoborockUpdate {
             event_id,
-            device_id,
-            field,
-            value,
+            reading:
+                RoborockReading {
+                    device_id,
+                    status,
+                    room,
+                    battery,
+                },
             ..
         } = update;
 
-        match field {
-            RoborockField::Status => {
-                self.shared_actor_state
-                    .repos
-                    .robot_vacuum()
-                    .record_roborock_status(event_id, &device_id, &value)
-                    .await?;
+        let repo = self.shared_actor_state.repos.robot_vacuum();
+
+        match status {
+            Some(status) => {
+                repo.record_roborock_status(event_id, &device_id, &status)
+                    .await?
             }
+            None => tracing::trace!("no roborock status in this update for {device_id}"),
+        }
 
-            RoborockField::Battery => {
-                let level = value.parse::<f64>().ok().map(|v| v as i32);
+        match battery {
+            Some(level) => {
+                let level = level as i32;
 
-                self.shared_actor_state
-                    .repos
-                    .robot_vacuum()
-                    .record_roborock_battery(event_id, &device_id, level)
+                repo.record_roborock_battery(event_id, &device_id, Some(level))
                     .await?;
-
-                if let Some(level) = level {
-                    self.report_battery(&device_id, level);
-                }
+                self.report_battery(&device_id, level);
             }
+            None => tracing::trace!("no roborock battery in this update for {device_id}"),
+        }
 
-            RoborockField::Room => {
-                self.shared_actor_state
-                    .repos
-                    .robot_vacuum()
-                    .upsert_roborock_room(&device_id, &value)
-                    .await?;
-            }
+        match room {
+            Some(room) => repo.upsert_roborock_room(&device_id, &room).await?,
+            None => tracing::trace!("no roborock room in this update for {device_id}"),
         }
 
         Ok(())

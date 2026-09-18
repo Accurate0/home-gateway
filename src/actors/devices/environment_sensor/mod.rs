@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 pub enum Entity {
-    Zigbee {
+    Decoded {
         address: String,
         friendly_name: String,
         readings: Vec<(Metric, f64)>,
@@ -76,7 +76,7 @@ impl crate::tracing_context::TracedMessage for Message {
     fn subject(&self) -> Option<&str> {
         match self {
             Message::NewEvent(event) => match &event.entity {
-                Entity::Zigbee { address, .. } => Some(address),
+                Entity::Decoded { address, .. } => Some(address),
                 Entity::Esphome { node, .. } => Some(node),
             },
             Message::QueryLatest { entity_id, .. } => Some(entity_id),
@@ -116,7 +116,7 @@ impl EnvironmentSensorHandler {
                 return Ok(());
             }
             Message::NewEvent(event) => match event.entity {
-                Entity::Zigbee {
+                Entity::Decoded {
                     address,
                     friendly_name,
                     readings,
@@ -131,7 +131,7 @@ impl EnvironmentSensorHandler {
 
                     let Some(temperature) = reading(Metric::Temperature) else {
                         tracing::debug!(
-                            "ignoring zigbee environment payload without temperature: {address}"
+                            "ignoring decoded environment reading without temperature: {address}"
                         );
                         return Ok(());
                     };

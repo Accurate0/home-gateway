@@ -1,4 +1,3 @@
-use crate::actors::system::rpc;
 use std::{collections::HashMap, time::Instant};
 
 use futures_util::{SinkExt, StreamExt};
@@ -9,12 +8,8 @@ use tokio_tungstenite::tungstenite::Message as WsMessage;
 use uuid::Uuid;
 
 use crate::{
-    actors::devices::media_player::{self, MediaPlayerHandler},
-    actors::devices::robot_vacuum::{self, RobotVacuumHandler},
-    event_bus::EventBusMessage,
-    integrations::home_assistant::HomeAssistant,
-    settings::EntitySettings,
-    state::AppState,
+    event_bus::EventBusMessage, integrations::home_assistant::HomeAssistant,
+    settings::EntitySettings, state::AppState,
 };
 
 pub struct HomeAssistantActor {
@@ -118,7 +113,7 @@ impl HomeAssistantActor {
                 Some("result")
                     if payload.get("id").and_then(Value::as_u64) == Some(Self::GET_STATES_ID) =>
                 {
-                    self.seed_media_players(&payload).await;
+                    self.seed_from_states(&payload).await;
                 }
                 _ => {}
             }
@@ -167,8 +162,7 @@ impl HomeAssistantActor {
             last_latest_state_write.insert(entity_id.to_owned(), Instant::now());
         }
 
-        self.forward_roborock(event_id, entity_id, &state).await;
-        self.forward_media_player(
+        self.forward_decoded(
             event_id,
             entity_id,
             &state,
@@ -185,52 +179,20 @@ impl HomeAssistantActor {
             });
     }
 
-    async fn forward_roborock(&self, event_id: Uuid, entity_id: &str, state: &str) {
-        let Some((device_id, field)) = self.shared_actor_state.devices.roborock_entity(entity_id)
-        else {
-            return;
-        };
-
-        crate::device_registry::last_seen::record(
-            &self.shared_actor_state.devices,
-            self.shared_actor_state.repos.device(),
-            device_id,
-        )
-        .await;
-
-        let message = robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
-            event_id,
-            device_id: device_id.to_owned(),
-            field,
-            value: state.to_owned(),
-            traceparent: crate::tracing_context::inject_current(),
-        });
-
-        if let Err(e) = rpc::cast_factory(RobotVacuumHandler::NAME, message) {
-            tracing::error!("failed to forward roborock update: {e}");
-        }
-    }
-
-    /// `state_changed` only fires on a transition, so a freshly connected gateway
-    /// knows nothing about what is already playing. The `get_states` reply fills
-    /// that gap for every registered media player.
-    async fn seed_media_players(&self, payload: &Value) {
+    async fn seed_from_states(&self, payload: &Value) {
         let Some(states) = payload.get("result").and_then(Value::as_array) else {
             tracing::warn!("home assistant get_states reply carried no result array");
             return;
         };
+
+        let devices = &self.shared_actor_state.devices;
 
         for entity in states {
             let Some(entity_id) = entity.get("entity_id").and_then(Value::as_str) else {
                 continue;
             };
 
-            if self
-                .shared_actor_state
-                .devices
-                .media_player(entity_id)
-                .is_none()
-            {
+            if devices.home_assistant_device(entity_id).is_none() {
                 continue;
             }
 
@@ -239,46 +201,65 @@ impl HomeAssistantActor {
                 .and_then(Value::as_str)
                 .unwrap_or_default();
 
-            tracing::info!("seeding media player {entity_id} from get_states ({state})");
-            self.forward_media_player(Uuid::new_v4(), entity_id, state, &entity["attributes"])
+            tracing::info!("seeding {entity_id} from get_states ({state})");
+
+            self.forward_decoded(Uuid::new_v4(), entity_id, state, &entity["attributes"])
                 .await;
         }
     }
 
-    async fn forward_media_player(
+    async fn forward_decoded(
         &self,
         event_id: Uuid,
         entity_id: &str,
         state: &str,
         attributes: &Value,
     ) {
-        if self
-            .shared_actor_state
-            .devices
-            .media_player(entity_id)
-            .is_none()
-        {
+        let devices = &self.shared_actor_state.devices;
+
+        let Some(device) = devices.home_assistant_device(entity_id) else {
             return;
-        }
+        };
 
         crate::device_registry::last_seen::record(
-            &self.shared_actor_state.devices,
+            devices,
             self.shared_actor_state.repos.device(),
-            entity_id,
+            &device.address,
         )
         .await;
 
-        let message = media_player::Message::HomeAssistant(media_player::Update {
-            event_id,
-            address: entity_id.to_owned(),
-            state: state.to_owned(),
-            attributes: attributes.clone(),
-            traceparent: crate::tracing_context::inject_current(),
+        let entity = json!({
+            "entity_id": entity_id,
+            "state": state,
+            "attributes": attributes,
         });
 
-        if let Err(e) = rpc::cast_factory(MediaPlayerHandler::NAME, message) {
-            tracing::error!("failed to forward media player update: {e}");
-        }
+        let reading = match device.profile.decode(&entity) {
+            Ok(reading) => reading,
+            Err(e) => {
+                tracing::error!(
+                    "failed to decode home assistant entity {entity_id} with model {}: {e}",
+                    device.profile.slug
+                );
+                crate::tracing_context::record_current_error(&e.to_string());
+
+                return;
+            }
+        };
+
+        let friendly_name = attributes
+            .get("friendly_name")
+            .and_then(Value::as_str)
+            .unwrap_or(&device.id);
+
+        crate::decoding::dispatch(
+            &self.shared_actor_state,
+            event_id,
+            device,
+            friendly_name,
+            reading,
+        )
+        .await;
     }
 
     async fn save_to_db(

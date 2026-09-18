@@ -108,5 +108,6 @@ vacation:
   seed: 20260908
 
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

@@ -1,42 +1,27 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
-use serde_json::{Map, Value};
-
 use crate::lua::{LuaDecoder, LuaError};
 use crate::settings::{LuaSettings, Metric};
 
-use super::zigbee_reading::ZigbeeReading;
-use super::zigbee_role::ZigbeeRoleName;
+use super::model_profile::ModelProfile;
+use super::role_name::DeviceRoleName;
 
-pub type ZigbeeModels = HashMap<String, Arc<ZigbeeModelProfile>>;
+pub type Models = HashMap<String, Arc<ModelProfile>>;
 
-#[derive(Debug, Clone)]
-pub struct ZigbeeModelProfile {
-    pub slug: String,
-    pub roles: BTreeSet<ZigbeeRoleName>,
-    pub environment: Vec<Metric>,
-    decoder: Arc<LuaDecoder>,
-}
-
-impl ZigbeeModelProfile {
-    pub fn decode(&self, payload: &Map<String, Value>) -> Result<ZigbeeReading, LuaError> {
-        self.decoder.call(&self.slug, "decode", payload)
-    }
-}
-
-pub fn load_zigbee_models(
+pub fn load_models(
+    kind: &'static str,
     sources: &BTreeMap<String, String>,
     settings: &LuaSettings,
-) -> Result<ZigbeeModels, String> {
-    let decoder = LuaDecoder::load("zigbee", sources, settings)
-        .map_err(|error| format!("zigbee models: {error}"))?;
+) -> Result<Models, String> {
+    let decoder = LuaDecoder::load(kind, sources, settings)
+        .map_err(|error| format!("{kind} models: {error}"))?;
     let decoder = Arc::new(decoder);
 
     let mut profiles = HashMap::new();
 
     for slug in decoder.modules() {
-        let profile = resolve_profile(&decoder, slug)?;
+        let profile = resolve_profile(kind, &decoder, slug)?;
 
         profiles.insert(slug.to_owned(), Arc::new(profile));
     }
@@ -44,20 +29,24 @@ pub fn load_zigbee_models(
     Ok(profiles)
 }
 
-fn resolve_profile(decoder: &Arc<LuaDecoder>, slug: &str) -> Result<ZigbeeModelProfile, String> {
-    let error = |error: LuaError| format!("zigbee model {slug}: {error}");
+fn resolve_profile(
+    kind: &'static str,
+    decoder: &Arc<LuaDecoder>,
+    slug: &str,
+) -> Result<ModelProfile, String> {
+    let error = |error: LuaError| format!("{kind} model {slug}: {error}");
 
     if !decoder.has_function(slug, "decode").map_err(error)? {
         return Err(format!(
-            "zigbee model {slug}: must define a `decode` function"
+            "{kind} model {slug}: must define a `decode` function"
         ));
     }
 
     let Some(declared) = decoder
-        .field::<Vec<ZigbeeRoleName>>(slug, "roles")
+        .field::<Vec<DeviceRoleName>>(slug, "roles")
         .map_err(error)?
     else {
-        return Err(format!("zigbee model {slug}: must declare `roles`"));
+        return Err(format!("{kind} model {slug}: must declare `roles`"));
     };
 
     let mut roles = BTreeSet::new();
@@ -65,13 +54,13 @@ fn resolve_profile(decoder: &Arc<LuaDecoder>, slug: &str) -> Result<ZigbeeModelP
     for role in declared {
         if !roles.insert(role) {
             return Err(format!(
-                "zigbee model {slug}: `roles` declares `{role}` twice"
+                "{kind} model {slug}: `roles` declares `{role}` twice"
             ));
         }
     }
 
     if roles.is_empty() {
-        return Err(format!("zigbee model {slug}: `roles` is empty"));
+        return Err(format!("{kind} model {slug}: `roles` is empty"));
     }
 
     let environment = decoder
@@ -79,26 +68,27 @@ fn resolve_profile(decoder: &Arc<LuaDecoder>, slug: &str) -> Result<ZigbeeModelP
         .map_err(error)?
         .unwrap_or_default();
 
-    let reports_environment = roles.contains(&ZigbeeRoleName::Environment);
+    let reports_environment = roles.contains(&DeviceRoleName::Environment);
 
     if reports_environment && !environment.contains(&Metric::Temperature) {
         return Err(format!(
-            "zigbee model {slug}: `environment` must list `temperature`"
+            "{kind} model {slug}: `environment` must list `temperature`"
         ));
     }
 
     if !reports_environment && !environment.is_empty() {
         return Err(format!(
-            "zigbee model {slug}: lists `environment` metrics without declaring the `environment` role"
+            "{kind} model {slug}: lists `environment` metrics without declaring the `environment` role"
         ));
     }
 
-    Ok(ZigbeeModelProfile {
-        slug: slug.to_owned(),
+    Ok(ModelProfile::new(
+        kind,
+        slug.to_owned(),
         roles,
         environment,
-        decoder: decoder.clone(),
-    })
+        decoder.clone(),
+    ))
 }
 
 #[cfg(test)]
@@ -108,16 +98,16 @@ mod tests {
     use serde_json::{Map, Value};
 
     use super::*;
+    use crate::decoding::reading::ReadingMetric;
     use crate::device_metric::MetricValue;
-    use crate::settings::devices::zigbee_reading::ZigbeeMetric;
 
-    fn load(source: &str) -> Result<ZigbeeModels, String> {
+    fn load(source: &str) -> Result<Models, String> {
         let sources = BTreeMap::from([("test_model".to_owned(), source.to_owned())]);
 
-        load_zigbee_models(&sources, &LuaSettings::default())
+        load_models("zigbee", &sources, &LuaSettings::default())
     }
 
-    fn profile(source: &str) -> Arc<ZigbeeModelProfile> {
+    fn profile(source: &str) -> Arc<ModelProfile> {
         load(source).expect("model")["test_model"].clone()
     }
 
@@ -135,8 +125,8 @@ mod tests {
             }"#,
         );
 
-        assert!(profile.roles.contains(&ZigbeeRoleName::Battery));
-        assert!(profile.roles.contains(&ZigbeeRoleName::Environment));
+        assert!(profile.roles.contains(&DeviceRoleName::Battery));
+        assert!(profile.roles.contains(&DeviceRoleName::Environment));
         assert_eq!(profile.environment, [Metric::Temperature, Metric::Pm25]);
     }
 
@@ -226,7 +216,7 @@ mod tests {
             MetricValue::from(reading.metrics["voltage"].clone()),
             MetricValue::Numeric(3005.0)
         );
-        assert_eq!(reading.metrics["open"], ZigbeeMetric::Flag(true));
+        assert_eq!(reading.metrics["open"], ReadingMetric::Flag(true));
         assert_eq!(
             MetricValue::from(reading.metrics["mode"].clone()),
             MetricValue::Text("eco".to_owned())
@@ -266,9 +256,24 @@ mod tests {
             crate::lua::sources::load_directory(std::path::Path::new("./config/lua/zigbee"))
                 .expect("expected the committed zigbee models to be readable");
 
-        let models = load_zigbee_models(&sources, &LuaSettings::default())
+        let models = load_models("zigbee", &sources, &LuaSettings::default())
             .expect("expected every committed zigbee model to load");
 
+        assert_eq!(models.len(), sources.len());
+    }
+
+    #[test]
+    fn every_committed_home_assistant_model_loads() {
+        let sources = crate::lua::sources::load_directory(std::path::Path::new(
+            "./config/lua/home_assistant",
+        ))
+        .expect("expected the committed home assistant models to be readable");
+
+        let models = load_models("home_assistant", &sources, &LuaSettings::default())
+            .expect("expected every committed home assistant model to load");
+
+        assert!(models.contains_key("roborock"));
+        assert!(models.contains_key("media_player"));
         assert_eq!(models.len(), sources.len());
     }
 }

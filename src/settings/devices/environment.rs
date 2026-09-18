@@ -8,6 +8,7 @@ pub enum EnvironmentSensorType {
     #[default]
     Zigbee,
     Esphome,
+    HomeAssistant,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, JsonSchema)]

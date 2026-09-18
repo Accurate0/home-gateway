@@ -1,0 +1,1 @@
+ALTER TABLE door_sensor ALTER COLUMN battery DROP NOT NULL;

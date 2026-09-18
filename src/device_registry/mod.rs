@@ -21,9 +21,10 @@ use crate::settings::{
     PlantSensorSettings, PresenceSensorType, PresenceSettings, RawDeviceWatchdog,
     RawEinkDisplayBlock, RawEnvironmentBlock, RawLightBlock, RawMediaPlayerBlock, RawPlantBlock,
     RawPresenceBlock, RawRoborockBlock, RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock,
-    RoborockField, RoborockSettings, SwitchRole, TrmnlDeviceSettings, ValetudoSettings,
-    ZigbeeModelProfile, ZigbeeModels, ZigbeeRoleName,
+    RoborockSettings, SwitchRole, TrmnlDeviceSettings, ValetudoSettings,
 };
+
+use crate::decoding::{DecodedDevice, DeviceModels, DeviceRoleName, ModelProfile};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -68,9 +69,7 @@ impl Transport {
                 unreachable!("eink_display_firmware transport does not support environment kind")
             }
             Transport::Trmnl => unreachable!("trmnl transport does not support environment kind"),
-            Transport::HomeAssistant => {
-                unreachable!("home_assistant transport does not support environment kind")
-            }
+            Transport::HomeAssistant => EnvironmentSensorType::HomeAssistant,
             Transport::Valetudo => {
                 unreachable!("valetudo transport does not support environment kind")
             }
@@ -85,9 +84,7 @@ impl Transport {
                 unreachable!("eink_display_firmware transport does not support presence kind")
             }
             Transport::Trmnl => unreachable!("trmnl transport does not support presence kind"),
-            Transport::HomeAssistant => {
-                unreachable!("home_assistant transport does not support presence kind")
-            }
+            Transport::HomeAssistant => PresenceSensorType::HomeAssistant,
             Transport::Valetudo => {
                 unreachable!("valetudo transport does not support presence kind")
             }
@@ -108,6 +105,8 @@ pub struct RawSensor {
     pub watchdog: Option<RawDeviceWatchdog>,
     #[serde(default)]
     pub room: Option<String>,
+    #[serde(default)]
+    pub extra_entities: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -152,18 +151,12 @@ pub enum DeviceConfig {
     Battery,
 }
 
-#[derive(Debug, Clone)]
-pub struct ZigbeeDevice {
-    pub id: String,
-    pub address: String,
-    pub profile: Arc<ZigbeeModelProfile>,
-}
-
 #[derive(Debug, Default)]
 pub struct DeviceRegistryInner {
     aliases: DeviceAliases,
     esphome_topics: HashMap<String, EsphomeTarget>,
-    zigbee_devices: HashMap<String, ZigbeeDevice>,
+    zigbee_devices: HashMap<String, DecodedDevice>,
+    home_assistant_devices: HashMap<String, DecodedDevice>,
     doors: HashMap<String, DoorSettings>,
     smart_switches: HashMap<String, String>,
     control_switches: HashSet<String>,
@@ -177,7 +170,6 @@ pub struct DeviceRegistryInner {
     eink_displays: HashMap<String, EinkDisplaySettings>,
     trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
     roborocks: HashMap<String, RoborockSettings>,
-    roborock_entities: HashMap<String, (String, RoborockField)>,
     media_players: HashMap<String, MediaPlayerSettings>,
     valetudos: HashMap<String, ValetudoSettings>,
     battery: HashMap<String, BatterySettings>,
@@ -208,7 +200,7 @@ impl DeviceRegistry {
     pub fn build(
         raw: Vec<RawSensor>,
         notify: &NotifyTargets,
-        zigbee_models: &ZigbeeModels,
+        models: &DeviceModels,
     ) -> Result<Self, String> {
         let mut reg = DeviceRegistryInner::default();
 
@@ -222,6 +214,7 @@ impl DeviceRegistry {
                 roles,
                 watchdog,
                 room,
+                extra_entities,
             } = sensor;
 
             if !state.is_enabled() {
@@ -234,19 +227,43 @@ impl DeviceRegistry {
                 return Err(format!("duplicate sensor id: {id}"));
             }
 
-            let profile = resolve_model(&id, transport, model, zigbee_models)?;
+            let profile = resolve_model(&id, transport, model, models)?;
+            let decoded = profile.is_some();
+
+            if !extra_entities.is_empty() && !(transport == Transport::HomeAssistant && decoded) {
+                return Err(format!(
+                    "device {id}: `extra_entities` is only valid on a `home_assistant` device with a `model:`"
+                ));
+            }
 
             if let Some(profile) = profile {
-                validate_zigbee_roles(&id, &profile, &roles)?;
+                validate_model_roles(&id, transport, &profile, &roles)?;
 
-                let device = ZigbeeDevice {
+                let device = DecodedDevice {
                     id: id.clone(),
                     address: address.clone(),
                     profile,
                 };
 
-                if reg.zigbee_devices.insert(address.clone(), device).is_some() {
-                    return Err(format!("duplicate zigbee address: {address}"));
+                match transport {
+                    Transport::HomeAssistant => {
+                        for entity_id in std::iter::once(&address).chain(&extra_entities) {
+                            if reg
+                                .home_assistant_devices
+                                .insert(entity_id.clone(), device.clone())
+                                .is_some()
+                            {
+                                return Err(format!(
+                                    "device {id}: home assistant entity `{entity_id}` is claimed by another device"
+                                ));
+                            }
+                        }
+                    }
+                    _ => {
+                        if reg.zigbee_devices.insert(address.clone(), device).is_some() {
+                            return Err(format!("duplicate zigbee address: {address}"));
+                        }
+                    }
                 }
             }
 
@@ -279,7 +296,7 @@ impl DeviceRegistry {
                         .extend(capabilities);
                 }
 
-                reg.add_role(&id, transport, &address, config, notify)?;
+                reg.add_role(&id, transport, decoded, &address, config, notify)?;
             }
         }
 
@@ -289,34 +306,53 @@ impl DeviceRegistry {
     }
 }
 
-fn validate_zigbee_roles(
+fn validate_model_roles(
     id: &str,
-    profile: &ZigbeeModelProfile,
+    transport: Transport,
+    profile: &ModelProfile,
     roles: &[RawRole],
 ) -> Result<(), String> {
     let slug = &profile.slug;
 
     for role in roles {
         let name = match &role.config {
-            DeviceConfig::Door(_) => ZigbeeRoleName::Door,
-            DeviceConfig::Environment(_) => ZigbeeRoleName::Environment,
-            DeviceConfig::Light(_) => ZigbeeRoleName::Light,
-            DeviceConfig::SmartSwitch(_) => ZigbeeRoleName::SmartSwitch,
-            DeviceConfig::Presence(_) => ZigbeeRoleName::Presence,
-            DeviceConfig::ControlSwitch => ZigbeeRoleName::ControlSwitch,
-            DeviceConfig::Battery => ZigbeeRoleName::Battery,
+            DeviceConfig::Door(_) => DeviceRoleName::Door,
+            DeviceConfig::Environment(_) => DeviceRoleName::Environment,
+            DeviceConfig::Light(_) => DeviceRoleName::Light,
+            DeviceConfig::SmartSwitch(_) => DeviceRoleName::SmartSwitch,
+            DeviceConfig::Presence(_) => DeviceRoleName::Presence,
+            DeviceConfig::ControlSwitch => DeviceRoleName::ControlSwitch,
+            DeviceConfig::Battery => DeviceRoleName::Battery,
+            DeviceConfig::Roborock(_) => DeviceRoleName::RobotVacuum,
+            DeviceConfig::MediaPlayer(_) => DeviceRoleName::MediaPlayer,
             _ => continue,
         };
+
+        let home_assistant_role = matches!(
+            name,
+            DeviceRoleName::Door
+                | DeviceRoleName::Environment
+                | DeviceRoleName::Presence
+                | DeviceRoleName::Battery
+                | DeviceRoleName::RobotVacuum
+                | DeviceRoleName::MediaPlayer
+        );
+
+        if transport == Transport::HomeAssistant && !home_assistant_role {
+            return Err(format!(
+                "device {id}: a `home_assistant` device can't declare the `{name}` role"
+            ));
+        }
+
+        if transport == Transport::Zigbee && !name.zigbee() {
+            return Err(format!(
+                "device {id}: a `zigbee` device can't declare the `{name}` role"
+            ));
+        }
 
         if !profile.roles.contains(&name) {
             return Err(format!(
                 "device {id}: model `{slug}` has no `{name}` mapping but the device declares a `{name}` role"
-            ));
-        }
-
-        if name == ZigbeeRoleName::Door && !profile.roles.contains(&ZigbeeRoleName::Battery) {
-            return Err(format!(
-                "device {id}: model `{slug}` must map `battery` because `door_sensor.battery` is not nullable"
             ));
         }
     }
@@ -328,19 +364,25 @@ fn resolve_model(
     id: &str,
     transport: Transport,
     model: Option<String>,
-    profiles: &ZigbeeModels,
-) -> Result<Option<Arc<ZigbeeModelProfile>>, String> {
-    if transport != Transport::Zigbee {
-        return match model {
-            Some(_) => Err(format!(
-                "device {id}: `model:` is only valid with the `zigbee` transport"
-            )),
-            None => Ok(None),
-        };
-    }
+    models: &DeviceModels,
+) -> Result<Option<Arc<ModelProfile>>, String> {
+    let profiles = match transport {
+        Transport::Zigbee => &models.zigbee,
+        Transport::HomeAssistant => &models.home_assistant,
+        _ => {
+            return match model {
+                Some(_) => Err(format!(
+                    "device {id}: `model:` is only valid with the `zigbee` and `home_assistant` transports"
+                )),
+                None => Ok(None),
+            };
+        }
+    };
 
     let Some(slug) = model else {
-        return Err(format!("device {id}: zigbee transport requires a `model:`"));
+        return Err(format!(
+            "device {id}: {transport} transport requires a `model:`"
+        ));
     };
 
     let Some(profile) = profiles.get(&slug) else {
@@ -348,7 +390,7 @@ fn resolve_model(
         known.sort_unstable();
 
         return Err(format!(
-            "device {id}: unknown zigbee model `{slug}`; known models are {}",
+            "device {id}: unknown {transport} model `{slug}`; known models are {}",
             known.join(", ")
         ));
     };
@@ -361,6 +403,7 @@ impl DeviceRegistryInner {
         &mut self,
         id: &str,
         transport: Transport,
+        decoded: bool,
         address: &str,
         config: DeviceConfig,
         notify: &NotifyTargets,
@@ -392,9 +435,9 @@ impl DeviceRegistryInner {
             config,
             DeviceConfig::Roborock(_) | DeviceConfig::MediaPlayer(_)
         );
-        if (transport == Transport::HomeAssistant) != is_home_assistant {
+        if is_home_assistant && !(transport == Transport::HomeAssistant && decoded) {
             return Err(format!(
-                "device {id}: `home_assistant` transport is only valid with the `roborock` and `media_player` kinds, and vice versa"
+                "device {id}: the `roborock` and `media_player` kinds need the `home_assistant` transport and a `model:`"
             ));
         }
         let is_valetudo = matches!(config, DeviceConfig::Valetudo(_));
@@ -510,22 +553,8 @@ impl DeviceRegistryInner {
                 );
             }
             DeviceConfig::Roborock(roborock) => {
-                let settings = roborock.resolve();
-
-                self.roborock_entities.insert(
-                    settings.status_entity.clone(),
-                    (id.to_owned(), RoborockField::Status),
-                );
-                self.roborock_entities.insert(
-                    settings.battery_entity.clone(),
-                    (id.to_owned(), RoborockField::Battery),
-                );
-                self.roborock_entities.insert(
-                    settings.room_entity.clone(),
-                    (id.to_owned(), RoborockField::Room),
-                );
-
-                self.roborocks.insert(address.to_owned(), settings);
+                self.roborocks
+                    .insert(address.to_owned(), roborock.resolve());
             }
             DeviceConfig::MediaPlayer(media_player) => {
                 if !address.starts_with("media_player.") {
@@ -560,12 +589,6 @@ impl DeviceRegistryInner {
 
     pub fn roborock(&self, address: &str) -> Option<&RoborockSettings> {
         self.roborocks.get(address)
-    }
-
-    pub fn roborock_entity(&self, entity_id: &str) -> Option<(&str, RoborockField)> {
-        self.roborock_entities
-            .get(entity_id)
-            .map(|(device_id, field)| (device_id.as_str(), *field))
     }
 
     pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
@@ -643,8 +666,12 @@ impl DeviceRegistryInner {
             .map(|(address, _)| address.clone())
     }
 
-    pub fn zigbee_device(&self, address: &str) -> Option<&ZigbeeDevice> {
+    pub fn zigbee_device(&self, address: &str) -> Option<&DecodedDevice> {
         self.zigbee_devices.get(address)
+    }
+
+    pub fn home_assistant_device(&self, entity_id: &str) -> Option<&DecodedDevice> {
+        self.home_assistant_devices.get(entity_id)
     }
 
     pub fn esphome_target(&self, topic: &str) -> Option<&EsphomeTarget> {

@@ -9,11 +9,11 @@ use crate::{
 use uuid::Uuid;
 
 pub enum Entity {
-    Zigbee {
+    Decoded {
         address: String,
         friendly_name: String,
         contact: bool,
-        battery: i64,
+        battery: Option<i64>,
     },
 }
 
@@ -37,7 +37,7 @@ impl crate::tracing_context::TracedMessage for Message {
     fn subject(&self) -> Option<&str> {
         match self {
             Message::NewEvent(event) => match &event.entity {
-                Entity::Zigbee { address, .. } => Some(address),
+                Entity::Decoded { address, .. } => Some(address),
             },
         }
     }
@@ -58,7 +58,7 @@ impl DoorSensorHandler {
         friendly_name: String,
         ieee_addr: String,
         contact: bool,
-        battery: i64,
+        battery: Option<i64>,
     ) -> Result<(), anyhow::Error> {
         self.shared_actor_state
             .repos
@@ -101,7 +101,7 @@ impl DoorSensorHandler {
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         match message {
             Message::NewEvent(event) => match event.entity {
-                Entity::Zigbee {
+                Entity::Decoded {
                     address,
                     friendly_name,
                     contact,

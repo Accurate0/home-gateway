@@ -1,14 +1,13 @@
-use crate::actors::devices::{control_switch, plant_sensor, presence_sensor, robot_vacuum};
+use crate::actors::devices::{plant_sensor, presence_sensor, robot_vacuum};
 use crate::actors::system::rpc;
 use crate::integrations::mqtt::MqttClient;
 use crate::{
     actors::devices::{
-        door_sensor, environment_sensor, environment_sensor::EnvironmentSensorHandler, light,
-        presence_sensor::PresenceSensorHandler, smart_switch,
+        environment_sensor, environment_sensor::EnvironmentSensorHandler,
+        presence_sensor::PresenceSensorHandler,
     },
-    device_metric::DeviceMetric,
-    device_registry::ZigbeeDevice,
-    integrations::zigbee2mqtt::{devices::BridgeDevices, role},
+    decoding::DecodedDevice,
+    integrations::zigbee2mqtt::devices::BridgeDevices,
     state::AppState,
 };
 use ractor::{
@@ -214,43 +213,19 @@ impl MqttIngest {
         Ok(())
     }
 
-    fn record_battery(&self, address: &str, percent: f64) {
-        let devices = &self.shared_actor_state.devices;
-
-        let Some(settings) = devices.battery(address) else {
-            return;
-        };
-
-        let device_id = devices
-            .id_for_address(address)
-            .unwrap_or(address)
-            .to_owned();
-
-        crate::actors::system::battery::BatteryActor::report(
-            device_id,
-            settings.name.clone(),
-            "battery".to_owned(),
-            None,
-            Some(percent),
-            None,
-        );
-    }
-
     async fn dispatch_zigbee(
         &self,
         event_id: Uuid,
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         friendly_name: &str,
         payload: &Map<String, Value>,
     ) -> Result<(), anyhow::Error> {
-        let address = device.address.clone();
-        let devices = &self.shared_actor_state.devices;
-
         let reading = match device.profile.decode(payload) {
             Ok(reading) => reading,
             Err(e) => {
                 tracing::error!(
-                    "failed to decode zigbee payload for {address} with model {}: {e}",
+                    "failed to decode zigbee payload for {} with model {}: {e}",
+                    device.address,
                     device.profile.slug
                 );
                 crate::tracing_context::record_current_error(&e.to_string());
@@ -259,35 +234,14 @@ impl MqttIngest {
             }
         };
 
-        if devices.battery(&address).is_some()
-            && let Some(percent) = reading.battery
-        {
-            self.record_battery(&address, percent as f64);
-        }
-
-        role::run::<door_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
-        role::run::<environment_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
-        role::run::<light::Entity>(event_id, devices, device, friendly_name, &reading);
-        role::run::<smart_switch::Entity>(event_id, devices, device, friendly_name, &reading);
-        role::run::<presence_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
-        role::run::<control_switch::Entity>(event_id, devices, device, friendly_name, &reading);
-
-        let device_id = devices.id_for_address(&address).map(str::to_owned);
-
-        for (metric, value) in reading.metrics {
-            let record = DeviceMetric {
-                event_id,
-                address: address.clone(),
-                device_id: device_id.clone(),
-                metric,
-                value: value.into(),
-            };
-
-            if let Err(e) = self.shared_actor_state.repos.metric().record(&record).await {
-                tracing::error!("failed to save device metric for {address}: {e}");
-                crate::tracing_context::record_current_error(&e.to_string());
-            }
-        }
+        crate::decoding::dispatch(
+            &self.shared_actor_state,
+            event_id,
+            device,
+            friendly_name,
+            reading,
+        )
+        .await;
 
         Ok(())
     }

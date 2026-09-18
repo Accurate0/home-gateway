@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     path::PathBuf,
 };
 
@@ -74,13 +74,10 @@ pub use devices::light::RawLightBlock;
 pub use devices::media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use devices::plant::{PlantSensorSettings, RawPlantBlock};
 pub use devices::presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
-pub use devices::roborock::{RawRoborockBlock, RoborockField, RoborockSettings};
+pub use devices::roborock::{RawRoborockBlock, RoborockSettings};
 pub use devices::switch::{RawSmartSwitchBlock, SwitchRole};
 pub use devices::trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use devices::valetudo::{RawValetudoBlock, ValetudoSettings};
-pub use devices::zigbee_model::{ZigbeeModelProfile, ZigbeeModels, load_zigbee_models};
-pub use devices::zigbee_reading::{ZigbeeMetric, ZigbeeReading};
-pub use devices::zigbee_role::ZigbeeRoleName;
 pub use endpoint::{Endpoint, EndpointSettings, ParamType};
 pub use graphql::GraphqlSettings;
 pub use http::HttpSettings;
@@ -125,6 +122,7 @@ pub use workflow::{
 };
 
 use crate::auth::scope::ScopePattern;
+use crate::decoding::ModelSources;
 use crate::device_registry::{DeviceRegistry, RawSensor};
 use crate::settings::device_scope::DeviceScope;
 
@@ -211,6 +209,7 @@ pub struct RawSettings {
     #[serde(default)]
     devices: Vec<Vec<RawSensor>>,
     zigbee_models: PathBuf,
+    home_assistant_models: PathBuf,
     #[serde(default)]
     workflows: Vec<Vec<WorkflowDefinition>>,
     s3: S3Settings,
@@ -252,10 +251,7 @@ pub struct RawSettings {
 }
 
 impl RawSettings {
-    fn resolve(
-        self,
-        zigbee_sources: &BTreeMap<String, String>,
-    ) -> Result<(Settings, DeviceRegistry), String> {
+    fn resolve(self, model_sources: &ModelSources) -> Result<(Settings, DeviceRegistry), String> {
         let RawSettings {
             version,
             api_key,
@@ -271,6 +267,7 @@ impl RawSettings {
             notify_targets,
             devices,
             zigbee_models: _,
+            home_assistant_models: _,
             workflows,
             s3,
             watchdog,
@@ -395,12 +392,12 @@ impl RawSettings {
             }
         }
 
-        let zigbee_models = load_zigbee_models(zigbee_sources, &lua)?;
+        let models = model_sources.load(&lua)?;
 
         let registry = DeviceRegistry::build(
             devices.into_iter().flatten().collect(),
             &notify_targets,
-            &zigbee_models,
+            &models,
         )?;
         let scope = DeviceScope::new(registry.aliases(), registry.disabled());
 
@@ -557,15 +554,23 @@ impl SettingsContainer {
     fn build(config: Config, dir: &Path) -> Result<(Settings, DeviceRegistry), ConfigError> {
         let raw: RawSettings = config.try_deserialize()?;
 
-        let zigbee_dir = dir.join(&raw.zigbee_models);
-        let zigbee_sources = crate::lua::sources::load_directory(&zigbee_dir).map_err(|e| {
-            ConfigError::Message(format!(
-                "failed to load zigbee models from {}: {e}",
-                zigbee_dir.display()
-            ))
-        })?;
+        let load = |kind: &str, relative: &Path| {
+            let path = dir.join(relative);
 
-        raw.resolve(&zigbee_sources).map_err(ConfigError::Message)
+            crate::lua::sources::load_directory(&path).map_err(|e| {
+                ConfigError::Message(format!(
+                    "failed to load {kind} models from {}: {e}",
+                    path.display()
+                ))
+            })
+        };
+
+        let sources = ModelSources {
+            zigbee: load("zigbee", &raw.zigbee_models)?,
+            home_assistant: load("home_assistant", &raw.home_assistant_models)?,
+        };
+
+        raw.resolve(&sources).map_err(ConfigError::Message)
     }
 
     /// Build a config from a directory of YAML files. `base.yaml` is the entry
@@ -673,7 +678,9 @@ impl std::ops::Deref for SettingsContainer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::decoding::{DeviceModels, DeviceRoleName, ReadingMetric};
     use crate::device_registry::{Capability, RawSensor};
+    use std::collections::BTreeMap;
 
     fn lamp_registry() -> DeviceRegistry {
         let devices: Vec<RawSensor> = serde_yaml::from_str(
@@ -693,13 +700,108 @@ mod tests {
         DeviceRegistry::build(devices, &NotifyTargets::default(), &test_models()).unwrap()
     }
 
-    fn test_models() -> ZigbeeModels {
-        let sources = BTreeMap::from([(
-            "ts011f_plug".to_owned(),
-            include_str!("../../config/lua/zigbee/ts011f_plug.lua").to_owned(),
-        )]);
+    fn test_models() -> DeviceModels {
+        let sources = ModelSources {
+            zigbee: BTreeMap::from([(
+                "ts011f_plug".to_owned(),
+                include_str!("../../config/lua/zigbee/ts011f_plug.lua").to_owned(),
+            )]),
+            home_assistant: BTreeMap::from([
+                (
+                    "roborock".to_owned(),
+                    include_str!("../../config/lua/home_assistant/roborock.lua").to_owned(),
+                ),
+                (
+                    "media_player".to_owned(),
+                    include_str!("../../config/lua/home_assistant/media_player.lua").to_owned(),
+                ),
+            ]),
+        };
 
-        load_zigbee_models(&sources, &LuaSettings::default()).unwrap()
+        sources.load(&LuaSettings::default()).unwrap()
+    }
+
+    #[test]
+    fn a_home_assistant_device_without_a_model_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: roborock
+  state: enabled
+  transport: home_assistant
+  address: vacuum.robot
+  roles:
+    - type: roborock
+      config: { name: Roborock, control_entity: vacuum.robot, start_service: vacuum.start, stop_service: vacuum.stop, dock_service: vacuum.return_to_base }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.contains("home_assistant transport requires a `model:`"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn a_home_assistant_entity_can_only_belong_to_one_device() {
+        let err = build_devices(
+            r#"
+- id: roborock
+  state: enabled
+  transport: home_assistant
+  address: vacuum.robot
+  model: roborock
+  extra_entities: [sensor.robot_status, sensor.robot_status]
+  roles:
+    - type: roborock
+      config: { name: Roborock, control_entity: vacuum.robot, start_service: vacuum.start, stop_service: vacuum.stop, dock_service: vacuum.return_to_base }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.contains("`sensor.robot_status` is claimed by another device"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn extra_entities_are_only_valid_on_home_assistant_devices() {
+        let err = build_devices(
+            r#"
+- id: plug
+  state: enabled
+  transport: zigbee
+  address: "0xabc"
+  model: ts011f_plug
+  extra_entities: [sensor.plug_power]
+  roles:
+    - type: smart_switch
+      config: { name: Plug }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("`extra_entities` is only valid"), "{err}");
+    }
+
+    #[test]
+    fn a_home_assistant_device_cannot_declare_a_zigbee_only_role() {
+        let err = build_devices(
+            r#"
+- id: roborock
+  state: enabled
+  transport: home_assistant
+  address: vacuum.robot
+  model: roborock
+  roles:
+    - type: light
+      config: { name: Robot Light }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("can't declare the `light` role"), "{err}");
     }
 
     fn build_devices(yaml: &str) -> Result<DeviceRegistry, String> {
@@ -752,6 +854,7 @@ mod tests {
   state: enabled
   transport: home_assistant
   address: living_room_tv
+  model: media_player
   roles:
     - type: media_player
       config:
@@ -805,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    fn a_model_on_a_non_zigbee_transport_is_rejected() {
+    fn a_model_on_a_transport_without_decoders_is_rejected() {
         let err = build_devices(
             r#"
 - id: living-room-mtr-1
@@ -821,7 +924,7 @@ mod tests {
         .unwrap_err();
 
         assert!(
-            err.contains("only valid with the `zigbee` transport"),
+            err.contains("only valid with the `zigbee` and `home_assistant` transports"),
             "{err}"
         );
     }
@@ -1005,7 +1108,7 @@ transperth:
             .roborock(roborock_address)
             .expect("roborock device resolves");
         assert_eq!(registry.room(roborock_address), Some("dining-room"));
-        assert_eq!(roborock.battery_entity, "sensor.robot_battery");
+        assert_eq!(roborock.control_entity, "vacuum.robot");
         assert_eq!(roborock.start_service, "vacuum.start");
         assert_eq!(roborock.stop_service, "vacuum.stop");
         assert_eq!(roborock.dock_service, "vacuum.return_to_base");
@@ -1049,13 +1152,26 @@ transperth:
             "mains-powered light has no battery kind"
         );
 
+        for entity_id in [
+            "vacuum.robot",
+            "sensor.robot_battery",
+            "sensor.robot_status",
+            "binary_sensor.robot_water_shortage",
+        ] {
+            let device = registry
+                .home_assistant_device(entity_id)
+                .unwrap_or_else(|| panic!("{entity_id} routes to a decoded device"));
+
+            assert_eq!(device.id, "roborock");
+            assert_eq!(device.address, "vacuum.robot");
+            assert_eq!(device.profile.slug, "roborock");
+        }
+
         assert_eq!(
-            registry.roborock_entity("sensor.robot_battery"),
-            Some(("roborock", RoborockField::Battery))
-        );
-        assert_eq!(
-            registry.roborock_entity("sensor.robot_status"),
-            Some(("roborock", RoborockField::Status))
+            registry
+                .home_assistant_device("media_player.living_room_tv")
+                .map(|device| device.profile.slug.as_str()),
+            Some("media_player")
         );
 
         let mut seen = HashSet::new();
@@ -1174,8 +1290,8 @@ transperth:
         assert!(
             registry.door(front_address).is_some() && registry.battery(front_address).is_some()
         );
-        assert!(front.profile.roles.contains(&ZigbeeRoleName::Door));
-        assert!(front.profile.roles.contains(&ZigbeeRoleName::Battery));
+        assert!(front.profile.roles.contains(&DeviceRoleName::Door));
+        assert!(front.profile.roles.contains(&DeviceRoleName::Battery));
 
         let outdoor = registry
             .zigbee_device(registry.address_or_self("env-outdoor"))
@@ -1187,11 +1303,16 @@ transperth:
             .expect("closet presence is a zigbee device");
         let reading = presence
             .profile
-            .decode(&serde_json::from_str(r#"{"presence":true,"movement":"approach"}"#).unwrap())
+            .decode(
+                &serde_json::from_str::<serde_json::Value>(
+                    r#"{"presence":true,"movement":"approach"}"#,
+                )
+                .unwrap(),
+            )
             .expect("closet presence decodes");
         assert_eq!(
             reading.metrics.get("movement"),
-            Some(&ZigbeeMetric::Text("approach".to_owned()))
+            Some(&ReadingMetric::Text("approach".to_owned()))
         );
 
         // esphome devices are not in the zigbee table
@@ -1283,6 +1404,7 @@ transperth:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1320,7 +1442,7 @@ auth:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve(&ModelSources::default()).unwrap_err();
         assert!(err.contains("unknown resource `bogus`"), "{err}");
     }
 
@@ -1331,6 +1453,7 @@ auth:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1376,7 +1499,7 @@ auth:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve(&ModelSources::default()).unwrap_err();
         assert!(
             err.contains("oauth group 'admins@idm' has invalid scope"),
             "{err}"
@@ -1455,6 +1578,7 @@ transperth:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1497,7 +1621,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve(&ModelSources::default()).unwrap_err();
         assert!(err.contains("does-not-exist"), "{err}");
     }
 
@@ -1508,6 +1632,7 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1554,7 +1679,7 @@ workflows:
         )
         .unwrap();
 
-        raw.resolve(&BTreeMap::new())
+        raw.resolve(&ModelSources::default())
             .expect("a known target resolves");
     }
 
@@ -1563,6 +1688,7 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1599,7 +1725,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 
     fn resolve_error(workflows: &str) -> String {
         raw_with_workflows(workflows)
-            .resolve(&BTreeMap::new())
+            .resolve(&ModelSources::default())
             .unwrap_err()
     }
 
@@ -1718,7 +1844,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
         assert!(err.contains("unknown input `extra`"), "{err}");
 
         raw_with_workflows(&workflows(r#"{ count: "${event.product_id}" }"#))
-            .resolve(&BTreeMap::new())
+            .resolve(&ModelSources::default())
             .expect("typed inputs resolve");
     }
 
@@ -1763,7 +1889,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
         raw_with_workflows(&workflows(
             "{ type: var, var: event.drop, op: gt, value: 35 }",
         ))
-        .resolve(&BTreeMap::new())
+        .resolve(&ModelSources::default())
         .expect("guards see event variables");
     }
 
@@ -1774,6 +1900,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1815,7 +1942,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve(&ModelSources::default()).unwrap_err();
         assert!(err.contains("uses `for:`"), "{err}");
     }
 
@@ -1826,6 +1953,7 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1866,7 +1994,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve(&ModelSources::default()).unwrap_err();
         assert!(err.contains("empty `modes:`"), "{err}");
     }
 
@@ -1877,6 +2005,7 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1929,6 +2058,7 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -1969,7 +2099,7 @@ workflows:
         )
         .unwrap();
 
-        let err = raw.resolve(&BTreeMap::new()).unwrap_err();
+        let err = raw.resolve(&ModelSources::default()).unwrap_err();
         assert!(err.contains("needs `to` or `from`"), "{err}");
     }
 
@@ -1980,6 +2110,7 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -2042,7 +2173,7 @@ devices:
         )
         .unwrap();
 
-        let (settings, registry) = raw.resolve(&BTreeMap::new()).unwrap();
+        let (settings, registry) = raw.resolve(&ModelSources::default()).unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Album);
@@ -2075,6 +2206,7 @@ devices:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -2132,7 +2264,7 @@ devices:
         )
         .unwrap();
 
-        let (_, registry) = raw.resolve(&BTreeMap::new()).unwrap();
+        let (_, registry) = raw.resolve(&ModelSources::default()).unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Reddit);
@@ -2152,6 +2284,7 @@ devices:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+home_assistant_models: lua/home_assistant
 mqtt:
   url: x
   port: 1883
@@ -2207,7 +2340,7 @@ devices:
         )
         .unwrap();
 
-        let (settings, registry) = raw.resolve(&BTreeMap::new()).unwrap();
+        let (settings, registry) = raw.resolve(&ModelSources::default()).unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Dashboard);
@@ -2254,13 +2387,23 @@ devices:
 
         let mut missing = Vec::new();
 
-        for dir in ["", "devices/", "workflows/"] {
+        for dir in [
+            "",
+            "sections/",
+            "devices/",
+            "workflows/",
+            "lua/lib/",
+            "lua/workflows/",
+            "lua/zigbee/",
+            "lua/home_assistant/",
+        ] {
             for entry in std::fs::read_dir(Path::new("./config").join(dir)).unwrap() {
                 let name = entry.unwrap().file_name().to_string_lossy().into_owned();
-                let is_yaml = name.ends_with(".yaml") && name != "kustomization.yaml";
+                let shipped = (name.ends_with(".yaml") && name != "kustomization.yaml")
+                    || name.ends_with(".lua");
                 let path = format!("{dir}{name}");
 
-                if is_yaml && !listed.contains(path.as_str()) {
+                if shipped && !listed.contains(path.as_str()) {
                     missing.push(path);
                 }
             }

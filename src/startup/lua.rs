@@ -218,6 +218,7 @@ mod tests {
             "config/lua/lib",
             "config/lua/workflows",
             "config/lua/zigbee",
+            "config/lua/home_assistant",
         ] {
             let sources =
                 load_directory(&PathBuf::from(directory)).expect("expected the directory to load");

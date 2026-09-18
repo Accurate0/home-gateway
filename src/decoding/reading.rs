@@ -7,35 +7,59 @@ use crate::settings::Metric;
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZigbeeReading {
+pub struct DeviceReading {
     #[serde(default, deserialize_with = "integer")]
     pub battery: Option<i64>,
     #[serde(default)]
-    pub door: Option<ZigbeeDoorReading>,
+    pub door: Option<DoorFields>,
     #[serde(default)]
     pub environment: Option<HashMap<Metric, f64>>,
     #[serde(default)]
-    pub light: Option<ZigbeeLightReading>,
+    pub light: Option<LightFields>,
     #[serde(default)]
-    pub smart_switch: Option<ZigbeeSmartSwitchReading>,
+    pub smart_switch: Option<SmartSwitchFields>,
     #[serde(default)]
-    pub presence: Option<ZigbeePresenceReading>,
+    pub presence: Option<PresenceFields>,
     #[serde(default)]
-    pub control_switch: Option<ZigbeeControlSwitchReading>,
+    pub control_switch: Option<ControlSwitchFields>,
     #[serde(default)]
-    pub metrics: BTreeMap<String, ZigbeeMetric>,
+    pub robot_vacuum: Option<RobotVacuumFields>,
+    #[serde(default)]
+    pub media_player: Option<MediaPlayerFields>,
+    #[serde(default)]
+    pub metrics: BTreeMap<String, ReadingMetric>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZigbeeDoorReading {
+pub struct RobotVacuumFields {
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub room: Option<String>,
+    #[serde(default, deserialize_with = "integer")]
+    pub battery: Option<i64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MediaPlayerFields {
+    #[serde(default)]
+    pub state: Option<String>,
+    #[serde(default)]
+    pub attributes: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DoorFields {
     #[serde(default)]
     pub contact: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZigbeeLightReading {
+pub struct LightFields {
     #[serde(default)]
     pub state: Option<String>,
     #[serde(default, deserialize_with = "integer")]
@@ -48,7 +72,7 @@ pub struct ZigbeeLightReading {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZigbeeSmartSwitchReading {
+pub struct SmartSwitchFields {
     #[serde(default)]
     pub state: Option<String>,
     #[serde(default, deserialize_with = "integer")]
@@ -63,32 +87,32 @@ pub struct ZigbeeSmartSwitchReading {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZigbeePresenceReading {
+pub struct PresenceFields {
     #[serde(default)]
     pub presence: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZigbeeControlSwitchReading {
+pub struct ControlSwitchFields {
     #[serde(default)]
     pub action: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
-pub enum ZigbeeMetric {
+pub enum ReadingMetric {
     Flag(bool),
     Number(f64),
     Text(String),
 }
 
-impl From<ZigbeeMetric> for MetricValue {
-    fn from(metric: ZigbeeMetric) -> Self {
+impl From<ReadingMetric> for MetricValue {
+    fn from(metric: ReadingMetric) -> Self {
         match metric {
-            ZigbeeMetric::Flag(flag) => MetricValue::Text(flag.to_string()),
-            ZigbeeMetric::Number(number) => MetricValue::Numeric(number),
-            ZigbeeMetric::Text(text) => MetricValue::Text(text),
+            ReadingMetric::Flag(flag) => MetricValue::Text(flag.to_string()),
+            ReadingMetric::Number(number) => MetricValue::Numeric(number),
+            ReadingMetric::Text(text) => MetricValue::Text(text),
         }
     }
 }
@@ -111,14 +135,14 @@ mod tests {
 
     #[test]
     fn an_integral_float_is_accepted_as_an_integer() {
-        let reading: ZigbeeReading = serde_json::from_str(r#"{"battery": 21.0}"#).expect("reading");
+        let reading: DeviceReading = serde_json::from_str(r#"{"battery": 21.0}"#).expect("reading");
 
         assert_eq!(reading.battery, Some(21));
     }
 
     #[test]
     fn a_fractional_integer_field_is_dropped() {
-        let reading: ZigbeeReading =
+        let reading: DeviceReading =
             serde_json::from_str(r#"{"smart_switch": {"voltage": 243.5}}"#).expect("reading");
 
         assert_eq!(reading.smart_switch.and_then(|fields| fields.voltage), None);
@@ -126,7 +150,7 @@ mod tests {
 
     #[test]
     fn a_numeric_metric_does_not_coerce_from_a_string() {
-        let reading: ZigbeeReading =
+        let reading: DeviceReading =
             serde_json::from_str(r#"{"metrics": {"power": "98"}}"#).expect("reading");
 
         assert_eq!(
@@ -138,7 +162,7 @@ mod tests {
     #[test]
     fn a_bool_metric_lands_as_text() {
         assert_eq!(
-            MetricValue::from(ZigbeeMetric::Flag(false)),
+            MetricValue::from(ReadingMetric::Flag(false)),
             MetricValue::Text("false".to_owned())
         );
     }
@@ -146,7 +170,7 @@ mod tests {
     #[test]
     fn unknown_environment_metrics_are_rejected() {
         let error =
-            serde_json::from_str::<ZigbeeReading>(r#"{"environment": {"wind_speed": 3.0}}"#)
+            serde_json::from_str::<DeviceReading>(r#"{"environment": {"wind_speed": 3.0}}"#)
                 .expect_err("unknown metric");
 
         assert!(error.to_string().contains("wind_speed"), "{error}");

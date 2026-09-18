@@ -3,30 +3,37 @@ use crate::{
     actors::devices::{
         control_switch, control_switch::ControlSwitchHandler, door_sensor,
         door_sensor::DoorSensorHandler, environment_sensor,
-        environment_sensor::EnvironmentSensorHandler, light, light::LightHandler, presence_sensor,
-        presence_sensor::PresenceSensorHandler, smart_switch, smart_switch::SmartSwitchHandler,
+        environment_sensor::EnvironmentSensorHandler, light, light::LightHandler, media_player,
+        media_player::MediaPlayerHandler, presence_sensor, presence_sensor::PresenceSensorHandler,
+        robot_vacuum, robot_vacuum::RobotVacuumHandler, smart_switch,
+        smart_switch::SmartSwitchHandler,
     },
-    device_registry::{DeviceRegistry, ZigbeeDevice},
+    device_registry::DeviceRegistry,
     repo::light::LightAttributes,
-    settings::ZigbeeReading,
 };
+
+use super::decoded_device::DecodedDevice;
+use super::reading::DeviceReading;
 
 use uuid::Uuid;
 
-pub trait ZigbeeRole: Sized {
+pub trait DecodedRole: Sized {
     type Message: ractor::Message;
 
     const ACTOR: &'static str;
 
     fn declared(devices: &DeviceRegistry, address: &str) -> bool;
 
-    fn extract(device: &ZigbeeDevice, friendly_name: &str, reading: &ZigbeeReading)
-    -> Option<Self>;
+    fn extract(
+        device: &DecodedDevice,
+        friendly_name: &str,
+        reading: &DeviceReading,
+    ) -> Option<Self>;
 
     fn into_message(self, event_id: Uuid) -> Self::Message;
 }
 
-impl ZigbeeRole for door_sensor::Entity {
+impl DecodedRole for door_sensor::Entity {
     type Message = door_sensor::Message;
 
     const ACTOR: &'static str = DoorSensorHandler::NAME;
@@ -35,9 +42,9 @@ impl ZigbeeRole for door_sensor::Entity {
     }
 
     fn extract(
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         friendly_name: &str,
-        reading: &ZigbeeReading,
+        reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
 
@@ -46,16 +53,11 @@ impl ZigbeeRole for door_sensor::Entity {
             return None;
         };
 
-        let Some(battery) = reading.battery else {
-            tracing::info!("skipping door reading for {address}: no battery in payload");
-            return None;
-        };
-
-        Some(door_sensor::Entity::Zigbee {
+        Some(door_sensor::Entity::Decoded {
             address: address.clone(),
             friendly_name: friendly_name.to_owned(),
             contact,
-            battery,
+            battery: reading.battery,
         })
     }
 
@@ -68,7 +70,7 @@ impl ZigbeeRole for door_sensor::Entity {
     }
 }
 
-impl ZigbeeRole for environment_sensor::Entity {
+impl DecodedRole for environment_sensor::Entity {
     type Message = environment_sensor::Message;
 
     const ACTOR: &'static str = EnvironmentSensorHandler::NAME;
@@ -77,9 +79,9 @@ impl ZigbeeRole for environment_sensor::Entity {
     }
 
     fn extract(
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         friendly_name: &str,
-        reading: &ZigbeeReading,
+        reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
         let declared = &device.profile.environment;
@@ -91,7 +93,8 @@ impl ZigbeeRole for environment_sensor::Entity {
 
         for metric in reported.keys().filter(|metric| !declared.contains(metric)) {
             tracing::warn!(
-                "zigbee model {} reported undeclared environment metric {metric:?} for {address}",
+                "{} model {} reported undeclared environment metric {metric:?} for {address}",
+                device.profile.kind,
                 device.profile.slug
             );
         }
@@ -110,7 +113,7 @@ impl ZigbeeRole for environment_sensor::Entity {
             return None;
         }
 
-        Some(environment_sensor::Entity::Zigbee {
+        Some(environment_sensor::Entity::Decoded {
             address: address.clone(),
             friendly_name: friendly_name.to_owned(),
             readings,
@@ -127,7 +130,7 @@ impl ZigbeeRole for environment_sensor::Entity {
     }
 }
 
-impl ZigbeeRole for light::Entity {
+impl DecodedRole for light::Entity {
     type Message = light::LightHandlerMessage;
 
     const ACTOR: &'static str = LightHandler::NAME;
@@ -136,9 +139,9 @@ impl ZigbeeRole for light::Entity {
     }
 
     fn extract(
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         _friendly_name: &str,
-        reading: &ZigbeeReading,
+        reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
 
@@ -172,7 +175,7 @@ impl ZigbeeRole for light::Entity {
     }
 }
 
-impl ZigbeeRole for smart_switch::Entity {
+impl DecodedRole for smart_switch::Entity {
     type Message = smart_switch::Message;
 
     const ACTOR: &'static str = SmartSwitchHandler::NAME;
@@ -181,9 +184,9 @@ impl ZigbeeRole for smart_switch::Entity {
     }
 
     fn extract(
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         friendly_name: &str,
-        reading: &ZigbeeReading,
+        reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
 
@@ -221,7 +224,7 @@ impl ZigbeeRole for smart_switch::Entity {
     }
 }
 
-impl ZigbeeRole for presence_sensor::Entity {
+impl DecodedRole for presence_sensor::Entity {
     type Message = presence_sensor::Message;
 
     const ACTOR: &'static str = PresenceSensorHandler::NAME;
@@ -230,9 +233,9 @@ impl ZigbeeRole for presence_sensor::Entity {
     }
 
     fn extract(
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         _friendly_name: &str,
-        reading: &ZigbeeReading,
+        reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
 
@@ -241,7 +244,7 @@ impl ZigbeeRole for presence_sensor::Entity {
             return None;
         };
 
-        Some(presence_sensor::Entity::Zigbee {
+        Some(presence_sensor::Entity::Decoded {
             address: address.clone(),
             presence,
         })
@@ -256,7 +259,7 @@ impl ZigbeeRole for presence_sensor::Entity {
     }
 }
 
-impl ZigbeeRole for control_switch::Entity {
+impl DecodedRole for control_switch::Entity {
     type Message = control_switch::ControlSwitchMessage;
 
     const ACTOR: &'static str = ControlSwitchHandler::NAME;
@@ -265,9 +268,9 @@ impl ZigbeeRole for control_switch::Entity {
     }
 
     fn extract(
-        device: &ZigbeeDevice,
+        device: &DecodedDevice,
         _friendly_name: &str,
-        reading: &ZigbeeReading,
+        reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
 
@@ -297,12 +300,96 @@ impl ZigbeeRole for control_switch::Entity {
     }
 }
 
-pub fn run<R: ZigbeeRole>(
+impl DecodedRole for robot_vacuum::RoborockReading {
+    type Message = robot_vacuum::Message;
+
+    const ACTOR: &'static str = RobotVacuumHandler::NAME;
+    fn declared(devices: &DeviceRegistry, address: &str) -> bool {
+        devices.roborock(address).is_some()
+    }
+
+    fn extract(
+        device: &DecodedDevice,
+        _friendly_name: &str,
+        reading: &DeviceReading,
+    ) -> Option<Self> {
+        let Some(fields) = reading.robot_vacuum.as_ref() else {
+            tracing::debug!(
+                "skipping robot vacuum reading for {}: no robot_vacuum in this update",
+                device.address
+            );
+            return None;
+        };
+
+        Some(robot_vacuum::RoborockReading {
+            device_id: device.id.clone(),
+            status: fields.status.clone(),
+            room: fields.room.clone(),
+            battery: fields.battery,
+        })
+    }
+
+    fn into_message(self, event_id: Uuid) -> Self::Message {
+        robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
+            event_id,
+            traceparent: crate::tracing_context::inject_current(),
+            reading: self,
+        })
+    }
+}
+
+impl DecodedRole for media_player::MediaPlayerReading {
+    type Message = media_player::Message;
+
+    const ACTOR: &'static str = MediaPlayerHandler::NAME;
+    fn declared(devices: &DeviceRegistry, address: &str) -> bool {
+        devices.media_player(address).is_some()
+    }
+
+    fn extract(
+        device: &DecodedDevice,
+        _friendly_name: &str,
+        reading: &DeviceReading,
+    ) -> Option<Self> {
+        let address = &device.address;
+
+        let Some(fields) = reading.media_player.as_ref() else {
+            tracing::debug!(
+                "skipping media player reading for {address}: no media_player in this update"
+            );
+            return None;
+        };
+
+        let Some(state) = fields.state.clone() else {
+            tracing::info!("skipping media player reading for {address}: no state");
+            return None;
+        };
+
+        Some(media_player::MediaPlayerReading {
+            address: address.clone(),
+            state,
+            attributes: fields
+                .attributes
+                .clone()
+                .unwrap_or_else(|| serde_json::Value::Object(Default::default())),
+        })
+    }
+
+    fn into_message(self, event_id: Uuid) -> Self::Message {
+        media_player::Message::HomeAssistant(media_player::Update {
+            event_id,
+            traceparent: crate::tracing_context::inject_current(),
+            reading: self,
+        })
+    }
+}
+
+pub fn run<R: DecodedRole>(
     event_id: Uuid,
     devices: &DeviceRegistry,
-    device: &ZigbeeDevice,
+    device: &DecodedDevice,
     friendly_name: &str,
-    reading: &ZigbeeReading,
+    reading: &DeviceReading,
 ) {
     if !R::declared(devices, &device.address) {
         return;
@@ -313,7 +400,11 @@ pub fn run<R: ZigbeeRole>(
     };
 
     if let Err(e) = rpc::cast_factory(R::ACTOR, entity.into_message(event_id)) {
-        tracing::error!("failed to dispatch zigbee event to {}: {e}", R::ACTOR);
+        tracing::error!(
+            "failed to dispatch {} event to {}: {e}",
+            device.profile.kind,
+            R::ACTOR
+        );
     }
 }
 
@@ -321,30 +412,31 @@ pub fn run<R: ZigbeeRole>(
 mod tests {
     use super::*;
     use crate::{
+        decoding::load_models,
         device_metric::MetricValue,
-        settings::{LuaSettings, Metric, load_zigbee_models},
+        settings::{LuaSettings, Metric},
     };
     use serde_json::{Map, Value};
     use std::collections::BTreeMap;
 
-    fn device(slug: &str, source: &str) -> ZigbeeDevice {
+    fn device(slug: &str, source: &str) -> DecodedDevice {
         let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
-        let models = load_zigbee_models(&sources, &LuaSettings::default()).expect("models");
+        let models = load_models("zigbee", &sources, &LuaSettings::default()).expect("models");
 
-        ZigbeeDevice {
+        DecodedDevice {
             id: "test-device".to_owned(),
             address: "0xabc".to_owned(),
             profile: models[slug].clone(),
         }
     }
 
-    fn reading(device: &ZigbeeDevice, json: &str) -> ZigbeeReading {
+    fn reading(device: &DecodedDevice, json: &str) -> DeviceReading {
         let payload: Map<String, Value> = serde_json::from_str(json).expect("payload");
 
         device.profile.decode(&payload).expect("decode")
     }
 
-    fn metrics(reading: ZigbeeReading) -> Vec<(String, MetricValue)> {
+    fn metrics(reading: DeviceReading) -> Vec<(String, MetricValue)> {
         reading
             .metrics
             .into_iter()
@@ -352,12 +444,12 @@ mod tests {
             .collect()
     }
 
-    const AQARA_DOOR: &str = include_str!("../../../config/lua/zigbee/aqara_mccgq12lm.lua");
-    const LUMI_ENVIRONMENT: &str = include_str!("../../../config/lua/zigbee/lumi_wsdcgq11lm.lua");
-    const AQARA_FP1E: &str = include_str!("../../../config/lua/zigbee/aqara_fp1e.lua");
-    const TS011F_PLUG: &str = include_str!("../../../config/lua/zigbee/ts011f_plug.lua");
-    const AQARA_SWITCH: &str = include_str!("../../../config/lua/zigbee/aqara_wxkg11lm.lua");
-    const AQARA_T1: &str = include_str!("../../../config/lua/zigbee/aqara_t1.lua");
+    const AQARA_DOOR: &str = include_str!("../../config/lua/zigbee/aqara_mccgq12lm.lua");
+    const LUMI_ENVIRONMENT: &str = include_str!("../../config/lua/zigbee/lumi_wsdcgq11lm.lua");
+    const AQARA_FP1E: &str = include_str!("../../config/lua/zigbee/aqara_fp1e.lua");
+    const TS011F_PLUG: &str = include_str!("../../config/lua/zigbee/ts011f_plug.lua");
+    const AQARA_SWITCH: &str = include_str!("../../config/lua/zigbee/aqara_wxkg11lm.lua");
+    const AQARA_T1: &str = include_str!("../../config/lua/zigbee/aqara_t1.lua");
 
     #[test]
     fn extracts_an_aqara_door_payload() {
@@ -367,18 +459,18 @@ mod tests {
             r#"{"contact":false,"battery":97,"device_temperature":21,"voltage":3005,"linkquality":72}"#,
         );
 
-        let Some(door_sensor::Entity::Zigbee {
+        let Some(door_sensor::Entity::Decoded {
             contact,
             battery: level,
             friendly_name,
             ..
-        }) = <door_sensor::Entity as ZigbeeRole>::extract(&device, "front-door", &reading)
+        }) = <door_sensor::Entity as DecodedRole>::extract(&device, "front-door", &reading)
         else {
             panic!("expected a door reading");
         };
 
         assert!(!contact);
-        assert_eq!(level, 97);
+        assert_eq!(level, Some(97));
         assert_eq!(friendly_name, "front-door");
         assert_eq!(reading.battery, Some(97));
 
@@ -392,7 +484,7 @@ mod tests {
         let device = device("aqara_mccgq12lm", AQARA_DOOR);
 
         assert!(
-            <door_sensor::Entity as ZigbeeRole>::extract(
+            <door_sensor::Entity as DecodedRole>::extract(
                 &device,
                 "front-door",
                 &reading(&device, r#"{"battery":97}"#)
@@ -410,11 +502,11 @@ mod tests {
             r#"{"temperature":18.4,"humidity":61,"pressure":1012,"battery":88}"#,
         );
 
-        let Some(environment_sensor::Entity::Zigbee {
+        let Some(environment_sensor::Entity::Decoded {
             readings,
             battery: level,
             ..
-        }) = <environment_sensor::Entity as ZigbeeRole>::extract(&device, "outdoor", &reading)
+        }) = <environment_sensor::Entity as DecodedRole>::extract(&device, "outdoor", &reading)
         else {
             panic!("expected an environment reading");
         };
@@ -433,8 +525,8 @@ mod tests {
             r#"{"presence":true,"target_distance":1.4,"movement":"approach"}"#,
         );
 
-        let Some(presence_sensor::Entity::Zigbee { presence, .. }) =
-            <presence_sensor::Entity as ZigbeeRole>::extract(&device, "closet-presence", &reading)
+        let Some(presence_sensor::Entity::Decoded { presence, .. }) =
+            <presence_sensor::Entity as DecodedRole>::extract(&device, "closet-presence", &reading)
         else {
             panic!("expected a presence reading");
         };
@@ -460,7 +552,7 @@ mod tests {
             energy,
             state,
             ..
-        }) = <smart_switch::Entity as ZigbeeRole>::extract(
+        }) = <smart_switch::Entity as DecodedRole>::extract(
             &device,
             "living-room-lamp",
             &reading(
@@ -484,7 +576,7 @@ mod tests {
         let device = device("ts011f_plug", TS011F_PLUG);
 
         assert!(
-            <smart_switch::Entity as ZigbeeRole>::extract(
+            <smart_switch::Entity as DecodedRole>::extract(
                 &device,
                 "living-room-lamp",
                 &reading(&device, r#"{"state":"ON","voltage":244}"#)
@@ -498,14 +590,16 @@ mod tests {
     fn extracts_a_light_payload_with_colour() {
         let device = device("aqara_t1", AQARA_T1);
 
-        let Some(light::Entity::Zigbee { attributes, .. }) = <light::Entity as ZigbeeRole>::extract(
-            &device,
-            "closet-light",
-            &reading(
+        let Some(light::Entity::Zigbee { attributes, .. }) =
+            <light::Entity as DecodedRole>::extract(
                 &device,
-                r##"{"state":"ON","brightness":120,"color_temp":370,"color":{"hex":"#FF8800"}}"##,
-            ),
-        ) else {
+                "closet-light",
+                &reading(
+                    &device,
+                    r##"{"state":"ON","brightness":120,"color_temp":370,"color":{"hex":"#FF8800"}}"##,
+                ),
+            )
+        else {
             panic!("expected a light reading");
         };
 
@@ -520,7 +614,7 @@ mod tests {
         let device = device("aqara_wxkg11lm", AQARA_SWITCH);
 
         assert!(
-            <control_switch::Entity as ZigbeeRole>::extract(
+            <control_switch::Entity as DecodedRole>::extract(
                 &device,
                 "small-switch",
                 &reading(&device, r#"{"action":"","battery":91}"#)
@@ -530,7 +624,7 @@ mod tests {
         );
 
         let Some(control_switch::Entity::Zigbee { action, .. }) =
-            <control_switch::Entity as ZigbeeRole>::extract(
+            <control_switch::Entity as DecodedRole>::extract(
                 &device,
                 "small-switch",
                 &reading(&device, r#"{"action":"single","battery":91}"#),
@@ -540,5 +634,126 @@ mod tests {
         };
 
         assert_eq!(action, "single");
+    }
+
+    const ROBOROCK: &str = include_str!("../../config/lua/home_assistant/roborock.lua");
+    const MEDIA_PLAYER: &str = include_str!("../../config/lua/home_assistant/media_player.lua");
+
+    fn entity_device(slug: &str, source: &str, address: &str) -> DecodedDevice {
+        let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
+        let models =
+            load_models("home_assistant", &sources, &LuaSettings::default()).expect("models");
+
+        DecodedDevice {
+            id: "test-device".to_owned(),
+            address: address.to_owned(),
+            profile: models[slug].clone(),
+        }
+    }
+
+    fn entity(device: &DecodedDevice, entity_id: &str, state: &str) -> DeviceReading {
+        let entity = serde_json::json!({
+            "entity_id": entity_id,
+            "state": state,
+            "attributes": { "friendly_name": "Robot" },
+        });
+
+        device.profile.decode(&entity).expect("decode")
+    }
+
+    fn roborock(reading: &DeviceReading) -> Option<robot_vacuum::RoborockReading> {
+        let device = entity_device("roborock", ROBOROCK, "vacuum.robot");
+
+        <robot_vacuum::RoborockReading as DecodedRole>::extract(&device, "Robot", reading)
+    }
+
+    #[test]
+    fn roborock_status_room_and_battery_map_to_the_robot_vacuum_role() {
+        let device = entity_device("roborock", ROBOROCK, "vacuum.robot");
+
+        let status = roborock(&entity(&device, "sensor.robot_status", "charging")).expect("status");
+        assert_eq!(status.device_id, "test-device");
+        assert_eq!(status.status.as_deref(), Some("charging"));
+        assert_eq!(status.room, None);
+        assert_eq!(status.battery, None);
+
+        let room =
+            roborock(&entity(&device, "sensor.robot_current_room", "Dining room")).expect("room");
+        assert_eq!(room.room.as_deref(), Some("Dining room"));
+
+        let battery = roborock(&entity(&device, "sensor.robot_battery", "100")).expect("battery");
+        assert_eq!(battery.battery, Some(100));
+    }
+
+    #[test]
+    fn roborock_extra_entities_land_as_typed_metrics() {
+        let device = entity_device("roborock", ROBOROCK, "vacuum.robot");
+
+        let shortage = entity(&device, "binary_sensor.robot_water_shortage", "on");
+        assert!(
+            roborock(&shortage).is_none(),
+            "a metric is not a status update"
+        );
+        assert_eq!(
+            metrics(shortage),
+            vec![(
+                "robot_water_shortage".to_owned(),
+                MetricValue::Text("true".to_owned())
+            )]
+        );
+
+        assert_eq!(
+            metrics(entity(&device, "sensor.robot_filter_time_left", "110.09")),
+            vec![(
+                "robot_filter_time_left".to_owned(),
+                MetricValue::Numeric(110.09)
+            )]
+        );
+        assert_eq!(
+            metrics(entity(&device, "sensor.robot_vacuum_error", "none")),
+            vec![(
+                "robot_vacuum_error".to_owned(),
+                MetricValue::Text("none".to_owned())
+            )]
+        );
+        assert_eq!(
+            metrics(entity(&device, "vacuum.robot", "docked")),
+            vec![("robot".to_owned(), MetricValue::Text("docked".to_owned()))]
+        );
+    }
+
+    #[test]
+    fn an_unavailable_roborock_entity_reports_nothing() {
+        let device = entity_device("roborock", ROBOROCK, "vacuum.robot");
+        let reading = entity(&device, "sensor.robot_status", "unavailable");
+
+        assert!(roborock(&reading).is_none());
+        assert!(reading.metrics.is_empty());
+    }
+
+    #[test]
+    fn a_media_player_passes_state_and_attributes_through() {
+        let device = entity_device("media_player", MEDIA_PLAYER, "media_player.living_room_tv");
+        let payload = serde_json::json!({
+            "entity_id": "media_player.living_room_tv",
+            "state": "playing",
+            "attributes": { "media_title": "Severance", "app_name": "Apple TV", "volume_level": 0.3 },
+        });
+
+        let reading = device.profile.decode(&payload).expect("decode");
+
+        let Some(media_player::MediaPlayerReading {
+            address,
+            state,
+            attributes,
+        }) = <media_player::MediaPlayerReading as DecodedRole>::extract(&device, "TV", &reading)
+        else {
+            panic!("expected a media player reading");
+        };
+
+        assert_eq!(address, "media_player.living_room_tv");
+        assert_eq!(state, "playing");
+        assert_eq!(attributes["media_title"], "Severance");
+        assert_eq!(attributes["app_name"], "Apple TV");
     }
 }

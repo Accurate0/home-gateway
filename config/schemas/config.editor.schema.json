@@ -156,6 +156,16 @@
         }
       ]
     },
+    "home_assistant_models": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
     "workflows": {
       "anyOf": [
         {
@@ -453,6 +463,7 @@
     "tracing",
     "mqtt",
     "zigbee_models",
+    "home_assistant_models",
     "s3",
     "watchdog",
     "workflow",
@@ -852,6 +863,13 @@
             "null"
           ],
           "default": null
+        },
+        "extra_entities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
         }
       },
       "required": [
@@ -1504,15 +1522,6 @@
         "name": {
           "type": "string"
         },
-        "status_entity": {
-          "type": "string"
-        },
-        "battery_entity": {
-          "type": "string"
-        },
-        "room_entity": {
-          "type": "string"
-        },
         "control_entity": {
           "type": "string"
         },
@@ -1528,9 +1537,6 @@
       },
       "required": [
         "name",
-        "status_entity",
-        "battery_entity",
-        "room_entity",
         "control_entity",
         "start_service",
         "stop_service",
