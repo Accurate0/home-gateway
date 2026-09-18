@@ -4,8 +4,6 @@
 
 ---@alias gw.EnvMetric "temperature"|"humidity"|"pressure"|"lux"|"uv_index"
 
----@alias gw.FuelwatchVariables { site_id: integer, name: string, brand: string, suburb: string, address: string, price: number, price_tomorrow?: number|nil }
-
 ---@alias gw.LightState { state: "ON" }|{ state: "OFF" }|{ state: "TOGGLE" }|{ value: integer, state: "SET_BRIGHTNESS" }|{ value: integer, on_off?: boolean, state: "INCREASE_BRIGHTNESS" }|{ value: integer, on_off?: boolean, state: "DECREASE_BRIGHTNESS" }|{ value: integer, state: "INCREASE_COLOUR_TEMPERATURE" }|{ value: integer, state: "DECREASE_COLOUR_TEMPERATURE" }|{ state: "STOP_COLOUR_TEMPERATURE" }|{ state: "STOP_BRIGHTNESS" }
 
 ---@alias gw.Mode "home"|"away"|"vacation"|"guest"
@@ -21,10 +19,6 @@
 ---@alias gw.SwitchState "ON"|"OFF"|"TOGGLE"
 
 ---@alias gw.VacuumCommand "start"|"stop"|"dock"
-
----@alias gw.WillyweatherDayVariables { description: string, emoji: string, min: integer, max: integer, uv?: number|nil, rain_probability?: integer|nil, rain_range?: string|nil, wind_max_speed?: number|nil, sunset?: string|nil }
-
----@alias gw.WillyweatherVariables { today: gw.WillyweatherDayVariables, tomorrow: gw.WillyweatherDayVariables }
 
 ---@class gw.EnergyInterval
 ---@field used number
@@ -196,12 +190,6 @@ input = {}
 
 ---@type table<string, any>
 lua = {}
-
----@type gw.WillyweatherVariables
-willyweather = {}
-
----@type gw.FuelwatchVariables
-fuelwatch = {}
 
 ---@class gw.api.gw
 ---@field event_id string

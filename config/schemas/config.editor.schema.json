@@ -808,6 +808,9 @@
         "id": {
           "type": "string"
         },
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
         "transport": {
           "$ref": "#/$defs/Transport"
         },
@@ -847,9 +850,17 @@
       },
       "required": [
         "id",
+        "state",
         "transport",
         "address",
         "roles"
+      ]
+    },
+    "EnabledState": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled"
       ]
     },
     "Transport": {
@@ -1646,12 +1657,6 @@
           "type": "boolean",
           "default": false
         },
-        "context": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ContextSource"
-          }
-        },
         "inputs": {
           "type": [
             "object",
@@ -1713,13 +1718,6 @@
         "run",
         "on",
         "modes"
-      ]
-    },
-    "ContextSource": {
-      "type": "string",
-      "enum": [
-        "fuelwatch",
-        "willyweather"
       ]
     },
     "VarType": {
@@ -3564,12 +3562,6 @@
           "type": "boolean",
           "default": false
         },
-        "context": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ContextSource"
-          }
-        },
         "inputs": {
           "type": [
             "object",
@@ -4438,7 +4430,7 @@
       "type": "object",
       "properties": {
         "state": {
-          "$ref": "#/$defs/AdhocTaskState"
+          "$ref": "#/$defs/EnabledState"
         },
         "schedule": {
           "$ref": "#/$defs/CronSchedule"
@@ -4454,13 +4446,6 @@
         "parameters"
       ]
     },
-    "AdhocTaskState": {
-      "type": "string",
-      "enum": [
-        "enabled",
-        "disabled"
-      ]
-    },
     "NoParameters": {
       "type": "object",
       "additionalProperties": false
@@ -4469,7 +4454,7 @@
       "type": "object",
       "properties": {
         "state": {
-          "$ref": "#/$defs/AdhocTaskState"
+          "$ref": "#/$defs/EnabledState"
         },
         "schedule": {
           "$ref": "#/$defs/CronSchedule"

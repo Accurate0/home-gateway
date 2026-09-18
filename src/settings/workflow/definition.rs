@@ -3,7 +3,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
 use super::{ReusableWorkflow, Workflow};
-use crate::settings::DeviceAliases;
+use crate::settings::device_scope::DeviceScope;
 
 const TRIGGER_KEYS: &[&str] = &["modes", "when", "cooldown", "delay", "for"];
 
@@ -22,6 +22,13 @@ impl WorkflowDefinition {
         }
     }
 
+    pub fn body_mut(&mut self) -> &mut ReusableWorkflow {
+        match self {
+            WorkflowDefinition::Triggered(workflow) => &mut workflow.body,
+            WorkflowDefinition::Reusable(workflow) => workflow,
+        }
+    }
+
     pub fn triggered(&self) -> Option<&Workflow> {
         match self {
             WorkflowDefinition::Triggered(workflow) => Some(workflow),
@@ -29,7 +36,7 @@ impl WorkflowDefinition {
         }
     }
 
-    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
             WorkflowDefinition::Triggered(workflow) => workflow.resolve_devices(devices),
             WorkflowDefinition::Reusable(workflow) => workflow.resolve_devices(devices),

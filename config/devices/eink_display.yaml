@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: living-room-epd
+  state: enabled
   room: living-room
   transport: eink_display_firmware
   address: "e83dc1fb1c98"
@@ -24,6 +25,7 @@
     - type: battery
 
 - id: hallway-epd
+  state: enabled
   room: hallway
   transport: eink_display_firmware
   address: "94a990cf8384"

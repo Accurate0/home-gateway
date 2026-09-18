@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: roborock
+  state: enabled
   room: dining-room
   transport: home_assistant
   address: vacuum.robot
@@ -18,6 +19,7 @@
     - type: battery
 
 - id: valetudo
+  state: enabled
   room: spare-room
   transport: valetudo
   address: rockrobo

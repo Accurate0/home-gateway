@@ -7,7 +7,12 @@ local function message(parts)
 end
 
 function brief.morning()
-	local today = willyweather.today
+	local today = weather.today()
+
+	if today == nil then
+		return { message = "No forecast available this morning" }
+	end
+
 	local parts = {}
 
 	local holiday = holidays.on()

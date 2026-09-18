@@ -12,6 +12,9 @@
         "id": {
           "type": "string"
         },
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
         "transport": {
           "$ref": "#/$defs/Transport"
         },
@@ -51,9 +54,17 @@
       },
       "required": [
         "id",
+        "state",
         "transport",
         "address",
         "roles"
+      ]
+    },
+    "EnabledState": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled"
       ]
     },
     "Transport": {

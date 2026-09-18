@@ -7,7 +7,8 @@ use crate::actors::sun::calc::SunPeriod;
 use crate::event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherSource};
 use crate::lua::LuaSource;
 use crate::mode::Mode;
-use crate::settings::{DeviceAliases, IEEEAddress, validate_device};
+use crate::settings::device_scope::DeviceScope;
+use crate::settings::{IEEEAddress, validate_device};
 use crate::templating::{Expr, Literal};
 
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
@@ -87,7 +88,7 @@ pub enum LeafCondition {
 }
 
 impl LeafCondition {
-    pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(super) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
             LeafCondition::Light { ieee_addr, .. }
             | LeafCondition::Door { ieee_addr, .. }

@@ -10,7 +10,7 @@ use crate::adhoc::runner::{run_cron, run_pending};
 use crate::adhoc::{cron_registry, registry};
 use crate::event_bus::{Recipient, Subscription};
 use crate::settings::AdhocSettings;
-use crate::settings::adhoc_task_state::AdhocTaskState;
+use crate::settings::enabled_state::EnabledState;
 use crate::state::AppState;
 
 use subscriber::AdhocSubscriber;
@@ -36,7 +36,7 @@ impl AdhocTaskActor {
     ) {
         let config = task.config(&settings.tasks);
 
-        if config.state() == AdhocTaskState::Disabled {
+        if config.state() == EnabledState::Disabled {
             tracing::info!(
                 "adhoc cron task {} is disabled, not scheduling",
                 task.name()

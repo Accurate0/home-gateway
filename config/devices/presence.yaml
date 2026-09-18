@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: livingroom-motion
+  state: enabled
   room: living-room
   transport: esphome
   address: apollo-mtr-1-livingroom
@@ -26,6 +27,7 @@
       capabilities: [temperature, pressure, lux]
 
 - id: closet-presence
+  state: enabled
   room: bedroom
   transport: zigbee
   address: "0x54ef441000dbc81c"

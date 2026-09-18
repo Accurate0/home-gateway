@@ -14,7 +14,6 @@ pub mod actors;
 pub mod adhoc;
 pub mod adhoc_cron_task;
 pub mod adhoc_cron_task_config;
-pub mod adhoc_task_state;
 pub mod adhoc_tasks;
 pub mod alarm;
 pub mod api_key;
@@ -23,7 +22,9 @@ pub mod backoff;
 pub mod cache;
 pub mod database;
 pub mod de;
+pub mod device_scope;
 pub mod devices;
+pub mod enabled_state;
 pub mod endpoint;
 pub mod graphql;
 pub mod http;
@@ -125,6 +126,7 @@ pub use workflow::{
 
 use crate::auth::scope::ScopePattern;
 use crate::device_registry::{DeviceRegistry, RawSensor};
+use crate::settings::device_scope::DeviceScope;
 
 pub type IEEEAddress = String;
 
@@ -134,13 +136,10 @@ pub type DeviceAliases = HashMap<String, IEEEAddress>;
 
 /// Validate a workflow device reference. References must be device registry ids;
 /// the id is kept as-is and resolved to an address at runtime. Unknown ids are
-/// rejected at load time so typos fail loudly.
-pub(crate) fn validate_device(reference: &str, devices: &DeviceAliases) -> Result<(), String> {
-    if devices.contains_key(reference) {
-        Ok(())
-    } else {
-        Err(format!("unknown device registry id: {reference}"))
-    }
+/// rejected at load time so typos fail loudly, while references to a device
+/// configured as `state: disabled` are recorded so the workflow can be disabled.
+pub(crate) fn validate_device(reference: &str, devices: &DeviceScope) -> Result<(), String> {
+    devices.validate(reference)
 }
 
 /// Default for `#[serde(default = ...)]` flags that are opt-out (default `true`).
@@ -403,23 +402,35 @@ impl RawSettings {
             &notify_targets,
             &zigbee_models,
         )?;
-        let aliases = registry.aliases();
+        let scope = DeviceScope::new(registry.aliases(), registry.disabled());
 
         let mut resolved = HashMap::new();
         let mut scopes = HashMap::new();
         let mut slugs = HashSet::new();
+        let mut disabled_by_device = HashSet::new();
         for mut workflow in workflows.into_iter().flatten() {
-            workflow.resolve_devices(aliases)?;
+            workflow.resolve_devices(&scope)?;
+
+            let disabled_devices = scope.take_disabled();
+            let references_disabled = !disabled_devices.is_empty();
+
+            if references_disabled {
+                let referenced = disabled_devices.into_iter().collect::<Vec<_>>().join(", ");
+                let body = workflow.body_mut();
+
+                body.enabled = false;
+
+                tracing::warn!(
+                    "workflow '{}' references disabled devices [{referenced}], disabling it",
+                    body.name
+                );
+
+                disabled_by_device.insert(body.name.clone());
+            } else {
+                workflow.body().validate_capabilities(&registry)?;
+            }
 
             let body = workflow.body();
-            body.validate_capabilities(&registry)?;
-
-            if body.context.contains(&workflow::ContextSource::Fuelwatch) && fuelwatch.is_none() {
-                return Err(format!(
-                    "workflow '{}' uses `context: [fuelwatch]` but fuelwatch is not configured",
-                    body.name
-                ));
-            }
 
             if let Some(triggered) = workflow.triggered() {
                 if triggered.modes.is_empty() {
@@ -437,8 +448,14 @@ impl RawSettings {
                 }
             }
 
-            let scope = workflow::scope::scope_for(&workflow, &registry)?;
-            workflow::scope::check_steps(body, &scope)?;
+            let scope = if references_disabled {
+                crate::variables::Scope::default()
+            } else {
+                let scope = workflow::scope::scope_for(&workflow, &registry)?;
+                workflow::scope::check_steps(body, &scope)?;
+
+                scope
+            };
 
             if body.slug.trim().is_empty() {
                 return Err(format!("workflow '{}' has an empty slug", body.name));
@@ -453,7 +470,11 @@ impl RawSettings {
             }
         }
 
-        for workflow in resolved.values().map(WorkflowDefinition::body) {
+        for workflow in resolved
+            .values()
+            .map(WorkflowDefinition::body)
+            .filter(|workflow| !disabled_by_device.contains(&workflow.name))
+        {
             workflow::scope::check_calls(workflow, &scopes[&workflow.name], &resolved)?;
 
             workflow
@@ -658,6 +679,7 @@ mod tests {
         let devices: Vec<RawSensor> = serde_yaml::from_str(
             r#"
 - id: living-room-table-lamp
+  state: enabled
   transport: zigbee
   model: ts011f_plug
   address: "0xa4c1389fe5cea26e"
@@ -691,6 +713,7 @@ mod tests {
         let err = build_devices(
             r#"
 - id: mystery
+  state: enabled
   transport: zigbee
   address: "0xdeadbeef"
   roles:
@@ -707,6 +730,7 @@ mod tests {
         let err = build_devices(
             r#"
 - id: tv
+  state: enabled
   transport: esphome
   address: living-room-tv
   roles:
@@ -725,6 +749,7 @@ mod tests {
         let err = build_devices(
             r#"
 - id: tv
+  state: enabled
   transport: home_assistant
   address: living_room_tv
   roles:
@@ -743,6 +768,7 @@ mod tests {
         let err = build_devices(
             r#"
 - id: mystery
+  state: enabled
   transport: zigbee
   model: not_a_real_model
   address: "0xdeadbeef"
@@ -764,6 +790,7 @@ mod tests {
         let err = build_devices(
             r#"
 - id: mystery
+  state: enabled
   transport: zigbee
   model: ts011f_plug
   address: "0xdeadbeef"
@@ -782,6 +809,7 @@ mod tests {
         let err = build_devices(
             r#"
 - id: living-room-mtr-1
+  state: enabled
   transport: esphome
   model: ts011f_plug
   address: apollo-mtr-1-livingroom
@@ -803,6 +831,7 @@ mod tests {
         let devices: Vec<RawSensor> = serde_yaml::from_str(
             r#"
 - id: living-room-mtr-1
+  state: enabled
   transport: esphome
   address: apollo-mtr-1-livingroom
   roles:
@@ -856,6 +885,7 @@ mod tests {
         let plain_plug = build_devices(
             r#"
 - id: living-room-table-lamp
+  state: enabled
   transport: zigbee
   model: ts011f_plug
   address: "0xa4c1389fe5cea26e"
@@ -1093,26 +1123,40 @@ transperth:
         );
         assert!(registry.environment("apollo-mtr-1-livingroom").is_some());
 
-        // a single device definition can carry multiple roles: the hallway plant
-        // is registered as both an environment and a plant sensor at one address
-        assert_eq!(
-            registry
-                .environment("apollo-plt-1-hallway")
-                .unwrap()
-                .sensor_type,
-            EnvironmentSensorType::Esphome
-        );
-        assert!(registry.plant("apollo-plt-1-hallway").is_some());
-
         // an esphome environment sensor maps each configured object_id to a metric
         assert_eq!(
             registry
-                .environment("apollo-plt-1-hallway")
+                .environment("apollo-mtr-1-livingroom")
                 .unwrap()
                 .entities
-                .get("air_temperature"),
+                .get("dps310_temperature"),
             Some(&Metric::Temperature)
         );
+
+        // a `state: disabled` device is absent from the registry entirely, under
+        // every one of its roles, and is not watched
+        assert!(registry.disabled().contains("hallway-plant"));
+        assert!(registry.environment("apollo-plt-1-hallway").is_none());
+        assert!(registry.plant("apollo-plt-1-hallway").is_none());
+        assert!(registry.watchdog_key("apollo-plt-1-hallway").is_none());
+        assert!(
+            registry
+                .esphome_target("apollo-plt-1-hallway/sensor/soil_moisture/state")
+                .is_none()
+        );
+
+        // and every workflow that referenced it is disabled rather than failing the load
+        for name in ["Hallway plant dry", "Hallway plant overwatered"] {
+            let workflow = settings
+                .workflows
+                .get(name)
+                .unwrap_or_else(|| panic!("workflow '{name}' is still loaded"));
+
+            assert!(
+                !workflow.body().enabled,
+                "workflow '{name}' references a disabled device so it must be disabled"
+            );
+        }
 
         // the esphome motion topic is registered for routing
         assert!(
@@ -1163,8 +1207,8 @@ transperth:
             Some("zigbee:front-door")
         );
         assert_eq!(
-            registry.watchdog_key("apollo-plt-1-hallway"),
-            Some("esphome:hallway-plant")
+            registry.watchdog_key("apollo-mtr-1-livingroom"),
+            Some("esphome:livingroom-motion")
         );
         assert_eq!(
             registry.watchdog_key("media_player.living_room_tv"),
@@ -1184,7 +1228,11 @@ transperth:
 
         // every device is watched, and under the same key the heartbeat writes
         let watched: Vec<&String> = registry.watchdog_devices().map(|(key, _)| key).collect();
-        assert_eq!(watched.len(), 21, "every configured device has a watchdog");
+        assert_eq!(
+            watched.len(),
+            20,
+            "every enabled device has a watchdog (21 configured, 1 disabled)"
+        );
         for key in watched {
             assert!(
                 key.contains(':'),
@@ -1681,17 +1729,13 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
   - - name: Hot day
       slug: hot-day
       on: { type: cron, schedule: "0 7 * * *" }
-      when: { type: var, var: willyweather.today.max, op: gt, value: 35 }
-      context: [willyweather]
+      when: { type: var, var: lua.message, op: gt, value: 35 }
       modes: [home]
       run: []
 "#,
         );
 
-        assert!(
-            err.contains("unknown variable `willyweather.today.max`"),
-            "{err}"
-        );
+        assert!(err.contains("unknown variable `lua.message`"), "{err}");
     }
 
     #[test]
@@ -1702,7 +1746,6 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
   - - name: Hot day
       slug: hot-day
       on: {{ type: woolworths }}
-      context: [willyweather]
       modes: [home]
       run:
         - type: delay
@@ -1718,10 +1761,10 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
         assert!(err.contains("cannot compare `event.name`"), "{err}");
 
         raw_with_workflows(&workflows(
-            "{ type: var, var: willyweather.today.max, op: gt, value: 35 }",
+            "{ type: var, var: event.drop, op: gt, value: 35 }",
         ))
         .resolve(&BTreeMap::new())
-        .expect("guards see context variables");
+        .expect("guards see event variables");
     }
 
     #[test]
@@ -1977,6 +2020,7 @@ eink_display:
 devices:
 -
   - id: epd
+    state: enabled
     transport: eink_display_firmware
     address: "abc123"
     roles:
@@ -2064,6 +2108,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 devices:
 -
   - id: epd
+    state: enabled
     transport: eink_display_firmware
     address: "abc123"
     roles:
@@ -2140,6 +2185,7 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 devices:
 -
   - id: epd
+    state: enabled
     transport: eink_display_firmware
     address: "abc123"
     roles:

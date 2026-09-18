@@ -7,7 +7,6 @@ use crate::lua::bridge::lua_to_value;
 use crate::lua::{LuaCallContext, LuaFunction, LuaModule, LuaParam, LuaType, schema};
 use crate::mode::Mode;
 use crate::settings::workflow::EnableState;
-use crate::variables::Vars;
 
 use super::manager::WorkflowManager;
 use super::{ReusableCall, WorkflowWorker};
@@ -107,9 +106,7 @@ impl LuaModule for WorkflowLua {
                     };
 
                     cx.command("workflow.run", &name, || async {
-                        worker
-                            .run_reusable(call, &name, &Vars::default(), inputs)
-                            .await
+                        worker.run_reusable(call, &name, inputs).await
                     })
                     .await
                 }

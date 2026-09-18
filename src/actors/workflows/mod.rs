@@ -30,7 +30,6 @@ use tracing::Instrument;
 use uuid::Uuid;
 
 pub mod conditions;
-pub mod context;
 pub mod dispatcher;
 pub mod lua;
 pub mod manager;
@@ -55,8 +54,6 @@ pub enum WorkflowError {
     NotAControllableSwitch(String),
     #[error("home assistant is not configured")]
     HomeAssistantNotConfigured,
-    #[error("workflow context `{0}` is unavailable")]
-    ContextUnavailable(&'static str),
     #[error("template error: {0}")]
     Template(String),
     #[error(transparent)]
@@ -128,7 +125,7 @@ impl WorkflowWorker {
         &self,
         event_id: Uuid,
         workflow: ReusableWorkflow,
-        mut vars: Vars,
+        vars: Vars,
         authority: LuaAuthority,
     ) -> Result<(), WorkflowError> {
         if !self
@@ -161,23 +158,18 @@ impl WorkflowWorker {
             tracing::info!("[{event_id}] workflow running in dry-run (shadow) mode");
         }
         let start = std::time::Instant::now();
-        let resolved =
-            context::resolve(&self.shared_actor_state, &workflow.context, &mut vars).await;
 
-        let result = match resolved {
-            Ok(()) => {
-                let ctx = WorkflowContext {
-                    event_id,
-                    depth: 0,
-                    dry_run: workflow.dry_run,
-                    origin_slug: &workflow.slug,
-                    vars: &vars,
-                    authority: &authority,
-                };
+        let result = {
+            let ctx = WorkflowContext {
+                event_id,
+                depth: 0,
+                dry_run: workflow.dry_run,
+                origin_slug: &workflow.slug,
+                vars: &vars,
+                authority: &authority,
+            };
 
-                self.run_steps(ctx, &workflow.run).await
-            }
-            Err(e) => Err(e),
+            self.run_steps(ctx, &workflow.run).await
         };
         let elapsed = start.elapsed();
         let outcome = if result.is_ok() { "success" } else { "error" };
@@ -597,14 +589,13 @@ impl WorkflowWorker {
             origin_slug: ctx.origin_slug,
         };
 
-        self.run_reusable(call, name, ctx.vars, inputs).await
+        self.run_reusable(call, name, inputs).await
     }
 
     pub async fn run_reusable(
         &self,
         ctx: ReusableCall<'_>,
         name: &str,
-        inherited: &Vars,
         inputs: BTreeMap<String, crate::variables::Value>,
     ) -> Result<(), WorkflowError> {
         if ctx.depth >= MAX_DEPTH {
@@ -651,15 +642,7 @@ impl WorkflowWorker {
             input.insert(key.clone(), Node::Value(Some(value)));
         }
 
-        let mut vars = Vars::default().with("input", input);
-
-        for source in &workflow.context {
-            if let Some(node) = inherited.namespace(source.as_str()) {
-                vars.insert(source.as_str(), node.clone());
-            }
-        }
-
-        context::resolve(&self.shared_actor_state, &workflow.context, &mut vars).await?;
+        let vars = Vars::default().with("input", input);
 
         let trusted = LuaAuthority::Trusted;
 

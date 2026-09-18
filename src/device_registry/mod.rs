@@ -13,6 +13,7 @@ use crate::integrations::esphome::{
     EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic,
 };
 use crate::settings::devices::door::RawDoorSettings;
+use crate::settings::enabled_state::EnabledState;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
@@ -97,6 +98,7 @@ impl Transport {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawSensor {
     pub id: String,
+    pub state: EnabledState,
     pub transport: Transport,
     pub address: String,
     #[serde(default)]
@@ -182,6 +184,7 @@ pub struct DeviceRegistryInner {
     watchdog: HashMap<String, DeviceWatchdog>,
     watchdog_keys: HashMap<String, String>,
     watchdog_keys_by_id: HashMap<String, String>,
+    disabled: HashSet<String>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
 
@@ -212,6 +215,7 @@ impl DeviceRegistry {
         for sensor in raw {
             let RawSensor {
                 id,
+                state,
                 transport,
                 address,
                 model,
@@ -219,6 +223,12 @@ impl DeviceRegistry {
                 watchdog,
                 room,
             } = sensor;
+
+            if !state.is_enabled() {
+                tracing::warn!("device {id} is {state}, not registering it");
+                reg.disabled.insert(id);
+                continue;
+            }
 
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
                 return Err(format!("duplicate sensor id: {id}"));
@@ -596,6 +606,10 @@ impl DeviceRegistryInner {
 
     pub fn aliases(&self) -> &DeviceAliases {
         &self.aliases
+    }
+
+    pub fn disabled(&self) -> &HashSet<String> {
+        &self.disabled
     }
 
     pub fn address_or_self<'a>(&'a self, reference: &'a str) -> &'a str {

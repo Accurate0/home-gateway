@@ -1,4 +1,5 @@
 - id: test-door
+  state: enabled
   room: entry
   transport: zigbee
   address: "0x0000000000000001"
@@ -13,6 +14,7 @@
     - type: battery
 
 - id: test-environment
+  state: enabled
   room: living-room
   transport: zigbee
   address: "0x0000000000000002"
@@ -24,6 +26,7 @@
     - type: battery
 
 - id: test-lamp
+  state: enabled
   room: living-room
   transport: zigbee
   address: "0x0000000000000003"
@@ -35,6 +38,7 @@
         as: light
 
 - id: test-presence
+  state: enabled
   room: living-room
   transport: zigbee
   address: "0x0000000000000004"
@@ -44,6 +48,7 @@
       config: { id: test-motion, name: Test Motion }
 
 - id: test-esphome-environment
+  state: enabled
   room: study
   transport: esphome
   address: test-node

@@ -75,6 +75,7 @@ fn zigbee_device_without_a_model_is_rejected() {
     let error = build_with_devices(
         r#"
 - id: broken
+  state: enabled
   room: test
   transport: zigbee
   address: "0x000000000000dead"
@@ -95,6 +96,7 @@ fn unknown_zigbee_model_is_rejected() {
     let error = build_with_devices(
         r#"
 - id: broken
+  state: enabled
   room: test
   transport: zigbee
   address: "0x000000000000dead"
@@ -116,6 +118,7 @@ fn esphome_environment_without_entities_is_rejected() {
     let error = build_with_devices(
         r#"
 - id: broken
+  state: enabled
   room: test
   transport: esphome
   address: broken-node

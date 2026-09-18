@@ -9,9 +9,9 @@ use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
 use crate::lua::LuaSource;
 use crate::mode::Mode;
+use crate::settings::device_scope::DeviceScope;
 use crate::settings::{
-    DeviceAliases, IEEEAddress, NotifyAcknowledge, NotifyAction, NotifyCategory, NotifySource,
-    validate_device,
+    IEEEAddress, NotifyAcknowledge, NotifyAction, NotifyCategory, NotifySource, validate_device,
 };
 use crate::templating::Template;
 use crate::variables::VarType;
@@ -275,7 +275,7 @@ impl Step {
         }
     }
 
-    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
             Step::Light {
                 ieee_addr, when, ..

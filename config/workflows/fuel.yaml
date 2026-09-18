@@ -3,10 +3,12 @@
   slug: fuel-tuesday
   group: Fuel
   on: { type: cron, schedule: "0 13 * * TUE" }
-  context: [fuelwatch]
   modes: [home, away]
   run:
+    - type: lua
+      call: prices.cheapest_fuel
+      returns: { message: string }
     - type: notify
       notify: { type: android_app }
       category: general
-      message: "Cheapest ULP91 near ${fuelwatch.suburb}: ${fuelwatch.price | round(1)}c/L at ${fuelwatch.brand} ${fuelwatch.name}"
+      message: "${lua.message}"

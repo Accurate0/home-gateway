@@ -5,7 +5,7 @@ use serde::Deserialize;
 use super::condition::resolve_opt;
 use super::{Condition, ReusableWorkflow, TriggerMatcher};
 use crate::mode::Mode;
-use crate::settings::DeviceAliases;
+use crate::settings::device_scope::DeviceScope;
 use crate::timedelta_format::option_time_delta_from_str;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -40,7 +40,7 @@ impl std::ops::Deref for Workflow {
 }
 
 impl Workflow {
-    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         self.on.resolve_devices(devices)?;
         resolve_opt(&mut self.when, devices)?;
 
@@ -52,7 +52,7 @@ impl Workflow {
 mod tests {
     use super::*;
     use crate::settings::NotifyActionKind;
-    use crate::settings::workflow::{ContextSource, Step};
+    use crate::settings::workflow::Step;
     use config::{Config, File, FileFormat};
 
     fn parse(yaml: &str) -> Workflow {
@@ -108,33 +108,6 @@ run:
             &workflow.run[0],
             Step::HomeAssistant { call_service, .. } if call_service == "light.turn_on"
         ));
-    }
-
-    #[test]
-    fn context_parses_and_exposes_vars() {
-        let workflow = parse(
-            r#"
-name: Fuel test
-slug: fuel-test
-on: { type: cron, schedule: "0 13 * * TUE" }
-modes: [home]
-context: [fuelwatch]
-run:
-  - type: notify
-    notify: { type: android_app }
-    category: general
-    message: "${fuelwatch.price | round(1)}c/L at ${fuelwatch.brand}"
-"#,
-        );
-
-        assert_eq!(workflow.context, vec![ContextSource::Fuelwatch]);
-
-        let scope =
-            crate::variables::Scope::default().with("fuelwatch", ContextSource::Fuelwatch.shape());
-
-        for (_, template) in workflow.run.iter().flat_map(Step::templates) {
-            template.check(&scope).expect("fuelwatch template checks");
-        }
     }
 
     #[test]

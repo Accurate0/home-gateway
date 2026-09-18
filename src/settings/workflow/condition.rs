@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::{Combinator, LeafCondition};
-use crate::settings::DeviceAliases;
+use crate::settings::device_scope::DeviceScope;
 
 /// A boolean predicate evaluated against current device/sensor state. Either a
 /// nested boolean combinator (`all`/`and`, `any`/`or`, `not`) or a leaf test.
@@ -29,7 +29,7 @@ impl Condition {
         }
     }
 
-    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
             Condition::Combinator(c) => c.resolve_devices(devices),
             Condition::Leaf(l) => l.resolve_devices(devices),
@@ -54,7 +54,7 @@ pub(super) fn describe_join(conditions: &[Condition]) -> String {
 
 pub(super) fn resolve_opt(
     when: &mut Option<Condition>,
-    devices: &DeviceAliases,
+    devices: &DeviceScope,
 ) -> Result<(), String> {
     if let Some(when) = when {
         when.resolve_devices(devices)?;

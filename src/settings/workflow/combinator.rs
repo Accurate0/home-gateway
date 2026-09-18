@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use super::Condition;
 use super::condition::describe_join;
-use crate::settings::DeviceAliases;
+use crate::settings::device_scope::DeviceScope;
 
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub enum Combinator {
@@ -16,7 +16,7 @@ pub enum Combinator {
 }
 
 impl Combinator {
-    pub(super) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(super) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
             Combinator::All(conditions) | Combinator::Any(conditions) => {
                 for c in conditions {

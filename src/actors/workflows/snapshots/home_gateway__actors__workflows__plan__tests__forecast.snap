@@ -3,7 +3,6 @@ source: src/actors/workflows/plan.rs
 expression: out
 ---
 # weather-forecast  (reusable)
-  context: [willyweather]
   inputs: {}
   lua: lua(call brief.morning) -> [message]
   notify: notify(AndroidApp, general): ${lua.message}

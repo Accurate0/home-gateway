@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: living-room-table-lamp
+  state: enabled
   room: living-room
   transport: zigbee
   address: "0xa4c1389fe5cea26e"

@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: living-room-tv
+  state: enabled
   room: living-room
   transport: home_assistant
   address: media_player.living_room_tv

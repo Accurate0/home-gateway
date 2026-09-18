@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: closet-light
+  state: enabled
   room: bedroom
   transport: zigbee
   address: "0x54ef441000d4f05c"
@@ -11,6 +12,7 @@
       capabilities: [brightness, colour_temp]
 
 - id: table-lamp-bedroom
+  state: enabled
   room: bedroom
   transport: zigbee
   address: "0x001788010381ef5d"
@@ -22,6 +24,7 @@
       capabilities: [brightness, colour_temp, rgb]
 
 - id: floor-lamp-living-room
+  state: enabled
   room: living-room
   transport: zigbee
   address: "0x94a081fffe2eedc0"

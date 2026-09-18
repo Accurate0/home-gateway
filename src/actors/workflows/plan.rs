@@ -284,10 +284,6 @@ mod tests {
                 }
                 None => out.push_str(&format!("# {}  (reusable)\n", wf.name)),
             }
-            if !wf.context.is_empty() {
-                let sources: Vec<&str> = wf.context.iter().map(|s| s.as_str()).collect();
-                out.push_str(&format!("  context: [{}]\n", sources.join(", ")));
-            }
             if let Some(inputs) = &wf.inputs {
                 let inputs: Vec<String> = inputs
                     .iter()

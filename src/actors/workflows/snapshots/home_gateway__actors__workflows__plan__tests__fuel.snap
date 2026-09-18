@@ -3,5 +3,5 @@ source: src/actors/workflows/plan.rs
 expression: out
 ---
 # Fuel Tuesday  (on: cron(0 13 * * 2))
-  context: [fuelwatch]
-  notify: notify(AndroidApp, general): Cheapest ULP91 near ${fuelwatch.suburb}: ${fuelwatch.price | round(1)}c/L at ${fuelwatch.brand} ${fuelwatch.name}
+  lua: lua(call prices.cheapest_fuel) -> [message]
+  notify: notify(AndroidApp, general): ${lua.message}

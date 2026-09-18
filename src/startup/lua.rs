@@ -18,7 +18,6 @@ use crate::actors::vacation::lua::VacationLua;
 use crate::actors::workflows::lua::WorkflowLua;
 use crate::device_registry::lua::DeviceLua;
 use crate::integrations::fuelwatch::lua::FuelLua;
-use crate::integrations::fuelwatch::variables::FuelwatchVariables;
 use crate::integrations::holidays::lua::HolidaysLua;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::home_assistant::lua::HomeAssistantLua;
@@ -26,7 +25,6 @@ use crate::integrations::mqtt::lua::MqttLua;
 use crate::integrations::s3::lua::S3Lua;
 use crate::integrations::transperth::lua::TransperthLua;
 use crate::integrations::willyweather::lua::WeatherLua;
-use crate::integrations::willyweather::variables::WillyweatherVariables;
 use crate::integrations::woolworths::lua::WoolworthsLua;
 use crate::lua::LuaSource;
 use crate::lua::flag::FlagLua;
@@ -35,7 +33,7 @@ use crate::lua::sources::load_configured;
 use crate::lua::state::StateLua;
 use crate::lua::time::TimeLua;
 use crate::lua::{
-    LuaApiRegistry, LuaClass, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, schema, typegen,
+    LuaApiRegistry, LuaClass, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, typegen,
 };
 use crate::settings::Settings;
 use crate::state::HandleRegistry;
@@ -108,14 +106,6 @@ const GLOBALS: &[LuaField] = &[
     LuaField {
         name: "lua",
         ty: LuaType::Map(&LuaType::Any),
-    },
-    LuaField {
-        name: "willyweather",
-        ty: LuaType::Schema(schema::<WillyweatherVariables>),
-    },
-    LuaField {
-        name: "fuelwatch",
-        ty: LuaType::Schema(schema::<FuelwatchVariables>),
     },
 ];
 

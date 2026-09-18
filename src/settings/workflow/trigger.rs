@@ -11,7 +11,8 @@ use crate::event_bus::{
     WeatherMetric, WeatherSource,
 };
 use crate::mode::Mode;
-use crate::settings::{DeviceAliases, IEEEAddress, validate_device};
+use crate::settings::device_scope::DeviceScope;
+use crate::settings::{IEEEAddress, validate_device};
 use crate::variables::VarType;
 
 /// Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]
@@ -415,7 +416,7 @@ impl TriggerMatcher {
         }
     }
 
-    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
             TriggerMatcher::Door { ieee_addr, .. } | TriggerMatcher::Switch { ieee_addr, .. } => {
                 validate_device(ieee_addr, devices)?;

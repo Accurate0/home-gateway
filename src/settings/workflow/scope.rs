@@ -35,7 +35,7 @@ pub fn scope_for(
                     .map_err(|error| format!("workflow '{}' when: {error}", workflow.name))?;
             }
 
-            Ok(context_scope(&workflow.body).with("event", event))
+            Ok(Scope::default().with("event", event))
         }
         WorkflowDefinition::Reusable(workflow) => reusable_scope(workflow),
     }
@@ -49,16 +49,7 @@ pub fn reusable_scope(workflow: &ReusableWorkflow) -> Result<Scope, String> {
         )
     })?;
 
-    Ok(context_scope(workflow).with("input", input_shape(inputs)))
-}
-
-fn context_scope(workflow: &ReusableWorkflow) -> Scope {
-    workflow
-        .context
-        .iter()
-        .fold(Scope::default(), |scope, source| {
-            scope.with(source.as_str(), source.shape())
-        })
+    Ok(Scope::default().with("input", input_shape(inputs)))
 }
 
 pub fn check_steps(workflow: &ReusableWorkflow, scope: &Scope) -> Result<(), String> {

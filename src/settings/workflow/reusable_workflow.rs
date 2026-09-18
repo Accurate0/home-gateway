@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::{ContextSource, Step};
+use super::Step;
 use crate::device_registry::DeviceRegistry;
-use crate::settings::{DeviceAliases, NotifyActionKind, validate_acknowledge, yes};
+use crate::settings::device_scope::DeviceScope;
+use crate::settings::{NotifyActionKind, validate_acknowledge, yes};
 use crate::variables::VarType;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -22,8 +23,6 @@ pub struct ReusableWorkflow {
     pub enabled: bool,
     #[serde(default)]
     pub dry_run: bool,
-    #[serde(default)]
-    pub context: Vec<ContextSource>,
     #[serde(default)]
     pub inputs: Option<BTreeMap<String, VarType>>,
     pub run: Vec<Step>,
@@ -110,7 +109,7 @@ impl ReusableWorkflow {
         check(&self.run)
     }
 
-    pub(crate) fn resolve_devices(&mut self, devices: &DeviceAliases) -> Result<(), String> {
+    pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         for step in &mut self.run {
             step.resolve_devices(devices)?;
         }

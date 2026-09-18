@@ -49,12 +49,6 @@
           "type": "boolean",
           "default": false
         },
-        "context": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ContextSource"
-          }
-        },
         "inputs": {
           "type": [
             "object",
@@ -116,13 +110,6 @@
         "run",
         "on",
         "modes"
-      ]
-    },
-    "ContextSource": {
-      "type": "string",
-      "enum": [
-        "fuelwatch",
-        "willyweather"
       ]
     },
     "VarType": {
@@ -1987,12 +1974,6 @@
         "dry_run": {
           "type": "boolean",
           "default": false
-        },
-        "context": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ContextSource"
-          }
         },
         "inputs": {
           "type": [
