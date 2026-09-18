@@ -24,347 +24,26 @@
  },
  "panels": [
   {
-   "id": 1,
-   "type": "stat",
-   "title": "Bus events / sec",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops", "decimals": 2 },
-    "overrides": []
-   },
-   "targets": [
-    { "refId": "A", "expr": "sum(rate(home_gateway_bus_events_total_total[5m]))" }
-   ]
-  },
-  {
-   "id": 2,
-   "type": "stat",
-   "title": "Workflow success ratio (1h)",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percentunit",
-     "decimals": 2,
-     "noValue": "No runs",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       { "color": "red", "value": null },
-       { "color": "yellow", "value": 0.9 },
-       { "color": "green", "value": 0.99 }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum(increase(home_gateway_workflows_total_total{outcome=\"success\"}[1h])) / (sum(increase(home_gateway_workflows_total_total[1h])) > 0)"
-    }
-   ]
-  },
-  {
-   "id": 3,
-   "type": "stat",
-   "title": "Trigger fire rate",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops", "decimals": 2 },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum(rate(home_gateway_triggers_total_total{outcome=\"fired\"}[5m]))"
-    }
-   ]
-  },
-  {
-   "id": 4,
-   "type": "stat",
-   "title": "Devices with low battery (<20%)",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "decimals": 0,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       { "color": "green", "value": null },
-       { "color": "yellow", "value": 1 },
-       { "color": "red", "value": 3 }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "count(max by (device_id) (home_gateway_device_battery_percent) < 20)"
-    }
-   ]
-  },
-  {
-   "id": 5,
-   "type": "timeseries",
-   "title": "Bus events by kind",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (event_kind) (rate(home_gateway_bus_events_total_total[5m]))",
-     "legendFormat": "{{event_kind}}"
-    }
-   ]
-  },
-  {
-   "id": 6,
-   "type": "timeseries",
-   "title": "Trigger evaluations by outcome",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (outcome) (rate(home_gateway_triggers_total_total[5m]))",
-     "legendFormat": "{{outcome}}"
-    }
-   ]
-  },
-  {
-   "id": 7,
-   "type": "timeseries",
-   "title": "Workflow executions by outcome",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (outcome) (rate(home_gateway_workflows_total_total[5m]))",
-     "legendFormat": "{{outcome}}"
-    }
-   ]
-  },
-  {
-   "id": 8,
-   "type": "timeseries",
-   "title": "Workflow duration (p50 / p95)",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-   "fieldConfig": {
-    "defaults": { "unit": "s" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "histogram_quantile(0.5, sum by (le) (rate(home_gateway_workflow_duration_seconds_bucket[5m])))",
-     "legendFormat": "p50"
-    },
-    {
-     "refId": "B",
-     "expr": "histogram_quantile(0.95, sum by (le) (rate(home_gateway_workflow_duration_seconds_bucket[5m])))",
-     "legendFormat": "p95"
-    }
-   ]
-  },
-  {
-   "id": 9,
-   "type": "timeseries",
-   "title": "Workflow steps by kind",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total_total[5m]))",
-     "legendFormat": "{{step}}"
-    }
-   ]
-  },
-  {
-   "id": 10,
-   "type": "timeseries",
-   "title": "Step errors by kind",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total_total{outcome=\"error\"}[5m]))",
-     "legendFormat": "{{step}}"
-    }
-   ]
-  },
-  {
-   "id": 11,
-   "type": "timeseries",
-   "title": "Device battery percent",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percent",
-     "min": 0,
-     "max": 100,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       { "color": "red", "value": null },
-       { "color": "yellow", "value": 20 },
-       { "color": "green", "value": 40 }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "max by (device_id, kind) (home_gateway_device_battery_percent)",
-     "legendFormat": "{{device_id}} ({{kind}})"
-    }
-   ]
-  },
-  {
-   "id": 12,
-   "type": "timeseries",
-   "title": "E-ink wake drift (p95)",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
-   "fieldConfig": {
-    "defaults": { "unit": "s" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "histogram_quantile(0.95, sum by (le, device_id) (rate(home_gateway_eink_wake_drift_seconds_bucket[15m])))",
-     "legendFormat": "{{device_id}}"
-    }
-   ]
-  },
-  {
-   "id": 13,
-   "type": "table",
-   "title": "Ad-hoc tasks (last 24h)",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
-   "fieldConfig": {
-    "defaults": { "unit": "short" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (task, outcome) (increase(home_gateway_adhoc_tasks_total_total[24h]))",
-     "format": "table",
-     "instant": true
-    }
-   ]
-  },
-  {
-   "id": 14,
-   "type": "timeseries",
-   "title": "Integration poll outcomes",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (integration, outcome) (rate(home_gateway_integration_polls_total_total[15m]))",
-     "legendFormat": "{{integration}} ({{outcome}})"
-    }
-   ]
-  },
-  {
-   "id": 15,
-   "type": "timeseries",
-   "title": "Integration poll duration (p95)",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
-   "fieldConfig": {
-    "defaults": { "unit": "s" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "histogram_quantile(0.95, sum by (le, integration) (rate(home_gateway_integration_poll_duration_seconds_bucket[15m])))",
-     "legendFormat": "{{integration}}"
-    }
-   ]
-  },
-  {
-   "id": 16,
-   "type": "timeseries",
-   "title": "MQTT ingest by topic kind",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (topic_kind) (rate(home_gateway_mqtt_ingest_total_total[5m]))",
-     "legendFormat": "{{topic_kind}}"
-    }
-   ]
-  },
-  {
    "id": 17,
    "type": "row",
-   "title": "Reliability",
+   "title": "At a glance",
    "collapsed": false,
-   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
    "panels": []
   },
   {
    "id": 18,
    "type": "stat",
-   "title": "MQTT ingest rate",
+   "title": "MQTT ingest",
    "description": "Zero means the broker link is dead. Every device report arrives this way.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 0, "y": 53 },
+   "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
    "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area", "colorMode": "background" },
    "fieldConfig": {
     "defaults": {
      "unit": "ops",
      "decimals": 2,
+     "noValue": "Down",
      "thresholds": {
       "mode": "absolute",
       "steps": [
@@ -386,9 +65,9 @@
    "id": 19,
    "type": "stat",
    "title": "Stale devices",
-   "description": "Devices past their watchdog timeout and no longer reporting.",
+   "description": "Devices past their watchdog timeout and no longer reporting. See 'Time since last report' for which.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 6, "y": 53 },
+   "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
    "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
    "fieldConfig": {
     "defaults": {
@@ -413,12 +92,73 @@
    ]
   },
   {
+   "id": 2,
+   "type": "stat",
+   "title": "Workflow success (1h)",
+   "description": "Share of workflow runs in the last hour that succeeded.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "decimals": 2,
+     "noValue": "No runs",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "red", "value": null },
+       { "color": "yellow", "value": 0.9 },
+       { "color": "green", "value": 0.99 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_workflows_total_total{outcome=\"success\"}[1h])) / (sum(increase(home_gateway_workflows_total_total[1h])) > 0)"
+    }
+   ]
+  },
+  {
+   "id": 43,
+   "type": "stat",
+   "title": "Integrations failing",
+   "description": "Integrations with at least one failed poll in the last 30m. See 'Integration poll outcomes' for which.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 2 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(sum by (integration) (increase(home_gateway_integration_polls_total_total{outcome=\"error\"}[30m])) > 0) or vector(0)"
+    }
+   ]
+  },
+  {
    "id": 20,
    "type": "stat",
    "title": "Reconciler give-ups (6h)",
    "description": "Commands abandoned after max_attempts: a device was told to do something and never did.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 12, "y": 53 },
+   "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
    "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
    "fieldConfig": {
     "defaults": {
@@ -448,7 +188,7 @@
    "title": "Actor restarts (1h)",
    "description": "A sustained non-zero value is a supervised actor in a crash loop.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 4, "w": 6, "x": 18, "y": 53 },
+   "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
    "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
    "fieldConfig": {
     "defaults": {
@@ -473,33 +213,187 @@
    ]
   },
   {
-   "id": 22,
-   "type": "timeseries",
-   "title": "Reconciler retries vs give-ups",
-   "description": "A retry re-drives an unconfirmed command; a give-up means it never landed.",
+   "id": 4,
+   "type": "stat",
+   "title": "Low battery (<20%)",
+   "description": "Devices whose battery is under 20%. See 'Device battery percent' for which.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 },
+   "gridPos": { "h": 4, "w": 4, "x": 0, "y": 5 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
    "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": [
-     {
-      "matcher": { "id": "byRegexp", "options": "give-up.*" },
-      "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 3 }
+      ]
      }
-    ]
+    },
+    "overrides": []
    },
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (kind) (rate(home_gateway_reconciler_retries_total_total[15m]))",
-     "legendFormat": "retry {{kind}}"
-    },
-    {
-     "refId": "B",
-     "expr": "sum by (kind) (rate(home_gateway_reconciler_give_ups_total_total[15m]))",
-     "legendFormat": "give-up {{kind}}"
+     "expr": "count(max by (device_id) (home_gateway_device_battery_percent) < 20) or vector(0)"
     }
    ]
+  },
+  {
+   "id": 1,
+   "type": "stat",
+   "title": "Workflow step errors (1h)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 4, "y": 5 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 5 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_workflow_steps_total_total{outcome=\"error\"}[1h])) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Device handler errors (1h)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 8, "y": 5 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 10 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_device_handler_errors_total_total[1h])) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 44,
+   "type": "stat",
+   "title": "DB query errors (1h)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 12, "y": 5 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 10 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_db_queries_total_total{outcome=\"error\"}[1h])) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 45,
+   "type": "stat",
+   "title": "Actor RPC errors (1h)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 16, "y": 5 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 1 },
+       { "color": "red", "value": 10 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(home_gateway_rpc_errors_total_total[1h])) or vector(0)"
+    }
+   ]
+  },
+  {
+   "id": 46,
+   "type": "stat",
+   "title": "Span error ratio (15m)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 4, "w": 4, "x": 20, "y": 5 },
+   "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background" },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "decimals": 2,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "green", "value": null },
+       { "color": "orange", "value": 0.01 },
+       { "color": "red", "value": 0.05 }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "(sum(rate(traces_spanmetrics_calls_total{service=\"home-gateway\", status_code=\"STATUS_CODE_ERROR\"}[15m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])), 0.0001)"
+    }
+   ]
+  },
+  {
+   "id": 47,
+   "type": "row",
+   "title": "Devices",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+   "panels": []
   },
   {
    "id": 23,
@@ -507,7 +401,7 @@
    "title": "Time since last report",
    "description": "Worst first. Devices climbing here are about to trip the watchdog.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 57 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
    "transformations": [
     {
      "id": "organize",
@@ -562,20 +456,50 @@
    ]
   },
   {
-   "id": 24,
+   "id": 11,
    "type": "timeseries",
-   "title": "Actor restarts by actor and reason",
+   "title": "Device battery percent",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 65 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
    "fieldConfig": {
-    "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 30, "stacking": { "mode": "normal" } } },
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "max": 100,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       { "color": "red", "value": null },
+       { "color": "yellow", "value": 20 },
+       { "color": "green", "value": 40 }
+      ]
+     }
+    },
     "overrides": []
    },
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (actor, reason) (increase(home_gateway_actor_restarts_total_total[15m]))",
-     "legendFormat": "{{actor}} / {{reason}}"
+     "expr": "max by (device_id, kind) (home_gateway_device_battery_percent)",
+     "legendFormat": "{{device_id}} ({{kind}})"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "type": "timeseries",
+   "title": "MQTT ingest by topic kind",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (topic_kind) (rate(home_gateway_mqtt_ingest_total_total[5m]))",
+     "legendFormat": "{{topic_kind}}"
     }
    ]
   },
@@ -584,7 +508,7 @@
    "type": "timeseries",
    "title": "Device handler errors",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 65 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
    "fieldConfig": {
     "defaults": { "unit": "ops" },
     "overrides": []
@@ -598,57 +522,40 @@
    ]
   },
   {
-   "id": 26,
-   "type": "row",
-   "title": "Traces",
-   "collapsed": false,
-   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 73 },
-   "panels": []
-  },
-  {
-   "id": 27,
+   "id": 22,
    "type": "timeseries",
-   "title": "Span rate by name",
-   "description": "From Tempo's span-metrics generator. This is what the trace volume is made of; watch it after changing sampling.",
+   "title": "Reconciler retries vs give-ups",
+   "description": "A retry re-drives an unconfirmed command; a give-up means it never landed.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 74 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
    "fieldConfig": {
-    "defaults": { "unit": "ops", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
-    "overrides": []
+    "defaults": { "unit": "ops" },
+    "overrides": [
+     {
+      "matcher": { "id": "byRegexp", "options": "give-up.*" },
+      "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+     }
+    ]
    },
    "targets": [
     {
      "refId": "A",
-     "expr": "topk(15, sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])))",
-     "legendFormat": "{{span_name}}"
-    }
-   ]
-  },
-  {
-   "id": 28,
-   "type": "timeseries",
-   "title": "Span error ratio",
-   "description": "Share of spans reporting STATUS_CODE_ERROR, by span name.",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 74 },
-   "fieldConfig": {
-    "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
-    "overrides": []
-   },
-   "targets": [
+     "expr": "sum by (kind) (rate(home_gateway_reconciler_retries_total_total[15m]))",
+     "legendFormat": "retry {{kind}}"
+    },
     {
-     "refId": "A",
-     "expr": "(sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\", status_code=\"STATUS_CODE_ERROR\"}[15m])) or vector(0)) / clamp_min(sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])), 0.0001)",
-     "legendFormat": "{{span_name}}"
+     "refId": "B",
+     "expr": "sum by (kind) (rate(home_gateway_reconciler_give_ups_total_total[15m]))",
+     "legendFormat": "give-up {{kind}}"
     }
    ]
   },
   {
-   "id": 29,
+   "id": 12,
    "type": "timeseries",
-   "title": "Span latency (p95)",
+   "title": "E-ink wake drift (p95)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 82 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
    "fieldConfig": {
     "defaults": { "unit": "s" },
     "overrides": []
@@ -656,29 +563,192 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "topk(10, histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=\"home-gateway\"}[15m]))))",
-     "legendFormat": "{{span_name}}"
+     "expr": "histogram_quantile(0.95, sum by (le, device_id) (rate(home_gateway_eink_wake_drift_seconds_bucket[15m])))",
+     "legendFormat": "{{device_id}}"
     }
    ]
   },
   {
-   "id": 30,
-   "type": "traces",
-   "title": "Recent errored traces",
-   "description": "An mqtt ingest error is emitted as its own always-sampled trace, so it survives even when its parent was sampled out.",
-   "datasource": { "type": "tempo", "uid": "tempo" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 82 },
+   "id": 48,
+   "type": "row",
+   "title": "Automation",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+   "panels": []
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "Bus events by kind",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
    "fieldConfig": {
-    "defaults": {},
+    "defaults": { "unit": "ops" },
     "overrides": []
    },
    "targets": [
     {
      "refId": "A",
-     "datasource": { "type": "tempo", "uid": "tempo" },
-     "queryType": "traceql",
-     "query": "{resource.service.name=\"home-gateway\" && status=error}",
-     "limit": 20
+     "expr": "sum by (event_kind) (rate(home_gateway_bus_events_total_total[5m]))",
+     "legendFormat": "{{event_kind}}"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Trigger evaluations by outcome",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (outcome) (rate(home_gateway_triggers_total_total[5m]))",
+     "legendFormat": "{{outcome}}"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "type": "timeseries",
+   "title": "Workflow executions by outcome",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (outcome) (rate(home_gateway_workflows_total_total[5m]))",
+     "legendFormat": "{{outcome}}"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Workflow duration (p50 / p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 43 },
+   "fieldConfig": {
+    "defaults": { "unit": "s" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.5, sum by (le) (rate(home_gateway_workflow_duration_seconds_bucket[5m])))",
+     "legendFormat": "p50"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(home_gateway_workflow_duration_seconds_bucket[5m])))",
+     "legendFormat": "p95"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "type": "timeseries",
+   "title": "Workflow steps by kind",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total_total[5m]))",
+     "legendFormat": "{{step}}"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "type": "timeseries",
+   "title": "Step errors by kind",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total_total{outcome=\"error\"}[5m]))",
+     "legendFormat": "{{step}}"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "type": "table",
+   "title": "Ad-hoc tasks (last 24h)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 24, "x": 0, "y": 59 },
+   "fieldConfig": {
+    "defaults": { "unit": "short" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (task, outcome) (increase(home_gateway_adhoc_tasks_total_total[24h]))",
+     "format": "table",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "id": 49,
+   "type": "row",
+   "title": "Integrations",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 67 },
+   "panels": []
+  },
+  {
+   "id": 14,
+   "type": "timeseries",
+   "title": "Integration poll outcomes",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 68 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (integration, outcome) (rate(home_gateway_integration_polls_total_total[15m]))",
+     "legendFormat": "{{integration}} ({{outcome}})"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "type": "timeseries",
+   "title": "Integration poll duration (p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 68 },
+   "fieldConfig": {
+    "defaults": { "unit": "s" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, integration) (rate(home_gateway_integration_poll_duration_seconds_bucket[15m])))",
+     "legendFormat": "{{integration}}"
     }
    ]
   },
@@ -687,15 +757,33 @@
    "type": "row",
    "title": "Lua",
    "collapsed": false,
-   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 90 },
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 76 },
    "panels": []
+  },
+  {
+   "id": 33,
+   "type": "timeseries",
+   "title": "Lua executions by outcome",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 77 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (source, outcome) (rate(home_gateway_lua_duration_milliseconds_count[15m]))",
+     "legendFormat": "{{source}} ({{outcome}})"
+    }
+   ]
   },
   {
    "id": 32,
    "type": "timeseries",
    "title": "Lua execution duration (p50 / p95)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 91 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 77 },
    "fieldConfig": {
     "defaults": { "unit": "ms" },
     "overrides": []
@@ -714,29 +802,11 @@
    ]
   },
   {
-   "id": 33,
-   "type": "timeseries",
-   "title": "Lua executions by outcome",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 91 },
-   "fieldConfig": {
-    "defaults": { "unit": "ops" },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (source, outcome) (rate(home_gateway_lua_duration_milliseconds_count[15m]))",
-     "legendFormat": "{{source}} ({{outcome}})"
-    }
-   ]
-  },
-  {
    "id": 34,
    "type": "timeseries",
    "title": "Lua memory in use at finish (p50 / p95)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 99 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 85 },
    "fieldConfig": {
     "defaults": { "unit": "bytes" },
     "overrides": []
@@ -759,7 +829,7 @@
    "type": "timeseries",
    "title": "Lua vm setup duration before execution (p50 / p95)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 99 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 85 },
    "fieldConfig": {
     "defaults": { "unit": "ms" },
     "overrides": []
@@ -780,9 +850,9 @@
   {
    "id": 36,
    "type": "row",
-   "title": "Queries",
+   "title": "API, database & actors",
    "collapsed": false,
-   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 107 },
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 93 },
    "panels": []
   },
   {
@@ -790,7 +860,7 @@
    "type": "timeseries",
    "title": "GraphQL operations by outcome",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 108 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 94 },
    "fieldConfig": {
     "defaults": { "unit": "ops" },
     "overrides": []
@@ -808,7 +878,7 @@
    "type": "timeseries",
    "title": "GraphQL operation duration (p95)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 108 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 94 },
    "fieldConfig": {
     "defaults": { "unit": "ms" },
     "overrides": []
@@ -826,7 +896,7 @@
    "type": "timeseries",
    "title": "DB query rate (top 10)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 116 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 102 },
    "fieldConfig": {
     "defaults": { "unit": "ops" },
     "overrides": []
@@ -844,7 +914,7 @@
    "type": "timeseries",
    "title": "DB query duration (p95, top 10)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 116 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 102 },
    "fieldConfig": {
     "defaults": { "unit": "ms" },
     "overrides": []
@@ -862,7 +932,7 @@
    "type": "timeseries",
    "title": "DB query errors",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 124 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 110 },
    "fieldConfig": {
     "defaults": { "unit": "ops" },
     "overrides": []
@@ -880,7 +950,7 @@
    "type": "timeseries",
    "title": "Actor RPC errors",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 124 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 110 },
    "fieldConfig": {
     "defaults": { "unit": "ops" },
     "overrides": []
@@ -890,6 +960,109 @@
      "refId": "A",
      "expr": "sum by (actor, kind) (rate(home_gateway_rpc_errors_total_total[15m]))",
      "legendFormat": "{{actor}} {{kind}}"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "type": "timeseries",
+   "title": "Actor restarts by actor and reason",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 24, "x": 0, "y": 118 },
+   "fieldConfig": {
+    "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 30, "stacking": { "mode": "normal" } } },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (actor, reason) (increase(home_gateway_actor_restarts_total_total[15m]))",
+     "legendFormat": "{{actor}} / {{reason}}"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "type": "row",
+   "title": "Traces",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 126 },
+   "panels": []
+  },
+  {
+   "id": 27,
+   "type": "timeseries",
+   "title": "Span rate by name",
+   "description": "From Tempo's span-metrics generator. This is what the trace volume is made of; watch it after changing sampling.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 127 },
+   "fieldConfig": {
+    "defaults": { "unit": "ops", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(15, sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])))",
+     "legendFormat": "{{span_name}}"
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "type": "timeseries",
+   "title": "Span error ratio",
+   "description": "Share of spans reporting STATUS_CODE_ERROR, by span name.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 127 },
+   "fieldConfig": {
+    "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "(sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\", status_code=\"STATUS_CODE_ERROR\"}[15m])) or vector(0)) / clamp_min(sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"home-gateway\"}[15m])), 0.0001)",
+     "legendFormat": "{{span_name}}"
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "type": "timeseries",
+   "title": "Span latency (p95)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 135 },
+   "fieldConfig": {
+    "defaults": { "unit": "s" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=\"home-gateway\"}[15m]))))",
+     "legendFormat": "{{span_name}}"
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "type": "traces",
+   "title": "Recent errored traces",
+   "description": "An mqtt ingest error is emitted as its own always-sampled trace, so it survives even when its parent was sampled out.",
+   "datasource": { "type": "tempo", "uid": "tempo" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 135 },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": { "type": "tempo", "uid": "tempo" },
+     "queryType": "traceql",
+     "query": "{resource.service.name=\"home-gateway\" && status=error}",
+     "limit": 20
     }
    ]
   }
