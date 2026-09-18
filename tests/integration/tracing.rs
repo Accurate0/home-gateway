@@ -118,25 +118,27 @@ async fn a_graphql_query_produces_one_span_per_top_level_field() {
     let names = names(&spans);
 
     assert!(
-        names.contains(&"graphql DashboardEntities".to_owned()),
+        names.contains(&"graphql.DashboardEntities".to_owned()),
         "the operation span must carry the operation name: {names:?}"
     );
-    assert!(names.contains(&"parse_query".to_owned()), "{names:?}");
-    assert!(names.contains(&"validation".to_owned()), "{names:?}");
+    assert!(names.contains(&"graphql.parse".to_owned()), "{names:?}");
+    assert!(names.contains(&"graphql.validate".to_owned()), "{names:?}");
 
     let field_spans: Vec<_> = names
         .iter()
-        .filter(|n| n.starts_with("QueryRoot."))
+        .filter(|n| n.starts_with("graphql.QueryRoot."))
         .collect();
     assert_eq!(
         field_spans,
-        vec!["QueryRoot.environment"],
+        vec!["graphql.QueryRoot.environment"],
         "exactly one span for the one top-level field: {names:?}"
     );
 
     let nested: Vec<_> = names
         .iter()
-        .filter(|n| n.starts_with("EnvironmentEntity.") || n.starts_with('[') || n.contains("]."))
+        .filter(|n| {
+            n.starts_with("graphql.EnvironmentEntity.") || n.starts_with('[') || n.contains("].")
+        })
         .collect();
     assert!(
         nested.is_empty(),
@@ -165,8 +167,8 @@ async fn the_parse_span_records_the_operation_and_its_top_level_fields() {
 
     let parse = spans
         .iter()
-        .find(|s| s.name == "parse_query")
-        .expect("parse_query span");
+        .find(|s| s.name == "graphql.parse")
+        .expect("graphql.parse span");
 
     assert_eq!(
         attribute(parse, "operation").as_deref(),

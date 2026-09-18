@@ -4,6 +4,7 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
 pub struct ActorWorkerSettings {
     pub mqtt_ingest: usize,
+    pub home_assistant_ingest: usize,
     pub control_switch: usize,
     pub door_sensor: usize,
     pub environment_sensor: usize,

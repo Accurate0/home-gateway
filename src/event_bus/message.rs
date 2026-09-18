@@ -5,7 +5,7 @@ use super::playback::PlaybackState;
 use super::reading::SensorReading;
 use super::variables::{
     CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
-    HomeAssistantVariables, JellyfinVariables, MediaPlayerVariables, ModeVariables,
+    HomeAssistantVariables, MediaPlayerVariables, ModeVariables,
     PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
     WeatherVariables, WoolworthsVariables,
 };
@@ -112,31 +112,10 @@ pub enum EventBusMessage {
         battery_voltage: Option<f64>,
         battery_percent: Option<f64>,
     },
-    /// A Jellyfin playback session started, stopped, paused or resumed, derived by
-    /// the [`crate::actors::integrations::jellyfin`] producer from the session
-    /// snapshots it receives over the WebSocket and the `/Sessions` poll. Progress
-    /// within an item is deliberately not published — only the edges are.
-    Jellyfin {
-        event_id: Uuid,
-        state: PlaybackState,
-        session_id: String,
-        user: String,
-        device: String,
-        client: String,
-        item_id: String,
-        item_name: String,
-        item_type: String,
-        series_name: Option<String>,
-        season: Option<i32>,
-        episode: Option<i32>,
-        position_seconds: Option<f64>,
-        runtime_seconds: Option<f64>,
-        play_method: Option<String>,
-    },
     /// A Home Assistant `media_player` entity reached a playback edge, derived by
     /// the [`crate::actors::devices::media_player`] handler from HA `state_changed`
-    /// events. As with [`EventBusMessage::Jellyfin`], progress within an item is
-    /// deliberately not published — only the edges are.
+    /// events. Progress within an item is deliberately not published — only the
+    /// edges are.
     MediaPlayer {
         event_id: Uuid,
         device_id: String,
@@ -271,7 +250,6 @@ impl EventBusMessage {
             | EventBusMessage::HomeAssistant { event_id, .. }
             | EventBusMessage::Woolworths { event_id, .. }
             | EventBusMessage::DeviceBattery { event_id, .. }
-            | EventBusMessage::Jellyfin { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
             | EventBusMessage::Solar { event_id, .. }
             | EventBusMessage::Weather { event_id, .. }
@@ -297,7 +275,6 @@ impl EventBusMessage {
             EventBusMessage::HomeAssistant { .. } => "home_assistant",
             EventBusMessage::Woolworths { .. } => "woolworths",
             EventBusMessage::DeviceBattery { .. } => "device_battery",
-            EventBusMessage::Jellyfin { .. } => "jellyfin",
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
             EventBusMessage::Weather { .. } => "weather",
@@ -321,7 +298,6 @@ impl EventBusMessage {
         "home_assistant",
         "woolworths",
         "device_battery",
-        "jellyfin",
         "media_player",
         "solar",
         "weather",
@@ -347,7 +323,6 @@ impl EventBusMessage {
             EventBusMessage::HomeAssistant { entity_id, .. } => entity_id.clone(),
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
             EventBusMessage::DeviceBattery { device_id, .. } => device_id.clone(),
-            EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
             EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
@@ -428,37 +403,6 @@ impl EventBusMessage {
                 name: name.clone(),
                 battery_voltage: *battery_voltage,
                 battery_percent: *battery_percent,
-            }
-            .to_node(),
-            EventBusMessage::Jellyfin {
-                state,
-                session_id,
-                user,
-                device,
-                client,
-                item_name,
-                item_type,
-                series_name,
-                season,
-                episode,
-                position_seconds,
-                runtime_seconds,
-                play_method,
-                ..
-            } => JellyfinVariables {
-                state: state.as_str().to_owned(),
-                session_id: session_id.clone(),
-                user: user.clone(),
-                device: device.clone(),
-                client: client.clone(),
-                item: item_name.clone(),
-                item_type: item_type.clone(),
-                series: series_name.clone(),
-                season: *season,
-                episode: *episode,
-                position: *position_seconds,
-                runtime: *runtime_seconds,
-                play_method: play_method.clone(),
             }
             .to_node(),
             EventBusMessage::MediaPlayer {

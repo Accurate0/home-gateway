@@ -414,26 +414,51 @@ mod tests {
     use crate::{
         decoding::load_models,
         device_metric::MetricValue,
+        lua::LuaDecoder,
         settings::{LuaSettings, Metric},
     };
     use serde_json::{Map, Value};
     use std::collections::BTreeMap;
 
-    fn device(slug: &str, source: &str) -> DecodedDevice {
-        let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
-        let models = load_models("zigbee", &sources, &LuaSettings::default()).expect("models");
+    struct TestDevice {
+        device: DecodedDevice,
+        decoder: LuaDecoder,
+    }
 
-        DecodedDevice {
-            id: "test-device".to_owned(),
-            address: "0xabc".to_owned(),
-            profile: models[slug].clone(),
+    impl std::ops::Deref for TestDevice {
+        type Target = DecodedDevice;
+
+        fn deref(&self) -> &DecodedDevice {
+            &self.device
         }
     }
 
-    fn reading(device: &DecodedDevice, json: &str) -> DeviceReading {
+    fn test_device(kind: &'static str, slug: &str, source: &str, address: &str) -> TestDevice {
+        let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
+        let models = load_models(kind, &sources, &LuaSettings::default()).expect("models");
+        let decoder = LuaDecoder::load(kind, &sources, &LuaSettings::default()).expect("decoder");
+
+        TestDevice {
+            device: DecodedDevice {
+                id: "test-device".to_owned(),
+                address: address.to_owned(),
+                profile: models[slug].clone(),
+            },
+            decoder,
+        }
+    }
+
+    fn device(slug: &str, source: &str) -> TestDevice {
+        test_device("zigbee", slug, source, "0xabc")
+    }
+
+    fn reading(device: &TestDevice, json: &str) -> DeviceReading {
         let payload: Map<String, Value> = serde_json::from_str(json).expect("payload");
 
-        device.profile.decode(&payload).expect("decode")
+        device
+            .profile
+            .decode(&device.decoder, &payload)
+            .expect("decode")
     }
 
     fn metrics(reading: DeviceReading) -> Vec<(String, MetricValue)> {
@@ -639,26 +664,21 @@ mod tests {
     const ROBOROCK: &str = include_str!("../../config/lua/home_assistant/roborock.lua");
     const MEDIA_PLAYER: &str = include_str!("../../config/lua/home_assistant/media_player.lua");
 
-    fn entity_device(slug: &str, source: &str, address: &str) -> DecodedDevice {
-        let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
-        let models =
-            load_models("home_assistant", &sources, &LuaSettings::default()).expect("models");
-
-        DecodedDevice {
-            id: "test-device".to_owned(),
-            address: address.to_owned(),
-            profile: models[slug].clone(),
-        }
+    fn entity_device(slug: &str, source: &str, address: &str) -> TestDevice {
+        test_device("home_assistant", slug, source, address)
     }
 
-    fn entity(device: &DecodedDevice, entity_id: &str, state: &str) -> DeviceReading {
+    fn entity(device: &TestDevice, entity_id: &str, state: &str) -> DeviceReading {
         let entity = serde_json::json!({
             "entity_id": entity_id,
             "state": state,
             "attributes": { "friendly_name": "Robot" },
         });
 
-        device.profile.decode(&entity).expect("decode")
+        device
+            .profile
+            .decode(&device.decoder, &entity)
+            .expect("decode")
     }
 
     fn roborock(reading: &DeviceReading) -> Option<robot_vacuum::RoborockReading> {
@@ -740,7 +760,10 @@ mod tests {
             "attributes": { "media_title": "Severance", "app_name": "Apple TV", "volume_level": 0.3 },
         });
 
-        let reading = device.profile.decode(&payload).expect("decode");
+        let reading = device
+            .profile
+            .decode(&device.decoder, &payload)
+            .expect("decode");
 
         let Some(media_player::MediaPlayerReading {
             address,

@@ -16,7 +16,6 @@ configMapGenerator:
       - sections/endpoints.yaml
       - sections/home_assistant.yaml
       - sections/http.yaml
-      - sections/jellyfin.yaml
       - sections/mqtt.yaml
       - sections/transperth.yaml
   - name: home-gateway-config-devices

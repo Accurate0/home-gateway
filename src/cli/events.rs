@@ -21,7 +21,6 @@ subscription($filter: String!) {
     ... on HomeAssistantUpdate { entityId state }
     ... on UnifiUpdate { client connected }
     ... on WoolworthsUpdate { name oldPrice newPrice }
-    ... on JellyfinUpdate { user state itemName seriesName }
     ... on WeatherUpdate { source readings { metric day value } }
     ... on FuelWatchUpdate { name change oldPrice newPrice }
     ... on SwitchUpdate { device action }

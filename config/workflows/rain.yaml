@@ -3,8 +3,8 @@
   slug: rain-today
   group: Weather
   on: { type: weather, source: willyweather, metric: rain_probability, day: today, op: gte, value: 70 }
-  when: { type: time_of_day, after: "09:00:00" }
-  cooldown: 12h
+  when: { type: time_of_day, after: "09:00:00", before: "12:00:00" }
+  cooldown: 20h
   modes: [home, away, guest]
   run:
     - type: notify

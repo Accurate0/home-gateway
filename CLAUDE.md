@@ -23,7 +23,7 @@ fish scripts/install-completions.fish --regenerate   # regenerate completions/ho
 This is a home-automation gateway: it ingests device events (Zigbee via zigbee2mqtt, ESPHome, plus HTTP webhooks from UniFi/solar/etc.), runs rule-based **workflows**, and exposes a GraphQL + REST API. It is built on the **`ractor` actor framework** — almost all runtime logic lives in supervised actors, not in request handlers.
 
 ### Actor tree
-Actors are grouped by role under `src/actors/`: `devices/` (per-device-kind handlers), `integrations/` (unifi, solar, synergy, woolworths, trmnl, home_assistant), `system/` (watchdog, cron, battery, push, mqtt_ingest, rpc), `home/` (alarm, sun, eink_display), plus `workflows/`, `events/` and `root/`. Modules that talk to an external service live under `src/integrations/`.
+Actors are grouped by role under `src/actors/`: `devices/` (per-device-kind handlers), `integrations/` (unifi, solar, synergy, woolworths, trmnl), `system/` (watchdog, cron, battery, push, mqtt_ingest, home_assistant_ingest, rpc), `home/` (alarm, sun, eink_display), plus `workflows/`, `events/` and `root/`. Modules that talk to an external service live under `src/integrations/`.
 
 `main.rs` builds a `SharedActorState` (DB pool, MQTT client, event bus, device registry, settings) and starts `RootSupervisor` (`src/actors/root/`), which spawns and links every long-lived actor (device handlers, workflow dispatcher, watchdog, cron, unifi, solar, eink display, woolworths, etc.). Actors are looked up by name string via `ractor::registry::where_is`, so an actor's `NAME` const is effectively its address. Many device actors are `ractor` **factories** (worker pools) that take `FactoryMessage::Dispatch(Job { .. })`.
 

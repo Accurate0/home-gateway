@@ -105,21 +105,6 @@ pub enum TriggerMatcher {
         #[serde(default)]
         below: Option<f64>,
     },
-    /// Fires on a Jellyfin playback edge, driven by the
-    /// [`crate::actors::integrations::jellyfin`] producer. Every field is an
-    /// optional gate: `state` (`started`/`stopped`/`paused`/`resumed`), the
-    /// Jellyfin `user`, the playing `device`, and the Jellyfin item `item_type`
-    /// (e.g. `Movie`, `Episode`, `Audio`).
-    Jellyfin {
-        #[serde(default)]
-        state: Option<PlaybackState>,
-        #[serde(default)]
-        user: Option<String>,
-        #[serde(default)]
-        device: Option<String>,
-        #[serde(default)]
-        item_type: Option<String>,
-    },
     /// Fires on a `media_player` playback edge, driven by the
     /// [`crate::actors::devices::media_player`] handler. Every field is an optional
     /// gate: the configured `device` id, `state`
@@ -178,7 +163,6 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => "woolworths",
             TriggerMatcher::FuelWatch { .. } => "fuelwatch",
             TriggerMatcher::DeviceBattery { .. } => "device_battery",
-            TriggerMatcher::Jellyfin { .. } => "jellyfin",
             TriggerMatcher::MediaPlayer { .. } => "media_player",
             TriggerMatcher::Solar { .. } => "solar",
             TriggerMatcher::Weather { .. } => "weather",
@@ -254,7 +238,6 @@ impl TriggerMatcher {
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
-            | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Custom { .. }
             | TriggerMatcher::Unifi { .. } => None,
@@ -348,22 +331,6 @@ impl TriggerMatcher {
                     None => format!("device_battery({device})"),
                 }
             }
-            TriggerMatcher::Jellyfin {
-                state,
-                user,
-                device,
-                item_type,
-            } => {
-                let subject = user
-                    .clone()
-                    .or_else(|| device.clone())
-                    .or_else(|| item_type.clone())
-                    .unwrap_or_else(|| "*".to_owned());
-                match state {
-                    Some(state) => format!("jellyfin({subject}) -> {}", state.as_str()),
-                    None => format!("jellyfin({subject})"),
-                }
-            }
             TriggerMatcher::MediaPlayer { device, state, app } => {
                 let subject = device
                     .clone()
@@ -438,7 +405,6 @@ impl TriggerMatcher {
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
-            | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Solar { .. }
             | TriggerMatcher::Custom { .. } => {}

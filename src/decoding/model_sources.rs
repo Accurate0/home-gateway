@@ -5,7 +5,7 @@ use crate::settings::LuaSettings;
 use super::device_models::DeviceModels;
 use super::models::load_models;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ModelSources {
     pub zigbee: BTreeMap<String, String>,
     pub home_assistant: BTreeMap<String, String>,

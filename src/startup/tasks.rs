@@ -6,12 +6,16 @@ use crate::device_registry::DeviceRegistry;
 use crate::error::MainError;
 use crate::event_bus::EventBus;
 use crate::integrations::feature_flag::{self, FeatureFlagClient};
+use crate::integrations::home_assistant::{self, HomeAssistant};
 use crate::integrations::mqtt::Mqtt;
+use crate::settings::HomeAssistantWebsocketSettings;
 use crate::utils::axum_shutdown_signal;
 
 pub struct Tasks {
     pub router: Router,
     pub mqtt: Mqtt,
+    pub home_assistant: Option<HomeAssistant>,
+    pub home_assistant_websocket: HomeAssistantWebsocketSettings,
     pub devices: DeviceRegistry,
     pub cancellation_token: CancellationToken,
     pub feature_flag_client: FeatureFlagClient,
@@ -23,6 +27,8 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
     let Tasks {
         router,
         mut mqtt,
+        home_assistant,
+        home_assistant_websocket,
         devices,
         cancellation_token,
         feature_flag_client,
@@ -49,6 +55,19 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
             .await?;
         Ok::<(), MainError>(())
     });
+
+    if let Some(home_assistant) = home_assistant {
+        let home_assistant_cancellation_token = cancellation_token.child_token();
+        task_set.spawn(async move {
+            home_assistant::websocket::process_events(
+                home_assistant,
+                home_assistant_websocket,
+                home_assistant_cancellation_token,
+            )
+            .await;
+            Ok::<(), MainError>(())
+        });
+    }
 
     task_set.spawn(async move {
         feature_flag::publish_provider_events(feature_flag_client, event_bus).await;

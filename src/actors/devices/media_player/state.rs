@@ -57,7 +57,7 @@ fn is_paused(state: &str) -> bool {
 
 /// Derive the playback edges a transition represents. Returns an empty vector
 /// when nothing meaningful changed — a position-only update must not put an
-/// event on the bus, mirroring the Jellyfin reconciler.
+/// event on the bus.
 pub fn edges(prior: Option<&Prior>, now: &Prior) -> Vec<PlaybackState> {
     let was_active = prior.is_some_and(|p| is_active(&p.state));
 

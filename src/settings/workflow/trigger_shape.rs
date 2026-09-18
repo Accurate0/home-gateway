@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::variables::{
     CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
-    HomeAssistantVariables, JellyfinVariables, MediaPlayerVariables, ModeVariables,
+    HomeAssistantVariables, MediaPlayerVariables, ModeVariables,
     PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
     WeatherVariables, WoolworthsVariables,
 };
@@ -24,7 +24,6 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => WoolworthsVariables::shape(),
             TriggerMatcher::FuelWatch { .. } => FuelWatchVariables::shape(),
             TriggerMatcher::DeviceBattery { .. } => DeviceBatteryVariables::shape(),
-            TriggerMatcher::Jellyfin { .. } => JellyfinVariables::shape(),
             TriggerMatcher::MediaPlayer { .. } => MediaPlayerVariables::shape(),
             TriggerMatcher::Unifi { .. } => UnifiVariables::shape(),
             TriggerMatcher::Environment { sensor, metric, .. } => {

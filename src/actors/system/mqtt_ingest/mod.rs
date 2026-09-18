@@ -8,6 +8,7 @@ use crate::{
     },
     decoding::DecodedDevice,
     integrations::zigbee2mqtt::devices::BridgeDevices,
+    lua::LuaDecoder,
     state::AppState,
 };
 use ractor::{
@@ -215,12 +216,13 @@ impl MqttIngest {
 
     async fn dispatch_zigbee(
         &self,
+        decoder: &LuaDecoder,
         event_id: Uuid,
         device: &DecodedDevice,
         friendly_name: &str,
         payload: &Map<String, Value>,
     ) -> Result<(), anyhow::Error> {
-        let reading = match device.profile.decode(payload) {
+        let reading = match device.profile.decode(decoder, payload) {
             Ok(reading) => reading,
             Err(e) => {
                 tracing::error!(
@@ -255,7 +257,7 @@ impl MqttIngest {
         .await;
     }
 
-    async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
+    async fn handle(&self, decoder: &LuaDecoder, message: Message) -> Result<(), anyhow::Error> {
         let Message::MqttPacket { payload, topic } = message;
         let mqtt_topic = MqttTopic::classify(&topic);
         crate::metrics::record_mqtt_ingest(mqtt_topic.kind());
@@ -401,7 +403,7 @@ impl MqttIngest {
                     device.profile.slug
                 );
 
-                self.dispatch_zigbee(Uuid::new_v4(), &device, &friendly_name, object)
+                self.dispatch_zigbee(decoder, Uuid::new_v4(), &device, &friendly_name, object)
                     .await?;
             }
         }
@@ -413,7 +415,7 @@ impl MqttIngest {
 impl Worker for MqttIngest {
     type Key = ();
     type Message = Message;
-    type State = ();
+    type State = LuaDecoder;
     type Arguments = ();
 
     async fn pre_start(
@@ -422,7 +424,13 @@ impl Worker for MqttIngest {
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         _startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(())
+        let settings = &self.shared_actor_state.settings;
+
+        Ok(LuaDecoder::load(
+            "zigbee",
+            &settings.model_sources.zigbee,
+            &settings.lua,
+        )?)
     }
 
     async fn handle(
@@ -430,7 +438,7 @@ impl Worker for MqttIngest {
         _wid: WorkerId,
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         Job { msg, .. }: Job<(), Message>,
-        _state: &mut Self::State,
+        decoder: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         let Message::MqttPacket { topic, .. } = &msg;
         let topic = topic.clone();
@@ -445,7 +453,10 @@ impl Worker for MqttIngest {
             otel.status_message = tracing::field::Empty,
         );
 
-        if let Err(e) = Self::handle(self, msg).instrument(span.clone()).await {
+        if let Err(e) = Self::handle(self, decoder, msg)
+            .instrument(span.clone())
+            .await
+        {
             tracing::error!("error while handling message: {e}");
             crate::tracing_context::record_error(&span, &e.to_string());
 

@@ -15,10 +15,9 @@ use crate::actors::devices::{
 };
 use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
-    fuelwatch::FuelWatchActor, home_assistant::HomeAssistantActor, jellyfin::JellyfinActor,
-    solar::SolarActor, synergy::SynergyActor, transperth::TransperthActor, trmnl::TrmnlActor,
-    unifi::UnifiConnectedClientHandler, willyweather::WillyWeatherActor,
-    woolworths::WoolworthsActor,
+    fuelwatch::FuelWatchActor, solar::SolarActor, synergy::SynergyActor,
+    transperth::TransperthActor, trmnl::TrmnlActor, unifi::UnifiConnectedClientHandler,
+    willyweather::WillyWeatherActor, woolworths::WoolworthsActor,
 };
 use crate::actors::root::RootMessage;
 use crate::actors::sun::SunActor;
@@ -26,6 +25,7 @@ use crate::actors::system::{
     adhoc::AdhocTaskActor,
     battery::BatteryActor,
     cron::CronActor,
+    home_assistant_ingest::HomeAssistantIngest,
     mqtt_ingest::MqttIngest,
     push::PushActor,
     reconciler::{ReconcilerSweeper, ReconcilerWorker},
@@ -36,7 +36,6 @@ use crate::actors::vacation::VacationActor;
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
 use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::home_assistant::HomeAssistant;
-use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
 use crate::integrations::transperth::Transperth;
 use crate::integrations::trmnl::Trmnl;
@@ -267,7 +266,7 @@ pub static ACTORS: &[ActorSpec] = &[
         },
     },
     ActorSpec {
-        name: HomeAssistantActor::NAME,
+        name: HomeAssistantIngest::NAME,
         autostart: true,
         optional: false,
         requires: &[Requirement::Handle {
@@ -276,36 +275,9 @@ pub static ACTORS: &[ActorSpec] = &[
         }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
-                root.spawn_linked(
-                    Some(HomeAssistantActor::NAME.to_owned()),
-                    HomeAssistantActor { shared_actor_state },
-                    (),
-                )
-                .await?;
-
-                Ok(Spawned::Started)
-            })
-        },
-    },
-    ActorSpec {
-        name: JellyfinActor::NAME,
-        autostart: true,
-        optional: false,
-        requires: &[Requirement::Handle {
-            label: "jellyfin",
-            present: |handles| handles.contains::<Jellyfin>(),
-        }],
-        spawn: |root, shared_actor_state| {
-            Box::pin(async move {
-                let jellyfin = shared_actor_state.handles.expect::<Jellyfin>().clone();
-
-                root.spawn_linked(
-                    Some(JellyfinActor::NAME.to_owned()),
-                    JellyfinActor {
-                        shared_actor_state,
-                        jellyfin,
-                    },
-                    (),
+                crate::actors::system::home_assistant_ingest::spawn::spawn_home_assistant_ingest(
+                    &root,
+                    shared_actor_state,
                 )
                 .await?;
 
@@ -539,8 +511,7 @@ mod tests {
                 VacationActor::NAME,
                 ReconcilerWorker::NAME,
                 ReconcilerSweeper::NAME,
-                HomeAssistantActor::NAME,
-                JellyfinActor::NAME,
+                HomeAssistantIngest::NAME,
                 TransperthActor::NAME,
                 TrmnlActor::NAME,
                 FuelWatchActor::NAME,

@@ -2,6 +2,7 @@ use home_gateway::actors::root::RootSupervisor;
 use home_gateway::api::{SchemaParts, build_router, build_schema};
 use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
+use home_gateway::integrations::home_assistant::HomeAssistant;
 use home_gateway::startup::{self, Handles, Tasks};
 use home_gateway::state::AppState;
 use home_gateway::tracing_setup::SampleRatios;
@@ -68,6 +69,8 @@ async fn main() -> anyhow::Result<()> {
     startup::api_keys::reconcile(&state).await;
 
     let event_bus = state.event_bus.clone();
+    let home_assistant = state.handles.get::<HomeAssistant>().cloned();
+    let home_assistant_websocket = state.settings.home_assistant.websocket;
 
     let router = build_router(state, telemetry.metrics_registry);
 
@@ -76,6 +79,8 @@ async fn main() -> anyhow::Result<()> {
         Tasks {
             router,
             mqtt,
+            home_assistant,
+            home_assistant_websocket,
             devices,
             cancellation_token,
             feature_flag_client,

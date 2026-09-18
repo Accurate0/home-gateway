@@ -16,7 +16,6 @@ pub fn load_models(
 ) -> Result<Models, String> {
     let decoder = LuaDecoder::load(kind, sources, settings)
         .map_err(|error| format!("{kind} models: {error}"))?;
-    let decoder = Arc::new(decoder);
 
     let mut profiles = HashMap::new();
 
@@ -31,7 +30,7 @@ pub fn load_models(
 
 fn resolve_profile(
     kind: &'static str,
-    decoder: &Arc<LuaDecoder>,
+    decoder: &LuaDecoder,
     slug: &str,
 ) -> Result<ModelProfile, String> {
     let error = |error: LuaError| format!("{kind} model {slug}: {error}");
@@ -82,13 +81,12 @@ fn resolve_profile(
         ));
     }
 
-    Ok(ModelProfile::new(
+    Ok(ModelProfile {
         kind,
-        slug.to_owned(),
+        slug: slug.to_owned(),
         roles,
         environment,
-        decoder.clone(),
-    ))
+    })
 }
 
 #[cfg(test)]
@@ -98,7 +96,7 @@ mod tests {
     use serde_json::{Map, Value};
 
     use super::*;
-    use crate::decoding::reading::ReadingMetric;
+    use crate::decoding::reading::{DeviceReading, ReadingMetric};
     use crate::device_metric::MetricValue;
 
     fn load(source: &str) -> Result<Models, String> {
@@ -113,6 +111,14 @@ mod tests {
 
     fn payload(json: &str) -> Map<String, Value> {
         serde_json::from_str(json).expect("payload json")
+    }
+
+    fn decode(source: &str, json: &str) -> Result<DeviceReading, LuaError> {
+        let sources = BTreeMap::from([("test_model".to_owned(), source.to_owned())]);
+        let decoder =
+            LuaDecoder::load("zigbee", &sources, &LuaSettings::default()).expect("decoder");
+
+        profile(source).decode(&decoder, &payload(json))
     }
 
     #[test]
@@ -191,7 +197,7 @@ mod tests {
 
     #[test]
     fn decode_maps_payload_fields_into_a_typed_reading() {
-        let profile = profile(
+        let reading = decode(
             r#"return {
                 roles = { "battery", "door" },
                 decode = function(p)
@@ -202,13 +208,9 @@ mod tests {
                     }
                 end,
             }"#,
-        );
-
-        let reading = profile
-            .decode(&payload(
-                r#"{"battery": 97, "contact": false, "voltage": 3005, "mode": "eco"}"#,
-            ))
-            .expect("decode");
+            r#"{"battery": 97, "contact": false, "voltage": 3005, "mode": "eco"}"#,
+        )
+        .expect("decode");
 
         assert_eq!(reading.battery, Some(97));
         assert_eq!(reading.door.and_then(|door| door.contact), Some(false));
@@ -225,27 +227,25 @@ mod tests {
 
     #[test]
     fn json_nulls_arrive_in_lua_as_nil() {
-        let profile = profile(
+        let reading = decode(
             r#"return {
                 roles = { "door" },
                 decode = function(p) return { door = { contact = p.contact } } end,
             }"#,
-        );
-
-        let reading = profile
-            .decode(&payload(r#"{"contact": null}"#))
-            .expect("decode");
+            r#"{"contact": null}"#,
+        )
+        .expect("decode");
 
         assert_eq!(reading.door.and_then(|door| door.contact), None);
     }
 
     #[test]
     fn an_unknown_block_in_a_reading_is_an_error() {
-        let profile = profile(
+        let error = decode(
             r#"return { roles = { "door" }, decode = function(p) return { garage = {} } end }"#,
-        );
-
-        let error = profile.decode(&payload("{}")).expect_err("unknown block");
+            "{}",
+        )
+        .expect_err("unknown block");
 
         assert!(error.to_string().contains("garage"), "{error}");
     }

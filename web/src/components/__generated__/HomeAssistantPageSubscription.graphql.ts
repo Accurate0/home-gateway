@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6632a0ae7a5783693bb05ee7601effcf>>
+ * @generated SignedSource<<4b806df01f42670575555529b9ac445e>>
  * @lightSyntaxTransform
  */
 
@@ -148,12 +148,6 @@ return {
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "JellyfinUpdate",
-            "abstractKey": null
-          },
-          {
-            "kind": "InlineFragment",
-            "selections": (v4/*:: as any*/),
             "type": "LightUpdate",
             "abstractKey": null
           },
@@ -175,12 +169,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "d22479d506186ea65fb1b8cac33bf5ee",
+    "cacheID": "abbb459f8c6eef0236d171f7d1ef5d9b",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageSubscription",
     "operationKind": "subscription",
-    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();

@@ -110,16 +110,6 @@
     "home_assistant": {
       "$ref": "#/$defs/HomeAssistantSettings"
     },
-    "jellyfin": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/JellyfinSettings"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "solar": {
       "anyOf": [
         {
@@ -259,9 +249,6 @@
         "home_assistant": {
           "$ref": "#/$defs/HttpClientOverride"
         },
-        "jellyfin": {
-          "$ref": "#/$defs/HttpClientOverride"
-        },
         "oauth": {
           "$ref": "#/$defs/HttpClientOverride"
         },
@@ -376,6 +363,11 @@
           "format": "uint",
           "minimum": 0
         },
+        "home_assistant_ingest": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
         "control_switch": {
           "type": "integer",
           "format": "uint",
@@ -424,6 +416,7 @@
       },
       "required": [
         "mqtt_ingest",
+        "home_assistant_ingest",
         "control_switch",
         "door_sensor",
         "environment_sensor",
@@ -3027,50 +3020,6 @@
           ]
         },
         {
-          "description": "Fires on a Jellyfin playback edge, driven by the\n[`crate::actors::integrations::jellyfin`] producer. Every field is an\noptional gate: `state` (`started`/`stopped`/`paused`/`resumed`), the\nJellyfin `user`, the playing `device`, and the Jellyfin item `item_type`\n(e.g. `Movie`, `Episode`, `Audio`).",
-          "type": "object",
-          "properties": {
-            "state": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/PlaybackState"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "user": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null
-            },
-            "device": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null
-            },
-            "item_type": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null
-            },
-            "type": {
-              "type": "string",
-              "const": "jellyfin"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
           "description": "Fires on a `media_player` playback edge, driven by the\n[`crate::actors::devices::media_player`] handler. Every field is an optional\ngate: the configured `device` id, `state`\n(`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.\n`Jellyfin`, `YouTube`).",
           "type": "object",
           "properties": {
@@ -3715,74 +3664,6 @@
         "reconnect_delay"
       ]
     },
-    "JellyfinSettings": {
-      "type": "object",
-      "properties": {
-        "url": {
-          "type": "string"
-        },
-        "api_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "poll_interval": {
-          "type": "string"
-        },
-        "websocket": {
-          "$ref": "#/$defs/JellyfinWebsocketSettings"
-        }
-      },
-      "required": [
-        "url",
-        "poll_interval",
-        "websocket"
-      ]
-    },
-    "JellyfinWebsocketSettings": {
-      "type": "object",
-      "properties": {
-        "keep_alive": {
-          "type": "string"
-        },
-        "silence_timeout": {
-          "type": "string"
-        },
-        "sessions_interval": {
-          "type": "string"
-        },
-        "reconnect": {
-          "$ref": "#/$defs/JellyfinReconnectSettings"
-        }
-      },
-      "required": [
-        "keep_alive",
-        "silence_timeout",
-        "sessions_interval",
-        "reconnect"
-      ]
-    },
-    "JellyfinReconnectSettings": {
-      "type": "object",
-      "properties": {
-        "min": {
-          "type": "string"
-        },
-        "max": {
-          "type": "string"
-        },
-        "stable_after": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "min",
-        "max",
-        "stable_after"
-      ]
-    },
     "SolarSettings": {
       "type": "object",
       "properties": {
@@ -4126,9 +4007,6 @@
         "trim_home_assistant_events": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
-        "trim_jellyfin_playback_events": {
-          "$ref": "#/$defs/AdhocCronTaskSettings2"
-        },
         "trim_light_history": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
@@ -4155,7 +4033,6 @@
         "trim_device_metric",
         "trim_door_sensor",
         "trim_home_assistant_events",
-        "trim_jellyfin_playback_events",
         "trim_light_history",
         "trim_robot_vacuum_events",
         "trim_smart_switch",

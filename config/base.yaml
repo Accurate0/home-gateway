@@ -7,7 +7,6 @@ actors: !include sections/actors.yaml
 adhoc: !include sections/adhoc.yaml
 auth: !include sections/auth.yaml
 home_assistant: !include sections/home_assistant.yaml
-jellyfin: !include sections/jellyfin.yaml
 transperth: !include sections/transperth.yaml
 eink_display: !include sections/eink_display.yaml
 endpoints: !include sections/endpoints.yaml

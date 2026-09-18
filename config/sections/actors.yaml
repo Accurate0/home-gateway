@@ -5,6 +5,7 @@ restart:
   healthy_after: 5m
 workers:
   mqtt_ingest: 5
+  home_assistant_ingest: 2
   control_switch: 3
   door_sensor: 1
   environment_sensor: 1

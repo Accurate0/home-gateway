@@ -8,7 +8,6 @@ pub mod trim_device_intent;
 pub mod trim_device_metric;
 pub mod trim_door_sensor;
 pub mod trim_home_assistant_events;
-pub mod trim_jellyfin_playback_events;
 pub mod trim_light_history;
 pub mod trim_robot_vacuum_events;
 pub mod trim_smart_switch;
@@ -25,7 +24,6 @@ pub fn all() -> Vec<&'static dyn AnyAdhocCronTask> {
         &trim_device_metric::TrimDeviceMetric,
         &trim_door_sensor::TrimDoorSensor,
         &trim_home_assistant_events::TrimHomeAssistantEvents,
-        &trim_jellyfin_playback_events::TrimJellyfinPlaybackEvents,
         &trim_light_history::TrimLightHistory,
         &trim_robot_vacuum_events::TrimRobotVacuumEvents,
         &trim_smart_switch::TrimSmartSwitch,

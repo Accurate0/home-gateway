@@ -2,7 +2,6 @@ use sqlx::{Postgres, Transaction};
 
 use crate::device_registry::DeviceRegistry;
 use crate::integrations::home_assistant::HomeAssistant;
-use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::s3::S3;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
@@ -15,7 +14,6 @@ pub struct AdhocTaskContext<'a> {
     pub settings: &'a SettingsContainer,
     pub s3: &'a S3,
     pub home_assistant: Option<&'a HomeAssistant>,
-    pub jellyfin: Option<&'a Jellyfin>,
 }
 
 impl<'a> AdhocTaskContext<'a> {
@@ -27,7 +25,6 @@ impl<'a> AdhocTaskContext<'a> {
             settings: &state.settings,
             s3: state.handles.expect::<S3>(),
             home_assistant: state.handles.get::<HomeAssistant>(),
-            jellyfin: state.handles.get::<Jellyfin>(),
         }
     }
 }

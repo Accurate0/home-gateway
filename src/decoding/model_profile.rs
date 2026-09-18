@@ -1,5 +1,4 @@
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
 use serde::Serialize;
 
@@ -15,27 +14,14 @@ pub struct ModelProfile {
     pub slug: String,
     pub roles: BTreeSet<DeviceRoleName>,
     pub environment: Vec<Metric>,
-    decoder: Arc<LuaDecoder>,
 }
 
 impl ModelProfile {
-    pub fn new(
-        kind: &'static str,
-        slug: String,
-        roles: BTreeSet<DeviceRoleName>,
-        environment: Vec<Metric>,
-        decoder: Arc<LuaDecoder>,
-    ) -> Self {
-        ModelProfile {
-            kind,
-            slug,
-            roles,
-            environment,
-            decoder,
-        }
-    }
-
-    pub fn decode<I: Serialize>(&self, input: &I) -> Result<DeviceReading, LuaError> {
-        self.decoder.call(&self.slug, "decode", input)
+    pub fn decode<I: Serialize>(
+        &self,
+        decoder: &LuaDecoder,
+        input: &I,
+    ) -> Result<DeviceReading, LuaError> {
+        decoder.call(&self.slug, "decode", input)
     }
 }

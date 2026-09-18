@@ -39,6 +39,7 @@ actors:
     healthy_after: 5m
   workers:
     mqtt_ingest: 5
+    home_assistant_ingest: 1
     control_switch: 3
     door_sensor: 1
     environment_sensor: 1
@@ -397,11 +398,6 @@ adhoc:
       schedule: "25 3 * * *"
       parameters:
         retention: 2160h
-    trim_jellyfin_playback_events:
-      state: enabled
-      schedule: "35 3 * * *"
-      parameters:
-        retention: 4320h
     trim_light_history:
       state: enabled
       schedule: "50 3 * * *"

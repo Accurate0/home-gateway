@@ -41,11 +41,6 @@ tasks:
     schedule: "25 3 * * *"
     parameters:
       retention: 90d
-  trim_jellyfin_playback_events:
-    state: enabled
-    schedule: "35 3 * * *"
-    parameters:
-      retention: 180d
   trim_light_history:
     state: enabled
     schedule: "50 3 * * *"

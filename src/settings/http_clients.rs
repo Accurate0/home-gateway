@@ -18,8 +18,6 @@ pub struct HttpClientsSettings {
     #[serde(default)]
     pub home_assistant: HttpClientOverride,
     #[serde(default)]
-    pub jellyfin: HttpClientOverride,
-    #[serde(default)]
     pub oauth: HttpClientOverride,
     #[serde(default)]
     pub push: HttpClientOverride,
@@ -47,7 +45,6 @@ impl HttpClientsSettings {
             HttpClientKind::GoodWe => self.goodwe,
             HttpClientKind::Holidays => self.holidays,
             HttpClientKind::HomeAssistant => self.home_assistant,
-            HttpClientKind::Jellyfin => self.jellyfin,
             HttpClientKind::OAuth => self.oauth,
             HttpClientKind::Push => self.push,
             HttpClientKind::Reddit => self.reddit,

@@ -2,7 +2,7 @@ use async_graphql::{MergedObject, Schema};
 use queries::{
     adhoc_query::AdhocQuery, auth_query::AuthQuery, energy_query::EnergyQuery,
     entities_query::EntitiesQuery, home_assistant_query::HomeAssistantQuery,
-    jellyfin_query::JellyfinQuery, solar_query::SolarQuery, weather_query::WeatherQuery,
+    solar_query::SolarQuery, weather_query::WeatherQuery,
 };
 
 use crate::graphql::mutations::MutationRoot;
@@ -33,7 +33,6 @@ pub struct QueryRoot(
     TransperthQuery,
     FuelWatchQuery,
     WorkflowsQuery,
-    JellyfinQuery,
     AdhocQuery,
     PushQuery,
 );

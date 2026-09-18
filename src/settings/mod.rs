@@ -90,9 +90,6 @@ pub use integrations::fuelwatch::FuelWatchSettings;
 pub use integrations::holidays::HolidaySettings;
 pub use integrations::home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use integrations::home_assistant_websocket::HomeAssistantWebsocketSettings;
-pub use integrations::jellyfin::JellyfinSettings;
-pub use integrations::jellyfin_reconnect::JellyfinReconnectSettings;
-pub use integrations::jellyfin_websocket::JellyfinWebsocketSettings;
 pub use integrations::s3::S3Settings;
 pub use integrations::solar::SolarSettings;
 pub use integrations::transperth::{
@@ -171,7 +168,6 @@ pub struct Settings {
     pub trmnl: TrmnlSettings,
     pub trmnl_api_key: Option<String>,
     pub home_assistant: HomeAssistantSettings,
-    pub jellyfin: Option<JellyfinSettings>,
     pub solar: Option<SolarSettings>,
     pub transperth: Option<TransperthSettings>,
     pub willyweather: WillyWeatherSettings,
@@ -183,6 +179,7 @@ pub struct Settings {
     pub lua: LuaSettings,
     pub ingest: IngestSettings,
     pub endpoints: EndpointSettings,
+    pub model_sources: ModelSources,
 }
 
 /// On-disk shape of the config. Deserialized first, then [`RawSettings::resolve`]
@@ -229,8 +226,6 @@ pub struct RawSettings {
     #[serde(default)]
     trmnl_api_key: Option<String>,
     home_assistant: HomeAssistantSettings,
-    #[serde(default)]
-    jellyfin: Option<JellyfinSettings>,
     #[serde(default)]
     solar: Option<SolarSettings>,
     #[serde(default)]
@@ -281,7 +276,6 @@ impl RawSettings {
             trmnl,
             trmnl_api_key,
             home_assistant,
-            jellyfin,
             solar,
             transperth,
             willyweather,
@@ -517,7 +511,6 @@ impl RawSettings {
                 trmnl,
                 trmnl_api_key,
                 home_assistant,
-                jellyfin,
                 solar,
                 transperth,
                 willyweather,
@@ -529,6 +522,7 @@ impl RawSettings {
                 lua,
                 ingest,
                 endpoints,
+                model_sources: model_sources.clone(),
             },
             registry,
         ))
@@ -1301,9 +1295,16 @@ transperth:
         let presence = registry
             .zigbee_device("0x54ef441000dbc81c")
             .expect("closet presence is a zigbee device");
+        let decoder = crate::lua::LuaDecoder::load(
+            "zigbee",
+            &settings.model_sources.zigbee,
+            &settings.lua,
+        )
+        .expect("zigbee decoder");
         let reading = presence
             .profile
             .decode(
+                &decoder,
                 &serde_json::from_str::<serde_json::Value>(
                     r#"{"presence":true,"movement":"approach"}"#,
                 )
@@ -1419,7 +1420,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 s3: { bucket: b, region: r }
@@ -1430,7 +1431,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
@@ -1468,7 +1469,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 s3: { bucket: b, region: r }
@@ -1479,7 +1480,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
@@ -1593,7 +1594,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1605,7 +1606,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1647,7 +1648,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1659,7 +1660,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1703,7 +1704,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1715,7 +1716,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 "#;
@@ -1915,7 +1916,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1927,7 +1928,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1968,7 +1969,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1980,7 +1981,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2020,7 +2021,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2032,7 +2033,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2073,7 +2074,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2085,7 +2086,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2125,7 +2126,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2137,7 +2138,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 eink_display:
@@ -2221,7 +2222,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2233,7 +2234,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2299,7 +2300,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2311,7 +2312,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
 holidays: { url: x, regions: [Western Australia] }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 

@@ -1,4 +1,5 @@
 pub mod lua;
+pub mod websocket;
 
 use reqwest_middleware::ClientWithMiddleware;
 use serde_json::Value;
