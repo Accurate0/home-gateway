@@ -67,7 +67,8 @@ impl WorkflowsMutation {
         ctx: &async_graphql::Context<'_>,
         slug: String,
         inputs: Option<Json<BTreeMap<String, serde_json::Value>>>,
-    ) -> async_graphql::Result<bool> {
+        dry_run: Option<bool>,
+    ) -> async_graphql::Result<Uuid> {
         let settings = ctx.data::<SettingsContainer>()?;
         let definition = settings
             .workflows
@@ -79,9 +80,14 @@ impl WorkflowsMutation {
         let given = inputs.map(|inputs| inputs.0).unwrap_or_default();
         let input = input_node(&declared, &given).map_err(async_graphql::Error::new)?;
 
+        let mut workflow = definition.body().clone();
+        workflow.dry_run |= dry_run.unwrap_or(false);
+
+        let event_id = Uuid::new_v4();
+
         let message = WorkflowWorkerMessage::Execute {
-            event_id: Uuid::new_v4(),
-            workflow: definition.body().clone(),
+            event_id,
+            workflow,
             vars: Vars::default().with("input", input),
             authority: LuaAuthority::Trusted,
             traceparent: crate::tracing_context::inject_current(),
@@ -90,6 +96,6 @@ impl WorkflowsMutation {
         rpc::cast_factory(WorkflowWorker::NAME, message)
             .map_err(|e| async_graphql::Error::new(format!("error dispatching workflow: {e}")))?;
 
-        Ok(true)
+        Ok(event_id)
     }
 }

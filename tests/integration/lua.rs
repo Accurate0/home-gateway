@@ -534,3 +534,54 @@ async fn an_unknown_ingest_source_is_not_found() {
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+#[serial]
+async fn a_run_records_its_step_trace_including_lua_annotations() {
+    let harness = start().await;
+
+    let mut input = Node::empty();
+    input.insert("go", Node::Value(Some(Value::Bool(false))));
+    run_workflow(&harness, "Test traced lua", input);
+
+    let run_id = wait_for(DB_TIMEOUT, "a traced workflow run", || async {
+        sqlx::query_scalar::<_, i64>("SELECT id FROM workflow_runs WHERE slug = $1")
+            .bind("test-traced-lua")
+            .fetch_optional(&harness.db)
+            .await
+            .unwrap()
+    })
+    .await;
+
+    let steps = harness
+        .state
+        .repos
+        .workflow()
+        .run_steps(&[run_id])
+        .await
+        .unwrap();
+
+    let summary = steps
+        .iter()
+        .map(|step| {
+            (
+                step.depth,
+                step.kind.as_str(),
+                step.outcome.as_str(),
+                step.detail.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        summary,
+        vec![
+            (0, "mqtt_publish", "guard_skipped", None),
+            (0, "lua", "ran", None),
+            (1, "check", "ran", Some("moisture low")),
+            (1, "workflow.run", "ran", Some("test-lamp-on")),
+            (2, "light", "ran", Some("light(test-lamp) -> On")),
+        ]
+    );
+    assert!(steps[0].guard.is_some());
+}

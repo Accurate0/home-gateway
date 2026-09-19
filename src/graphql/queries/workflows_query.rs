@@ -63,17 +63,22 @@ impl WorkflowsQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         slug: Option<String>,
+        event_id: Option<uuid::Uuid>,
         limit: Option<i64>,
     ) -> async_graphql::Result<Vec<WorkflowRun>> {
         let workflows = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
         let limit = limit.unwrap_or(50).clamp(1, 500);
 
-        let rows = workflows.recent_runs(slug.as_deref(), limit).await?;
+        let rows = workflows
+            .recent_runs(slug.as_deref(), event_id, limit)
+            .await?;
 
         Ok(rows
             .into_iter()
             .map(|r| WorkflowRun {
                 id: async_graphql::ID(r.id.to_string()),
+                run_id: r.id,
+                trigger: r.trigger.map(async_graphql::Json),
                 slug: r.slug,
                 name: r.name,
                 event_id: r.event_id.to_string(),

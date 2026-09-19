@@ -198,3 +198,61 @@ async fn an_insufficient_scope_is_denied() {
         "expected a scope guard error, got {body}"
     );
 }
+
+#[tokio::test]
+#[serial]
+async fn a_dry_run_is_traced_and_queryable_over_graphql() {
+    let harness = Harness::start().await;
+    home_gateway::actors::workflows::spawn::spawn_workflows(&harness.root, harness.state.clone())
+        .await
+        .expect("failed to spawn the workflow factory");
+    let client = Client::new(&harness);
+    let key = mint_key(&harness, "test-runner", &["**:*"]).await;
+
+    let (status, body) = client
+        .graphql(
+            Some(&key),
+            r#"mutation { runWorkflow(slug: "test-lamp-on", dryRun: true) }"#,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "graphql errors: {body}");
+
+    let event_id = body["data"]["runWorkflow"]
+        .as_str()
+        .unwrap_or_else(|| panic!("expected an event id, got {body}"))
+        .to_owned();
+
+    let query = format!(
+        r#"{{ workflowRuns(eventId: "{event_id}") {{ dryRun steps {{ depth kind outcome detail }} }} }}"#
+    );
+
+    let run = crate::common::wait_for(
+        std::time::Duration::from_secs(10),
+        "the dry run to be recorded",
+        || async {
+            let (_, body) = client.graphql(Some(&key), &query).await;
+
+            body["data"]["workflowRuns"]
+                .as_array()
+                .and_then(|runs| runs.first().cloned())
+        },
+    )
+    .await;
+
+    assert_eq!(
+        run,
+        serde_json::json!({
+            "dryRun": true,
+            "steps": [{
+                "depth": 0,
+                "kind": "light",
+                "outcome": "dry_run",
+                "detail": "light(test-lamp) -> On",
+            }],
+        })
+    );
+    harness
+        .recorder
+        .assert_no_publish("zigbee2mqtt/0x0000000000000003/set");
+}

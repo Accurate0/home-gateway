@@ -22,6 +22,21 @@ impl Node {
         }
     }
 
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            Node::Value(None) => serde_json::Value::Null,
+            Node::Value(Some(Value::String(value))) => serde_json::Value::from(value.clone()),
+            Node::Value(Some(Value::Int(value))) => serde_json::Value::from(*value),
+            Node::Value(Some(Value::Float(value))) => serde_json::Value::from(*value),
+            Node::Value(Some(Value::Bool(value))) => serde_json::Value::from(*value),
+            Node::Object(fields) => fields
+                .iter()
+                .map(|(key, node)| (key.clone(), node.to_json()))
+                .collect::<serde_json::Map<_, _>>()
+                .into(),
+        }
+    }
+
     pub fn lookup(&self, segments: &[String]) -> Option<&Node> {
         let Some((first, rest)) = segments.split_first() else {
             return Some(self);

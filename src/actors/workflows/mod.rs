@@ -10,6 +10,7 @@ use crate::lua::{LuaAuthority, LuaCallContext, LuaSource};
 use crate::settings::workflow::{HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
+use crate::workflow_trace::{StepOutcome, TraceRecorder};
 use crate::{
     actors::devices::light::{LightHandler, command::light_message},
     actors::workflows::manager::WorkflowRun,
@@ -85,6 +86,7 @@ pub struct ReusableCall<'a> {
     pub depth: u8,
     pub dry_run: bool,
     pub origin_slug: &'a str,
+    pub trace: &'a TraceRecorder,
 }
 
 /// Per-execution context threaded through the recursive executor.
@@ -98,6 +100,7 @@ struct WorkflowContext<'a> {
     origin_slug: &'a str,
     vars: &'a Vars,
     authority: &'a LuaAuthority,
+    trace: &'a TraceRecorder,
 }
 
 pub enum WorkflowWorkerMessage {
@@ -148,6 +151,8 @@ impl WorkflowWorker {
                     dry_run: workflow.dry_run,
                     duration: Duration::ZERO,
                     error: None,
+                    trigger: Some(vars.to_json()),
+                    steps: Vec::new(),
                 })
                 .await;
             return Ok(());
@@ -158,6 +163,7 @@ impl WorkflowWorker {
             tracing::info!("[{event_id}] workflow running in dry-run (shadow) mode");
         }
         let start = std::time::Instant::now();
+        let trace = TraceRecorder::default();
 
         let result = {
             let ctx = WorkflowContext {
@@ -167,6 +173,7 @@ impl WorkflowWorker {
                 origin_slug: &workflow.slug,
                 vars: &vars,
                 authority: &authority,
+                trace: &trace,
             };
 
             self.run_steps(ctx, &workflow.run).await
@@ -185,6 +192,8 @@ impl WorkflowWorker {
                 dry_run: workflow.dry_run,
                 duration: elapsed,
                 error: result.as_ref().err().map(|e| e.to_string()),
+                trigger: Some(vars.to_json()),
+                steps: trace.steps(),
             })
             .await;
         result
@@ -244,6 +253,7 @@ impl WorkflowWorker {
             && !conditions::eval(&self.shared_actor_state, ctx.vars, when, ctx.authority).await?
         {
             tracing::info!("[{}] skipping step, guard not satisfied", ctx.event_id);
+            ctx.trace.skipped(ctx.depth, step.kind(), when.describe());
             return Ok(None);
         }
 
@@ -253,9 +263,24 @@ impl WorkflowWorker {
             step = step.kind(),
             event_id = %ctx.event_id,
         );
+        let action = step.describe_action();
+        let dry_run = ctx.dry_run && action.is_some() && !matches!(step, Step::Lua { .. });
+        let handle = ctx.trace.start(ctx.depth, step.kind(), action);
         let start = std::time::Instant::now();
         let result = self.dispatch_step(ctx, step).instrument(span).await;
         crate::metrics::record_step(step.kind(), result.is_ok(), start.elapsed());
+
+        let outcome = match (&result, dry_run) {
+            (Err(_), _) => StepOutcome::Error,
+            (Ok(_), true) => StepOutcome::DryRun,
+            (Ok(_), false) => StepOutcome::Ran,
+        };
+        ctx.trace.finish(
+            handle,
+            outcome,
+            result.as_ref().err().map(ToString::to_string),
+        );
+
         result
     }
 
@@ -376,7 +401,8 @@ impl WorkflowWorker {
         )
         .with_depth(ctx.depth)
         .with_dry_run(ctx.dry_run)
-        .with_authority(ctx.authority.clone());
+        .with_authority(ctx.authority.clone())
+        .with_trace(ctx.trace.clone());
 
         Ok(self
             .shared_actor_state
@@ -587,6 +613,7 @@ impl WorkflowWorker {
             depth: ctx.depth,
             dry_run: ctx.dry_run,
             origin_slug: ctx.origin_slug,
+            trace: ctx.trace,
         };
 
         self.run_reusable(call, name, inputs).await
@@ -653,6 +680,7 @@ impl WorkflowWorker {
             origin_slug: ctx.origin_slug,
             vars: &vars,
             authority: &trusted,
+            trace: ctx.trace,
         };
         Box::pin(self.run_steps(child, &workflow.run)).await
     }

@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import type { WorkflowsPageQuery } from "./__generated__/WorkflowsPageQuery.graphql";
+import { useNavigate } from "react-router";
 import type { WorkflowsPageSetEnabledMutation } from "./__generated__/WorkflowsPageSetEnabledMutation.graphql";
+import type { WorkflowsPageDryRunMutation } from "./__generated__/WorkflowsPageDryRunMutation.graphql";
 import { Switch } from "./ui/switch";
 
 const WorkflowsQuery = graphql`
@@ -26,14 +28,34 @@ const SetEnabledMutation = graphql`
   }
 `;
 
+const DryRunMutation = graphql`
+  mutation WorkflowsPageDryRunMutation($slug: String!) {
+    runWorkflow(slug: $slug, dryRun: true)
+  }
+`;
+
 type Workflow = WorkflowsPageQuery["response"]["workflows"][number];
 
 export default function WorkflowsPage() {
   const data = useLazyLoadQuery<WorkflowsPageQuery>(WorkflowsQuery, {});
   const [overrides, setOverrides] = useState<Map<string, boolean>>(new Map());
-  const [commit] = useMutation<WorkflowsPageSetEnabledMutation>(
-    SetEnabledMutation,
-  );
+  const [commit] =
+    useMutation<WorkflowsPageSetEnabledMutation>(SetEnabledMutation);
+  const [commitDryRun, dryRunInFlight] =
+    useMutation<WorkflowsPageDryRunMutation>(DryRunMutation);
+  const [dryRunError, setDryRunError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const dryRun = (w: Workflow) => {
+    setDryRunError(null);
+    commitDryRun({
+      variables: { slug: w.slug },
+      onCompleted: (response) => {
+        void navigate(`/runs?run=${encodeURIComponent(response.runWorkflow)}`);
+      },
+      onError: (error) => setDryRunError(`${w.name}: ${error.message}`),
+    });
+  };
 
   const workflows = useMemo(
     () =>
@@ -74,6 +96,12 @@ export default function WorkflowsPage() {
         {enabledCount} of {workflows.length} enabled
       </p>
 
+      {dryRunError && (
+        <p className="mb-6 text-sm text-red-600 dark:text-red-400">
+          {dryRunError}
+        </p>
+      )}
+
       {groups.map(([group, list]) => (
         <section key={group} className="mb-10">
           <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-widest uppercase">
@@ -112,11 +140,22 @@ export default function WorkflowsPage() {
                     {w.slug}
                   </span>
                 </div>
-                <Switch
-                  checked={w.enabled}
-                  onCheckedChange={() => toggle(w)}
-                  aria-label={`Toggle ${w.name}`}
-                />
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => dryRun(w)}
+                    disabled={dryRunInFlight}
+                    title="Run without side effects and show the trace"
+                    className="border-border text-muted-foreground hover:text-foreground cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors disabled:cursor-wait disabled:opacity-50"
+                  >
+                    Dry run
+                  </button>
+                  <Switch
+                    checked={w.enabled}
+                    onCheckedChange={() => toggle(w)}
+                    aria-label={`Toggle ${w.name}`}
+                  />
+                </div>
               </div>
             ))}
           </div>

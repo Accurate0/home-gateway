@@ -14,6 +14,14 @@ impl Vars {
         self
     }
 
+    pub fn to_json(&self) -> serde_json::Value {
+        self.0
+            .iter()
+            .map(|(namespace, node)| (namespace.clone(), node.to_json()))
+            .collect::<serde_json::Map<_, _>>()
+            .into()
+    }
+
     pub fn insert(&mut self, namespace: impl Into<String>, node: Node) {
         self.0.insert(namespace.into(), node);
     }

@@ -8,6 +8,7 @@ use crate::mode::Mode;
 use crate::repo::WorkflowRepo;
 use crate::repo::workflow::NewWorkflowRun;
 use crate::settings::CacheSettings;
+use crate::workflow_trace::StepTrace;
 
 #[derive(Clone)]
 pub struct WorkflowManager {
@@ -23,6 +24,8 @@ pub struct WorkflowRun {
     pub dry_run: bool,
     pub duration: Duration,
     pub error: Option<String>,
+    pub trigger: Option<serde_json::Value>,
+    pub steps: Vec<StepTrace>,
 }
 
 impl WorkflowManager {
@@ -136,6 +139,8 @@ impl WorkflowManager {
                 dry_run: run.dry_run,
                 duration_ms,
                 error: run.error.as_deref(),
+                trigger: run.trigger,
+                steps: run.steps,
             })
             .await
         {
@@ -146,9 +151,10 @@ impl WorkflowManager {
     pub async fn recent_runs(
         &self,
         slug: Option<&str>,
+        event_id: Option<Uuid>,
         limit: i64,
     ) -> Result<Vec<crate::repo::workflow::WorkflowRunRow>, sqlx::Error> {
-        self.repo.recent_runs(slug, limit).await
+        self.repo.recent_runs(slug, event_id, limit).await
     }
 
     pub async fn cooldown_ok(

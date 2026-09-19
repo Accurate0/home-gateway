@@ -603,7 +603,7 @@ type MutationRoot {
 	einkDisplay(id: String!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!): Mode!
-	runWorkflow(slug: String!, inputs: JSON): Boolean!
+	runWorkflow(slug: String!, inputs: JSON, dryRun: Boolean): UUID!
 	runPendingAdhocTasks: Boolean!
 	runAdhocCronTask(name: String!): Boolean!
 	sendPushNotification(input: SendPushNotificationInput!): Boolean!
@@ -766,7 +766,7 @@ type QueryRoot {
 	fuelwatch(postcode: Int): FuelWatchObject!
 	workflows: [WorkflowStatus!]!
 	mode: ModeStatus!
-	workflowRuns(slug: String, limit: Int): [WorkflowRun!]!
+	workflowRuns(slug: String, eventId: UUID, limit: Int): [WorkflowRun!]!
 	adhocCronTasks: [AdhocCronTaskStatus!]!
 	adhocTasks: [AdhocTaskStatus!]!
 	pushNotifications(limit: Int): [PushNotification!]!
@@ -1004,7 +1004,21 @@ type WorkflowRun {
 	dryRun: Boolean!
 	durationMs: Int!
 	error: String
+	trigger: JSON
 	startedAt: DateTime!
+	steps: [WorkflowRunStep!]!
+}
+
+type WorkflowRunStep {
+	seq: Int!
+	depth: Int!
+	kind: String!
+	outcome: String!
+	guard: String
+	detail: String
+	error: String
+	durationMs: Int!
+	at: DateTime!
 }
 
 type WorkflowStatus {

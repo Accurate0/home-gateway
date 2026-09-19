@@ -7,3 +7,4 @@ pub mod last_seen;
 pub mod media_player_state;
 pub mod robot_vacuum_state;
 pub mod temperature;
+pub mod workflow_run_steps;

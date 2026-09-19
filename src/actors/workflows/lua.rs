@@ -1,4 +1,7 @@
 use std::collections::BTreeMap;
+use std::time::Duration;
+
+use chrono::Utc;
 
 use mlua::{ExternalError, Lua, LuaSerdeExt, Table, Value as LuaValue};
 
@@ -7,6 +10,7 @@ use crate::lua::bridge::lua_to_value;
 use crate::lua::{LuaCallContext, LuaFunction, LuaModule, LuaParam, LuaType, schema};
 use crate::mode::Mode;
 use crate::settings::workflow::EnableState;
+use crate::workflow_trace::{StepOutcome, StepTrace};
 
 use super::manager::WorkflowManager;
 use super::{ReusableCall, WorkflowWorker};
@@ -60,7 +64,27 @@ const SET_ENABLED: LuaFunction = LuaFunction {
     scope: Some(Scope::new(Resource::Workflow, Action::Write)),
 };
 
-const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE, SET_ENABLED];
+const RECORD_STEP: LuaFunction = LuaFunction {
+    name: "record_step",
+    params: &[
+        LuaParam {
+            name: "kind",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "detail",
+            ty: LuaType::Optional(&LuaType::String),
+        },
+        LuaParam {
+            name: "error",
+            ty: LuaType::Optional(&LuaType::String),
+        },
+    ],
+    returns: None,
+    scope: Some(Scope::new(Resource::Workflow, Action::Read)),
+};
+
+const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE, SET_ENABLED, RECORD_STEP];
 
 pub struct WorkflowLua;
 
@@ -103,6 +127,7 @@ impl LuaModule for WorkflowLua {
                         depth: cx.depth + 1,
                         dry_run: cx.dry_run,
                         origin_slug: &origin,
+                        trace: &cx.trace,
                     };
 
                     cx.command("workflow.run", &name, || async {
@@ -146,6 +171,32 @@ impl LuaModule for WorkflowLua {
                     .await
                 }
             })
+        })?;
+
+        let record_step_cx = cx.clone();
+        cx.expose(table, &RECORD_STEP, || {
+            lua.create_function(
+                move |_, (kind, detail, error): (String, Option<String>, Option<String>)| {
+                    let outcome = if error.is_some() {
+                        StepOutcome::Error
+                    } else {
+                        StepOutcome::Ran
+                    };
+
+                    record_step_cx.trace.record(StepTrace {
+                        depth: record_step_cx.trace_depth(),
+                        kind,
+                        outcome,
+                        guard: None,
+                        detail,
+                        error,
+                        duration: Duration::ZERO,
+                        at: Utc::now(),
+                    });
+
+                    Ok(())
+                },
+            )
         })?;
 
         let set_enabled_cx = cx.clone();

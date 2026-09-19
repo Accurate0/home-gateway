@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at FROM workflow_run_steps WHERE run_id = ANY($1) ORDER BY run_id, seq",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "run_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "seq",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "depth",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "outcome",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "guard",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "detail",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "duration_ms",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b2ce7d5c2a2af75ccb079a1d694823914eed419b682de6a14b15918f7f0f3b42"
+}

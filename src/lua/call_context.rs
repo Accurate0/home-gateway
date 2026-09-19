@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::auth::scope::{Action, Resource};
 use crate::state::AppState;
+use crate::workflow_trace::{StepOutcome, TraceRecorder};
 
 use super::{LuaAuthority, LuaFunction};
 
@@ -19,6 +20,7 @@ pub struct LuaCallContext {
     pub dry_run: bool,
     pub origin: String,
     pub authority: LuaAuthority,
+    pub trace: TraceRecorder,
 }
 
 impl LuaCallContext {
@@ -30,7 +32,18 @@ impl LuaCallContext {
             dry_run: false,
             origin: origin.into(),
             authority: LuaAuthority::Trusted,
+            trace: TraceRecorder::default(),
         }
+    }
+
+    pub fn with_trace(mut self, trace: TraceRecorder) -> Self {
+        self.trace = trace;
+
+        self
+    }
+
+    pub fn trace_depth(&self) -> u8 {
+        self.depth.saturating_add(1)
     }
 
     pub fn with_authority(mut self, authority: LuaAuthority) -> Self {
@@ -105,6 +118,9 @@ impl LuaCallContext {
         E: std::error::Error + Send + Sync + 'static,
     {
         let span = self.span(name);
+        let handle = self
+            .trace
+            .start(self.trace_depth(), name, Some(detail.to_string()));
 
         if self.dry_run {
             span.in_scope(|| {
@@ -114,6 +130,7 @@ impl LuaCallContext {
                 )
             });
             crate::metrics::record_step(name, true, Duration::ZERO);
+            self.trace.finish(handle, StepOutcome::DryRun, None);
 
             return Ok(());
         }
@@ -124,9 +141,18 @@ impl LuaCallContext {
         let result = run().instrument(span.clone()).await;
         crate::metrics::record_step(name, result.is_ok(), start.elapsed());
 
-        if let Err(e) = &result {
-            crate::tracing_context::record_error(&span, &e.to_string());
+        let error = result.as_ref().err().map(ToString::to_string);
+
+        if let Some(e) = &error {
+            crate::tracing_context::record_error(&span, e);
         }
+
+        let outcome = if error.is_some() {
+            StepOutcome::Error
+        } else {
+            StepOutcome::Ran
+        };
+        self.trace.finish(handle, outcome, error);
 
         result.map(|_| ()).into_lua_err()
     }

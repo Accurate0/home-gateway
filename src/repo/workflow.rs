@@ -3,6 +3,7 @@ use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
 use super::timer_kind::TimerKind;
+use crate::workflow_trace::StepTrace;
 
 pub struct NewWorkflowRun<'a> {
     pub slug: &'a str,
@@ -12,6 +13,22 @@ pub struct NewWorkflowRun<'a> {
     pub dry_run: bool,
     pub duration_ms: i64,
     pub error: Option<&'a str>,
+    pub trigger: Option<serde_json::Value>,
+    pub steps: Vec<StepTrace>,
+}
+
+#[derive(Clone)]
+pub struct WorkflowRunStepRow {
+    pub run_id: i64,
+    pub seq: i32,
+    pub depth: i16,
+    pub kind: String,
+    pub outcome: String,
+    pub guard: Option<String>,
+    pub detail: Option<String>,
+    pub error: Option<String>,
+    pub duration_ms: i64,
+    pub at: DateTime<Utc>,
 }
 
 pub struct PendingTimerRow {
@@ -44,6 +61,7 @@ pub struct WorkflowRunRow {
     pub dry_run: bool,
     pub duration_ms: i64,
     pub error: Option<String>,
+    pub trigger: Option<serde_json::Value>,
     pub started_at: DateTime<Utc>,
 }
 
@@ -130,12 +148,17 @@ impl WorkflowRepo {
             dry_run,
             duration_ms,
             error,
+            trigger,
+            steps,
         } = run;
 
-        sqlx::query!(
+        let mut tx = self.db.begin().await?;
+
+        let run_id = sqlx::query_scalar!(
             "INSERT INTO workflow_runs \
-             (slug, name, event_id, outcome, dry_run, duration_ms, error) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+             (slug, name, event_id, outcome, dry_run, duration_ms, error, trigger) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+             RETURNING id",
             slug,
             name,
             event_id,
@@ -143,27 +166,89 @@ impl WorkflowRepo {
             dry_run,
             duration_ms,
             error,
+            trigger,
         )
-        .execute(&self.db)
+        .fetch_one(&mut *tx)
         .await?;
 
+        if !steps.is_empty() {
+            let mut seqs = Vec::with_capacity(steps.len());
+            let mut depths = Vec::with_capacity(steps.len());
+            let mut kinds = Vec::with_capacity(steps.len());
+            let mut outcomes = Vec::with_capacity(steps.len());
+            let mut guards = Vec::with_capacity(steps.len());
+            let mut details = Vec::with_capacity(steps.len());
+            let mut errors = Vec::with_capacity(steps.len());
+            let mut durations = Vec::with_capacity(steps.len());
+            let mut ats = Vec::with_capacity(steps.len());
+
+            for (seq, step) in steps.into_iter().enumerate() {
+                seqs.push(i32::try_from(seq).unwrap_or(i32::MAX));
+                depths.push(i16::from(step.depth));
+                kinds.push(step.kind);
+                outcomes.push(step.outcome.to_string());
+                guards.push(step.guard);
+                details.push(step.detail);
+                errors.push(step.error);
+                durations.push(i64::try_from(step.duration.as_millis()).unwrap_or(i64::MAX));
+                ats.push(step.at);
+            }
+
+            sqlx::query!(
+                "INSERT INTO workflow_run_steps \
+                 (run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at) \
+                 SELECT $1, * FROM UNNEST(\
+                     $2::int[], $3::smallint[], $4::text[], $5::text[], $6::text[], \
+                     $7::text[], $8::text[], $9::bigint[], $10::timestamptz[])",
+                run_id,
+                &seqs,
+                &depths,
+                &kinds,
+                &outcomes,
+                &guards as &[Option<String>],
+                &details as &[Option<String>],
+                &errors as &[Option<String>],
+                &durations,
+                &ats,
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+
         Ok(())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.workflow.run_steps", err)]
+    pub async fn run_steps(&self, run_ids: &[i64]) -> Result<Vec<WorkflowRunStepRow>, sqlx::Error> {
+        sqlx::query_as!(
+            WorkflowRunStepRow,
+            "SELECT run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at \
+             FROM workflow_run_steps WHERE run_id = ANY($1) ORDER BY run_id, seq",
+            run_ids,
+        )
+        .fetch_all(&self.db)
+        .await
     }
 
     #[tracing::instrument(skip_all, name = "db.workflow.recent_runs", err)]
     pub async fn recent_runs(
         &self,
         slug: Option<&str>,
+        event_id: Option<Uuid>,
         limit: i64,
     ) -> Result<Vec<WorkflowRunRow>, sqlx::Error> {
         let rows = sqlx::query!(
-            "SELECT id, slug, name, event_id, outcome, dry_run, duration_ms, error, started_at \
+            "SELECT id, slug, name, event_id, outcome, dry_run, duration_ms, error, trigger, \
+                    started_at \
              FROM workflow_runs \
-             WHERE ($1::text IS NULL OR slug = $1) \
+             WHERE ($1::text IS NULL OR slug = $1) AND ($3::uuid IS NULL OR event_id = $3) \
              ORDER BY started_at DESC \
              LIMIT $2",
             slug,
             limit,
+            event_id,
         )
         .fetch_all(&self.db)
         .await?;
@@ -179,6 +264,7 @@ impl WorkflowRepo {
                 dry_run: row.dry_run,
                 duration_ms: row.duration_ms,
                 error: row.error,
+                trigger: row.trigger,
                 started_at: row.started_at,
             })
             .collect())

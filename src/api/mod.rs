@@ -30,6 +30,7 @@ use crate::graphql::{
     dataloader::media_player_state::MediaPlayerStateDataLoader,
     dataloader::robot_vacuum_state::RobotVacuumStateDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
+    dataloader::workflow_run_steps::WorkflowRunStepsDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
     mutations::MutationRoot,
     subscription::SubscriptionRoot,
@@ -94,6 +95,12 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     .data(DataLoader::new(
         LatestTemperatureDataLoader {
             repo: state.repos.environment().clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        WorkflowRunStepsDataLoader {
+            repo: state.repos.workflow().clone(),
         },
         tokio::spawn,
     ))

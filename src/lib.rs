@@ -34,3 +34,4 @@ pub mod tracing_setup;
 pub mod utils;
 pub mod vacation;
 pub mod variables;
+pub mod workflow_trace;

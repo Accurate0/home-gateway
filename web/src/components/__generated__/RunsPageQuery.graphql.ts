@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<99bbc5e80cca83725802c082d56176d8>>
+ * @generated SignedSource<<cab34c5b4cf195d83fb20020a6112a0d>>
  * @lightSyntaxTransform
  */
 
@@ -14,6 +14,7 @@ export type RunsPageQuery$data = {
     readonly dryRun: boolean;
     readonly durationMs: number;
     readonly error: string | null | undefined;
+    readonly eventId: string;
     readonly id: string;
     readonly name: string;
     readonly outcome: string;
@@ -47,6 +48,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "eventId",
         "storageKey": null
       },
       {
@@ -120,16 +128,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "54b7e6003cd4f49dc6973a906a017fa8",
+    "cacheID": "c7245184af07a0847b789cb00c581585",
     "id": null,
     "metadata": {},
     "name": "RunsPageQuery",
     "operationKind": "query",
-    "text": "query RunsPageQuery {\n  workflowRuns(limit: 100) {\n    id\n    slug\n    name\n    outcome\n    dryRun\n    durationMs\n    error\n    startedAt\n  }\n}\n"
+    "text": "query RunsPageQuery {\n  workflowRuns(limit: 100) {\n    id\n    eventId\n    slug\n    name\n    outcome\n    dryRun\n    durationMs\n    error\n    startedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ffdf356b5ad4040074251fa8a1441d7c";
+(node as any).hash = "2a5fe6f3a800cc9f1f81c58a4b27a9ed";
 
 export default node;

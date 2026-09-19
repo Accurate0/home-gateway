@@ -46,3 +46,19 @@
       returns: {}
       script: |
         workflow.run("Test lua recursion", {})
+
+- name: Test traced lua
+  slug: test-traced-lua
+  group: Test
+  inputs: { go: bool }
+  run:
+    - type: mqtt_publish
+      topic: test/trace/skipped
+      payload: '{}'
+      retain: false
+      when: { type: lua, script: "return input.go" }
+    - type: lua
+      returns: {}
+      script: |
+        workflow.record_step("check", "moisture low")
+        workflow.run("test-lamp-on", {})
