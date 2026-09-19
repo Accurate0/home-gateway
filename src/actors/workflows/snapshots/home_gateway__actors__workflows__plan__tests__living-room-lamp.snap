@@ -9,8 +9,8 @@ expression: out
 
 # living-room-lamps-off  (reusable)
   inputs: {}
-  light: light(floor-lamp-living-room) -> Off
-  light: light(living-room-table-lamp) -> Off
+  light: light(floor-lamp-living-room) -> Off [when: light(floor-lamp-living-room) is on]
+  light: light(living-room-table-lamp) -> Off [when: light(living-room-table-lamp) is on]
 
 # Living room lamp on (occupancy after sunset)  (on: presence(livingroom-motion) -> true)
   when: sun is Night
@@ -21,8 +21,8 @@ expression: out
   when: presence(livingroom-motion) is true
   light: light(floor-lamp-living-room) -> SetBrightness { value: 1 } [when: light(floor-lamp-living-room) is off]
   light: light(floor-lamp-living-room) -> IncreaseBrightness { value: 1, on_off: false } [when: light(floor-lamp-living-room) is off]
-  light: light(living-room-table-lamp) -> On
+  light: light(living-room-table-lamp) -> On [when: light(living-room-table-lamp) is off]
 
 # Living room lamp off (no occupancy)  (on: presence(livingroom-motion) -> false)
-    light: light(floor-lamp-living-room) -> Off
-    light: light(living-room-table-lamp) -> Off
+    light: light(floor-lamp-living-room) -> Off [when: light(floor-lamp-living-room) is on]
+    light: light(living-room-table-lamp) -> Off [when: light(living-room-table-lamp) is on]

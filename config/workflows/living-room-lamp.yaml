@@ -19,9 +19,11 @@
   inputs: {}
   run:
     - type: light
+      when: { type: light, device: floor-lamp-living-room, on: true }
       device: floor-lamp-living-room
       state: OFF
     - type: light
+      when: { type: light, device: living-room-table-lamp, on: true }
       device: living-room-table-lamp
       state: OFF
 
@@ -57,6 +59,7 @@
           state: INCREASE_BRIGHTNESS
           value: 1
     - type: light
+      when: { type: light, device: living-room-table-lamp, on: false }
       device: living-room-table-lamp
       state: ON
 
