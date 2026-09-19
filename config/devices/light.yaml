@@ -17,7 +17,7 @@
   transport: zigbee
   address: "0x001788010381ef5d"
   model: phillips_9290012573a
-  watchdog: { timeout: 6h }
+  watchdog: { timeout: 7d }
   roles:
     - type: light
       config: { name: Bedroom Table Lamp }
