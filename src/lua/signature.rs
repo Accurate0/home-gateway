@@ -10,6 +10,7 @@ pub enum LuaType {
     Boolean,
     Any,
     Table,
+    Function,
     Optional(&'static LuaType),
     Array(&'static LuaType),
     Map(&'static LuaType),

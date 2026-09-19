@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at FROM workflow_run_steps WHERE run_id = ANY($1) ORDER BY run_id, seq",
+  "query": "SELECT run_id, seq, depth, kind, outcome, guard, detail, error, duration_us, at FROM workflow_run_steps WHERE run_id = ANY($1) ORDER BY run_id, seq",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "duration_ms",
+        "name": "duration_us",
         "type_info": "Int8"
       },
       {
@@ -72,5 +72,5 @@
       false
     ]
   },
-  "hash": "b2ce7d5c2a2af75ccb079a1d694823914eed419b682de6a14b15918f7f0f3b42"
+  "hash": "f074dfffa87ecea898391bd407716745fbc59b097cca326061bb493bae5666ac"
 }

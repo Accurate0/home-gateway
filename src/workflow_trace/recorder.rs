@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -8,6 +9,7 @@ use super::{StepOutcome, StepTrace};
 #[derive(Clone, Default)]
 pub struct TraceRecorder {
     steps: Arc<Mutex<Vec<StepTrace>>>,
+    nesting: Arc<AtomicU8>,
 }
 
 pub struct StepHandle {
@@ -15,8 +17,19 @@ pub struct StepHandle {
     started: Instant,
 }
 
+pub struct NestingGuard {
+    nesting: Arc<AtomicU8>,
+}
+
+impl Drop for NestingGuard {
+    fn drop(&mut self) {
+        self.nesting.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 impl TraceRecorder {
     pub fn start(&self, depth: u8, kind: impl Into<String>, detail: Option<String>) -> StepHandle {
+        let depth = self.nested(depth);
         let mut steps = self.lock();
 
         steps.push(StepTrace {
@@ -44,8 +57,28 @@ impl TraceRecorder {
         }
     }
 
+    pub fn finish_with(&self, handle: StepHandle, error: Option<String>) {
+        let outcome = if error.is_some() {
+            StepOutcome::Error
+        } else {
+            StepOutcome::Ran
+        };
+
+        self.finish(handle, outcome, error);
+    }
+
     pub fn record(&self, step: StepTrace) {
-        self.lock().push(step);
+        let depth = self.nested(step.depth);
+
+        self.lock().push(StepTrace { depth, ..step });
+    }
+
+    pub fn nest(&self) -> NestingGuard {
+        self.nesting.fetch_add(1, Ordering::Relaxed);
+
+        NestingGuard {
+            nesting: self.nesting.clone(),
+        }
     }
 
     pub fn skipped(&self, depth: u8, kind: impl Into<String>, guard: String) {
@@ -63,6 +96,10 @@ impl TraceRecorder {
 
     pub fn steps(&self) -> Vec<StepTrace> {
         self.lock().clone()
+    }
+
+    fn nested(&self, depth: u8) -> u8 {
+        depth.saturating_add(self.nesting.load(Ordering::Relaxed))
     }
 
     fn lock(&self) -> MutexGuard<'_, Vec<StepTrace>> {
@@ -124,5 +161,34 @@ mod tests {
 
         assert_eq!(recorder.steps().len(), 1);
         assert_eq!(recorder.steps()[0].depth, 1);
+    }
+
+    #[test]
+    fn nesting_indents_steps_until_the_guard_drops() {
+        let recorder = TraceRecorder::default();
+
+        let outer = recorder.start(1, "fetch", None);
+        let guard = recorder.nest();
+        let inner = recorder.start(1, "gw.http", None);
+        recorder.finish(inner, StepOutcome::Ran, None);
+        drop(guard);
+        recorder.finish(outer, StepOutcome::Ran, None);
+        let after = recorder.start(1, "light.set", None);
+        recorder.finish(after, StepOutcome::Ran, None);
+
+        let depths = recorder
+            .steps()
+            .iter()
+            .map(|s| (s.kind.clone(), s.depth))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            depths,
+            vec![
+                ("fetch".to_owned(), 1),
+                ("gw.http".to_owned(), 2),
+                ("light.set".to_owned(), 1),
+            ]
+        );
     }
 }

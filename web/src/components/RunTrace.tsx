@@ -15,7 +15,7 @@ const TraceQuery = graphql`
         guard
         detail
         error
-        durationMs
+        durationUs
       }
     }
   }
@@ -36,6 +36,14 @@ const STEP_LABEL: Record<string, string> = {
   error: "error",
   running: "unfinished",
 };
+
+function formatDuration(us: number) {
+  if (us < 1000) return `${us}µs`;
+  if (us < 10_000) return `${(us / 1000).toFixed(1)}ms`;
+  if (us < 1_000_000) return `${Math.round(us / 1000)}ms`;
+
+  return `${(us / 1_000_000).toFixed(2)}s`;
+}
 
 export default function RunTrace({
   runId,
@@ -89,9 +97,9 @@ export default function RunTrace({
                   <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
                     {STEP_LABEL[step.outcome] ?? step.outcome}
                   </span>
-                  {step.durationMs > 0 && (
-                    <span className="text-muted-foreground text-[10px]">
-                      {step.durationMs}ms
+                  {step.outcome !== "guard_skipped" && (
+                    <span className="text-muted-foreground text-[10px] tabular-nums">
+                      {formatDuration(step.durationUs)}
                     </span>
                   )}
                 </div>

@@ -98,6 +98,7 @@ impl Definitions {
             LuaType::Boolean => "boolean".to_owned(),
             LuaType::Any => "any".to_owned(),
             LuaType::Table => "table".to_owned(),
+            LuaType::Function => "fun(): ...".to_owned(),
             LuaType::Optional(inner) => format!("{}?", wrap(self.lua_type(inner))),
             LuaType::Array(inner) => format!("{}[]", wrap(self.lua_type(inner))),
             LuaType::Map(inner) => format!("table<string, {}>", self.lua_type(inner)),

@@ -45,7 +45,7 @@ pub struct WorkflowRunStep {
     pub guard: Option<String>,
     pub detail: Option<String>,
     pub error: Option<String>,
-    pub duration_ms: i64,
+    pub duration_us: i64,
     pub at: DateTime<Utc>,
 }
 
@@ -59,7 +59,7 @@ impl From<WorkflowRunStepRow> for WorkflowRunStep {
             guard: row.guard,
             detail: row.detail,
             error: row.error,
-            duration_ms: row.duration_ms,
+            duration_us: row.duration_us,
             at: row.at,
         }
     }

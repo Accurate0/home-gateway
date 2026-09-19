@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO workflow_run_steps (run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at) SELECT $1, * FROM UNNEST($2::int[], $3::smallint[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::bigint[], $10::timestamptz[])",
+  "query": "INSERT INTO workflow_run_steps (run_id, seq, depth, kind, outcome, guard, detail, error, duration_us, at) SELECT $1, * FROM UNNEST($2::int[], $3::smallint[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::bigint[], $10::timestamptz[])",
   "describe": {
     "columns": [],
     "parameters": {
@@ -19,5 +19,5 @@
     },
     "nullable": []
   },
-  "hash": "e5fe460b0a70966a14f72b1c70a6149da33bc9eb5f6d2cf989838a592992c1d1"
+  "hash": "e77b2b6df63dea9e17e589ee48ac4189d622b66a50deb616c6884f416f8a6f71"
 }

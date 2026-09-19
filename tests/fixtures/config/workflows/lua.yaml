@@ -61,4 +61,7 @@
       returns: {}
       script: |
         workflow.record_step("check", "moisture low")
-        workflow.run("test-lamp-on", {})
+        workflow.step("lamps", function()
+          light.is_on("test-lamp")
+          workflow.run("test-lamp-on", {})
+        end, "turn on")

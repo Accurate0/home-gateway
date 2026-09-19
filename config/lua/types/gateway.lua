@@ -332,6 +332,13 @@ function workflow.set_enabled(tag, state) end
 ---@param error? string
 function workflow.record_step(kind, detail, error) end
 
+---Requires the `workflow:read` scope.
+---@param kind string
+---@param run fun(): ...
+---@param detail? string
+---@return any
+function workflow.step(kind, run, detail) end
+
 ---@class gw.api.sun
 sun = {}
 

@@ -579,9 +579,19 @@ async fn a_run_records_its_step_trace_including_lua_annotations() {
             (0, "mqtt_publish", "guard_skipped", None),
             (0, "lua", "ran", None),
             (1, "check", "ran", Some("moisture low")),
-            (1, "workflow.run", "ran", Some("test-lamp-on")),
-            (2, "light", "ran", Some("light(test-lamp) -> On")),
+            (1, "lamps", "ran", Some("turn on")),
+            (2, "light.is_on", "ran", None),
+            (2, "workflow.run", "ran", Some("test-lamp-on")),
+            (3, "light", "ran", Some("light(test-lamp) -> On")),
         ]
     );
     assert!(steps[0].guard.is_some());
+
+    let lamps = &steps[3];
+    let children: i64 = steps[4..].iter().map(|step| step.duration_us).sum();
+
+    assert!(
+        lamps.duration_us >= children,
+        "a workflow.step should time everything nested inside it"
+    );
 }

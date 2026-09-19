@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d41144f44cf1849910edd60a6eecd616>>
+ * @generated SignedSource<<e3eabfc8f9a564faa52cb61dc2696e8a>>
  * @lightSyntaxTransform
  */
 
@@ -17,7 +17,7 @@ export type RunTraceQuery$data = {
     readonly steps: ReadonlyArray<{
       readonly depth: number;
       readonly detail: string | null | undefined;
-      readonly durationMs: number;
+      readonly durationUs: number;
       readonly error: string | null | undefined;
       readonly guard: string | null | undefined;
       readonly kind: string;
@@ -130,7 +130,7 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "durationMs",
+            "name": "durationUs",
             "storageKey": null
           }
         ],
@@ -158,16 +158,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "4e31032c0177ab77052c03bd7b21f839",
+    "cacheID": "72d0eec7760b9f64e2fa18d4a4863fac",
     "id": null,
     "metadata": {},
     "name": "RunTraceQuery",
     "operationKind": "query",
-    "text": "query RunTraceQuery(\n  $eventId: UUID!\n) {\n  workflowRuns(eventId: $eventId) {\n    id\n    trigger\n    steps {\n      seq\n      depth\n      kind\n      outcome\n      guard\n      detail\n      error\n      durationMs\n    }\n  }\n}\n"
+    "text": "query RunTraceQuery(\n  $eventId: UUID!\n) {\n  workflowRuns(eventId: $eventId) {\n    id\n    trigger\n    steps {\n      seq\n      depth\n      kind\n      outcome\n      guard\n      detail\n      error\n      durationUs\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b6cc1047cd1f7000795639ce58e10fc6";
+(node as any).hash = "e9d4d29f15c92a3b07fccf31a3a0e796";
 
 export default node;

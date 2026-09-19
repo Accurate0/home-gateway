@@ -27,7 +27,7 @@ pub struct WorkflowRunStepRow {
     pub guard: Option<String>,
     pub detail: Option<String>,
     pub error: Option<String>,
-    pub duration_ms: i64,
+    pub duration_us: i64,
     pub at: DateTime<Utc>,
 }
 
@@ -190,13 +190,13 @@ impl WorkflowRepo {
                 guards.push(step.guard);
                 details.push(step.detail);
                 errors.push(step.error);
-                durations.push(i64::try_from(step.duration.as_millis()).unwrap_or(i64::MAX));
+                durations.push(i64::try_from(step.duration.as_micros()).unwrap_or(i64::MAX));
                 ats.push(step.at);
             }
 
             sqlx::query!(
                 "INSERT INTO workflow_run_steps \
-                 (run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at) \
+                 (run_id, seq, depth, kind, outcome, guard, detail, error, duration_us, at) \
                  SELECT $1, * FROM UNNEST(\
                      $2::int[], $3::smallint[], $4::text[], $5::text[], $6::text[], \
                      $7::text[], $8::text[], $9::bigint[], $10::timestamptz[])",
@@ -224,7 +224,7 @@ impl WorkflowRepo {
     pub async fn run_steps(&self, run_ids: &[i64]) -> Result<Vec<WorkflowRunStepRow>, sqlx::Error> {
         sqlx::query_as!(
             WorkflowRunStepRow,
-            "SELECT run_id, seq, depth, kind, outcome, guard, detail, error, duration_ms, at \
+            "SELECT run_id, seq, depth, kind, outcome, guard, detail, error, duration_us, at \
              FROM workflow_run_steps WHERE run_id = ANY($1) ORDER BY run_id, seq",
             run_ids,
         )

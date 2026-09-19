@@ -1013,7 +1013,7 @@ type WorkflowRunStep {
 	guard: String
 	detail: String
 	error: String
-	durationMs: Int!
+	durationUs: Int!
 	at: DateTime!
 }
 

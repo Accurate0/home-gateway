@@ -17,5 +17,6 @@
   modes: [home, away, guest]
   run:
     - type: light
+      when: { type: light, device: closet-light, on: true }
       device: closet-light
       state: OFF

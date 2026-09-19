@@ -147,12 +147,7 @@ impl LuaCallContext {
             crate::tracing_context::record_error(&span, e);
         }
 
-        let outcome = if error.is_some() {
-            StepOutcome::Error
-        } else {
-            StepOutcome::Ran
-        };
-        self.trace.finish(handle, outcome, error);
+        self.trace.finish_with(handle, error);
 
         result.map(|_| ()).into_lua_err()
     }
@@ -167,11 +162,16 @@ impl LuaCallContext {
 
         span.in_scope(|| tracing::debug!("[{}] lua {name}", self.event_id));
 
+        let handle = self.trace.start(self.trace_depth(), name, None);
         let result = run().instrument(span.clone()).await;
 
-        if let Err(e) = &result {
-            crate::tracing_context::record_error(&span, &e.to_string());
+        let error = result.as_ref().err().map(ToString::to_string);
+
+        if let Some(e) = &error {
+            crate::tracing_context::record_error(&span, e);
         }
+
+        self.trace.finish_with(handle, error);
 
         result.into_lua_err()
     }

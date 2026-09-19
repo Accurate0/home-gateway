@@ -84,7 +84,27 @@ const RECORD_STEP: LuaFunction = LuaFunction {
     scope: Some(Scope::new(Resource::Workflow, Action::Read)),
 };
 
-const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE, SET_ENABLED, RECORD_STEP];
+const STEP: LuaFunction = LuaFunction {
+    name: "step",
+    params: &[
+        LuaParam {
+            name: "kind",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "run",
+            ty: LuaType::Function,
+        },
+        LuaParam {
+            name: "detail",
+            ty: LuaType::Optional(&LuaType::String),
+        },
+    ],
+    returns: Some(LuaType::Any),
+    scope: Some(Scope::new(Resource::Workflow, Action::Read)),
+};
+
+const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE, SET_ENABLED, RECORD_STEP, STEP];
 
 pub struct WorkflowLua;
 
@@ -195,6 +215,30 @@ impl LuaModule for WorkflowLua {
                     });
 
                     Ok(())
+                },
+            )
+        })?;
+
+        let step_cx = cx.clone();
+        cx.expose(table, &STEP, || {
+            lua.create_async_function(
+                move |_, (kind, run, detail): (String, mlua::Function, Option<String>)| {
+                    let cx = step_cx.clone();
+
+                    async move {
+                        let handle = cx.trace.start(cx.trace_depth(), kind, detail);
+
+                        let result = {
+                            let _nested = cx.trace.nest();
+
+                            run.call_async::<mlua::MultiValue>(()).await
+                        };
+
+                        cx.trace
+                            .finish_with(handle, result.as_ref().err().map(ToString::to_string));
+
+                        result
+                    }
                 },
             )
         })?;
