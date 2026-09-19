@@ -253,7 +253,9 @@ impl WorkflowDispatcher {
             (
                 TriggerMatcher::Light { ieee_addr, on },
                 EventBusMessage::Light {
-                    ieee_addr: a, on: o, ..
+                    ieee_addr: a,
+                    on: o,
+                    ..
                 },
             ) => devices.address_or_self(ieee_addr) == a.as_str() && on.is_none_or(|on| on == *o),
             (

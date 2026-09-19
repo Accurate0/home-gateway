@@ -8,8 +8,7 @@ use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::event_bus::{
     CustomEventSource, FeatureFlagState, ForecastDay, FuelChange, PlaybackState, SensorMetric,
-    SolarMetric,
-    WeatherMetric, WeatherSource,
+    SolarMetric, WeatherMetric, WeatherSource,
 };
 use crate::mode::Mode;
 use crate::repo::intent::DeviceKind;

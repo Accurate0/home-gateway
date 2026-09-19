@@ -73,9 +73,7 @@ pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQ
 
     let (latest, yesterday_kwh, statistics) = futures::try_join!(
         async { Ok::<_, SolarQueryError>(repo.latest_kpis(now - LATEST_WINDOW).await?) },
-        async {
-            Ok::<_, SolarQueryError>(repo.last_today_kwh_between(day.start, day.end).await?)
-        },
+        async { Ok::<_, SolarQueryError>(repo.last_today_kwh_between(day.start, day.end).await?) },
         statistics_with(&repo),
     )?;
 
@@ -143,8 +141,14 @@ mod tests {
         let now = Utc.with_ymd_and_hms(2026, 8, 16, 2, 0, 0).unwrap();
         let day = yesterday(now);
 
-        assert_eq!(day.start, Utc.with_ymd_and_hms(2026, 8, 14, 16, 0, 0).unwrap());
-        assert_eq!(day.end, Utc.with_ymd_and_hms(2026, 8, 15, 16, 0, 0).unwrap());
+        assert_eq!(
+            day.start,
+            Utc.with_ymd_and_hms(2026, 8, 14, 16, 0, 0).unwrap()
+        );
+        assert_eq!(
+            day.end,
+            Utc.with_ymd_and_hms(2026, 8, 15, 16, 0, 0).unwrap()
+        );
     }
 
     #[test]
