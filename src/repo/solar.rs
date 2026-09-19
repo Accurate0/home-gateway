@@ -95,15 +95,8 @@ impl SolarRepo {
     ) -> Result<Option<LatestSolarKpis>, sqlx::Error> {
         sqlx::query_as!(
             LatestSolarKpis,
-            r#"SELECT current_kwh,
-                      COALESCE(today_kwh, (raw_data -> 'data' -> 'kpi' ->> 'power')::float8)
-                          AS "today_kwh!",
-                      COALESCE(month_kwh, (raw_data -> 'data' -> 'kpi' ->> 'month_generation')::float8)
-                          AS "month_kwh!",
-                      COALESCE(total_kwh, (raw_data -> 'data' -> 'kpi' ->> 'total_power')::float8)
-                          AS "total_kwh!",
-                      uv_level, temperature
-               FROM solar_data_tsdb WHERE time > $1 ORDER BY time DESC LIMIT 1"#,
+            "SELECT current_kwh, today_kwh, month_kwh, total_kwh, uv_level, temperature \
+             FROM solar_data_tsdb WHERE time > $1 ORDER BY time DESC LIMIT 1",
             since
         )
         .fetch_optional(&self.db)
@@ -117,10 +110,8 @@ impl SolarRepo {
         end: DateTime<Utc>,
     ) -> Result<Option<f64>, sqlx::Error> {
         let row = sqlx::query!(
-            r#"SELECT COALESCE(today_kwh, (raw_data -> 'data' -> 'kpi' ->> 'power')::float8)
-                          AS "today_kwh!"
-               FROM solar_data_tsdb
-               WHERE time >= $1 AND time < $2 ORDER BY time DESC LIMIT 1"#,
+            "SELECT today_kwh FROM solar_data_tsdb \
+             WHERE time >= $1 AND time < $2 ORDER BY time DESC LIMIT 1",
             start,
             end
         )

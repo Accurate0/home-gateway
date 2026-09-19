@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT today_kwh FROM solar_data_tsdb WHERE time >= $1 AND time < $2 ORDER BY time DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "today_kwh",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d094648496572b92c4a79c5338050874df9ad4221f08bdf09eaae24f425106c5"
+}

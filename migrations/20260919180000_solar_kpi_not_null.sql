@@ -1,0 +1,4 @@
+ALTER TABLE solar_data_tsdb
+  ALTER COLUMN today_kwh SET NOT NULL,
+  ALTER COLUMN month_kwh SET NOT NULL,
+  ALTER COLUMN total_kwh SET NOT NULL;
