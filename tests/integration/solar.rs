@@ -95,6 +95,74 @@ async fn current_reports_no_data_on_an_empty_table() {
 }
 
 #[tokio::test]
+async fn current_falls_back_to_raw_data_for_rows_without_kpi_columns() {
+    let db = fresh_database().await.pool;
+
+    sqlx::query("INSERT INTO solar_data_tsdb (current_kwh, raw_data, time) VALUES ($1, $2, $3)")
+        .bind(250.0_f64)
+        .bind(serde_json::json!({"data": {"kpi": {
+            "month_generation": 7.0, "pac": 250.0, "power": 5.0, "total_power": 9.0
+        }}}))
+        .bind(Utc::now() - chrono::Duration::minutes(1))
+        .execute(&db)
+        .await
+        .unwrap();
+
+    let solar = current(&db).await.unwrap();
+
+    assert_eq!(solar.today_production_kwh, 5.0);
+    assert_eq!(solar.month_production_kwh, 7.0);
+    assert_eq!(solar.all_time_production_kwh, 9.0);
+}
+
+#[tokio::test]
+async fn backfill_fills_compressed_legacy_rows_in_batches() {
+    let db = fresh_database().await.pool;
+
+    let start = Utc::now() - chrono::Duration::days(30);
+
+    for n in 0..5 {
+        sqlx::query(
+            "INSERT INTO solar_data_tsdb (current_kwh, raw_data, time) VALUES ($1, $2, $3)",
+        )
+        .bind(100.0_f64)
+        .bind(serde_json::json!({"data": {"kpi": {
+            "month_generation": 7.0, "pac": 100.0, "power": f64::from(n), "total_power": 9.0
+        }}}))
+        .bind(start + chrono::Duration::hours(n.into()))
+        .execute(&db)
+        .await
+        .unwrap();
+    }
+
+    sqlx::query("SELECT compress_chunk(c) FROM show_chunks('solar_data_tsdb') c")
+        .execute(&db)
+        .await
+        .unwrap();
+
+    let mut tx = db.begin().await.unwrap();
+    home_gateway::adhoc::tasks::backfill_solar_kpis::backfill(&mut tx, 2)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let missing: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM solar_data_tsdb \
+         WHERE today_kwh IS NULL OR month_kwh IS NULL OR total_kwh IS NULL",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    let today_total: f64 = sqlx::query_scalar("SELECT sum(today_kwh) FROM solar_data_tsdb")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+
+    assert_eq!(missing, 0);
+    assert_eq!(today_total, 10.0);
+}
+
+#[tokio::test]
 async fn current_reads_the_latest_kpis_and_yesterdays_last_total() {
     let db = fresh_database().await.pool;
 

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(today_kwh, (raw_data -> 'data' -> 'kpi' ->> 'power')::float8)\n                          AS \"today_kwh!\"\n               FROM solar_data_tsdb\n               WHERE time >= $1 AND time < $2 ORDER BY time DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "today_kwh!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6107cb1740dbc09fb5f64c29bc2e03a725d184973d8ae9d3eb0f660f76c05c8b"
+}

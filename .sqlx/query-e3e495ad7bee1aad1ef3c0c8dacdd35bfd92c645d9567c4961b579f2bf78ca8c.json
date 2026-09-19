@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT current_kwh, today_kwh AS \"today_kwh!\", month_kwh AS \"month_kwh!\",\n                      total_kwh AS \"total_kwh!\", uv_level, temperature\n               FROM solar_data_tsdb WHERE time > $1 ORDER BY time DESC LIMIT 1",
+  "query": "SELECT current_kwh,\n                      COALESCE(today_kwh, (raw_data -> 'data' -> 'kpi' ->> 'power')::float8)\n                          AS \"today_kwh!\",\n                      COALESCE(month_kwh, (raw_data -> 'data' -> 'kpi' ->> 'month_generation')::float8)\n                          AS \"month_kwh!\",\n                      COALESCE(total_kwh, (raw_data -> 'data' -> 'kpi' ->> 'total_power')::float8)\n                          AS \"total_kwh!\",\n                      uv_level, temperature\n               FROM solar_data_tsdb WHERE time > $1 ORDER BY time DESC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -41,12 +41,12 @@
     },
     "nullable": [
       false,
-      true,
-      true,
-      true,
+      null,
+      null,
+      null,
       true,
       true
     ]
   },
-  "hash": "a9e56ac447688cf4e6ad096a337fc88227c607db38a563e4066d81fccfed6c74"
+  "hash": "e3e495ad7bee1aad1ef3c0c8dacdd35bfd92c645d9567c4961b579f2bf78ca8c"
 }

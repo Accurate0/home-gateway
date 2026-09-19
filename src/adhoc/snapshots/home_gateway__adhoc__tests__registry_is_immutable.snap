@@ -3,3 +3,4 @@ source: src/adhoc/mod.rs
 expression: manifest(&registry())
 ---
 1  convert_api_key_scopes  -  8411a19873b2cea94a71672202dbe2908ca1d0b58ab6b667d27946cb644a0a24
+2  backfill_solar_kpis  -  9eff80becb728112a90c67468dad4e4e5bc6559a86de5af35ce4c474294edf6d

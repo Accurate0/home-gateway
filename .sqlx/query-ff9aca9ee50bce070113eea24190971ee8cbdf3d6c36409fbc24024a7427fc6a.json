@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE solar_data_tsdb SET today_kwh = (raw_data -> 'data' -> 'kpi' ->> 'power')::float8, month_kwh = (raw_data -> 'data' -> 'kpi' ->> 'month_generation')::float8, total_kwh = (raw_data -> 'data' -> 'kpi' ->> 'total_power')::float8 WHERE time IN ( SELECT time FROM solar_data_tsdb WHERE today_kwh IS NULL ORDER BY time DESC LIMIT $1 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ff9aca9ee50bce070113eea24190971ee8cbdf3d6c36409fbc24024a7427fc6a"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction = 0",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "07a44d389c78533d1cfa4ce6afac66b1d9e21d30141f3ac25f5d124677fd0db7"
+}
