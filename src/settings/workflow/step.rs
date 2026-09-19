@@ -212,6 +212,14 @@ impl Step {
         }
     }
 
+    pub fn describe_trace(&self) -> Option<String> {
+        match self {
+            Step::RunWorkflow { workflow, .. } => Some(workflow.clone()),
+            Step::Lua { source, .. } => Some(source.summary()),
+            _ => self.describe_action(),
+        }
+    }
+
     pub fn describe_action(&self) -> Option<String> {
         match self {
             Step::Light {

@@ -576,8 +576,18 @@ async fn a_run_records_its_step_trace_including_lua_annotations() {
     assert_eq!(
         summary,
         vec![
-            (0, "mqtt_publish", "guard_skipped", None),
-            (0, "lua", "ran", None),
+            (
+                0,
+                "mqtt_publish",
+                "guard_skipped",
+                Some("mqtt_publish(test/trace/skipped) {}"),
+            ),
+            (
+                0,
+                "lua",
+                "ran",
+                Some("workflow.record_step(\"check\", \"moisture low\") …"),
+            ),
             (1, "check", "ran", Some("moisture low")),
             (1, "lamps", "ran", Some("turn on")),
             (2, "light.is_on", "ran", None),

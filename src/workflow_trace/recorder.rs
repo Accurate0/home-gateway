@@ -81,13 +81,19 @@ impl TraceRecorder {
         }
     }
 
-    pub fn skipped(&self, depth: u8, kind: impl Into<String>, guard: String) {
+    pub fn skipped(
+        &self,
+        depth: u8,
+        kind: impl Into<String>,
+        detail: Option<String>,
+        guard: String,
+    ) {
         self.record(StepTrace {
             depth,
             kind: kind.into(),
             outcome: StepOutcome::GuardSkipped,
             guard: Some(guard),
-            detail: None,
+            detail,
             error: None,
             duration: Duration::ZERO,
             at: Utc::now(),
@@ -118,7 +124,7 @@ mod tests {
         let recorder = TraceRecorder::default();
 
         let scene = recorder.start(0, "scene", None);
-        recorder.skipped(0, "light", "sun is night".to_owned());
+        recorder.skipped(0, "light", None, "sun is night".to_owned());
         let notify = recorder.start(0, "notify", Some("hello".to_owned()));
         recorder.finish(notify, StepOutcome::Error, Some("boom".to_owned()));
         recorder.finish(scene, StepOutcome::Ran, None);

@@ -253,7 +253,12 @@ impl WorkflowWorker {
             && !conditions::eval(&self.shared_actor_state, ctx.vars, when, ctx.authority).await?
         {
             tracing::info!("[{}] skipping step, guard not satisfied", ctx.event_id);
-            ctx.trace.skipped(ctx.depth, step.kind(), when.describe());
+            ctx.trace.skipped(
+                ctx.depth,
+                step.kind(),
+                step.describe_trace(),
+                when.describe(),
+            );
             return Ok(None);
         }
 
@@ -263,9 +268,11 @@ impl WorkflowWorker {
             step = step.kind(),
             event_id = %ctx.event_id,
         );
-        let action = step.describe_action();
-        let dry_run = ctx.dry_run && action.is_some() && !matches!(step, Step::Lua { .. });
-        let handle = ctx.trace.start(ctx.depth, step.kind(), action);
+        let dry_run =
+            ctx.dry_run && step.describe_action().is_some() && !matches!(step, Step::Lua { .. });
+        let handle = ctx
+            .trace
+            .start(ctx.depth, step.kind(), step.describe_trace());
         let start = std::time::Instant::now();
         let result = self.dispatch_step(ctx, step).instrument(span).await;
         crate::metrics::record_step(step.kind(), result.is_ok(), start.elapsed());

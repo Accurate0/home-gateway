@@ -9,6 +9,7 @@
       device: floor-lamp-living-room
       state: ON
     - type: light
+      when: { type: light, device: living-room-table-lamp, on: false }
       device: living-room-table-lamp
       state: ON
 
