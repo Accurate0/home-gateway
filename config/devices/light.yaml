@@ -29,7 +29,7 @@
   transport: zigbee
   address: "0x94a081fffe2eedc0"
   model: ikea_led2201g8
-  watchdog: { timeout: 6h }
+  watchdog: { timeout: 7d }
   roles:
     - type: light
       config: { name: Living Room Floor Lamp }
