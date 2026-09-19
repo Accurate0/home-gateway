@@ -1,9 +1,9 @@
-use crate::integrations::solar::goodwe::types::PlantDetailsByPowerStationIdResponse;
 use crate::integrations::solar::types::{
     GenerationHistory, SolarCurrentResponse, SolarCurrentStatistics, SolarCurrentStatisticsAverages,
 };
 use crate::repo::SolarRepo;
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, TimeDelta, TimeZone, Utc};
+use chrono_tz::Australia::Perth;
 use sqlx::{Pool, Postgres};
 
 #[derive(thiserror::Error, Debug)]
@@ -20,72 +20,76 @@ fn round(n: Option<f64>) -> Option<f64> {
     n.map(|n| (n * 100.0).round() / 100.0)
 }
 
-pub async fn average_for_last_n_minutes(
-    db: &Pool<Postgres>,
-    minutes: i32,
-) -> Result<Option<f64>, SolarQueryError> {
-    let row = SolarRepo::new(db.clone())
-        .average_for_last_n_minutes(minutes)
-        .await?;
+const LATEST_WINDOW: TimeDelta = TimeDelta::days(1);
 
-    Ok(row)
+struct LocalDay {
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
 }
 
-pub async fn statistics(db: &Pool<Postgres>) -> Result<SolarCurrentStatistics, SolarQueryError> {
-    let (last_15_mins, last_1_hour, last_3_hours) = futures::try_join!(
-        average_for_last_n_minutes(db, 15),
-        average_for_last_n_minutes(db, 60),
-        average_for_last_n_minutes(db, 180),
-    )?;
+fn yesterday(now: DateTime<Utc>) -> LocalDay {
+    let today = now.with_timezone(&Perth).date_naive();
+    let midnight = |date: NaiveDate| {
+        Perth
+            .from_local_datetime(&date.and_time(NaiveTime::MIN))
+            .earliest()
+            .map_or(now, |local| local.with_timezone(&Utc))
+    };
+
+    LocalDay {
+        start: midnight(today - TimeDelta::days(1)),
+        end: midnight(today),
+    }
+}
+
+async fn statistics_with(repo: &SolarRepo) -> Result<SolarCurrentStatistics, SolarQueryError> {
+    let averages = repo.averages().await?;
 
     Ok(SolarCurrentStatistics {
         averages: SolarCurrentStatisticsAverages {
-            last_15_mins: round(last_15_mins),
-            last_1_hour: round(last_1_hour),
-            last_3_hours: round(last_3_hours),
+            last_15_mins: round(averages.last_15_mins),
+            last_1_hour: round(averages.last_1_hour),
+            last_3_hours: round(averages.last_3_hours),
         },
     })
 }
 
+pub async fn statistics(db: &Pool<Postgres>) -> Result<SolarCurrentStatistics, SolarQueryError> {
+    statistics_with(&SolarRepo::new(db.clone())).await
+}
+
 pub async fn current_wh(db: &Pool<Postgres>) -> Result<Option<f64>, SolarQueryError> {
-    let Some(latest) = SolarRepo::new(db.clone()).latest().await? else {
-        return Ok(None);
-    };
+    let latest = SolarRepo::new(db.clone())
+        .latest_kpis(Utc::now() - LATEST_WINDOW)
+        .await?;
 
-    let raw_data = serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(latest.raw_data)?;
-
-    Ok(Some(raw_data.data.kpi.pac))
+    Ok(latest.map(|latest| latest.current_kwh))
 }
 
 pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQueryError> {
-    let latest = SolarRepo::new(db.clone())
-        .latest()
-        .await?
-        .ok_or(SolarQueryError::NoData)?;
+    let repo = SolarRepo::new(db.clone());
+    let now = Utc::now();
+    let day = yesterday(now);
 
-    let raw_data = serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(latest.raw_data)?;
+    let (latest, yesterday_kwh, statistics) = futures::try_join!(
+        async { Ok::<_, SolarQueryError>(repo.latest_kpis(now - LATEST_WINDOW).await?) },
+        async {
+            Ok::<_, SolarQueryError>(repo.last_today_kwh_between(day.start, day.end).await?)
+        },
+        statistics_with(&repo),
+    )?;
 
-    let yesterday = SolarRepo::new(db.clone()).yesterday_raw_data().await?;
-
-    let yesterday_production_kwh = match yesterday {
-        Some(raw_data) => {
-            serde_json::from_value::<PlantDetailsByPowerStationIdResponse>(raw_data)?
-                .data
-                .kpi
-                .power
-        }
-        None => 0f64,
-    };
+    let latest = latest.ok_or(SolarQueryError::NoData)?;
 
     Ok(SolarCurrentResponse {
-        yesterday_production_kwh,
-        month_production_kwh: raw_data.data.kpi.month_generation,
-        current_production_wh: raw_data.data.kpi.pac,
-        today_production_kwh: raw_data.data.kpi.power,
-        all_time_production_kwh: raw_data.data.kpi.total_power,
+        yesterday_production_kwh: yesterday_kwh.unwrap_or(0f64),
+        month_production_kwh: latest.month_kwh,
+        current_production_wh: latest.current_kwh,
+        today_production_kwh: latest.today_kwh,
+        all_time_production_kwh: latest.total_kwh,
         uv_level: latest.uv_level,
         temperature: latest.temperature,
-        statistics: statistics(db).await?,
+        statistics,
     })
 }
 
@@ -132,6 +136,15 @@ mod tests {
         let epoch = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
 
         assert_eq!(clamp_since(epoch, now), now - MAX_HISTORY_WINDOW);
+    }
+
+    #[test]
+    fn yesterday_spans_the_previous_perth_day() {
+        let now = Utc.with_ymd_and_hms(2026, 8, 16, 2, 0, 0).unwrap();
+        let day = yesterday(now);
+
+        assert_eq!(day.start, Utc.with_ymd_and_hms(2026, 8, 14, 16, 0, 0).unwrap());
+        assert_eq!(day.end, Utc.with_ymd_and_hms(2026, 8, 15, 16, 0, 0).unwrap());
     }
 
     #[test]

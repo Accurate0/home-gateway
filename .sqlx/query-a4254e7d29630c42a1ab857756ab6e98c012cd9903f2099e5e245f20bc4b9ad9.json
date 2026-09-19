@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO solar_data_tsdb (current_kwh, today_kwh, month_kwh, total_kwh, raw_data, uv_level, temperature) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Jsonb",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a4254e7d29630c42a1ab857756ab6e98c012cd9903f2099e5e245f20bc4b9ad9"
+}

@@ -12,6 +12,31 @@ pub struct LatestSolarRow {
     pub uv_level: Option<f64>,
 }
 
+pub struct SolarReading {
+    pub current_kwh: f64,
+    pub today_kwh: f64,
+    pub month_kwh: f64,
+    pub total_kwh: f64,
+    pub raw_data: serde_json::Value,
+    pub uv_level: Option<f64>,
+    pub temperature: Option<f64>,
+}
+
+pub struct LatestSolarKpis {
+    pub current_kwh: f64,
+    pub today_kwh: f64,
+    pub month_kwh: f64,
+    pub total_kwh: f64,
+    pub uv_level: Option<f64>,
+    pub temperature: Option<f64>,
+}
+
+pub struct SolarAveragesRow {
+    pub last_15_mins: Option<f64>,
+    pub last_1_hour: Option<f64>,
+    pub last_3_hours: Option<f64>,
+}
+
 pub struct SolarBucketRow {
     pub avg_wh: Option<f64>,
     pub avg_uv_level: Option<f64>,
@@ -30,40 +55,71 @@ impl SolarRepo {
     }
 
     #[tracing::instrument(skip_all, name = "db.solar.append_reading", err)]
-    pub async fn append_reading(
-        &self,
-        current_kwh: f64,
-        raw_data: serde_json::Value,
-        uv_level: Option<f64>,
-        temperature: Option<f64>,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn append_reading(&self, reading: SolarReading) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "INSERT INTO solar_data_tsdb (current_kwh, raw_data, uv_level, temperature) \
-             VALUES ($1, $2, $3, $4)",
-            current_kwh,
-            raw_data,
-            uv_level,
-            temperature
+            "INSERT INTO solar_data_tsdb \
+                 (current_kwh, today_kwh, month_kwh, total_kwh, raw_data, uv_level, temperature) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            reading.current_kwh,
+            reading.today_kwh,
+            reading.month_kwh,
+            reading.total_kwh,
+            reading.raw_data,
+            reading.uv_level,
+            reading.temperature
         )
         .execute(&self.db)
         .await?;
 
         Ok(())
     }
-    #[tracing::instrument(skip_all, name = "db.solar.average_for_last_n_minutes", err)]
-    pub async fn average_for_last_n_minutes(
+
+    #[tracing::instrument(skip_all, name = "db.solar.averages", err)]
+    pub async fn averages(&self) -> Result<SolarAveragesRow, sqlx::Error> {
+        sqlx::query_as!(
+            SolarAveragesRow,
+            "SELECT \
+                 avg(current_kwh) FILTER (WHERE time > now() - INTERVAL '15 minutes') AS last_15_mins, \
+                 avg(current_kwh) FILTER (WHERE time > now() - INTERVAL '1 hour') AS last_1_hour, \
+                 avg(current_kwh) AS last_3_hours \
+             FROM solar_data_tsdb WHERE time > now() - INTERVAL '3 hours'"
+        )
+        .fetch_one(&self.db)
+        .await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.solar.latest_kpis", err)]
+    pub async fn latest_kpis(
         &self,
-        minutes: i32,
+        since: DateTime<Utc>,
+    ) -> Result<Option<LatestSolarKpis>, sqlx::Error> {
+        sqlx::query_as!(
+            LatestSolarKpis,
+            r#"SELECT current_kwh, today_kwh AS "today_kwh!", month_kwh AS "month_kwh!",
+                      total_kwh AS "total_kwh!", uv_level, temperature
+               FROM solar_data_tsdb WHERE time > $1 ORDER BY time DESC LIMIT 1"#,
+            since
+        )
+        .fetch_optional(&self.db)
+        .await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.solar.last_today_kwh_between", err)]
+    pub async fn last_today_kwh_between(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
     ) -> Result<Option<f64>, sqlx::Error> {
         let row = sqlx::query!(
-            "SELECT avg(current_kwh) AS avg FROM solar_data_tsdb \
-             WHERE time > now() - MAKE_INTERVAL(mins => $1)",
-            minutes
+            r#"SELECT today_kwh AS "today_kwh!" FROM solar_data_tsdb
+               WHERE time >= $1 AND time < $2 ORDER BY time DESC LIMIT 1"#,
+            start,
+            end
         )
         .fetch_optional(&self.db)
         .await?;
 
-        Ok(row.and_then(|row| row.avg))
+        Ok(row.map(|row| row.today_kwh))
     }
 
     #[tracing::instrument(skip_all, name = "db.solar.latest", err)]
@@ -74,20 +130,6 @@ impl SolarRepo {
         )
         .fetch_optional(&self.db)
         .await
-    }
-
-    #[tracing::instrument(skip_all, name = "db.solar.yesterday_raw_data", err)]
-    pub async fn yesterday_raw_data(&self) -> Result<Option<serde_json::Value>, sqlx::Error> {
-        let row = sqlx::query!(
-            "SELECT raw_data FROM solar_data_tsdb \
-             WHERE (time AT TIME ZONE 'Australia/Perth')::date \
-                 = (now() AT TIME ZONE 'Australia/Perth')::date - INTEGER '1' \
-             ORDER BY time DESC LIMIT 1"
-        )
-        .fetch_optional(&self.db)
-        .await?;
-
-        Ok(row.map(|row| row.raw_data))
     }
 
     #[tracing::instrument(skip_all, name = "db.solar.buckets_since", err)]

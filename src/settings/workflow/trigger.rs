@@ -7,10 +7,12 @@ use super::{Comparison, EnvMetric, LeafCondition};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
 use crate::event_bus::{
-    CustomEventSource, ForecastDay, FuelChange, PlaybackState, SensorMetric, SolarMetric,
+    CustomEventSource, FeatureFlagState, ForecastDay, FuelChange, PlaybackState, SensorMetric,
+    SolarMetric,
     WeatherMetric, WeatherSource,
 };
 use crate::mode::Mode;
+use crate::repo::intent::DeviceKind;
 use crate::settings::device_scope::DeviceScope;
 use crate::settings::{IEEEAddress, validate_device};
 use crate::variables::VarType;
@@ -147,6 +149,22 @@ pub enum TriggerMatcher {
         #[serde(default)]
         connected: Option<bool>,
     },
+    Light {
+        #[serde(rename = "device", alias = "ieeeAddr")]
+        ieee_addr: IEEEAddress,
+        #[serde(default)]
+        on: Option<bool>,
+    },
+    CommandFailed {
+        #[serde(default)]
+        device: Option<String>,
+        #[serde(default)]
+        kind: Option<DeviceKind>,
+    },
+    FeatureFlag {
+        #[serde(default)]
+        state: Option<FeatureFlagState>,
+    },
 }
 
 impl TriggerMatcher {
@@ -168,6 +186,9 @@ impl TriggerMatcher {
             TriggerMatcher::Weather { .. } => "weather",
             TriggerMatcher::Custom { .. } => "custom",
             TriggerMatcher::Unifi { .. } => "unifi",
+            TriggerMatcher::Light { .. } => "light",
+            TriggerMatcher::CommandFailed { .. } => "command_failed",
+            TriggerMatcher::FeatureFlag { .. } => "feature_flag",
         }
     }
 
@@ -230,7 +251,17 @@ impl TriggerMatcher {
                 day: *day,
                 cmp: *cmp,
             }),
+            TriggerMatcher::Light {
+                ieee_addr,
+                on: Some(on),
+            } => Some(LeafCondition::Light {
+                ieee_addr: ieee_addr.clone(),
+                on: *on,
+            }),
             TriggerMatcher::HomeAssistant { state: None, .. }
+            | TriggerMatcher::Light { on: None, .. }
+            | TriggerMatcher::CommandFailed { .. }
+            | TriggerMatcher::FeatureFlag { .. }
             | TriggerMatcher::Switch { .. }
             | TriggerMatcher::Cron { .. }
             | TriggerMatcher::Sun { .. }
@@ -370,6 +401,23 @@ impl TriggerMatcher {
                     None => format!("unifi({subject})"),
                 }
             }
+            TriggerMatcher::Light { ieee_addr, on } => match on {
+                Some(true) => format!("light({ieee_addr}) -> on"),
+                Some(false) => format!("light({ieee_addr}) -> off"),
+                None => format!("light({ieee_addr})"),
+            },
+            TriggerMatcher::CommandFailed { device, kind } => {
+                let subject = device
+                    .clone()
+                    .or_else(|| kind.map(|kind| kind.as_str().to_owned()))
+                    .unwrap_or_else(|| "*".to_owned());
+
+                format!("command_failed({subject})")
+            }
+            TriggerMatcher::FeatureFlag { state } => match state {
+                Some(state) => format!("feature_flag -> {state}"),
+                None => "feature_flag".to_owned(),
+            },
             TriggerMatcher::Sun { transition, offset } => {
                 if offset.is_zero() {
                     format!("sun -> {transition:?}")
@@ -385,9 +433,19 @@ impl TriggerMatcher {
 
     pub(crate) fn resolve_devices(&mut self, devices: &DeviceScope) -> Result<(), String> {
         match self {
-            TriggerMatcher::Door { ieee_addr, .. } | TriggerMatcher::Switch { ieee_addr, .. } => {
+            TriggerMatcher::Door { ieee_addr, .. }
+            | TriggerMatcher::Switch { ieee_addr, .. }
+            | TriggerMatcher::Light { ieee_addr, .. } => {
                 validate_device(ieee_addr, devices)?;
             }
+            TriggerMatcher::CommandFailed {
+                device: Some(device),
+                ..
+            } => {
+                validate_device(device, devices)?;
+            }
+            TriggerMatcher::CommandFailed { device: None, .. }
+            | TriggerMatcher::FeatureFlag { .. } => {}
             TriggerMatcher::Presence { sensor, .. }
             | TriggerMatcher::Environment { sensor, .. } => {
                 validate_device(sensor, devices)?;

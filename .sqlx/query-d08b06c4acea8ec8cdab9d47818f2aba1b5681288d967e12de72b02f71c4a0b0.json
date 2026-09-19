@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT avg(current_kwh) FILTER (WHERE time > now() - INTERVAL '15 minutes') AS last_15_mins, avg(current_kwh) FILTER (WHERE time > now() - INTERVAL '1 hour') AS last_1_hour, avg(current_kwh) AS last_3_hours FROM solar_data_tsdb WHERE time > now() - INTERVAL '3 hours'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_15_mins",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_1_hour",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_3_hours",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "d08b06c4acea8ec8cdab9d47818f2aba1b5681288d967e12de72b02f71c4a0b0"
+}

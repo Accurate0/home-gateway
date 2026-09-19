@@ -17,8 +17,7 @@ const RESUBSCRIBE_BACKOFF: std::time::Duration = std::time::Duration::from_secs(
 pub async fn publish_provider_events(client: FeatureFlagClient, event_bus: EventBus) {
     let publish = |state: FeatureFlagState, version: Option<String>| {
         tracing::info!(
-            "feature flag provider is {} (version {})",
-            state.as_str(),
+            "feature flag provider is {state} (version {})",
             version.as_deref().unwrap_or("unknown")
         );
 

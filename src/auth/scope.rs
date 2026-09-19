@@ -136,6 +136,7 @@ impl Resource {
             "weather" => Self::EventsWeather,
             "fuelwatch" => Self::EventsFuelWatch,
             "command_failed" => Self::EventsCommandFailed,
+            "feature_flag" => Self::FeatureFlag,
             "custom" => Self::EventsCustom,
             _ => return None,
         })

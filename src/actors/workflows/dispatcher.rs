@@ -251,6 +251,31 @@ impl WorkflowDispatcher {
                 },
             ) => devices.address_or_self(ieee_addr) == a.as_str() && open == o,
             (
+                TriggerMatcher::Light { ieee_addr, on },
+                EventBusMessage::Light {
+                    ieee_addr: a, on: o, ..
+                },
+            ) => devices.address_or_self(ieee_addr) == a.as_str() && on.is_none_or(|on| on == *o),
+            (
+                TriggerMatcher::CommandFailed { device, kind },
+                EventBusMessage::CommandFailed {
+                    kind: k,
+                    address,
+                    device_id,
+                    ..
+                },
+            ) => {
+                kind.is_none_or(|kind| kind == *k)
+                    && device.as_ref().is_none_or(|device| {
+                        devices.address_or_self(device) == address.as_str()
+                            || device_id.as_ref() == Some(device)
+                    })
+            }
+            (
+                TriggerMatcher::FeatureFlag { state },
+                EventBusMessage::FeatureFlag { state: s, .. },
+            ) => state.is_none_or(|state| state == *s),
+            (
                 TriggerMatcher::Switch { ieee_addr, action },
                 EventBusMessage::SwitchAction {
                     ieee_addr: a,

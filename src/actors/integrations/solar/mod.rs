@@ -3,6 +3,7 @@ pub mod lua;
 use crate::{
     event_bus::{EventBusMessage, WeatherMetric, WeatherReading, WeatherSource},
     integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
+    repo::solar::SolarReading,
     state::AppState,
 };
 use ractor::{Actor, RpcReplyPort};
@@ -61,7 +62,15 @@ impl SolarActor {
         self.shared_actor_state
             .repos
             .solar()
-            .append_reading(current_kwh, raw_data, uv_level, temperature)
+            .append_reading(SolarReading {
+                current_kwh,
+                today_kwh: solar_data.data.kpi.power,
+                month_kwh: solar_data.data.kpi.month_generation,
+                total_kwh: solar_data.data.kpi.total_power,
+                raw_data,
+                uv_level,
+                temperature,
+            })
             .await?;
 
         self.shared_actor_state

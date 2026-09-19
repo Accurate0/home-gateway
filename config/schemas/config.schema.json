@@ -3177,6 +3177,80 @@
           "required": [
             "type"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "on": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "light"
+            }
+          },
+          "required": [
+            "type",
+            "device"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DeviceKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "command_failed"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FeatureFlagState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "feature_flag"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },
@@ -3213,6 +3287,22 @@
       "type": "string",
       "enum": [
         "lua"
+      ]
+    },
+    "DeviceKind": {
+      "type": "string",
+      "enum": [
+        "light",
+        "smart_switch"
+      ]
+    },
+    "FeatureFlagState": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "changed",
+        "stale",
+        "error"
       ]
     },
     "ReusableWorkflow": {

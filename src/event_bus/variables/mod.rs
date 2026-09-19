@@ -1,9 +1,12 @@
+mod command_failed_variables;
 mod cron_variables;
 mod device_battery_variables;
 mod door_variables;
 mod environment_variables;
+mod feature_flag_variables;
 mod fuel_watch_variables;
 mod home_assistant_variables;
+mod light_variables;
 mod media_player_variables;
 mod mode_variables;
 mod presence_variables;
@@ -14,12 +17,15 @@ mod unifi_variables;
 mod weather_variables;
 mod woolworths_variables;
 
+pub use command_failed_variables::CommandFailedVariables;
 pub use cron_variables::CronVariables;
 pub use device_battery_variables::DeviceBatteryVariables;
 pub use door_variables::DoorVariables;
 pub use environment_variables::EnvironmentVariables;
+pub use feature_flag_variables::FeatureFlagVariables;
 pub use fuel_watch_variables::FuelWatchVariables;
 pub use home_assistant_variables::HomeAssistantVariables;
+pub use light_variables::LightVariables;
 pub use media_player_variables::MediaPlayerVariables;
 pub use mode_variables::ModeVariables;
 pub use presence_variables::PresenceVariables;

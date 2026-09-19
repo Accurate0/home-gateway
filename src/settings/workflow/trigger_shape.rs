@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::variables::{
-    CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
-    HomeAssistantVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
+    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DoorVariables,
+    EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables, HomeAssistantVariables,
+    LightVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
     SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
@@ -25,6 +26,9 @@ impl TriggerMatcher {
             TriggerMatcher::DeviceBattery { .. } => DeviceBatteryVariables::shape(),
             TriggerMatcher::MediaPlayer { .. } => MediaPlayerVariables::shape(),
             TriggerMatcher::Unifi { .. } => UnifiVariables::shape(),
+            TriggerMatcher::Light { .. } => LightVariables::shape(),
+            TriggerMatcher::CommandFailed { .. } => CommandFailedVariables::shape(),
+            TriggerMatcher::FeatureFlag { .. } => FeatureFlagVariables::shape(),
             TriggerMatcher::Environment { sensor, metric, .. } => {
                 let metrics = registry.sensor_metrics(registry.address_or_self(sensor));
 

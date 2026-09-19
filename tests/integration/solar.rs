@@ -9,10 +9,12 @@ use crate::common::db::fresh_database;
 
 async fn insert(db: &Pool<Postgres>, at: DateTime<Utc>, kwh: f64, uv: Option<f64>) {
     sqlx::query(
-        "INSERT INTO solar_data_tsdb (current_kwh, raw_data, uv_level, temperature, time) \
-         VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO solar_data_tsdb \
+             (current_kwh, today_kwh, month_kwh, total_kwh, raw_data, uv_level, temperature, time) \
+         VALUES ($1, $2, 1.0, 3.0, $3, $4, $5, $6)",
     )
     .bind(kwh)
+    .bind(kwh / 100.0)
     .bind(serde_json::json!({"data": {"kpi": {
         "month_generation": 1.0, "pac": kwh, "power": 2.0, "total_power": 3.0,
         "day_income": 0.0, "total_income": 0.0, "yield_rate": 0.0, "currency": "AUD"
@@ -90,4 +92,32 @@ async fn current_reports_no_data_on_an_empty_table() {
     let db = fresh_database().await.pool;
 
     assert!(matches!(current(&db).await, Err(SolarQueryError::NoData)));
+}
+
+#[tokio::test]
+async fn current_reads_the_latest_kpis_and_yesterdays_last_total() {
+    let db = fresh_database().await.pool;
+
+    let now = Utc::now();
+    let today = now
+        .with_timezone(&chrono_tz::Australia::Perth)
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_local_timezone(chrono_tz::Australia::Perth)
+        .unwrap()
+        .with_timezone(&Utc);
+
+    insert(&db, today - chrono::Duration::hours(3), 900.0, None).await;
+    insert(&db, today - chrono::Duration::hours(1), 1200.0, None).await;
+    insert(&db, now - chrono::Duration::minutes(1), 400.0, Some(3.0)).await;
+
+    let solar = current(&db).await.unwrap();
+
+    assert_eq!(solar.current_production_wh, 400.0);
+    assert_eq!(solar.today_production_kwh, 4.0);
+    assert_eq!(solar.yesterday_production_kwh, 12.0);
+    assert_eq!(solar.month_production_kwh, 1.0);
+    assert_eq!(solar.all_time_production_kwh, 3.0);
+    assert_eq!(solar.uv_level, Some(3.0));
 }

@@ -1,11 +1,13 @@
 use uuid::Uuid;
 
+use super::feature_flag_state::FeatureFlagState;
 use super::fuel_change::FuelChange;
 use super::playback::PlaybackState;
 use super::reading::SensorReading;
 use super::variables::{
-    CronVariables, DeviceBatteryVariables, DoorVariables, EnvironmentVariables, FuelWatchVariables,
-    HomeAssistantVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
+    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DoorVariables,
+    EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables, HomeAssistantVariables,
+    LightVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
     SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
@@ -60,8 +62,6 @@ pub enum EventBusMessage {
         transition: SunTransition,
         offset: chrono::TimeDelta,
     },
-    /// A light reported a power-state change (`on`/off), published for
-    /// subscribers; the dispatcher does not currently trigger on it.
     Light {
         event_id: Uuid,
         ieee_addr: IEEEAddress,
@@ -179,29 +179,6 @@ pub enum EventBusMessage {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FeatureFlagState {
-    Ready,
-    Changed,
-    Stale,
-    Error,
-}
-
-impl FeatureFlagState {
-    pub fn should_reevaluate(&self) -> bool {
-        matches!(self, Self::Ready | Self::Changed)
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Ready => "ready",
-            Self::Changed => "changed",
-            Self::Stale => "stale",
-            Self::Error => "error",
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct BusEvent {
     pub traceparent: crate::tracing_context::TraceParent,
@@ -302,6 +279,7 @@ impl EventBusMessage {
         "weather",
         "fuelwatch",
         "command_failed",
+        "feature_flag",
         "custom",
     ];
 
@@ -327,7 +305,7 @@ impl EventBusMessage {
             EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
             EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
             EventBusMessage::CommandFailed { address, .. } => address.clone(),
-            EventBusMessage::FeatureFlag { state, .. } => state.as_str().to_owned(),
+            EventBusMessage::FeatureFlag { state, .. } => state.to_string(),
             EventBusMessage::Custom { name, .. } => name.clone(),
         }
     }
@@ -500,9 +478,39 @@ impl EventBusMessage {
                 connected: *connected,
             }
             .to_node(),
-            EventBusMessage::Light { .. }
-            | EventBusMessage::CommandFailed { .. }
-            | EventBusMessage::FeatureFlag { .. } => Node::empty(),
+            EventBusMessage::Light {
+                ieee_addr,
+                on,
+                brightness,
+                colour_temp,
+                colour,
+                ..
+            } => LightVariables {
+                device: ieee_addr.clone(),
+                on: *on,
+                brightness: *brightness,
+                colour_temp: *colour_temp,
+                colour: colour.clone(),
+            }
+            .to_node(),
+            EventBusMessage::CommandFailed {
+                kind,
+                address,
+                device_id,
+                attempts,
+                ..
+            } => CommandFailedVariables {
+                kind: kind.as_str().to_owned(),
+                address: address.clone(),
+                device_id: device_id.clone(),
+                attempts: *attempts,
+            }
+            .to_node(),
+            EventBusMessage::FeatureFlag { state, version, .. } => FeatureFlagVariables {
+                state: state.to_string(),
+                version: version.clone(),
+            }
+            .to_node(),
         }
     }
 }

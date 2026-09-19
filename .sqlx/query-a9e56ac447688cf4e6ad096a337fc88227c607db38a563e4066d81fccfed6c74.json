@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT current_kwh, today_kwh AS \"today_kwh!\", month_kwh AS \"month_kwh!\",\n                      total_kwh AS \"total_kwh!\", uv_level, temperature\n               FROM solar_data_tsdb WHERE time > $1 ORDER BY time DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "current_kwh",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "today_kwh!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "month_kwh!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_kwh!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "uv_level",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "temperature",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a9e56ac447688cf4e6ad096a337fc88227c607db38a563e4066d81fccfed6c74"
+}
