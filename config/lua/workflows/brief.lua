@@ -7,15 +7,21 @@ local function message(parts)
 end
 
 function brief.morning()
-	local today = weather.today()
+	local today, holiday = workflow.step("fetch", function()
+		return weather.today(), holidays.on()
+	end, "forecast and holiday")
 
 	if today == nil then
 		return { message = "No forecast available this morning" }
 	end
 
-	local parts = {}
+	return workflow.step("compose", function()
+		return brief.compose(today, holiday)
+	end)
+end
 
-	local holiday = holidays.on()
+function brief.compose(today, holiday)
+	local parts = {}
 
 	if holiday then
 		table.insert(parts, holiday)

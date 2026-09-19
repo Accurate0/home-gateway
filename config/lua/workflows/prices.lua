@@ -3,8 +3,11 @@ local format = gw.lib("format")
 local prices = {}
 
 function prices.cheapest_fuel()
-	local sites = fuel.cheapest(nil, 1)
-	local site = sites and sites[1]
+	local site = workflow.step("fetch", function()
+		local sites = fuel.cheapest(nil, 1)
+
+		return sites and sites[1]
+	end, "cheapest ULP91")
 
 	if site == nil then
 		return { message = "No fuel prices available today" }

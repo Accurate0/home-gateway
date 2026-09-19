@@ -10,15 +10,21 @@ function buttons.dispatch(device, bindings)
 		return
 	end
 
-	light.set(device, command)
+	workflow.step("binding", function()
+		light.set(device, command)
+	end, tostring(event.action))
 end
 
 function buttons.toggle(device, on_workflow, off_workflow)
-	if lights.any_on({ device }) then
-		workflow.run(off_workflow)
-	else
-		workflow.run(on_workflow)
-	end
+	local on = workflow.step("check", function()
+		return lights.any_on({ device })
+	end, device)
+
+	local target = on and off_workflow or on_workflow
+
+	workflow.step("toggle", function()
+		workflow.run(target)
+	end, target)
 end
 
 return buttons

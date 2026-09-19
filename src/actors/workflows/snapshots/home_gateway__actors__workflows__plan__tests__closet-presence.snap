@@ -6,4 +6,4 @@ expression: out
   light: light(closet-light) -> On
 
 # Closet presence off  (on: presence(closet-presence) -> false)
-  light: light(closet-light) -> Off
+  light: light(closet-light) -> Off [when: light(closet-light) is on]
