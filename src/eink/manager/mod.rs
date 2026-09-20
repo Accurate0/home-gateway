@@ -141,6 +141,8 @@ impl EinkDisplayManager {
         self.store_render(&display.device_id, &display.name, &image)
             .await?;
 
+        self.warm_packed(display).await;
+
         Ok(Some(image))
     }
 
@@ -168,6 +170,8 @@ impl EinkDisplayManager {
         if let Prepared::Ready(image) = &prepared {
             self.store_render(&display.device_id, &display.name, image)
                 .await?;
+
+            self.warm_packed(display).await;
         }
 
         Ok(prepared)
@@ -251,6 +255,24 @@ impl EinkDisplayManager {
                 );
                 None
             }
+        }
+    }
+
+    #[tracing::instrument(
+        name = "eink.warm_packed",
+        skip_all,
+        fields(device_id = %resolved.device_id)
+    )]
+    pub async fn warm_packed(&self, resolved: &ResolvedDisplay) {
+        let Some(plan) = self.plan(resolved).await else {
+            return;
+        };
+
+        match self.ensure_packed(&plan).await {
+            Some(_) => {
+                tracing::info!(hash = %plan.hash, "warmed the packed frame ahead of the wake")
+            }
+            None => tracing::warn!(hash = %plan.hash, "failed to warm the packed frame"),
         }
     }
 
