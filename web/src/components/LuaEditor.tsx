@@ -40,6 +40,7 @@ const OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions = {
   padding: { top: 12, bottom: 12 },
   tabSize: 2,
   automaticLayout: true,
+  fixedOverflowWidgets: true,
   scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
 };
 
