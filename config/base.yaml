@@ -26,6 +26,8 @@ tracing:
     default: 1.0
     spans:
       mqtt.ingest: 0.05
+      home_assistant.ingest: 0.02
+      db.intent.claim_due: 0.05
 
 s3:
   bucket: home-gateway-bucket
