@@ -2,8 +2,23 @@ use crate::eink::manager::frame::{FrameContext, FrameEncoder};
 use crate::settings::devices::eink::PALETTE_COLORS;
 use image::RgbImage;
 use image::imageops::ColorMap;
+use std::sync::OnceLock;
 
 pub struct FloydSteinbergPacked;
+
+#[derive(Clone, Copy)]
+pub struct PaletteColor {
+    r: f32,
+    g: f32,
+    b: f32,
+    index: u8,
+}
+
+impl PaletteColor {
+    fn rgb(&self) -> [u8; 3] {
+        [self.r as u8, self.g as u8, self.b as u8]
+    }
+}
 
 impl FrameEncoder for FloydSteinbergPacked {
     fn name(&self) -> &'static str {
@@ -13,13 +28,13 @@ impl FrameEncoder for FloydSteinbergPacked {
     fn fingerprint(&self, _ctx: &FrameContext) -> String {
         panel_palette()
             .iter()
-            .map(|(r, g, b, index)| format!("{r}:{g}:{b}:{index}"))
+            .map(|color| format!("{}:{}:{}:{}", color.r, color.g, color.b, color.index))
             .collect::<Vec<_>>()
             .join(",")
     }
 
     fn encode(&self, _ctx: &FrameContext, img: &mut RgbImage) -> anyhow::Result<Vec<u8>> {
-        let indices = dither_to_palette(img, &panel_palette());
+        let indices = dither_to_palette(img, panel_palette());
         let (width, height) = img.dimensions();
 
         let mut packed = Vec::with_capacity((width * height / 2) as usize);
@@ -35,18 +50,30 @@ impl FrameEncoder for FloydSteinbergPacked {
     }
 }
 
-fn panel_palette() -> Vec<(f32, f32, f32, u8)> {
-    PALETTE_COLORS
-        .iter()
-        .map(|&(_, r, g, b, index)| (r, g, b, index))
-        .collect()
+fn panel_palette() -> &'static [PaletteColor] {
+    static PALETTE: OnceLock<Vec<PaletteColor>> = OnceLock::new();
+
+    PALETTE.get_or_init(|| {
+        PALETTE_COLORS
+            .iter()
+            .map(|&(_, r, g, b, index)| PaletteColor { r, g, b, index })
+            .collect()
+    })
 }
 
-struct PanelPalette {
-    colors: Vec<(f32, f32, f32, u8)>,
+struct PanelPalette<'a> {
+    colors: &'a [PaletteColor],
 }
 
-impl ColorMap for PanelPalette {
+impl PanelPalette<'_> {
+    fn exact_index_of(&self, color: &image::Rgb<u8>) -> Option<usize> {
+        self.colors
+            .iter()
+            .position(|candidate| candidate.rgb() == color.0)
+    }
+}
+
+impl ColorMap for PanelPalette<'_> {
     type Color = image::Rgb<u8>;
 
     fn index_of(&self, color: &Self::Color) -> usize {
@@ -56,8 +83,9 @@ impl ColorMap for PanelPalette {
         let mut closest = 0;
         let mut min_dist = f32::MAX;
 
-        for (i, &(pr, pg, pb, _)) in self.colors.iter().enumerate() {
-            let dist = (r - pr).powi(2) + (g - pg).powi(2) + (b - pb).powi(2);
+        for (i, candidate) in self.colors.iter().enumerate() {
+            let dist =
+                (r - candidate.r).powi(2) + (g - candidate.g).powi(2) + (b - candidate.b).powi(2);
             if dist < min_dist {
                 min_dist = dist;
                 closest = i;
@@ -68,9 +96,7 @@ impl ColorMap for PanelPalette {
     }
 
     fn lookup(&self, index: usize) -> Option<Self::Color> {
-        self.colors
-            .get(index)
-            .map(|&(r, g, b, _)| image::Rgb([r as u8, g as u8, b as u8]))
+        self.colors.get(index).map(|color| image::Rgb(color.rgb()))
     }
 
     fn has_lookup(&self) -> bool {
@@ -85,15 +111,19 @@ impl ColorMap for PanelPalette {
     }
 }
 
-fn dither_to_palette(img: &mut RgbImage, palette: &[(f32, f32, f32, u8)]) -> Vec<u8> {
-    let map = PanelPalette {
-        colors: palette.to_vec(),
-    };
+fn dither_to_palette(img: &mut RgbImage, palette: &[PaletteColor]) -> Vec<u8> {
+    let map = PanelPalette { colors: palette };
 
     image::imageops::dither(img, &map);
 
     img.pixels()
-        .map(|pixel| map.colors[map.index_of(pixel)].3)
+        .map(|pixel| {
+            let index = map
+                .exact_index_of(pixel)
+                .unwrap_or_else(|| map.index_of(pixel));
+
+            map.colors[index].index
+        })
         .collect()
 }
 
@@ -101,13 +131,20 @@ fn dither_to_palette(img: &mut RgbImage, palette: &[(f32, f32, f32, u8)]) -> Vec
 mod tests {
     use super::*;
 
+    fn palette(colors: &[(f32, f32, f32, u8)]) -> Vec<PaletteColor> {
+        colors
+            .iter()
+            .map(|&(r, g, b, index)| PaletteColor { r, g, b, index })
+            .collect()
+    }
+
     #[test]
     fn dither_maps_flat_colours_to_their_palette_index() {
-        let palette = vec![
-            (0.0, 0.0, 0.0, 0u8),
-            (255.0, 255.0, 255.0, 1u8),
-            (255.0, 0.0, 0.0, 3u8),
-        ];
+        let palette = palette(&[
+            (0.0, 0.0, 0.0, 0),
+            (255.0, 255.0, 255.0, 1),
+            (255.0, 0.0, 0.0, 3),
+        ]);
 
         let mut img = RgbImage::from_pixel(8, 8, image::Rgb([250, 10, 8]));
         let indices = dither_to_palette(&mut img, &palette);
@@ -119,7 +156,7 @@ mod tests {
 
     #[test]
     fn dither_only_emits_palette_indices() {
-        let palette = vec![(0.0, 0.0, 0.0, 0u8), (255.0, 255.0, 255.0, 1u8)];
+        let palette = palette(&[(0.0, 0.0, 0.0, 0), (255.0, 255.0, 255.0, 1)]);
 
         let mut img = RgbImage::from_pixel(16, 16, image::Rgb([128, 128, 128]));
         let indices = dither_to_palette(&mut img, &palette);
@@ -127,5 +164,16 @@ mod tests {
         assert!(indices.iter().all(|index| [0, 1].contains(index)));
         assert!(indices.contains(&0));
         assert!(indices.contains(&1));
+    }
+
+    #[test]
+    fn exact_lookup_matches_the_nearest_colour_search() {
+        let colors = panel_palette();
+        let map = PanelPalette { colors };
+
+        for color in colors {
+            let pixel = image::Rgb(color.rgb());
+            assert_eq!(map.exact_index_of(&pixel), Some(map.index_of(&pixel)));
+        }
     }
 }

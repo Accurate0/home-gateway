@@ -5,6 +5,7 @@ mod api;
 mod auth;
 mod config;
 mod cron_tasks;
+mod eink;
 mod endpoints;
 mod fuelwatch;
 mod ingest;

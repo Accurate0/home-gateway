@@ -101,24 +101,29 @@ pub async fn image(
     Auth(auth): Auth,
     axum::extract::Path(hash): axum::extract::Path<String>,
     Query(params): Query<ImageParams>,
-) -> Result<Vec<u8>, AppError> {
+) -> Result<bytes::Bytes, AppError> {
     auth.require(&Scope::new(Resource::Epd, Action::Read))
         .map_err(AppError::StatusCode)?;
 
     let window = params.window()?;
 
-    let Some(key) = packed_cache_key(&hash) else {
+    if packed_cache_key(&hash).is_none() {
         tracing::warn!(
             device_id = %params.device_id,
             "rejected a frame request whose hash is not a frame hash"
         );
         return Err(AppError::StatusCode(StatusCode::BAD_REQUEST));
-    };
+    }
 
-    let Ok(packed) = state.handles.expect::<S3>().get_object(&key).await else {
+    let Some(packed) = state
+        .handles
+        .expect::<EinkDisplayManager>()
+        .packed_frame(&hash)
+        .await
+    else {
         tracing::warn!(
             device_id = %params.device_id,
-            key = %key,
+            hash = %hash,
             "pinned frame is not in the packed cache"
         );
         return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
@@ -127,7 +132,7 @@ pub async fn image(
     if packed.len() != PACKED_FRAME_SIZE {
         tracing::error!(
             device_id = %params.device_id,
-            key = %key,
+            hash = %hash,
             len = packed.len(),
             "pinned frame is not {PACKED_FRAME_SIZE} bytes"
         );
@@ -135,7 +140,7 @@ pub async fn image(
     }
 
     Ok(match window {
-        Some(window) => crop_packed(&packed, window),
+        Some(window) => bytes::Bytes::from(crop_packed(&packed, window)),
         None => packed,
     })
 }

@@ -6,10 +6,7 @@ pub mod sources;
 pub mod steps;
 
 mod config;
-mod packed;
 mod store;
-
-pub use packed::Packed;
 
 use crate::device_registry::DeviceRegistry;
 use crate::eink::flag::epd_flag_config;
@@ -41,7 +38,11 @@ pub struct EinkDisplayManager {
     sources: Arc<SourceRegistry>,
     sleep: Arc<SleepSource>,
     frames: Arc<FramePipeline>,
+    packed_frames: moka::future::Cache<String, bytes::Bytes>,
 }
+
+const PACKED_CACHE_BYTES: u64 = 16 * 1024 * 1024;
+const PACKED_CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
 
 impl EinkDisplayManager {
     pub fn new(
@@ -73,6 +74,11 @@ impl EinkDisplayManager {
             sources: Arc::new(sources),
             sleep: Arc::new(SleepSource),
             frames: Arc::new(frames),
+            packed_frames: moka::future::Cache::builder()
+                .max_capacity(PACKED_CACHE_BYTES)
+                .weigher(|_, frame: &bytes::Bytes| frame.len().try_into().unwrap_or(u32::MAX))
+                .time_to_live(PACKED_CACHE_TTL)
+                .build(),
         }
     }
 
@@ -227,37 +233,101 @@ impl EinkDisplayManager {
         skip_all,
         fields(hash = %plan.hash, cached = tracing::field::Empty)
     )]
-    pub async fn ensure_packed(&self, plan: &RenderPlan) -> Option<Packed> {
-        let Some(key) = packed_cache_key(&plan.hash) else {
-            tracing::error!(hash = %plan.hash, "render plan hash is not a frame hash");
-            return None;
-        };
-
-        let cached = self.s3.get_object_metadata(&key).await;
-        tracing::Span::current().record("cached", matches!(cached, Ok(Some(_))));
-
-        match cached {
-            Ok(Some(_)) => return Some(Packed::Cached),
-            Ok(None) => tracing::debug!(key = %key, "packed frame not cached, rendering it"),
-            Err(e) => {
-                tracing::warn!(key = %key, "failed to check the packed cache: {e}");
-                return None;
-            }
+    pub async fn ensure_packed(&self, plan: &RenderPlan) -> Option<bytes::Bytes> {
+        if let Some(frame) = self.packed_frame(&plan.hash).await {
+            tracing::Span::current().record("cached", true);
+            return Some(frame);
         }
 
-        match self.render_packed(plan).await {
-            Ok(packed) => {
-                if let Err(e) = self.s3.put_object(&key, &packed, None).await {
-                    tracing::warn!(key = %key, "failed to cache packed frame: {e}");
-                }
+        tracing::Span::current().record("cached", false);
 
-                Some(Packed::Rendered(packed))
-            }
+        match self.render_packed(plan).await {
+            Ok(packed) => Some(self.store_packed(&plan.hash, packed).await),
             Err(e) => {
-                tracing::warn!(key = %key, "failed to prepare the packed frame: {}", e.message());
+                tracing::warn!(
+                    hash = %plan.hash,
+                    "failed to prepare the packed frame: {}",
+                    e.message()
+                );
                 None
             }
         }
+    }
+
+    #[tracing::instrument(name = "eink.prefill_packed", skip_all)]
+    pub async fn prefill_packed(&self) {
+        let warmed = futures::future::join_all(self.device_ids().into_iter().map(|device_id| {
+            let manager = self.clone();
+
+            async move {
+                let Some(display) = manager.resolve(&device_id).await else {
+                    return false;
+                };
+
+                let Some(plan) = manager.plan(&display).await else {
+                    return false;
+                };
+
+                manager.packed_frame(&plan.hash).await.is_some()
+            }
+        }))
+        .await;
+
+        tracing::info!(
+            warmed = warmed.iter().filter(|hit| **hit).count(),
+            displays = warmed.len(),
+            "prefilled the packed frame cache"
+        );
+    }
+
+    pub async fn packed_frame(&self, hash: &str) -> Option<bytes::Bytes> {
+        if let Some(frame) = self.packed_frames.get(hash).await {
+            return Some(frame);
+        }
+
+        let key = match packed_cache_key(hash) {
+            Some(key) => key,
+            None => {
+                tracing::error!(hash = %hash, "refusing to fetch a frame whose hash is malformed");
+                return None;
+            }
+        };
+
+        match self.s3.get_object(&key).await {
+            Ok(bytes) => {
+                let frame = bytes::Bytes::from(bytes);
+                self.packed_frames
+                    .insert(hash.to_string(), frame.clone())
+                    .await;
+
+                Some(frame)
+            }
+            Err(e) => {
+                tracing::debug!(key = %key, "packed frame is not in the s3 cache: {e}");
+                None
+            }
+        }
+    }
+
+    pub async fn store_packed(&self, hash: &str, packed: Vec<u8>) -> bytes::Bytes {
+        let frame = bytes::Bytes::from(packed);
+
+        self.packed_frames
+            .insert(hash.to_string(), frame.clone())
+            .await;
+
+        if let Some(key) = packed_cache_key(hash) {
+            let s3 = self.s3.clone();
+            let upload = frame.clone();
+
+            tokio::spawn(async move {
+                if let Err(e) = s3.put_object(&key, &upload, None).await {
+                    tracing::warn!(key = %key, "failed to cache packed frame: {e}");
+                }
+            });
+        }
+
+        frame
     }
 
     async fn render_packed(&self, plan: &RenderPlan) -> Result<Vec<u8>, AppError> {

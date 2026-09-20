@@ -1,5 +1,5 @@
 use super::manager::resolve::ResolvedDisplay;
-use super::panel::{PartialWindow, dirty_window, packed_cache_key};
+use super::panel::{PartialWindow, dirty_window};
 
 #[tracing::instrument(
     name = "eink.partial_window",
@@ -8,11 +8,11 @@ use super::panel::{PartialWindow, dirty_window, packed_cache_key};
 )]
 pub async fn resolve_partial_window(
     eink: &crate::repo::EinkRepo,
-    s3: &crate::integrations::s3::S3,
     display: &ResolvedDisplay,
     current_image_hash: Option<&str>,
     new_hash: &str,
-    new_packed: Option<&[u8]>,
+    previous_packed: Option<&[u8]>,
+    new_packed: &[u8],
 ) -> Option<PartialWindow> {
     let device_id = display.device_id.as_str();
     tracing::Span::current().record("device_id", device_id);
@@ -40,24 +40,11 @@ pub async fn resolve_partial_window(
         return None;
     }
 
-    let previous = s3
-        .get_object(&packed_cache_key(current_image_hash)?)
-        .await
-        .ok();
-    let fetched;
-    let next = match new_packed {
-        Some(bytes) => Some(bytes),
-        None => {
-            fetched = s3.get_object(&packed_cache_key(new_hash)?).await.ok();
-            fetched.as_deref()
+    let window = match previous_packed {
+        Some(previous) => {
+            tracing::info_span!("eink.dirty_window").in_scope(|| dirty_window(previous, new_packed))
         }
-    };
-
-    let window = match (previous.as_deref(), next) {
-        (Some(previous), Some(next)) => {
-            tracing::info_span!("eink.dirty_window").in_scope(|| dirty_window(previous, next))
-        }
-        _ => None,
+        None => None,
     };
 
     let Some(window) = window else {

@@ -1,5 +1,6 @@
 use home_gateway::actors::root::RootSupervisor;
 use home_gateway::api::{SchemaParts, build_router, build_schema};
+use home_gateway::eink::EinkDisplayManager;
 use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::home_assistant::HomeAssistant;
@@ -72,6 +73,8 @@ async fn main() -> anyhow::Result<()> {
     let home_assistant = state.handles.get::<HomeAssistant>().cloned();
     let home_assistant_websocket = state.settings.home_assistant.websocket;
 
+    let eink = state.handles.expect::<EinkDisplayManager>().clone();
+
     let router = build_router(state, telemetry.metrics_registry);
 
     startup::tasks::run(
@@ -86,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
             feature_flag_client,
             event_bus,
             root_supervisor,
+            eink,
         },
     )
     .await

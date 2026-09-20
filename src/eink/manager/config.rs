@@ -54,15 +54,29 @@ impl EinkDisplayManager {
             config.firmware_url = Some(format!("{HOST}/firmware?device_id={}", resolved.device_id));
         }
 
-        let Some(plan) = self.plan(resolved).await else {
+        let wants_partial = resolved.partial_enabled && !resolved.clear_screen;
+
+        let previous = async {
+            match report.current_image_hash.filter(|_| wants_partial) {
+                Some(hash) => self.packed_frame(hash).await,
+                None => None,
+            }
+        };
+
+        let planned = async {
+            let plan = self.plan(resolved).await?;
+            let packed = self.ensure_packed(&plan).await?;
+
+            Some((plan, packed))
+        };
+
+        let (previous, planned) = tokio::join!(previous, planned);
+
+        let Some((plan, packed)) = planned else {
             tracing::warn!(
                 device_id = resolved.device_id,
                 "no image to serve, skipping this cycle"
             );
-            return config;
-        };
-
-        let Some(packed) = self.ensure_packed(&plan).await else {
             return config;
         };
 
@@ -71,11 +85,11 @@ impl EinkDisplayManager {
             false => {
                 resolve_partial_window(
                     &self.eink,
-                    &self.s3,
                     resolved,
                     report.current_image_hash,
                     &plan.hash,
-                    packed.bytes(),
+                    previous.as_deref(),
+                    &packed,
                 )
                 .await
             }

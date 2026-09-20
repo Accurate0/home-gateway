@@ -3,6 +3,7 @@ use tokio::task::{JoinHandle, JoinSet};
 use tokio_util::sync::CancellationToken;
 
 use crate::device_registry::DeviceRegistry;
+use crate::eink::EinkDisplayManager;
 use crate::error::MainError;
 use crate::event_bus::EventBus;
 use crate::integrations::feature_flag::{self, FeatureFlagClient};
@@ -21,6 +22,7 @@ pub struct Tasks {
     pub feature_flag_client: FeatureFlagClient,
     pub event_bus: EventBus,
     pub root_supervisor: JoinHandle<()>,
+    pub eink: EinkDisplayManager,
 }
 
 pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Result<()> {
@@ -34,7 +36,10 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         feature_flag_client,
         event_bus,
         root_supervisor,
+        eink,
     } = tasks;
+
+    tokio::spawn(async move { eink.prefill_packed().await });
 
     let listener = tokio::net::TcpListener::bind(listen_addr).await?;
 
