@@ -2,12 +2,98 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Map, Value};
 
+use super::description::{ApiAlias, ApiClass, ApiDescription, ApiField, ApiFunction, ApiNamespace};
 use super::signature::{LuaClass, LuaField, LuaNamespace, LuaType};
 
 #[derive(Default)]
 struct Definitions {
     aliases: BTreeMap<String, String>,
-    classes: BTreeMap<&'static str, String>,
+    classes: BTreeMap<&'static str, Vec<ApiField>>,
+}
+
+pub fn describe(
+    namespaces: &[LuaNamespace],
+    globals: &[LuaField],
+    classes: &[&'static LuaClass],
+) -> ApiDescription {
+    let mut definitions = Definitions::default();
+
+    for class in classes {
+        definitions.class(class);
+    }
+
+    let globals = globals
+        .iter()
+        .map(|global| definitions.field(global.name, &global.ty))
+        .collect();
+
+    let namespaces = namespaces
+        .iter()
+        .map(|namespace| {
+            let fields = namespace
+                .fields
+                .iter()
+                .map(|field| definitions.field(field.name, &field.ty))
+                .collect();
+
+            let functions = namespace
+                .functions
+                .iter()
+                .map(|function| {
+                    let params: Vec<ApiField> = function
+                        .params
+                        .iter()
+                        .map(|param| definitions.field(param.name, &param.ty))
+                        .collect();
+
+                    let returns = function
+                        .returns
+                        .as_ref()
+                        .map(|returns| definitions.lua_type(returns));
+
+                    ApiFunction {
+                        signature: ApiFunction::build_signature(
+                            namespace.name,
+                            function.name,
+                            &params,
+                        ),
+                        name: function.name.to_owned(),
+                        params,
+                        returns,
+                        scope: function.scope.map(|scope| scope.to_string()),
+                    }
+                })
+                .collect();
+
+            ApiNamespace {
+                name: namespace.name.to_owned(),
+                fields,
+                functions,
+            }
+        })
+        .collect();
+
+    let aliases = definitions
+        .aliases
+        .into_iter()
+        .map(|(name, ty)| ApiAlias { name, ty })
+        .collect();
+
+    let classes = definitions
+        .classes
+        .into_iter()
+        .map(|(name, fields)| ApiClass {
+            name: name.to_owned(),
+            fields,
+        })
+        .collect();
+
+    ApiDescription {
+        namespaces,
+        globals,
+        aliases,
+        classes,
+    }
 }
 
 pub fn render(
@@ -15,78 +101,86 @@ pub fn render(
     globals: &[LuaField],
     classes: &[&'static LuaClass],
 ) -> String {
-    let mut definitions = Definitions::default();
-    let mut body = String::new();
+    let description = describe(namespaces, globals, classes);
+    let mut out = String::from("---@meta\n\n");
 
-    for class in classes {
-        definitions.class(class);
+    for alias in &description.aliases {
+        out.push_str(&format!("---@alias gw.{} {}\n\n", alias.name, alias.ty));
     }
 
-    for global in globals {
-        let ty = definitions.lua_type(&global.ty);
-        body.push_str(&format!("---@type {ty}\n{} = {{}}\n\n", global.name));
-    }
+    for class in &description.classes {
+        out.push_str(&format!("---@class gw.{}\n", class.name));
 
-    for namespace in namespaces {
-        body.push_str(&format!("---@class gw.api.{}\n", namespace.name));
-
-        for field in namespace.fields {
-            let field = definitions.field(field.name, &field.ty);
-            body.push_str(&format!("---@field {field}\n"));
+        for field in &class.fields {
+            out.push_str(&format!("---@field {}\n", annotation(field)));
         }
 
-        body.push_str(&format!("{} = {{}}\n\n", namespace.name));
+        out.push('\n');
+    }
 
-        for function in namespace.functions {
-            if let Some(scope) = function.scope {
-                body.push_str(&format!("---Requires the `{scope}` scope.\n"));
+    for global in &description.globals {
+        out.push_str(&format!(
+            "---@type {}\n{} = {{}}\n\n",
+            global.ty, global.name
+        ));
+    }
+
+    for namespace in &description.namespaces {
+        out.push_str(&format!("---@class gw.api.{}\n", namespace.name));
+
+        for field in &namespace.fields {
+            out.push_str(&format!("---@field {}\n", annotation(field)));
+        }
+
+        out.push_str(&format!("{} = {{}}\n\n", namespace.name));
+
+        for function in &namespace.functions {
+            if let Some(scope) = &function.scope {
+                out.push_str(&format!("---Requires the `{scope}` scope.\n"));
             }
 
-            for param in function.params {
-                let param = definitions.field(param.name, &param.ty);
-                body.push_str(&format!("---@param {param}\n"));
+            for param in &function.params {
+                out.push_str(&format!("---@param {}\n", annotation(param)));
             }
 
             if let Some(returns) = &function.returns {
-                let returns = definitions.lua_type(returns);
-                body.push_str(&format!("---@return {returns}\n"));
+                out.push_str(&format!("---@return {returns}\n"));
             }
 
             let params = function
                 .params
                 .iter()
-                .map(|param| param.name)
+                .map(|param| param.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            body.push_str(&format!(
+            out.push_str(&format!(
                 "function {}.{}({params}) end\n\n",
                 namespace.name, function.name
             ));
         }
     }
 
-    let mut out = String::from("---@meta\n\n");
-
-    for (name, rendered) in &definitions.aliases {
-        out.push_str(&format!("---@alias gw.{name} {rendered}\n\n"));
-    }
-
-    for rendered in definitions.classes.values() {
-        out.push_str(rendered);
-        out.push('\n');
-    }
-
-    out.push_str(&body);
-
     format!("{}\n", out.trim_end())
 }
 
+fn annotation(field: &ApiField) -> String {
+    let marker = if field.optional { "?" } else { "" };
+
+    format!("{}{marker} {}", field.name, field.ty)
+}
+
 impl Definitions {
-    fn field(&mut self, name: &str, ty: &LuaType) -> String {
-        match ty {
-            LuaType::Optional(inner) => format!("{name}? {}", self.lua_type(inner)),
-            other => format!("{name} {}", self.lua_type(other)),
+    fn field(&mut self, name: &str, ty: &LuaType) -> ApiField {
+        let (ty, optional) = match ty {
+            LuaType::Optional(inner) => (self.lua_type(inner), true),
+            other => (self.lua_type(other), false),
+        };
+
+        ApiField {
+            name: name.to_owned(),
+            ty,
+            optional,
         }
     }
 
@@ -109,15 +203,15 @@ impl Definitions {
 
     fn class(&mut self, class: &'static LuaClass) -> String {
         if !self.classes.contains_key(class.name) {
-            self.classes.insert(class.name, String::new());
+            self.classes.insert(class.name, Vec::new());
 
-            let mut rendered = format!("---@class gw.{}\n", class.name);
-            for field in class.fields {
-                let field = self.field(field.name, &field.ty);
-                rendered.push_str(&format!("---@field {field}\n"));
-            }
+            let fields = class
+                .fields
+                .iter()
+                .map(|field| self.field(field.name, &field.ty))
+                .collect();
 
-            self.classes.insert(class.name, rendered);
+            self.classes.insert(class.name, fields);
         }
 
         format!("gw.{}", class.name)

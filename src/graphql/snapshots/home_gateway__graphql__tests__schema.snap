@@ -505,6 +505,45 @@ type LightUpdate {
 	colour: String
 }
 
+type LuaAliasObject {
+	name: String!
+	type: String!
+}
+
+type LuaApiObject {
+	namespaces: [LuaNamespaceObject!]!
+	globals: [LuaFieldObject!]!
+	classes: [LuaClassObject!]!
+	aliases: [LuaAliasObject!]!
+	definitions: String!
+}
+
+type LuaClassObject {
+	name: String!
+	fields: [LuaFieldObject!]!
+}
+
+type LuaFieldObject {
+	name: String!
+	type: String!
+	optional: Boolean!
+	declaration: String!
+}
+
+type LuaFunctionObject {
+	name: String!
+	params: [LuaFieldObject!]!
+	returns: String
+	scope: String
+	signature: String!
+}
+
+type LuaNamespaceObject {
+	name: String!
+	fields: [LuaFieldObject!]!
+	functions: [LuaFunctionObject!]!
+}
+
 type MediaPlayerEntity {
 	category: EntityCategory!
 	id: String!
@@ -770,6 +809,7 @@ type QueryRoot {
 	adhocCronTasks: [AdhocCronTaskStatus!]!
 	adhocTasks: [AdhocTaskStatus!]!
 	pushNotifications(limit: Int): [PushNotification!]!
+	luaApi: LuaApiObject!
 }
 
 enum RedditTimespan {

@@ -33,7 +33,8 @@ use crate::lua::sources::load_configured;
 use crate::lua::state::StateLua;
 use crate::lua::time::TimeLua;
 use crate::lua::{
-    LuaApiRegistry, LuaClass, LuaEngine, LuaField, LuaNamespace, LuaType, builtin, typegen,
+    ApiDescription, LuaApiRegistry, LuaClass, LuaEngine, LuaField, LuaNamespace, LuaType, builtin,
+    typegen,
 };
 use crate::settings::Settings;
 use crate::state::HandleRegistry;
@@ -143,7 +144,19 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .build()
 }
 
+pub fn api_description(home_assistant: bool) -> ApiDescription {
+    typegen::describe(&namespaces(home_assistant), GLOBALS, &[&RESPONSE])
+}
+
+pub fn definitions(home_assistant: bool) -> String {
+    typegen::render(&namespaces(home_assistant), GLOBALS, &[&RESPONSE])
+}
+
 pub fn type_definitions() -> String {
+    definitions(true)
+}
+
+fn namespaces(home_assistant: bool) -> Vec<LuaNamespace> {
     let mut namespaces = vec![
         LuaNamespace {
             name: "gw",
@@ -157,9 +170,9 @@ pub fn type_definitions() -> String {
         },
     ];
 
-    namespaces.extend(registry(true).api());
+    namespaces.extend(registry(home_assistant).api());
 
-    typegen::render(&namespaces, GLOBALS, &[&RESPONSE])
+    namespaces
 }
 
 pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<LuaEngine> {

@@ -79,7 +79,7 @@ scopes! {
     IngestSynergy => "ingest.synergy" [Write],
     IngestUnifi => "ingest.unifi" [Write],
     Light => "light" [Read, Write],
-    Lua => "lua" [Write],
+    Lua => "lua" [Read, Write],
     MediaPlayer => "media.player" [Read, Write],
     Mqtt => "mqtt" [Write],
     Presence => "presence" [Read],

@@ -10,6 +10,7 @@ import ModesPage from "./components/ModesPage";
 import { cn } from "@/lib/utils";
 
 const GraphiqlPage = lazy(() => import("./components/GraphiqlPage"));
+const LuaPlaygroundPage = lazy(() => import("./components/LuaPlaygroundPage"));
 
 const TABS = [
   { to: "/dashboard", label: "Dashboard" },
@@ -19,6 +20,7 @@ const TABS = [
   { to: "/batteries", label: "Batteries" },
   { to: "/modes", label: "Modes" },
   { to: "/home-assistant", label: "Home Assistant" },
+  { to: "/lua", label: "Lua" },
   { to: "/graphql", label: "GraphQL" },
 ];
 
@@ -64,6 +66,7 @@ export default function App() {
           <Route path="/batteries" element={<BatteryPage />} />
           <Route path="/modes" element={<ModesPage />} />
           <Route path="/home-assistant" element={<HomeAssistantPage />} />
+          <Route path="/lua" element={<LuaPlaygroundPage />} />
           <Route path="/graphql" element={<GraphiqlPage />} />
         </Routes>
       </Suspense>

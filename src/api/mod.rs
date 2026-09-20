@@ -68,7 +68,7 @@ fn metric_route(req: &Request) -> String {
 
 async fn log_request(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
-    if path.contains("/health") {
+    if path.contains("/health") || path.contains("/metrics") {
         return next.run(req).await;
     }
 

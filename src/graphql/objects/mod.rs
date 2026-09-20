@@ -4,6 +4,7 @@ pub mod energy_object;
 pub mod entity_object;
 pub mod fuelwatch_object;
 pub mod home_assistant_object;
+pub mod lua_api_object;
 pub mod mode_object;
 pub mod mode_status;
 pub mod notification_interaction_kind;
