@@ -44,6 +44,19 @@ pub struct HomeAssistantIngest {
     pub shared_actor_state: AppState,
 }
 
+fn ingest_error(entity_id: &str, kind: &'static str, error: &str) {
+    let _errored = tracing::error_span!(
+        parent: None,
+        "home_assistant.ingest.error",
+        force_sample = "true",
+        entity_id = %entity_id,
+        kind,
+        otel.status_code = "ERROR",
+        otel.status_message = %error,
+    )
+    .entered();
+}
+
 impl HomeAssistantIngest {
     pub const NAME: &str = "home-assistant-ingest";
 
@@ -119,6 +132,7 @@ impl HomeAssistantIngest {
             .await
         {
             tracing::error!("failed to persist home assistant state update: {e}");
+            ingest_error(entity_id, "persist", &e.to_string());
         } else if write_latest_state {
             state
                 .last_latest_state_write
@@ -178,6 +192,7 @@ impl HomeAssistantIngest {
                     device.profile.slug
                 );
                 crate::tracing_context::record_current_error(&e.to_string());
+                ingest_error(entity_id, "decode", &e.to_string());
 
                 return;
             }

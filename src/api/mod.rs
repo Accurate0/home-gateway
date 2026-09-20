@@ -57,6 +57,15 @@ use crate::settings::SettingsContainer;
 use crate::state::{AppState, HandleRegistry};
 use sqlx::{Pool, Postgres};
 
+const UNMATCHED_ROUTE: &str = "unmatched";
+
+fn metric_route(req: &Request) -> String {
+    req.extensions()
+        .get::<axum::extract::MatchedPath>()
+        .map(|matched| matched.as_str().to_owned())
+        .unwrap_or_else(|| UNMATCHED_ROUTE.to_owned())
+}
+
 async fn log_request(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
     if path.contains("/health") {
@@ -64,13 +73,19 @@ async fn log_request(req: Request, next: Next) -> Response {
     }
 
     let method = req.method().clone();
+    let route = metric_route(&req);
     let start = std::time::Instant::now();
     let response = next.run(req).await;
+    let elapsed = start.elapsed();
+    let status = response.status().as_u16();
+
+    crate::metrics::record_rest_request(method.to_string(), route, status, elapsed);
+
     tracing::info!(
         %method,
         path = %path,
-        status = response.status().as_u16(),
-        elapsed_ms = start.elapsed().as_millis() as u64,
+        status,
+        elapsed_ms = elapsed.as_millis() as u64,
         "http request"
     );
     response
@@ -219,7 +234,42 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::settings::endpoint::RESERVED_PREFIXES;
+    use std::sync::{Arc, Mutex};
+
+    #[tokio::test]
+    async fn the_metric_route_is_the_template_not_the_concrete_path() {
+        let seen: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+        let captured = seen.clone();
+
+        let inner = Router::new()
+            .route("/epd/image/{hash}", get(|| async { "ok" }))
+            .layer(from_fn(move |req: Request, next: Next| {
+                let captured = captured.clone();
+                async move {
+                    *captured.lock().unwrap() = Some(metric_route(&req));
+                    next.run(req).await
+                }
+            }));
+
+        let app = Router::new().nest("/v1", inner);
+
+        let request = Request::builder()
+            .uri("/v1/epd/image/abc123")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        tower::ServiceExt::oneshot(app, request).await.unwrap();
+
+        let route = seen.lock().unwrap().clone();
+
+        assert_eq!(
+            route.as_deref(),
+            Some("/v1/epd/image/{hash}"),
+            "the metric label must be the route template, or every hash becomes its own series"
+        );
+    }
 
     const BUILT_IN: &[&str] = &[
         "/graphql",

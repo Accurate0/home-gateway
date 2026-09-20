@@ -978,11 +978,92 @@
    ]
   },
   {
+   "id": 50,
+   "type": "row",
+   "title": "REST API",
+   "collapsed": false,
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 126 },
+   "panels": []
+  },
+  {
+   "id": 51,
+   "type": "timeseries",
+   "title": "REST requests by route",
+   "description": "Labelled by the matched route template, so path parameters never become their own series.",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 127 },
+   "fieldConfig": {
+    "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(15, sum by (route) (rate(home_gateway_rest_requests_total_total[15m])))",
+     "legendFormat": "{{route}}"
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "type": "timeseries",
+   "title": "REST request duration (p95, top 10)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 127 },
+   "fieldConfig": {
+    "defaults": { "unit": "ms" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, histogram_quantile(0.95, sum by (le, route) (rate(home_gateway_rest_request_duration_milliseconds_bucket[15m]))))",
+     "legendFormat": "{{route}}"
+    }
+   ]
+  },
+  {
+   "id": 53,
+   "type": "timeseries",
+   "title": "REST responses by status",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 135 },
+   "fieldConfig": {
+    "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (status) (rate(home_gateway_rest_requests_total_total[15m]))",
+     "legendFormat": "{{status}}"
+    }
+   ]
+  },
+  {
+   "id": 54,
+   "type": "timeseries",
+   "title": "REST error rate by route (4xx / 5xx)",
+   "datasource": { "type": "prometheus", "uid": "${datasource}" },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 135 },
+   "fieldConfig": {
+    "defaults": { "unit": "reqps" },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (route, status) (rate(home_gateway_rest_requests_total_total{status=~\"4..|5..\"}[15m]))",
+     "legendFormat": "{{route}} {{status}}"
+    }
+   ]
+  },
+  {
    "id": 26,
    "type": "row",
    "title": "Traces",
    "collapsed": false,
-   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 126 },
+   "gridPos": { "h": 1, "w": 24, "x": 0, "y": 144 },
    "panels": []
   },
   {
@@ -991,7 +1072,7 @@
    "title": "Span rate by name",
    "description": "From Tempo's span-metrics generator. This is what the trace volume is made of; watch it after changing sampling.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 127 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 145 },
    "fieldConfig": {
     "defaults": { "unit": "ops", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
     "overrides": []
@@ -1010,7 +1091,7 @@
    "title": "Span error ratio",
    "description": "Share of spans reporting STATUS_CODE_ERROR, by span name.",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 127 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 145 },
    "fieldConfig": {
     "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
     "overrides": []
@@ -1028,7 +1109,7 @@
    "type": "timeseries",
    "title": "Span latency (p95)",
    "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 135 },
+   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 153 },
    "fieldConfig": {
     "defaults": { "unit": "s" },
     "overrides": []
@@ -1045,9 +1126,9 @@
    "id": 30,
    "type": "traces",
    "title": "Recent errored traces",
-   "description": "An mqtt ingest error is emitted as its own always-sampled trace, so it survives even when its parent was sampled out.",
+   "description": "Ingest errors are emitted as their own always-sampled traces (mqtt.ingest.error, home_assistant.ingest.error), so they survive even when the parent was sampled out.",
    "datasource": { "type": "tempo", "uid": "tempo" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 135 },
+   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 153 },
    "fieldConfig": {
     "defaults": {},
     "overrides": []

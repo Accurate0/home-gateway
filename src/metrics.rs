@@ -58,6 +58,10 @@ struct Instruments {
     db_query_duration: Histogram<f64>,
     graphql_operations_total: Counter<u64>,
     graphql_operation_duration: Histogram<f64>,
+    /// REST requests, labelled by method, matched route and status code.
+    rest_requests_total: Counter<u64>,
+    /// Wall-clock time to serve a REST request.
+    rest_request_duration: Histogram<f64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -196,6 +200,19 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
                 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0,
             ])
             .build(),
+        rest_requests_total: meter
+            .u64_counter("home_gateway_rest_requests_total")
+            .with_description("REST requests by method, matched route and status code")
+            .build(),
+        rest_request_duration: meter
+            .f64_histogram("home_gateway_rest_request_duration_milliseconds")
+            .with_description(
+                "REST request duration in milliseconds by method, matched route and status code",
+            )
+            .with_boundaries(vec![
+                1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0,
+            ])
+            .build(),
     }
 });
 
@@ -227,6 +244,19 @@ pub fn record_graphql_operation(operation: String, outcome: &'static str, elapse
     INSTRUMENTS.graphql_operations_total.add(1, &labels);
     INSTRUMENTS
         .graphql_operation_duration
+        .record(elapsed.as_secs_f64() * 1000.0, &labels);
+}
+
+pub fn record_rest_request(method: String, route: String, status: u16, elapsed: Duration) {
+    let labels = [
+        KeyValue::new("method", method),
+        KeyValue::new("route", route),
+        KeyValue::new("status", status.to_string()),
+    ];
+
+    INSTRUMENTS.rest_requests_total.add(1, &labels);
+    INSTRUMENTS
+        .rest_request_duration
         .record(elapsed.as_secs_f64() * 1000.0, &labels);
 }
 
