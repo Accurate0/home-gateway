@@ -1157,7 +1157,7 @@
    "title": "E-ink check-in traces",
    "description": "The display wakes hourly and POSTs /v1/epd/config, then GETs the image. A gap other than the nightly sleep means it did not wake. Tempo's tag-value lookup drops these low-frequency routes, so query them by TraceQL rather than picking the route from a dropdown.",
    "datasource": { "type": "tempo", "uid": "tempo" },
-   "gridPos": { "h": 8, "w": 12, "x": 0, "y": 162 },
+   "gridPos": { "h": 8, "w": 24, "x": 0, "y": 162 },
    "fieldConfig": {
     "defaults": {},
     "overrides": [
@@ -1185,28 +1185,6 @@
      "queryType": "traceql",
      "query": "{resource.service.name=\"home-gateway\" && span.http.route=~\"/v1/epd/.*\"}",
      "limit": 50
-    }
-   ]
-  },
-  {
-   "id": 57,
-   "type": "timeseries",
-   "title": "E-ink check-ins per hour",
-   "description": "From span metrics, so it survives trace sampling. Expect one of each per hour outside the nightly sleep window.",
-   "datasource": { "type": "prometheus", "uid": "${datasource}" },
-   "gridPos": { "h": 8, "w": 12, "x": 12, "y": 162 },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": { "fillOpacity": 20, "drawStyle": "bars" }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (span_name) (increase(traces_spanmetrics_calls_total{service=\"home-gateway\", span_name=~\".*epd.*\"}[1h]))",
-     "legendFormat": "{{span_name}}"
     }
    ]
   }
