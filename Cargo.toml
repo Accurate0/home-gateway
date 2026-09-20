@@ -27,18 +27,18 @@ chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.15.23", features = ["yaml"] }
 itertools = "0.15.0"
 gcp_auth = "0.12"
-log = "0.4.32"
+log = "0.4.34"
 phf = { version = "0.14", features = ["macros"] }
 ractor = "0.16.0"
 rumqttc = "0.25.1"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
+serde_json = { version = "1.0.150", features = ["preserve_order"] }
 sunrise = "3"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "tls-rustls", "macros", "migrate", "chrono", "uuid"] }
 thiserror = "2.0.18"
 tokio-util = "0.7.18"
 tower = { version = "0.5.3", features = ["load-shed"] }
-uuid = { version = "1.23.2", features = ["v4"] }
+uuid = { version = "1.26.1", features = ["v4"] }
 open-feature = "0.3"
 openfeature-provider = { git = "https://github.com/Accurate0/inf-k8s.git", branch = "main" }
 chrono-tz = "0.10.4"
@@ -93,9 +93,9 @@ icalendar = { version = "0.17.13", features = ["parser"] }
 
 [build-dependencies]
 serde_yaml = "0.9.34"
-serde_json = "1.0.150"
+serde_json = { version = "1.0.150", features = ["preserve_order"] }
 yaml-include = "0.8"
-jsonschema = { version = "0.52", default-features = false }
+jsonschema = { version = "0.56", default-features = false }
 
 [[test]]
 name = "integration"
@@ -104,22 +104,22 @@ path = "tests/integration/main.rs"
 [dev-dependencies]
 opentelemetry_sdk = { version = "0.32.1", features = ["testing"] }
 pretty_assertions = "1.4.1"
-rstest = "0.26.1"
+rstest = "0.27.0"
 insta = "1"
 testcontainers = { version = "0.27.3", features = ["reusable-containers"] }
 testcontainers-modules = { version = "0.15.0", features = ["mosquitto"] }
 serial_test = "4.0.0"
-http-body-util = "0.1.3"
+http-body-util = "0.1.5"
 url = "2.5.8"
 tower = { version = "0.5.3", features = ["util"] }
 
 [workspace.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }
-reqwest = { version = "0.13.4", features = ["json", "stream", "cookies", "query", "rustls", "blocking"] }
+reqwest = { version = "0.13.5", features = ["json", "stream", "cookies", "query", "rustls", "blocking"] }
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
 anyhow = "1.0.102"
 http = "1.4.1"
-tower-http = { version = "0.7.0", features = ["cors", "trace"] }
+tower-http = { version = "0.7.1", features = ["cors", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 futures = "0.3.32"
