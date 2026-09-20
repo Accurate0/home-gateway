@@ -20,6 +20,12 @@ import {
   recordHistory,
   type LuaHistoryEntry,
 } from "@/lib/lua/history";
+import {
+  readDryRun,
+  readSidebar,
+  writeDryRun,
+  writeSidebar,
+} from "@/lib/lua/preferences";
 import type { LuaPlaygroundPageApiQuery } from "./__generated__/LuaPlaygroundPageApiQuery.graphql";
 import type { LuaPlaygroundPageExecuteMutation } from "./__generated__/LuaPlaygroundPageExecuteMutation.graphql";
 
@@ -92,10 +98,11 @@ export default function LuaPlaygroundPage() {
   const [apiError, setApiError] = useState<string | null>(null);
 
   const [script, setScript] = useState(LUA_EXAMPLES[0].script);
-  const [dryRun, setDryRun] = useState(true);
+  const [dryRun, setDryRun] = useState(readDryRun);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [running, setRunning] = useState(false);
   const [history, setHistory] = useState<LuaHistoryEntry[]>(readHistory);
+  const [sidebar, setSidebar] = useState(readSidebar);
 
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [commit] = useMutation<LuaPlaygroundPageExecuteMutation>(
@@ -152,6 +159,16 @@ export default function LuaPlaygroundPage() {
     latestRun.current = run;
   });
 
+  const toggleDryRun = (value: boolean) => {
+    setDryRun(value);
+    writeDryRun(value);
+  };
+
+  const toggleSidebar = (open: boolean) => {
+    setSidebar(open);
+    writeSidebar(open);
+  };
+
   const insert = (text: string) => {
     const instance = editor.current;
 
@@ -187,7 +204,7 @@ export default function LuaPlaygroundPage() {
         </button>
 
         <label className="flex cursor-pointer items-center gap-2 text-xs">
-          <Switch checked={dryRun} onCheckedChange={setDryRun} />
+          <Switch checked={dryRun} onCheckedChange={toggleDryRun} />
           <span className={dryRun ? "text-foreground" : "text-muted-foreground"}>
             dry run
           </span>
@@ -198,6 +215,15 @@ export default function LuaPlaygroundPage() {
         </span>
 
         <div className="ml-auto flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => toggleSidebar(!sidebar)}
+            title={sidebar ? "Hide the API panel" : "Show the API panel"}
+            className={BUTTON}
+          >
+            {sidebar ? "hide API" : "show API"}
+          </button>
+
           {LUA_EXAMPLES.map((example) => (
             <button
               key={example.name}
@@ -212,9 +238,19 @@ export default function LuaPlaygroundPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div
+        className={cn(
+          "grid gap-4",
+          sidebar && "lg:grid-cols-[minmax(0,1fr)_20rem]",
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="bg-card border-border h-[26rem] overflow-hidden rounded-2xl border">
+          <div
+            className={cn(
+              "bg-card border-border overflow-hidden rounded-2xl border",
+              sidebar ? "h-[26rem]" : "h-[38rem]",
+            )}
+          >
             <LuaEditor
               value={script}
               onChange={setScript}
@@ -256,9 +292,13 @@ export default function LuaPlaygroundPage() {
           </section>
         </div>
 
-        <div className="flex min-h-0 flex-col gap-4">
+        <div className={cn("flex min-h-0 flex-col gap-4", !sidebar && "hidden")}>
           {index ? (
-            <LuaApiExplorer index={index} onInsert={insert} />
+            <LuaApiExplorer
+              index={index}
+              onInsert={insert}
+              onCollapse={() => toggleSidebar(false)}
+            />
           ) : (
             <section className="bg-card border-border rounded-2xl border p-4">
               <p className="text-muted-foreground text-xs">

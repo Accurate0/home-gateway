@@ -12,6 +12,7 @@ import {
 type Props = {
   index: LuaApiIndex;
   onInsert: (text: string) => void;
+  onCollapse: () => void;
 };
 
 function matches(namespace: LuaNamespace, fn: LuaFunction, needle: string) {
@@ -22,7 +23,7 @@ function matches(namespace: LuaNamespace, fn: LuaFunction, needle: string) {
   );
 }
 
-export default function LuaApiExplorer({ index, onInsert }: Props) {
+export default function LuaApiExplorer({ index, onInsert, onCollapse }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [types, setTypes] = useState(false);
@@ -71,13 +72,23 @@ export default function LuaApiExplorer({ index, onInsert }: Props) {
           <h2 className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
             API
           </h2>
-          <button
-            type="button"
-            onClick={() => setTypes(true)}
-            className="text-muted-foreground hover:text-foreground cursor-pointer text-xs"
-          >
-            definitions
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTypes(true)}
+              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs"
+            >
+              definitions
+            </button>
+            <button
+              type="button"
+              onClick={onCollapse}
+              title="Hide the API panel"
+              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs"
+            >
+              hide
+            </button>
+          </div>
         </div>
         <input
           value={query}
