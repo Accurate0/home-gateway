@@ -26,7 +26,7 @@
     - binary_sensor.robot_dock_dirty_water_box
     - binary_sensor.robot_dock_mop_drying
     - binary_sensor.kitchen_robot_dock_cleaning_fluid
-  watchdog: { timeout: 12h }
+  watchdog: { timeout: 7d }
   roles:
     - type: roborock
       config:
@@ -42,7 +42,7 @@
   room: spare-room
   transport: valetudo
   address: rockrobo
-  watchdog: { timeout: 12h }
+  watchdog: { timeout: 7d }
   roles:
     - type: valetudo
       config:

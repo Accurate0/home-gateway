@@ -5,7 +5,7 @@
   transport: zigbee
   address: "0xa4c1389fe5cea26e"
   model: ts011f_plug
-  watchdog: { timeout: 1h }
+  watchdog: { timeout: 7d }
   roles:
     - type: smart_switch
       config:

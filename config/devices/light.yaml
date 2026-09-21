@@ -5,7 +5,7 @@
   transport: zigbee
   address: "0x54ef441000d4f05c"
   model: aqara_t1
-  watchdog: { timeout: 6h }
+  watchdog: { timeout: 24h }
   roles:
     - type: light
       config: { name: Closet Light }
