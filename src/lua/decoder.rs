@@ -13,7 +13,7 @@ use super::engine::{install_instruction_limit, sandbox, sandboxed_libs};
 
 pub struct LuaDecoder {
     lua: Lua,
-    kind: &'static str,
+    kind: String,
     max_instructions: u32,
     modules: BTreeMap<String, Table>,
 }
@@ -29,7 +29,7 @@ impl std::fmt::Debug for LuaDecoder {
 
 impl LuaDecoder {
     pub fn load(
-        kind: &'static str,
+        kind: &str,
         sources: &BTreeMap<String, String>,
         settings: &LuaSettings,
     ) -> Result<Self, LuaError> {
@@ -59,7 +59,7 @@ impl LuaDecoder {
 
         Ok(LuaDecoder {
             lua,
-            kind,
+            kind: kind.to_owned(),
             max_instructions: settings.max_instructions,
             modules,
         })

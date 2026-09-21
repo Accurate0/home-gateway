@@ -1,6 +1,7 @@
 ---@type ZigbeeModel
 return {
 	roles = { "light" },
+	capabilities = { "brightness", "colour_temp" },
 
 	decode = function(payload)
 		return {

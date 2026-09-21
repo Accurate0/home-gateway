@@ -83,7 +83,10 @@ impl EinkDisplayManager {
     }
 
     pub fn device_ids(&self) -> Vec<String> {
-        self.devices.eink_displays().keys().cloned().collect()
+        self.devices
+            .eink_displays()
+            .map(|(address, _)| address.clone())
+            .collect()
     }
 
     pub async fn resolve(&self, device_id: &str) -> Option<ResolvedDisplay> {

@@ -6,8 +6,8 @@ use crate::lua::{
     LuaCallContext, LuaClass, LuaField, LuaFunction, LuaModule, LuaParam, LuaType, schema,
 };
 use crate::settings::{
-    NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource,
-    validate_acknowledge,
+    NotificationSource, NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory,
+    NotifySource, validate_acknowledge,
 };
 
 use super::actions;
@@ -123,7 +123,11 @@ impl LuaModule for NotifyLua {
 
                     let tag = tag.unwrap_or_else(|| format!("workflow:{}", cx.origin));
 
-                    let notification = Notification::new(message.clone(), category, tag)
+                    let source = NotificationSource::Lua {
+                        origin: cx.origin.clone(),
+                    };
+
+                    let notification = Notification::new(source, message.clone(), category, tag)
                         .with_actions(resolved)
                         .with_acknowledge(acknowledge);
 

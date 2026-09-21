@@ -1,7 +1,7 @@
 ---@type ZigbeeModel
 return {
 	roles = { "battery", "environment" },
-	environment = { "temperature", "humidity", "pressure" },
+	capabilities = { "temperature", "humidity", "pressure" },
 
 	decode = function(payload)
 		return {

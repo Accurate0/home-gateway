@@ -299,10 +299,10 @@ pub fn record_lua(source: String, outcome: &'static str, elapsed: Duration, memo
     INSTRUMENTS.lua_memory.record(memory_bytes as u64, &labels);
 }
 
-pub fn record_lua_vm_setup(kind: &'static str, elapsed: Duration) {
+pub fn record_lua_vm_setup(kind: &str, elapsed: Duration) {
     INSTRUMENTS.lua_vm_setup_duration.record(
         elapsed.as_secs_f64() * 1000.0,
-        &[KeyValue::new("kind", kind)],
+        &[KeyValue::new("kind", kind.to_owned())],
     );
 }
 

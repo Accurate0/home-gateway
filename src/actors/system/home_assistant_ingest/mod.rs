@@ -206,7 +206,7 @@ impl HomeAssistantIngest {
         crate::decoding::dispatch(
             &self.shared_actor_state,
             event_id,
-            device,
+            &device,
             friendly_name,
             reading,
         )
@@ -258,7 +258,7 @@ impl Worker for HomeAssistantIngest {
         let settings = &self.shared_actor_state.settings;
 
         let decoder = LuaDecoder::load(
-            "home_assistant",
+            &crate::device_registry::Transport::HomeAssistant.to_string(),
             &settings.model_sources.home_assistant,
             &settings.lua,
         )?;

@@ -70,8 +70,9 @@ fn report_presence(handler: &ActorRef<FactoryMessage<(), PresenceMessage>>, pres
             key: (),
             msg: PresenceMessage::NewEvent(NewEvent {
                 event_id: Uuid::new_v4(),
-                entity: Entity::Decoded {
+                entity: Entity {
                     address: MOTION_ADDRESS.to_owned(),
+                    sensor: None,
                     presence: present,
                 },
                 traceparent: None,

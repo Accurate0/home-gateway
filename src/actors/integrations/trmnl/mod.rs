@@ -19,11 +19,11 @@ impl TrmnlActor {
     pub const NAME: &str = "trmnl";
 
     async fn check_battery(&self) -> Result<(), ractor::ActorProcessingErr> {
-        let registry = self.shared_actor_state.devices.trmnl_devices();
+        let registry = &self.shared_actor_state.devices;
         let devices = self.trmnl.list_devices().await?;
 
         for device in devices {
-            let Some((address, settings)) = match_device(&device, registry) else {
+            let Some((address, settings)) = match_device(&device, registry.trmnl_devices()) else {
                 continue;
             };
 
@@ -76,11 +76,11 @@ fn normalize(value: &str) -> String {
 
 fn match_device<'a>(
     device: &TrmnlDevice,
-    registry: &'a std::collections::HashMap<String, TrmnlDeviceSettings>,
+    mut registry: impl Iterator<Item = (&'a String, &'a TrmnlDeviceSettings)>,
 ) -> Option<(&'a String, &'a TrmnlDeviceSettings)> {
     let friendly = normalize(&device.friendly_id);
     let mac = normalize(&device.mac_address);
-    registry.iter().find(|(address, _)| {
+    registry.find(|(address, _)| {
         let key = normalize(address);
         key == friendly || key == mac
     })
@@ -182,20 +182,25 @@ mod tests {
     #[test]
     fn matches_by_friendly_id_case_insensitive() {
         let reg = registry("653VZN");
-        let matched = match_device(&device("653vzn", "12:34:56:78:9A:BC", Some(3.7)), &reg);
+        let matched = match_device(
+            &device("653vzn", "12:34:56:78:9A:BC", Some(3.7)),
+            reg.iter(),
+        );
         assert_eq!(matched.map(|(_, s)| s.id.as_str()), Some("fridge-trmnl"));
     }
 
     #[test]
     fn matches_by_mac_ignoring_colons_and_case() {
         let reg = registry("94a990cf8384");
-        let matched = match_device(&device("XXX", "94:A9:90:CF:83:84", Some(3.7)), &reg);
+        let matched = match_device(&device("XXX", "94:A9:90:CF:83:84", Some(3.7)), reg.iter());
         assert_eq!(matched.map(|(_, s)| s.id.as_str()), Some("fridge-trmnl"));
     }
 
     #[test]
     fn unmatched_device_returns_none() {
         let reg = registry("653VZN");
-        assert!(match_device(&device("OTHER", "00:00:00:00:00:00", Some(3.7)), &reg).is_none());
+        assert!(
+            match_device(&device("OTHER", "00:00:00:00:00:00", Some(3.7)), reg.iter()).is_none()
+        );
     }
 }

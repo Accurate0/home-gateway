@@ -2,5 +2,5 @@
 
 ---@class ZigbeeModel
 ---@field roles DeviceRole[]
----@field environment DeviceEnvironmentMetric[]?
+---@field capabilities DeviceCapability[]?
 ---@field decode fun(payload: table<string, any>): DeviceReading

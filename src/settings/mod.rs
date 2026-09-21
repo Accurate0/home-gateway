@@ -21,7 +21,6 @@ pub mod auth;
 pub mod backoff;
 pub mod cache;
 pub mod database;
-pub mod de;
 pub mod device_scope;
 pub mod devices;
 pub mod enabled_state;
@@ -39,6 +38,8 @@ pub mod lua;
 pub mod mqtt;
 pub mod no_parameters;
 pub mod notify;
+pub mod notify_filter;
+pub mod notify_source;
 pub mod oauth;
 pub mod oauth_cache;
 pub mod reconciler;
@@ -67,14 +68,12 @@ pub use devices::eink::{
     Orientation, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan, SleepWindow,
 };
 pub use devices::eink_defaults::EinkDefaults;
-pub use devices::environment::{
-    EnvironmentSensorSettings, EnvironmentSensorType, Metric, RawEnvironmentBlock,
-};
+pub use devices::environment::{EnvironmentSensorSettings, Metric, RawEnvironmentBlock};
 pub use devices::light::RawLightBlock;
 pub use devices::media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use devices::plant::{PlantSensorSettings, RawPlantBlock};
-pub use devices::presence::{PresenceSensorType, PresenceSettings, RawPresenceBlock};
-pub use devices::roborock::{RawRoborockBlock, RoborockSettings};
+pub use devices::presence::{PresenceSettings, RawPresenceBlock};
+pub use devices::roborock::{RawRobotVacuumBlock, RoborockSettings};
 pub use devices::switch::{RawSmartSwitchBlock, SwitchRole};
 pub use devices::trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
 pub use devices::valetudo::{RawValetudoBlock, ValetudoSettings};
@@ -103,8 +102,10 @@ pub use lua::LuaSettings;
 pub use mqtt::MqttSettings;
 pub use notify::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
-    validate_acknowledge,
+    RawNotifySettings, validate_acknowledge,
 };
+pub use notify_filter::NotifyFilter;
+pub use notify_source::NotificationSource;
 pub use oauth::OAuthSettings;
 pub use oauth_cache::OAuthCacheSettings;
 pub use reconciler::ReconcilerSettings;
@@ -120,7 +121,7 @@ pub use workflow::{
 
 use crate::auth::scope::ScopePattern;
 use crate::decoding::ModelSources;
-use crate::device_registry::{DeviceRegistry, RawSensor};
+use crate::device_registry::{DeviceRegistry, RawDevice};
 use crate::settings::device_scope::DeviceScope;
 
 pub type IEEEAddress = String;
@@ -155,6 +156,7 @@ pub struct Settings {
     pub fcm_project_id: String,
     pub fcm_service_account_json: String,
     pub mqtt: MqttSettings,
+    pub notify: NotifyFilter,
     pub workflows: HashMap<String, WorkflowDefinition>,
     pub workflow: WorkflowSettings,
     pub reconciler: ReconcilerSettings,
@@ -201,11 +203,11 @@ pub struct RawSettings {
     #[serde(default)]
     fcm_service_account_json: String,
     mqtt: MqttSettings,
+    notify: RawNotifySettings,
     #[serde(default)]
-    notify_targets: NotifyTargets,
-    #[serde(default)]
-    devices: Vec<Vec<RawSensor>>,
+    devices: Vec<Vec<RawDevice>>,
     zigbee_models: PathBuf,
+    esphome_models: PathBuf,
     home_assistant_models: PathBuf,
     #[serde(default)]
     workflows: Vec<Vec<WorkflowDefinition>>,
@@ -259,9 +261,10 @@ impl RawSettings {
             fcm_project_id,
             fcm_service_account_json,
             mqtt,
-            notify_targets,
+            notify,
             devices,
             zigbee_models: _,
+            esphome_models: _,
             home_assistant_models: _,
             workflows,
             s3,
@@ -390,7 +393,7 @@ impl RawSettings {
 
         let registry = DeviceRegistry::build(
             devices.into_iter().flatten().collect(),
-            &notify_targets,
+            &notify.targets,
             &models,
         )?;
         let scope = DeviceScope::new(registry.aliases(), registry.disabled());
@@ -498,6 +501,7 @@ impl RawSettings {
                 fcm_project_id,
                 fcm_service_account_json,
                 mqtt,
+                notify: NotifyFilter::new(&notify.disabled),
                 workflows: resolved,
                 s3,
                 watchdog,
@@ -561,6 +565,7 @@ impl SettingsContainer {
 
         let sources = ModelSources {
             zigbee: load("zigbee", &raw.zigbee_models)?,
+            esphome: load("esphome", &raw.esphome_models)?,
             home_assistant: load("home_assistant", &raw.home_assistant_models)?,
         };
 
@@ -673,17 +678,19 @@ impl std::ops::Deref for SettingsContainer {
 mod tests {
     use super::*;
     use crate::decoding::{DeviceModels, DeviceRoleName, ReadingMetric};
-    use crate::device_registry::{Capability, RawSensor};
+    use crate::device_registry::{Capability, RawDevice};
+    use crate::event_bus::SensorMetric;
     use std::collections::BTreeMap;
 
     fn lamp_registry() -> DeviceRegistry {
-        let devices: Vec<RawSensor> = serde_yaml::from_str(
+        let devices: Vec<RawDevice> = serde_yaml::from_str(
             r#"
 - id: living-room-table-lamp
   state: enabled
-  transport: zigbee
+  transport:
+    type: zigbee
+    address: "0xa4c1389fe5cea26e"
   model: ts011f_plug
-  address: "0xa4c1389fe5cea26e"
   roles:
     - type: smart_switch
       config: { name: Living Room Table Lamp, as: light }
@@ -699,6 +706,10 @@ mod tests {
             zigbee: BTreeMap::from([(
                 "ts011f_plug".to_owned(),
                 include_str!("../../config/lua/zigbee/ts011f_plug.lua").to_owned(),
+            )]),
+            esphome: BTreeMap::from([(
+                "apollo_mtr_1".to_owned(),
+                include_str!("../../config/lua/esphome/apollo_mtr_1.lua").to_owned(),
             )]),
             home_assistant: BTreeMap::from([
                 (
@@ -721,11 +732,12 @@ mod tests {
             r#"
 - id: roborock
   state: enabled
-  transport: home_assistant
-  address: vacuum.robot
+  transport:
+    type: home_assistant
+    address: vacuum.robot
   roles:
-    - type: roborock
-      config: { name: Roborock, control_entity: vacuum.robot, start_service: vacuum.start, stop_service: vacuum.stop, dock_service: vacuum.return_to_base }
+    - type: robot_vacuum
+      config: { name: Roborock, start_service: vacuum.start, stop_service: vacuum.stop, dock_service: vacuum.return_to_base }
 "#,
         )
         .unwrap_err();
@@ -742,13 +754,21 @@ mod tests {
             r#"
 - id: roborock
   state: enabled
-  transport: home_assistant
-  address: vacuum.robot
+  transport:
+    type: home_assistant
+    address: vacuum.robot
   model: roborock
-  extra_entities: [sensor.robot_status, sensor.robot_status]
   roles:
-    - type: roborock
-      config: { name: Roborock, control_entity: vacuum.robot, start_service: vacuum.start, stop_service: vacuum.stop, dock_service: vacuum.return_to_base }
+    - type: robot_vacuum
+      config: { name: Roborock, start_service: vacuum.start, stop_service: vacuum.stop, dock_service: vacuum.return_to_base }
+
+- id: impostor
+  state: enabled
+  transport:
+    type: home_assistant
+    address: sensor.robot_status
+  model: media_player
+  roles: []
 "#,
         )
         .unwrap_err();
@@ -760,23 +780,135 @@ mod tests {
     }
 
     #[test]
-    fn extra_entities_are_only_valid_on_home_assistant_devices() {
+    fn a_transport_rejects_roles_it_cannot_carry() {
+        for (yaml, role) in [
+            (
+                r#"
+- id: robot
+  state: enabled
+  transport: { type: valetudo, address: rockrobo }
+  roles:
+    - type: valetudo
+      config: { name: Vacuum }
+    - type: environment
+      config: { id: robot, name: Robot }
+"#,
+                "environment",
+            ),
+            (
+                r#"
+- id: node
+  state: enabled
+  transport: { type: esphome, address: apollo-mtr-1-livingroom }
+  model: apollo_mtr_1
+  roles:
+    - type: door
+      config: { name: Node Door, id: node, state: unarmed }
+"#,
+                "door",
+            ),
+        ] {
+            let err = build_devices(yaml).unwrap_err();
+
+            assert!(
+                err.contains(&format!("can't declare the `{role}` role")),
+                "{err}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_one_to_one_transport_needs_its_own_role() {
         let err = build_devices(
             r#"
-- id: plug
+- id: robot
   state: enabled
-  transport: zigbee
-  address: "0xabc"
-  model: ts011f_plug
-  extra_entities: [sensor.plug_power]
+  transport: { type: valetudo, address: rockrobo }
   roles:
-    - type: smart_switch
-      config: { name: Plug }
+    - type: battery
 "#,
         )
         .unwrap_err();
 
-        assert!(err.contains("`extra_entities` is only valid"), "{err}");
+        assert!(err.contains("must declare the `valetudo` role"), "{err}");
+    }
+
+    #[test]
+    fn a_role_declared_twice_is_rejected() {
+        let err = build_devices(
+            r#"
+- id: lamp
+  state: enabled
+  transport: { type: zigbee, address: "0xabc" }
+  model: ts011f_plug
+  roles:
+    - type: smart_switch
+      config: { name: Lamp }
+    - type: smart_switch
+      config: { name: Lamp again }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.contains("declares the `smart_switch` role twice"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn two_devices_cannot_share_an_address() {
+        let err = build_devices(
+            r#"
+- id: lamp
+  state: enabled
+  transport: { type: zigbee, address: "0xabc" }
+  model: ts011f_plug
+  roles: []
+
+- id: lamp-again
+  state: enabled
+  transport: { type: zigbee, address: "0xabc" }
+  model: ts011f_plug
+  roles: []
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("already used by device lamp"), "{err}");
+    }
+
+    #[test]
+    fn two_esphome_devices_cannot_claim_the_same_topic() {
+        let err = build_devices(
+            r#"
+- id: node
+  state: enabled
+  transport: { type: esphome, address: apollo-mtr-1-livingroom }
+  model: apollo_mtr_1
+  roles: []
+
+- id: node-again
+  state: enabled
+  transport: { type: esphome, address: apollo-mtr-1-livingroom }
+  model: apollo_mtr_1
+  roles: []
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("is claimed by another device"), "{err}");
+    }
+
+    #[test]
+    fn id_for_address_is_the_reverse_of_the_alias() {
+        let registry = lamp_registry();
+
+        assert_eq!(
+            registry.id_for_address("0xa4c1389fe5cea26e"),
+            Some("living-room-table-lamp")
+        );
+        assert_eq!(registry.id_for_address("0xnope"), None);
     }
 
     #[test]
@@ -785,8 +917,9 @@ mod tests {
             r#"
 - id: roborock
   state: enabled
-  transport: home_assistant
-  address: vacuum.robot
+  transport:
+    type: home_assistant
+    address: vacuum.robot
   model: roborock
   roles:
     - type: light
@@ -799,7 +932,7 @@ mod tests {
     }
 
     fn build_devices(yaml: &str) -> Result<DeviceRegistry, String> {
-        let devices: Vec<RawSensor> = serde_yaml::from_str(yaml).unwrap();
+        let devices: Vec<RawDevice> = serde_yaml::from_str(yaml).unwrap();
 
         DeviceRegistry::build(devices, &NotifyTargets::default(), &test_models())
     }
@@ -810,8 +943,9 @@ mod tests {
             r#"
 - id: mystery
   state: enabled
-  transport: zigbee
-  address: "0xdeadbeef"
+  transport:
+    type: zigbee
+    address: "0xdeadbeef"
   roles:
     - type: control_switch
 "#,
@@ -827,8 +961,10 @@ mod tests {
             r#"
 - id: tv
   state: enabled
-  transport: esphome
-  address: living-room-tv
+  transport:
+    type: esphome
+    address: living-room-tv
+  model: apollo_mtr_1
   roles:
     - type: media_player
       config:
@@ -837,7 +973,10 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.contains("`home_assistant` transport"), "{err}");
+        assert!(
+            err.contains("`esphome` device can't declare the `media_player` role"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -846,8 +985,9 @@ mod tests {
             r#"
 - id: tv
   state: enabled
-  transport: home_assistant
-  address: living_room_tv
+  transport:
+    type: home_assistant
+    address: living_room_tv
   model: media_player
   roles:
     - type: media_player
@@ -866,9 +1006,10 @@ mod tests {
             r#"
 - id: mystery
   state: enabled
-  transport: zigbee
+  transport:
+    type: zigbee
+    address: "0xdeadbeef"
   model: not_a_real_model
-  address: "0xdeadbeef"
   roles:
     - type: control_switch
 "#,
@@ -888,9 +1029,10 @@ mod tests {
             r#"
 - id: mystery
   state: enabled
-  transport: zigbee
+  transport:
+    type: zigbee
+    address: "0xdeadbeef"
   model: ts011f_plug
-  address: "0xdeadbeef"
   roles:
     - type: door
       config: { name: Mystery Door, id: mystery, state: armed, timeout: 3m }
@@ -905,42 +1047,60 @@ mod tests {
     fn a_model_on_a_transport_without_decoders_is_rejected() {
         let err = build_devices(
             r#"
-- id: living-room-mtr-1
+- id: fridge
   state: enabled
-  transport: esphome
+  transport:
+    type: trmnl
+    address: "653VZN"
   model: ts011f_plug
-  address: apollo-mtr-1-livingroom
   roles:
-    - type: presence
-      config: { name: Living Room, motion_entity: [ld2450_presence] }
+    - type: trmnl
+      config: { name: Fridge }
 "#,
         )
         .unwrap_err();
 
-        assert!(
-            err.contains("only valid with the `zigbee` and `home_assistant` transports"),
-            "{err}"
-        );
+        assert!(err.contains("does not take a `model:`"), "{err}");
     }
 
     #[test]
-    fn esphome_light_without_entity_is_rejected() {
-        let devices: Vec<RawSensor> = serde_yaml::from_str(
+    fn a_model_from_another_transport_is_unknown() {
+        let err = build_devices(
             r#"
 - id: living-room-mtr-1
   state: enabled
-  transport: esphome
-  address: apollo-mtr-1-livingroom
+  transport:
+    type: esphome
+    address: apollo-mtr-1-livingroom
+  model: ts011f_plug
   roles:
-    - type: light
-      config: { name: Living Room MTR-1 RGB }
+    - type: presence
+      config: { name: Living Room }
 "#,
         )
-        .unwrap();
+        .unwrap_err();
 
-        let err =
-            DeviceRegistry::build(devices, &NotifyTargets::default(), &test_models()).unwrap_err();
-        assert!(err.contains("has no `entity` object_id"), "{err}");
+        assert!(err.contains("unknown esphome model `ts011f_plug`"), "{err}");
+    }
+
+    #[test]
+    fn entity_lists_on_a_role_are_rejected() {
+        let err = serde_yaml::from_str::<Vec<RawDevice>>(
+            r#"
+- id: living-room-mtr-1
+  state: enabled
+  transport:
+    type: esphome
+    address: apollo-mtr-1-livingroom
+  model: apollo_mtr_1
+  roles:
+    - type: light
+      config: { name: Living Room MTR-1 RGB, entity: rgb_light }
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("entity"), "{err}");
     }
 
     fn light_step(state: &str) -> workflow::Step {
@@ -983,9 +1143,10 @@ mod tests {
             r#"
 - id: living-room-table-lamp
   state: enabled
-  transport: zigbee
+  transport:
+    type: zigbee
+    address: "0xa4c1389fe5cea26e"
   model: ts011f_plug
-  address: "0xa4c1389fe5cea26e"
   roles:
     - type: smart_switch
       config: { name: Living Room Table Lamp }
@@ -1004,6 +1165,7 @@ mod tests {
         let secrets = r#"
 api_key: x
 database_url: x
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1037,6 +1199,7 @@ transperth:
         let secrets = r#"
 api_key: x
 database_url: x
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1164,8 +1327,8 @@ transperth:
         assert_eq!(
             registry
                 .home_assistant_device("media_player.living_room_tv")
-                .map(|device| device.profile.slug.as_str()),
-            Some("media_player")
+                .map(|device| device.profile.slug.clone()),
+            Some("media_player".to_owned())
         );
 
         let mut seen = HashSet::new();
@@ -1202,45 +1365,48 @@ transperth:
             registry.light(mtr).map(String::as_str),
             Some("Living Room MTR-1 RGB")
         );
-        assert_eq!(
-            registry.esphome_light(mtr).map(String::as_str),
-            Some("rgb_light")
-        );
+        assert_eq!(registry.esphome_light(mtr), Some("rgb_light"));
         assert_eq!(
             registry.esphome_target("apollo-mtr-1-livingroom/light/rgb_light/state"),
-            Some(&crate::integrations::esphome::EsphomeTarget::Light {
+            Some(&crate::integrations::esphome::EsphomeTarget {
                 node: mtr.to_owned(),
+                domain: crate::integrations::esphome::EsphomeDomain::Light,
                 object_id: "rgb_light".to_owned(),
             })
         );
         // it has no colour temperature, so those workflow steps are rejected
         assert!(!registry.capabilities(mtr).contains(&Capability::ColourTemp));
+        assert!(registry.capabilities(mtr).contains(&Capability::Rgb));
 
         // a zigbee presence sensor is keyed by its address in the registry
         assert!(registry.presence("0x54ef441000dbc81c").is_some());
 
-        // esphome presence sensor keyed by node name carries its motion entities
+        assert!(registry.presence(mtr).is_some());
+        assert!(registry.environment(mtr).is_some());
+
+        let mut mtr_topics = registry.esphome_topics_for(mtr).to_vec();
+        mtr_topics.sort();
+
         assert_eq!(
-            registry
-                .presence("apollo-mtr-1-livingroom")
-                .unwrap()
-                .motion_entities,
-            vec![
-                "ld2450_presence".to_owned(),
-                "ld2450_moving_target".to_owned(),
-                "ld2450_still_target".to_owned(),
+            mtr_topics,
+            [
+                "apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state",
+                "apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state",
+                "apollo-mtr-1-livingroom/binary_sensor/ld2450_still_target/state",
+                "apollo-mtr-1-livingroom/light/rgb_light/state",
+                "apollo-mtr-1-livingroom/sensor/dps310_pressure/state",
+                "apollo-mtr-1-livingroom/sensor/dps310_temperature/state",
+                "apollo-mtr-1-livingroom/sensor/ltr390_light/state",
             ]
         );
-        assert!(registry.environment("apollo-mtr-1-livingroom").is_some());
 
-        // an esphome environment sensor maps each configured object_id to a metric
         assert_eq!(
-            registry
-                .environment("apollo-mtr-1-livingroom")
-                .unwrap()
-                .entities
-                .get("dps310_temperature"),
-            Some(&Metric::Temperature)
+            registry.sensor_metrics(mtr),
+            [
+                SensorMetric::from(Metric::Temperature),
+                SensorMetric::from(Metric::Pressure),
+                SensorMetric::from(Metric::Lux),
+            ]
         );
 
         // a `state: disabled` device is absent from the registry entirely, under
@@ -1365,6 +1531,7 @@ transperth:
         let secrets = r#"
 api_key: x
 database_url: x
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1402,7 +1569,9 @@ transperth:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1451,7 +1620,9 @@ auth:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1508,6 +1679,7 @@ auth:
         let base = r#"
 api_key: x
 database_url: x
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   username: x
@@ -1576,7 +1748,9 @@ transperth:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1630,7 +1804,9 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1686,7 +1862,9 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1898,7 +2076,9 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -1951,7 +2131,9 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -2003,7 +2185,9 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -2056,7 +2240,9 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -2108,7 +2294,9 @@ workflows:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -2150,8 +2338,9 @@ devices:
 -
   - id: epd
     state: enabled
-    transport: eink_display_firmware
-    address: "abc123"
+    transport:
+      type: eink_display_firmware
+      address: "abc123"
     roles:
       - type: eink_display_firmware
         config:
@@ -2204,7 +2393,9 @@ devices:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -2239,8 +2430,9 @@ devices:
 -
   - id: epd
     state: enabled
-    transport: eink_display_firmware
-    address: "abc123"
+    transport:
+      type: eink_display_firmware
+      address: "abc123"
     roles:
       - type: eink_display_firmware
         config:
@@ -2282,7 +2474,9 @@ devices:
 api_key: x
 database_url: x
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
+notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
   port: 1883
@@ -2317,8 +2511,9 @@ devices:
 -
   - id: epd
     state: enabled
-    transport: eink_display_firmware
-    address: "abc123"
+    transport:
+      type: eink_display_firmware
+      address: "abc123"
     roles:
       - type: eink_display_firmware
         config:

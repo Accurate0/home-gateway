@@ -1,8 +1,8 @@
 use uuid::Uuid;
 
 use crate::actors::devices::{
-    control_switch, door_sensor, environment_sensor, light, media_player, presence_sensor,
-    robot_vacuum, smart_switch,
+    control_switch, door_sensor, environment_sensor, light, media_player, plant_sensor,
+    presence_sensor, robot_vacuum, smart_switch,
 };
 use crate::device_metric::DeviceMetric;
 use crate::state::AppState;
@@ -27,6 +27,7 @@ pub async fn dispatch(
 
     role::run::<door_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
     role::run::<environment_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
+    role::run::<plant_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
     role::run::<light::Entity>(event_id, devices, device, friendly_name, &reading);
     role::run::<smart_switch::Entity>(event_id, devices, device, friendly_name, &reading);
     role::run::<presence_sensor::Entity>(event_id, devices, device, friendly_name, &reading);

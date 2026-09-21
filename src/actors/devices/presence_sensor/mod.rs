@@ -7,16 +7,10 @@ use crate::{event_bus::EventBusMessage, state::AppState};
 use ractor::RpcReplyPort;
 use uuid::Uuid;
 
-pub enum Entity {
-    Decoded {
-        address: String,
-        presence: bool,
-    },
-    Esphome {
-        node: String,
-        object_id: String,
-        motion: bool,
-    },
+pub struct Entity {
+    pub address: String,
+    pub sensor: Option<String>,
+    pub presence: bool,
 }
 
 pub struct NewEvent {
@@ -45,10 +39,7 @@ impl crate::tracing_context::TracedMessage for Message {
 
     fn subject(&self) -> Option<&str> {
         match self {
-            Message::NewEvent(event) => match &event.entity {
-                Entity::Decoded { address, .. } => Some(address),
-                Entity::Esphome { node, .. } => Some(node),
-            },
+            Message::NewEvent(event) => Some(&event.entity.address),
             Message::QueryLatest { sensor, .. } => Some(sensor),
         }
     }
@@ -57,7 +48,7 @@ impl crate::tracing_context::TracedMessage for Message {
 #[derive(Default)]
 pub struct PresenceSensorState {
     pub last_presence: HashMap<String, bool>,
-    pub esphome_entities: HashMap<String, HashMap<String, bool>>,
+    pub sensors: HashMap<String, HashMap<String, bool>>,
 }
 
 pub struct PresenceSensorHandler {
@@ -111,21 +102,25 @@ impl PresenceSensorHandler {
             Message::QueryLatest { sensor, reply } => {
                 reply.send(state.last_presence.get(&sensor).copied())?;
             }
-            Message::NewEvent(event) => match event.entity {
-                Entity::Decoded { address, presence } => {
-                    self.process_presence(event.event_id, address, presence, state)?
-                }
-                Entity::Esphome {
-                    node,
-                    object_id,
-                    motion,
-                } => {
-                    let entities = state.esphome_entities.entry(node.clone()).or_default();
-                    entities.insert(object_id, motion);
-                    let present = entities.values().any(|&on| on);
-                    self.process_presence(event.event_id, node, present, state)?
-                }
-            },
+            Message::NewEvent(event) => {
+                let Entity {
+                    address,
+                    sensor,
+                    presence,
+                } = event.entity;
+
+                let present = match sensor {
+                    Some(sensor) => {
+                        let sensors = state.sensors.entry(address.clone()).or_default();
+                        sensors.insert(sensor, presence);
+
+                        sensors.values().any(|&on| on)
+                    }
+                    None => presence,
+                };
+
+                self.process_presence(event.event_id, address, present, state)?
+            }
         }
 
         Ok(())

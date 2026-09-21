@@ -1,6 +1,9 @@
 mod decoded_device;
 mod device_models;
 mod dispatch;
+mod esphome_entities;
+mod home_assistant_entities;
+mod model_entities;
 mod model_profile;
 mod model_sources;
 mod models;
@@ -11,6 +14,8 @@ mod role_name;
 pub use decoded_device::DecodedDevice;
 pub use device_models::DeviceModels;
 pub use dispatch::dispatch;
+pub use esphome_entities::EsphomeEntities;
+pub use model_entities::ModelEntities;
 pub use model_profile::ModelProfile;
 pub use model_sources::ModelSources;
 pub use models::{Models, load_models};

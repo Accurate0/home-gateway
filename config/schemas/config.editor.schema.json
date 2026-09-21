@@ -117,13 +117,10 @@
         }
       ]
     },
-    "notify_targets": {
+    "notify": {
       "anyOf": [
         {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/NotifySource"
-          }
+          "$ref": "#/$defs/RawNotifySettings"
         },
         {
           "type": "string"
@@ -137,7 +134,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/$defs/RawSensor"
+              "$ref": "#/$defs/RawDevice"
             }
           }
         },
@@ -147,6 +144,16 @@
       ]
     },
     "zigbee_models": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "esphome_models": {
       "anyOf": [
         {
           "type": "string"
@@ -445,7 +452,9 @@
     "actors",
     "tracing",
     "mqtt",
+    "notify",
     "zigbee_models",
+    "esphome_models",
     "home_assistant_models",
     "s3",
     "watchdog",
@@ -788,6 +797,27 @@
         "max"
       ]
     },
+    "RawNotifySettings": {
+      "type": "object",
+      "properties": {
+        "targets": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/NotifySource"
+          }
+        },
+        "disabled": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "targets",
+        "disabled"
+      ]
+    },
     "NotifySource": {
       "oneOf": [
         {
@@ -805,7 +835,7 @@
         }
       ]
     },
-    "RawSensor": {
+    "RawDevice": {
       "type": "object",
       "properties": {
         "id": {
@@ -815,10 +845,7 @@
           "$ref": "#/$defs/EnabledState"
         },
         "transport": {
-          "$ref": "#/$defs/Transport"
-        },
-        "address": {
-          "type": "string"
+          "$ref": "#/$defs/RawTransport"
         },
         "model": {
           "type": [
@@ -830,7 +857,7 @@
         "roles": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/RawRole"
+            "$ref": "#/$defs/DeviceConfig"
           }
         },
         "watchdog": {
@@ -849,20 +876,13 @@
             "null"
           ],
           "default": null
-        },
-        "extra_entities": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
         }
       },
+      "additionalProperties": false,
       "required": [
         "id",
         "state",
         "transport",
-        "address",
         "roles"
       ]
     },
@@ -873,47 +893,113 @@
         "disabled"
       ]
     },
-    "Transport": {
+    "RawTransport": {
       "oneOf": [
         {
-          "type": "string",
-          "enum": [
-            "zigbee",
-            "esphome"
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "zigbee"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
           ]
         },
         {
-          "description": "Devices we never poll: they check in on their own schedule and push\nstate to us over HTTP (e.g. the battery-powered eink display firmware\nhitting `/epd/config`).",
-          "type": "string",
-          "const": "eink_display_firmware"
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "esphome"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
         },
         {
-          "description": "Devices whose state we fetch from the TRMNL cloud API on our own schedule.",
-          "type": "string",
-          "const": "trmnl"
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "eink_display_firmware"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
         },
         {
-          "description": "Devices whose state we read from Home Assistant entities and control via\nHome Assistant service calls.",
-          "type": "string",
-          "const": "home_assistant"
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "trmnl"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
         },
         {
-          "description": "Valetudo-flashed robots that publish state and accept commands directly\nover MQTT under `valetudo/<identifier>/...`.",
-          "type": "string",
-          "const": "valetudo"
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "home_assistant"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "valetudo"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
         }
       ]
     },
-    "RawRole": {
-      "type": "object",
-      "properties": {
-        "capabilities": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Capability"
-          }
-        }
-      },
+    "DeviceConfig": {
       "oneOf": [
         {
           "type": "object",
@@ -1060,10 +1146,10 @@
           "properties": {
             "type": {
               "type": "string",
-              "const": "roborock"
+              "const": "robot_vacuum"
             },
             "config": {
-              "$ref": "#/$defs/RawRoborockBlock"
+              "$ref": "#/$defs/RawRobotVacuumBlock"
             }
           },
           "required": [
@@ -1169,7 +1255,7 @@
       ]
     },
     "NotifyRef": {
-      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify_targets:`, or an inline source.",
+      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify.targets:`, or an inline source.",
       "anyOf": [
         {
           "type": "string"
@@ -1183,17 +1269,13 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string",
-          "default": ""
-        },
-        "motion_entity": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
+          "type": "string"
         }
-      }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
     },
     "RawEnvironmentBlock": {
       "type": "object",
@@ -1207,35 +1289,9 @@
             "null"
           ],
           "default": null
-        },
-        "entities": {
-          "type": "object",
-          "properties": {
-            "humidity": {
-              "type": "string"
-            },
-            "lux": {
-              "type": "string"
-            },
-            "pm25": {
-              "type": "string"
-            },
-            "pressure": {
-              "type": "string"
-            },
-            "temperature": {
-              "type": "string"
-            },
-            "uv_index": {
-              "type": "string"
-            },
-            "voc_index": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
         }
       },
+      "additionalProperties": false,
       "required": [
         "id"
       ]
@@ -1245,17 +1301,9 @@
       "properties": {
         "id": {
           "type": "string"
-        },
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "soil_moisture"
-          ]
         }
       },
+      "additionalProperties": false,
       "required": [
         "id"
       ]
@@ -1265,15 +1313,9 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "entity": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
         }
       },
+      "additionalProperties": false,
       "required": [
         "name"
       ]
@@ -1502,13 +1544,10 @@
         "name"
       ]
     },
-    "RawRoborockBlock": {
+    "RawRobotVacuumBlock": {
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
-        },
-        "control_entity": {
           "type": "string"
         },
         "start_service": {
@@ -1521,9 +1560,9 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": [
         "name",
-        "control_entity",
         "start_service",
         "stop_service",
         "dock_service"
@@ -1577,21 +1616,6 @@
       },
       "required": [
         "name"
-      ]
-    },
-    "Capability": {
-      "type": "string",
-      "enum": [
-        "brightness",
-        "colour_temp",
-        "rgb",
-        "temperature",
-        "humidity",
-        "pressure",
-        "lux",
-        "uv_index",
-        "pm25",
-        "voc_index"
       ]
     },
     "RawDeviceWatchdog": {

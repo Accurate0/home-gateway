@@ -2,50 +2,50 @@
 - id: env-living-room
   state: enabled
   room: living-room
-  transport: zigbee
-  address: "0x00158d008b8798a7"
+  transport:
+    type: zigbee
+    address: "0x00158d008b8798a7"
   model: lumi_wsdcgq11lm
   watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: living-room, name: Living Room }
-      capabilities: [temperature, humidity, pressure]
     - type: battery
 
 - id: env-bathroom
   state: enabled
   room: bathroom
-  transport: zigbee
-  address: "0x00158d008b879b53"
+  transport:
+    type: zigbee
+    address: "0x00158d008b879b53"
   model: lumi_wsdcgq11lm
   watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: bathroom, name: Bathroom }
-      capabilities: [temperature, humidity, pressure]
     - type: battery
 
 - id: env-bedroom
   state: enabled
   room: bedroom
-  transport: zigbee
-  address: "0xb0c7defffef6a9be"
+  transport:
+    type: zigbee
+    address: "0xb0c7defffef6a9be"
   model: ikea_e2112
   watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: bedroom, name: Bedroom }
-      capabilities: [temperature, humidity, pm25, voc_index]
 
 - id: env-outdoor
   state: enabled
   room: outdoor
-  transport: zigbee
-  address: "0x54ef441000ee2ca3"
+  transport:
+    type: zigbee
+    address: "0x54ef441000ee2ca3"
   model: aqara_wsdcgq12lm
   watchdog: { timeout: 3h }
   roles:
     - type: environment
       config: { id: outdoor, name: Outdoor }
-      capabilities: [temperature, humidity, pressure]
     - type: battery

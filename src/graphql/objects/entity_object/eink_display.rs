@@ -87,7 +87,7 @@ impl EinkDisplayEntity {
     }
 
     pub fn from_trmnl(registry: &DeviceRegistry, address: &str) -> Option<Self> {
-        let settings = registry.trmnl_devices().get(address)?;
+        let settings = registry.trmnl(address)?;
         Some(Self {
             id: settings.id.clone(),
             name: settings.name.clone(),

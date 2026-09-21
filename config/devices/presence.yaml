@@ -2,35 +2,29 @@
 - id: livingroom-motion
   state: enabled
   room: living-room
-  transport: esphome
-  address: apollo-mtr-1-livingroom
+  transport:
+    type: esphome
+    address: apollo-mtr-1-livingroom
+  model: apollo_mtr_1
   watchdog: { timeout: 1h }
   roles:
     - type: light
       config:
         name: Living Room MTR-1 RGB
-        entity: rgb_light
-      capabilities: [brightness, rgb]
     - type: presence
       config:
         name: Living Room Motion
-        motion_entity:
-          [ld2450_presence, ld2450_moving_target, ld2450_still_target]
     - type: environment
       config:
         id: living-room-mtr-1
         name: Living Room
-        entities:
-          temperature: dps310_temperature
-          pressure: dps310_pressure
-          lux: ltr390_light
-      capabilities: [temperature, pressure, lux]
 
 - id: closet-presence
   state: enabled
   room: bedroom
-  transport: zigbee
-  address: "0x54ef441000dbc81c"
+  transport:
+    type: zigbee
+    address: "0x54ef441000dbc81c"
   model: aqara_fp1e
   watchdog: { timeout: 1h }
   roles:

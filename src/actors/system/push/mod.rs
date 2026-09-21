@@ -10,8 +10,9 @@ use ractor::{Actor, ActorProcessingErr, ActorRef};
 use types::{FcmAndroidConfig, FcmMessage, FcmSendRequest, PushAction};
 use uuid::Uuid;
 
+use crate::integrations::notify::flag;
 use crate::repo::push::{NewPushNotification, PushNotificationRow};
-use crate::settings::{NotifyAcknowledge, NotifyCategory};
+use crate::settings::{NotificationSource, NotifyAcknowledge, NotifyCategory};
 use crate::state::AppState;
 
 pub mod actions;
@@ -31,7 +32,10 @@ pub struct PushNotification {
 }
 
 pub enum PushMessage {
-    Send(PushNotification),
+    Send {
+        source: NotificationSource,
+        notification: PushNotification,
+    },
     ReminderDue(Uuid),
 }
 
@@ -233,6 +237,18 @@ impl PushActor {
         }
     }
 
+    async fn is_disabled(&self, source: &NotificationSource) -> bool {
+        let id = source.to_string();
+
+        if self.shared_actor_state.settings.notify.is_disabled(&id) {
+            return true;
+        }
+
+        flag::filter(&self.shared_actor_state.feature_flag_client, source)
+            .await
+            .is_disabled(&id)
+    }
+
     async fn deliver(&self, notification: &PushNotification, notification_id: Option<Uuid>) {
         let Some(token_provider) = &self.token_provider else {
             tracing::warn!(
@@ -373,7 +389,19 @@ impl Actor for PushActor {
         _state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            PushMessage::Send(notification) => {
+            PushMessage::Send {
+                source,
+                notification,
+            } => {
+                if self.is_disabled(&source).await {
+                    tracing::info!(
+                        "notification source {source} is disabled, not sending: {}",
+                        notification.title
+                    );
+
+                    return Ok(());
+                }
+
                 let notification_id = self
                     .track(&myself, &notification, notification.acknowledge)
                     .await;

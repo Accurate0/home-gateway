@@ -2,8 +2,9 @@
 - id: living-room-tv
   state: enabled
   room: living-room
-  transport: home_assistant
-  address: media_player.living_room_tv
+  transport:
+    type: home_assistant
+    address: media_player.living_room_tv
   model: media_player
   watchdog: { timeout: 12h }
   roles:

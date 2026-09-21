@@ -2,36 +2,15 @@
 - id: roborock
   state: enabled
   room: dining-room
-  transport: home_assistant
-  address: vacuum.robot
+  transport:
+    type: home_assistant
+    address: vacuum.robot
   model: roborock
-  extra_entities:
-    - sensor.robot_status
-    - sensor.robot_battery
-    - sensor.robot_current_room
-    - sensor.robot_vacuum_error
-    - sensor.robot_dock_dock_error
-    - sensor.robot_cleaning_progress
-    - sensor.robot_filter_time_left
-    - sensor.robot_main_brush_time_left
-    - sensor.robot_side_brush_time_left
-    - sensor.robot_sensor_time_left
-    - sensor.robot_dock_strainer_time_left
-    - binary_sensor.robot_charging
-    - binary_sensor.robot_cleaning
-    - binary_sensor.robot_mop_attached
-    - binary_sensor.robot_water_shortage
-    - binary_sensor.robot_water_box_attached
-    - binary_sensor.robot_dock_clean_water_box
-    - binary_sensor.robot_dock_dirty_water_box
-    - binary_sensor.robot_dock_mop_drying
-    - binary_sensor.kitchen_robot_dock_cleaning_fluid
   watchdog: { timeout: 7d }
   roles:
-    - type: roborock
+    - type: robot_vacuum
       config:
         name: Roborock
-        control_entity: vacuum.robot
         start_service: vacuum.start
         stop_service: vacuum.stop
         dock_service: vacuum.return_to_base
@@ -40,8 +19,9 @@
 - id: valetudo
   state: enabled
   room: spare-room
-  transport: valetudo
-  address: rockrobo
+  transport:
+    type: valetudo
+    address: rockrobo
   watchdog: { timeout: 7d }
   roles:
     - type: valetudo

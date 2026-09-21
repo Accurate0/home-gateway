@@ -10,7 +10,7 @@ use crate::auth::{
     Auth,
     scope::{Action, Resource, Scope},
 };
-use crate::settings::{NotifyAcknowledge, NotifyCategory};
+use crate::settings::{NotificationSource, NotifyAcknowledge, NotifyCategory};
 
 #[derive(Deserialize)]
 pub struct PushNotifyPayload {
@@ -77,14 +77,17 @@ pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) ->
         .tag
         .unwrap_or_else(|| format!("push:{}", payload.title));
 
-    let message = push::PushMessage::Send(PushNotification {
-        title: payload.title,
-        body: payload.body,
-        category: payload.category,
-        tag,
-        actions,
-        acknowledge: payload.acknowledge,
-    });
+    let message = push::PushMessage::Send {
+        source: NotificationSource::Api,
+        notification: PushNotification {
+            title: payload.title,
+            body: payload.body,
+            category: payload.category,
+            tag,
+            actions,
+            acknowledge: payload.acknowledge,
+        },
+    };
 
     if let Err(e) = rpc::cast(PushActor::NAME, message) {
         tracing::error!("error sending to push worker: {e}");

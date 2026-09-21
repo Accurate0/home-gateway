@@ -33,9 +33,11 @@ s3:
   bucket: home-gateway-bucket
   region: ap-southeast-2
 
-notify_targets:
-  android_app:
-    type: android_app
+notify:
+  targets:
+    android_app:
+      type: android_app
+  disabled: []
 
 fcm_project_id: home-gateway-22
 
@@ -109,6 +111,7 @@ vacation:
   seed: 20260908
 
 zigbee_models: lua/zigbee
+esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

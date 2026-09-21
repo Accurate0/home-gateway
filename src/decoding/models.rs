@@ -1,20 +1,24 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
+use crate::device_registry::{Capability, Transport};
 use crate::lua::{LuaDecoder, LuaError};
 use crate::settings::{LuaSettings, Metric};
 
+use super::esphome_entities::EsphomeEntities;
+use super::home_assistant_entities::HomeAssistantEntities;
+use super::model_entities::ModelEntities;
 use super::model_profile::ModelProfile;
 use super::role_name::DeviceRoleName;
 
 pub type Models = HashMap<String, Arc<ModelProfile>>;
 
 pub fn load_models(
-    kind: &'static str,
+    kind: Transport,
     sources: &BTreeMap<String, String>,
     settings: &LuaSettings,
 ) -> Result<Models, String> {
-    let decoder = LuaDecoder::load(kind, sources, settings)
+    let decoder = LuaDecoder::load(&kind.to_string(), sources, settings)
         .map_err(|error| format!("{kind} models: {error}"))?;
 
     let mut profiles = HashMap::new();
@@ -29,7 +33,7 @@ pub fn load_models(
 }
 
 fn resolve_profile(
-    kind: &'static str,
+    kind: Transport,
     decoder: &LuaDecoder,
     slug: &str,
 ) -> Result<ModelProfile, String> {
@@ -62,31 +66,122 @@ fn resolve_profile(
         return Err(format!("{kind} model {slug}: `roles` is empty"));
     }
 
-    let environment = decoder
-        .field::<Vec<Metric>>(slug, "environment")
+    if let Some(role) = roles.iter().find(|role| !kind.supports(**role)) {
+        return Err(format!(
+            "{kind} model {slug}: the {kind} transport can't carry the `{role}` role"
+        ));
+    }
+
+    let capabilities = decoder
+        .field::<Vec<Capability>>(slug, "capabilities")
         .map_err(error)?
         .unwrap_or_default();
+
+    let environment: Vec<Metric> = capabilities
+        .iter()
+        .filter_map(|capability| capability.metric())
+        .collect();
 
     let reports_environment = roles.contains(&DeviceRoleName::Environment);
 
     if reports_environment && !environment.contains(&Metric::Temperature) {
         return Err(format!(
-            "{kind} model {slug}: `environment` must list `temperature`"
+            "{kind} model {slug}: `capabilities` must list `temperature` for the `environment` role"
         ));
     }
 
     if !reports_environment && !environment.is_empty() {
         return Err(format!(
-            "{kind} model {slug}: lists `environment` metrics without declaring the `environment` role"
+            "{kind} model {slug}: lists environment capabilities without declaring the `environment` role"
         ));
     }
 
+    let plant = decoder
+        .field::<Vec<String>>(slug, "plant")
+        .map_err(error)?
+        .unwrap_or_default();
+
+    if roles.contains(&DeviceRoleName::Plant) == plant.is_empty() {
+        return Err(format!(
+            "{kind} model {slug}: `plant` metrics are required with the `plant` role, and only with it"
+        ));
+    }
+
+    let entities = resolve_entities(kind, decoder, slug, &roles)?;
+
     Ok(ModelProfile {
-        kind,
+        transport: kind,
         slug: slug.to_owned(),
         roles,
+        capabilities,
         environment,
+        plant,
+        entities,
     })
+}
+
+fn resolve_entities(
+    kind: Transport,
+    decoder: &LuaDecoder,
+    slug: &str,
+    roles: &BTreeSet<DeviceRoleName>,
+) -> Result<ModelEntities, String> {
+    let error = |error: LuaError| format!("{kind} model {slug}: {error}");
+
+    match kind {
+        Transport::Zigbee => {
+            let declared = decoder
+                .field::<serde_json::Value>(slug, "entities")
+                .map_err(error)?;
+
+            if declared.is_some() {
+                return Err(format!(
+                    "{kind} model {slug}: zigbee devices report one payload, so `entities` is not allowed"
+                ));
+            }
+
+            Ok(ModelEntities::Payload)
+        }
+        Transport::Esphome => {
+            let Some(entities) = decoder
+                .field::<EsphomeEntities>(slug, "entities")
+                .map_err(error)?
+            else {
+                return Err(format!("{kind} model {slug}: must declare `entities`"));
+            };
+
+            if entities.is_empty() {
+                return Err(format!("{kind} model {slug}: `entities` is empty"));
+            }
+
+            let lights = roles.contains(&DeviceRoleName::Light);
+
+            if lights && entities.light().is_none() {
+                return Err(format!(
+                    "{kind} model {slug}: the `light` role needs exactly one `light` entity"
+                ));
+            }
+
+            if !lights && !entities.light.is_empty() {
+                return Err(format!(
+                    "{kind} model {slug}: lists `light` entities without declaring the `light` role"
+                ));
+            }
+
+            Ok(ModelEntities::Esphome(entities))
+        }
+        Transport::HomeAssistant => {
+            let entities = decoder
+                .field::<HomeAssistantEntities>(slug, "entities")
+                .map_err(error)?
+                .unwrap_or_default();
+
+            Ok(ModelEntities::HomeAssistant(entities))
+        }
+        Transport::EinkDisplayFirmware | Transport::Trmnl | Transport::Valetudo => Err(format!(
+            "{kind} model {slug}: the {kind} transport does not take models"
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -100,9 +195,13 @@ mod tests {
     use crate::device_metric::MetricValue;
 
     fn load(source: &str) -> Result<Models, String> {
+        load_as(Transport::Zigbee, source)
+    }
+
+    fn load_as(transport: Transport, source: &str) -> Result<Models, String> {
         let sources = BTreeMap::from([("test_model".to_owned(), source.to_owned())]);
 
-        load_models("zigbee", &sources, &LuaSettings::default())
+        load_models(transport, &sources, &LuaSettings::default())
     }
 
     fn profile(source: &str) -> Arc<ModelProfile> {
@@ -126,14 +225,96 @@ mod tests {
         let profile = profile(
             r#"return {
                 roles = { "battery", "environment" },
-                environment = { "temperature", "pm25" },
+                capabilities = { "temperature", "pm25" },
                 decode = function(p) return {} end,
             }"#,
         );
 
         assert!(profile.roles.contains(&DeviceRoleName::Battery));
         assert!(profile.roles.contains(&DeviceRoleName::Environment));
+        assert_eq!(
+            profile.capabilities,
+            [Capability::Temperature, Capability::Pm25]
+        );
         assert_eq!(profile.environment, [Metric::Temperature, Metric::Pm25]);
+    }
+
+    #[test]
+    fn a_role_the_transport_cannot_carry_is_rejected() {
+        let error =
+            load(r#"return { roles = { "media_player" }, decode = function(p) return {} end }"#)
+                .expect_err("zigbee media player");
+
+        assert!(
+            error.contains("can't carry the `media_player` role"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_zigbee_model_cannot_list_entities() {
+        let error = load(
+            r#"return { roles = { "door" }, entities = { "x" }, decode = function(p) return {} end }"#,
+        )
+        .expect_err("zigbee entities");
+
+        assert!(error.contains("`entities` is not allowed"), "{error}");
+    }
+
+    #[test]
+    fn an_esphome_model_needs_entities_and_one_light_for_the_light_role() {
+        let missing = load_as(
+            Transport::Esphome,
+            r#"return { roles = { "presence" }, decode = function(e) return {} end }"#,
+        )
+        .expect_err("no entities");
+        assert!(missing.contains("must declare `entities`"), "{missing}");
+
+        let lights = load_as(
+            Transport::Esphome,
+            r#"return {
+                roles = { "light" },
+                entities = { light = { "a", "b" } },
+                decode = function(e) return {} end,
+            }"#,
+        )
+        .expect_err("two lights");
+        assert!(lights.contains("exactly one `light` entity"), "{lights}");
+
+        let models = load_as(
+            Transport::Esphome,
+            r#"return {
+                roles = { "light", "presence" },
+                entities = { light = { "rgb" }, binary_sensor = { "motion" } },
+                decode = function(e) return {} end,
+            }"#,
+        )
+        .expect("esphome model");
+
+        let ModelEntities::Esphome(entities) = &models["test_model"].entities else {
+            panic!("expected esphome entities");
+        };
+
+        assert_eq!(entities.light(), Some("rgb"));
+        assert_eq!(entities.binary_sensor, ["motion"]);
+    }
+
+    #[test]
+    fn the_plant_role_and_plant_metrics_come_together() {
+        let missing = load_as(
+            Transport::Esphome,
+            r#"return {
+                roles = { "plant" },
+                entities = { sensor = { "soil_moisture" } },
+                decode = function(e) return {} end,
+            }"#,
+        )
+        .expect_err("plant without metrics");
+
+        assert!(
+            missing.contains("`plant` metrics are required"),
+            "{missing}"
+        );
     }
 
     #[test]
@@ -170,13 +351,13 @@ mod tests {
     #[test]
     fn environment_requires_temperature_and_rejects_unknown_metrics() {
         let missing = load(
-            r#"return { roles = { "environment" }, environment = { "humidity" }, decode = function(p) return {} end }"#,
+            r#"return { roles = { "environment" }, capabilities = { "humidity" }, decode = function(p) return {} end }"#,
         )
         .expect_err("no temperature");
         assert!(missing.contains("must list `temperature`"), "{missing}");
 
         let unknown = load(
-            r#"return { roles = { "environment" }, environment = { "temperature", "wind_speed" }, decode = function(p) return {} end }"#,
+            r#"return { roles = { "environment" }, capabilities = { "temperature", "wind_speed" }, decode = function(p) return {} end }"#,
         )
         .expect_err("bad metric");
         assert!(unknown.contains("wind_speed"), "{unknown}");
@@ -185,7 +366,7 @@ mod tests {
     #[test]
     fn environment_metrics_without_the_role_are_rejected() {
         let error = load(
-            r#"return { roles = { "door" }, environment = { "temperature" }, decode = function(p) return {} end }"#,
+            r#"return { roles = { "door" }, capabilities = { "temperature" }, decode = function(p) return {} end }"#,
         )
         .expect_err("environment without role");
 
@@ -256,9 +437,22 @@ mod tests {
             crate::lua::sources::load_directory(std::path::Path::new("./config/lua/zigbee"))
                 .expect("expected the committed zigbee models to be readable");
 
-        let models = load_models("zigbee", &sources, &LuaSettings::default())
+        let models = load_models(Transport::Zigbee, &sources, &LuaSettings::default())
             .expect("expected every committed zigbee model to load");
 
+        assert_eq!(models.len(), sources.len());
+    }
+
+    #[test]
+    fn every_committed_esphome_model_loads() {
+        let sources =
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/esphome"))
+                .expect("expected the committed esphome models to be readable");
+
+        let models = load_models(Transport::Esphome, &sources, &LuaSettings::default())
+            .expect("expected every committed esphome model to load");
+
+        assert!(models.contains_key("apollo_mtr_1"));
         assert_eq!(models.len(), sources.len());
     }
 
@@ -269,7 +463,7 @@ mod tests {
         ))
         .expect("expected the committed home assistant models to be readable");
 
-        let models = load_models("home_assistant", &sources, &LuaSettings::default())
+        let models = load_models(Transport::HomeAssistant, &sources, &LuaSettings::default())
             .expect("expected every committed home assistant model to load");
 
         assert!(models.contains_key("roborock"));

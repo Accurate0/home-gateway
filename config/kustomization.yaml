@@ -74,6 +74,10 @@ configMapGenerator:
       - lua/zigbee/lumi_wsdcgq11lm.lua
       - lua/zigbee/phillips_9290012573a.lua
       - lua/zigbee/ts011f_plug.lua
+  - name: home-gateway-config-lua-esphome
+    files:
+      - lua/esphome/apollo_mtr_1.lua
+      - lua/esphome/apollo_plt_1.lua
   - name: home-gateway-config-lua-home-assistant
     files:
       - lua/home_assistant/media_player.lua

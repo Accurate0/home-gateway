@@ -2,19 +2,15 @@
 - id: hallway-plant
   state: disabled
   room: hallway
-  transport: esphome
-  address: apollo-plt-1-hallway
+  transport:
+    type: esphome
+    address: apollo-plt-1-hallway
+  model: apollo_plt_1
   watchdog: { timeout: 1h }
   roles:
     - type: environment
       config:
         id: hallway-plant
         name: Hallway Plant
-        entities:
-          temperature: air_temperature
-          humidity: air_humidity
-          lux: ltr390_light
-          uv_index: ltr390_uv_index
-      capabilities: [temperature, humidity, lux, uv_index]
     - type: plant
-      config: { id: hallway-plant, entities: [soil_moisture] }
+      config: { id: hallway-plant }

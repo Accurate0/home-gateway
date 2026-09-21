@@ -9,5 +9,6 @@
 
 ---@class HomeAssistantModel
 ---@field roles HomeAssistantRole[]
----@field environment DeviceEnvironmentMetric[]?
+---@field capabilities DeviceCapability[]?
+---@field entities string[]?
 ---@field decode fun(entity: HomeAssistantEntity): DeviceReading

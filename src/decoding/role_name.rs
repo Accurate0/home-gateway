@@ -6,21 +6,16 @@ pub enum DeviceRoleName {
     Battery,
     Door,
     Environment,
+    Plant,
     Light,
     SmartSwitch,
     Presence,
     ControlSwitch,
     RobotVacuum,
     MediaPlayer,
-}
-
-impl DeviceRoleName {
-    pub fn zigbee(self) -> bool {
-        !matches!(
-            self,
-            DeviceRoleName::RobotVacuum | DeviceRoleName::MediaPlayer
-        )
-    }
+    EinkDisplayFirmware,
+    Trmnl,
+    Valetudo,
 }
 
 impl std::fmt::Display for DeviceRoleName {
@@ -29,12 +24,16 @@ impl std::fmt::Display for DeviceRoleName {
             DeviceRoleName::Battery => "battery",
             DeviceRoleName::Door => "door",
             DeviceRoleName::Environment => "environment",
+            DeviceRoleName::Plant => "plant",
             DeviceRoleName::Light => "light",
             DeviceRoleName::SmartSwitch => "smart_switch",
             DeviceRoleName::Presence => "presence",
             DeviceRoleName::ControlSwitch => "control_switch",
             DeviceRoleName::RobotVacuum => "robot_vacuum",
             DeviceRoleName::MediaPlayer => "media_player",
+            DeviceRoleName::EinkDisplayFirmware => "eink_display_firmware",
+            DeviceRoleName::Trmnl => "trmnl",
+            DeviceRoleName::Valetudo => "valetudo",
         };
 
         f.write_str(name)

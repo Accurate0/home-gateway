@@ -2,8 +2,9 @@
 - id: living-room-table-lamp
   state: enabled
   room: living-room
-  transport: zigbee
-  address: "0xa4c1389fe5cea26e"
+  transport:
+    type: zigbee
+    address: "0xa4c1389fe5cea26e"
   model: ts011f_plug
   watchdog: { timeout: 7d }
   roles:

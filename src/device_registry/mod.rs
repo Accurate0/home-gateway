@@ -1,188 +1,50 @@
+mod capability;
+mod device;
+mod device_config;
 pub mod last_seen;
 pub mod lua;
+mod raw_device;
+mod raw_transport;
+mod roles;
+mod transport;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use schemars::JsonSchema;
-use serde::Deserialize;
 use tokio::sync::RwLock;
 
+use crate::decoding::{DecodedDevice, DeviceModels, ModelEntities, ModelProfile};
 use crate::event_bus::SensorMetric;
-use crate::integrations::esphome::{
-    EsphomeTarget, light_state_topic, motion_state_topic, sensor_state_topic,
-};
-use crate::settings::devices::door::RawDoorSettings;
-use crate::settings::enabled_state::EnabledState;
+use crate::integrations::esphome::EsphomeTarget;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
-    EnvironmentSensorSettings, EnvironmentSensorType, IEEEAddress, MediaPlayerSettings,
-    PlantSensorSettings, PresenceSensorType, PresenceSettings, RawDeviceWatchdog,
-    RawEinkDisplayBlock, RawEnvironmentBlock, RawLightBlock, RawMediaPlayerBlock, RawPlantBlock,
-    RawPresenceBlock, RawRoborockBlock, RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock,
-    RoborockSettings, SwitchRole, TrmnlDeviceSettings, ValetudoSettings,
+    EnvironmentSensorSettings, IEEEAddress, MediaPlayerSettings, PlantSensorSettings,
+    PresenceSettings, RoborockSettings, TrmnlDeviceSettings, ValetudoSettings,
 };
 
-use crate::decoding::{DecodedDevice, DeviceModels, DeviceRoleName, ModelProfile};
+pub use capability::Capability;
+pub use device::Device;
+pub use device_config::DeviceConfig;
+pub use raw_device::RawDevice;
+pub use raw_transport::RawTransport;
+pub use roles::Roles;
+pub use transport::Transport;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Transport {
-    Zigbee,
-    Esphome,
-    /// Devices we never poll: they check in on their own schedule and push
-    /// state to us over HTTP (e.g. the battery-powered eink display firmware
-    /// hitting `/epd/config`).
-    EinkDisplayFirmware,
-    /// Devices whose state we fetch from the TRMNL cloud API on our own schedule.
-    Trmnl,
-    /// Devices whose state we read from Home Assistant entities and control via
-    /// Home Assistant service calls.
-    HomeAssistant,
-    /// Valetudo-flashed robots that publish state and accept commands directly
-    /// over MQTT under `valetudo/<identifier>/...`.
-    Valetudo,
-}
-
-impl std::fmt::Display for Transport {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = match self {
-            Transport::Zigbee => "zigbee",
-            Transport::Esphome => "esphome",
-            Transport::EinkDisplayFirmware => "eink_display_firmware",
-            Transport::Trmnl => "trmnl",
-            Transport::HomeAssistant => "home_assistant",
-            Transport::Valetudo => "valetudo",
-        };
-
-        f.write_str(name)
-    }
-}
-
-impl Transport {
-    fn environment_type(self) -> EnvironmentSensorType {
-        match self {
-            Transport::Zigbee => EnvironmentSensorType::Zigbee,
-            Transport::Esphome => EnvironmentSensorType::Esphome,
-            Transport::EinkDisplayFirmware => {
-                unreachable!("eink_display_firmware transport does not support environment kind")
-            }
-            Transport::Trmnl => unreachable!("trmnl transport does not support environment kind"),
-            Transport::HomeAssistant => EnvironmentSensorType::HomeAssistant,
-            Transport::Valetudo => {
-                unreachable!("valetudo transport does not support environment kind")
-            }
-        }
-    }
-
-    fn presence_type(self) -> PresenceSensorType {
-        match self {
-            Transport::Zigbee => PresenceSensorType::Zigbee,
-            Transport::Esphome => PresenceSensorType::Esphome,
-            Transport::EinkDisplayFirmware => {
-                unreachable!("eink_display_firmware transport does not support presence kind")
-            }
-            Transport::Trmnl => unreachable!("trmnl transport does not support presence kind"),
-            Transport::HomeAssistant => PresenceSensorType::HomeAssistant,
-            Transport::Valetudo => {
-                unreachable!("valetudo transport does not support presence kind")
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawSensor {
-    pub id: String,
-    pub state: EnabledState,
-    pub transport: Transport,
-    pub address: String,
-    #[serde(default)]
-    pub model: Option<String>,
-    pub roles: Vec<RawRole>,
-    #[serde(default)]
-    pub watchdog: Option<RawDeviceWatchdog>,
-    #[serde(default)]
-    pub room: Option<String>,
-    #[serde(default)]
-    pub extra_entities: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct RawRole {
-    #[serde(flatten)]
-    pub config: DeviceConfig,
-    #[serde(default)]
-    pub capabilities: Vec<Capability>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Capability {
-    Brightness,
-    ColourTemp,
-    Rgb,
-    Temperature,
-    Humidity,
-    Pressure,
-    Lux,
-    UvIndex,
-    Pm25,
-    VocIndex,
-}
-
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-#[serde(tag = "type", content = "config", rename_all = "snake_case")]
-#[allow(clippy::large_enum_variant)]
-pub enum DeviceConfig {
-    Door(RawDoorSettings),
-    Presence(RawPresenceBlock),
-    Environment(RawEnvironmentBlock),
-    Plant(RawPlantBlock),
-    Light(RawLightBlock),
-    ControlSwitch,
-    SmartSwitch(RawSmartSwitchBlock),
-    EinkDisplayFirmware(RawEinkDisplayBlock),
-    Trmnl(RawTrmnlBlock),
-    Roborock(RawRoborockBlock),
-    MediaPlayer(RawMediaPlayerBlock),
-    Valetudo(RawValetudoBlock),
-    Battery,
-}
+use roles::RoleContext;
 
 #[derive(Debug, Default)]
 pub struct DeviceRegistryInner {
+    devices: HashMap<String, Device>,
     aliases: DeviceAliases,
     esphome_topics: HashMap<String, EsphomeTarget>,
-    zigbee_devices: HashMap<String, DecodedDevice>,
-    home_assistant_devices: HashMap<String, DecodedDevice>,
-    doors: HashMap<String, DoorSettings>,
-    smart_switches: HashMap<String, String>,
-    control_switches: HashSet<String>,
-    environment: HashMap<String, EnvironmentSensorSettings>,
-    presence: HashMap<String, PresenceSettings>,
-    lights: HashMap<String, String>,
-    esphome_lights: HashMap<String, String>,
-    capabilities: HashMap<String, Vec<Capability>>,
-    rooms: HashMap<String, String>,
-    plant: HashMap<String, PlantSensorSettings>,
-    eink_displays: HashMap<String, EinkDisplaySettings>,
-    trmnl_devices: HashMap<String, TrmnlDeviceSettings>,
-    roborocks: HashMap<String, RoborockSettings>,
-    media_players: HashMap<String, MediaPlayerSettings>,
-    valetudos: HashMap<String, ValetudoSettings>,
-    battery: HashMap<String, BatterySettings>,
+    esphome_nodes: HashMap<String, Vec<String>>,
+    home_assistant_entities: HashMap<String, String>,
     watchdog: HashMap<String, DeviceWatchdog>,
-    watchdog_keys: HashMap<String, String>,
-    watchdog_keys_by_id: HashMap<String, String>,
     disabled: HashSet<String>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
 
-/// Cheap to clone: the resolved device data lives behind a shared `Arc`, so
-/// every actor and the GraphQL schema hold the same registry without each
-/// wrapping it in their own `Arc`.
 #[derive(Debug, Clone, Default)]
 pub struct DeviceRegistry {
     inner: Arc<DeviceRegistryInner>,
@@ -198,24 +60,22 @@ impl std::ops::Deref for DeviceRegistry {
 
 impl DeviceRegistry {
     pub fn build(
-        raw: Vec<RawSensor>,
+        raw: Vec<RawDevice>,
         notify: &NotifyTargets,
         models: &DeviceModels,
     ) -> Result<Self, String> {
         let mut reg = DeviceRegistryInner::default();
 
-        for sensor in raw {
-            let RawSensor {
+        for device in raw {
+            let RawDevice {
                 id,
                 state,
                 transport,
-                address,
                 model,
                 roles,
                 watchdog,
                 room,
-                extra_entities,
-            } = sensor;
+            } = device;
 
             if !state.is_enabled() {
                 tracing::warn!("device {id} is {state}, not registering it");
@@ -223,80 +83,52 @@ impl DeviceRegistry {
                 continue;
             }
 
+            let transport_kind = transport.kind();
+            let address = transport.into_address();
+
             if reg.aliases.insert(id.clone(), address.clone()).is_some() {
-                return Err(format!("duplicate sensor id: {id}"));
+                return Err(format!("duplicate device id: {id}"));
             }
 
-            let profile = resolve_model(&id, transport, model, models)?;
-            let decoded = profile.is_some();
+            let profile = resolve_model(&id, transport_kind, model, models)?;
 
-            if !extra_entities.is_empty() && !(transport == Transport::HomeAssistant && decoded) {
-                return Err(format!(
-                    "device {id}: `extra_entities` is only valid on a `home_assistant` device with a `model:`"
-                ));
+            let roles = Roles::resolve(
+                &RoleContext {
+                    id: &id,
+                    address: &address,
+                    transport: transport_kind,
+                    profile: profile.as_deref(),
+                    notify,
+                },
+                roles,
+            )?;
+
+            if let Some(profile) = &profile {
+                reg.register_entities(&id, &address, profile)?;
             }
 
-            if let Some(profile) = profile {
-                validate_model_roles(&id, transport, &profile, &roles)?;
-
-                let device = DecodedDevice {
-                    id: id.clone(),
-                    address: address.clone(),
-                    profile,
-                };
-
-                match transport {
-                    Transport::HomeAssistant => {
-                        for entity_id in std::iter::once(&address).chain(&extra_entities) {
-                            if reg
-                                .home_assistant_devices
-                                .insert(entity_id.clone(), device.clone())
-                                .is_some()
-                            {
-                                return Err(format!(
-                                    "device {id}: home assistant entity `{entity_id}` is claimed by another device"
-                                ));
-                            }
-                        }
-                    }
-                    _ => {
-                        if reg.zigbee_devices.insert(address.clone(), device).is_some() {
-                            return Err(format!("duplicate zigbee address: {address}"));
-                        }
-                    }
-                }
-            }
-
-            if let Some(room) = room {
-                reg.rooms.insert(address.clone(), room);
-            }
-
-            let watchdog_key = format!("{transport}:{id}");
-
-            reg.watchdog_keys
-                .insert(address.clone(), watchdog_key.clone());
-
-            reg.watchdog_keys_by_id
-                .insert(id.clone(), watchdog_key.clone());
+            let watchdog_key = format!("{transport_kind}:{id}");
 
             if let Some(watchdog) = watchdog {
-                reg.watchdog.insert(watchdog_key, watchdog.resolve(notify)?);
+                reg.watchdog
+                    .insert(watchdog_key.clone(), watchdog.resolve(notify)?);
             }
 
-            for role in roles {
-                let RawRole {
-                    config,
-                    capabilities,
-                } = role;
+            let device = Device {
+                id: id.clone(),
+                address: address.clone(),
+                transport: transport_kind,
+                profile,
+                room,
+                watchdog_key,
+                roles,
+            };
 
-                if !capabilities.is_empty() {
-                    reg.capabilities
-                        .entry(address.clone())
-                        .or_default()
-                        .extend(capabilities);
-                }
-
-                reg.add_role(&id, transport, decoded, &address, config, notify)?;
+            if let Some(existing) = reg.devices.insert(address.clone(), device) {
+                return Err(format!(
+                    "device {id}: address `{address}` is already used by device {}",
+                    existing.id
+                ));
             }
         }
 
@@ -306,83 +138,25 @@ impl DeviceRegistry {
     }
 }
 
-fn validate_model_roles(
-    id: &str,
-    transport: Transport,
-    profile: &ModelProfile,
-    roles: &[RawRole],
-) -> Result<(), String> {
-    let slug = &profile.slug;
-
-    for role in roles {
-        let name = match &role.config {
-            DeviceConfig::Door(_) => DeviceRoleName::Door,
-            DeviceConfig::Environment(_) => DeviceRoleName::Environment,
-            DeviceConfig::Light(_) => DeviceRoleName::Light,
-            DeviceConfig::SmartSwitch(_) => DeviceRoleName::SmartSwitch,
-            DeviceConfig::Presence(_) => DeviceRoleName::Presence,
-            DeviceConfig::ControlSwitch => DeviceRoleName::ControlSwitch,
-            DeviceConfig::Battery => DeviceRoleName::Battery,
-            DeviceConfig::Roborock(_) => DeviceRoleName::RobotVacuum,
-            DeviceConfig::MediaPlayer(_) => DeviceRoleName::MediaPlayer,
-            _ => continue,
-        };
-
-        let home_assistant_role = matches!(
-            name,
-            DeviceRoleName::Door
-                | DeviceRoleName::Environment
-                | DeviceRoleName::Presence
-                | DeviceRoleName::Battery
-                | DeviceRoleName::RobotVacuum
-                | DeviceRoleName::MediaPlayer
-        );
-
-        if transport == Transport::HomeAssistant && !home_assistant_role {
-            return Err(format!(
-                "device {id}: a `home_assistant` device can't declare the `{name}` role"
-            ));
-        }
-
-        if transport == Transport::Zigbee && !name.zigbee() {
-            return Err(format!(
-                "device {id}: a `zigbee` device can't declare the `{name}` role"
-            ));
-        }
-
-        if !profile.roles.contains(&name) {
-            return Err(format!(
-                "device {id}: model `{slug}` has no `{name}` mapping but the device declares a `{name}` role"
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 fn resolve_model(
     id: &str,
     transport: Transport,
     model: Option<String>,
     models: &DeviceModels,
 ) -> Result<Option<Arc<ModelProfile>>, String> {
-    let profiles = match transport {
-        Transport::Zigbee => &models.zigbee,
-        Transport::HomeAssistant => &models.home_assistant,
-        _ => {
-            return match model {
-                Some(_) => Err(format!(
-                    "device {id}: `model:` is only valid with the `zigbee` and `home_assistant` transports"
-                )),
-                None => Ok(None),
-            };
+    let (profiles, slug) = match (models.for_transport(transport), model) {
+        (None, None) => return Ok(None),
+        (None, Some(_)) => {
+            return Err(format!(
+                "device {id}: the {transport} transport does not take a `model:`"
+            ));
         }
-    };
-
-    let Some(slug) = model else {
-        return Err(format!(
-            "device {id}: {transport} transport requires a `model:`"
-        ));
+        (Some(_), None) => {
+            return Err(format!(
+                "device {id}: {transport} transport requires a `model:`"
+            ));
+        }
+        (Some(profiles), Some(slug)) => (profiles, slug),
     };
 
     let Some(profile) = profiles.get(&slug) else {
@@ -399,232 +173,66 @@ fn resolve_model(
 }
 
 impl DeviceRegistryInner {
-    fn add_role(
+    fn register_entities(
         &mut self,
         id: &str,
-        transport: Transport,
-        decoded: bool,
         address: &str,
-        config: DeviceConfig,
-        notify: &NotifyTargets,
+        profile: &ModelProfile,
     ) -> Result<(), String> {
-        if matches!(config, DeviceConfig::Battery) {
-            self.battery.insert(
-                address.to_owned(),
-                BatterySettings {
-                    name: id.to_owned(),
-                },
-            );
+        match &profile.entities {
+            ModelEntities::Payload => {}
+            ModelEntities::Esphome(entities) => {
+                for target in entities.targets(address) {
+                    let topic = target.state_topic();
 
-            return Ok(());
-        }
-
-        let is_eink = matches!(config, DeviceConfig::EinkDisplayFirmware(_));
-        if (transport == Transport::EinkDisplayFirmware) != is_eink {
-            return Err(format!(
-                "device {id}: `eink_display_firmware` transport is only valid with the `eink_display_firmware` kind, and vice versa"
-            ));
-        }
-        let is_trmnl = matches!(config, DeviceConfig::Trmnl(_));
-        if (transport == Transport::Trmnl) != is_trmnl {
-            return Err(format!(
-                "device {id}: `trmnl` transport is only valid with the `trmnl` kind, and vice versa"
-            ));
-        }
-        let is_home_assistant = matches!(
-            config,
-            DeviceConfig::Roborock(_) | DeviceConfig::MediaPlayer(_)
-        );
-        if is_home_assistant && !(transport == Transport::HomeAssistant && decoded) {
-            return Err(format!(
-                "device {id}: the `roborock` and `media_player` kinds need the `home_assistant` transport and a `model:`"
-            ));
-        }
-        let is_valetudo = matches!(config, DeviceConfig::Valetudo(_));
-        if (transport == Transport::Valetudo) != is_valetudo {
-            return Err(format!(
-                "device {id}: `valetudo` transport is only valid with the `valetudo` kind, and vice versa"
-            ));
-        }
-
-        match config {
-            DeviceConfig::Door(door) => {
-                self.doors.insert(address.to_owned(), door.resolve(notify)?);
-            }
-            DeviceConfig::Presence(presence) => {
-                if transport == Transport::Esphome {
-                    if presence.motion_entity.is_empty() {
-                        return Err(format!("esphome presence sensor {id} has no motion_entity"));
-                    }
-                    for object_id in &presence.motion_entity {
-                        self.esphome_topics.insert(
-                            motion_state_topic(address, object_id),
-                            EsphomeTarget::Motion {
-                                node: address.to_owned(),
-                                object_id: object_id.clone(),
-                            },
-                        );
-                    }
-                }
-                self.presence.insert(
-                    address.to_owned(),
-                    PresenceSettings {
-                        name: presence.name,
-                        sensor_type: transport.presence_type(),
-                        motion_entities: presence.motion_entity,
-                    },
-                );
-            }
-            DeviceConfig::Environment(environment) => {
-                let mut entities = HashMap::new();
-                for (metric, object_id) in environment.entities {
-                    if let Some(prev) = entities.insert(object_id.clone(), metric) {
+                    if self.esphome_topics.insert(topic.clone(), target).is_some() {
                         return Err(format!(
-                            "environment sensor {id}: object_id `{object_id}` mapped to both {prev:?} and {metric:?}"
+                            "device {id}: esphome topic `{topic}` is claimed by another device"
+                        ));
+                    }
+
+                    self.esphome_nodes
+                        .entry(address.to_owned())
+                        .or_default()
+                        .push(topic);
+                }
+            }
+            ModelEntities::HomeAssistant(entities) => {
+                let entity_ids =
+                    std::iter::once(address.to_owned()).chain(entities.resolve(address));
+
+                for entity_id in entity_ids {
+                    if self
+                        .home_assistant_entities
+                        .insert(entity_id.clone(), address.to_owned())
+                        .is_some()
+                    {
+                        return Err(format!(
+                            "device {id}: home assistant entity `{entity_id}` is claimed by another device"
                         ));
                     }
                 }
-                if transport == Transport::Esphome {
-                    if entities.is_empty() {
-                        return Err(format!(
-                            "esphome environment sensor {id} has no `entities` metric→object_id map"
-                        ));
-                    }
-                    self.add_esphome_sensor_topics(address, entities.keys().cloned());
-                }
-                let name = environment.name.unwrap_or_else(|| environment.id.clone());
-                self.environment.insert(
-                    address.to_owned(),
-                    EnvironmentSensorSettings {
-                        id: environment.id,
-                        name,
-                        sensor_type: transport.environment_type(),
-                        entities,
-                    },
-                );
             }
-            DeviceConfig::Plant(plant) => {
-                self.add_esphome_sensor_topics(address, plant.entities.iter().cloned());
-                self.plant.insert(
-                    address.to_owned(),
-                    PlantSensorSettings {
-                        id: plant.id,
-                        entities: plant.entities,
-                    },
-                );
-            }
-            DeviceConfig::Light(light) => {
-                if transport == Transport::Esphome {
-                    let Some(object_id) = light.entity else {
-                        return Err(format!("esphome light {id} has no `entity` object_id"));
-                    };
-                    self.esphome_topics.insert(
-                        light_state_topic(address, &object_id),
-                        EsphomeTarget::Light {
-                            node: address.to_owned(),
-                            object_id: object_id.clone(),
-                        },
-                    );
-                    self.esphome_lights.insert(address.to_owned(), object_id);
-                }
-                self.lights.insert(address.to_owned(), light.name);
-            }
-            DeviceConfig::SmartSwitch(switch) => {
-                self.smart_switches
-                    .insert(address.to_owned(), switch.name.clone());
-                if switch.role == Some(SwitchRole::Light) {
-                    self.lights.insert(address.to_owned(), switch.name);
-                }
-            }
-            DeviceConfig::ControlSwitch => {
-                self.control_switches.insert(address.to_owned());
-            }
-            DeviceConfig::EinkDisplayFirmware(display) => {
-                self.eink_displays
-                    .insert(address.to_owned(), display.resolve(id)?);
-            }
-            DeviceConfig::Trmnl(trmnl) => {
-                self.trmnl_devices.insert(
-                    address.to_owned(),
-                    TrmnlDeviceSettings {
-                        id: id.to_owned(),
-                        name: trmnl.name,
-                    },
-                );
-            }
-            DeviceConfig::Roborock(roborock) => {
-                self.roborocks
-                    .insert(address.to_owned(), roborock.resolve());
-            }
-            DeviceConfig::MediaPlayer(media_player) => {
-                if !address.starts_with("media_player.") {
-                    return Err(format!(
-                        "device {id}: `media_player` address `{address}` must be a home assistant `media_player.` entity id"
-                    ));
-                }
-
-                self.media_players
-                    .insert(address.to_owned(), media_player.resolve(id, address));
-            }
-            DeviceConfig::Valetudo(valetudo) => {
-                self.valetudos
-                    .insert(address.to_owned(), valetudo.resolve(address));
-            }
-            DeviceConfig::Battery => unreachable!("battery kind handled before transport guards"),
         }
+
         Ok(())
     }
 
-    pub fn eink_display(&self, id: &str) -> Option<&EinkDisplaySettings> {
-        self.eink_displays.get(id)
+    fn each<'a, T: 'a>(
+        &'a self,
+        role: impl Fn(&'a Roles) -> Option<&'a T> + 'a,
+    ) -> impl Iterator<Item = (&'a String, &'a T)> + 'a {
+        self.devices
+            .iter()
+            .filter_map(move |(address, device)| Some((address, role(&device.roles)?)))
     }
 
-    pub fn eink_displays(&self) -> &HashMap<String, EinkDisplaySettings> {
-        &self.eink_displays
+    fn roles(&self, address: &str) -> Option<&Roles> {
+        self.devices.get(address).map(|device| &device.roles)
     }
 
-    pub fn trmnl_devices(&self) -> &HashMap<String, TrmnlDeviceSettings> {
-        &self.trmnl_devices
-    }
-
-    pub fn roborock(&self, address: &str) -> Option<&RoborockSettings> {
-        self.roborocks.get(address)
-    }
-
-    pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
-        self.roborocks.iter()
-    }
-
-    pub fn media_player(&self, address: &str) -> Option<&MediaPlayerSettings> {
-        self.media_players.get(address)
-    }
-
-    pub fn media_players(&self) -> impl Iterator<Item = (&String, &MediaPlayerSettings)> {
-        self.media_players.iter()
-    }
-
-    pub fn valetudo(&self, address: &str) -> Option<&ValetudoSettings> {
-        self.valetudos.get(address)
-    }
-
-    pub fn valetudos(&self) -> impl Iterator<Item = (&String, &ValetudoSettings)> {
-        self.valetudos.iter()
-    }
-
-    fn add_esphome_sensor_topics(
-        &mut self,
-        node: &str,
-        entities: impl IntoIterator<Item = String>,
-    ) {
-        for object_id in entities {
-            self.esphome_topics.insert(
-                sensor_state_topic(node, &object_id),
-                EsphomeTarget::Sensor {
-                    node: node.to_string(),
-                    object_id,
-                },
-            );
-        }
+    pub fn device(&self, address: &str) -> Option<&Device> {
+        self.devices.get(address)
     }
 
     pub fn aliases(&self) -> &DeviceAliases {
@@ -641,12 +249,8 @@ impl DeviceRegistryInner {
             .map_or(reference, |a| a.as_str())
     }
 
-    /// Reverse of the alias map: the configured sensor slug for a device address.
     pub fn id_for_address(&self, address: &str) -> Option<&str> {
-        self.aliases
-            .iter()
-            .find(|(_, a)| a.as_str() == address)
-            .map(|(id, _)| id.as_str())
+        self.devices.get(address).map(|device| device.id.as_str())
     }
 
     pub async fn record_friendly_name(&self, address: IEEEAddress, name: String) {
@@ -666,12 +270,25 @@ impl DeviceRegistryInner {
             .map(|(address, _)| address.clone())
     }
 
-    pub fn zigbee_device(&self, address: &str) -> Option<&DecodedDevice> {
-        self.zigbee_devices.get(address)
+    pub fn decoded(&self, address: &str) -> Option<DecodedDevice> {
+        self.devices.get(address)?.decoded()
     }
 
-    pub fn home_assistant_device(&self, entity_id: &str) -> Option<&DecodedDevice> {
-        self.home_assistant_devices.get(entity_id)
+    pub fn zigbee_device(&self, address: &str) -> Option<DecodedDevice> {
+        let device = self.devices.get(address)?;
+
+        match device.transport {
+            Transport::Zigbee => device.decoded(),
+            Transport::Esphome
+            | Transport::EinkDisplayFirmware
+            | Transport::Trmnl
+            | Transport::HomeAssistant
+            | Transport::Valetudo => None,
+        }
+    }
+
+    pub fn home_assistant_device(&self, entity_id: &str) -> Option<DecodedDevice> {
+        self.decoded(self.home_assistant_entities.get(entity_id)?)
     }
 
     pub fn esphome_target(&self, topic: &str) -> Option<&EsphomeTarget> {
@@ -682,100 +299,44 @@ impl DeviceRegistryInner {
         self.esphome_topics.keys()
     }
 
-    pub fn esphome_topics_for<'a>(
-        &'a self,
-        node: &'a str,
-    ) -> impl Iterator<Item = (&'a String, &'a EsphomeTarget)> {
-        self.esphome_topics.iter().filter(move |(_, target)| {
-            let target_node = match target {
-                EsphomeTarget::Motion { node, .. }
-                | EsphomeTarget::Sensor { node, .. }
-                | EsphomeTarget::Light { node, .. } => node,
-            };
-            target_node == node
-        })
+    pub fn esphome_topics_for(&self, node: &str) -> &[String] {
+        self.esphome_nodes.get(node).map_or(&[], Vec::as_slice)
     }
 
-    pub fn door(&self, address: &str) -> Option<&DoorSettings> {
-        self.doors.get(address)
-    }
-
-    #[allow(unused)]
-    pub fn control_switch(&self, address: &str) -> bool {
-        self.control_switches.contains(address)
-    }
-
-    pub fn smart_switch(&self, address: &str) -> Option<&String> {
-        self.smart_switches.get(address)
-    }
-
-    #[allow(unused)]
-    pub fn smart_switches(&self) -> impl Iterator<Item = (&String, &String)> {
-        self.smart_switches.iter()
-    }
-
-    pub fn environment(&self, address: &str) -> Option<&EnvironmentSensorSettings> {
-        self.environment.get(address)
-    }
-
-    pub fn sensor_metrics(&self, address: &str) -> Vec<SensorMetric> {
-        let esphome = self
-            .environment
-            .get(address)
-            .into_iter()
-            .flat_map(|settings| settings.entities.values().copied().map(SensorMetric::from));
-
-        let zigbee = self
-            .zigbee_devices
-            .get(address)
-            .into_iter()
-            .flat_map(|device| device.profile.environment.iter().copied())
-            .map(SensorMetric::from);
-
-        let plant = self
-            .plant
-            .get(address)
-            .into_iter()
-            .flat_map(|settings| settings.entities.iter().cloned().map(SensorMetric::from));
-
-        let mut metrics = Vec::new();
-
-        for metric in esphome.chain(zigbee).chain(plant) {
-            if !metrics.contains(&metric) {
-                metrics.push(metric);
-            }
-        }
-
-        metrics
-    }
-
-    #[allow(unused)]
-    pub fn presence(&self, address: &str) -> Option<&PresenceSettings> {
-        self.presence.get(address)
-    }
-
-    pub fn plant(&self, address: &str) -> Option<&PlantSensorSettings> {
-        self.plant.get(address)
-    }
-
-    pub fn battery(&self, address: &str) -> Option<&BatterySettings> {
-        self.battery.get(address)
-    }
-
-    pub fn light(&self, address: &str) -> Option<&String> {
-        self.lights.get(address)
-    }
-
-    pub fn esphome_light(&self, address: &str) -> Option<&String> {
-        self.esphome_lights.get(address)
+    pub fn esphome_light(&self, address: &str) -> Option<&str> {
+        self.devices.get(address)?.esphome_entities()?.light()
     }
 
     pub fn capabilities(&self, address: &str) -> &[Capability] {
-        self.capabilities.get(address).map_or(&[], Vec::as_slice)
+        self.devices.get(address).map_or(&[], Device::capabilities)
     }
 
     pub fn room(&self, address: &str) -> Option<&str> {
-        self.rooms.get(address).map(String::as_str)
+        self.devices.get(address)?.room.as_deref()
+    }
+
+    pub fn sensor_metrics(&self, address: &str) -> Vec<SensorMetric> {
+        let Some(device) = self.devices.get(address) else {
+            return Vec::new();
+        };
+
+        let Some(profile) = &device.profile else {
+            return Vec::new();
+        };
+
+        let environment = device
+            .roles
+            .environment
+            .iter()
+            .flat_map(|_| profile.environment.iter().copied().map(SensorMetric::from));
+
+        let plant = device
+            .roles
+            .plant
+            .iter()
+            .flat_map(|_| profile.plant.iter().cloned().map(SensorMetric::from));
+
+        environment.chain(plant).collect()
     }
 
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
@@ -783,30 +344,102 @@ impl DeviceRegistryInner {
     }
 
     pub fn watchdog_key(&self, address_or_id: &str) -> Option<&str> {
-        self.watchdog_keys
+        let device = self
+            .devices
             .get(address_or_id)
-            .or_else(|| self.watchdog_keys_by_id.get(address_or_id))
-            .map(String::as_str)
+            .or_else(|| self.devices.get(self.aliases.get(address_or_id)?))?;
+
+        Some(&device.watchdog_key)
     }
 
-    pub fn lights(&self) -> impl Iterator<Item = (&String, &String)> {
-        self.lights.iter()
+    pub fn door(&self, address: &str) -> Option<&DoorSettings> {
+        self.roles(address)?.door.as_ref()
     }
 
-    /// Every configured door, keyed by address, for entity enumeration.
     pub fn doors(&self) -> impl Iterator<Item = (&String, &DoorSettings)> {
-        self.doors.iter()
+        self.each(|roles| roles.door.as_ref())
     }
 
-    /// Every configured presence sensor, keyed by address, for entity enumeration.
-    pub fn presence_devices(&self) -> impl Iterator<Item = (&String, &PresenceSettings)> {
-        self.presence.iter()
+    pub fn control_switch(&self, address: &str) -> bool {
+        self.roles(address)
+            .is_some_and(|roles| roles.control_switch)
     }
 
-    /// Every configured environment sensor, keyed by address, for entity enumeration.
+    pub fn smart_switch(&self, address: &str) -> Option<&String> {
+        self.roles(address)?.smart_switch.as_ref()
+    }
+
+    pub fn environment(&self, address: &str) -> Option<&EnvironmentSensorSettings> {
+        self.roles(address)?.environment.as_ref()
+    }
+
     pub fn environment_devices(
         &self,
     ) -> impl Iterator<Item = (&String, &EnvironmentSensorSettings)> {
-        self.environment.iter()
+        self.each(|roles| roles.environment.as_ref())
+    }
+
+    pub fn presence(&self, address: &str) -> Option<&PresenceSettings> {
+        self.roles(address)?.presence.as_ref()
+    }
+
+    pub fn presence_devices(&self) -> impl Iterator<Item = (&String, &PresenceSettings)> {
+        self.each(|roles| roles.presence.as_ref())
+    }
+
+    pub fn plant(&self, address: &str) -> Option<&PlantSensorSettings> {
+        self.roles(address)?.plant.as_ref()
+    }
+
+    pub fn battery(&self, address: &str) -> Option<&BatterySettings> {
+        self.roles(address)?.battery.as_ref()
+    }
+
+    pub fn light(&self, address: &str) -> Option<&String> {
+        self.roles(address)?.light.as_ref()
+    }
+
+    pub fn lights(&self) -> impl Iterator<Item = (&String, &String)> {
+        self.each(|roles| roles.light.as_ref())
+    }
+
+    pub fn eink_display(&self, address: &str) -> Option<&EinkDisplaySettings> {
+        self.roles(address)?.eink_display.as_ref()
+    }
+
+    pub fn eink_displays(&self) -> impl Iterator<Item = (&String, &EinkDisplaySettings)> {
+        self.each(|roles| roles.eink_display.as_ref())
+    }
+
+    pub fn trmnl(&self, address: &str) -> Option<&TrmnlDeviceSettings> {
+        self.roles(address)?.trmnl.as_ref()
+    }
+
+    pub fn trmnl_devices(&self) -> impl Iterator<Item = (&String, &TrmnlDeviceSettings)> {
+        self.each(|roles| roles.trmnl.as_ref())
+    }
+
+    pub fn roborock(&self, address: &str) -> Option<&RoborockSettings> {
+        self.roles(address)?.robot_vacuum.as_ref()
+    }
+
+    pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
+        self.each(|roles| roles.robot_vacuum.as_ref())
+    }
+
+    pub fn media_player(&self, address: &str) -> Option<&MediaPlayerSettings> {
+        self.roles(address)?.media_player.as_ref()
+    }
+
+    pub fn media_players(&self) -> impl Iterator<Item = (&String, &MediaPlayerSettings)> {
+        self.each(|roles| roles.media_player.as_ref())
+    }
+
+    pub fn valetudo(&self, address: &str) -> Option<&ValetudoSettings> {
+        self.roles(address)?.valetudo.as_ref()
+    }
+
+    pub fn valetudos(&self) -> impl Iterator<Item = (&String, &ValetudoSettings)> {
+        self.each(|roles| roles.valetudo.as_ref())
     }
 }

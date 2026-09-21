@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::actors::devices::handler::DeviceHandler;
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
@@ -5,13 +7,14 @@ use crate::{
 };
 use uuid::Uuid;
 
+pub struct Entity {
+    pub address: String,
+    pub readings: BTreeMap<String, f64>,
+}
+
 pub struct NewEvent {
     pub event_id: Uuid,
-    /// esphome node name, used as the plant sensor's settings key.
-    pub node: String,
-    /// esphome sensor object_id that produced this reading (e.g. `soil_moisture`).
-    pub object_id: String,
-    pub value: f64,
+    pub entity: Entity,
     pub traceparent: crate::tracing_context::TraceParent,
 }
 
@@ -28,7 +31,7 @@ impl crate::tracing_context::TracedMessage for Message {
 
     fn subject(&self) -> Option<&str> {
         match self {
-            Message::NewEvent(event) => Some(&event.node),
+            Message::NewEvent(event) => Some(&event.entity.address),
         }
     }
 }
@@ -40,18 +43,21 @@ pub struct PlantSensorHandler {
 impl PlantSensorHandler {
     pub const NAME: &str = "plant-sensor";
 
-    /// Publish each reading onto the bus as an `Environment` event keyed by node
-    /// and object_id. Thresholds and rising-edge handling live in the dispatcher
-    /// (driven by `triggers:`).
     fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         let Message::NewEvent(event) = message;
+        let Entity { address, readings } = event.entity;
+
+        let readings = readings
+            .into_iter()
+            .map(|(metric, value)| SensorReading::new(metric.into(), value))
+            .collect();
 
         self.shared_actor_state
             .event_bus
             .publish(EventBusMessage::Environment {
                 event_id: event.event_id,
-                sensor: event.node,
-                readings: vec![SensorReading::new(event.object_id.into(), event.value)],
+                sensor: address,
+                readings,
             });
 
         Ok(())

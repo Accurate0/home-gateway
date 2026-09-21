@@ -1,7 +1,8 @@
 ---@meta
 
----@alias DeviceRole "battery"|"door"|"environment"|"light"|"smart_switch"|"presence"|"control_switch"|"robot_vacuum"|"media_player"
+---@alias DeviceRole "battery"|"door"|"environment"|"light"|"smart_switch"|"presence"|"control_switch"
 ---@alias DeviceEnvironmentMetric "temperature"|"humidity"|"pressure"|"lux"|"uv_index"|"pm25"|"voc_index"
+---@alias DeviceCapability DeviceEnvironmentMetric|"brightness"|"colour_temp"|"rgb"
 
 ---@class DoorFields
 ---@field contact boolean?
@@ -21,6 +22,7 @@
 
 ---@class PresenceFields
 ---@field presence boolean?
+---@field sensor string?
 
 ---@class ControlSwitchFields
 ---@field action string?
@@ -38,6 +40,7 @@
 ---@field battery integer?
 ---@field door DoorFields?
 ---@field environment table<DeviceEnvironmentMetric, number>?
+---@field plant table<string, number>?
 ---@field light LightFields?
 ---@field smart_switch SmartSwitchFields?
 ---@field presence PresenceFields?

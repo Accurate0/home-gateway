@@ -4,7 +4,7 @@ pub mod lua;
 use crate::actors::devices::handler::DeviceHandler;
 use crate::integrations::mqtt::MqttClient;
 use crate::{
-    device_registry::Capability,
+    device_registry::{Capability, Transport},
     event_bus::EventBusMessage,
     integrations::esphome::light_command_topic,
     integrations::mqtt::ZIGBEE2MQTT_BASE,
@@ -20,15 +20,9 @@ const COLOUR_TEMP_MIN_MIREDS: u64 = 153;
 const COLOUR_TEMP_MAX_MIREDS: u64 = 500;
 const BRIGHTNESS_MAX: u64 = 254;
 
-pub enum Entity {
-    Zigbee {
-        address: String,
-        attributes: LightAttributes,
-    },
-    Esphome {
-        node: String,
-        attributes: LightAttributes,
-    },
+pub struct Entity {
+    pub address: String,
+    pub attributes: LightAttributes,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -106,10 +100,7 @@ impl crate::tracing_context::TracedMessage for LightHandlerMessage {
 
     fn subject(&self) -> Option<&str> {
         match self {
-            LightHandlerMessage::NewEvent(event) => match &event.entity {
-                Entity::Zigbee { address, .. } => Some(address),
-                Entity::Esphome { node, .. } => Some(node),
-            },
+            LightHandlerMessage::NewEvent(event) => Some(&event.entity.address),
             LightHandlerMessage::QueryPowerState { ieee_addr, .. }
             | LightHandlerMessage::QueryState { ieee_addr, .. }
             | LightHandlerMessage::Set { ieee_addr, .. }
@@ -431,19 +422,13 @@ impl LightHandler {
     async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
         match message {
             LightHandlerMessage::NewEvent(event) => {
-                let event_id = event.event_id;
-                match event.entity {
-                    Entity::Zigbee {
-                        address,
-                        attributes,
-                    } => {
-                        self.update_light_state(event_id, address, attributes)
-                            .await?;
-                    }
-                    Entity::Esphome { node, attributes } => {
-                        self.update_light_state(event_id, node, attributes).await?;
-                    }
-                }
+                let Entity {
+                    address,
+                    attributes,
+                } = event.entity;
+
+                self.update_light_state(event.event_id, address, attributes)
+                    .await?;
             }
             LightHandlerMessage::Reapply {
                 ieee_addr,
@@ -608,18 +593,46 @@ impl LightHandler {
         ieee_addr: String,
         state: serde_json::Value,
     ) -> Result<bool, anyhow::Error> {
-        if let Some(object_id) = self.shared_actor_state.devices.esphome_light(&ieee_addr) {
-            let topic = light_command_topic(&ieee_addr, object_id);
-            let Some(state) = esphome_command(&state) else {
-                tracing::warn!("esphome light {ieee_addr} does not support command: {state}");
+        let devices = &self.shared_actor_state.devices;
+
+        let Some(device) = devices.device(&ieee_addr) else {
+            tracing::warn!("not sending light command to unregistered device {ieee_addr}");
+            return Ok(false);
+        };
+
+        match device.transport {
+            Transport::Zigbee => {}
+            Transport::Esphome => {
+                let Some(object_id) = devices.esphome_light(&ieee_addr) else {
+                    tracing::warn!("esphome device {ieee_addr} has no light entity");
+                    return Ok(false);
+                };
+
+                let topic = light_command_topic(&ieee_addr, object_id);
+
+                let Some(state) = esphome_command(&state) else {
+                    tracing::warn!("esphome light {ieee_addr} does not support command: {state}");
+                    return Ok(false);
+                };
+
+                self.shared_actor_state
+                    .handles
+                    .expect::<MqttClient>()
+                    .send_event(topic, state)
+                    .await?;
+
+                return Ok(true);
+            }
+            Transport::EinkDisplayFirmware
+            | Transport::Trmnl
+            | Transport::HomeAssistant
+            | Transport::Valetudo => {
+                tracing::warn!(
+                    "{} device {ieee_addr} can't take light commands",
+                    device.transport
+                );
                 return Ok(false);
-            };
-            self.shared_actor_state
-                .handles
-                .expect::<MqttClient>()
-                .send_event(topic, state)
-                .await?;
-            return Ok(true);
+            }
         }
 
         let target = self

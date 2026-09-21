@@ -109,7 +109,7 @@ impl SmartSwitchHandler {
                             let new_event = light::NewEvent {
                                 event_id: event.event_id,
                                 traceparent: crate::tracing_context::inject_current(),
-                                entity: light::Entity::Zigbee {
+                                entity: light::Entity {
                                     address,
                                     attributes: LightAttributes::state(state),
                                 },

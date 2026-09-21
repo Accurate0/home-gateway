@@ -6,7 +6,7 @@ use tracing::Level;
 
 use crate::{
     integrations::notify::{Notification, notify},
-    settings::{NotifyCategory, NotifySource},
+    settings::{NotificationSource, NotifyCategory, NotifySource},
     state::AppState,
 };
 
@@ -55,6 +55,7 @@ impl WatchdogActor {
                     notify(
                         targets,
                         Notification::new(
+                            NotificationSource::WatchdogStale,
                             format!("Sensor offline: {device_key} has stopped reporting"),
                             NotifyCategory::Watchdog,
                             format!("watchdog:{device_key}"),
@@ -70,6 +71,7 @@ impl WatchdogActor {
                 notify(
                     targets,
                     Notification::new(
+                        NotificationSource::WatchdogRecovered,
                         format!("Sensor back online: {device_key} is reporting again"),
                         NotifyCategory::Watchdog,
                         format!("watchdog:{device_key}"),

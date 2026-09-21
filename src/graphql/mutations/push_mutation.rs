@@ -10,7 +10,9 @@ use crate::graphql::objects::notification_interaction_kind::NotificationInteract
 use crate::graphql::objects::send_push_notification_input::SendPushNotificationInput;
 use crate::repo::RepoRegistry;
 use crate::repo::notification_interaction::NotificationInteraction;
-use crate::settings::{NotifyAcknowledge, SettingsContainer, validate_acknowledge};
+use crate::settings::{
+    NotificationSource, NotifyAcknowledge, SettingsContainer, validate_acknowledge,
+};
 
 #[derive(Default)]
 pub struct PushMutation;
@@ -49,14 +51,17 @@ impl PushMutation {
 
         tracing::info!("sending push notification \"{}\" via graphql", input.body);
 
-        let message = PushMessage::Send(PushNotification {
-            title: input.title,
-            body: input.body,
-            category: input.category,
-            tag,
-            actions,
-            acknowledge,
-        });
+        let message = PushMessage::Send {
+            source: NotificationSource::Graphql,
+            notification: PushNotification {
+                title: input.title,
+                body: input.body,
+                category: input.category,
+                tag,
+                actions,
+                acknowledge,
+            },
+        };
 
         rpc::cast(PushActor::NAME, message).map_err(|e| {
             async_graphql::Error::new(format!("error sending push notification: {e}"))

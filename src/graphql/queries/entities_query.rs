@@ -73,15 +73,13 @@ impl EntitiesQuery {
             out.extend(
                 registry
                     .eink_displays()
-                    .keys()
-                    .filter_map(|address| EinkDisplayEntity::from_firmware(registry, address))
+                    .filter_map(|(address, _)| EinkDisplayEntity::from_firmware(registry, address))
                     .map(Entity::EinkDisplay),
             );
             out.extend(
                 registry
                     .trmnl_devices()
-                    .keys()
-                    .filter_map(|address| EinkDisplayEntity::from_trmnl(registry, address))
+                    .filter_map(|(address, _)| EinkDisplayEntity::from_trmnl(registry, address))
                     .map(Entity::EinkDisplay),
             );
         }

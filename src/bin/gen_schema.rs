@@ -1,4 +1,4 @@
-use home_gateway::device_registry::RawSensor;
+use home_gateway::device_registry::RawDevice;
 use home_gateway::settings::{RawSettings, WorkflowDefinition};
 use schemars::Schema;
 use serde_json::{Value, json};
@@ -61,7 +61,7 @@ fn main() {
     write(
         &dir,
         "devices.schema.json",
-        &to_value(schemars::schema_for!(Vec<RawSensor>)),
+        &to_value(schemars::schema_for!(Vec<RawDevice>)),
     );
 
     let lua_types = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

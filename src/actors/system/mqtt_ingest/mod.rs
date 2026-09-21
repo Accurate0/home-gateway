@@ -1,24 +1,22 @@
-use crate::actors::devices::{plant_sensor, presence_sensor, robot_vacuum};
+use crate::actors::devices::robot_vacuum;
 use crate::actors::system::rpc;
+use crate::integrations::esphome::EsphomeTarget;
 use crate::integrations::mqtt::MqttClient;
 use crate::{
-    actors::devices::{
-        environment_sensor, environment_sensor::EnvironmentSensorHandler,
-        presence_sensor::PresenceSensorHandler,
-    },
-    decoding::DecodedDevice,
-    integrations::zigbee2mqtt::devices::BridgeDevices,
-    lua::LuaDecoder,
+    decoding::DecodedDevice, integrations::zigbee2mqtt::devices::BridgeDevices, lua::LuaDecoder,
     state::AppState,
 };
+use decoders::Decoders;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{FactoryMessage, Job, Worker, WorkerBuilder, WorkerId},
 };
-use serde_json::{Map, Value};
+use serde::Serialize;
+use serde_json::{Value, json};
 use tracing::Instrument;
 use uuid::Uuid;
 
+mod decoders;
 pub mod spawn;
 
 /// Messages handled by the MQTT router worker. The worker's sole job is to
@@ -106,146 +104,76 @@ pub struct MqttIngest {
 impl MqttIngest {
     pub const NAME: &str = "mqtt-ingest";
 
-    /// Route an esphome motion (`binary_sensor`) reading to the presence actor.
-    async fn dispatch_esphome_light(
-        &self,
-        node: &str,
-        payload: &[u8],
-    ) -> Result<(), anyhow::Error> {
-        let Some(report) = crate::integrations::esphome::parse_light_state(payload) else {
-            tracing::warn!("unrecognised esphome light state payload for {node}");
-            return Ok(());
-        };
-
-        let event = crate::actors::devices::light::NewEvent {
-            event_id: uuid::Uuid::new_v4(),
-            traceparent: crate::tracing_context::inject_current(),
-            entity: crate::actors::devices::light::Entity::Esphome {
-                node: node.to_string(),
-                attributes: crate::repo::light::LightAttributes {
-                    state: Some(if report.on { "ON" } else { "OFF" }.to_owned()),
-                    brightness: report.brightness,
-                    colour_temp: None,
-                    colour: report.colour,
-                },
-            },
-        };
-
-        rpc::cast_factory(
-            crate::actors::devices::light::LightHandler::NAME,
-            crate::actors::devices::light::LightHandlerMessage::NewEvent(Box::new(event)),
-        )?;
-
-        Ok(())
-    }
-
-    fn dispatch_esphome_motion(
-        &self,
-        node: &str,
-        object_id: &str,
-        payload: &[u8],
-    ) -> Result<(), anyhow::Error> {
-        let Some(motion) = crate::integrations::esphome::parse_binary_state(payload) else {
-            tracing::warn!("unrecognised esphome binary state payload for {node}");
-            return Ok(());
-        };
-
-        let event_id = uuid::Uuid::new_v4();
-        rpc::cast_factory(
-            PresenceSensorHandler::NAME,
-            presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
-                event_id,
-                traceparent: crate::tracing_context::inject_current(),
-                entity: presence_sensor::Entity::Esphome {
-                    node: node.to_string(),
-                    object_id: object_id.to_string(),
-                    motion,
-                },
-            }),
-        )?;
-
-        Ok(())
-    }
-
-    /// Route an esphome scalar `sensor` reading to whichever of the plant /
-    /// environment actors claim the node — a node can be configured as both, and
-    /// each actor ignores object_ids it doesn't handle.
-    fn dispatch_esphome_sensor(
-        &self,
-        node: &str,
-        object_id: &str,
-        payload: &[u8],
-    ) -> Result<(), anyhow::Error> {
-        let Some(value) = crate::integrations::esphome::parse_sensor_state(payload) else {
-            tracing::warn!("unrecognised esphome sensor payload for {node}/{object_id}");
-            return Ok(());
-        };
-
-        let event_id = uuid::Uuid::new_v4();
-
-        if self.shared_actor_state.devices.plant(node).is_some() {
-            rpc::cast_factory(
-                plant_sensor::PlantSensorHandler::NAME,
-                plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
-                    event_id,
-                    traceparent: crate::tracing_context::inject_current(),
-                    node: node.to_string(),
-                    object_id: object_id.to_string(),
-                    value,
-                }),
-            )?;
-        }
-
-        if self.shared_actor_state.devices.environment(node).is_some() {
-            rpc::cast_factory(
-                EnvironmentSensorHandler::NAME,
-                environment_sensor::Message::NewEvent(Box::new(environment_sensor::NewEvent {
-                    event_id,
-                    traceparent: crate::tracing_context::inject_current(),
-                    entity: environment_sensor::Entity::Esphome {
-                        node: node.to_string(),
-                        object_id: object_id.to_string(),
-                        value,
-                    },
-                })),
-            )?;
-        }
-
-        Ok(())
-    }
-
-    async fn dispatch_zigbee(
+    async fn decode_and_dispatch<I: Serialize>(
         &self,
         decoder: &LuaDecoder,
-        event_id: Uuid,
         device: &DecodedDevice,
         friendly_name: &str,
-        payload: &Map<String, Value>,
-    ) -> Result<(), anyhow::Error> {
-        let reading = match device.profile.decode(decoder, payload) {
+        input: &I,
+    ) {
+        let reading = match device.profile.decode(decoder, input) {
             Ok(reading) => reading,
             Err(e) => {
                 tracing::error!(
-                    "failed to decode zigbee payload for {} with model {}: {e}",
+                    "failed to decode {} message for {} with model {}: {e}",
+                    device.profile.transport,
                     device.address,
                     device.profile.slug
                 );
                 crate::tracing_context::record_current_error(&e.to_string());
 
-                return Ok(());
+                return;
             }
         };
 
         crate::decoding::dispatch(
             &self.shared_actor_state,
-            event_id,
+            Uuid::new_v4(),
             device,
             friendly_name,
             reading,
         )
         .await;
+    }
 
-        Ok(())
+    async fn handle_esphome_state(
+        &self,
+        decoder: &LuaDecoder,
+        target: EsphomeTarget,
+        payload: &[u8],
+    ) {
+        let devices = &self.shared_actor_state.devices;
+
+        let Some(device) = devices.decoded(&target.node) else {
+            tracing::warn!("esphome topic for unregistered node {}", target.node);
+            return;
+        };
+
+        self.record_last_seen(&target.node).await;
+
+        let Some(state) = target.domain.parse(payload) else {
+            tracing::warn!(
+                "unrecognised esphome {} payload for {}/{}",
+                target.domain,
+                target.node,
+                target.object_id
+            );
+            return;
+        };
+
+        let friendly_name = devices
+            .friendly_name(&target.node)
+            .await
+            .unwrap_or_else(|| device.id.clone());
+
+        let input = json!({
+            "domain": target.domain,
+            "object_id": target.object_id,
+            "state": state,
+        });
+
+        self.decode_and_dispatch(decoder, &device, &friendly_name, &input)
+            .await;
     }
 
     async fn record_last_seen(&self, address: &str) {
@@ -257,7 +185,7 @@ impl MqttIngest {
         .await;
     }
 
-    async fn handle(&self, decoder: &LuaDecoder, message: Message) -> Result<(), anyhow::Error> {
+    async fn handle(&self, decoders: &Decoders, message: Message) -> Result<(), anyhow::Error> {
         let Message::MqttPacket { payload, topic } = message;
         let mqtt_topic = MqttTopic::classify(&topic);
         crate::metrics::record_mqtt_ingest(mqtt_topic.kind());
@@ -293,12 +221,11 @@ impl MqttIngest {
                     .record_friendly_name(discovery.name.clone(), discovery.friendly_name)
                     .await;
 
-                let topics: Vec<String> = self
+                let topics = self
                     .shared_actor_state
                     .devices
                     .esphome_topics_for(&discovery.name)
-                    .map(|(topic, _)| topic.clone())
-                    .collect();
+                    .to_vec();
 
                 for topic in topics {
                     tracing::info!("subscribing to esphome topic: {topic}");
@@ -310,8 +237,6 @@ impl MqttIngest {
                 }
             }
             MqttTopic::Other => {
-                // the only non-control topics we subscribe to are esphome state
-                // topics declared in the sensor registry; look the target up exactly
                 let target = self
                     .shared_actor_state
                     .devices
@@ -319,23 +244,9 @@ impl MqttIngest {
                     .cloned();
 
                 match target {
-                    Some(crate::integrations::esphome::EsphomeTarget::Motion {
-                        node,
-                        object_id,
-                    }) => {
-                        self.record_last_seen(&node).await;
-                        self.dispatch_esphome_motion(&node, &object_id, &payload)?
-                    }
-                    Some(crate::integrations::esphome::EsphomeTarget::Sensor {
-                        node,
-                        object_id,
-                    }) => {
-                        self.record_last_seen(&node).await;
-                        self.dispatch_esphome_sensor(&node, &object_id, &payload)?
-                    }
-                    Some(crate::integrations::esphome::EsphomeTarget::Light { node, .. }) => {
-                        self.record_last_seen(&node).await;
-                        self.dispatch_esphome_light(&node, &payload).await?
+                    Some(target) => {
+                        self.handle_esphome_state(&decoders.esphome, target, &payload)
+                            .await
                     }
                     None => {
                         tracing::warn!("ignoring mqtt packet on unhandled topic: {topic}")
@@ -388,7 +299,7 @@ impl MqttIngest {
                         .unwrap_or_else(|| friendly_name.clone()),
                 };
 
-                let Some(device) = devices.zigbee_device(&address).cloned() else {
+                let Some(device) = devices.zigbee_device(&address) else {
                     tracing::warn!(
                         "unregistered zigbee device {address} ({friendly_name}); add it to devices.yaml"
                     );
@@ -403,8 +314,8 @@ impl MqttIngest {
                     device.profile.slug
                 );
 
-                self.dispatch_zigbee(decoder, Uuid::new_v4(), &device, &friendly_name, object)
-                    .await?;
+                self.decode_and_dispatch(&decoders.zigbee, &device, &friendly_name, object)
+                    .await;
             }
         }
 
@@ -415,7 +326,7 @@ impl MqttIngest {
 impl Worker for MqttIngest {
     type Key = ();
     type Message = Message;
-    type State = LuaDecoder;
+    type State = Decoders;
     type Arguments = ();
 
     async fn pre_start(
@@ -426,11 +337,7 @@ impl Worker for MqttIngest {
     ) -> Result<Self::State, ActorProcessingErr> {
         let settings = &self.shared_actor_state.settings;
 
-        Ok(LuaDecoder::load(
-            "zigbee",
-            &settings.model_sources.zigbee,
-            &settings.lua,
-        )?)
+        Ok(Decoders::load(&settings.model_sources, &settings.lua)?)
     }
 
     async fn handle(
@@ -438,7 +345,7 @@ impl Worker for MqttIngest {
         _wid: WorkerId,
         _factory: &ActorRef<FactoryMessage<(), Message>>,
         Job { msg, .. }: Job<(), Message>,
-        decoder: &mut Self::State,
+        decoders: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         let Message::MqttPacket { topic, .. } = &msg;
         let topic = topic.clone();
@@ -453,7 +360,7 @@ impl Worker for MqttIngest {
             otel.status_message = tracing::field::Empty,
         );
 
-        if let Err(e) = Self::handle(self, decoder, msg)
+        if let Err(e) = Self::handle(self, decoders, msg)
             .instrument(span.clone())
             .await
         {
@@ -508,8 +415,6 @@ mod tests {
             MqttTopic::classify("esphome/discover/apollo-mtr-1-livingroom"),
             MqttTopic::EsphomeDiscovery
         ));
-        // esphome state topics are not classified by shape any more — they fall
-        // through to `Other` and are resolved against the subscription registry
         assert!(matches!(
             MqttTopic::classify("apollo-mtr-1-livingroom/sensor/air_temperature/state"),
             MqttTopic::Other

@@ -4,9 +4,9 @@ use crate::{
         control_switch, control_switch::ControlSwitchHandler, door_sensor,
         door_sensor::DoorSensorHandler, environment_sensor,
         environment_sensor::EnvironmentSensorHandler, light, light::LightHandler, media_player,
-        media_player::MediaPlayerHandler, presence_sensor, presence_sensor::PresenceSensorHandler,
-        robot_vacuum, robot_vacuum::RobotVacuumHandler, smart_switch,
-        smart_switch::SmartSwitchHandler,
+        media_player::MediaPlayerHandler, plant_sensor, plant_sensor::PlantSensorHandler,
+        presence_sensor, presence_sensor::PresenceSensorHandler, robot_vacuum,
+        robot_vacuum::RobotVacuumHandler, smart_switch, smart_switch::SmartSwitchHandler,
     },
     device_registry::DeviceRegistry,
     repo::light::LightAttributes,
@@ -94,7 +94,7 @@ impl DecodedRole for environment_sensor::Entity {
         for metric in reported.keys().filter(|metric| !declared.contains(metric)) {
             tracing::warn!(
                 "{} model {} reported undeclared environment metric {metric:?} for {address}",
-                device.profile.kind,
+                device.profile.transport,
                 device.profile.slug
             );
         }
@@ -104,7 +104,7 @@ impl DecodedRole for environment_sensor::Entity {
         for metric in declared {
             match reported.get(metric) {
                 Some(value) => readings.push((*metric, *value)),
-                None => tracing::info!("no {metric:?} in payload for {address}"),
+                None => tracing::debug!("no {metric:?} in reading for {address}"),
             }
         }
 
@@ -113,7 +113,7 @@ impl DecodedRole for environment_sensor::Entity {
             return None;
         }
 
-        Some(environment_sensor::Entity::Decoded {
+        Some(environment_sensor::Entity {
             address: address.clone(),
             friendly_name: friendly_name.to_owned(),
             readings,
@@ -127,6 +127,65 @@ impl DecodedRole for environment_sensor::Entity {
             traceparent: crate::tracing_context::inject_current(),
             entity: self,
         }))
+    }
+}
+
+impl DecodedRole for plant_sensor::Entity {
+    type Message = plant_sensor::Message;
+
+    const ACTOR: &'static str = PlantSensorHandler::NAME;
+    fn declared(devices: &DeviceRegistry, address: &str) -> bool {
+        devices.plant(address).is_some()
+    }
+
+    fn extract(
+        device: &DecodedDevice,
+        _friendly_name: &str,
+        reading: &DeviceReading,
+    ) -> Option<Self> {
+        let address = &device.address;
+        let declared = &device.profile.plant;
+
+        let Some(reported) = reading.plant.as_ref() else {
+            tracing::debug!("skipping plant reading for {address}: no plant in this update");
+            return None;
+        };
+
+        let readings: std::collections::BTreeMap<String, f64> = reported
+            .iter()
+            .filter(|(metric, _)| {
+                let known = declared.contains(metric);
+
+                if !known {
+                    tracing::warn!(
+                        "{} model {} reported undeclared plant metric {metric} for {address}",
+                        device.profile.transport,
+                        device.profile.slug
+                    );
+                }
+
+                known
+            })
+            .map(|(metric, value)| (metric.clone(), *value))
+            .collect();
+
+        if readings.is_empty() {
+            tracing::info!("skipping plant reading for {address}: no declared metrics");
+            return None;
+        }
+
+        Some(plant_sensor::Entity {
+            address: address.clone(),
+            readings,
+        })
+    }
+
+    fn into_message(self, event_id: Uuid) -> Self::Message {
+        plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
+            event_id,
+            traceparent: crate::tracing_context::inject_current(),
+            entity: self,
+        })
     }
 }
 
@@ -155,7 +214,7 @@ impl DecodedRole for light::Entity {
             return None;
         };
 
-        Some(light::Entity::Zigbee {
+        Some(light::Entity {
             address: address.clone(),
             attributes: LightAttributes {
                 state: Some(state),
@@ -239,13 +298,19 @@ impl DecodedRole for presence_sensor::Entity {
     ) -> Option<Self> {
         let address = &device.address;
 
-        let Some(presence) = reading.presence.as_ref().and_then(|fields| fields.presence) else {
+        let Some(fields) = reading.presence.as_ref() else {
             tracing::info!("skipping presence reading for {address}: no presence in payload");
             return None;
         };
 
-        Some(presence_sensor::Entity::Decoded {
+        let Some(presence) = fields.presence else {
+            tracing::info!("skipping presence reading for {address}: no presence value");
+            return None;
+        };
+
+        Some(presence_sensor::Entity {
             address: address.clone(),
+            sensor: fields.sensor.clone(),
             presence,
         })
     }
@@ -402,7 +467,7 @@ pub fn run<R: DecodedRole>(
     if let Err(e) = rpc::cast_factory(R::ACTOR, entity.into_message(event_id)) {
         tracing::error!(
             "failed to dispatch {} event to {}: {e}",
-            device.profile.kind,
+            device.profile.transport,
             R::ACTOR
         );
     }
@@ -414,6 +479,8 @@ mod tests {
     use crate::{
         decoding::load_models,
         device_metric::MetricValue,
+        device_registry::Transport,
+        integrations::esphome::EsphomeDomain,
         lua::LuaDecoder,
         settings::{LuaSettings, Metric},
     };
@@ -433,10 +500,11 @@ mod tests {
         }
     }
 
-    fn test_device(kind: &'static str, slug: &str, source: &str, address: &str) -> TestDevice {
+    fn test_device(kind: Transport, slug: &str, source: &str, address: &str) -> TestDevice {
         let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
         let models = load_models(kind, &sources, &LuaSettings::default()).expect("models");
-        let decoder = LuaDecoder::load(kind, &sources, &LuaSettings::default()).expect("decoder");
+        let decoder = LuaDecoder::load(&kind.to_string(), &sources, &LuaSettings::default())
+            .expect("decoder");
 
         TestDevice {
             device: DecodedDevice {
@@ -449,7 +517,7 @@ mod tests {
     }
 
     fn device(slug: &str, source: &str) -> TestDevice {
-        test_device("zigbee", slug, source, "0xabc")
+        test_device(Transport::Zigbee, slug, source, "0xabc")
     }
 
     fn reading(device: &TestDevice, json: &str) -> DeviceReading {
@@ -527,7 +595,7 @@ mod tests {
             r#"{"temperature":18.4,"humidity":61,"pressure":1012,"battery":88}"#,
         );
 
-        let Some(environment_sensor::Entity::Decoded {
+        let Some(environment_sensor::Entity {
             readings,
             battery: level,
             ..
@@ -550,7 +618,7 @@ mod tests {
             r#"{"presence":true,"target_distance":1.4,"movement":"approach"}"#,
         );
 
-        let Some(presence_sensor::Entity::Decoded { presence, .. }) =
+        let Some(presence_sensor::Entity { presence, .. }) =
             <presence_sensor::Entity as DecodedRole>::extract(&device, "closet-presence", &reading)
         else {
             panic!("expected a presence reading");
@@ -615,16 +683,14 @@ mod tests {
     fn extracts_a_light_payload_with_colour() {
         let device = device("aqara_t1", AQARA_T1);
 
-        let Some(light::Entity::Zigbee { attributes, .. }) =
-            <light::Entity as DecodedRole>::extract(
+        let Some(light::Entity { attributes, .. }) = <light::Entity as DecodedRole>::extract(
+            &device,
+            "closet-light",
+            &reading(
                 &device,
-                "closet-light",
-                &reading(
-                    &device,
-                    r##"{"state":"ON","brightness":120,"color_temp":370,"color":{"hex":"#FF8800"}}"##,
-                ),
-            )
-        else {
+                r##"{"state":"ON","brightness":120,"color_temp":370,"color":{"hex":"#FF8800"}}"##,
+            ),
+        ) else {
             panic!("expected a light reading");
         };
 
@@ -661,11 +727,94 @@ mod tests {
         assert_eq!(action, "single");
     }
 
+    const APOLLO_MTR_1: &str = include_str!("../../config/lua/esphome/apollo_mtr_1.lua");
+
+    fn esphome(
+        device: &TestDevice,
+        domain: EsphomeDomain,
+        object_id: &str,
+        payload: &[u8],
+    ) -> DeviceReading {
+        let entity = serde_json::json!({
+            "domain": domain,
+            "object_id": object_id,
+            "state": domain.parse(payload).expect("payload"),
+        });
+
+        device
+            .profile
+            .decode(&device.decoder, &entity)
+            .expect("decode")
+    }
+
+    #[test]
+    fn an_esphome_node_decodes_each_entity_into_its_role() {
+        let device = test_device(
+            Transport::Esphome,
+            "apollo_mtr_1",
+            APOLLO_MTR_1,
+            "apollo-mtr-1-livingroom",
+        );
+
+        let temperature = esphome(
+            &device,
+            EsphomeDomain::Sensor,
+            "dps310_temperature",
+            b"21.5",
+        );
+
+        let Some(environment_sensor::Entity { readings, .. }) =
+            <environment_sensor::Entity as DecodedRole>::extract(
+                &device,
+                "Living Room",
+                &temperature,
+            )
+        else {
+            panic!("expected an environment reading");
+        };
+
+        assert_eq!(readings, [(Metric::Temperature, 21.5)]);
+
+        let motion = esphome(
+            &device,
+            EsphomeDomain::BinarySensor,
+            "ld2450_still_target",
+            b"ON",
+        );
+
+        let Some(presence_sensor::Entity {
+            presence, sensor, ..
+        }) = <presence_sensor::Entity as DecodedRole>::extract(&device, "Living Room", &motion)
+        else {
+            panic!("expected a presence reading");
+        };
+
+        assert!(presence);
+        assert_eq!(sensor.as_deref(), Some("ld2450_still_target"));
+
+        let light = esphome(
+            &device,
+            EsphomeDomain::Light,
+            "rgb_light",
+            br#"{"state":"ON","brightness":255,"color":{"r":255,"g":136,"b":0}}"#,
+        );
+
+        let Some(light::Entity { attributes, .. }) =
+            <light::Entity as DecodedRole>::extract(&device, "Living Room", &light)
+        else {
+            panic!("expected a light reading");
+        };
+
+        assert_eq!(attributes.state.as_deref(), Some("ON"));
+        assert_eq!(attributes.brightness, Some(254));
+        assert_eq!(attributes.colour.as_deref(), Some("#ff8800"));
+    }
+
     const ROBOROCK: &str = include_str!("../../config/lua/home_assistant/roborock.lua");
     const MEDIA_PLAYER: &str = include_str!("../../config/lua/home_assistant/media_player.lua");
 
     fn entity_device(slug: &str, source: &str, address: &str) -> TestDevice {
-        test_device("home_assistant", slug, source, address)
+        test_device(Transport::HomeAssistant, slug, source, address)
     }
 
     fn entity(device: &TestDevice, entity_id: &str, state: &str) -> DeviceReading {

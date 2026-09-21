@@ -1,7 +1,7 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
 use crate::{
     integrations::notify::{Notification, notify},
-    settings::{ArmedDoorStates, IEEEAddress, NotifyCategory},
+    settings::{ArmedDoorStates, IEEEAddress, NotificationSource, NotifyCategory},
     state::AppState,
 };
 use chrono::{DateTime, Utc};
@@ -33,7 +33,12 @@ impl ArmedDoor {
             let message = format!("{} has been left open.", settings.name);
             notify(
                 &settings.notify,
-                Notification::new(message, NotifyCategory::Door, format!("door:{ieee_addr}")),
+                Notification::new(
+                    NotificationSource::DoorLeftOpen,
+                    message,
+                    NotifyCategory::Door,
+                    format!("door:{ieee_addr}"),
+                ),
             );
         }
     }

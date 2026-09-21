@@ -4,11 +4,14 @@ use tracing::instrument;
 
 use crate::{
     actors::system::push::{self, PushActor, PushNotification, types::PushAction},
-    settings::{NotifyAcknowledge, NotifyCategory, NotifySource},
+    settings::{NotificationSource, NotifyAcknowledge, NotifyCategory, NotifySource},
 };
+
+pub mod flag;
 
 #[derive(Debug, Clone)]
 pub struct Notification {
+    pub source: NotificationSource,
     pub title: String,
     pub body: String,
     pub category: NotifyCategory,
@@ -18,8 +21,14 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub fn new(body: String, category: NotifyCategory, tag: String) -> Self {
+    pub fn new(
+        source: NotificationSource,
+        body: String,
+        category: NotifyCategory,
+        tag: String,
+    ) -> Self {
         Self {
+            source,
             title: "Home Gateway".to_string(),
             body,
             category,
@@ -52,14 +61,17 @@ pub fn notify(notify_sources: &[NotifySource], notification: Notification) {
             NotifySource::AndroidApp => {
                 tracing::info!("notifying android app with \"{}\"", notification.body);
 
-                let push_message = push::PushMessage::Send(PushNotification {
-                    title: notification.title.clone(),
-                    body: notification.body.clone(),
-                    category: notification.category,
-                    tag: notification.tag.clone(),
-                    actions: notification.actions.clone(),
-                    acknowledge: notification.acknowledge,
-                });
+                let push_message = push::PushMessage::Send {
+                    source: notification.source.clone(),
+                    notification: PushNotification {
+                        title: notification.title.clone(),
+                        body: notification.body.clone(),
+                        category: notification.category,
+                        tag: notification.tag.clone(),
+                        actions: notification.actions.clone(),
+                        acknowledge: notification.acknowledge,
+                    },
+                };
 
                 if let Err(e) = rpc::cast(PushActor::NAME, push_message) {
                     tracing::error!("error sending to push worker: {e}");

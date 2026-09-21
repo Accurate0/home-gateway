@@ -77,8 +77,9 @@ fn zigbee_device_without_a_model_is_rejected() {
 - id: broken
   state: enabled
   room: test
-  transport: zigbee
-  address: "0x000000000000dead"
+  transport:
+    type: zigbee
+    address: "0x000000000000dead"
   roles:
     - type: door
       config: { name: Broken, id: broken, state: unarmed, notify: [android_app] }
@@ -98,8 +99,9 @@ fn unknown_zigbee_model_is_rejected() {
 - id: broken
   state: enabled
   room: test
-  transport: zigbee
-  address: "0x000000000000dead"
+  transport:
+    type: zigbee
+    address: "0x000000000000dead"
   model: not_a_real_model
   roles:
     - type: door
@@ -114,23 +116,24 @@ fn unknown_zigbee_model_is_rejected() {
 }
 
 #[test]
-fn esphome_environment_without_entities_is_rejected() {
+fn esphome_device_without_a_model_is_rejected() {
     let error = build_with_devices(
         r#"
 - id: broken
   state: enabled
   room: test
-  transport: esphome
-  address: broken-node
+  transport:
+    type: esphome
+    address: broken-node
   roles:
     - type: environment
-      config: { id: broken, name: Broken, entities: {} }
+      config: { id: broken, name: Broken }
 "#,
     );
 
     assert!(
-        error.to_lowercase().contains("entit"),
-        "expected an entities-related error, got: {error}"
+        error.contains("esphome transport requires a `model:`"),
+        "expected a model-related error, got: {error}"
     );
 }
 
@@ -147,7 +150,7 @@ fn build_with_devices(devices_yaml: &str) -> String {
     )
     .unwrap();
 
-    for models in ["lua/zigbee", "lua/home_assistant"] {
+    for models in ["lua/zigbee", "lua/esphome", "lua/home_assistant"] {
         std::fs::create_dir_all(dir.join(models)).unwrap();
 
         for entry in std::fs::read_dir(Path::new(FIXTURE_CONFIG).join(models)).unwrap() {

@@ -11,34 +11,16 @@ use ractor::RpcReplyPort;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub enum Entity {
-    Decoded {
-        address: String,
-        friendly_name: String,
-        readings: Vec<(Metric, f64)>,
-        battery: Option<i64>,
-    },
-    Esphome {
-        node: String,
-        object_id: String,
-        value: f64,
-    },
-}
-
-#[derive(Default)]
-struct EsphomeReadings {
-    temperature: Option<f64>,
-    humidity: Option<f64>,
-    pressure: Option<f64>,
-    lux: Option<f64>,
-    uv_index: Option<f64>,
-    pm25: Option<f64>,
-    voc_index: Option<f64>,
+pub struct Entity {
+    pub address: String,
+    pub friendly_name: String,
+    pub readings: Vec<(Metric, f64)>,
+    pub battery: Option<i64>,
 }
 
 #[derive(Default)]
 pub struct EnvironmentSensorState {
-    esphome_readings: HashMap<String, EsphomeReadings>,
+    latest: HashMap<String, HashMap<Metric, f64>>,
 }
 
 pub struct NewEvent {
@@ -75,10 +57,7 @@ impl crate::tracing_context::TracedMessage for Message {
 
     fn subject(&self) -> Option<&str> {
         match self {
-            Message::NewEvent(event) => match &event.entity {
-                Entity::Decoded { address, .. } => Some(address),
-                Entity::Esphome { node, .. } => Some(node),
-            },
+            Message::NewEvent(event) => Some(&event.entity.address),
             Message::QueryLatest { entity_id, .. } => Some(entity_id),
         }
     }
@@ -115,102 +94,41 @@ impl EnvironmentSensorHandler {
                 reply.send(reading)?;
                 return Ok(());
             }
-            Message::NewEvent(event) => match event.entity {
-                Entity::Decoded {
+            Message::NewEvent(event) => {
+                let Entity {
                     address,
                     friendly_name,
                     readings,
                     battery,
-                } => {
-                    let reading = |wanted: Metric| {
-                        readings
-                            .iter()
-                            .find(|(metric, _)| *metric == wanted)
-                            .map(|(_, value)| *value)
-                    };
+                } = event.entity;
 
-                    let Some(temperature) = reading(Metric::Temperature) else {
-                        tracing::debug!(
-                            "ignoring decoded environment reading without temperature: {address}"
-                        );
-                        return Ok(());
-                    };
+                let latest = state.latest.entry(address.clone()).or_default();
+                latest.extend(readings);
 
-                    self.save_environment_details(
-                        event.event_id,
-                        friendly_name,
-                        address,
-                        temperature,
-                        battery,
-                        reading(Metric::Humidity),
-                        reading(Metric::Pressure),
-                        reading(Metric::Pm25).map(|v| v.round() as i64),
-                        reading(Metric::VocIndex).map(|v| v.round() as i64),
-                        reading(Metric::Lux),
-                        reading(Metric::UvIndex),
-                    )
-                    .await?;
-                }
-                Entity::Esphome {
-                    node,
-                    object_id,
-                    value,
-                } => {
-                    let Some(metric) = self
-                        .shared_actor_state
-                        .devices
-                        .environment(&node)
-                        .and_then(|s| s.entities.get(&object_id).copied())
-                    else {
-                        tracing::debug!("ignoring esphome sensor entity: {object_id}");
-                        return Ok(());
-                    };
+                let reading = |metric: Metric| latest.get(&metric).copied();
 
-                    let readings = state.esphome_readings.entry(node.clone()).or_default();
-                    match metric {
-                        Metric::Temperature => readings.temperature = Some(value),
-                        Metric::Humidity => readings.humidity = Some(value),
-                        Metric::Pressure => readings.pressure = Some(value),
-                        Metric::Lux => readings.lux = Some(value),
-                        Metric::UvIndex => readings.uv_index = Some(value),
-                        Metric::Pm25 => readings.pm25 = Some(value),
-                        Metric::VocIndex => readings.voc_index = Some(value),
-                    }
+                let Some(temperature) = reading(Metric::Temperature) else {
+                    tracing::debug!(
+                        "holding environment reading for {address} until it reports temperature"
+                    );
+                    return Ok(());
+                };
 
-                    // temperature is the required column; without it there is nothing to store yet
-                    let Some(temperature) = readings.temperature else {
-                        return Ok(());
-                    };
-                    let humidity = readings.humidity;
-                    let pressure = readings.pressure;
-                    let lux = readings.lux;
-                    let uv_index = readings.uv_index;
-                    let pm25 = readings.pm25.map(|v| v.round() as i64);
-                    let voc_index = readings.voc_index.map(|v| v.round() as i64);
-
-                    let friendly_name = self
-                        .shared_actor_state
-                        .devices
-                        .friendly_name(&node)
-                        .await
-                        .unwrap_or_else(|| node.clone());
-
-                    self.save_environment_details(
-                        event.event_id,
-                        friendly_name,
-                        node,
-                        temperature,
-                        None,
-                        humidity,
-                        pressure,
-                        pm25,
-                        voc_index,
-                        lux,
-                        uv_index,
-                    )
-                    .await?;
-                }
-            },
+                self.save_environment_details(
+                    event.event_id,
+                    friendly_name,
+                    address,
+                    temperature,
+                    battery,
+                    reading(Metric::Humidity),
+                    reading(Metric::Pressure),
+                    reading(Metric::Pm25).map(|v| v.round() as i64),
+                    reading(Metric::VocIndex).map(|v| v.round() as i64),
+                    reading(Metric::Lux),
+                    reading(Metric::UvIndex),
+                )
+                .await?;
+            }
         }
 
         Ok(())

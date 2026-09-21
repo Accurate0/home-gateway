@@ -68,7 +68,7 @@ fn report(attributes: LightAttributes) {
         LightHandlerMessage::NewEvent(Box::new(NewEvent {
             event_id: Uuid::new_v4(),
             traceparent: None,
-            entity: Entity::Zigbee {
+            entity: Entity {
                 address: LAMP.to_owned(),
                 attributes,
             },

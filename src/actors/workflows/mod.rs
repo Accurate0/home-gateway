@@ -7,6 +7,7 @@ use crate::http::public_client::PublicHttpClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaSource};
+use crate::settings::NotificationSource;
 use crate::settings::workflow::{HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
@@ -339,13 +340,19 @@ impl WorkflowWorker {
                     .transpose()
                     .map_err(WorkflowError::Template)?;
 
-                let notification =
-                    Notification::new(message, *category, format!("workflow:{}", ctx.origin_slug))
-                        .with_actions(push::actions::resolve(
-                            &self.shared_actor_state.settings.workflows,
-                            actions,
-                        ))
-                        .with_acknowledge(*acknowledge);
+                let notification = Notification::new(
+                    NotificationSource::Workflow {
+                        slug: ctx.origin_slug.to_owned(),
+                    },
+                    message,
+                    *category,
+                    format!("workflow:{}", ctx.origin_slug),
+                )
+                .with_actions(push::actions::resolve(
+                    &self.shared_actor_state.settings.workflows,
+                    actions,
+                ))
+                .with_acknowledge(*acknowledge);
 
                 let notification = match title {
                     Some(title) => notification.with_title(title),

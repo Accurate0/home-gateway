@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
 - id: control-switch
   state: enabled
-  transport: zigbee
-  address: "0x64028ffffe638218"
+  transport:
+    type: zigbee
+    address: "0x64028ffffe638218"
   model: ikea_e2001
   watchdog: { timeout: 7d }
   roles:
@@ -11,8 +12,9 @@
 
 - id: small-switch
   state: enabled
-  transport: zigbee
-  address: "0x00158d008bbe0316"
+  transport:
+    type: zigbee
+    address: "0x00158d008bbe0316"
   model: aqara_wxkg11lm
   watchdog: { timeout: 24h }
   roles:
