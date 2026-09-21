@@ -6,6 +6,7 @@ local ENVIRONMENT = {
 
 ---@type EsphomeModel
 return {
+	protocol = "esphome",
 	roles = { "light", "presence", "environment" },
 	capabilities = { "brightness", "rgb", "temperature", "pressure", "lux" },
 
@@ -15,21 +16,23 @@ return {
 		light = { "rgb_light" },
 	},
 
-	decode = function(entity)
+	decode = function(input)
+		local entity = input.vars
+
 		if entity.domain == "light" then
-			return { light = entity.state }
+			return { light = input.payload }
 		end
 
 		if entity.domain == "binary_sensor" then
-			return { presence = { presence = entity.state, sensor = entity.object_id } }
+			return { presence = { presence = input.payload, sensor = entity.object_id } }
 		end
 
 		local metric = ENVIRONMENT[entity.object_id]
 
 		if metric then
-			return { environment = { [metric] = entity.state } }
+			return { environment = { [metric] = input.payload } }
 		end
 
-		return { metrics = { [entity.object_id] = entity.state } }
+		return { metrics = { [entity.object_id] = input.payload } }
 	end,
 }

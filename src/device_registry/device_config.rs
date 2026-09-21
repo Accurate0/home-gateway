@@ -5,7 +5,7 @@ use crate::decoding::DeviceRoleName;
 use crate::settings::devices::door::RawDoorSettings;
 use crate::settings::{
     RawEinkDisplayBlock, RawEnvironmentBlock, RawLightBlock, RawMediaPlayerBlock, RawPlantBlock,
-    RawPresenceBlock, RawRobotVacuumBlock, RawSmartSwitchBlock, RawTrmnlBlock, RawValetudoBlock,
+    RawPresenceBlock, RawRobotVacuumBlock, RawSmartSwitchBlock, RawTrmnlBlock,
 };
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -23,7 +23,6 @@ pub enum DeviceConfig {
     Trmnl(RawTrmnlBlock),
     RobotVacuum(RawRobotVacuumBlock),
     MediaPlayer(RawMediaPlayerBlock),
-    Valetudo(RawValetudoBlock),
     Battery,
 }
 
@@ -41,7 +40,6 @@ impl DeviceConfig {
             DeviceConfig::Trmnl(_) => DeviceRoleName::Trmnl,
             DeviceConfig::RobotVacuum(_) => DeviceRoleName::RobotVacuum,
             DeviceConfig::MediaPlayer(_) => DeviceRoleName::MediaPlayer,
-            DeviceConfig::Valetudo(_) => DeviceRoleName::Valetudo,
             DeviceConfig::Battery => DeviceRoleName::Battery,
         }
     }

@@ -2,7 +2,7 @@
   state: enabled
   room: entry
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x0000000000000001"
   model: test_door
   roles:
@@ -18,7 +18,7 @@
   state: enabled
   room: living-room
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x0000000000000002"
   model: test_environment
   roles:
@@ -30,7 +30,7 @@
   state: enabled
   room: living-room
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x0000000000000003"
   model: test_plug
   roles:
@@ -43,7 +43,7 @@
   state: enabled
   room: living-room
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x0000000000000004"
   model: test_presence
   roles:
@@ -54,7 +54,7 @@
   state: enabled
   room: study
   transport:
-    type: esphome
+    type: mqtt
     address: test-node
   model: test_node
   roles:

@@ -33,12 +33,8 @@ impl EntitiesMutation {
         let registry = ctx.data::<DeviceRegistry>()?;
         let address = registry.address_or_self(&id).to_owned();
 
-        if let Some(settings) = registry.roborock(&address) {
-            return Ok(RobotVacuumMutation::roborock(settings));
-        }
-
-        if let Some(settings) = registry.valetudo(&address) {
-            return Ok(RobotVacuumMutation::valetudo(settings));
+        if let Some(settings) = registry.robot_vacuum(&address) {
+            return Ok(RobotVacuumMutation::new(settings));
         }
 
         Err(async_graphql::Error::new(format!(

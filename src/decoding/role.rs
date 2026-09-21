@@ -94,7 +94,7 @@ impl DecodedRole for environment_sensor::Entity {
         for metric in reported.keys().filter(|metric| !declared.contains(metric)) {
             tracing::warn!(
                 "{} model {} reported undeclared environment metric {metric:?} for {address}",
-                device.profile.transport,
+                device.profile.source(),
                 device.profile.slug
             );
         }
@@ -159,7 +159,7 @@ impl DecodedRole for plant_sensor::Entity {
                 if !known {
                     tracing::warn!(
                         "{} model {} reported undeclared plant metric {metric} for {address}",
-                        device.profile.transport,
+                        device.profile.source(),
                         device.profile.slug
                     );
                 }
@@ -365,12 +365,12 @@ impl DecodedRole for control_switch::Entity {
     }
 }
 
-impl DecodedRole for robot_vacuum::RoborockReading {
+impl DecodedRole for robot_vacuum::RobotVacuumReading {
     type Message = robot_vacuum::Message;
 
     const ACTOR: &'static str = RobotVacuumHandler::NAME;
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
-        devices.roborock(address).is_some()
+        devices.robot_vacuum(address).is_some()
     }
 
     fn extract(
@@ -386,16 +386,21 @@ impl DecodedRole for robot_vacuum::RoborockReading {
             return None;
         };
 
-        Some(robot_vacuum::RoborockReading {
+        Some(robot_vacuum::RobotVacuumReading {
             device_id: device.id.clone(),
+            protocol: device.profile.protocol,
             status: fields.status.clone(),
             room: fields.room.clone(),
             battery: fields.battery,
+            fan_speed: fields.fan_speed.clone(),
+            clean_area: fields.clean_area,
+            clean_count: fields.clean_count,
+            attributes: fields.attributes.clone(),
         })
     }
 
     fn into_message(self, event_id: Uuid) -> Self::Message {
-        robot_vacuum::Message::Roborock(robot_vacuum::RoborockUpdate {
+        robot_vacuum::Message::NewEvent(robot_vacuum::NewEvent {
             event_id,
             traceparent: crate::tracing_context::inject_current(),
             reading: self,
@@ -467,7 +472,7 @@ pub fn run<R: DecodedRole>(
     if let Err(e) = rpc::cast_factory(R::ACTOR, entity.into_message(event_id)) {
         tracing::error!(
             "failed to dispatch {} event to {}: {e}",
-            device.profile.transport,
+            device.profile.source(),
             R::ACTOR
         );
     }
@@ -517,15 +522,20 @@ mod tests {
     }
 
     fn device(slug: &str, source: &str) -> TestDevice {
-        test_device(Transport::Zigbee, slug, source, "0xabc")
+        test_device(Transport::Mqtt, slug, source, "0xabc")
     }
 
     fn reading(device: &TestDevice, json: &str) -> DeviceReading {
         let payload: Map<String, Value> = serde_json::from_str(json).expect("payload");
+        let input = serde_json::json!({
+            "topic": "report",
+            "vars": { "name": "test" },
+            "payload": payload,
+        });
 
         device
             .profile
-            .decode(&device.decoder, &payload)
+            .decode(&device.decoder, &input)
             .expect("decode")
     }
 
@@ -537,12 +547,12 @@ mod tests {
             .collect()
     }
 
-    const AQARA_DOOR: &str = include_str!("../../config/lua/zigbee/aqara_mccgq12lm.lua");
-    const LUMI_ENVIRONMENT: &str = include_str!("../../config/lua/zigbee/lumi_wsdcgq11lm.lua");
-    const AQARA_FP1E: &str = include_str!("../../config/lua/zigbee/aqara_fp1e.lua");
-    const TS011F_PLUG: &str = include_str!("../../config/lua/zigbee/ts011f_plug.lua");
-    const AQARA_SWITCH: &str = include_str!("../../config/lua/zigbee/aqara_wxkg11lm.lua");
-    const AQARA_T1: &str = include_str!("../../config/lua/zigbee/aqara_t1.lua");
+    const AQARA_DOOR: &str = include_str!("../../config/lua/mqtt/aqara_mccgq12lm.lua");
+    const LUMI_ENVIRONMENT: &str = include_str!("../../config/lua/mqtt/lumi_wsdcgq11lm.lua");
+    const AQARA_FP1E: &str = include_str!("../../config/lua/mqtt/aqara_fp1e.lua");
+    const TS011F_PLUG: &str = include_str!("../../config/lua/mqtt/ts011f_plug.lua");
+    const AQARA_SWITCH: &str = include_str!("../../config/lua/mqtt/aqara_wxkg11lm.lua");
+    const AQARA_T1: &str = include_str!("../../config/lua/mqtt/aqara_t1.lua");
 
     #[test]
     fn extracts_an_aqara_door_payload() {
@@ -727,7 +737,7 @@ mod tests {
         assert_eq!(action, "single");
     }
 
-    const APOLLO_MTR_1: &str = include_str!("../../config/lua/esphome/apollo_mtr_1.lua");
+    const APOLLO_MTR_1: &str = include_str!("../../config/lua/mqtt/apollo_mtr_1.lua");
 
     fn esphome(
         device: &TestDevice,
@@ -735,22 +745,26 @@ mod tests {
         object_id: &str,
         payload: &[u8],
     ) -> DeviceReading {
-        let entity = serde_json::json!({
-            "domain": domain,
-            "object_id": object_id,
-            "state": domain.parse(payload).expect("payload"),
+        let input = serde_json::json!({
+            "topic": "state",
+            "vars": {
+                "address": device.address,
+                "domain": domain,
+                "object_id": object_id,
+            },
+            "payload": domain.parse(payload).expect("payload"),
         });
 
         device
             .profile
-            .decode(&device.decoder, &entity)
+            .decode(&device.decoder, &input)
             .expect("decode")
     }
 
     #[test]
     fn an_esphome_node_decodes_each_entity_into_its_role() {
         let device = test_device(
-            Transport::Esphome,
+            Transport::Mqtt,
             "apollo_mtr_1",
             APOLLO_MTR_1,
             "apollo-mtr-1-livingroom",
@@ -810,6 +824,49 @@ mod tests {
         assert_eq!(attributes.colour.as_deref(), Some("#ff8800"));
     }
 
+    const VALETUDO: &str = include_str!("../../config/lua/mqtt/valetudo.lua");
+
+    fn valetudo(topic: &str, payload: Value) -> robot_vacuum::RobotVacuumReading {
+        let device = test_device(Transport::Mqtt, "valetudo", VALETUDO, "rockrobo");
+        let input = serde_json::json!({
+            "topic": topic,
+            "vars": { "address": "rockrobo" },
+            "payload": payload,
+        });
+
+        let reading = device
+            .profile
+            .decode(&device.decoder, &input)
+            .expect("decode");
+
+        <robot_vacuum::RobotVacuumReading as DecodedRole>::extract(&device, "Vacuum", &reading)
+            .expect("a robot vacuum reading")
+    }
+
+    #[test]
+    fn valetudo_state_and_attributes_map_to_the_robot_vacuum_role() {
+        let state = valetudo(
+            "state",
+            serde_json::json!({ "state": "docked", "battery_level": 87, "fan_speed": "max" }),
+        );
+        assert_eq!(
+            state.protocol,
+            Some(crate::integrations::mqtt::MqttProtocol::Valetudo)
+        );
+        assert_eq!(state.status.as_deref(), Some("docked"));
+        assert_eq!(state.battery, Some(87));
+        assert_eq!(state.fan_speed.as_deref(), Some("max"));
+        assert!(state.attributes.is_none());
+
+        let attributes = valetudo(
+            "attributes",
+            serde_json::json!({ "currentCleanArea": "12.5", "cleanCount": 4 }),
+        );
+        assert_eq!(attributes.clean_area, Some(12.5));
+        assert_eq!(attributes.clean_count, Some(4));
+        assert!(attributes.attributes.is_some());
+    }
+
     const ROBOROCK: &str = include_str!("../../config/lua/home_assistant/roborock.lua");
     const MEDIA_PLAYER: &str = include_str!("../../config/lua/home_assistant/media_player.lua");
 
@@ -830,10 +887,10 @@ mod tests {
             .expect("decode")
     }
 
-    fn roborock(reading: &DeviceReading) -> Option<robot_vacuum::RoborockReading> {
+    fn roborock(reading: &DeviceReading) -> Option<robot_vacuum::RobotVacuumReading> {
         let device = entity_device("roborock", ROBOROCK, "vacuum.robot");
 
-        <robot_vacuum::RoborockReading as DecodedRole>::extract(&device, "Robot", reading)
+        <robot_vacuum::RobotVacuumReading as DecodedRole>::extract(&device, "Robot", reading)
     }
 
     #[test]

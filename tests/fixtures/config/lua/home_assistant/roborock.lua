@@ -22,6 +22,14 @@ end
 return {
 	roles = { "robot_vacuum", "battery" },
 
+	commands = {
+		robot_vacuum = {
+			start = "vacuum.start",
+			stop = "vacuum.stop",
+			dock = "vacuum.return_to_base",
+		},
+	},
+
 	decode = function(entity)
 		if UNREPORTED[entity.state] then
 			return {}

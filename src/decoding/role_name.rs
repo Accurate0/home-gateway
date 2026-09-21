@@ -15,7 +15,6 @@ pub enum DeviceRoleName {
     MediaPlayer,
     EinkDisplayFirmware,
     Trmnl,
-    Valetudo,
 }
 
 impl std::fmt::Display for DeviceRoleName {
@@ -33,7 +32,6 @@ impl std::fmt::Display for DeviceRoleName {
             DeviceRoleName::MediaPlayer => "media_player",
             DeviceRoleName::EinkDisplayFirmware => "eink_display_firmware",
             DeviceRoleName::Trmnl => "trmnl",
-            DeviceRoleName::Valetudo => "valetudo",
         };
 
         f.write_str(name)

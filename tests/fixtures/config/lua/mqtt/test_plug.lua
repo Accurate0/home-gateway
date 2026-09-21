@@ -1,8 +1,11 @@
 ---@type ZigbeeModel
 return {
+	protocol = "zigbee",
 	roles = { "smart_switch" },
 
-	decode = function(payload)
+	decode = function(input)
+		local payload = input.payload
+
 		return {
 			smart_switch = {
 				state = payload.state,

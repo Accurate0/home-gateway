@@ -11,4 +11,5 @@
 ---@field roles HomeAssistantRole[]
 ---@field capabilities DeviceCapability[]?
 ---@field entities string[]?
+---@field commands { robot_vacuum: RobotVacuumCommands }?
 ---@field decode fun(entity: HomeAssistantEntity): DeviceReading

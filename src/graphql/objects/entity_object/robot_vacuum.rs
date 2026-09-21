@@ -5,6 +5,7 @@ use crate::device_registry::{Capability, DeviceRegistry};
 use crate::graphql::dataloader::robot_vacuum_state::{
     RobotVacuumStateDataLoader, RobotVacuumStateModel,
 };
+use crate::integrations::mqtt::MqttProtocol;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 pub enum RobotVacuumKind {
@@ -21,35 +22,31 @@ pub struct RobotVacuumEntity {
 }
 
 impl RobotVacuumEntity {
-    pub fn from_roborock(registry: &DeviceRegistry, address: &str) -> Option<Self> {
-        let settings = registry.roborock(address)?;
+    pub fn from_registry(registry: &DeviceRegistry, address: &str) -> Option<Self> {
+        let settings = registry.robot_vacuum(address)?;
         let id = registry
             .id_for_address(address)
             .unwrap_or(address)
             .to_owned();
+
+        let protocol = registry
+            .device(address)?
+            .profile
+            .as_ref()
+            .and_then(|profile| profile.protocol);
+
+        let kind = match protocol {
+            None => RobotVacuumKind::Roborock,
+            Some(MqttProtocol::Valetudo) => RobotVacuumKind::Valetudo,
+            Some(MqttProtocol::Zigbee | MqttProtocol::Esphome) => return None,
+        };
 
         Some(Self {
             id,
             name: settings.name.clone(),
             room: registry.room(address).map(str::to_owned),
             capabilities: registry.capabilities(address).to_vec(),
-            kind: RobotVacuumKind::Roborock,
-        })
-    }
-
-    pub fn from_valetudo(registry: &DeviceRegistry, address: &str) -> Option<Self> {
-        let settings = registry.valetudo(address)?;
-        let id = registry
-            .id_for_address(address)
-            .unwrap_or(address)
-            .to_owned();
-
-        Some(Self {
-            id,
-            name: settings.name.clone(),
-            room: registry.room(address).map(str::to_owned),
-            capabilities: registry.capabilities(address).to_vec(),
-            kind: RobotVacuumKind::Valetudo,
+            kind,
         })
     }
 

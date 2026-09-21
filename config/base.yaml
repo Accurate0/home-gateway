@@ -110,8 +110,6 @@ vacation:
   min_observations: 8
   seed: 20260908
 
-zigbee_models: lua/zigbee
-esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

@@ -87,14 +87,8 @@ impl EntitiesQuery {
         if auth.has(&Scope::new(Resource::RobotVacuum, Action::Read)) {
             out.extend(
                 registry
-                    .roborocks()
-                    .filter_map(|(address, _)| RobotVacuumEntity::from_roborock(registry, address))
-                    .map(Entity::RobotVacuum),
-            );
-            out.extend(
-                registry
-                    .valetudos()
-                    .filter_map(|(address, _)| RobotVacuumEntity::from_valetudo(registry, address))
+                    .robot_vacuums()
+                    .filter_map(|(address, _)| RobotVacuumEntity::from_registry(registry, address))
                     .map(Entity::RobotVacuum),
             );
         }
@@ -192,8 +186,7 @@ impl EntitiesQuery {
     ) -> async_graphql::Result<RobotVacuumEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
         let address = registry.address_or_self(&id).to_owned();
-        RobotVacuumEntity::from_roborock(registry, &address)
-            .or_else(|| RobotVacuumEntity::from_valetudo(registry, &address))
+        RobotVacuumEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown robot vacuum `{id}`")))
     }
 }

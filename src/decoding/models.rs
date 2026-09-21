@@ -2,11 +2,13 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
 use crate::device_registry::{Capability, Transport};
+use crate::integrations::mqtt::MqttProtocol;
 use crate::lua::{LuaDecoder, LuaError};
 use crate::settings::{LuaSettings, Metric};
 
 use super::esphome_entities::EsphomeEntities;
 use super::home_assistant_entities::HomeAssistantEntities;
+use super::model_commands::ModelCommands;
 use super::model_entities::ModelEntities;
 use super::model_profile::ModelProfile;
 use super::role_name::DeviceRoleName;
@@ -66,9 +68,33 @@ fn resolve_profile(
         return Err(format!("{kind} model {slug}: `roles` is empty"));
     }
 
-    if let Some(role) = roles.iter().find(|role| !kind.supports(**role)) {
+    let protocol = decoder
+        .field::<MqttProtocol>(slug, "protocol")
+        .map_err(error)?;
+
+    let protocol = match (kind, protocol) {
+        (Transport::Mqtt, Some(protocol)) => Some(protocol),
+        (Transport::Mqtt, None) => {
+            return Err(format!("{kind} model {slug}: must declare a `protocol`"));
+        }
+        (_, Some(_)) => {
+            return Err(format!(
+                "{kind} model {slug}: only mqtt models declare a `protocol`"
+            ));
+        }
+        (_, None) => None,
+    };
+
+    let carrier = protocol.map_or_else(|| kind.to_string(), |protocol| protocol.to_string());
+
+    let supported = |role: DeviceRoleName| match protocol {
+        Some(protocol) => protocol.supports(role),
+        None => kind.supports(role),
+    };
+
+    if let Some(role) = roles.iter().find(|role| !supported(**role)) {
         return Err(format!(
-            "{kind} model {slug}: the {kind} transport can't carry the `{role}` role"
+            "{kind} model {slug}: the {carrier} protocol can't carry the `{role}` role"
         ));
     }
 
@@ -107,42 +133,68 @@ fn resolve_profile(
         ));
     }
 
-    let entities = resolve_entities(kind, decoder, slug, &roles)?;
+    let entities = resolve_entities(kind, protocol, decoder, slug, &roles)?;
+    let commands = resolve_commands(kind, decoder, slug, &roles)?;
 
     Ok(ModelProfile {
         transport: kind,
+        protocol,
         slug: slug.to_owned(),
         roles,
         capabilities,
         environment,
         plant,
         entities,
+        commands,
     })
+}
+
+fn resolve_commands(
+    kind: Transport,
+    decoder: &LuaDecoder,
+    slug: &str,
+    roles: &BTreeSet<DeviceRoleName>,
+) -> Result<ModelCommands, String> {
+    let commands = decoder
+        .field::<ModelCommands>(slug, "commands")
+        .map_err(|error| format!("{kind} model {slug}: {error}"))?
+        .unwrap_or_default();
+
+    let vacuum = roles.contains(&DeviceRoleName::RobotVacuum);
+
+    if vacuum != commands.robot_vacuum.is_some() {
+        return Err(format!(
+            "{kind} model {slug}: `commands.robot_vacuum` is required with the `robot_vacuum` role, and only with it"
+        ));
+    }
+
+    Ok(commands)
 }
 
 fn resolve_entities(
     kind: Transport,
+    protocol: Option<MqttProtocol>,
     decoder: &LuaDecoder,
     slug: &str,
     roles: &BTreeSet<DeviceRoleName>,
 ) -> Result<ModelEntities, String> {
     let error = |error: LuaError| format!("{kind} model {slug}: {error}");
 
-    match kind {
-        Transport::Zigbee => {
+    match (kind, protocol) {
+        (Transport::Mqtt, Some(protocol)) if !protocol.takes_entities() => {
             let declared = decoder
                 .field::<serde_json::Value>(slug, "entities")
                 .map_err(error)?;
 
             if declared.is_some() {
                 return Err(format!(
-                    "{kind} model {slug}: zigbee devices report one payload, so `entities` is not allowed"
+                    "{kind} model {slug}: {protocol} devices report on fixed topics, so `entities` is not allowed"
                 ));
             }
 
             Ok(ModelEntities::Payload)
         }
-        Transport::Esphome => {
+        (Transport::Mqtt, _) => {
             let Some(entities) = decoder
                 .field::<EsphomeEntities>(slug, "entities")
                 .map_err(error)?
@@ -170,7 +222,7 @@ fn resolve_entities(
 
             Ok(ModelEntities::Esphome(entities))
         }
-        Transport::HomeAssistant => {
+        (Transport::HomeAssistant, _) => {
             let entities = decoder
                 .field::<HomeAssistantEntities>(slug, "entities")
                 .map_err(error)?
@@ -178,7 +230,7 @@ fn resolve_entities(
 
             Ok(ModelEntities::HomeAssistant(entities))
         }
-        Transport::EinkDisplayFirmware | Transport::Trmnl | Transport::Valetudo => Err(format!(
+        (Transport::EinkDisplayFirmware | Transport::Trmnl, _) => Err(format!(
             "{kind} model {slug}: the {kind} transport does not take models"
         )),
     }
@@ -195,7 +247,17 @@ mod tests {
     use crate::device_metric::MetricValue;
 
     fn load(source: &str) -> Result<Models, String> {
-        load_as(Transport::Zigbee, source)
+        load_protocol("zigbee", source)
+    }
+
+    fn load_protocol(protocol: &str, source: &str) -> Result<Models, String> {
+        let source = source.replacen(
+            "return {",
+            &format!("return {{ protocol = \"{protocol}\","),
+            1,
+        );
+
+        load_as(Transport::Mqtt, &source)
     }
 
     fn load_as(transport: Transport, source: &str) -> Result<Models, String> {
@@ -263,15 +325,15 @@ mod tests {
 
     #[test]
     fn an_esphome_model_needs_entities_and_one_light_for_the_light_role() {
-        let missing = load_as(
-            Transport::Esphome,
+        let missing = load_protocol(
+            "esphome",
             r#"return { roles = { "presence" }, decode = function(e) return {} end }"#,
         )
         .expect_err("no entities");
         assert!(missing.contains("must declare `entities`"), "{missing}");
 
-        let lights = load_as(
-            Transport::Esphome,
+        let lights = load_protocol(
+            "esphome",
             r#"return {
                 roles = { "light" },
                 entities = { light = { "a", "b" } },
@@ -281,8 +343,8 @@ mod tests {
         .expect_err("two lights");
         assert!(lights.contains("exactly one `light` entity"), "{lights}");
 
-        let models = load_as(
-            Transport::Esphome,
+        let models = load_protocol(
+            "esphome",
             r#"return {
                 roles = { "light", "presence" },
                 entities = { light = { "rgb" }, binary_sensor = { "motion" } },
@@ -301,8 +363,8 @@ mod tests {
 
     #[test]
     fn the_plant_role_and_plant_metrics_come_together() {
-        let missing = load_as(
-            Transport::Esphome,
+        let missing = load_protocol(
+            "esphome",
             r#"return {
                 roles = { "plant" },
                 entities = { sensor = { "soil_moisture" } },
@@ -432,27 +494,90 @@ mod tests {
     }
 
     #[test]
-    fn every_committed_model_loads() {
-        let sources =
-            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/zigbee"))
-                .expect("expected the committed zigbee models to be readable");
+    fn an_mqtt_model_must_declare_its_protocol() {
+        let error = load_as(
+            Transport::Mqtt,
+            r#"return { roles = { "door" }, decode = function(p) return {} end }"#,
+        )
+        .expect_err("no protocol");
 
-        let models = load_models(Transport::Zigbee, &sources, &LuaSettings::default())
-            .expect("expected every committed zigbee model to load");
-
-        assert_eq!(models.len(), sources.len());
+        assert!(error.contains("must declare a `protocol`"), "{error}");
     }
 
     #[test]
-    fn every_committed_esphome_model_loads() {
-        let sources =
-            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/esphome"))
-                .expect("expected the committed esphome models to be readable");
+    fn only_mqtt_models_declare_a_protocol() {
+        let error = load_as(
+            Transport::HomeAssistant,
+            r#"return { protocol = "zigbee", roles = { "door" }, decode = function(p) return {} end }"#,
+        )
+        .expect_err("protocol on home assistant");
 
-        let models = load_models(Transport::Esphome, &sources, &LuaSettings::default())
-            .expect("expected every committed esphome model to load");
+        assert!(error.contains("only mqtt models"), "{error}");
+    }
+
+    #[test]
+    fn a_role_the_protocol_cannot_carry_is_rejected() {
+        let error = load_protocol(
+            "valetudo",
+            r#"return { roles = { "door" }, decode = function(p) return {} end }"#,
+        )
+        .expect_err("valetudo door");
+
+        assert!(error.contains("valetudo protocol can't carry"), "{error}");
+    }
+
+    #[test]
+    fn robot_vacuum_commands_come_with_the_role() {
+        let missing = load_protocol(
+            "valetudo",
+            r#"return { roles = { "robot_vacuum" }, decode = function(p) return {} end }"#,
+        )
+        .expect_err("vacuum without commands");
+        assert!(
+            missing.contains("`commands.robot_vacuum` is required"),
+            "{missing}"
+        );
+
+        let stray = load_protocol(
+            "zigbee",
+            r#"return {
+                roles = { "door" },
+                commands = { robot_vacuum = { start = "a", stop = "b", dock = "c" } },
+                decode = function(p) return {} end,
+            }"#,
+        )
+        .expect_err("commands without vacuum");
+        assert!(stray.contains("and only with it"), "{stray}");
+
+        let models = load_protocol(
+            "valetudo",
+            r#"return {
+                roles = { "robot_vacuum" },
+                commands = { robot_vacuum = { start = "START", stop = "STOP", dock = "HOME" } },
+                decode = function(p) return {} end,
+            }"#,
+        )
+        .expect("valetudo model");
+
+        let commands = models["test_model"]
+            .commands
+            .robot_vacuum
+            .as_ref()
+            .expect("commands");
+        assert_eq!(commands.dock, "HOME");
+    }
+
+    #[test]
+    fn every_committed_mqtt_model_loads() {
+        let sources =
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/mqtt"))
+                .expect("expected the committed mqtt models to be readable");
+
+        let models = load_models(Transport::Mqtt, &sources, &LuaSettings::default())
+            .expect("expected every committed mqtt model to load");
 
         assert!(models.contains_key("apollo_mtr_1"));
+        assert!(models.contains_key("valetudo"));
         assert_eq!(models.len(), sources.len());
     }
 

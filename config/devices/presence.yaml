@@ -3,7 +3,7 @@
   state: enabled
   room: living-room
   transport:
-    type: esphome
+    type: mqtt
     address: apollo-mtr-1-livingroom
   model: apollo_mtr_1
   watchdog: { timeout: 1h }
@@ -23,7 +23,7 @@
   state: enabled
   room: bedroom
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x54ef441000dbc81c"
   model: aqara_fp1e
   watchdog: { timeout: 1h }

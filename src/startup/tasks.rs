@@ -86,6 +86,8 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         Ok::<(), MainError>(())
     });
 
+    tracing::info!("startup completed");
+
     if let Some(result) = task_set.join_next().await {
         match result {
             Ok(Ok(_)) => tracing::warn!("task ended without error"),

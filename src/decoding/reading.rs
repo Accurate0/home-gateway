@@ -41,6 +41,14 @@ pub struct RobotVacuumFields {
     pub room: Option<String>,
     #[serde(default, deserialize_with = "integer")]
     pub battery: Option<i64>,
+    #[serde(default)]
+    pub fan_speed: Option<String>,
+    #[serde(default)]
+    pub clean_area: Option<f64>,
+    #[serde(default, deserialize_with = "integer")]
+    pub clean_count: Option<i32>,
+    #[serde(default)]
+    pub attributes: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Default, Deserialize)]

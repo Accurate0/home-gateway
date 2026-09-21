@@ -8,19 +8,19 @@ mod raw_transport;
 mod roles;
 mod transport;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
 use crate::decoding::{DecodedDevice, DeviceModels, ModelEntities, ModelProfile};
 use crate::event_bus::SensorMetric;
-use crate::integrations::esphome::EsphomeTarget;
+use crate::integrations::mqtt::{MqttProtocol, TopicVars};
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
-    EnvironmentSensorSettings, IEEEAddress, MediaPlayerSettings, PlantSensorSettings,
-    PresenceSettings, RoborockSettings, TrmnlDeviceSettings, ValetudoSettings,
+    EnvironmentSensorSettings, IEEEAddress, MediaPlayerSettings, MqttProtocols,
+    PlantSensorSettings, PresenceSettings, RobotVacuumSettings, TrmnlDeviceSettings,
 };
 
 pub use capability::Capability;
@@ -33,19 +33,19 @@ pub use transport::Transport;
 
 use roles::RoleContext;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DeviceRegistryInner {
     devices: HashMap<String, Device>,
     aliases: DeviceAliases,
-    esphome_topics: HashMap<String, EsphomeTarget>,
-    esphome_nodes: HashMap<String, Vec<String>>,
+    mqtt_protocols: MqttProtocols,
+    mqtt_topics: HashMap<String, Vec<String>>,
     home_assistant_entities: HashMap<String, String>,
     watchdog: HashMap<String, DeviceWatchdog>,
     disabled: HashSet<String>,
     known_devices: RwLock<HashMap<IEEEAddress, String>>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct DeviceRegistry {
     inner: Arc<DeviceRegistryInner>,
 }
@@ -63,8 +63,18 @@ impl DeviceRegistry {
         raw: Vec<RawDevice>,
         notify: &NotifyTargets,
         models: &DeviceModels,
+        mqtt_protocols: &MqttProtocols,
     ) -> Result<Self, String> {
-        let mut reg = DeviceRegistryInner::default();
+        let mut reg = DeviceRegistryInner {
+            devices: HashMap::new(),
+            aliases: DeviceAliases::default(),
+            mqtt_protocols: mqtt_protocols.clone(),
+            mqtt_topics: HashMap::new(),
+            home_assistant_entities: HashMap::new(),
+            watchdog: HashMap::new(),
+            disabled: HashSet::new(),
+            known_devices: RwLock::new(HashMap::new()),
+        };
 
         for device in raw {
             let RawDevice {
@@ -107,7 +117,11 @@ impl DeviceRegistry {
                 reg.register_entities(&id, &address, profile)?;
             }
 
-            let watchdog_key = format!("{transport_kind}:{id}");
+            let source = profile
+                .as_deref()
+                .map_or_else(|| transport_kind.to_string(), ModelProfile::source);
+
+            let watchdog_key = format!("{source}:{id}");
 
             if let Some(watchdog) = watchdog {
                 reg.watchdog
@@ -179,24 +193,14 @@ impl DeviceRegistryInner {
         address: &str,
         profile: &ModelProfile,
     ) -> Result<(), String> {
+        if let Some(protocol) = profile.protocol {
+            let topics = self.device_topics(protocol, address, &profile.entities);
+
+            self.mqtt_topics.insert(address.to_owned(), topics);
+        }
+
         match &profile.entities {
-            ModelEntities::Payload => {}
-            ModelEntities::Esphome(entities) => {
-                for target in entities.targets(address) {
-                    let topic = target.state_topic();
-
-                    if self.esphome_topics.insert(topic.clone(), target).is_some() {
-                        return Err(format!(
-                            "device {id}: esphome topic `{topic}` is claimed by another device"
-                        ));
-                    }
-
-                    self.esphome_nodes
-                        .entry(address.to_owned())
-                        .or_default()
-                        .push(topic);
-                }
-            }
+            ModelEntities::Payload | ModelEntities::Esphome(_) => {}
             ModelEntities::HomeAssistant(entities) => {
                 let entity_ids =
                     std::iter::once(address.to_owned()).chain(entities.resolve(address));
@@ -216,6 +220,38 @@ impl DeviceRegistryInner {
         }
 
         Ok(())
+    }
+
+    fn device_topics(
+        &self,
+        protocol: MqttProtocol,
+        address: &str,
+        entities: &ModelEntities,
+    ) -> Vec<String> {
+        let base = TopicVars::from([("address".to_owned(), address.to_owned())]);
+
+        let entity_vars: Vec<TopicVars> = match entities {
+            ModelEntities::Esphome(entities) => entities
+                .targets(address)
+                .map(|target| {
+                    let mut vars = base.clone();
+                    vars.insert("domain".to_owned(), target.domain.to_string());
+                    vars.insert("object_id".to_owned(), target.object_id);
+                    vars
+                })
+                .collect(),
+            ModelEntities::Payload | ModelEntities::HomeAssistant(_) => vec![base],
+        };
+
+        let topics: BTreeSet<String> = self
+            .mqtt_protocols
+            .get(protocol)
+            .topics
+            .values()
+            .flat_map(|template| entity_vars.iter().map(|vars| template.filter(vars)))
+            .collect();
+
+        topics.into_iter().collect()
     }
 
     fn each<'a, T: 'a>(
@@ -274,33 +310,70 @@ impl DeviceRegistryInner {
         self.devices.get(address)?.decoded()
     }
 
-    pub fn zigbee_device(&self, address: &str) -> Option<DecodedDevice> {
+    pub fn mqtt_device(&self, protocol: MqttProtocol, address: &str) -> Option<DecodedDevice> {
         let device = self.devices.get(address)?;
 
-        match device.transport {
-            Transport::Zigbee => device.decoded(),
-            Transport::Esphome
-            | Transport::EinkDisplayFirmware
-            | Transport::Trmnl
-            | Transport::HomeAssistant
-            | Transport::Valetudo => None,
+        match device.profile.as_ref()?.protocol {
+            Some(declared) if declared == protocol => device.decoded(),
+            Some(_) | None => None,
         }
+    }
+
+    pub fn mqtt_protocols(&self) -> &MqttProtocols {
+        &self.mqtt_protocols
+    }
+
+    pub fn mqtt_subscriptions(&self) -> BTreeSet<String> {
+        let none = TopicVars::new();
+
+        let features = self.mqtt_protocols.iter().flat_map(|(_, settings)| {
+            [&settings.directory, &settings.discovery]
+                .into_iter()
+                .flatten()
+                .map(|template| template.filter(&none))
+        });
+
+        self.mqtt_topics
+            .values()
+            .flatten()
+            .cloned()
+            .chain(features)
+            .collect()
+    }
+
+    pub fn mqtt_topics_for(&self, address: &str) -> &[String] {
+        self.mqtt_topics.get(address).map_or(&[], Vec::as_slice)
+    }
+
+    pub async fn mqtt_command_topic(
+        &self,
+        address: &str,
+        extra: TopicVars,
+    ) -> Result<String, String> {
+        let protocol = self
+            .devices
+            .get(address)
+            .and_then(|device| device.profile.as_ref()?.protocol)
+            .ok_or_else(|| format!("{address} is not an mqtt device"))?;
+
+        let Some(command) = &self.mqtt_protocols.get(protocol).command else {
+            return Err(format!("the {protocol} protocol has no `command` topic"));
+        };
+
+        let name = self
+            .friendly_name(address)
+            .await
+            .unwrap_or_else(|| address.to_owned());
+
+        let mut vars = extra;
+        vars.insert("address".to_owned(), address.to_owned());
+        vars.insert("name".to_owned(), name);
+
+        command.render(&vars)
     }
 
     pub fn home_assistant_device(&self, entity_id: &str) -> Option<DecodedDevice> {
         self.decoded(self.home_assistant_entities.get(entity_id)?)
-    }
-
-    pub fn esphome_target(&self, topic: &str) -> Option<&EsphomeTarget> {
-        self.esphome_topics.get(topic)
-    }
-
-    pub fn esphome_all_topics(&self) -> impl Iterator<Item = &String> {
-        self.esphome_topics.keys()
-    }
-
-    pub fn esphome_topics_for(&self, node: &str) -> &[String] {
-        self.esphome_nodes.get(node).map_or(&[], Vec::as_slice)
     }
 
     pub fn esphome_light(&self, address: &str) -> Option<&str> {
@@ -419,11 +492,11 @@ impl DeviceRegistryInner {
         self.each(|roles| roles.trmnl.as_ref())
     }
 
-    pub fn roborock(&self, address: &str) -> Option<&RoborockSettings> {
+    pub fn robot_vacuum(&self, address: &str) -> Option<&RobotVacuumSettings> {
         self.roles(address)?.robot_vacuum.as_ref()
     }
 
-    pub fn roborocks(&self) -> impl Iterator<Item = (&String, &RoborockSettings)> {
+    pub fn robot_vacuums(&self) -> impl Iterator<Item = (&String, &RobotVacuumSettings)> {
         self.each(|roles| roles.robot_vacuum.as_ref())
     }
 
@@ -433,13 +506,5 @@ impl DeviceRegistryInner {
 
     pub fn media_players(&self) -> impl Iterator<Item = (&String, &MediaPlayerSettings)> {
         self.each(|roles| roles.media_player.as_ref())
-    }
-
-    pub fn valetudo(&self, address: &str) -> Option<&ValetudoSettings> {
-        self.roles(address)?.valetudo.as_ref()
-    }
-
-    pub fn valetudos(&self) -> impl Iterator<Item = (&String, &ValetudoSettings)> {
-        self.each(|roles| roles.valetudo.as_ref())
     }
 }

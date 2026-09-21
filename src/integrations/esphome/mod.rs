@@ -51,16 +51,6 @@ pub struct EsphomeTarget {
     pub object_id: String,
 }
 
-impl EsphomeTarget {
-    pub fn state_topic(&self) -> String {
-        format!("{}/{}/{}/state", self.node, self.domain, self.object_id)
-    }
-}
-
-pub fn light_command_topic(node: &str, object_id: &str) -> String {
-    format!("{node}/light/{object_id}/command")
-}
-
 fn parse_light_state(payload: &[u8]) -> Option<Value> {
     #[derive(Deserialize)]
     struct Colour {
@@ -115,20 +105,6 @@ fn parse_sensor_state(payload: &[u8]) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_target_builds_its_state_topic() {
-        let target = EsphomeTarget {
-            node: "apollo-mtr-1-livingroom".to_owned(),
-            domain: EsphomeDomain::BinarySensor,
-            object_id: "ld2450_presence".to_owned(),
-        };
-
-        assert_eq!(
-            target.state_topic(),
-            "apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state"
-        );
-    }
 
     #[test]
     fn each_domain_normalises_its_payload() {

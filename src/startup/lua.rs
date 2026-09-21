@@ -230,7 +230,7 @@ mod tests {
         for directory in [
             "config/lua/lib",
             "config/lua/workflows",
-            "config/lua/zigbee",
+            "config/lua/mqtt",
             "config/lua/home_assistant",
         ] {
             let sources =

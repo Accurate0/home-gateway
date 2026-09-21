@@ -11,20 +11,18 @@
     - type: robot_vacuum
       config:
         name: Roborock
-        start_service: vacuum.start
-        stop_service: vacuum.stop
-        dock_service: vacuum.return_to_base
     - type: battery
 
 - id: valetudo
   state: enabled
   room: spare-room
   transport:
-    type: valetudo
+    type: mqtt
     address: rockrobo
+  model: valetudo
   watchdog: { timeout: 7d }
   roles:
-    - type: valetudo
+    - type: robot_vacuum
       config:
         name: Vacuum
     - type: battery

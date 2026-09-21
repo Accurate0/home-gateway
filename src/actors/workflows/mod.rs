@@ -78,6 +78,8 @@ pub enum WorkflowError {
     #[error(transparent)]
     HomeAssistant(#[from] crate::integrations::home_assistant::HomeAssistantError),
     #[error(transparent)]
+    VacuumCommand(#[from] robot_vacuum::command::VacuumCommandError),
+    #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
@@ -510,25 +512,22 @@ impl WorkflowWorker {
         let registry = &self.shared_actor_state.devices;
         let address = registry.address_or_self(device);
 
-        if let Some(settings) = registry.roborock(address) {
-            let home_assistant = self
-                .shared_actor_state
-                .handles
-                .get::<HomeAssistant>()
-                .ok_or(WorkflowError::HomeAssistantNotConfigured)?;
+        let Some(settings) = registry.robot_vacuum(address) else {
+            return Err(WorkflowError::NotARobotVacuum(device.to_owned()));
+        };
 
-            robot_vacuum::command::roborock(home_assistant, settings, command).await?;
-            return Ok(());
-        }
+        let handles = &self.shared_actor_state.handles;
 
-        if let Some(settings) = registry.valetudo(address) {
-            let mqtt = self.shared_actor_state.handles.expect::<MqttClient>();
+        robot_vacuum::command::send(
+            settings,
+            command,
+            handles.get::<HomeAssistant>(),
+            handles.expect::<MqttClient>(),
+            registry,
+        )
+        .await?;
 
-            robot_vacuum::command::valetudo(mqtt, settings, command).await?;
-            return Ok(());
-        }
-
-        Err(WorkflowError::NotARobotVacuum(device.to_owned()))
+        Ok(())
     }
 
     /// Enable/disable every workflow carrying `tag`, skipping the workflow the

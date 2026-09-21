@@ -3,7 +3,7 @@
   state: enabled
   room: living-room
   transport:
-    type: zigbee
+    type: mqtt
     address: "0xa4c1389fe5cea26e"
   model: ts011f_plug
   watchdog: { timeout: 7d }

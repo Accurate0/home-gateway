@@ -22,6 +22,14 @@ end
 return {
 	roles = { "robot_vacuum", "battery" },
 
+	commands = {
+		robot_vacuum = {
+			start = "vacuum.start",
+			stop = "vacuum.stop",
+			dock = "vacuum.return_to_base",
+		},
+	},
+
 	entities = {
 		"sensor.{name}_status",
 		"sensor.{name}_battery",

@@ -7,7 +7,6 @@ pub mod light;
 pub mod media_player;
 pub mod plant;
 pub mod presence;
-pub mod roborock;
+pub mod robot_vacuum;
 pub mod switch;
 pub mod trmnl;
-pub mod valetudo;

@@ -1,4 +1,9 @@
 pub mod lua;
+mod protocol;
+mod topic_template;
+
+pub use protocol::MqttProtocol;
+pub use topic_template::{TopicTemplate, TopicVars};
 
 use crate::actors::system::mqtt_ingest;
 use crate::device_registry::DeviceRegistry;
@@ -14,16 +19,6 @@ use tokio_util::sync::CancellationToken;
 fn mqtt_ingest_actor() -> Option<ActorRef<FactoryMessage<(), mqtt_ingest::Message>>> {
     ractor::registry::where_is(mqtt_ingest::MqttIngest::NAME).map(ActorRef::from)
 }
-
-pub const ZIGBEE2MQTT_BASE: &str = "zigbee2mqtt";
-
-const STATIC_TOPICS: [&str; 5] = [
-    "zigbee2mqtt/+",
-    "zigbee2mqtt/bridge/devices",
-    "esphome/discover/+",
-    "valetudo/+/state",
-    "valetudo/+/attributes",
-];
 
 pub struct Mqtt {
     client: rumqttc::AsyncClient,
@@ -136,21 +131,13 @@ impl Mqtt {
                             rumqttc::Event::Incoming(rumqttc::Packet::ConnAck(_)) => {
                                 backoff = self.reconnect.min();
 
-                                let topics: Vec<(&'static str, String)> = STATIC_TOPICS
-                                    .iter()
-                                    .map(|topic| ("topic", (*topic).to_owned()))
-                                    .chain(
-                                        devices
-                                            .esphome_all_topics()
-                                            .map(|topic| ("esphome state topic", topic.clone())),
-                                    )
-                                    .collect();
+                                let topics = devices.mqtt_subscriptions();
 
                                 let client = self.client.clone();
 
                                 tokio::spawn(async move {
-                                    for (label, topic) in topics {
-                                        tracing::info!("subscribing to {label}: {topic}");
+                                    for topic in topics {
+                                        tracing::info!("subscribing to topic: {topic}");
 
                                         if let Err(e) = client
                                             .subscribe(&topic, rumqttc::QoS::ExactlyOnce)

@@ -341,7 +341,7 @@ impl Step {
             }
             Step::RobotVacuum { ieee_addr, .. } => {
                 let address = registry.address_or_self(ieee_addr);
-                if registry.roborock(address).is_none() && registry.valetudo(address).is_none() {
+                if registry.robot_vacuum(address).is_none() {
                     return Err(format!("robot_vacuum {ieee_addr} is not a robot vacuum"));
                 }
             }

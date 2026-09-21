@@ -4,8 +4,8 @@ use crate::decoding::ModelProfile;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DoorSettings, EinkDisplaySettings, EnvironmentSensorSettings,
-    MediaPlayerSettings, PlantSensorSettings, PresenceSettings, RoborockSettings, SwitchRole,
-    TrmnlDeviceSettings, ValetudoSettings,
+    MediaPlayerSettings, PlantSensorSettings, PresenceSettings, RobotVacuumSettings, SwitchRole,
+    TrmnlDeviceSettings, VacuumTarget,
 };
 
 use super::device_config::DeviceConfig;
@@ -23,9 +23,8 @@ pub struct Roles {
     pub battery: Option<BatterySettings>,
     pub eink_display: Option<EinkDisplaySettings>,
     pub trmnl: Option<TrmnlDeviceSettings>,
-    pub robot_vacuum: Option<RoborockSettings>,
+    pub robot_vacuum: Option<RobotVacuumSettings>,
     pub media_player: Option<MediaPlayerSettings>,
-    pub valetudo: Option<ValetudoSettings>,
 }
 
 pub struct RoleContext<'a> {
@@ -130,7 +129,35 @@ impl Roles {
                 });
             }
             DeviceConfig::RobotVacuum(robot_vacuum) => {
-                self.robot_vacuum = Some(robot_vacuum.resolve(address));
+                let target = match cx.transport {
+                    Transport::HomeAssistant => VacuumTarget::HomeAssistant {
+                        entity_id: address.to_owned(),
+                    },
+                    Transport::Mqtt => VacuumTarget::Mqtt {
+                        address: address.to_owned(),
+                    },
+                    Transport::EinkDisplayFirmware | Transport::Trmnl => {
+                        return Err(format!(
+                            "device {id}: a `{}` device has no robot vacuum command path",
+                            cx.transport
+                        ));
+                    }
+                };
+
+                let Some(commands) = cx
+                    .profile
+                    .and_then(|profile| profile.commands.robot_vacuum.clone())
+                else {
+                    return Err(format!(
+                        "device {id}: its model declares no `commands.robot_vacuum`"
+                    ));
+                };
+
+                self.robot_vacuum = Some(RobotVacuumSettings {
+                    name: robot_vacuum.name,
+                    commands,
+                    target,
+                });
             }
             DeviceConfig::MediaPlayer(media_player) => {
                 if !address.starts_with("media_player.") {
@@ -140,9 +167,6 @@ impl Roles {
                 }
 
                 self.media_player = Some(media_player.resolve(id, address));
-            }
-            DeviceConfig::Valetudo(valetudo) => {
-                self.valetudo = Some(valetudo.resolve(address));
             }
             DeviceConfig::Battery => {
                 self.battery = Some(BatterySettings {

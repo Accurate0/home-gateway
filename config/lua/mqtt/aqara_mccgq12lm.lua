@@ -1,8 +1,11 @@
 ---@type ZigbeeModel
 return {
+	protocol = "zigbee",
 	roles = { "battery", "door" },
 
-	decode = function(payload)
+	decode = function(input)
+		local payload = input.payload
+
 		return {
 			battery = payload.battery,
 			door = { contact = payload.contact },

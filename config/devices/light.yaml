@@ -3,7 +3,7 @@
   state: enabled
   room: bedroom
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x54ef441000d4f05c"
   model: aqara_t1
   watchdog: { timeout: 24h }
@@ -15,7 +15,7 @@
   state: enabled
   room: bedroom
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x001788010381ef5d"
   model: phillips_9290012573a
   watchdog: { timeout: 7d }
@@ -27,7 +27,7 @@
   state: enabled
   room: living-room
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x94a081fffe2eedc0"
   model: ikea_led2201g8
   watchdog: { timeout: 7d }

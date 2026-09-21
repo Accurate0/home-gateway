@@ -52,12 +52,6 @@
         }
       }
     },
-    "zigbee_models": {
-      "type": "string"
-    },
-    "esphome_models": {
-      "type": "string"
-    },
     "home_assistant_models": {
       "type": "string"
     },
@@ -175,8 +169,6 @@
     "tracing",
     "mqtt",
     "notify",
-    "zigbee_models",
-    "esphome_models",
     "home_assistant_models",
     "s3",
     "watchdog",
@@ -464,6 +456,12 @@
     "MqttSettings": {
       "type": "object",
       "properties": {
+        "models": {
+          "type": "string"
+        },
+        "protocols": {
+          "$ref": "#/$defs/MqttProtocols"
+        },
         "url": {
           "type": "string"
         },
@@ -497,6 +495,8 @@
         }
       },
       "required": [
+        "models",
+        "protocols",
         "url",
         "port",
         "username",
@@ -505,6 +505,59 @@
         "max_packet_size",
         "channel_capacity",
         "reconnect"
+      ]
+    },
+    "MqttProtocols": {
+      "type": "object",
+      "properties": {
+        "zigbee": {
+          "$ref": "#/$defs/MqttProtocolSettings"
+        },
+        "esphome": {
+          "$ref": "#/$defs/MqttProtocolSettings"
+        },
+        "valetudo": {
+          "$ref": "#/$defs/MqttProtocolSettings"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "zigbee",
+        "esphome",
+        "valetudo"
+      ]
+    },
+    "MqttProtocolSettings": {
+      "type": "object",
+      "properties": {
+        "topics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "directory": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "discovery": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "topics"
       ]
     },
     "BackoffSettings": {
@@ -628,24 +681,7 @@
             },
             "type": {
               "type": "string",
-              "const": "zigbee"
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "type",
-            "address"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "address": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string",
-              "const": "esphome"
+              "const": "mqtt"
             }
           },
           "additionalProperties": false,
@@ -697,23 +733,6 @@
             "type": {
               "type": "string",
               "const": "home_assistant"
-            }
-          },
-          "additionalProperties": false,
-          "required": [
-            "type",
-            "address"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "address": {
-              "type": "string"
-            },
-            "type": {
-              "type": "string",
-              "const": "valetudo"
             }
           },
           "additionalProperties": false,
@@ -891,22 +910,6 @@
             },
             "config": {
               "$ref": "#/$defs/RawMediaPlayerBlock"
-            }
-          },
-          "required": [
-            "type",
-            "config"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "valetudo"
-            },
-            "config": {
-              "$ref": "#/$defs/RawValetudoBlock"
             }
           },
           "required": [
@@ -1274,23 +1277,11 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "start_service": {
-          "type": "string"
-        },
-        "stop_service": {
-          "type": "string"
-        },
-        "dock_service": {
-          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "name",
-        "start_service",
-        "stop_service",
-        "dock_service"
+        "name"
       ]
     },
     "RawMediaPlayerBlock": {
@@ -1298,45 +1289,6 @@
       "properties": {
         "name": {
           "type": "string"
-        }
-      },
-      "required": [
-        "name"
-      ]
-    },
-    "RawValetudoBlock": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "mqtt_prefix": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "start_payload": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "stop_payload": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "dock_payload": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
         }
       },
       "required": [

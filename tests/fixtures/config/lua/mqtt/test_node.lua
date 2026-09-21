@@ -5,6 +5,7 @@ local ENVIRONMENT = {
 
 ---@type EsphomeModel
 return {
+	protocol = "esphome",
 	roles = { "environment" },
 	capabilities = { "temperature", "humidity" },
 
@@ -12,13 +13,14 @@ return {
 		sensor = { "test_node_temperature", "test_node_humidity" },
 	},
 
-	decode = function(entity)
-		local metric = ENVIRONMENT[entity.object_id]
+	decode = function(input)
+		local object_id = input.vars.object_id
+		local metric = ENVIRONMENT[object_id]
 
 		if metric then
-			return { environment = { [metric] = entity.state } }
+			return { environment = { [metric] = input.payload } }
 		end
 
-		return { metrics = { [entity.object_id] = entity.state } }
+		return { metrics = { [object_id] = input.payload } }
 	end,
 }

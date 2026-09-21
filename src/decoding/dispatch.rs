@@ -32,7 +32,13 @@ pub async fn dispatch(
     role::run::<smart_switch::Entity>(event_id, devices, device, friendly_name, &reading);
     role::run::<presence_sensor::Entity>(event_id, devices, device, friendly_name, &reading);
     role::run::<control_switch::Entity>(event_id, devices, device, friendly_name, &reading);
-    role::run::<robot_vacuum::RoborockReading>(event_id, devices, device, friendly_name, &reading);
+    role::run::<robot_vacuum::RobotVacuumReading>(
+        event_id,
+        devices,
+        device,
+        friendly_name,
+        &reading,
+    );
     role::run::<media_player::MediaPlayerReading>(
         event_id,
         devices,

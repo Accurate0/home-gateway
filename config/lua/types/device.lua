@@ -31,6 +31,10 @@
 ---@field status string?
 ---@field room string?
 ---@field battery integer?
+---@field fan_speed string?
+---@field clean_area number?
+---@field clean_count integer?
+---@field attributes table<string, any>?
 
 ---@class MediaPlayerFields
 ---@field state string?

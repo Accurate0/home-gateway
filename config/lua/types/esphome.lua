@@ -8,14 +8,14 @@
 ---@field binary_sensor string[]?
 ---@field light string[]?
 
----@class EsphomeEntity
----@field domain EsphomeDomain
----@field object_id string
----@field state number|boolean|LightFields
+---@class EsphomeInput: MqttInput
+---@field vars { address: string, domain: EsphomeDomain, object_id: string }
+---@field payload number|boolean|LightFields
 
 ---@class EsphomeModel
+---@field protocol "esphome"
 ---@field roles EsphomeRole[]
 ---@field capabilities DeviceCapability[]?
 ---@field plant string[]?
 ---@field entities EsphomeEntities
----@field decode fun(entity: EsphomeEntity): DeviceReading
+---@field decode fun(input: EsphomeInput): DeviceReading

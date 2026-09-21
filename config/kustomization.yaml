@@ -61,23 +61,22 @@ configMapGenerator:
       - lua/workflows/buttons.lua
       - lua/workflows/prices.lua
       - lua/workflows/reminders.lua
-  - name: home-gateway-config-lua-zigbee
+  - name: home-gateway-config-lua-mqtt
     files:
-      - lua/zigbee/aqara_fp1e.lua
-      - lua/zigbee/aqara_mccgq12lm.lua
-      - lua/zigbee/aqara_t1.lua
-      - lua/zigbee/aqara_wsdcgq12lm.lua
-      - lua/zigbee/aqara_wxkg11lm.lua
-      - lua/zigbee/ikea_e2001.lua
-      - lua/zigbee/ikea_e2112.lua
-      - lua/zigbee/ikea_led2201g8.lua
-      - lua/zigbee/lumi_wsdcgq11lm.lua
-      - lua/zigbee/phillips_9290012573a.lua
-      - lua/zigbee/ts011f_plug.lua
-  - name: home-gateway-config-lua-esphome
-    files:
-      - lua/esphome/apollo_mtr_1.lua
-      - lua/esphome/apollo_plt_1.lua
+      - lua/mqtt/apollo_mtr_1.lua
+      - lua/mqtt/apollo_plt_1.lua
+      - lua/mqtt/aqara_fp1e.lua
+      - lua/mqtt/aqara_mccgq12lm.lua
+      - lua/mqtt/aqara_t1.lua
+      - lua/mqtt/aqara_wsdcgq12lm.lua
+      - lua/mqtt/aqara_wxkg11lm.lua
+      - lua/mqtt/ikea_e2001.lua
+      - lua/mqtt/ikea_e2112.lua
+      - lua/mqtt/ikea_led2201g8.lua
+      - lua/mqtt/lumi_wsdcgq11lm.lua
+      - lua/mqtt/phillips_9290012573a.lua
+      - lua/mqtt/ts011f_plug.lua
+      - lua/mqtt/valetudo.lua
   - name: home-gateway-config-lua-home-assistant
     files:
       - lua/home_assistant/media_player.lua

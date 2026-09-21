@@ -3,7 +3,7 @@
   state: enabled
   room: entry
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x54ef441000d2b0b0"
   model: aqara_mccgq12lm
   watchdog:
@@ -23,7 +23,7 @@
   state: enabled
   room: garage
   transport:
-    type: zigbee
+    type: mqtt
     address: "0x54ef441000d2b1ba"
   model: aqara_mccgq12lm
   watchdog: { timeout: 24h }

@@ -1,9 +1,12 @@
 ---@type ZigbeeModel
 return {
+	protocol = "zigbee",
 	roles = { "light" },
-	capabilities = { "brightness", "colour_temp", "rgb" },
+	capabilities = { "brightness", "colour_temp" },
 
-	decode = function(payload)
+	decode = function(input)
+		local payload = input.payload
+
 		return {
 			light = {
 				state = payload.state,

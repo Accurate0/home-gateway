@@ -1,4 +1,5 @@
 use home_gateway::device_registry::DeviceRegistry;
+use home_gateway::integrations::mqtt::MqttProtocol;
 use home_gateway::settings::SettingsContainer;
 use pretty_assertions::assert_eq;
 use std::path::Path;
@@ -28,7 +29,7 @@ fn fixture_config_resolves() {
         "0x0000000000000004",
     ] {
         assert!(
-            devices.zigbee_device(address).is_some(),
+            devices.mqtt_device(MqttProtocol::Zigbee, address).is_some(),
             "expected {address} to be registered by address"
         );
     }
@@ -51,10 +52,10 @@ fn device_ids_alias_to_addresses() {
 }
 
 #[test]
-fn esphome_state_topics_are_precomputed() {
+fn esphome_state_topics_are_subscribed() {
     let (_, devices) = load();
 
-    let topics: Vec<String> = devices.esphome_all_topics().cloned().collect();
+    let topics = devices.mqtt_subscriptions();
 
     assert!(
         topics
@@ -71,36 +72,14 @@ fn esphome_state_topics_are_precomputed() {
 }
 
 #[test]
-fn zigbee_device_without_a_model_is_rejected() {
+fn unknown_mqtt_model_is_rejected() {
     let error = build_with_devices(
         r#"
 - id: broken
   state: enabled
   room: test
   transport:
-    type: zigbee
-    address: "0x000000000000dead"
-  roles:
-    - type: door
-      config: { name: Broken, id: broken, state: unarmed, notify: [android_app] }
-"#,
-    );
-
-    assert!(
-        error.to_lowercase().contains("model"),
-        "expected a model-related error, got: {error}"
-    );
-}
-
-#[test]
-fn unknown_zigbee_model_is_rejected() {
-    let error = build_with_devices(
-        r#"
-- id: broken
-  state: enabled
-  room: test
-  transport:
-    type: zigbee
+    type: mqtt
     address: "0x000000000000dead"
   model: not_a_real_model
   roles:
@@ -116,14 +95,14 @@ fn unknown_zigbee_model_is_rejected() {
 }
 
 #[test]
-fn esphome_device_without_a_model_is_rejected() {
+fn mqtt_device_without_a_model_names_the_transport() {
     let error = build_with_devices(
         r#"
 - id: broken
   state: enabled
   room: test
   transport:
-    type: esphome
+    type: mqtt
     address: broken-node
   roles:
     - type: environment
@@ -132,7 +111,7 @@ fn esphome_device_without_a_model_is_rejected() {
     );
 
     assert!(
-        error.contains("esphome transport requires a `model:`"),
+        error.contains("mqtt transport requires a `model:`"),
         "expected a model-related error, got: {error}"
     );
 }
@@ -150,7 +129,7 @@ fn build_with_devices(devices_yaml: &str) -> String {
     )
     .unwrap();
 
-    for models in ["lua/zigbee", "lua/esphome", "lua/home_assistant"] {
+    for models in ["lua/mqtt", "lua/home_assistant"] {
         std::fs::create_dir_all(dir.join(models)).unwrap();
 
         for entry in std::fs::read_dir(Path::new(FIXTURE_CONFIG).join(models)).unwrap() {

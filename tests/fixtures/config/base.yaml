@@ -15,6 +15,23 @@ mqtt:
   reconnect:
     min: 1s
     max: 60s
+  models: lua/mqtt
+  protocols:
+    zigbee:
+      topics:
+        report: "zigbee2mqtt/{name}"
+      command: "zigbee2mqtt/{name}/set"
+      directory: "zigbee2mqtt/bridge/devices"
+    esphome:
+      topics:
+        state: "{address}/{domain}/{object_id}/state"
+      command: "{address}/{domain}/{object_id}/command"
+      discovery: "esphome/discover/{address}"
+    valetudo:
+      topics:
+        state: "valetudo/{address}/state"
+        attributes: "valetudo/{address}/attributes"
+      command: "valetudo/{address}/command"
 
 database:
   min_connections: 0
@@ -434,8 +451,6 @@ vacation:
   min_observations: 8
   seed: 20260908
 
-zigbee_models: lua/zigbee
-esphome_models: lua/esphome
 home_assistant_models: lua/home_assistant
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

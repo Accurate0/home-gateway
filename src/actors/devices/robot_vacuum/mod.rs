@@ -1,76 +1,37 @@
 pub mod command;
 pub mod lua;
-mod roborock_reading;
+mod robot_vacuum_reading;
 
-pub use roborock_reading::RoborockReading;
+pub use robot_vacuum_reading::RobotVacuumReading;
 
 use crate::actors::devices::handler::DeviceHandler;
 use crate::actors::system::battery::BatteryActor;
+use crate::integrations::mqtt::MqttProtocol;
 use crate::state::AppState;
-use serde::Deserialize;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Leaf {
-    State,
-    Attributes,
-}
-
-pub struct ValetudoEvent {
+pub struct NewEvent {
     pub event_id: Uuid,
-    pub device_id: String,
-    pub leaf: Leaf,
-    pub payload: bytes::Bytes,
-    pub traceparent: crate::tracing_context::TraceParent,
-}
-
-pub struct RoborockUpdate {
-    pub event_id: Uuid,
-    pub reading: RoborockReading,
+    pub reading: RobotVacuumReading,
     pub traceparent: crate::tracing_context::TraceParent,
 }
 
 pub enum Message {
-    Valetudo(ValetudoEvent),
-    Roborock(RoborockUpdate),
+    NewEvent(NewEvent),
 }
 
 impl crate::tracing_context::TracedMessage for Message {
     fn traceparent(&self) -> Option<&str> {
         match self {
-            Message::Valetudo(event) => event.traceparent.as_deref(),
-            Message::Roborock(update) => update.traceparent.as_deref(),
+            Message::NewEvent(event) => event.traceparent.as_deref(),
         }
     }
 
     fn subject(&self) -> Option<&str> {
         match self {
-            Message::Valetudo(event) => Some(&event.device_id),
-            Message::Roborock(update) => Some(&update.reading.device_id),
+            Message::NewEvent(event) => Some(&event.reading.device_id),
         }
     }
-}
-
-#[derive(Debug, Deserialize)]
-struct ValetudoState {
-    #[serde(default)]
-    state: Option<String>,
-    #[serde(default)]
-    battery_level: Option<i32>,
-    #[serde(default)]
-    fan_speed: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ValetudoAttributes {
-    #[serde(
-        default,
-        rename = "currentCleanArea",
-        deserialize_with = "crate::serde_lenient::opt_f64"
-    )]
-    current_clean_area: Option<f64>,
-    #[serde(default, rename = "cleanCount")]
-    clean_count: Option<i32>,
 }
 
 pub struct RobotVacuumHandler {
@@ -85,73 +46,22 @@ impl RobotVacuumHandler {
         let address = devices.address_or_self(device_id);
 
         devices
-            .valetudo(address)
-            .map(|v| v.name.clone())
-            .or_else(|| devices.roborock(address).map(|r| r.name.clone()))
-            .unwrap_or_else(|| device_id.to_owned())
+            .robot_vacuum(address)
+            .map_or_else(|| device_id.to_owned(), |settings| settings.name.clone())
     }
 
-    async fn handle_valetudo_state(
+    async fn record_home_assistant(
         &self,
         event_id: Uuid,
-        device_id: &str,
-        payload: &[u8],
+        reading: RobotVacuumReading,
     ) -> Result<(), anyhow::Error> {
-        let parsed = serde_json::from_slice::<ValetudoState>(payload)?;
-
-        self.shared_actor_state
-            .repos
-            .robot_vacuum()
-            .record_valetudo_state(
-                event_id,
-                device_id,
-                parsed.state.as_deref(),
-                parsed.battery_level,
-                parsed.fan_speed.as_deref(),
-            )
-            .await?;
-
-        if let Some(level) = parsed.battery_level {
-            self.report_battery(device_id, level);
-        }
-
-        Ok(())
-    }
-
-    async fn handle_valetudo_attributes(
-        &self,
-        device_id: &str,
-        payload: &[u8],
-    ) -> Result<(), anyhow::Error> {
-        let parsed = serde_json::from_slice::<ValetudoAttributes>(payload)?;
-        let attributes = serde_json::from_slice::<serde_json::Value>(payload)?;
-
-        self.shared_actor_state
-            .repos
-            .robot_vacuum()
-            .upsert_valetudo_attributes(
-                device_id,
-                parsed.current_clean_area,
-                parsed.clean_count,
-                &attributes,
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    async fn handle_roborock(&self, update: RoborockUpdate) -> Result<(), anyhow::Error> {
-        let RoborockUpdate {
-            event_id,
-            reading:
-                RoborockReading {
-                    device_id,
-                    status,
-                    room,
-                    battery,
-                },
+        let RobotVacuumReading {
+            device_id,
+            status,
+            room,
+            battery,
             ..
-        } = update;
+        } = reading;
 
         let repo = self.shared_actor_state.repos.robot_vacuum();
 
@@ -160,7 +70,7 @@ impl RobotVacuumHandler {
                 repo.record_roborock_status(event_id, &device_id, &status)
                     .await?
             }
-            None => tracing::trace!("no roborock status in this update for {device_id}"),
+            None => tracing::trace!("no robot vacuum status in this update for {device_id}"),
         }
 
         match battery {
@@ -171,12 +81,57 @@ impl RobotVacuumHandler {
                     .await?;
                 self.report_battery(&device_id, level);
             }
-            None => tracing::trace!("no roborock battery in this update for {device_id}"),
+            None => tracing::trace!("no robot vacuum battery in this update for {device_id}"),
         }
 
         match room {
             Some(room) => repo.upsert_roborock_room(&device_id, &room).await?,
-            None => tracing::trace!("no roborock room in this update for {device_id}"),
+            None => tracing::trace!("no robot vacuum room in this update for {device_id}"),
+        }
+
+        Ok(())
+    }
+
+    async fn record_valetudo(
+        &self,
+        event_id: Uuid,
+        reading: RobotVacuumReading,
+    ) -> Result<(), anyhow::Error> {
+        let RobotVacuumReading {
+            device_id,
+            status,
+            battery,
+            fan_speed,
+            clean_area,
+            clean_count,
+            attributes,
+            ..
+        } = reading;
+
+        let repo = self.shared_actor_state.repos.robot_vacuum();
+
+        match attributes {
+            Some(attributes) => {
+                repo.upsert_valetudo_attributes(&device_id, clean_area, clean_count, &attributes)
+                    .await?
+            }
+            None => {
+                let level = battery.map(|level| level as i32);
+
+                repo.record_valetudo_state(
+                    event_id,
+                    &device_id,
+                    status.as_deref(),
+                    level,
+                    fan_speed.as_deref(),
+                )
+                .await?;
+
+                match level {
+                    Some(level) => self.report_battery(&device_id, level),
+                    None => tracing::trace!("no valetudo battery in this update for {device_id}"),
+                }
+            }
         }
 
         Ok(())
@@ -196,18 +151,17 @@ impl RobotVacuumHandler {
     }
 
     async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
-        match message {
-            Message::Valetudo(event) => match event.leaf {
-                Leaf::State => {
-                    self.handle_valetudo_state(event.event_id, &event.device_id, &event.payload)
-                        .await?
-                }
-                Leaf::Attributes => {
-                    self.handle_valetudo_attributes(&event.device_id, &event.payload)
-                        .await?
-                }
-            },
-            Message::Roborock(update) => self.handle_roborock(update).await?,
+        let Message::NewEvent(NewEvent {
+            event_id, reading, ..
+        }) = message;
+
+        match reading.protocol {
+            None => self.record_home_assistant(event_id, reading).await?,
+            Some(MqttProtocol::Valetudo) => self.record_valetudo(event_id, reading).await?,
+            Some(protocol @ (MqttProtocol::Zigbee | MqttProtocol::Esphome)) => tracing::warn!(
+                "ignoring robot vacuum reading from a {protocol} device {}",
+                reading.device_id
+            ),
         }
 
         Ok(())
