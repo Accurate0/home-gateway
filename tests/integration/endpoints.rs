@@ -371,9 +371,14 @@ async fn weather_reads_the_stored_forecast() {
     sqlx::query(
         "INSERT INTO willyweather_forecast_day
          (location, date, precis_code, precis, min_temp, max_temp, uv_max)
-         VALUES ($1, CURRENT_DATE, 'fine', 'Sunny', 14, 31, 9.5)",
+         VALUES ($1, $2, 'fine', 'Sunny', 14, 31, 9.5)",
     )
     .bind("perth")
+    .bind(
+        chrono::Utc::now()
+            .with_timezone(&home_gateway::integrations::willyweather::FORECAST_OFFSET)
+            .date_naive(),
+    )
     .execute(&harness.db)
     .await
     .expect("failed to seed the forecast");
