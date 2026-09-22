@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/RawEinkGlobal
-firmware_version: v0.1.0-a2c2e42
+firmware_version: v0.1.0-6a71267
 prepare_render_timeout: 15s
 defaults:
   reddit_limit: 25
