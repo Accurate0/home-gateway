@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::io::IsTerminal;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -263,7 +262,7 @@ where
     S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
 {
     tracing_subscriber::fmt::layer()
-        .with_ansi(std::io::stdout().is_terminal())
+        .with_ansi(true)
         .with_filter(console_filter())
 }
 

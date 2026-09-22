@@ -2,6 +2,7 @@
 return {
 	protocol = "zigbee",
 	roles = { "smart_switch" },
+	watchdog = "7d",
 
 	encode = { smart_switch = gw.lib("zigbee_switch") },
 

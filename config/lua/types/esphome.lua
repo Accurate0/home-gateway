@@ -15,7 +15,9 @@
 ---@class EsphomeModel
 ---@field protocol "esphome"
 ---@field roles EsphomeRole[]
+---@field watchdog string?
 ---@field capabilities DeviceCapability[]?
+---@field ranges DeviceRanges?
 ---@field plant string[]?
 ---@field entities EsphomeEntities
 ---@field decode fun(input: EsphomeInput): DeviceReading

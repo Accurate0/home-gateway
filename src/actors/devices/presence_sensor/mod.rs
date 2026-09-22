@@ -138,9 +138,7 @@ impl DeviceHandler for PresenceSensorHandler {
         Self { shared_actor_state }
     }
 
-    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
-        workers.presence_sensor
-    }
+    const ROLE: crate::decoding::DeviceRoleName = crate::decoding::DeviceRoleName::Presence;
 
     fn init_state(&self) -> anyhow::Result<Self::State> {
         Ok(PresenceSensorState::default())

@@ -1,5 +1,5 @@
 use crate::actors::root::RootMessage;
-use crate::settings::ActorWorkerSettings;
+use crate::decoding::DeviceRoleName;
 use crate::state::AppState;
 use crate::tracing_context::TracedMessage;
 use ractor::{
@@ -19,9 +19,9 @@ pub trait DeviceHandler: Send + Sync + Sized + 'static {
     type Message: ractor::Message + crate::tracing_context::TracedMessage;
     type State: ractor::State;
 
-    fn new(shared_actor_state: AppState) -> Self;
+    const ROLE: DeviceRoleName;
 
-    fn workers(workers: &ActorWorkerSettings) -> usize;
+    fn new(shared_actor_state: AppState) -> Self;
 
     fn init_state(&self) -> anyhow::Result<Self::State>;
 
@@ -139,7 +139,7 @@ pub async fn spawn_handler<T: DeviceHandler>(
         queues::DefaultQueue<(), T::Message>,
     >::default();
 
-    let workers = T::workers(&shared_actor_state.settings.actors.workers);
+    let workers = shared_actor_state.settings.actors.workers.device(T::ROLE);
 
     let factory_args = FactoryArguments::builder()
         .worker_builder(Box::new(HandlerBuilder::<T> {

@@ -20,9 +20,13 @@ pub struct RawDeviceWatchdog {
 }
 
 impl RawDeviceWatchdog {
-    pub(crate) fn resolve(self, targets: &NotifyTargets) -> Result<DeviceWatchdog, String> {
+    pub(crate) fn resolve(
+        self,
+        targets: &NotifyTargets,
+        model_timeout: Option<TimeDelta>,
+    ) -> Result<DeviceWatchdog, String> {
         Ok(DeviceWatchdog {
-            timeout: self.timeout,
+            timeout: self.timeout.or(model_timeout),
             notify: resolve_notify(self.notify, targets)?,
         })
     }

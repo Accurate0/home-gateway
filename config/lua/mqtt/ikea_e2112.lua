@@ -2,6 +2,7 @@
 return {
 	protocol = "zigbee",
 	roles = { "environment" },
+	watchdog = "3h",
 	capabilities = { "temperature", "humidity", "pm25", "voc_index" },
 
 	decode = function(input)

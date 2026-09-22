@@ -6,7 +6,6 @@
     type: home_assistant
     address: vacuum.robot
   model: roborock
-  watchdog: { timeout: 7d }
   roles:
     - type: robot_vacuum
       config:
@@ -20,7 +19,6 @@
     type: mqtt
     address: rockrobo
   model: valetudo
-  watchdog: { timeout: 7d }
   roles:
     - type: robot_vacuum
       config:

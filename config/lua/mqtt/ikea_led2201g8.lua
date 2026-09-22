@@ -2,7 +2,9 @@
 return {
 	protocol = "zigbee",
 	roles = { "light" },
+	watchdog = "7d",
 	capabilities = { "brightness", "colour_temp" },
+	ranges = { colour_temp = { min = 250, max = 454 } },
 
 	encode = { light = gw.lib("zigbee_light") },
 
@@ -15,10 +17,6 @@ return {
 				brightness = payload.brightness,
 				color_temp = payload.color_temp,
 				color = payload.color,
-			},
-			metrics = {
-				brightness = payload.brightness,
-				color_temp = payload.color_temp,
 			},
 		}
 	end,

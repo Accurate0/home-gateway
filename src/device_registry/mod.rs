@@ -123,9 +123,19 @@ impl DeviceRegistry {
 
             let watchdog_key = format!("{source}:{id}");
 
+            let model_timeout = profile.as_deref().and_then(|profile| profile.watchdog);
+
+            let watchdog = match (watchdog, model_timeout) {
+                (Some(watchdog), _) => Some(watchdog.resolve(notify, model_timeout)?),
+                (None, Some(timeout)) => Some(DeviceWatchdog {
+                    timeout: Some(timeout),
+                    notify: Vec::new(),
+                }),
+                (None, None) => None,
+            };
+
             if let Some(watchdog) = watchdog {
-                reg.watchdog
-                    .insert(watchdog_key.clone(), watchdog.resolve(notify)?);
+                reg.watchdog.insert(watchdog_key.clone(), watchdog);
             }
 
             let device = Device {

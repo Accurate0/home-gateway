@@ -1,7 +1,9 @@
 pub mod lua;
+mod payload_format;
 mod protocol;
 mod topic_template;
 
+pub use payload_format::PayloadFormat;
 pub use protocol::MqttProtocol;
 pub use topic_template::{TopicTemplate, TopicVars};
 

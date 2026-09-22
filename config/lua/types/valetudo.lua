@@ -9,5 +9,6 @@
 ---@class ValetudoModel
 ---@field protocol "valetudo"
 ---@field roles ValetudoRole[]
+---@field watchdog string?
 ---@field commands { robot_vacuum: RobotVacuumCommands }
 ---@field decode fun(input: ValetudoInput): DeviceReading

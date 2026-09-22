@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 
+use chrono::TimeDelta;
+
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
@@ -10,6 +12,7 @@ use crate::settings::Metric;
 
 use super::model_commands::ModelCommands;
 use super::model_entities::ModelEntities;
+use super::model_ranges::ModelRanges;
 use super::reading::DeviceReading;
 use super::role_name::DeviceRoleName;
 
@@ -24,6 +27,8 @@ pub struct ModelProfile {
     pub plant: Vec<String>,
     pub entities: ModelEntities,
     pub commands: ModelCommands,
+    pub ranges: ModelRanges,
+    pub watchdog: Option<TimeDelta>,
 }
 
 impl ModelProfile {

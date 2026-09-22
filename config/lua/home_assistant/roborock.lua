@@ -21,6 +21,7 @@ end
 ---@type HomeAssistantModel
 return {
 	roles = { "robot_vacuum", "battery" },
+	watchdog = "7d",
 
 	commands = {
 		robot_vacuum = {

@@ -2,7 +2,6 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::decoding::DeviceRoleName;
-use crate::integrations::mqtt::MqttProtocol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -31,9 +30,7 @@ impl Transport {
         use DeviceRoleName::*;
 
         match self {
-            Transport::Mqtt => MqttProtocol::ALL
-                .iter()
-                .any(|protocol| protocol.supports(role)),
+            Transport::Mqtt => ![EinkDisplayFirmware, Trmnl, MediaPlayer].contains(&role),
             Transport::HomeAssistant => [
                 Battery,
                 Door,

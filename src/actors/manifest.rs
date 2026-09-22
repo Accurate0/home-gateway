@@ -519,7 +519,31 @@ pub static ACTORS: &[ActorSpec] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::decoding::DeviceRoleName;
     use std::collections::HashSet;
+
+    #[test]
+    fn every_role_with_a_handler_has_exactly_one_device_actor() {
+        let handled = [
+            LightHandler::ROLE,
+            DoorSensorHandler::ROLE,
+            PresenceSensorHandler::ROLE,
+            EnvironmentSensorHandler::ROLE,
+            PlantSensorHandler::ROLE,
+            SmartSwitchHandler::ROLE,
+            ControlSwitchHandler::ROLE,
+            MediaPlayerHandler::ROLE,
+            RobotVacuumHandler::ROLE,
+        ];
+
+        let expected: HashSet<DeviceRoleName> = DeviceRoleName::ALL
+            .into_iter()
+            .filter(|role| role.has_handler())
+            .collect();
+
+        assert_eq!(handled.len(), expected.len());
+        assert_eq!(handled.into_iter().collect::<HashSet<_>>(), expected);
+    }
 
     #[test]
     fn only_the_optional_integrations_declare_requirements() {

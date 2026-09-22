@@ -9,6 +9,7 @@
 
 ---@class HomeAssistantModel
 ---@field roles HomeAssistantRole[]
+---@field watchdog string?
 ---@field capabilities DeviceCapability[]?
 ---@field entities string[]?
 ---@field commands { robot_vacuum: RobotVacuumCommands }?

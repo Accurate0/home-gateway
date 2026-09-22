@@ -2,6 +2,7 @@
 return {
 	protocol = "zigbee",
 	roles = { "battery", "control_switch" },
+	watchdog = "24h",
 
 	decode = function(input)
 		local payload = input.payload

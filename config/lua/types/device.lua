@@ -4,6 +4,13 @@
 ---@alias DeviceEnvironmentMetric "temperature"|"humidity"|"pressure"|"lux"|"uv_index"|"pm25"|"voc_index"
 ---@alias DeviceCapability DeviceEnvironmentMetric|"brightness"|"colour_temp"|"rgb"
 
+---@class DeviceRange
+---@field min integer
+---@field max integer
+
+---@class DeviceRanges
+---@field colour_temp DeviceRange? mireds the product accepts; required with the `colour_temp` capability
+
 ---@class DoorFields
 ---@field contact boolean?
 

@@ -150,8 +150,9 @@ impl MqttIngest {
         } = candidate;
 
         let devices = &self.shared_actor_state.devices;
+        let settings = devices.mqtt_protocols().get(protocol);
 
-        let Some(value) = protocol.parse_payload(&vars, payload) else {
+        let Some(value) = settings.parse_payload(&vars, payload) else {
             return Err(format!("unrecognised {protocol} {stream} payload"));
         };
 
@@ -159,7 +160,7 @@ impl MqttIngest {
 
         let address = match (vars.get("address"), &name) {
             (Some(address), _) => address.clone(),
-            (None, Some(name)) => match protocol.payload_address(&value) {
+            (None, Some(name)) => match settings.payload_address(&value) {
                 Some(address) => address.to_owned(),
                 None => devices
                     .address_for_friendly_name(name)

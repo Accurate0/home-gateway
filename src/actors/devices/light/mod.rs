@@ -22,8 +22,6 @@ use light_encode_input::LightEncodeInput;
 use ractor::RpcReplyPort;
 use uuid::Uuid;
 
-const COLOUR_TEMP_MIN_MIREDS: u64 = 153;
-const COLOUR_TEMP_MAX_MIREDS: u64 = 500;
 const BRIGHTNESS_MAX: u64 = 254;
 
 pub struct Entity {
@@ -316,9 +314,19 @@ impl LightHandler {
             brightness.clamp(0, BRIGHTNESS_MAX)
         });
 
-        let colour_temp = request.colour_temp.map(|colour_temp| {
-            self.warn_if_unsupported(ieee_addr, Capability::ColourTemp);
-            colour_temp.clamp(COLOUR_TEMP_MIN_MIREDS, COLOUR_TEMP_MAX_MIREDS)
+        let range = self
+            .shared_actor_state
+            .devices
+            .device(ieee_addr)
+            .and_then(|device| device.profile.as_ref())
+            .and_then(|profile| profile.ranges.colour_temp);
+
+        let colour_temp = request.colour_temp.and_then(|colour_temp| match range {
+            Some(range) => Some(range.clamp(colour_temp)),
+            None => {
+                tracing::warn!("light {ieee_addr} does not support colour_temp, dropping it");
+                None
+            }
         });
 
         let colour = request.colour.map(|colour| {
@@ -589,9 +597,7 @@ impl DeviceHandler for LightHandler {
         Self { shared_actor_state }
     }
 
-    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
-        workers.light
-    }
+    const ROLE: DeviceRoleName = DeviceRoleName::Light;
 
     fn init_state(&self) -> anyhow::Result<Self::State> {
         let settings = &self.shared_actor_state.settings;

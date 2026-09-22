@@ -264,6 +264,7 @@ impl RawSettings {
 
         adhoc.validate()?;
         endpoints.validate()?;
+        actors.workers.validate()?;
 
         let integrations = integrations.resolve()?;
 
@@ -286,7 +287,7 @@ impl RawSettings {
 
         mqtt.protocols.validate()?;
 
-        let models = model_sources.load(&lua)?;
+        let models = model_sources.load(&lua, &mqtt.protocols)?;
 
         let registry = DeviceRegistry::build(
             devices.into_iter().flatten().collect(),
@@ -602,10 +603,7 @@ mod tests {
     }
 
     fn test_protocols() -> MqttProtocols {
-        let section: serde_yaml::Value =
-            serde_yaml::from_str(include_str!("../../config/sections/mqtt.yaml")).unwrap();
-
-        serde_yaml::from_value(section["protocols"].clone()).unwrap()
+        MqttProtocols::committed()
     }
 
     fn test_models() -> DeviceModels {
@@ -646,7 +644,9 @@ mod tests {
             ]),
         };
 
-        sources.load(&LuaSettings::default()).unwrap()
+        sources
+            .load(&LuaSettings::default(), &test_protocols())
+            .unwrap()
     }
 
     #[test]
@@ -1530,15 +1530,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -1581,15 +1581,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -1664,6 +1664,30 @@ integrations:
     }
 
     #[test]
+    fn a_device_watchdog_inherits_its_model_timeout() {
+        let (_settings, registry) = secrets_over_config("").unwrap();
+
+        let watchdog = |key: &str| {
+            registry
+                .watchdog_devices()
+                .find(|(device_key, _)| device_key.as_str() == key)
+                .map(|(_, watchdog)| watchdog.clone())
+                .unwrap_or_else(|| panic!("{key} is watched"))
+        };
+
+        let garage = watchdog("zigbee:garage-door");
+        assert_eq!(garage.timeout, Some(chrono::TimeDelta::hours(24)));
+        assert!(garage.notify.is_empty());
+
+        let front = watchdog("zigbee:front-door");
+        assert_eq!(front.timeout, Some(chrono::TimeDelta::hours(24)));
+        assert_eq!(front.notify.len(), 1);
+
+        let display = watchdog("eink_display_firmware:hallway-epd");
+        assert_eq!(display.timeout, Some(chrono::TimeDelta::hours(12)));
+    }
+
+    #[test]
     fn fuelwatch_postcode_and_location_fall_back_to_perth() {
         let (settings, _registry) = secrets_over_config("").unwrap();
 
@@ -1707,15 +1731,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1763,15 +1787,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1821,15 +1845,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2035,15 +2059,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2090,15 +2114,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2144,15 +2168,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2199,15 +2223,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2253,15 +2277,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2352,15 +2376,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2432,15 +2456,15 @@ mqtt:
   reconnect: { min: 1s, max: 60s }
   models: lua/mqtt
   protocols:
-    zigbee: { topics: { report: "zigbee2mqtt/{name}" } }
-    esphome: { topics: { state: "{address}/{domain}/{object_id}/state" } }
-    valetudo: { topics: { state: "valetudo/{address}/state" } }
+    zigbee: { payload: json, entities: disabled, roles: [door], topics: { report: "zigbee2mqtt/{name}" } }
+    esphome: { payload: esphome_domain, entities: enabled, roles: [environment], topics: { state: "{address}/{domain}/{object_id}/state" } }
+    valetudo: { payload: json, entities: disabled, roles: [robot_vacuum], topics: { state: "valetudo/{address}/state" } }
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }

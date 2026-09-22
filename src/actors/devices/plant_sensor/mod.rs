@@ -74,9 +74,7 @@ impl DeviceHandler for PlantSensorHandler {
         Self { shared_actor_state }
     }
 
-    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
-        workers.plant_sensor
-    }
+    const ROLE: crate::decoding::DeviceRoleName = crate::decoding::DeviceRoleName::Plant;
 
     fn init_state(&self) -> anyhow::Result<Self::State> {
         Ok(())

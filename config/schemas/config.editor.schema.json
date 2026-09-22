@@ -508,64 +508,77 @@
           "format": "uint",
           "minimum": 0
         },
-        "control_switch": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "door_sensor": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "environment_sensor": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "light": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "media_player": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "plant_sensor": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "presence_sensor": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "robot_vacuum": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "smart_switch": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
+        "devices": {
+          "type": "object",
+          "properties": {
+            "battery": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "control_switch": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "door": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "eink_display_firmware": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "environment": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "light": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "media_player": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "plant": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "presence": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "robot_vacuum": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "smart_switch": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "trmnl": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
         "mqtt_ingest",
         "home_assistant_ingest",
-        "control_switch",
-        "door_sensor",
-        "environment_sensor",
-        "light",
-        "media_player",
-        "plant_sensor",
-        "presence_sensor",
-        "robot_vacuum",
-        "smart_switch"
+        "devices"
       ]
     },
     "TracingSettings": {
@@ -673,6 +686,28 @@
     "MqttProtocolSettings": {
       "type": "object",
       "properties": {
+        "payload": {
+          "$ref": "#/$defs/PayloadFormat"
+        },
+        "address_path": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "entities": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/DeviceRoleName"
+          }
+        },
         "topics": {
           "type": "object",
           "additionalProperties": {
@@ -700,7 +735,41 @@
       },
       "additionalProperties": false,
       "required": [
+        "payload",
+        "entities",
+        "roles",
         "topics"
+      ]
+    },
+    "PayloadFormat": {
+      "type": "string",
+      "enum": [
+        "json",
+        "esphome_domain"
+      ]
+    },
+    "EnabledState": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled"
+      ]
+    },
+    "DeviceRoleName": {
+      "type": "string",
+      "enum": [
+        "battery",
+        "door",
+        "environment",
+        "plant",
+        "light",
+        "smart_switch",
+        "presence",
+        "control_switch",
+        "robot_vacuum",
+        "media_player",
+        "eink_display_firmware",
+        "trmnl"
       ]
     },
     "BackoffSettings": {
@@ -805,13 +874,6 @@
         "state",
         "transport",
         "roles"
-      ]
-    },
-    "EnabledState": {
-      "type": "string",
-      "enum": [
-        "enabled",
-        "disabled"
       ]
     },
     "RawTransport": {

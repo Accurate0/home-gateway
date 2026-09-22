@@ -2,6 +2,7 @@
 return {
 	protocol = "zigbee",
 	roles = { "presence" },
+	watchdog = "1h",
 
 	decode = function(input)
 		local payload = input.payload

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::device_registry::Transport;
 use crate::lua::{LuaDecoder, LuaError};
-use crate::settings::LuaSettings;
+use crate::settings::{LuaSettings, MqttProtocols};
 
 use super::device_models::DeviceModels;
 use super::models::load_models;
@@ -15,14 +15,25 @@ pub struct ModelSources {
 }
 
 impl ModelSources {
-    pub fn load(&self, settings: &LuaSettings) -> Result<DeviceModels, String> {
+    pub fn load(
+        &self,
+        settings: &LuaSettings,
+        protocols: &MqttProtocols,
+    ) -> Result<DeviceModels, String> {
         Ok(DeviceModels {
-            mqtt: load_models(Transport::Mqtt, &self.mqtt, &self.library, settings)?,
+            mqtt: load_models(
+                Transport::Mqtt,
+                &self.mqtt,
+                &self.library,
+                settings,
+                protocols,
+            )?,
             home_assistant: load_models(
                 Transport::HomeAssistant,
                 &self.home_assistant,
                 &self.library,
                 settings,
+                protocols,
             )?,
         })
     }

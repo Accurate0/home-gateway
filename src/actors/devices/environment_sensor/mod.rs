@@ -214,9 +214,7 @@ impl DeviceHandler for EnvironmentSensorHandler {
         Self { shared_actor_state }
     }
 
-    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
-        workers.environment_sensor
-    }
+    const ROLE: crate::decoding::DeviceRoleName = crate::decoding::DeviceRoleName::Environment;
 
     fn init_state(&self) -> anyhow::Result<Self::State> {
         Ok(EnvironmentSensorState::default())

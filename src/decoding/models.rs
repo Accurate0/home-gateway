@@ -4,13 +4,14 @@ use std::sync::Arc;
 use crate::device_registry::{Capability, Transport};
 use crate::integrations::mqtt::MqttProtocol;
 use crate::lua::{LuaDecoder, LuaError};
-use crate::settings::{LuaSettings, Metric};
+use crate::settings::{LuaSettings, Metric, MqttProtocols};
 
 use super::esphome_entities::EsphomeEntities;
 use super::home_assistant_entities::HomeAssistantEntities;
 use super::model_commands::ModelCommands;
 use super::model_entities::ModelEntities;
 use super::model_profile::ModelProfile;
+use super::model_ranges::ModelRanges;
 use super::role_name::DeviceRoleName;
 
 pub type Models = HashMap<String, Arc<ModelProfile>>;
@@ -20,6 +21,7 @@ pub fn load_models(
     sources: &BTreeMap<String, String>,
     library: &BTreeMap<String, String>,
     settings: &LuaSettings,
+    protocols: &MqttProtocols,
 ) -> Result<Models, String> {
     let decoder = LuaDecoder::load(&kind.to_string(), sources, library, settings)
         .map_err(|error| format!("{kind} models: {error}"))?;
@@ -27,7 +29,7 @@ pub fn load_models(
     let mut profiles = HashMap::new();
 
     for slug in decoder.modules() {
-        let profile = resolve_profile(kind, &decoder, slug)?;
+        let profile = resolve_profile(kind, &decoder, slug, protocols)?;
 
         profiles.insert(slug.to_owned(), Arc::new(profile));
     }
@@ -39,6 +41,7 @@ fn resolve_profile(
     kind: Transport,
     decoder: &LuaDecoder,
     slug: &str,
+    protocols: &MqttProtocols,
 ) -> Result<ModelProfile, String> {
     let error = |error: LuaError| format!("{kind} model {slug}: {error}");
 
@@ -89,7 +92,7 @@ fn resolve_profile(
     let carrier = protocol.map_or_else(|| kind.to_string(), |protocol| protocol.to_string());
 
     let supported = |role: DeviceRoleName| match protocol {
-        Some(protocol) => protocol.supports(role),
+        Some(protocol) => protocols.get(protocol).supports(role),
         None => kind.supports(role),
     };
 
@@ -134,8 +137,18 @@ fn resolve_profile(
         ));
     }
 
-    let entities = resolve_entities(kind, protocol, decoder, slug, &roles)?;
+    let watchdog = decoder
+        .field::<String>(slug, "watchdog")
+        .map_err(error)?
+        .map(|timeout| {
+            crate::timedelta_format::parse_datetime_str_with_ms(&timeout)
+                .map_err(|e| format!("{kind} model {slug}: invalid `watchdog` `{timeout}`: {e}"))
+        })
+        .transpose()?;
+
+    let entities = resolve_entities(kind, protocol, protocols, decoder, slug, &roles)?;
     let commands = resolve_commands(kind, decoder, slug, &roles)?;
+    let ranges = resolve_ranges(kind, decoder, slug, &capabilities)?;
 
     Ok(ModelProfile {
         transport: kind,
@@ -147,7 +160,40 @@ fn resolve_profile(
         plant,
         entities,
         commands,
+        ranges,
+        watchdog,
     })
+}
+
+fn resolve_ranges(
+    kind: Transport,
+    decoder: &LuaDecoder,
+    slug: &str,
+    capabilities: &[Capability],
+) -> Result<ModelRanges, String> {
+    let ranges = decoder
+        .field::<ModelRanges>(slug, "ranges")
+        .map_err(|error| format!("{kind} model {slug}: {error}"))?
+        .unwrap_or_default();
+
+    let colour_temp = capabilities.contains(&Capability::ColourTemp);
+
+    if colour_temp != ranges.colour_temp.is_some() {
+        return Err(format!(
+            "{kind} model {slug}: `ranges.colour_temp` is required with the `colour_temp` capability, and only with it"
+        ));
+    }
+
+    if let Some(range) = ranges.colour_temp
+        && range.min >= range.max
+    {
+        return Err(format!(
+            "{kind} model {slug}: `ranges.colour_temp` min {} must be below max {}",
+            range.min, range.max
+        ));
+    }
+
+    Ok(ranges)
 }
 
 fn resolve_commands(
@@ -188,6 +234,7 @@ fn resolve_commands(
 fn resolve_entities(
     kind: Transport,
     protocol: Option<MqttProtocol>,
+    protocols: &MqttProtocols,
     decoder: &LuaDecoder,
     slug: &str,
     roles: &BTreeSet<DeviceRoleName>,
@@ -195,7 +242,7 @@ fn resolve_entities(
     let error = |error: LuaError| format!("{kind} model {slug}: {error}");
 
     match (kind, protocol) {
-        (Transport::Mqtt, Some(protocol)) if !protocol.takes_entities() => {
+        (Transport::Mqtt, Some(protocol)) if !protocols.get(protocol).takes_entities() => {
             let declared = decoder
                 .field::<serde_json::Value>(slug, "entities")
                 .map_err(error)?;
@@ -282,6 +329,7 @@ mod tests {
             &sources,
             &BTreeMap::new(),
             &LuaSettings::default(),
+            &MqttProtocols::committed(),
         )
     }
 
@@ -609,6 +657,7 @@ mod tests {
             &sources,
             &library(),
             &LuaSettings::default(),
+            &MqttProtocols::committed(),
         )
         .expect("expected every committed mqtt model to load");
 
@@ -629,6 +678,7 @@ mod tests {
             &sources,
             &library(),
             &LuaSettings::default(),
+            &MqttProtocols::committed(),
         )
         .expect("expected every committed home assistant model to load");
 
@@ -654,6 +704,45 @@ mod tests {
         assert!(stray.contains("`encode.light` is required"), "{stray}");
     }
 
+    #[test]
+    fn colour_temp_needs_a_range() {
+        let missing = load(
+            r#"return {
+                roles = { "door" },
+                capabilities = { "colour_temp" },
+                decode = function(p) return {} end,
+            }"#,
+        )
+        .expect_err("no range");
+        assert!(
+            missing.contains("`ranges.colour_temp` is required"),
+            "{missing}"
+        );
+
+        let inverted = load(
+            r#"return {
+                roles = { "door" },
+                capabilities = { "colour_temp" },
+                ranges = { colour_temp = { min = 500, max = 153 } },
+                decode = function(p) return {} end,
+            }"#,
+        )
+        .expect_err("inverted range");
+        assert!(inverted.contains("must be below max"), "{inverted}");
+
+        let ranged = profile(
+            r#"return {
+                roles = { "door" },
+                capabilities = { "colour_temp" },
+                ranges = { colour_temp = { min = 250, max = 454 } },
+                decode = function(p) return {} end,
+            }"#,
+        );
+        let range = ranged.ranges.colour_temp.expect("range");
+        assert_eq!(range.clamp(153), 250);
+        assert_eq!(range.clamp(500), 454);
+    }
+
     fn encode(slug: &str, command: serde_json::Value, on: bool) -> Option<Value> {
         encode_as(slug, DeviceRoleName::Light, command, on)
     }
@@ -668,8 +757,14 @@ mod tests {
             crate::lua::sources::load_directory(std::path::Path::new("./config/lua/mqtt"))
                 .expect("committed mqtt models");
         let library = library();
-        let models = load_models(Transport::Mqtt, &sources, &library, &LuaSettings::default())
-            .expect("committed models");
+        let models = load_models(
+            Transport::Mqtt,
+            &sources,
+            &library,
+            &LuaSettings::default(),
+            &MqttProtocols::committed(),
+        )
+        .expect("committed models");
         let decoder =
             LuaDecoder::load("mqtt", &sources, &library, &LuaSettings::default()).expect("decoder");
 

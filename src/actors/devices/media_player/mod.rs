@@ -204,9 +204,7 @@ impl DeviceHandler for MediaPlayerHandler {
         Self { shared_actor_state }
     }
 
-    fn workers(workers: &crate::settings::ActorWorkerSettings) -> usize {
-        workers.media_player
-    }
+    const ROLE: crate::decoding::DeviceRoleName = crate::decoding::DeviceRoleName::MediaPlayer;
 
     fn init_state(&self) -> anyhow::Result<Self::State> {
         Ok(HashMap::new())

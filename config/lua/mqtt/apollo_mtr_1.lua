@@ -8,6 +8,7 @@ local ENVIRONMENT = {
 return {
 	protocol = "esphome",
 	roles = { "light", "presence", "environment" },
+	watchdog = "1h",
 	capabilities = { "brightness", "rgb", "temperature", "pressure", "lux" },
 
 	entities = {

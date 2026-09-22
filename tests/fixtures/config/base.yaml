@@ -18,16 +18,26 @@ mqtt:
   models: lua/mqtt
   protocols:
     zigbee:
+      payload: json
+      address_path: [device, ieee_addr]
+      entities: disabled
+      roles: [battery, door, environment, light, smart_switch, presence, control_switch]
       topics:
         report: "zigbee2mqtt/{name}"
       command: "zigbee2mqtt/{name}/set"
       directory: "zigbee2mqtt/bridge/devices"
     esphome:
+      payload: esphome_domain
+      entities: enabled
+      roles: [environment, plant, light, presence]
       topics:
         state: "{address}/{domain}/{object_id}/state"
       command: "{address}/{domain}/{object_id}/command"
       discovery: "esphome/discover/{address}"
     valetudo:
+      payload: json
+      entities: disabled
+      roles: [robot_vacuum, battery]
       topics:
         state: "valetudo/{address}/state"
         attributes: "valetudo/{address}/attributes"
@@ -57,15 +67,16 @@ actors:
   workers:
     mqtt_ingest: 5
     home_assistant_ingest: 1
-    control_switch: 3
-    door_sensor: 1
-    environment_sensor: 1
-    light: 1
-    media_player: 1
-    plant_sensor: 1
-    presence_sensor: 1
-    robot_vacuum: 2
-    smart_switch: 3
+    devices:
+      control_switch: 3
+      door: 1
+      environment: 1
+      light: 1
+      media_player: 1
+      plant: 1
+      presence: 1
+      robot_vacuum: 2
+      smart_switch: 3
 
 tracing:
   sampling:

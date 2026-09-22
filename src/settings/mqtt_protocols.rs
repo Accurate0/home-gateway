@@ -32,4 +32,12 @@ impl MqttProtocols {
         self.iter()
             .try_for_each(|(protocol, settings)| settings.validate(protocol))
     }
+
+    #[cfg(test)]
+    pub fn committed() -> Self {
+        let section: serde_yaml::Value =
+            serde_yaml::from_str(include_str!("../../config/sections/mqtt.yaml")).unwrap();
+
+        serde_yaml::from_value(section["protocols"].clone()).unwrap()
+    }
 }

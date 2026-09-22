@@ -2,6 +2,7 @@
 return {
 	protocol = "valetudo",
 	roles = { "robot_vacuum", "battery" },
+	watchdog = "7d",
 
 	commands = {
 		robot_vacuum = { start = "start", stop = "stop", dock = "return_to_base" },

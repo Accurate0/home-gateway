@@ -6,7 +6,6 @@
     type: mqtt
     address: apollo-plt-1-hallway
   model: apollo_plt_1
-  watchdog: { timeout: 1h }
   roles:
     - type: environment
       config:

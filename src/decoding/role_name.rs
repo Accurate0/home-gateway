@@ -1,6 +1,7 @@
+use schemars::JsonSchema;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DeviceRoleName {
     Battery,
@@ -15,6 +16,40 @@ pub enum DeviceRoleName {
     MediaPlayer,
     EinkDisplayFirmware,
     Trmnl,
+}
+
+impl DeviceRoleName {
+    pub const ALL: [DeviceRoleName; 12] = [
+        DeviceRoleName::Battery,
+        DeviceRoleName::Door,
+        DeviceRoleName::Environment,
+        DeviceRoleName::Plant,
+        DeviceRoleName::Light,
+        DeviceRoleName::SmartSwitch,
+        DeviceRoleName::Presence,
+        DeviceRoleName::ControlSwitch,
+        DeviceRoleName::RobotVacuum,
+        DeviceRoleName::MediaPlayer,
+        DeviceRoleName::EinkDisplayFirmware,
+        DeviceRoleName::Trmnl,
+    ];
+
+    pub fn has_handler(self) -> bool {
+        match self {
+            DeviceRoleName::Door
+            | DeviceRoleName::Environment
+            | DeviceRoleName::Plant
+            | DeviceRoleName::Light
+            | DeviceRoleName::SmartSwitch
+            | DeviceRoleName::Presence
+            | DeviceRoleName::ControlSwitch
+            | DeviceRoleName::RobotVacuum
+            | DeviceRoleName::MediaPlayer => true,
+            DeviceRoleName::Battery
+            | DeviceRoleName::EinkDisplayFirmware
+            | DeviceRoleName::Trmnl => false,
+        }
+    }
 }
 
 impl std::fmt::Display for DeviceRoleName {

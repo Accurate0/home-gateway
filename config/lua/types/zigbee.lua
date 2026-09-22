@@ -9,6 +9,8 @@
 ---@class ZigbeeModel
 ---@field protocol "zigbee"
 ---@field roles ZigbeeRole[]
+---@field watchdog string?
 ---@field capabilities DeviceCapability[]?
+---@field ranges DeviceRanges?
 ---@field decode fun(input: ZigbeeInput): DeviceReading
 ---@field encode DeviceEncoders?

@@ -530,8 +530,14 @@ mod tests {
         let library =
             crate::lua::sources::load_directory(std::path::Path::new("./config/lua/model_lib"))
                 .expect("model library");
-        let models =
-            load_models(kind, &sources, &library, &LuaSettings::default()).expect("models");
+        let models = load_models(
+            kind,
+            &sources,
+            &library,
+            &LuaSettings::default(),
+            &crate::settings::MqttProtocols::committed(),
+        )
+        .expect("models");
         let decoder = LuaDecoder::load(
             &kind.to_string(),
             &sources,

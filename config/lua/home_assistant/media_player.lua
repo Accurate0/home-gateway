@@ -1,6 +1,7 @@
 ---@type HomeAssistantModel
 return {
 	roles = { "media_player" },
+	watchdog = "12h",
 
 	decode = function(entity)
 		return {
