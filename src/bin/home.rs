@@ -1285,6 +1285,10 @@ async fn lua_repl(client: &Client, args: &LuaReplArgs, as_json: bool) -> Result<
     let mut editor = rustyline::DefaultEditor::new()?;
     let history = credentials::path()?.with_file_name("lua_history");
 
+    if let Some(dir) = history.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+
     if let Err(e) = editor.load_history(&history) {
         tracing::debug!("no lua history loaded: {e}");
     }
@@ -1340,6 +1344,10 @@ async fn lua_repl(client: &Client, args: &LuaReplArgs, as_json: bool) -> Result<
         let script = std::mem::take(&mut buffer);
         editor.add_history_entry(script.as_str())?;
 
+        if let Err(e) = editor.append_history(&history) {
+            eprintln!("failed to save lua history: {e}");
+        }
+
         socket
             .send(Message::text(json!({ "script": script }).to_string()))
             .await
@@ -1364,11 +1372,6 @@ async fn lua_repl(client: &Client, args: &LuaReplArgs, as_json: bool) -> Result<
     }
 
     socket.close(None).await.ok();
-
-    if let Some(dir) = history.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    editor.save_history(&history)?;
 
     Ok(())
 }
