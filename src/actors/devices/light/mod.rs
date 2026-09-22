@@ -5,7 +5,7 @@ pub mod light_encode_input;
 pub mod lua;
 
 use crate::actors::devices::handler::DeviceHandler;
-use crate::decoding::DeviceRoleName;
+use crate::decoding::{CapabilityRange, DeviceRoleName};
 use crate::device_command::{self, CommandTargets, DeviceCommandError, Outbound};
 use crate::lua::LuaDecoder;
 use crate::{
@@ -21,8 +21,6 @@ use light_current::LightCurrent;
 use light_encode_input::LightEncodeInput;
 use ractor::RpcReplyPort;
 use uuid::Uuid;
-
-const BRIGHTNESS_MAX: u64 = 254;
 
 pub struct Entity {
     pub address: String,
@@ -309,25 +307,26 @@ impl LightHandler {
         ieee_addr: &str,
         request: SetRequest,
     ) -> Result<LightState, anyhow::Error> {
-        let brightness = request.brightness.map(|brightness| {
-            self.warn_if_unsupported(ieee_addr, Capability::Brightness);
-            brightness.clamp(0, BRIGHTNESS_MAX)
-        });
-
-        let range = self
+        let ranges = self
             .shared_actor_state
             .devices
             .device(ieee_addr)
             .and_then(|device| device.profile.as_ref())
-            .and_then(|profile| profile.ranges.colour_temp);
+            .map(|profile| profile.ranges.clone())
+            .unwrap_or_default();
 
-        let colour_temp = request.colour_temp.and_then(|colour_temp| match range {
-            Some(range) => Some(range.clamp(colour_temp)),
-            None => {
-                tracing::warn!("light {ieee_addr} does not support colour_temp, dropping it");
-                None
-            }
-        });
+        let clamp = |name: &str, value: Option<u64>, range: Option<CapabilityRange>| {
+            value.map(|value| match range {
+                Some(range) => range.clamp(value),
+                None => {
+                    tracing::warn!("light {ieee_addr} does not support {name}");
+                    value
+                }
+            })
+        };
+
+        let brightness = clamp("brightness", request.brightness, ranges.brightness);
+        let colour_temp = clamp("colour_temp", request.colour_temp, ranges.colour_temp);
 
         let colour = request.colour.map(|colour| {
             self.warn_if_unsupported(ieee_addr, Capability::Rgb);

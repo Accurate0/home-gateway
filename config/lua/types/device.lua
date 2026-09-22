@@ -9,6 +9,7 @@
 ---@field max integer
 
 ---@class DeviceRanges
+---@field brightness DeviceRange? native brightness scale; required with the `brightness` capability
 ---@field colour_temp DeviceRange? mireds the product accepts; required with the `colour_temp` capability
 
 ---@class DoorFields

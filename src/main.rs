@@ -9,10 +9,13 @@ use home_gateway::state::AppState;
 use home_gateway::tracing_setup::SampleRatios;
 use home_gateway::utils::handle_cancellation;
 use ractor::Actor;
+use std::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let started = Instant::now();
+
     let telemetry = startup::telemetry::init();
 
     let storage = startup::storage::init().await?;
@@ -90,6 +93,7 @@ async fn main() -> anyhow::Result<()> {
             event_bus,
             root_supervisor,
             eink,
+            started,
         },
     )
     .await

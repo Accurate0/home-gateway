@@ -73,7 +73,7 @@ fn parse_light_state(payload: &[u8]) -> Option<Value> {
     let parsed: LightState = serde_json::from_slice(payload).ok()?;
     let on = parse_binary_state(parsed.state.as_bytes())?;
 
-    let brightness = parsed.brightness.map(|value| (value * 254).div_ceil(255));
+    let brightness = parsed.brightness;
 
     let colour = parsed.color.map(
         |colour| json!({ "hex": format!("#{:02x}{:02x}{:02x}", colour.r, colour.g, colour.b) }),
@@ -114,7 +114,7 @@ mod tests {
         assert_eq!(
             EsphomeDomain::Light
                 .parse(br#"{"state":"ON","brightness":255,"color":{"r":255,"g":0,"b":16}}"#),
-            Some(json!({ "state": "ON", "brightness": 254, "color": { "hex": "#ff0010" } }))
+            Some(json!({ "state": "ON", "brightness": 255, "color": { "hex": "#ff0010" } }))
         );
         assert_eq!(
             EsphomeDomain::Light.parse(b"OFF"),

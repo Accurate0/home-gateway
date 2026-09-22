@@ -855,7 +855,7 @@ mod tests {
         };
 
         assert_eq!(attributes.state.as_deref(), Some("ON"));
-        assert_eq!(attributes.brightness, Some(254));
+        assert_eq!(attributes.brightness, Some(255));
         assert_eq!(attributes.colour.as_deref(), Some("#ff8800"));
     }
 

@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use axum::Router;
 use tokio::task::{JoinHandle, JoinSet};
 use tokio_util::sync::CancellationToken;
@@ -23,6 +25,7 @@ pub struct Tasks {
     pub event_bus: EventBus,
     pub root_supervisor: JoinHandle<()>,
     pub eink: EinkDisplayManager,
+    pub started: Instant,
 }
 
 pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Result<()> {
@@ -37,6 +40,7 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         event_bus,
         root_supervisor,
         eink,
+        started,
     } = tasks;
 
     tokio::spawn(async move { eink.prefill_packed().await });
@@ -86,7 +90,7 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         Ok::<(), MainError>(())
     });
 
-    tracing::info!("startup completed");
+    tracing::info!("startup completed in {}ms", started.elapsed().as_millis());
 
     if let Some(result) = task_set.join_next().await {
         match result {

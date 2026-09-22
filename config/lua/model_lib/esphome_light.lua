@@ -30,9 +30,7 @@ return function(input)
 		payload.state = command.on and "ON" or "OFF"
 	end
 
-	if command.brightness ~= nil then
-		payload.brightness = (command.brightness * 255 + 253) // 254
-	end
+	payload.brightness = command.brightness
 
 	if command.colour ~= nil then
 		local colour = rgb(command.colour)

@@ -6,9 +6,9 @@ use crate::repo::light::LightState;
 #[graphql(name = "LightState")]
 pub struct LightStateObject {
     pub on: bool,
-    /// Current brightness, 0-254, when the light reports one.
+    /// Current brightness on the light model's `ranges.brightness` scale, when the light reports one.
     pub brightness: Option<i32>,
-    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    /// Colour temperature in mireds (1000000/kelvin), within the light model's `ranges.colour_temp`.
     pub colour_temperature: Option<i32>,
     /// Current colour as `#rrggbb`, when the light reports one.
     pub colour: Option<String>,

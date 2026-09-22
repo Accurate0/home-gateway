@@ -416,11 +416,11 @@ type LightEntity {
 	"""
 	on: Boolean
 	"""
-	Current brightness, 0-254. Null when the light has not reported one.
+	Current brightness on the light model's `ranges.brightness` scale. Null when the light has not reported one.
 	"""
 	brightness: Int
 	"""
-	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	Colour temperature in mireds (1000000/kelvin), within the light model's `ranges.colour_temp`.
 	"""
 	colourTemperature: Int
 	"""
@@ -447,7 +447,7 @@ input LightSetInput {
 	on: Boolean
 	brightness: Int
 	"""
-	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	Colour temperature in mireds (1000000/kelvin), clamped to the light model's `ranges.colour_temp`.
 	"""
 	colourTemperature: Int
 	colour: String
@@ -456,11 +456,11 @@ input LightSetInput {
 type LightState {
 	on: Boolean!
 	"""
-	Current brightness, 0-254, when the light reports one.
+	Current brightness on the light model's `ranges.brightness` scale, when the light reports one.
 	"""
 	brightness: Int
 	"""
-	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	Colour temperature in mireds (1000000/kelvin), within the light model's `ranges.colour_temp`.
 	"""
 	colourTemperature: Int
 	"""
@@ -492,7 +492,7 @@ type LightUpdate {
 	on: Boolean!
 	brightness: Int
 	"""
-	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	Colour temperature in mireds (1000000/kelvin), within the light model's `ranges.colour_temp`.
 	"""
 	colourTemperature: Int
 	"""
@@ -873,7 +873,7 @@ input SetColourInput {
 
 input SetColourTemperatureInput {
 	"""
-	Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+	Colour temperature in mireds (1000000/kelvin), clamped to the light model's `ranges.colour_temp`.
 	"""
 	value: Int!
 }

@@ -85,7 +85,7 @@ pub struct LightUpdate {
     pub device: String,
     pub on: bool,
     pub brightness: Option<i32>,
-    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    /// Colour temperature in mireds (1000000/kelvin), within the light model's `ranges.colour_temp`.
     pub colour_temperature: Option<i32>,
     /// Current colour as `#rrggbb`, when the light reports one.
     pub colour: Option<String>,

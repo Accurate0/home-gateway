@@ -4,7 +4,10 @@ return {
 	roles = { "light" },
 	watchdog = "7d",
 	capabilities = { "brightness", "colour_temp" },
-	ranges = { colour_temp = { min = 250, max = 454 } },
+	ranges = {
+		brightness = { min = 0, max = 254 },
+		colour_temp = { min = 250, max = 454 },
+	},
 
 	encode = { light = gw.lib("zigbee_light") },
 

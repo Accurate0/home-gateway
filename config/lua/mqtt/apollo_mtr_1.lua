@@ -10,6 +10,7 @@ return {
 	roles = { "light", "presence", "environment" },
 	watchdog = "1h",
 	capabilities = { "brightness", "rgb", "temperature", "pressure", "lux" },
+	ranges = { brightness = { min = 0, max = 255 } },
 
 	entities = {
 		sensor = { "dps310_temperature", "dps310_pressure", "ltr390_light" },

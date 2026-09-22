@@ -176,21 +176,26 @@ fn resolve_ranges(
         .map_err(|error| format!("{kind} model {slug}: {error}"))?
         .unwrap_or_default();
 
-    let colour_temp = capabilities.contains(&Capability::ColourTemp);
+    let declared = [
+        ("brightness", Capability::Brightness, ranges.brightness),
+        ("colour_temp", Capability::ColourTemp, ranges.colour_temp),
+    ];
 
-    if colour_temp != ranges.colour_temp.is_some() {
-        return Err(format!(
-            "{kind} model {slug}: `ranges.colour_temp` is required with the `colour_temp` capability, and only with it"
-        ));
-    }
+    for (name, capability, range) in declared {
+        if capabilities.contains(&capability) != range.is_some() {
+            return Err(format!(
+                "{kind} model {slug}: `ranges.{name}` is required with the `{name}` capability, and only with it"
+            ));
+        }
 
-    if let Some(range) = ranges.colour_temp
-        && range.min >= range.max
-    {
-        return Err(format!(
-            "{kind} model {slug}: `ranges.colour_temp` min {} must be below max {}",
-            range.min, range.max
-        ));
+        if let Some(range) = range
+            && range.min >= range.max
+        {
+            return Err(format!(
+                "{kind} model {slug}: `ranges.{name}` min {} must be below max {}",
+                range.min, range.max
+            ));
+        }
     }
 
     Ok(ranges)
@@ -828,13 +833,13 @@ mod tests {
     }
 
     #[test]
-    fn the_esphome_encoder_rescales_and_resolves_toggles() {
+    fn the_esphome_encoder_passes_brightness_through_and_resolves_toggles() {
         use serde_json::json;
 
         assert_eq!(
             encode(
                 "apollo_mtr_1",
-                json!({ "type": "set", "brightness": 254, "colour": "#ff8000" }),
+                json!({ "type": "set", "brightness": 255, "colour": "#ff8000" }),
                 false
             ),
             Some(json!({ "brightness": 255, "color": { "r": 255, "g": 128, "b": 0 } }))

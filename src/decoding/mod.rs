@@ -1,9 +1,9 @@
+mod capability_range;
 mod decoded_device;
 mod device_models;
 mod dispatch;
 mod esphome_entities;
 mod home_assistant_entities;
-mod mired_range;
 mod model_commands;
 mod model_entities;
 mod model_profile;
@@ -14,11 +14,11 @@ pub mod reading;
 mod role;
 mod role_name;
 
+pub use capability_range::CapabilityRange;
 pub use decoded_device::DecodedDevice;
 pub use device_models::DeviceModels;
 pub use dispatch::dispatch;
 pub use esphome_entities::EsphomeEntities;
-pub use mired_range::MiredRange;
 pub use model_commands::ModelCommands;
 pub use model_entities::ModelEntities;
 pub use model_profile::ModelProfile;

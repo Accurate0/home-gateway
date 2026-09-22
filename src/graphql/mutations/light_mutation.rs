@@ -38,7 +38,7 @@ pub struct ColourTemperatureMoveInput {
 
 #[derive(InputObject)]
 pub struct SetColourTemperatureInput {
-    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    /// Colour temperature in mireds (1000000/kelvin), clamped to the light model's `ranges.colour_temp`.
     pub value: u64,
 }
 
@@ -51,7 +51,7 @@ pub struct SetColourInput {
 pub struct LightSetInput {
     pub on: Option<bool>,
     pub brightness: Option<u64>,
-    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    /// Colour temperature in mireds (1000000/kelvin), clamped to the light model's `ranges.colour_temp`.
     pub colour_temperature: Option<u64>,
     pub colour: Option<String>,
 }

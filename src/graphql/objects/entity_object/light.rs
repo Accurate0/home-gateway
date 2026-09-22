@@ -98,7 +98,7 @@ impl LightEntity {
         Ok(Some(self.state(ctx).await?.on))
     }
 
-    /// Current brightness, 0-254. Null when the light has not reported one.
+    /// Current brightness on the light model's `ranges.brightness` scale. Null when the light has not reported one.
     async fn brightness(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -106,7 +106,7 @@ impl LightEntity {
         Ok(self.state(ctx).await?.brightness)
     }
 
-    /// Colour temperature in mireds (1000000/kelvin): 153 is coolest, 500 warmest.
+    /// Colour temperature in mireds (1000000/kelvin), within the light model's `ranges.colour_temp`.
     async fn colour_temperature(
         &self,
         ctx: &async_graphql::Context<'_>,
