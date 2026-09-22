@@ -11,3 +11,4 @@
 ---@field roles ZigbeeRole[]
 ---@field capabilities DeviceCapability[]?
 ---@field decode fun(input: ZigbeeInput): DeviceReading
+---@field encode DeviceEncoders?

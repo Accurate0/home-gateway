@@ -162,8 +162,8 @@ pub static ACTORS: &[ActorSpec] = &[
         autostart: true,
         optional: true,
         requires: &[Requirement::Setting {
-            label: "vacation.enabled",
-            present: |settings| settings.vacation.enabled,
+            label: "vacation.state",
+            present: |settings| settings.vacation.state.is_enabled(),
         }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
@@ -232,8 +232,8 @@ pub static ACTORS: &[ActorSpec] = &[
         autostart: true,
         optional: true,
         requires: &[Requirement::Setting {
-            label: "reconciler.enabled",
-            present: |settings| settings.reconciler.enabled,
+            label: "reconciler.state",
+            present: |settings| settings.reconciler.state.is_enabled(),
         }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
@@ -249,8 +249,8 @@ pub static ACTORS: &[ActorSpec] = &[
         autostart: true,
         optional: true,
         requires: &[Requirement::Setting {
-            label: "reconciler.enabled",
-            present: |settings| settings.reconciler.enabled,
+            label: "reconciler.state",
+            present: |settings| settings.reconciler.state.is_enabled(),
         }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
@@ -315,21 +315,34 @@ pub static ACTORS: &[ActorSpec] = &[
         name: TrmnlActor::NAME,
         autostart: true,
         optional: false,
-        requires: &[Requirement::Setting {
-            label: "trmnl_api_key",
-            present: |settings| settings.trmnl_api_key.is_some(),
-        }],
+        requires: &[
+            Requirement::Setting {
+                label: "integrations.trmnl.state",
+                present: |settings| settings.integrations.trmnl.state.is_enabled(),
+            },
+            Requirement::Setting {
+                label: "integrations.trmnl.api_key",
+                present: |settings| settings.integrations.trmnl.api_key.is_some(),
+            },
+        ],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let api_key = shared_actor_state
                     .settings
-                    .trmnl_api_key
+                    .integrations
+                    .trmnl
+                    .api_key
                     .clone()
-                    .expect("trmnl_api_key was required");
+                    .expect("integrations.trmnl.api_key was required");
 
                 let trmnl = Trmnl::new(
                     api_key,
-                    shared_actor_state.settings.trmnl.base_url.clone(),
+                    shared_actor_state
+                        .settings
+                        .integrations
+                        .trmnl
+                        .base_url
+                        .clone(),
                     shared_actor_state
                         .settings
                         .http
@@ -363,9 +376,7 @@ pub static ACTORS: &[ActorSpec] = &[
             Box::pin(async move {
                 let fuelwatch = shared_actor_state.handles.expect::<FuelWatch>().clone();
 
-                let Some(settings) = shared_actor_state.settings.fuelwatch.clone() else {
-                    return Ok(Spawned::Skipped);
-                };
+                let settings = shared_actor_state.settings.integrations.fuelwatch.clone();
 
                 root.spawn_linked(
                     Some(FuelWatchActor::NAME.to_owned()),
@@ -385,14 +396,24 @@ pub static ACTORS: &[ActorSpec] = &[
         name: WillyWeatherActor::NAME,
         autostart: true,
         optional: false,
-        requires: &[Requirement::Handle {
-            label: "willyweather",
-            present: |handles| handles.contains::<WillyWeather>(),
-        }],
+        requires: &[
+            Requirement::Setting {
+                label: "integrations.willyweather.state",
+                present: |settings| settings.integrations.willyweather.state.is_enabled(),
+            },
+            Requirement::Handle {
+                label: "willyweather",
+                present: |handles| handles.contains::<WillyWeather>(),
+            },
+        ],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let willyweather = shared_actor_state.handles.expect::<WillyWeather>().clone();
-                let settings = shared_actor_state.settings.willyweather.clone();
+                let settings = shared_actor_state
+                    .settings
+                    .integrations
+                    .willyweather
+                    .clone();
 
                 root.spawn_linked(
                     Some(WillyWeatherActor::NAME.to_owned()),
@@ -412,7 +433,10 @@ pub static ACTORS: &[ActorSpec] = &[
         name: WoolworthsActor::NAME,
         autostart: true,
         optional: false,
-        requires: &[],
+        requires: &[Requirement::Setting {
+            label: "integrations.woolworths.state",
+            present: |settings| settings.integrations.woolworths.state.is_enabled(),
+        }],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let woolworths = Woolworths::new(
@@ -516,6 +540,7 @@ mod tests {
                 TrmnlActor::NAME,
                 FuelWatchActor::NAME,
                 WillyWeatherActor::NAME,
+                WoolworthsActor::NAME,
                 SolarActor::NAME,
             ]
         );

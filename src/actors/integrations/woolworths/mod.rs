@@ -45,6 +45,7 @@ impl Actor for WoolworthsActor {
         let refresh = self
             .shared_actor_state
             .settings
+            .integrations
             .woolworths
             .refresh
             .to_std()

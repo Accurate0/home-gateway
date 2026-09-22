@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::path::Path;
 use std::sync::Arc;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     path::PathBuf,
 };
 
@@ -75,11 +75,9 @@ pub use devices::light::RawLightBlock;
 pub use devices::media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use devices::plant::{PlantSensorSettings, RawPlantBlock};
 pub use devices::presence::{PresenceSettings, RawPresenceBlock};
-pub use devices::robot_vacuum::{
-    RawRobotVacuumBlock, RobotVacuumSettings, VacuumCommands, VacuumTarget,
-};
+pub use devices::robot_vacuum::{RawRobotVacuumBlock, RobotVacuumSettings, VacuumCommands};
 pub use devices::switch::{RawSmartSwitchBlock, SwitchRole};
-pub use devices::trmnl::{RawTrmnlBlock, TrmnlDeviceSettings, TrmnlSettings};
+pub use devices::trmnl::{RawTrmnlBlock, TrmnlDeviceSettings};
 pub use endpoint::{Endpoint, EndpointSettings, ParamType};
 pub use graphql::GraphqlSettings;
 pub use http::HttpSettings;
@@ -92,12 +90,15 @@ pub use integrations::fuelwatch::FuelWatchSettings;
 pub use integrations::holidays::HolidaySettings;
 pub use integrations::home_assistant::{EntitySettings, HomeAssistantSettings};
 pub use integrations::home_assistant_websocket::HomeAssistantWebsocketSettings;
+pub use integrations::integration_settings::IntegrationSettings;
+pub use integrations::raw_integration_settings::RawIntegrationSettings;
 pub use integrations::s3::S3Settings;
 pub use integrations::solar::SolarSettings;
 pub use integrations::transperth::{
     PeakWindow, RawTransperthSettings, TransperthRoute, TransperthSettings,
 };
 pub use integrations::transperth_cache::TransperthCacheSettings;
+pub use integrations::trmnl::TrmnlSettings;
 pub use integrations::willyweather::WillyWeatherSettings;
 pub use integrations::woolworths::WoolworthsSettings;
 pub use location::LocationSettings;
@@ -165,21 +166,13 @@ pub struct Settings {
     pub workflows: HashMap<String, WorkflowDefinition>,
     pub workflow: WorkflowSettings,
     pub reconciler: ReconcilerSettings,
-    pub s3: S3Settings,
+    pub integrations: IntegrationSettings,
     pub watchdog: WatchdogSettings,
     pub auth: AuthSettings,
     pub location: LocationSettings,
     pub sun: SunSettings,
     pub alarm: AlarmSettings,
-    pub woolworths: WoolworthsSettings,
-    pub trmnl: TrmnlSettings,
-    pub trmnl_api_key: Option<String>,
     pub home_assistant: HomeAssistantSettings,
-    pub solar: Option<SolarSettings>,
-    pub transperth: Option<TransperthSettings>,
-    pub willyweather: WillyWeatherSettings,
-    pub fuelwatch: Option<FuelWatchSettings>,
-    pub holidays: HolidaySettings,
     pub eink_display: EinkGlobalSettings,
     pub adhoc: AdhocSettings,
     pub vacation: VacationSettings,
@@ -211,10 +204,9 @@ pub struct RawSettings {
     notify: RawNotifySettings,
     #[serde(default)]
     devices: Vec<Vec<RawDevice>>,
-    home_assistant_models: PathBuf,
     #[serde(default)]
     workflows: Vec<Vec<WorkflowDefinition>>,
-    s3: S3Settings,
+    integrations: RawIntegrationSettings,
     watchdog: WatchdogSettings,
     workflow: WorkflowSettings,
     reconciler: ReconcilerSettings,
@@ -224,21 +216,7 @@ pub struct RawSettings {
     sun: SunSettings,
     #[serde(default)]
     alarm: AlarmSettings,
-    #[serde(default)]
-    woolworths: WoolworthsSettings,
-    #[serde(default)]
-    trmnl: TrmnlSettings,
-    #[serde(default)]
-    trmnl_api_key: Option<String>,
     home_assistant: HomeAssistantSettings,
-    #[serde(default)]
-    solar: Option<SolarSettings>,
-    #[serde(default)]
-    transperth: Option<RawTransperthSettings>,
-    willyweather: WillyWeatherSettings,
-    #[serde(default)]
-    fuelwatch: Option<FuelWatchSettings>,
-    holidays: HolidaySettings,
     eink_display: devices::eink::RawEinkGlobal,
     adhoc: AdhocSettings,
     vacation: VacationSettings,
@@ -266,9 +244,8 @@ impl RawSettings {
             mqtt,
             notify,
             devices,
-            home_assistant_models: _,
             workflows,
-            s3,
+            integrations,
             watchdog,
             workflow,
             reconciler,
@@ -276,15 +253,7 @@ impl RawSettings {
             location,
             sun,
             alarm,
-            woolworths,
-            trmnl,
-            trmnl_api_key,
             home_assistant,
-            solar,
-            transperth,
-            willyweather,
-            fuelwatch,
-            holidays,
             eink_display,
             adhoc,
             vacation,
@@ -296,82 +265,7 @@ impl RawSettings {
         adhoc.validate()?;
         endpoints.validate()?;
 
-        if holidays.url.trim().is_empty() {
-            return Err("holidays.url must not be empty".to_owned());
-        }
-
-        if holidays.regions.is_empty() {
-            return Err("holidays.regions must declare at least one region".to_owned());
-        }
-
-        if willyweather
-            .api_key
-            .as_deref()
-            .map(str::trim)
-            .is_none_or(str::is_empty)
-        {
-            return Err("willyweather.api_key is required (set WILLYWEATHER__API_KEY)".to_owned());
-        }
-
-        if willyweather.locations.is_empty() {
-            return Err("willyweather.locations must declare at least one location".to_owned());
-        }
-
-        if !willyweather
-            .locations
-            .contains_key(&willyweather.default_location)
-        {
-            return Err(format!(
-                "willyweather.default_location `{}` is not one of willyweather.locations",
-                willyweather.default_location
-            ));
-        }
-
-        if willyweather.refresh <= chrono::TimeDelta::zero() {
-            return Err("willyweather.refresh must be positive".to_owned());
-        }
-
-        if willyweather.days < 1 {
-            return Err("willyweather.days must be at least 1".to_owned());
-        }
-
-        let transperth = transperth.map(RawTransperthSettings::resolve).transpose()?;
-
-        if let Some(transperth) = &transperth {
-            if transperth
-                .reference_data_api_key
-                .as_deref()
-                .map(str::trim)
-                .is_none_or(str::is_empty)
-            {
-                return Err(
-                    "transperth.reference_data_api_key is required (set TRANSPERTH__REFERENCE_DATA_API_KEY)"
-                        .to_owned(),
-                );
-            }
-
-            if transperth.routes.is_empty() {
-                return Err("transperth.routes must not be empty".to_owned());
-            }
-
-            let mut seen_route_ids = HashSet::new();
-            for route in &transperth.routes {
-                if !seen_route_ids.insert(route.id.clone()) {
-                    return Err(format!("duplicate transperth route id: {}", route.id));
-                }
-
-                if route.from.trim().is_empty() || route.to.trim().is_empty() {
-                    return Err(format!(
-                        "transperth route {} has an empty from/to",
-                        route.id
-                    ));
-                }
-
-                if route.limit == 0 {
-                    return Err(format!("transperth route {} must have limit > 0", route.id));
-                }
-            }
-        }
+        let integrations = integrations.resolve()?;
 
         tracing_settings.sampling.validate()?;
 
@@ -507,7 +401,7 @@ impl RawSettings {
                 mqtt,
                 notify: NotifyFilter::new(&notify.disabled),
                 workflows: resolved,
-                s3,
+                integrations,
                 watchdog,
                 workflow,
                 reconciler,
@@ -515,15 +409,7 @@ impl RawSettings {
                 location,
                 sun,
                 alarm,
-                woolworths,
-                trmnl,
-                trmnl_api_key,
                 home_assistant,
-                solar,
-                transperth,
-                willyweather,
-                fuelwatch,
-                holidays,
                 eink_display: eink_display.resolve(),
                 adhoc,
                 vacation,
@@ -569,7 +455,11 @@ impl SettingsContainer {
 
         let sources = ModelSources {
             mqtt: load("mqtt", &raw.mqtt.models)?,
-            home_assistant: load("home_assistant", &raw.home_assistant_models)?,
+            home_assistant: load("home_assistant", &raw.home_assistant.models)?,
+            library: match &raw.lua.model_library {
+                Some(relative) => load("library", relative)?,
+                None => BTreeMap::new(),
+            },
         };
 
         raw.resolve(&sources).map_err(ConfigError::Message)
@@ -744,6 +634,16 @@ mod tests {
                     include_str!("../../config/lua/home_assistant/media_player.lua").to_owned(),
                 ),
             ]),
+            library: BTreeMap::from([
+                (
+                    "esphome_light".to_owned(),
+                    include_str!("../../config/lua/model_lib/esphome_light.lua").to_owned(),
+                ),
+                (
+                    "zigbee_switch".to_owned(),
+                    include_str!("../../config/lua/model_lib/zigbee_switch.lua").to_owned(),
+                ),
+            ]),
         };
 
         sources.load(&LuaSettings::default()).unwrap()
@@ -886,10 +786,7 @@ mod tests {
         let vacuum = registry.robot_vacuum("rockrobo").expect("vacuum resolves");
 
         assert_eq!(vacuum.commands.dock, "return_to_base");
-        assert!(matches!(
-            &vacuum.target,
-            VacuumTarget::Mqtt { address } if address == "rockrobo"
-        ));
+        assert_eq!(vacuum.address, "rockrobo");
         assert_eq!(
             registry.mqtt_topics_for("rockrobo"),
             ["valetudo/rockrobo/attributes", "valetudo/rockrobo/state"]
@@ -1222,10 +1119,11 @@ mqtt:
   password: x
 http:
   listen_address: "[::]:8000"
-willyweather:
-  api_key: x
-transperth:
-  reference_data_api_key: x
+integrations:
+  willyweather:
+    api_key: x
+  transperth:
+    reference_data_api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -1256,10 +1154,11 @@ mqtt:
   password: x
 http:
   listen_address: "[::]:8000"
-willyweather:
-  api_key: x
-transperth:
-  reference_data_api_key: x
+integrations:
+  willyweather:
+    api_key: x
+  transperth:
+    reference_data_api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -1314,10 +1213,7 @@ transperth:
             .robot_vacuum(roborock_address)
             .expect("roborock device resolves");
         assert_eq!(registry.room(roborock_address), Some("dining-room"));
-        assert!(matches!(
-            &roborock.target,
-            VacuumTarget::HomeAssistant { entity_id } if entity_id == "vacuum.robot"
-        ));
+        assert_eq!(roborock.address, "vacuum.robot");
         assert_eq!(roborock.commands.start, "vacuum.start");
         assert_eq!(roborock.commands.stop, "vacuum.stop");
         assert_eq!(roborock.commands.dock, "vacuum.return_to_base");
@@ -1327,10 +1223,7 @@ transperth:
             .robot_vacuum(valetudo_address)
             .expect("valetudo device resolves");
         assert_eq!(registry.room(valetudo_address), Some("spare-room"));
-        assert!(matches!(
-            &valetudo.target,
-            VacuumTarget::Mqtt { address } if address == "rockrobo"
-        ));
+        assert_eq!(valetudo.address, "rockrobo");
 
         let tv_address = registry.address_or_self("living-room-tv");
         let tv = registry
@@ -1512,9 +1405,10 @@ transperth:
         let presence = registry
             .mqtt_device(MqttProtocol::Zigbee, "0x54ef441000dbc81c")
             .expect("closet presence is a zigbee device");
-        let decoder =
-            crate::lua::LuaDecoder::load("mqtt", &settings.model_sources.mqtt, &settings.lua)
-                .expect("mqtt decoder");
+        let decoder = settings
+            .model_sources
+            .decoder(crate::device_registry::Transport::Mqtt, &settings.lua)
+            .expect("mqtt decoder");
         let reading = presence
             .profile
             .decode(
@@ -1594,10 +1488,11 @@ mqtt:
   password: x
 http:
   listen_address: "[::]:8000"
-willyweather:
-  api_key: x
-transperth:
-  reference_data_api_key: x
+integrations:
+  willyweather:
+    api_key: x
+  transperth:
+    reference_data_api_key: x
 "#;
         let config = SettingsContainer::config_sources(Path::new("./config"))
             .unwrap()
@@ -1623,7 +1518,6 @@ transperth:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -1646,18 +1540,16 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
   api_key_cache: { capacity: 1024, ttl: 1h }
   api_keys:
@@ -1677,7 +1569,6 @@ auth:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -1700,18 +1591,16 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
   api_key_cache: { capacity: 1024, ttl: 1h }
   oauth:
@@ -1745,10 +1634,11 @@ mqtt:
   url: x
   username: x
   password: x
-willyweather:
-  api_key: x
-transperth:
-  reference_data_api_key: x
+integrations:
+  willyweather:
+    api_key: x
+  transperth:
+    reference_data_api_key: x
 "#;
 
         let config = SettingsContainer::config_sources(Path::new("./config"))
@@ -1777,10 +1667,7 @@ transperth:
     fn fuelwatch_postcode_and_location_fall_back_to_perth() {
         let (settings, _registry) = secrets_over_config("").unwrap();
 
-        assert_eq!(
-            settings.fuelwatch.map(|fuelwatch| fuelwatch.postcode),
-            Some(6000)
-        );
+        assert_eq!(settings.integrations.fuelwatch.postcode, 6000);
         assert_eq!(settings.location.latitude, -31.952429);
         assert_eq!(settings.location.longitude, 115.842283);
     }
@@ -1808,7 +1695,6 @@ transperth:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -1831,19 +1717,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Caller
@@ -1867,7 +1751,6 @@ workflows:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -1890,19 +1773,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Callee
@@ -1928,7 +1809,6 @@ workflows:
         let base = r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -1951,19 +1831,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 "#;
 
         serde_yaml::from_str(&format!("{base}\nworkflows:\n{workflows}")).unwrap()
@@ -2145,7 +2023,6 @@ vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_obs
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2168,19 +2045,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Held cron
@@ -2203,7 +2078,6 @@ workflows:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2226,19 +2100,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Untagged cron
@@ -2260,7 +2132,6 @@ workflows:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2283,19 +2154,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Reusable
@@ -2318,7 +2187,6 @@ workflows:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2341,19 +2209,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
   - - name: Any mode change
@@ -2375,7 +2241,6 @@ workflows:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2398,20 +2263,19 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 eink_display:
+  firmware_version: v0.1.0
   prepare_render_timeout: 15s
   defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s }
   views:
@@ -2430,12 +2294,11 @@ devices:
       - type: eink_display_firmware
         config:
           name: Test Display
-          firmware_version: v0.1.0
           refresh: "0 * * * *"
           grace: 10m
           orientation: landscape
           partial:
-            enabled: true
+            state: enabled
             max_area_pct: 25
             max_consecutive: 8
           mode:
@@ -2477,7 +2340,6 @@ devices:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2500,19 +2362,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
 -
@@ -2525,12 +2385,11 @@ devices:
       - type: eink_display_firmware
         config:
           name: Test Display
-          firmware_version: v0.1.0
           refresh: "0 * * * *"
           grace: 10m
           orientation: portrait
           partial:
-            enabled: false
+            state: disabled
             max_area_pct: 30
             max_consecutive: 5
           mode:
@@ -2561,7 +2420,6 @@ devices:
             r#"
 api_key: x
 database_url: x
-home_assistant_models: lua/home_assistant
 notify: { targets: {}, disabled: [] }
 mqtt:
   url: x
@@ -2584,19 +2442,17 @@ database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, control_switch: 3, door_sensor: 1, environment_sensor: 1, light: 1, media_player: 1, plant_sensor: 1, presence_sensor: 1, robot_vacuum: 2, smart_switch: 3 } }
 tracing: { sampling: { default: 1.0, spans: {} } }
-home_assistant: { websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
+home_assistant: { models: lua/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
-s3: { bucket: b, region: r }
-watchdog: { enabled: false, timeout: 30m, check_interval: 5m, realert_after: 6h }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
-reconciler: { enabled: false, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
+reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-willyweather: { api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }
-holidays: { url: x, regions: [Western Australia] }
+integrations: { s3: { bucket: b, region: r }, holidays: { url: x, regions: [Western Australia] }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
-vacation: { enabled: true, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
 -
@@ -2609,11 +2465,10 @@ devices:
       - type: eink_display_firmware
         config:
           name: Test Display
-          firmware_version: v0.1.0
           refresh: "0 * * * *"
           grace: 10m
           partial:
-            enabled: false
+            state: disabled
             max_area_pct: 30
             max_consecutive: 12
           mode:

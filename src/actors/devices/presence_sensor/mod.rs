@@ -142,6 +142,10 @@ impl DeviceHandler for PresenceSensorHandler {
         workers.presence_sensor
     }
 
+    fn init_state(&self) -> anyhow::Result<Self::State> {
+        Ok(PresenceSensorState::default())
+    }
+
     async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
         Self::handle(self, message, state).await
     }

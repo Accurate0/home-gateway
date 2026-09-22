@@ -16,6 +16,8 @@ return {
 		light = { "rgb_light" },
 	},
 
+	encode = { light = gw.lib("esphome_light") },
+
 	decode = function(input)
 		local entity = input.vars
 

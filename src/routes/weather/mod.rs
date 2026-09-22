@@ -68,7 +68,7 @@ pub async fn forecast(
         return Err(WeatherError::Forbidden);
     }
 
-    let settings = &state.settings.willyweather;
+    let settings = &state.settings.integrations.willyweather;
     let requested = params
         .location
         .as_deref()

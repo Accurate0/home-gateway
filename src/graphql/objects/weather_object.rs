@@ -18,7 +18,11 @@ impl WeatherObject {
         let settings = ctx.data::<SettingsContainer>()?;
         let loader = ctx.data::<DataLoader<ForecastDataLoader>>()?;
 
-        let Some(alias) = settings.willyweather.resolve_location(&self.location) else {
+        let Some(alias) = settings
+            .integrations
+            .willyweather
+            .resolve_location(&self.location)
+        else {
             return Err(async_graphql::Error::new(format!(
                 "unknown weather location {}",
                 self.location

@@ -1,6 +1,7 @@
 use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::path::PathBuf;
 
 use super::home_assistant_websocket::HomeAssistantWebsocketSettings;
 use crate::{settings::yes, timedelta_format::time_delta_from_str};
@@ -41,6 +42,7 @@ pub struct HomeAssistantSettings {
     #[serde(default)]
     pub entities: Vec<EntitySettings>,
     pub websocket: HomeAssistantWebsocketSettings,
+    pub models: PathBuf,
 }
 
 impl HomeAssistantSettings {
@@ -72,6 +74,7 @@ mod tests {
         HomeAssistantSettings {
             url: None,
             token: None,
+            models: PathBuf::from("lua/home_assistant"),
             websocket: HomeAssistantWebsocketSettings {
                 keep_alive: TimeDelta::seconds(30),
                 silence_timeout: TimeDelta::seconds(90),

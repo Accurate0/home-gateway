@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::device_registry::{Capability, Transport};
 use crate::integrations::mqtt::MqttProtocol;
@@ -41,5 +42,14 @@ impl ModelProfile {
         input: &I,
     ) -> Result<DeviceReading, LuaError> {
         decoder.call(&self.slug, "decode", input)
+    }
+
+    pub fn encode<I: Serialize, T: DeserializeOwned>(
+        &self,
+        decoder: &LuaDecoder,
+        role: DeviceRoleName,
+        input: &I,
+    ) -> Result<Option<T>, LuaError> {
+        decoder.call_at(&self.slug, &["encode", &role.to_string()], input)
     }
 }

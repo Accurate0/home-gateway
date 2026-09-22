@@ -40,10 +40,12 @@ pub async fn build(
 
     let (mqtt_client, mqtt) = Mqtt::new(&settings.mqtt).await?;
 
+    let integrations = &settings.integrations;
+
     let s3 = S3::new(
-        &settings.s3.bucket,
-        &settings.s3.region,
-        settings.s3.endpoint.clone(),
+        &integrations.s3.bucket,
+        &integrations.s3.region,
+        integrations.s3.endpoint.clone(),
     )?;
 
     let eink = EinkDisplayManager::new(
@@ -60,33 +62,47 @@ pub async fn build(
         http.timeout_for(HttpClientKind::HomeAssistant),
     );
 
-    let transperth = settings
+    let transperth = integrations
         .transperth
-        .as_ref()
-        .map(|transperth| Transperth::new(transperth, http.timeout_for(HttpClientKind::Transperth)))
+        .state
+        .is_enabled()
+        .then(|| {
+            Transperth::new(
+                &integrations.transperth,
+                http.timeout_for(HttpClientKind::Transperth),
+            )
+        })
         .transpose()?;
 
     let http_client = get_traced_http_client(http.timeout())?;
     let public_http_client = PublicHttpClient::new(http.timeout())?;
 
     let willyweather = WillyWeather::new(
-        &settings.willyweather,
+        &integrations.willyweather,
         http.timeout_for(HttpClientKind::WillyWeather),
     )?;
 
-    let fuelwatch = settings
+    let fuelwatch = integrations
         .fuelwatch
-        .as_ref()
-        .map(|fuelwatch| FuelWatch::new(fuelwatch, http.timeout_for(HttpClientKind::FuelWatch)))
+        .state
+        .is_enabled()
+        .then(|| {
+            FuelWatch::new(
+                &integrations.fuelwatch,
+                http.timeout_for(HttpClientKind::FuelWatch),
+            )
+        })
         .transpose()?;
 
-    let goodwe = settings.solar.as_ref().and_then(|solar| {
+    let goodwe = if integrations.solar.state.is_enabled() {
         GoodWeSemsAPI::new(
             pool.clone(),
-            solar,
+            &integrations.solar,
             http.timeout_for(HttpClientKind::GoodWe),
         )
-    });
+    } else {
+        None
+    };
 
     let oauth = settings
         .auth

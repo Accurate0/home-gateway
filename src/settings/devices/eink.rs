@@ -6,6 +6,7 @@ use serde::Deserialize;
 
 use super::eink_defaults::EinkDefaults;
 use crate::actors::system::cron::schedule::CronSchedule;
+use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::{humanize, time_delta_from_str};
 
 pub const DEFAULT_ALBUM_PREFIX: &str = "eink-display/album/";
@@ -155,6 +156,7 @@ pub const PALETTE_COLORS: [(&str, f32, f32, f32, u8); 6] = [
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawEinkGlobal {
+    firmware_version: String,
     #[serde(default)]
     views: HashMap<String, RawDashboardView>,
     #[serde(default)]
@@ -179,6 +181,7 @@ struct RawAlbum {
 
 #[derive(Debug, Clone)]
 pub struct EinkGlobalSettings {
+    pub firmware_version: String,
     pub views: HashMap<String, DashboardView>,
     pub albums: HashMap<String, Album>,
     pub prepare_render_timeout: TimeDelta,
@@ -211,6 +214,7 @@ impl RawEinkGlobal {
             })
             .collect();
         EinkGlobalSettings {
+            firmware_version: self.firmware_version,
             views,
             albums,
             prepare_render_timeout: self.prepare_render_timeout,
@@ -288,7 +292,7 @@ impl RawEinkMode {
 
 #[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
 pub struct RawPartialRefresh {
-    enabled: bool,
+    state: EnabledState,
     max_area_pct: u32,
     max_consecutive: i32,
 }
@@ -310,7 +314,7 @@ impl RawPartialRefresh {
         }
 
         Ok(PartialRefresh {
-            enabled: self.enabled,
+            enabled: self.state.is_enabled(),
             max_area_pct: self.max_area_pct,
             max_consecutive: self.max_consecutive,
         })
@@ -395,7 +399,6 @@ impl SleepWindow {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawEinkDisplayBlock {
     name: String,
-    firmware_version: String,
     mode: RawEinkMode,
     #[serde(default)]
     orientation: Option<Orientation>,
@@ -427,7 +430,6 @@ impl RawEinkDisplayBlock {
 
         Ok(EinkDisplaySettings {
             name: self.name,
-            firmware_version: self.firmware_version,
             mode,
             orientation: self.orientation.unwrap_or(Orientation::Portrait),
             refresh: self.refresh,
@@ -441,7 +443,6 @@ impl RawEinkDisplayBlock {
 #[derive(Debug, Clone)]
 pub struct EinkDisplaySettings {
     pub name: String,
-    pub firmware_version: String,
     pub mode: EinkModeConfig,
     pub orientation: Orientation,
     pub refresh: CronSchedule,
@@ -530,7 +531,7 @@ mod tests {
     #[test]
     fn a_missing_grace_is_rejected() {
         let block = serde_yaml::from_str::<RawEinkDisplayBlock>(&format!(
-            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: \"0 * * * *\"\n{}{}",
+            "name: Hallway Display\nrefresh: \"0 * * * *\"\n{}{}",
             dashboard_mode("15m"),
             PARTIAL
         ));
@@ -569,7 +570,7 @@ mod tests {
     #[test]
     fn an_invalid_refresh_cron_is_rejected() {
         let block = serde_yaml::from_str::<RawEinkDisplayBlock>(&format!(
-            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: every hour\ngrace: 5m\n{}{}",
+            "name: Hallway Display\nrefresh: every hour\ngrace: 5m\n{}{}",
             dashboard_mode("15m"),
             PARTIAL
         ));
@@ -577,7 +578,7 @@ mod tests {
         assert!(block.is_err());
     }
 
-    const PARTIAL: &str = "partial:\n  enabled: true\n  max_area_pct: 45\n  max_consecutive: 12\n";
+    const PARTIAL: &str = "partial:\n  state: enabled\n  max_area_pct: 45\n  max_consecutive: 12\n";
 
     fn display_block(mode: &str, grace: &str, sleep: bool) -> RawEinkDisplayBlock {
         let sleep = match sleep {
@@ -585,7 +586,7 @@ mod tests {
             false => "",
         };
         let yaml = format!(
-            "name: Hallway Display\nfirmware_version: v0.1.0\nrefresh: \"0 * * * *\"\n\
+            "name: Hallway Display\nrefresh: \"0 * * * *\"\n\
              grace: {grace}\n{mode}{sleep}{PARTIAL}"
         );
 

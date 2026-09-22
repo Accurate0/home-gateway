@@ -61,7 +61,7 @@ impl ResolvedDisplay {
             firmware_version: flag
                 .firmware_version
                 .clone()
-                .unwrap_or_else(|| display.firmware_version.clone()),
+                .unwrap_or_else(|| global.firmware_version.clone()),
         }
     }
 
@@ -195,7 +195,6 @@ mod tests {
     fn display_with_refresh(refresh: &str) -> EinkDisplaySettings {
         EinkDisplaySettings {
             name: "Test Display".to_owned(),
-            firmware_version: "v0.0.0".to_owned(),
             mode: EinkModeConfig::Dashboard {
                 view: None,
                 settle: chrono::TimeDelta::seconds(10),

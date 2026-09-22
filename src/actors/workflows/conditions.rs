@@ -215,7 +215,7 @@ async fn eval_weather(
             let forecast = state
                 .repos
                 .willyweather()
-                .forecast(&state.settings.willyweather.default_location)
+                .forecast(&state.settings.integrations.willyweather.default_location)
                 .await
                 .map_err(anyhow::Error::from)?;
 

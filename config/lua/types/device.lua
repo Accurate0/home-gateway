@@ -13,6 +13,43 @@
 ---@field color_temp integer?
 ---@field color table?
 
+---@class LightSetCommand
+---@field type "set"
+---@field on boolean?
+---@field brightness integer?
+---@field colour_temp integer?
+---@field colour string?
+
+---@class LightToggleCommand
+---@field type "toggle"
+
+---@class LightBrightnessMoveCommand
+---@field type "brightness_move"
+---@field value integer
+---@field on_off boolean
+
+---@class LightColourTempMoveCommand
+---@field type "colour_temp_move"
+---@field value integer
+
+---@alias LightCommand LightSetCommand|LightToggleCommand|LightBrightnessMoveCommand|LightColourTempMoveCommand
+
+---@class LightCurrent
+---@field on boolean
+---@field brightness integer?
+---@field colour_temp integer?
+---@field colour string?
+
+---@class LightEncodeInput
+---@field command LightCommand
+---@field current LightCurrent
+
+---@alias LightEncoder fun(input: LightEncodeInput): table?
+
+---@class DeviceEncoders
+---@field light LightEncoder?
+---@field smart_switch LightEncoder?
+
 ---@class SmartSwitchFields
 ---@field state string?
 ---@field voltage integer?

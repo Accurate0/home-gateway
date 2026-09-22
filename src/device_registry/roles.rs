@@ -5,7 +5,7 @@ use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DoorSettings, EinkDisplaySettings, EnvironmentSensorSettings,
     MediaPlayerSettings, PlantSensorSettings, PresenceSettings, RobotVacuumSettings, SwitchRole,
-    TrmnlDeviceSettings, VacuumTarget,
+    TrmnlDeviceSettings,
 };
 
 use super::device_config::DeviceConfig;
@@ -129,21 +129,6 @@ impl Roles {
                 });
             }
             DeviceConfig::RobotVacuum(robot_vacuum) => {
-                let target = match cx.transport {
-                    Transport::HomeAssistant => VacuumTarget::HomeAssistant {
-                        entity_id: address.to_owned(),
-                    },
-                    Transport::Mqtt => VacuumTarget::Mqtt {
-                        address: address.to_owned(),
-                    },
-                    Transport::EinkDisplayFirmware | Transport::Trmnl => {
-                        return Err(format!(
-                            "device {id}: a `{}` device has no robot vacuum command path",
-                            cx.transport
-                        ));
-                    }
-                };
-
                 let Some(commands) = cx
                     .profile
                     .and_then(|profile| profile.commands.robot_vacuum.clone())
@@ -156,7 +141,7 @@ impl Roles {
                 self.robot_vacuum = Some(RobotVacuumSettings {
                     name: robot_vacuum.name,
                     commands,
-                    target,
+                    address: address.to_owned(),
                 });
             }
             DeviceConfig::MediaPlayer(media_player) => {

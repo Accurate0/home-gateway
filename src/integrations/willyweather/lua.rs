@@ -185,7 +185,7 @@ impl LuaModule for WeatherLua {
 }
 
 async fn fetch(cx: &LuaCallContext, location: Option<&str>) -> mlua::Result<Option<Forecast>> {
-    let settings = &cx.state.settings.willyweather;
+    let settings = &cx.state.settings.integrations.willyweather;
     let requested = location.unwrap_or(&settings.default_location);
 
     let Some(alias) = settings.resolve_location(requested) else {

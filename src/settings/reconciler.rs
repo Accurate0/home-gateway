@@ -2,11 +2,12 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::time_delta_from_str;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct ReconcilerSettings {
-    pub enabled: bool,
+    pub state: EnabledState,
     pub workers: usize,
     #[serde(deserialize_with = "time_delta_from_str::deserialize")]
     #[schemars(with = "String")]

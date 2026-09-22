@@ -78,10 +78,7 @@ impl TransperthActor {
     }
 
     fn next_refresh(&self) -> Duration {
-        let Some(settings) = self.shared_actor_state.settings.transperth.as_ref() else {
-            return FALLBACK_REFRESH;
-        };
-
+        let settings = &self.shared_actor_state.settings.integrations.transperth;
         let now = Utc::now().with_timezone(&Perth).time();
 
         settings

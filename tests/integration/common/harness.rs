@@ -80,8 +80,12 @@ impl Harness {
         let recorder = test_broker.recorder.clone();
 
         let feature_flag_client = FeatureFlagClient::new().await;
-        let s3 = S3::new(&settings.s3.bucket, &settings.s3.region, None)
-            .expect("failed to build the s3 client");
+        let s3 = S3::new(
+            &settings.integrations.s3.bucket,
+            &settings.integrations.s3.region,
+            None,
+        )
+        .expect("failed to build the s3 client");
 
         let eink = home_gateway::eink::EinkDisplayManager::new(
             db.clone(),
@@ -110,7 +114,7 @@ impl Harness {
             ))
             .insert(
                 WillyWeather::new(
-                    &settings.willyweather,
+                    &settings.integrations.willyweather,
                     settings
                         .http
                         .clients

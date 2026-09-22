@@ -59,7 +59,7 @@ impl LuaModule for HolidaysLua {
                         })
                         .await?;
 
-                    let regions = &cx.state.settings.holidays.regions;
+                    let regions = &cx.state.settings.integrations.holidays.regions;
 
                     Ok(holidays
                         .into_iter()
@@ -84,7 +84,7 @@ impl LuaModule for HolidaysLua {
                         })
                         .await?;
 
-                    let regions = &cx.state.settings.holidays.regions;
+                    let regions = &cx.state.settings.integrations.holidays.regions;
 
                     Ok(holidays.iter().any(|holiday| holiday.observed_in(regions)))
                 }

@@ -150,9 +150,10 @@ impl Actor for SolarActor {
         let refresh = self
             .shared_actor_state
             .settings
+            .integrations
             .solar
-            .as_ref()
-            .and_then(|s| s.refresh.to_std().ok())
+            .refresh
+            .to_std()
             .unwrap_or(Duration::from_secs(60));
 
         myself.send_interval(refresh, || SolarMessage::Poll);

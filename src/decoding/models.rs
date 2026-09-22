@@ -18,9 +18,10 @@ pub type Models = HashMap<String, Arc<ModelProfile>>;
 pub fn load_models(
     kind: Transport,
     sources: &BTreeMap<String, String>,
+    library: &BTreeMap<String, String>,
     settings: &LuaSettings,
 ) -> Result<Models, String> {
-    let decoder = LuaDecoder::load(&kind.to_string(), sources, settings)
+    let decoder = LuaDecoder::load(&kind.to_string(), sources, library, settings)
         .map_err(|error| format!("{kind} models: {error}"))?;
 
     let mut profiles = HashMap::new();
@@ -168,6 +169,19 @@ fn resolve_commands(
         ));
     }
 
+    for role in [DeviceRoleName::Light, DeviceRoleName::SmartSwitch] {
+        let name = role.to_string();
+        let encodes = decoder
+            .has_function_at(slug, &["encode", &name])
+            .map_err(|error| format!("{kind} model {slug}: {error}"))?;
+
+        if roles.contains(&role) != encodes {
+            return Err(format!(
+                "{kind} model {slug}: `encode.{name}` is required with the `{name}` role, and only with it"
+            ));
+        }
+    }
+
     Ok(commands)
 }
 
@@ -263,7 +277,12 @@ mod tests {
     fn load_as(transport: Transport, source: &str) -> Result<Models, String> {
         let sources = BTreeMap::from([("test_model".to_owned(), source.to_owned())]);
 
-        load_models(transport, &sources, &LuaSettings::default())
+        load_models(
+            transport,
+            &sources,
+            &BTreeMap::new(),
+            &LuaSettings::default(),
+        )
     }
 
     fn profile(source: &str) -> Arc<ModelProfile> {
@@ -276,8 +295,13 @@ mod tests {
 
     fn decode(source: &str, json: &str) -> Result<DeviceReading, LuaError> {
         let sources = BTreeMap::from([("test_model".to_owned(), source.to_owned())]);
-        let decoder =
-            LuaDecoder::load("zigbee", &sources, &LuaSettings::default()).expect("decoder");
+        let decoder = LuaDecoder::load(
+            "zigbee",
+            &sources,
+            &BTreeMap::new(),
+            &LuaSettings::default(),
+        )
+        .expect("decoder");
 
         profile(source).decode(&decoder, &payload(json))
     }
@@ -337,6 +361,7 @@ mod tests {
             r#"return {
                 roles = { "light" },
                 entities = { light = { "a", "b" } },
+                encode = { light = function(i) return nil end },
                 decode = function(e) return {} end,
             }"#,
         )
@@ -348,6 +373,7 @@ mod tests {
             r#"return {
                 roles = { "light", "presence" },
                 entities = { light = { "rgb" }, binary_sensor = { "motion" } },
+                encode = { light = function(i) return nil end },
                 decode = function(e) return {} end,
             }"#,
         )
@@ -567,14 +593,24 @@ mod tests {
         assert_eq!(commands.dock, "HOME");
     }
 
+    fn library() -> BTreeMap<String, String> {
+        crate::lua::sources::load_directory(std::path::Path::new("./config/lua/model_lib"))
+            .expect("expected the committed model library to be readable")
+    }
+
     #[test]
     fn every_committed_mqtt_model_loads() {
         let sources =
             crate::lua::sources::load_directory(std::path::Path::new("./config/lua/mqtt"))
                 .expect("expected the committed mqtt models to be readable");
 
-        let models = load_models(Transport::Mqtt, &sources, &LuaSettings::default())
-            .expect("expected every committed mqtt model to load");
+        let models = load_models(
+            Transport::Mqtt,
+            &sources,
+            &library(),
+            &LuaSettings::default(),
+        )
+        .expect("expected every committed mqtt model to load");
 
         assert!(models.contains_key("apollo_mtr_1"));
         assert!(models.contains_key("valetudo"));
@@ -588,11 +624,149 @@ mod tests {
         ))
         .expect("expected the committed home assistant models to be readable");
 
-        let models = load_models(Transport::HomeAssistant, &sources, &LuaSettings::default())
-            .expect("expected every committed home assistant model to load");
+        let models = load_models(
+            Transport::HomeAssistant,
+            &sources,
+            &library(),
+            &LuaSettings::default(),
+        )
+        .expect("expected every committed home assistant model to load");
 
         assert!(models.contains_key("roborock"));
         assert!(models.contains_key("media_player"));
         assert_eq!(models.len(), sources.len());
+    }
+
+    #[test]
+    fn the_light_role_and_a_light_encoder_come_together() {
+        let missing = load(r#"return { roles = { "light" }, decode = function(p) return {} end }"#)
+            .expect_err("no encoder");
+        assert!(missing.contains("`encode.light` is required"), "{missing}");
+
+        let stray = load(
+            r#"return {
+                roles = { "door" },
+                encode = { light = function(i) return nil end },
+                decode = function(p) return {} end,
+            }"#,
+        )
+        .expect_err("encoder without the role");
+        assert!(stray.contains("`encode.light` is required"), "{stray}");
+    }
+
+    fn encode(slug: &str, command: serde_json::Value, on: bool) -> Option<Value> {
+        encode_as(slug, DeviceRoleName::Light, command, on)
+    }
+
+    fn encode_as(
+        slug: &str,
+        role: DeviceRoleName,
+        command: serde_json::Value,
+        on: bool,
+    ) -> Option<Value> {
+        let sources =
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/mqtt"))
+                .expect("committed mqtt models");
+        let library = library();
+        let models = load_models(Transport::Mqtt, &sources, &library, &LuaSettings::default())
+            .expect("committed models");
+        let decoder =
+            LuaDecoder::load("mqtt", &sources, &library, &LuaSettings::default()).expect("decoder");
+
+        let input = serde_json::json!({
+            "command": command,
+            "current": { "on": on },
+        });
+
+        models[slug].encode(&decoder, role, &input).expect("encode")
+    }
+
+    #[test]
+    fn the_zigbee_switch_encoder_only_switches() {
+        use serde_json::json;
+
+        let switch = |command| encode_as("ts011f_plug", DeviceRoleName::SmartSwitch, command, true);
+
+        assert_eq!(
+            switch(json!({ "type": "set", "on": false })),
+            Some(json!({ "state": "OFF" }))
+        );
+        assert_eq!(
+            switch(json!({ "type": "toggle" })),
+            Some(json!({ "state": "TOGGLE" }))
+        );
+        assert_eq!(switch(json!({ "type": "set", "brightness": 100 })), None);
+    }
+
+    #[test]
+    fn the_zigbee_encoder_speaks_zigbee2mqtt() {
+        use serde_json::json;
+
+        assert_eq!(
+            encode(
+                "aqara_t1",
+                json!({ "type": "set", "on": true, "brightness": 120, "colour": "#ff8000" }),
+                false
+            ),
+            Some(json!({ "state": "ON", "brightness": 120, "color": { "hex": "#ff8000" } }))
+        );
+        assert_eq!(
+            encode("aqara_t1", json!({ "type": "toggle" }), true),
+            Some(json!({ "state": "TOGGLE" }))
+        );
+        assert_eq!(
+            encode(
+                "aqara_t1",
+                json!({ "type": "brightness_move", "value": -40, "on_off": true }),
+                false
+            ),
+            Some(json!({ "brightness_move_onoff": -40 }))
+        );
+        assert_eq!(
+            encode(
+                "aqara_t1",
+                json!({ "type": "colour_temp_move", "value": 0 }),
+                false
+            ),
+            Some(json!({ "color_temp_move": "stop" }))
+        );
+    }
+
+    #[test]
+    fn the_esphome_encoder_rescales_and_resolves_toggles() {
+        use serde_json::json;
+
+        assert_eq!(
+            encode(
+                "apollo_mtr_1",
+                json!({ "type": "set", "brightness": 254, "colour": "#ff8000" }),
+                false
+            ),
+            Some(json!({ "brightness": 255, "color": { "r": 255, "g": 128, "b": 0 } }))
+        );
+        assert_eq!(
+            encode(
+                "apollo_mtr_1",
+                json!({ "type": "set", "brightness": 0 }),
+                false
+            ),
+            Some(json!({ "brightness": 0 }))
+        );
+        assert_eq!(
+            encode("apollo_mtr_1", json!({ "type": "toggle" }), true),
+            Some(json!({ "state": "OFF" }))
+        );
+
+        for command in [
+            json!({ "type": "set", "colour_temp": 300 }),
+            json!({ "type": "brightness_move", "value": 40, "on_off": false }),
+            json!({ "type": "colour_temp_move", "value": 0 }),
+        ] {
+            assert_eq!(
+                encode("apollo_mtr_1", command.clone(), false),
+                None,
+                "{command}"
+            );
+        }
     }
 }

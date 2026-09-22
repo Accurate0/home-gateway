@@ -527,9 +527,18 @@ mod tests {
 
     fn test_device(kind: Transport, slug: &str, source: &str, address: &str) -> TestDevice {
         let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
-        let models = load_models(kind, &sources, &LuaSettings::default()).expect("models");
-        let decoder = LuaDecoder::load(&kind.to_string(), &sources, &LuaSettings::default())
-            .expect("decoder");
+        let library =
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/model_lib"))
+                .expect("model library");
+        let models =
+            load_models(kind, &sources, &library, &LuaSettings::default()).expect("models");
+        let decoder = LuaDecoder::load(
+            &kind.to_string(),
+            &sources,
+            &library,
+            &LuaSettings::default(),
+        )
+        .expect("decoder");
 
         TestDevice {
             device: DecodedDevice {

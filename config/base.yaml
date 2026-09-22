@@ -7,7 +7,7 @@ actors: !include sections/actors.yaml
 adhoc: !include sections/adhoc.yaml
 auth: !include sections/auth.yaml
 home_assistant: !include sections/home_assistant.yaml
-transperth: !include sections/transperth.yaml
+integrations: !include sections/integrations.yaml
 eink_display: !include sections/eink_display.yaml
 endpoints: !include sections/endpoints.yaml
 
@@ -28,10 +28,6 @@ tracing:
       mqtt.ingest: 0.05
       home_assistant.ingest: 0.02
       db.intent.claim_due: 0.05
-
-s3:
-  bucket: home-gateway-bucket
-  region: ap-southeast-2
 
 notify:
   targets:
@@ -59,9 +55,10 @@ lua:
   max_memory: 67108864
   library: lua/lib
   scripts: lua/workflows
+  model_library: lua/model_lib
 
 reconciler:
-  enabled: true
+  state: enabled
   workers: 4
   interval: 5s
   grace: 3s
@@ -71,45 +68,21 @@ reconciler:
   batch_size: 64
 
 watchdog:
-  enabled: true
+  state: enabled
   timeout: 30m
   check_interval: 5m
   realert_after: 6h
 
-woolworths:
-  refresh: 1h
-
-trmnl:
-  refresh: 3h
-
 alarm:
   poll_interval: 60s
 
-willyweather:
-  refresh: 1h
-  days: 7
-  default_location: perth
-  locations:
-    perth: "14576"
-
-fuelwatch:
-  refresh: 1h
-
-holidays:
-  url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
-  regions: [Western Australia]
-
-solar:
-  refresh: 1m
-
 vacation:
-  enabled: true
+  state: enabled
   modes: [vacation]
   window: 672h
   jitter: 12m
   min_observations: 8
   seed: 20260908
 
-home_assistant_models: lua/home_assistant
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

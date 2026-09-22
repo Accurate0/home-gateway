@@ -99,6 +99,7 @@ impl Actor for TrmnlActor {
         let refresh = self
             .shared_actor_state
             .settings
+            .integrations
             .trmnl
             .refresh
             .to_std()

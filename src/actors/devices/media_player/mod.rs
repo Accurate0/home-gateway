@@ -208,6 +208,10 @@ impl DeviceHandler for MediaPlayerHandler {
         workers.media_player
     }
 
+    fn init_state(&self) -> anyhow::Result<Self::State> {
+        Ok(HashMap::new())
+    }
+
     async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
         match message {
             Message::HomeAssistant(update) => self.handle_update(update, state).await,

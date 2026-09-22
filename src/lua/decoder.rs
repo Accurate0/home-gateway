@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Instant;
 
 use mlua::serde::SerializeOptions;
-use mlua::{Function, Lua, LuaSerdeExt, Table, Value as LuaValue};
+use mlua::{Lua, LuaSerdeExt, Table, Value as LuaValue};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
@@ -10,6 +11,40 @@ use crate::settings::LuaSettings;
 
 use super::LuaError;
 use super::engine::{install_instruction_limit, sandbox, sandboxed_libs};
+
+fn install_library(lua: &Lua, library: &BTreeMap<String, String>) -> mlua::Result<()> {
+    let library = Arc::new(library.clone());
+    let loaded = lua.create_table()?;
+
+    let lib = lua.create_function(move |lua, name: String| {
+        let cached: LuaValue = loaded.get(name.as_str())?;
+
+        if !cached.is_nil() {
+            return Ok(cached);
+        }
+
+        let source = library.get(&name).ok_or_else(|| {
+            mlua::Error::runtime(format!(
+                "unknown model library `{name}`; available: [{}]",
+                library.keys().cloned().collect::<Vec<_>>().join(", ")
+            ))
+        })?;
+
+        let module: LuaValue = lua
+            .load(source.as_str())
+            .set_name(format!("lib/{name}"))
+            .eval()?;
+
+        loaded.set(name.as_str(), module.clone())?;
+
+        Ok(module)
+    })?;
+
+    let gw = lua.create_table()?;
+    gw.set("lib", lib)?;
+
+    lua.globals().set("gw", gw)
+}
 
 pub struct LuaDecoder {
     lua: Lua,
@@ -31,6 +66,7 @@ impl LuaDecoder {
     pub fn load(
         kind: &str,
         sources: &BTreeMap<String, String>,
+        library: &BTreeMap<String, String>,
         settings: &LuaSettings,
     ) -> Result<Self, LuaError> {
         let started = Instant::now();
@@ -42,6 +78,7 @@ impl LuaDecoder {
         lua.set_memory_limit(settings.max_memory)
             .map_err(LuaError::from_mlua)?;
         install_instruction_limit(&lua, settings.max_instructions).map_err(LuaError::from_mlua)?;
+        install_library(&lua, library).map_err(LuaError::from_mlua)?;
 
         let mut modules = BTreeMap::new();
 
@@ -70,12 +107,11 @@ impl LuaDecoder {
     }
 
     pub fn has_function(&self, module: &str, name: &str) -> Result<bool, LuaError> {
-        let value: LuaValue = self
-            .module(module)?
-            .get(name)
-            .map_err(LuaError::from_mlua)?;
+        self.has_function_at(module, &[name])
+    }
 
-        Ok(matches!(value, LuaValue::Function(_)))
+    pub fn has_function_at(&self, module: &str, path: &[&str]) -> Result<bool, LuaError> {
+        Ok(matches!(self.lookup(module, path)?, LuaValue::Function(_)))
     }
 
     pub fn field<T: DeserializeOwned>(
@@ -104,8 +140,17 @@ impl LuaDecoder {
         function: &str,
         input: &I,
     ) -> Result<T, LuaError> {
+        self.call_at(module, &[function], input)
+    }
+
+    pub fn call_at<I: Serialize, T: DeserializeOwned>(
+        &self,
+        module: &str,
+        path: &[&str],
+        input: &I,
+    ) -> Result<T, LuaError> {
         let started = Instant::now();
-        let result = self.invoke(module, function, input);
+        let result = self.invoke(module, path, input);
 
         let outcome = match &result {
             Ok(_) => "success",
@@ -114,7 +159,7 @@ impl LuaDecoder {
         };
 
         crate::metrics::record_lua(
-            format!("{}/{module}.{function}", self.kind),
+            format!("{}/{module}.{}", self.kind, path.join(".")),
             outcome,
             started.elapsed(),
             self.lua.used_memory(),
@@ -123,21 +168,30 @@ impl LuaDecoder {
         result
     }
 
+    fn lookup(&self, module: &str, path: &[&str]) -> Result<LuaValue, LuaError> {
+        let mut value = LuaValue::Table(self.module(module)?.clone());
+
+        for key in path {
+            value = match value {
+                LuaValue::Table(table) => table.get(*key).map_err(LuaError::from_mlua)?,
+                _ => return Ok(LuaValue::Nil),
+            };
+        }
+
+        Ok(value)
+    }
+
     fn invoke<I: Serialize, T: DeserializeOwned>(
         &self,
         module: &str,
-        function: &str,
+        path: &[&str],
         input: &I,
     ) -> Result<T, LuaError> {
-        let callable: Option<Function> = self
-            .module(module)?
-            .get(function)
-            .map_err(LuaError::from_mlua)?;
-
-        let Some(callable) = callable else {
+        let LuaValue::Function(callable) = self.lookup(module, path)? else {
             return Err(LuaError::Runtime(format!(
-                "{}/{module} has no function `{function}`",
-                self.kind
+                "{}/{module} has no function `{}`",
+                self.kind,
+                path.join(".")
             )));
         };
 
@@ -181,7 +235,39 @@ mod tests {
     fn decoder(name: &str, source: &str) -> Result<LuaDecoder, LuaError> {
         let sources = BTreeMap::from([(name.to_owned(), source.to_owned())]);
 
-        LuaDecoder::load("test", &sources, &LuaSettings::default())
+        LuaDecoder::load("test", &sources, &BTreeMap::new(), &LuaSettings::default())
+    }
+
+    #[test]
+    fn a_module_shares_code_through_the_model_library() {
+        let sources = BTreeMap::from([(
+            "model".to_owned(),
+            r#"local double = gw.lib("double") return { run = function(p) return double(p) end }"#
+                .to_owned(),
+        )]);
+        let library = BTreeMap::from([(
+            "double".to_owned(),
+            "return function(value) return value * 2 end".to_owned(),
+        )]);
+
+        let decoder = LuaDecoder::load("test", &sources, &library, &LuaSettings::default())
+            .expect("expected the module to load");
+
+        let output: i64 = decoder
+            .call("model", "run", &21)
+            .expect("expected the call to succeed");
+
+        assert_eq!(output, 42);
+    }
+
+    #[test]
+    fn an_unknown_model_library_is_an_error() {
+        let error = decoder("model", r#"return gw.lib("absent")"#).expect_err("unknown library");
+
+        assert!(
+            error.to_string().contains("unknown model library `absent`"),
+            "{error}"
+        );
     }
 
     #[test]

@@ -218,6 +218,10 @@ impl DeviceHandler for EnvironmentSensorHandler {
         workers.environment_sensor
     }
 
+    fn init_state(&self) -> anyhow::Result<Self::State> {
+        Ok(EnvironmentSensorState::default())
+    }
+
     async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
         Self::handle(self, message, state).await
     }

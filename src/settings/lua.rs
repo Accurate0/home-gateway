@@ -18,6 +18,8 @@ pub struct LuaSettings {
     pub library: Option<PathBuf>,
     #[serde(default)]
     pub scripts: Option<PathBuf>,
+    #[serde(default)]
+    pub model_library: Option<PathBuf>,
 }
 
 impl LuaSettings {
@@ -34,6 +36,7 @@ impl Default for LuaSettings {
             max_memory: 64 * 1024 * 1024,
             library: None,
             scripts: None,
+            model_library: None,
         }
     }
 }

@@ -17,11 +17,13 @@ pub trait DeviceHandler: Send + Sync + Sized + 'static {
     const NAME: &'static str;
 
     type Message: ractor::Message + crate::tracing_context::TracedMessage;
-    type State: ractor::State + Default;
+    type State: ractor::State;
 
     fn new(shared_actor_state: AppState) -> Self;
 
     fn workers(workers: &ActorWorkerSettings) -> usize;
+
+    fn init_state(&self) -> anyhow::Result<Self::State>;
 
     fn handle(
         &self,
@@ -33,15 +35,6 @@ pub trait DeviceHandler: Send + Sync + Sized + 'static {
 pub struct HandlerState<T: DeviceHandler> {
     inner: T::State,
     consecutive_failures: u32,
-}
-
-impl<T: DeviceHandler> Default for HandlerState<T> {
-    fn default() -> Self {
-        Self {
-            inner: T::State::default(),
-            consecutive_failures: 0,
-        }
-    }
 }
 
 pub struct HandlerWorker<T: DeviceHandler>(T);
@@ -58,7 +51,10 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
         _factory: &ActorRef<FactoryMessage<(), T::Message>>,
         _startup_context: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(HandlerState::default())
+        Ok(HandlerState {
+            inner: self.0.init_state()?,
+            consecutive_failures: 0,
+        })
     }
 
     async fn handle(

@@ -273,11 +273,9 @@ impl Worker for MqttIngest {
     ) -> Result<Self::State, ActorProcessingErr> {
         let settings = &self.shared_actor_state.settings;
 
-        let decoder = LuaDecoder::load(
-            &Transport::Mqtt.to_string(),
-            &settings.model_sources.mqtt,
-            &settings.lua,
-        )?;
+        let decoder = settings
+            .model_sources
+            .decoder(Transport::Mqtt, &settings.lua)?;
 
         Ok(MqttIngestState { decoder })
     }

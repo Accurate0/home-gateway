@@ -166,10 +166,11 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::mode::Mode;
+    use crate::settings::enabled_state::EnabledState;
 
     fn settings() -> VacationSettings {
         VacationSettings {
-            enabled: true,
+            state: EnabledState::Enabled,
             modes: vec![Mode::Vacation],
             window: TimeDelta::hours(672),
             jitter: TimeDelta::minutes(12),

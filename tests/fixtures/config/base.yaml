@@ -72,9 +72,44 @@ tracing:
     default: 1.0
     spans: {}
 
-s3:
-  bucket: home-gateway-bucket
-  region: ap-southeast-2
+integrations:
+  s3:
+    bucket: home-gateway-bucket
+    region: ap-southeast-2
+  holidays:
+    url: http://127.0.0.1:9/holidays.ics
+    regions: [Western Australia]
+  woolworths:
+    state: enabled
+    refresh: 1h
+  trmnl:
+    state: enabled
+    refresh: 3h
+    base_url: https://trmnl.com
+  willyweather:
+    state: enabled
+    api_key: test
+    refresh: 1h
+    days: 7
+    default_location: perth
+    locations:
+      perth: "14576"
+  fuelwatch:
+    state: disabled
+    postcode: 6000
+    refresh: 1h
+  solar:
+    state: enabled
+    refresh: 1m
+  transperth:
+    state: disabled
+    refresh_peak: 3m
+    refresh_off_peak: 15m
+    horizon: 2h
+    routes: []
+    cache:
+      routes: { capacity: 32, ttl: 1h }
+      timetables: { capacity: 16, ttl: 6h }
 
 notify:
   targets:
@@ -294,7 +329,7 @@ workflow:
     catch_up_within: 10m
 
 reconciler:
-  enabled: true
+  state: enabled
   workers: 2
   interval: 100ms
   grace: 0s
@@ -304,7 +339,7 @@ reconciler:
   batch_size: 64
 
 watchdog:
-  enabled: false
+  state: disabled
   timeout: 30m
   check_interval: 5m
   realert_after: 6h
@@ -319,37 +354,18 @@ auth:
     - name: test-admin
       scopes: ["**:*"]
 
-woolworths:
-  refresh: 1h
-
-trmnl:
-  refresh: 3h
-
 alarm:
   poll_interval: 60s
 
-holidays:
-  url: http://127.0.0.1:9/holidays.ics
-  regions: [Western Australia]
-
-willyweather:
-  api_key: test
-  refresh: 1h
-  days: 7
-  default_location: perth
-  locations:
-    perth: "14576"
-
 home_assistant:
+  models: lua/home_assistant
   websocket:
     keep_alive: 30s
     silence_timeout: 90s
     reconnect_delay: 5s
 
-solar:
-  refresh: 1m
-
 eink_display:
+  firmware_version: v0.1.0
   prepare_render_timeout: 15s
   defaults:
     reddit_limit: 25
@@ -444,13 +460,12 @@ adhoc:
         retention: 2160h
 
 vacation:
-  enabled: true
+  state: enabled
   modes: [vacation]
   window: 672h
   jitter: 12m
   min_observations: 8
   seed: 20260908
 
-home_assistant_models: lua/home_assistant
 devices: !include devices/index.yaml
 workflows: !include workflows/index.yaml

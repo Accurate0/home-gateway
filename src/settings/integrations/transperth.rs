@@ -1,4 +1,5 @@
 use super::transperth_cache::TransperthCacheSettings;
+use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::time_delta_from_str;
 use chrono::{NaiveTime, TimeDelta};
 use schemars::JsonSchema;
@@ -54,6 +55,7 @@ impl PeakWindow {
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawTransperthSettings {
+    pub state: EnabledState,
     #[serde(default)]
     pub realtime_api_key: Option<String>,
     #[serde(default)]
@@ -82,6 +84,7 @@ pub struct RawTransperthSettings {
 impl RawTransperthSettings {
     pub fn resolve(self) -> Result<TransperthSettings, String> {
         let RawTransperthSettings {
+            state,
             realtime_api_key,
             reference_data_api_key,
             refresh_peak,
@@ -98,6 +101,7 @@ impl RawTransperthSettings {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(TransperthSettings {
+            state,
             realtime_api_key,
             reference_data_api_key,
             refresh_peak,
@@ -112,6 +116,7 @@ impl RawTransperthSettings {
 
 #[derive(Debug, Clone)]
 pub struct TransperthSettings {
+    pub state: EnabledState,
     pub realtime_api_key: Option<String>,
     pub reference_data_api_key: Option<String>,
     pub refresh_peak: TimeDelta,

@@ -257,9 +257,8 @@ impl Worker for HomeAssistantIngest {
     ) -> Result<Self::State, ActorProcessingErr> {
         let settings = &self.shared_actor_state.settings;
 
-        let decoder = LuaDecoder::load(
-            &crate::device_registry::Transport::HomeAssistant.to_string(),
-            &settings.model_sources.home_assistant,
+        let decoder = settings.model_sources.decoder(
+            crate::device_registry::Transport::HomeAssistant,
             &settings.lua,
         )?;
 

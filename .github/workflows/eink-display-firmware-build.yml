@@ -109,14 +109,13 @@ jobs:
         with:
           package_json_file: config-repo/package.json
 
-      - name: Update device firmware versions
+      - name: Update eink firmware version
         env:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           cd config-repo
-          pip install --quiet ruamel.yaml
-          python3 scripts/set-eink-firmware-version.py config/devices.yaml
-          pnpx prettier@3 --write config/devices.yaml
+          yq -i '.firmware_version = strenv(VERSION)' config/sections/eink_display.yaml
+          pnpx prettier@3 --write config/sections/eink_display.yaml
 
       - name: Commit and Raise PR
         env:
@@ -128,7 +127,7 @@ jobs:
           TITLE_AND_COMMIT="chore(deploy): update eink-display-firmware to ${VERSION} [skip ci]"
 
           git checkout -b ${PR_BRANCH}
-          git add config/devices.yaml
+          git add config/sections/eink_display.yaml
           git commit -m "${TITLE_AND_COMMIT}" || { echo "No changes to commit"; exit 0; }
           git push -f origin ${PR_BRANCH}
 

@@ -28,14 +28,8 @@ impl VacuumCommands {
 }
 
 #[derive(Debug, Clone)]
-pub enum VacuumTarget {
-    HomeAssistant { entity_id: String },
-    Mqtt { address: String },
-}
-
-#[derive(Debug, Clone)]
 pub struct RobotVacuumSettings {
     pub name: String,
     pub commands: VacuumCommands,
-    pub target: VacuumTarget,
+    pub address: String,
 }

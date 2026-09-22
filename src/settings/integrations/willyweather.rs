@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::time_delta_from_str;
 use chrono::TimeDelta;
 use schemars::JsonSchema;
@@ -7,6 +8,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct WillyWeatherSettings {
+    pub state: EnabledState,
     #[serde(default)]
     pub api_key: Option<String>,
     #[serde(with = "time_delta_from_str")]
@@ -37,6 +39,7 @@ mod tests {
     #[test]
     fn a_location_resolves_by_alias_or_by_willyweather_id() {
         let settings = WillyWeatherSettings {
+            state: EnabledState::Enabled,
             api_key: None,
             refresh: TimeDelta::hours(1),
             days: 7,

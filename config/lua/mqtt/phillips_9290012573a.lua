@@ -4,6 +4,8 @@ return {
 	roles = { "light" },
 	capabilities = { "brightness", "colour_temp", "rgb" },
 
+	encode = { light = gw.lib("zigbee_light") },
+
 	decode = function(input)
 		local payload = input.payload
 

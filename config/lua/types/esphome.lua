@@ -19,3 +19,4 @@
 ---@field plant string[]?
 ---@field entities EsphomeEntities
 ---@field decode fun(input: EsphomeInput): DeviceReading
+---@field encode DeviceEncoders?

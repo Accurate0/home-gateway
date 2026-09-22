@@ -84,46 +84,32 @@ impl LuaModule for FuelLua {
         let cheapest_cx = cx.clone();
 
         cx.expose(table, &CHEAPEST, || {
-            lua.create_async_function(
-                move |lua, (postcode, limit): (Option<i32>, Option<i64>)| {
-                    let cx = cheapest_cx.clone();
+            lua.create_async_function(move |lua, (postcode, limit): (Option<i32>, Option<i64>)| {
+                let cx = cheapest_cx.clone();
 
-                    async move {
-                        let postcode = match postcode.or_else(|| {
+                async move {
+                    let postcode =
+                        postcode.unwrap_or(cx.state.settings.integrations.fuelwatch.postcode);
+
+                    let sites = cx
+                        .query("fuel.cheapest", || async {
                             cx.state
-                                .settings
-                                .fuelwatch
-                                .as_ref()
-                                .map(|settings| settings.postcode)
-                        }) {
-                            Some(postcode) => postcode,
-                            None => {
-                                return Err(mlua::Error::external(
-                                    "fuel.cheapest needs a postcode; none was given and fuelwatch is not configured",
-                                ));
-                            }
-                        };
+                                .repos
+                                .fuelwatch()
+                                .sites_for_postcode(postcode, limit)
+                                .await
+                        })
+                        .await?;
 
-                        let sites = cx
-                            .query("fuel.cheapest", || async {
-                                cx.state
-                                    .repos
-                                    .fuelwatch()
-                                    .sites_for_postcode(postcode, limit)
-                                    .await
-                            })
-                            .await?;
+                    let result = lua.create_table()?;
 
-                        let result = lua.create_table()?;
-
-                        for site in &sites {
-                            result.push(site_table(&lua, site)?)?;
-                        }
-
-                        Ok(result)
+                    for site in &sites {
+                        result.push(site_table(&lua, site)?)?;
                     }
-                },
-            )
+
+                    Ok(result)
+                }
+            })
         })
     }
 }

@@ -39,10 +39,12 @@ impl AdhocCronTask for RefreshTransperthTimetable {
         ctx: &mut AdhocTaskContext<'_>,
         _parameters: &Self::Parameters,
     ) -> Result<u64, AdhocTaskError> {
-        let Some(settings) = ctx.settings.transperth.clone() else {
-            tracing::info!("transperth not configured, skipping timetable refresh");
+        let settings = ctx.settings.integrations.transperth.clone();
+
+        if !settings.state.is_enabled() {
+            tracing::info!("transperth disabled, skipping timetable refresh");
             return Ok(0);
-        };
+        }
 
         let transperth = Transperth::new(
             &settings,

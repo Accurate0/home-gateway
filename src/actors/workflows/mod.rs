@@ -3,6 +3,7 @@ use crate::actors::system::push;
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::Scope;
+use crate::device_command::CommandTargets;
 use crate::http::public_client::PublicHttpClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
@@ -78,7 +79,7 @@ pub enum WorkflowError {
     #[error(transparent)]
     HomeAssistant(#[from] crate::integrations::home_assistant::HomeAssistantError),
     #[error(transparent)]
-    VacuumCommand(#[from] robot_vacuum::command::VacuumCommandError),
+    VacuumCommand(#[from] crate::device_command::DeviceCommandError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -516,16 +517,9 @@ impl WorkflowWorker {
             return Err(WorkflowError::NotARobotVacuum(device.to_owned()));
         };
 
-        let handles = &self.shared_actor_state.handles;
+        let targets = CommandTargets::new(registry, &self.shared_actor_state.handles);
 
-        robot_vacuum::command::send(
-            settings,
-            command,
-            handles.get::<HomeAssistant>(),
-            handles.expect::<MqttClient>(),
-            registry,
-        )
-        .await?;
+        robot_vacuum::command::send(&targets, settings, command).await?;
 
         Ok(())
     }

@@ -491,9 +491,6 @@
         "name": {
           "type": "string"
         },
-        "firmware_version": {
-          "type": "string"
-        },
         "mode": {
           "$ref": "#/$defs/RawEinkMode"
         },
@@ -529,7 +526,6 @@
       },
       "required": [
         "name",
-        "firmware_version",
         "mode",
         "refresh",
         "grace",
@@ -652,8 +648,8 @@
     "RawPartialRefresh": {
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean"
+        "state": {
+          "$ref": "#/$defs/EnabledState"
         },
         "max_area_pct": {
           "type": "integer",
@@ -666,7 +662,7 @@
         }
       },
       "required": [
-        "enabled",
+        "state",
         "max_area_pct",
         "max_consecutive"
       ]

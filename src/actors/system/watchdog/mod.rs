@@ -101,7 +101,7 @@ impl Actor for WatchdogActor {
         _args: Self::Arguments,
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let watchdog = &self.shared_actor_state.settings.watchdog;
-        if !watchdog.enabled {
+        if !watchdog.state.is_enabled() {
             tracing::info!("sensor offline watchdog is disabled, not arming checks");
             return Ok(());
         }

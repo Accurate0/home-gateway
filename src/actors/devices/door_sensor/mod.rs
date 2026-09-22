@@ -139,6 +139,10 @@ impl DeviceHandler for DoorSensorHandler {
         workers.door_sensor
     }
 
+    fn init_state(&self) -> anyhow::Result<Self::State> {
+        Ok(())
+    }
+
     async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
         Self::handle(self, message).await
     }

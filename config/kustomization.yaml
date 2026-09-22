@@ -16,8 +16,8 @@ configMapGenerator:
       - sections/endpoints.yaml
       - sections/home_assistant.yaml
       - sections/http.yaml
+      - sections/integrations.yaml
       - sections/mqtt.yaml
-      - sections/transperth.yaml
   - name: home-gateway-config-devices
     files:
       - devices/index.yaml
@@ -55,6 +55,11 @@ configMapGenerator:
     files:
       - lua/lib/format.lua
       - lua/lib/lights.lua
+  - name: home-gateway-config-lua-model-lib
+    files:
+      - lua/model_lib/esphome_light.lua
+      - lua/model_lib/zigbee_light.lua
+      - lua/model_lib/zigbee_switch.lua
   - name: home-gateway-config-lua-workflows
     files:
       - lua/workflows/brief.lua

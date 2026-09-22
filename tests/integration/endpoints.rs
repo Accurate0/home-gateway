@@ -447,13 +447,13 @@ async fn fuel_returns_the_cheapest_sites_first() {
 
 #[tokio::test]
 #[serial]
-async fn fuel_without_a_postcode_needs_configuration() {
+async fn fuel_without_a_postcode_uses_the_configured_one() {
     let harness = start().await;
     let key = mint_key(&harness, &["fuelwatch:read"]).await;
 
     let reply = get(&harness, "/v1/test/fuel-default", &key).await;
 
-    assert_eq!(reply.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(reply.status, StatusCode::OK);
 }
 
 #[tokio::test]

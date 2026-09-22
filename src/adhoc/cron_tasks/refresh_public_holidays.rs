@@ -33,7 +33,7 @@ impl AdhocCronTask for RefreshPublicHolidays {
         _parameters: &Self::Parameters,
     ) -> Result<u64, AdhocTaskError> {
         let holidays = Holidays::new(
-            &ctx.settings.holidays,
+            &ctx.settings.integrations.holidays,
             ctx.settings
                 .http
                 .clients

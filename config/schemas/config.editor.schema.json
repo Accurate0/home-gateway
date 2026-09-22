@@ -143,16 +143,6 @@
         }
       ]
     },
-    "home_assistant_models": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
     "workflows": {
       "anyOf": [
         {
@@ -169,10 +159,10 @@
         }
       ]
     },
-    "s3": {
+    "integrations": {
       "anyOf": [
         {
-          "$ref": "#/$defs/S3Settings"
+          "$ref": "#/$defs/RawIntegrationSettings"
         },
         {
           "type": "string"
@@ -249,115 +239,10 @@
         }
       ]
     },
-    "woolworths": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/WoolworthsSettings"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "trmnl": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TrmnlSettings"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "trmnl_api_key": {
-      "anyOf": [
-        {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
     "home_assistant": {
       "anyOf": [
         {
           "$ref": "#/$defs/HomeAssistantSettings"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "solar": {
-      "anyOf": [
-        {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SolarSettings"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "transperth": {
-      "anyOf": [
-        {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RawTransperthSettings"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "willyweather": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/WillyWeatherSettings"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "fuelwatch": {
-      "anyOf": [
-        {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/FuelWatchSettings"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "holidays": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/HolidaySettings"
         },
         {
           "type": "string"
@@ -433,16 +318,13 @@
     "tracing",
     "mqtt",
     "notify",
-    "home_assistant_models",
-    "s3",
+    "integrations",
     "watchdog",
     "workflow",
     "reconciler",
     "auth",
     "sun",
     "home_assistant",
-    "willyweather",
-    "holidays",
     "eink_display",
     "adhoc",
     "vacation"
@@ -1342,9 +1224,6 @@
         "name": {
           "type": "string"
         },
-        "firmware_version": {
-          "type": "string"
-        },
         "mode": {
           "$ref": "#/$defs/RawEinkMode"
         },
@@ -1380,7 +1259,6 @@
       },
       "required": [
         "name",
-        "firmware_version",
         "mode",
         "refresh",
         "grace",
@@ -1503,8 +1381,8 @@
     "RawPartialRefresh": {
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean"
+        "state": {
+          "$ref": "#/$defs/EnabledState"
         },
         "max_area_pct": {
           "type": "integer",
@@ -1517,7 +1395,7 @@
         }
       },
       "required": [
-        "enabled",
+        "state",
         "max_area_pct",
         "max_consecutive"
       ]
@@ -3589,6 +3467,45 @@
         "run"
       ]
     },
+    "RawIntegrationSettings": {
+      "type": "object",
+      "properties": {
+        "s3": {
+          "$ref": "#/$defs/S3Settings"
+        },
+        "holidays": {
+          "$ref": "#/$defs/HolidaySettings"
+        },
+        "woolworths": {
+          "$ref": "#/$defs/WoolworthsSettings"
+        },
+        "trmnl": {
+          "$ref": "#/$defs/TrmnlSettings"
+        },
+        "willyweather": {
+          "$ref": "#/$defs/WillyWeatherSettings"
+        },
+        "fuelwatch": {
+          "$ref": "#/$defs/FuelWatchSettings"
+        },
+        "solar": {
+          "$ref": "#/$defs/SolarSettings"
+        },
+        "transperth": {
+          "$ref": "#/$defs/RawTransperthSettings"
+        }
+      },
+      "required": [
+        "s3",
+        "holidays",
+        "woolworths",
+        "trmnl",
+        "willyweather",
+        "fuelwatch",
+        "solar",
+        "transperth"
+      ]
+    },
     "S3Settings": {
       "description": "S3 / object-storage config. Credentials are taken from the standard AWS\nenvironment, never from this file. `endpoint` is only set for\nS3-compatible stores (MinIO/R2/…); omit it for plain AWS S3.",
       "type": "object",
@@ -3612,12 +3529,297 @@
         "region"
       ]
     },
+    "HolidaySettings": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "url",
+        "regions"
+      ]
+    },
+    "WoolworthsSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "refresh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "refresh"
+      ]
+    },
+    "TrmnlSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "refresh": {
+          "type": "string"
+        },
+        "base_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "refresh",
+        "base_url"
+      ]
+    },
+    "WillyWeatherSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "refresh": {
+          "type": "string"
+        },
+        "days": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "default_location": {
+          "type": "string"
+        },
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "refresh",
+        "days",
+        "default_location",
+        "locations"
+      ]
+    },
+    "FuelWatchSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "postcode": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "refresh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "postcode",
+        "refresh"
+      ]
+    },
+    "SolarSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "refresh": {
+          "type": "string"
+        },
+        "goodwe_username": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "goodwe_password": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "goodwe_powerstation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "state",
+        "refresh"
+      ]
+    },
+    "RawTransperthSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "realtime_api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "reference_data_api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "refresh_peak": {
+          "type": "string"
+        },
+        "refresh_off_peak": {
+          "type": "string"
+        },
+        "horizon": {
+          "type": "string"
+        },
+        "peak": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RawPeakWindow"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TransperthRoute"
+          }
+        },
+        "cache": {
+          "$ref": "#/$defs/TransperthCacheSettings"
+        }
+      },
+      "required": [
+        "state",
+        "refresh_peak",
+        "refresh_off_peak",
+        "horizon",
+        "routes",
+        "cache"
+      ]
+    },
+    "RawPeakWindow": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "TransperthRoute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "route_group": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "limit"
+      ]
+    },
+    "TransperthCacheSettings": {
+      "type": "object",
+      "properties": {
+        "routes": {
+          "$ref": "#/$defs/CacheSettings"
+        },
+        "timetables": {
+          "$ref": "#/$defs/CacheSettings"
+        }
+      },
+      "required": [
+        "routes",
+        "timetables"
+      ]
+    },
+    "CacheSettings": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "ttl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "capacity",
+        "ttl"
+      ]
+    },
     "WatchdogSettings": {
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": false
+        "state": {
+          "$ref": "#/$defs/EnabledState"
         },
         "timeout": {
           "type": "string"
@@ -3630,6 +3832,7 @@
         }
       },
       "required": [
+        "state",
         "timeout",
         "check_interval",
         "realert_after"
@@ -3660,23 +3863,6 @@
         "timers"
       ]
     },
-    "CacheSettings": {
-      "type": "object",
-      "properties": {
-        "capacity": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
-        },
-        "ttl": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "capacity",
-        "ttl"
-      ]
-    },
     "WorkflowTimerSettings": {
       "type": "object",
       "properties": {
@@ -3691,8 +3877,8 @@
     "ReconcilerSettings": {
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean"
+        "state": {
+          "$ref": "#/$defs/EnabledState"
         },
         "workers": {
           "type": "integer",
@@ -3721,7 +3907,7 @@
         }
       },
       "required": [
-        "enabled",
+        "state",
         "workers",
         "interval",
         "grace",
@@ -3889,28 +4075,6 @@
         }
       }
     },
-    "WoolworthsSettings": {
-      "type": "object",
-      "properties": {
-        "refresh": {
-          "type": "string",
-          "default": "1h"
-        }
-      }
-    },
-    "TrmnlSettings": {
-      "type": "object",
-      "properties": {
-        "refresh": {
-          "type": "string",
-          "default": "3h"
-        },
-        "base_url": {
-          "type": "string",
-          "default": "https://trmnl.com"
-        }
-      }
-    },
     "HomeAssistantSettings": {
       "type": "object",
       "properties": {
@@ -3936,10 +4100,14 @@
         },
         "websocket": {
           "$ref": "#/$defs/HomeAssistantWebsocketSettings"
+        },
+        "models": {
+          "type": "string"
         }
       },
       "required": [
-        "websocket"
+        "websocket",
+        "models"
       ]
     },
     "EntitySettings": {
@@ -3984,221 +4152,12 @@
         "reconnect_delay"
       ]
     },
-    "SolarSettings": {
-      "type": "object",
-      "properties": {
-        "refresh": {
-          "type": "string"
-        },
-        "goodwe_username": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "goodwe_password": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "goodwe_powerstation_id": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        }
-      },
-      "required": [
-        "refresh"
-      ]
-    },
-    "RawTransperthSettings": {
-      "type": "object",
-      "properties": {
-        "realtime_api_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "reference_data_api_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "refresh_peak": {
-          "type": "string"
-        },
-        "refresh_off_peak": {
-          "type": "string"
-        },
-        "horizon": {
-          "type": "string"
-        },
-        "peak": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/RawPeakWindow"
-          }
-        },
-        "routes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/TransperthRoute"
-          }
-        },
-        "cache": {
-          "$ref": "#/$defs/TransperthCacheSettings"
-        }
-      },
-      "required": [
-        "refresh_peak",
-        "refresh_off_peak",
-        "horizon",
-        "routes",
-        "cache"
-      ]
-    },
-    "RawPeakWindow": {
-      "type": "object",
-      "properties": {
-        "start": {
-          "type": "string"
-        },
-        "end": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "start",
-        "end"
-      ]
-    },
-    "TransperthRoute": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "from": {
-          "type": "string"
-        },
-        "to": {
-          "type": "string"
-        },
-        "limit": {
-          "type": "integer",
-          "format": "uint",
-          "minimum": 0
-        },
-        "route_group": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        }
-      },
-      "required": [
-        "id",
-        "from",
-        "to",
-        "limit"
-      ]
-    },
-    "TransperthCacheSettings": {
-      "type": "object",
-      "properties": {
-        "routes": {
-          "$ref": "#/$defs/CacheSettings"
-        },
-        "timetables": {
-          "$ref": "#/$defs/CacheSettings"
-        }
-      },
-      "required": [
-        "routes",
-        "timetables"
-      ]
-    },
-    "WillyWeatherSettings": {
-      "type": "object",
-      "properties": {
-        "api_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        },
-        "refresh": {
-          "type": "string"
-        },
-        "days": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "default_location": {
-          "type": "string"
-        },
-        "locations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "refresh",
-        "days",
-        "default_location",
-        "locations"
-      ]
-    },
-    "FuelWatchSettings": {
-      "type": "object",
-      "properties": {
-        "postcode": {
-          "type": "integer",
-          "format": "int32",
-          "default": 6000
-        },
-        "refresh": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "refresh"
-      ]
-    },
-    "HolidaySettings": {
-      "type": "object",
-      "properties": {
-        "url": {
-          "type": "string"
-        },
-        "regions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "url",
-        "regions"
-      ]
-    },
     "RawEinkGlobal": {
       "type": "object",
       "properties": {
+        "firmware_version": {
+          "type": "string"
+        },
         "views": {
           "type": "object",
           "additionalProperties": {
@@ -4219,6 +4178,7 @@
         }
       },
       "required": [
+        "firmware_version",
         "prepare_render_timeout",
         "defaults"
       ]
@@ -4419,8 +4379,8 @@
     "VacationSettings": {
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean"
+        "state": {
+          "$ref": "#/$defs/EnabledState"
         },
         "modes": {
           "type": "array",
@@ -4445,7 +4405,7 @@
         }
       },
       "required": [
-        "enabled",
+        "state",
         "modes",
         "window",
         "jitter",
@@ -4477,6 +4437,13 @@
           "default": null
         },
         "scripts": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "model_library": {
           "type": [
             "string",
             "null"

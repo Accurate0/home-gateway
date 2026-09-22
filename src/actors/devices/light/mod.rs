@@ -1,17 +1,24 @@
 pub mod command;
+pub mod light_command;
+pub mod light_current;
+pub mod light_encode_input;
 pub mod lua;
 
 use crate::actors::devices::handler::DeviceHandler;
-use crate::integrations::mqtt::{MqttClient, MqttProtocol, TopicVars};
+use crate::decoding::DeviceRoleName;
+use crate::device_command::{self, CommandTargets, DeviceCommandError, Outbound};
+use crate::lua::LuaDecoder;
 use crate::{
-    device_registry::Capability,
+    device_registry::{Capability, Transport},
     event_bus::EventBusMessage,
-    integrations::esphome::EsphomeDomain,
     repo::intent::{DeviceKind, DeviceReport, IntentAttributes, IntentStatus},
     repo::light::{HistorySource, LightAttributes, LightSample, LightState},
     settings::IEEEAddress,
     state::AppState,
 };
+use light_command::LightCommand;
+use light_current::LightCurrent;
+use light_encode_input::LightEncodeInput;
 use ractor::RpcReplyPort;
 use uuid::Uuid;
 
@@ -126,41 +133,6 @@ pub struct LightHandler {
     shared_actor_state: AppState,
 }
 
-fn esphome_command(state: &serde_json::Value) -> Option<serde_json::Value> {
-    let object = state.as_object()?;
-    let mut out = serde_json::Map::new();
-
-    for (key, value) in object {
-        match key.as_str() {
-            "state" => match value.as_str()? {
-                on @ ("ON" | "OFF") => {
-                    out.insert("state".into(), on.into());
-                }
-                _ => return None,
-            },
-            "brightness" => {
-                let scaled = (value.as_u64()? * 255).div_ceil(254);
-                out.insert("brightness".into(), scaled.into());
-            }
-            "color" => {
-                let hex = value.get("hex")?.as_str()?.trim_start_matches('#');
-                let rgb = u32::from_str_radix(hex, 16).ok()?;
-                out.insert(
-                    "color".into(),
-                    serde_json::json!({
-                        "r": (rgb >> 16) & 0xff,
-                        "g": (rgb >> 8) & 0xff,
-                        "b": rgb & 0xff,
-                    }),
-                );
-            }
-            _ => return None,
-        }
-    }
-
-    Some(out.into())
-}
-
 pub fn colour_hex(value: &serde_json::Value) -> Option<String> {
     let object = value.as_object()?;
 
@@ -199,28 +171,6 @@ fn xy_to_hex(x: f64, y: f64) -> String {
     };
 
     format!("#{:02x}{:02x}{:02x}", channel(r), channel(g), channel(b))
-}
-
-fn payload_for(attributes: &LightAttributes) -> serde_json::Value {
-    let mut payload = serde_json::Map::new();
-
-    if let Some(state) = &attributes.state {
-        payload.insert("state".into(), state.as_str().into());
-    }
-
-    if let Some(brightness) = attributes.brightness {
-        payload.insert("brightness".into(), brightness.into());
-    }
-
-    if let Some(colour_temp) = attributes.colour_temp {
-        payload.insert("color_temp".into(), colour_temp.into());
-    }
-
-    if let Some(colour) = &attributes.colour {
-        payload.insert("color".into(), serde_json::json!({ "hex": colour }));
-    }
-
-    payload.into()
 }
 
 async fn record_light_state(
@@ -357,46 +307,46 @@ impl LightHandler {
 
     async fn apply_set(
         &self,
+        decoder: &LuaDecoder,
         ieee_addr: &str,
         request: SetRequest,
     ) -> Result<LightState, anyhow::Error> {
-        let mut payload = serde_json::Map::new();
-        let mut attributes = LightAttributes::default();
-
-        if let Some(on) = request.on {
-            let state = if on { "ON" } else { "OFF" };
-            payload.insert("state".into(), state.into());
-            attributes.state = Some(state.to_owned());
-        }
-
-        if let Some(brightness) = request.brightness {
+        let brightness = request.brightness.map(|brightness| {
             self.warn_if_unsupported(ieee_addr, Capability::Brightness);
-            let brightness = brightness.clamp(0, BRIGHTNESS_MAX);
-            payload.insert("brightness".into(), brightness.into());
-            attributes.brightness = Some(brightness as i32);
-        }
+            brightness.clamp(0, BRIGHTNESS_MAX)
+        });
 
-        if let Some(colour_temp) = request.colour_temp {
+        let colour_temp = request.colour_temp.map(|colour_temp| {
             self.warn_if_unsupported(ieee_addr, Capability::ColourTemp);
-            let colour_temp = colour_temp.clamp(COLOUR_TEMP_MIN_MIREDS, COLOUR_TEMP_MAX_MIREDS);
-            payload.insert("color_temp".into(), colour_temp.into());
-            attributes.colour_temp = Some(colour_temp as i32);
-        }
+            colour_temp.clamp(COLOUR_TEMP_MIN_MIREDS, COLOUR_TEMP_MAX_MIREDS)
+        });
 
-        if let Some(colour) = request.colour {
+        let colour = request.colour.map(|colour| {
             self.warn_if_unsupported(ieee_addr, Capability::Rgb);
-            let colour = normalise_hex(&colour);
-            payload.insert("color".into(), serde_json::json!({"hex": colour}));
-            attributes.colour = Some(colour);
-        }
+            normalise_hex(&colour)
+        });
+
+        let attributes = LightAttributes {
+            state: request
+                .on
+                .map(|on| if on { "ON" } else { "OFF" }.to_owned()),
+            brightness: brightness.map(|brightness| brightness as i32),
+            colour_temp: colour_temp.map(|colour_temp| colour_temp as i32),
+            colour: colour.clone(),
+        };
 
         if attributes.is_empty() {
             return self.stored_state(ieee_addr).await;
         }
 
-        let sent = self
-            .send_mqtt_state(ieee_addr.to_owned(), payload.into())
-            .await?;
+        let command = LightCommand::Set {
+            on: request.on,
+            brightness,
+            colour_temp,
+            colour,
+        };
+
+        let sent = self.send(decoder, ieee_addr, &command).await?;
 
         if !sent {
             return self.stored_state(ieee_addr).await;
@@ -424,7 +374,11 @@ impl LightHandler {
         }
     }
 
-    async fn handle(&self, message: LightHandlerMessage) -> Result<(), anyhow::Error> {
+    async fn handle(
+        &self,
+        decoder: &LuaDecoder,
+        message: LightHandlerMessage,
+    ) -> Result<(), anyhow::Error> {
         match message {
             LightHandlerMessage::NewEvent(event) => {
                 let Entity {
@@ -440,98 +394,62 @@ impl LightHandler {
                 attributes,
                 ..
             } => {
-                self.send_mqtt_state(ieee_addr, payload_for(&attributes))
+                self.send(decoder, &ieee_addr, &LightCommand::reapply(&attributes))
                     .await?;
             }
             LightHandlerMessage::TurnOn { ieee_addr } => {
-                let attributes = LightAttributes::state("ON");
-
-                if self
-                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"state": "ON"}))
-                    .await?
-                {
-                    self.record_intent(&ieee_addr, &attributes, false).await;
-                }
+                self.send_and_record(
+                    decoder,
+                    &ieee_addr,
+                    &LightCommand::power(true),
+                    &LightAttributes::state("ON"),
+                )
+                .await?;
             }
             LightHandlerMessage::TurnOff { ieee_addr } => {
-                let attributes = LightAttributes::state("OFF");
-
-                if self
-                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"state": "OFF"}))
-                    .await?
-                {
-                    self.record_intent(&ieee_addr, &attributes, false).await;
-                }
+                self.send_and_record(
+                    decoder,
+                    &ieee_addr,
+                    &LightCommand::power(false),
+                    &LightAttributes::state("OFF"),
+                )
+                .await?;
             }
             LightHandlerMessage::Toggle { ieee_addr } => {
                 let on = self.stored_power_state(&ieee_addr).await?;
                 let target = if on { "OFF" } else { "ON" };
 
-                let state = if self
-                    .shared_actor_state
-                    .devices
-                    .esphome_light(&ieee_addr)
-                    .is_some()
-                {
-                    serde_json::json!({ "state": target })
-                } else {
-                    serde_json::json!({"state": "TOGGLE"})
-                };
-
-                if self.send_mqtt_state(ieee_addr.clone(), state).await? {
-                    self.record_intent(&ieee_addr, &LightAttributes::state(target), false)
-                        .await;
-                }
+                self.send_and_record(
+                    decoder,
+                    &ieee_addr,
+                    &LightCommand::Toggle,
+                    &LightAttributes::state(target),
+                )
+                .await?;
             }
             LightHandlerMessage::SetColourTemperature { ieee_addr, value } => {
-                self.warn_if_unsupported(&ieee_addr, Capability::ColourTemp);
-                let value = value.clamp(COLOUR_TEMP_MIN_MIREDS, COLOUR_TEMP_MAX_MIREDS);
-
-                let attributes = LightAttributes {
-                    colour_temp: Some(value as i32),
-                    ..LightAttributes::default()
+                let request = SetRequest {
+                    colour_temp: Some(value),
+                    ..SetRequest::default()
                 };
 
-                if self
-                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"color_temp": value}))
-                    .await?
-                {
-                    self.record_intent(&ieee_addr, &attributes, false).await;
-                }
+                self.apply_set(decoder, &ieee_addr, request).await?;
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
-                self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
-                let value = value.clamp(0, BRIGHTNESS_MAX);
-
-                let attributes = LightAttributes {
-                    brightness: Some(value as i32),
-                    ..LightAttributes::default()
+                let request = SetRequest {
+                    brightness: Some(value),
+                    ..SetRequest::default()
                 };
 
-                if self
-                    .send_mqtt_state(ieee_addr.clone(), serde_json::json!({"brightness": value}))
-                    .await?
-                {
-                    self.record_intent(&ieee_addr, &attributes, false).await;
-                }
+                self.apply_set(decoder, &ieee_addr, request).await?;
             }
             LightHandlerMessage::SetColour { ieee_addr, hex } => {
-                self.warn_if_unsupported(&ieee_addr, Capability::Rgb);
-
-                let attributes = LightAttributes {
-                    colour: Some(normalise_hex(&hex)),
-                    ..LightAttributes::default()
+                let request = SetRequest {
+                    colour: Some(hex),
+                    ..SetRequest::default()
                 };
 
-                if self
-                    .send_mqtt_state(
-                        ieee_addr.clone(),
-                        serde_json::json!({"color": {"hex": hex}}),
-                    )
-                    .await?
-                {
-                    self.record_intent(&ieee_addr, &attributes, false).await;
-                }
+                self.apply_set(decoder, &ieee_addr, request).await?;
             }
             LightHandlerMessage::BrightnessMove {
                 ieee_addr,
@@ -540,26 +458,19 @@ impl LightHandler {
             } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::Brightness);
 
-                let state = if on_off {
-                    serde_json::json!({"brightness_move_onoff": value})
-                } else {
-                    serde_json::json!({"brightness_move": value})
-                };
+                let command = LightCommand::BrightnessMove { value, on_off };
 
-                if self.send_mqtt_state(ieee_addr.clone(), state).await? {
+                if self.send(decoder, &ieee_addr, &command).await? {
                     self.record_intent(&ieee_addr, &LightAttributes::default(), true)
                         .await;
                 }
             }
             LightHandlerMessage::ColourTemperatureMove { ieee_addr, value } => {
                 self.warn_if_unsupported(&ieee_addr, Capability::ColourTemp);
-                let state = if value == 0 {
-                    serde_json::json!({"color_temp_move": "stop"})
-                } else {
-                    serde_json::json!({"color_temp_move": value})
-                };
 
-                if self.send_mqtt_state(ieee_addr.clone(), state).await? {
+                let command = LightCommand::ColourTempMove { value };
+
+                if self.send(decoder, &ieee_addr, &command).await? {
                     self.record_intent(&ieee_addr, &LightAttributes::default(), true)
                         .await;
                 }
@@ -569,7 +480,7 @@ impl LightHandler {
                 request,
                 reply,
             } => {
-                let state = self.apply_set(&ieee_addr, *request).await?;
+                let state = self.apply_set(decoder, &ieee_addr, *request).await?;
 
                 reply.send(state)?;
             }
@@ -598,64 +509,73 @@ impl LightHandler {
         Ok(())
     }
 
-    async fn send_mqtt_state(
+    async fn send_and_record(
         &self,
-        ieee_addr: String,
-        state: serde_json::Value,
+        decoder: &LuaDecoder,
+        ieee_addr: &str,
+        command: &LightCommand,
+        attributes: &LightAttributes,
+    ) -> Result<(), anyhow::Error> {
+        if self.send(decoder, ieee_addr, command).await? {
+            self.record_intent(ieee_addr, attributes, false).await;
+        }
+
+        Ok(())
+    }
+
+    async fn send(
+        &self,
+        decoder: &LuaDecoder,
+        ieee_addr: &str,
+        command: &LightCommand,
     ) -> Result<bool, anyhow::Error> {
         let devices = &self.shared_actor_state.devices;
 
-        let Some(device) = devices.device(&ieee_addr) else {
-            tracing::warn!("not sending light command to unregistered device {ieee_addr}");
+        let Some(profile) = devices
+            .device(ieee_addr)
+            .and_then(|device| device.profile.as_ref())
+        else {
+            tracing::warn!("not sending light command to {ieee_addr}: no model");
             return Ok(false);
         };
 
-        let protocol = device.profile.as_ref().and_then(|profile| profile.protocol);
+        let role = if profile.roles.contains(&DeviceRoleName::Light) {
+            DeviceRoleName::Light
+        } else if profile.roles.contains(&DeviceRoleName::SmartSwitch) {
+            DeviceRoleName::SmartSwitch
+        } else {
+            tracing::warn!("not sending light command to {ieee_addr}: it is not a light or switch");
+            return Ok(false);
+        };
 
-        let (vars, state) = match protocol {
-            Some(MqttProtocol::Zigbee) => (TopicVars::new(), state),
-            Some(MqttProtocol::Esphome) => {
-                let Some(object_id) = devices.esphome_light(&ieee_addr) else {
-                    tracing::warn!("esphome device {ieee_addr} has no light entity");
-                    return Ok(false);
-                };
+        let current = self.stored_state(ieee_addr).await?;
+        let input = LightEncodeInput {
+            command,
+            current: LightCurrent::from(&current),
+        };
 
-                let Some(state) = esphome_command(&state) else {
-                    tracing::warn!("esphome light {ieee_addr} does not support command: {state}");
-                    return Ok(false);
-                };
-
-                let vars = TopicVars::from([
-                    ("domain".to_owned(), EsphomeDomain::Light.to_string()),
-                    ("object_id".to_owned(), object_id.to_owned()),
-                ]);
-
-                (vars, state)
+        let payload = match profile.encode(decoder, role, &input) {
+            Ok(Some(payload)) => payload,
+            Ok(None) => {
+                tracing::warn!("light {ieee_addr} does not support {command:?}");
+                return Ok(false);
             }
-            Some(MqttProtocol::Valetudo) | None => {
-                tracing::warn!(
-                    "{} device {ieee_addr} can't take light commands",
-                    device.transport
-                );
+            Err(e) => {
+                tracing::warn!("failed to encode {command:?} for light {ieee_addr}: {e}");
                 return Ok(false);
             }
         };
 
-        let topic = match devices.mqtt_command_topic(&ieee_addr, vars).await {
-            Ok(topic) => topic,
+        let targets = CommandTargets::new(devices, &self.shared_actor_state.handles);
+
+        match device_command::send(&targets, ieee_addr, role, Outbound::Json(payload)).await {
+            Ok(()) => Ok(true),
+            Err(DeviceCommandError::Mqtt(e)) => Err(e.into()),
             Err(e) => {
                 tracing::warn!("not sending light command to {ieee_addr}: {e}");
-                return Ok(false);
+                Ok(false)
             }
-        };
-
-        self.shared_actor_state
-            .handles
-            .expect::<MqttClient>()
-            .send_event(topic, state)
-            .await?;
-
-        Ok(true)
+        }
     }
 }
 
@@ -663,7 +583,7 @@ impl DeviceHandler for LightHandler {
     const NAME: &'static str = LightHandler::NAME;
 
     type Message = LightHandlerMessage;
-    type State = ();
+    type State = LuaDecoder;
 
     fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
@@ -673,14 +593,26 @@ impl DeviceHandler for LightHandler {
         workers.light
     }
 
-    async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
-        Self::handle(self, message).await
+    fn init_state(&self) -> anyhow::Result<Self::State> {
+        let settings = &self.shared_actor_state.settings;
+
+        Ok(settings
+            .model_sources
+            .decoder(Transport::Mqtt, &settings.lua)?)
+    }
+
+    async fn handle(
+        &self,
+        message: Self::Message,
+        decoder: &mut Self::State,
+    ) -> anyhow::Result<()> {
+        Self::handle(self, decoder, message).await
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{colour_hex, esphome_command};
+    use super::colour_hex;
 
     #[test]
     fn reads_colour_from_xy_and_hex() {
@@ -703,37 +635,5 @@ mod tests {
 
         assert!(red.starts_with("#ff"), "{red}");
         assert!(blue.ends_with("ff"), "{blue}");
-    }
-
-    #[test]
-    fn translates_on_off_brightness_and_colour() {
-        assert_eq!(
-            esphome_command(&serde_json::json!({"state": "ON"})),
-            Some(serde_json::json!({"state": "ON"}))
-        );
-        assert_eq!(
-            esphome_command(&serde_json::json!({"brightness": 254})),
-            Some(serde_json::json!({"brightness": 255}))
-        );
-        assert_eq!(
-            esphome_command(&serde_json::json!({"brightness": 0})),
-            Some(serde_json::json!({"brightness": 0}))
-        );
-        assert_eq!(
-            esphome_command(&serde_json::json!({"color": {"hex": "#ff8000"}})),
-            Some(serde_json::json!({"color": {"r": 255, "g": 128, "b": 0}}))
-        );
-    }
-
-    #[test]
-    fn rejects_zigbee_only_commands() {
-        for command in [
-            serde_json::json!({"state": "TOGGLE"}),
-            serde_json::json!({"brightness_move": 40}),
-            serde_json::json!({"brightness_move_onoff": 40}),
-            serde_json::json!({"color_temp_move": "stop"}),
-        ] {
-            assert_eq!(esphome_command(&command), None, "{command}");
-        }
     }
 }

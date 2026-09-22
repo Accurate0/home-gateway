@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../schemas/config.editor.schema.json#/$defs/RawIntegrationSettings
+s3:
+  bucket: home-gateway-bucket
+  region: ap-southeast-2
+
+holidays:
+  url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
+  regions: [Western Australia]
+
+woolworths:
+  state: enabled
+  refresh: 1h
+
+trmnl:
+  state: enabled
+  refresh: 3h
+  base_url: https://trmnl.com
+
+willyweather:
+  state: enabled
+  refresh: 1h
+  days: 7
+  default_location: perth
+  locations:
+    perth: "14576"
+
+fuelwatch:
+  state: enabled
+  postcode: 6000
+  refresh: 1h
+
+solar:
+  state: enabled
+  refresh: 1m
+
+transperth:
+  state: enabled
+  refresh_peak: 3m
+  refresh_off_peak: 15m
+  horizon: 2h
+  peak:
+    - start: "06:00"
+      end: "09:30"
+    - start: "15:00"
+      end: "18:30"
+  routes:
+    - id: aubin-grove-to-perth
+      from: Aubin Grove Stn
+      to: Perth Underground Stn
+      limit: 3
+  cache:
+    routes:
+      capacity: 32
+      ttl: 1h
+    timetables:
+      capacity: 16
+      ttl: 6h

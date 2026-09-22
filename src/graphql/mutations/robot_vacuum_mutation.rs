@@ -2,6 +2,7 @@ use async_graphql::Object;
 
 use crate::actors::devices::robot_vacuum::command;
 use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
+use crate::device_command::CommandTargets;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
 use crate::integrations::home_assistant::HomeAssistant;
@@ -25,21 +26,17 @@ impl RobotVacuumMutation {
         ctx: &async_graphql::Context<'_>,
         vacuum_command: VacuumCommand,
     ) -> async_graphql::Result<bool> {
-        let mqtt = crate::graphql::require::<MqttClient>(ctx, "mqtt")?;
-        let home_assistant = ctx
-            .data::<crate::state::HandleRegistry>()?
-            .get::<HomeAssistant>();
-        let devices = ctx.data::<DeviceRegistry>()?;
+        let targets = CommandTargets {
+            devices: ctx.data::<DeviceRegistry>()?,
+            mqtt: crate::graphql::require::<MqttClient>(ctx, "mqtt")?,
+            home_assistant: ctx
+                .data::<crate::state::HandleRegistry>()?
+                .get::<HomeAssistant>(),
+        };
 
-        command::send(
-            &self.settings,
-            vacuum_command,
-            home_assistant,
-            mqtt,
-            devices,
-        )
-        .await
-        .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        command::send(&targets, &self.settings, vacuum_command)
+            .await
+            .map_err(|e| async_graphql::Error::new(e.to_string()))?;
 
         Ok(true)
     }

@@ -3,6 +3,8 @@ return {
 	protocol = "zigbee",
 	roles = { "smart_switch" },
 
+	encode = { smart_switch = gw.lib("zigbee_switch") },
+
 	decode = function(input)
 		local payload = input.payload
 

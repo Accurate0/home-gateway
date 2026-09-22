@@ -47,7 +47,7 @@ impl VacationMode {
     }
 
     async fn enabled(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {
-        Ok(ctx.data::<SettingsContainer>()?.vacation.enabled)
+        Ok(ctx.data::<SettingsContainer>()?.vacation.state.is_enabled())
     }
 
     async fn window(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<String> {
