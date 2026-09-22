@@ -27,15 +27,27 @@ impl SolarActor {
     pub const NAME: &str = "solar";
 
     async fn poll(&self) -> Result<Vec<WeatherReading>, ractor::ActorProcessingErr> {
-        let login_data = self.goodwe.get_new_or_cached_login_data().await?;
-        let solar_data = self.goodwe.get_solar_data(login_data).await?;
+        let solar = async {
+            let login_data = self.goodwe.get_new_or_cached_login_data().await?;
+
+            self.goodwe.get_solar_data(login_data).await
+        };
+
+        let (solar_data, uv_level, weather) = tokio::join!(
+            solar,
+            self.weather.get_uv_level(WeatherAPI::PERTH_NAME),
+            self.weather
+                .get_weather_details(WeatherAPI::JANDAKOT_GEOCODE),
+        );
+
+        let solar_data = solar_data?;
 
         let current_kwh = solar_data.data.kpi.pac;
         let raw_data = serde_json::to_value(&solar_data)?;
 
-        tracing::info!("fetched solar data: {current_kwh}");
+        tracing::debug!("fetched solar data: {current_kwh}");
 
-        let uv_level = match self.weather.get_uv_level(WeatherAPI::PERTH_NAME).await {
+        let uv_level = match uv_level {
             Ok(uv_level) => Some(uv_level),
             Err(e) => {
                 tracing::error!("error getting uv level: {e}");
@@ -43,11 +55,7 @@ impl SolarActor {
             }
         };
 
-        let observation = match self
-            .weather
-            .get_weather_details(WeatherAPI::JANDAKOT_GEOCODE)
-            .await
-        {
+        let observation = match weather {
             Ok(weather) => Some(weather.data),
             Err(e) => {
                 tracing::error!("error getting weather details: {e}");
@@ -57,7 +65,7 @@ impl SolarActor {
 
         let temperature = observation.as_ref().map(|observation| observation.temp);
 
-        tracing::info!("fetched uv level: {uv_level:?}, temperature: {temperature:?}");
+        tracing::debug!("fetched uv level:{uv_level:?}, temperature: {temperature:?}");
 
         self.shared_actor_state
             .repos

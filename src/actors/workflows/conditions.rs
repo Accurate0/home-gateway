@@ -323,6 +323,7 @@ pub async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, 
     Ok(rpc::query_factory(LightHandler::NAME, timeout, |reply| {
         LightHandlerMessage::QueryPowerState {
             ieee_addr: ieee_addr.to_owned(),
+            traceparent: crate::tracing_context::inject_current(),
             reply,
         }
     })
@@ -379,6 +380,7 @@ pub async fn query_presence(sensor: &str, timeout: Duration) -> Result<bool, Wor
     let present: Option<bool> = rpc::query_factory(PresenceSensorHandler::NAME, timeout, |reply| {
         PresenceMessage::QueryLatest {
             sensor: sensor.to_owned(),
+            traceparent: crate::tracing_context::inject_current(),
             reply,
         }
     })

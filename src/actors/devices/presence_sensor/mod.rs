@@ -25,6 +25,7 @@ pub enum Message {
     /// or `None` if the sensor hasn't reported since startup.
     QueryLatest {
         sensor: String,
+        traceparent: crate::tracing_context::TraceParent,
         reply: RpcReplyPort<Option<bool>>,
     },
 }
@@ -33,7 +34,7 @@ impl crate::tracing_context::TracedMessage for Message {
     fn traceparent(&self) -> Option<&str> {
         match self {
             Message::NewEvent(event) => event.traceparent.as_deref(),
-            Message::QueryLatest { .. } => None,
+            Message::QueryLatest { traceparent, .. } => traceparent.as_deref(),
         }
     }
 
@@ -99,7 +100,7 @@ impl PresenceSensorHandler {
         state: &mut PresenceSensorState,
     ) -> Result<(), anyhow::Error> {
         match message {
-            Message::QueryLatest { sensor, reply } => {
+            Message::QueryLatest { sensor, reply, .. } => {
                 reply.send(state.last_presence.get(&sensor).copied())?;
             }
             Message::NewEvent(event) => {

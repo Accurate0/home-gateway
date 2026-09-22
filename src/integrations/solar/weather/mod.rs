@@ -53,7 +53,7 @@ impl WeatherAPI {
             .json::<WeatherDetails>()
             .await?;
 
-        tracing::info!("fetched weather details");
+        tracing::debug!("fetched weather details");
 
         Ok(weather_details)
     }
@@ -72,7 +72,7 @@ impl WeatherAPI {
 
         let uv_levels = quick_xml::de::from_str::<UVXMLDocument>(&uv_levels_xml)?;
 
-        tracing::info!("fetched uv level data");
+        tracing::debug!("fetched uv level data");
 
         uv_levels
             .location

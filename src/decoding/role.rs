@@ -22,6 +22,8 @@ pub trait DecodedRole: Sized {
 
     const ACTOR: &'static str;
 
+    fn present(reading: &DeviceReading) -> bool;
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool;
 
     fn extract(
@@ -37,6 +39,11 @@ impl DecodedRole for door_sensor::Entity {
     type Message = door_sensor::Message;
 
     const ACTOR: &'static str = DoorSensorHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.door.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.door(address).is_some()
     }
@@ -48,7 +55,7 @@ impl DecodedRole for door_sensor::Entity {
     ) -> Option<Self> {
         let address = &device.address;
 
-        let Some(contact) = reading.door.as_ref().and_then(|fields| fields.contact) else {
+        let Some(contact) = reading.door.as_ref()?.contact else {
             tracing::info!("skipping door reading for {address}: no contact in payload");
             return None;
         };
@@ -74,6 +81,11 @@ impl DecodedRole for environment_sensor::Entity {
     type Message = environment_sensor::Message;
 
     const ACTOR: &'static str = EnvironmentSensorHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.environment.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.environment(address).is_some()
     }
@@ -86,10 +98,7 @@ impl DecodedRole for environment_sensor::Entity {
         let address = &device.address;
         let declared = &device.profile.environment;
 
-        let Some(reported) = reading.environment.as_ref() else {
-            tracing::info!("skipping environment reading for {address}: no environment in payload");
-            return None;
-        };
+        let reported = reading.environment.as_ref()?;
 
         for metric in reported.keys().filter(|metric| !declared.contains(metric)) {
             tracing::warn!(
@@ -134,6 +143,11 @@ impl DecodedRole for plant_sensor::Entity {
     type Message = plant_sensor::Message;
 
     const ACTOR: &'static str = PlantSensorHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.plant.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.plant(address).is_some()
     }
@@ -146,10 +160,7 @@ impl DecodedRole for plant_sensor::Entity {
         let address = &device.address;
         let declared = &device.profile.plant;
 
-        let Some(reported) = reading.plant.as_ref() else {
-            tracing::debug!("skipping plant reading for {address}: no plant in this update");
-            return None;
-        };
+        let reported = reading.plant.as_ref()?;
 
         let readings: std::collections::BTreeMap<String, f64> = reported
             .iter()
@@ -193,6 +204,11 @@ impl DecodedRole for light::Entity {
     type Message = light::LightHandlerMessage;
 
     const ACTOR: &'static str = LightHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.light.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.light(address).is_some()
     }
@@ -204,10 +220,7 @@ impl DecodedRole for light::Entity {
     ) -> Option<Self> {
         let address = &device.address;
 
-        let Some(fields) = reading.light.as_ref() else {
-            tracing::info!("skipping light reading for {address}: no light in payload");
-            return None;
-        };
+        let fields = reading.light.as_ref()?;
 
         let Some(state) = fields.state.clone() else {
             tracing::info!("skipping light reading for {address}: no state in payload");
@@ -238,6 +251,11 @@ impl DecodedRole for smart_switch::Entity {
     type Message = smart_switch::Message;
 
     const ACTOR: &'static str = SmartSwitchHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.smart_switch.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.smart_switch(address).is_some()
     }
@@ -249,12 +267,7 @@ impl DecodedRole for smart_switch::Entity {
     ) -> Option<Self> {
         let address = &device.address;
 
-        let Some(fields) = reading.smart_switch.as_ref() else {
-            tracing::info!(
-                "skipping smart switch reading for {address}: no smart_switch in payload"
-            );
-            return None;
-        };
+        let fields = reading.smart_switch.as_ref()?;
 
         let (Some(voltage), Some(power), Some(current), Some(energy)) =
             (fields.voltage, fields.power, fields.current, fields.energy)
@@ -287,6 +300,11 @@ impl DecodedRole for presence_sensor::Entity {
     type Message = presence_sensor::Message;
 
     const ACTOR: &'static str = PresenceSensorHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.presence.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.presence(address).is_some()
     }
@@ -298,10 +316,7 @@ impl DecodedRole for presence_sensor::Entity {
     ) -> Option<Self> {
         let address = &device.address;
 
-        let Some(fields) = reading.presence.as_ref() else {
-            tracing::info!("skipping presence reading for {address}: no presence in payload");
-            return None;
-        };
+        let fields = reading.presence.as_ref()?;
 
         let Some(presence) = fields.presence else {
             tracing::info!("skipping presence reading for {address}: no presence value");
@@ -328,6 +343,11 @@ impl DecodedRole for control_switch::Entity {
     type Message = control_switch::ControlSwitchMessage;
 
     const ACTOR: &'static str = ControlSwitchHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.control_switch.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.control_switch(address)
     }
@@ -341,8 +361,9 @@ impl DecodedRole for control_switch::Entity {
 
         let action = reading
             .control_switch
-            .as_ref()
-            .and_then(|fields| fields.action.clone())
+            .as_ref()?
+            .action
+            .clone()
             .filter(|action| !action.is_empty());
 
         let Some(action) = action else {
@@ -369,6 +390,11 @@ impl DecodedRole for robot_vacuum::RobotVacuumReading {
     type Message = robot_vacuum::Message;
 
     const ACTOR: &'static str = RobotVacuumHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.robot_vacuum.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.robot_vacuum(address).is_some()
     }
@@ -378,13 +404,7 @@ impl DecodedRole for robot_vacuum::RobotVacuumReading {
         _friendly_name: &str,
         reading: &DeviceReading,
     ) -> Option<Self> {
-        let Some(fields) = reading.robot_vacuum.as_ref() else {
-            tracing::debug!(
-                "skipping robot vacuum reading for {}: no robot_vacuum in this update",
-                device.address
-            );
-            return None;
-        };
+        let fields = reading.robot_vacuum.as_ref()?;
 
         Some(robot_vacuum::RobotVacuumReading {
             device_id: device.id.clone(),
@@ -412,6 +432,11 @@ impl DecodedRole for media_player::MediaPlayerReading {
     type Message = media_player::Message;
 
     const ACTOR: &'static str = MediaPlayerHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.media_player.is_some()
+    }
+
     fn declared(devices: &DeviceRegistry, address: &str) -> bool {
         devices.media_player(address).is_some()
     }
@@ -423,12 +448,7 @@ impl DecodedRole for media_player::MediaPlayerReading {
     ) -> Option<Self> {
         let address = &device.address;
 
-        let Some(fields) = reading.media_player.as_ref() else {
-            tracing::debug!(
-                "skipping media player reading for {address}: no media_player in this update"
-            );
-            return None;
-        };
+        let fields = reading.media_player.as_ref()?;
 
         let Some(state) = fields.state.clone() else {
             tracing::info!("skipping media player reading for {address}: no state");
@@ -461,7 +481,7 @@ pub fn run<R: DecodedRole>(
     friendly_name: &str,
     reading: &DeviceReading,
 ) {
-    if !R::declared(devices, &device.address) {
+    if !R::present(reading) || !R::declared(devices, &device.address) {
         return;
     }
 

@@ -21,6 +21,7 @@ pub struct WatchdogActor {
 impl WatchdogActor {
     pub const NAME: &str = "watchdog";
 
+    #[tracing::instrument(parent = None, name = "watchdog.check", skip_all, err)]
     async fn check(&self) -> Result<(), anyhow::Error> {
         let watchdog = &self.shared_actor_state.settings.watchdog;
         let now = Utc::now();

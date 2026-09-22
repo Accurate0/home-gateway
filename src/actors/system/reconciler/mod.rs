@@ -60,6 +60,7 @@ impl ReconcilerWorker {
                     LightHandlerMessage::Reapply {
                         ieee_addr: intent.address.clone(),
                         attributes: Box::new(attributes.clone()),
+                        traceparent: crate::tracing_context::inject_current(),
                     },
                 )?;
 

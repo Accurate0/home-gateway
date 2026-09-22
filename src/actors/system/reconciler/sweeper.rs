@@ -19,6 +19,7 @@ pub struct ReconcilerSweeper {
 impl ReconcilerSweeper {
     pub const NAME: &str = "reconciler-sweeper";
 
+    #[tracing::instrument(parent = None, name = "reconciler.sweep", skip_all, err)]
     async fn sweep(&self) -> Result<(), anyhow::Error> {
         let reconciler = &self.shared_actor_state.settings.reconciler;
 

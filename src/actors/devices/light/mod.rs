@@ -41,10 +41,12 @@ pub struct NewEvent {
 pub enum LightHandlerMessage {
     QueryPowerState {
         ieee_addr: IEEEAddress,
+        traceparent: crate::tracing_context::TraceParent,
         reply: RpcReplyPort<bool>,
     },
     QueryState {
         ieee_addr: IEEEAddress,
+        traceparent: crate::tracing_context::TraceParent,
         reply: RpcReplyPort<LightState>,
     },
     Set {
@@ -56,6 +58,7 @@ pub enum LightHandlerMessage {
     Reapply {
         ieee_addr: IEEEAddress,
         attributes: Box<LightAttributes>,
+        traceparent: crate::tracing_context::TraceParent,
     },
     TurnOn {
         ieee_addr: IEEEAddress,
@@ -93,6 +96,9 @@ impl crate::tracing_context::TracedMessage for LightHandlerMessage {
     fn traceparent(&self) -> Option<&str> {
         match self {
             LightHandlerMessage::NewEvent(event) => event.traceparent.as_deref(),
+            LightHandlerMessage::QueryPowerState { traceparent, .. }
+            | LightHandlerMessage::QueryState { traceparent, .. }
+            | LightHandlerMessage::Reapply { traceparent, .. } => traceparent.as_deref(),
             _ => None,
         }
     }
@@ -432,6 +438,7 @@ impl LightHandler {
             LightHandlerMessage::Reapply {
                 ieee_addr,
                 attributes,
+                ..
             } => {
                 self.send_mqtt_state(ieee_addr, payload_for(&attributes))
                     .await?;
@@ -566,12 +573,16 @@ impl LightHandler {
 
                 reply.send(state)?;
             }
-            LightHandlerMessage::QueryState { ieee_addr, reply } => {
+            LightHandlerMessage::QueryState {
+                ieee_addr, reply, ..
+            } => {
                 let state = self.stored_state(&ieee_addr).await?;
 
                 reply.send(state)?;
             }
-            LightHandlerMessage::QueryPowerState { ieee_addr, reply } => {
+            LightHandlerMessage::QueryPowerState {
+                ieee_addr, reply, ..
+            } => {
                 let is_on = self
                     .shared_actor_state
                     .repos

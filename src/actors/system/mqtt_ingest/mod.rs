@@ -213,7 +213,7 @@ impl MqttIngest {
                 }) => {
                     self.record_last_seen(&device.address).await;
 
-                    tracing::info!(
+                    tracing::debug!(
                         "received {} message for {friendly_name} ({}, model {})",
                         device.profile.source(),
                         device.address,

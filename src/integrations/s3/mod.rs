@@ -60,6 +60,21 @@ impl S3 {
         Ok(response.to_vec())
     }
 
+    #[tracing::instrument(skip_all, name = "s3.find_object", fields(key = %key, found = tracing::field::Empty), err)]
+    pub async fn find_object(&self, key: &str) -> anyhow::Result<Option<Vec<u8>>> {
+        let response = self.bucket.get_object(key).await?;
+
+        let object = match response.status_code() {
+            200 => Some(response.to_vec()),
+            404 => None,
+            status => anyhow::bail!("unexpected status {status} fetching object {key}"),
+        };
+
+        tracing::Span::current().record("found", object.is_some());
+
+        Ok(object)
+    }
+
     /// Conditional GET: if the object's etag matches `etag`, the server returns
     /// 304 and we report [`OptionalObjectResponse::ExistingObjectIsValid`]
     /// without re-downloading the body.

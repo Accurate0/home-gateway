@@ -82,6 +82,7 @@ impl PresenceEntity {
             rpc::query_factory(PresenceSensorHandler::NAME, query_timeout(ctx)?, |reply| {
                 PresenceMessage::QueryLatest {
                     sensor: self.address.clone(),
+                    traceparent: crate::tracing_context::inject_current(),
                     reply,
                 }
             })

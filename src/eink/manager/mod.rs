@@ -318,8 +318,8 @@ impl EinkDisplayManager {
             }
         };
 
-        match self.s3.get_object(&key).await {
-            Ok(bytes) => {
+        match self.s3.find_object(&key).await {
+            Ok(Some(bytes)) => {
                 let frame = bytes::Bytes::from(bytes);
                 self.packed_frames
                     .insert(hash.to_string(), frame.clone())
@@ -327,8 +327,12 @@ impl EinkDisplayManager {
 
                 Some(frame)
             }
+            Ok(None) => {
+                tracing::debug!(key = %key, "packed frame is not in the s3 cache");
+                None
+            }
             Err(e) => {
-                tracing::debug!(key = %key, "packed frame is not in the s3 cache: {e}");
+                tracing::warn!(key = %key, "failed to read the packed frame cache: {e}");
                 None
             }
         }

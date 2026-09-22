@@ -150,7 +150,7 @@ impl GoodWeSemsAPI {
 
         match serde_json::from_value::<LoginData>(latest.login_data) {
             Ok(login_data) => {
-                tracing::info!("using cached goodwe login data");
+                tracing::debug!("using cached goodwe login data");
                 Ok(login_data)
             }
             Err(e) => {

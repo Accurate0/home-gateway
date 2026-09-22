@@ -76,7 +76,11 @@ impl LuaModule for LightLua {
 
                     cx.query("light.is_on", || async {
                         rpc::query_factory(LightHandler::NAME, cx.timeout(), |reply| {
-                            LightHandlerMessage::QueryPowerState { ieee_addr, reply }
+                            LightHandlerMessage::QueryPowerState {
+                                ieee_addr,
+                                traceparent: crate::tracing_context::inject_current(),
+                                reply,
+                            }
                         })
                         .await
                     })

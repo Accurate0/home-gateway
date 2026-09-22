@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::IsTerminal;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -246,6 +247,7 @@ pub fn telemetry_filter(exporter_level: LevelFilter) -> Targets {
         .with_target("opentelemetry_sdk", exporter_level)
         .with_target("ractor", Level::WARN)
         .with_target("async_graphql::dataloader", Level::WARN)
+        .with_target("chromiumoxide::handler", Level::ERROR)
         .with_target(SQLX_QUERY_TARGET, Level::DEBUG)
         .with_default(Level::INFO)
 }
@@ -254,6 +256,15 @@ pub fn console_filter() -> Targets {
     Targets::default()
         .with_target(SQLX_QUERY_TARGET, LevelFilter::OFF)
         .with_default(Level::INFO)
+}
+
+fn console_layer<S>() -> impl Layer<S>
+where
+    S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span>,
+{
+    tracing_subscriber::fmt::layer()
+        .with_ansi(std::io::stdout().is_terminal())
+        .with_filter(console_filter())
 }
 
 pub fn init() -> SamplingControl {
@@ -276,7 +287,7 @@ pub fn init() -> SamplingControl {
             tracing_subscriber::registry()
                 .with(filter)
                 .with(crate::span_metrics::DbQueryLayer)
-                .with(tracing_subscriber::fmt::layer().with_filter(console_filter()))
+                .with(console_layer())
                 .with(tracing_opentelemetry::layer().with_tracer(tracer))
                 .init();
         }
@@ -284,7 +295,7 @@ pub fn init() -> SamplingControl {
             tracing_subscriber::registry()
                 .with(filter)
                 .with(crate::span_metrics::DbQueryLayer)
-                .with(tracing_subscriber::fmt::layer().with_filter(console_filter()))
+                .with(console_layer())
                 .init();
         }
     }

@@ -611,20 +611,6 @@ impl WorkflowDispatcher {
 
                 continue;
             }
-            if !self
-                .shared_actor_state
-                .handles
-                .expect::<WorkflowManager>()
-                .enabled(&workflow.slug, workflow.enabled)
-                .await
-            {
-                continue;
-            }
-
-            if !self.modes_active(event_id, workflow).await {
-                continue;
-            }
-
             let trigger_span = tracing::info_span!(
                 parent: None,
                 "trigger.evaluate",
@@ -635,6 +621,21 @@ impl WorkflowDispatcher {
                 event_id = %event_id,
             );
             crate::tracing_context::set_parent(&trigger_span, traceparent.as_deref());
+
+            let gated = async {
+                self.shared_actor_state
+                    .handles
+                    .expect::<WorkflowManager>()
+                    .enabled(&workflow.slug, workflow.enabled)
+                    .await
+                    && self.modes_active(event_id, workflow).await
+            }
+            .instrument(trigger_span.clone())
+            .await;
+
+            if !gated {
+                continue;
+            }
 
             self.evaluate_trigger(myself, event_id, workflow, &subject, &vars, state, pending)
                 .instrument(trigger_span)
