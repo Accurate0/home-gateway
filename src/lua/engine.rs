@@ -12,6 +12,7 @@ use crate::variables::{Node, VarType, Vars};
 
 use super::bridge::{install_vars, returned_node};
 use super::error::InstructionLimit;
+use super::inspect::inspect;
 use super::{
     CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSession, LuaSource, Script, builtin,
     bytecode,
@@ -155,23 +156,17 @@ impl LuaEngine {
         cx: &LuaCallContext,
         lua: &Lua,
         script: &Script,
-    ) -> Result<serde_json::Value, LuaError> {
+    ) -> Result<Option<String>, LuaError> {
         install_instruction_limit(lua, self.settings.max_instructions)
             .map_err(LuaError::from_mlua)?;
 
         let value = self.eval_in(cx, lua, script).await?;
 
-        if value.is_nil() {
-            return Ok(serde_json::Value::Null);
+        if value.is_nil() && !bytecode::is_expression(script.raw()) {
+            return Ok(None);
         }
 
-        match lua.from_value(value.clone()) {
-            Ok(json) => Ok(json),
-            Err(_) => value
-                .to_string()
-                .map(serde_json::Value::String)
-                .map_err(LuaError::from_mlua),
-        }
+        Ok(Some(inspect(&value)))
     }
 
     pub async fn run_unit(

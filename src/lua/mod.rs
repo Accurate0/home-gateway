@@ -11,6 +11,7 @@ mod engine;
 mod error;
 pub mod execute;
 pub mod flag;
+mod inspect;
 mod module;
 pub mod regex;
 mod registry;

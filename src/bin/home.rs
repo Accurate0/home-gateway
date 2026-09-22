@@ -7,6 +7,7 @@ use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, Up
 use home_gateway::cli::client::{Client, DEFAULT_BASE_URL, REQUEST_TIMEOUT};
 use home_gateway::cli::credentials;
 use home_gateway::cli::events;
+use home_gateway::cli::lua_completer::LuaCompleter;
 use home_gateway::cli::oauth::{self, DEFAULT_CLIENT_ID, DEFAULT_ISSUER};
 use home_gateway::http::get_traced_http_client;
 use reqwest::{Method, StatusCode};
@@ -1266,7 +1267,7 @@ fn curl(client: &Client, args: &CurlArgs) -> Result<()> {
 async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()> {
     let args = match command {
         LuaCommand::Run(args) => args,
-        LuaCommand::Repl(args) => return lua_repl(client, args, as_json).await,
+        LuaCommand::Repl(args) => return lua_repl(client, args).await,
     };
 
     let script = match (&args.file, &args.expression) {
@@ -1281,8 +1282,13 @@ async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()>
     print_lua_result(&result, as_json)
 }
 
-async fn lua_repl(client: &Client, args: &LuaReplArgs, as_json: bool) -> Result<()> {
-    let mut editor = rustyline::DefaultEditor::new()?;
+const LUA_API_QUERY: &str = "{ luaApi { globals { name } namespaces { name fields { name } functions { name signature } } } }";
+
+async fn lua_repl(client: &Client, args: &LuaReplArgs) -> Result<()> {
+    let api = client.graphql(LUA_API_QUERY, json!({})).await?;
+
+    let mut editor = rustyline::Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new()?;
+    editor.set_helper(Some(LuaCompleter::from_api(&api["luaApi"])));
     let history = credentials::path()?.with_file_name("lua_history");
 
     if let Some(dir) = history.parent() {
@@ -1365,7 +1371,11 @@ async fn lua_repl(client: &Client, args: &LuaReplArgs, as_json: bool) -> Result<
         let reply: Value = serde_json::from_str(&reply).context("malformed repl reply")?;
 
         match reply["type"].as_str() {
-            Some("result") => print_lua_result(&reply["result"], as_json)?,
+            Some("result") => {
+                if let Some(display) = reply["display"].as_str() {
+                    println!("{display}");
+                }
+            }
             Some("error") => eprintln!("error: {}", reply["error"].as_str().unwrap_or_default()),
             other => eprintln!("unexpected repl reply: {other:?}"),
         }

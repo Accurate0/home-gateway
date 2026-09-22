@@ -26,7 +26,7 @@ struct LuaReplRequest {
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum LuaReplReply {
-    Result { result: serde_json::Value },
+    Result { display: Option<String> },
     Error { error: String },
 }
 
@@ -109,7 +109,7 @@ async fn evaluate(session: &LuaSession, text: &str) -> LuaReplReply {
     };
 
     match session.eval(&script).await {
-        Ok(result) => LuaReplReply::Result { result },
+        Ok(display) => LuaReplReply::Result { display },
         Err(e) => LuaReplReply::Error {
             error: e.to_string(),
         },

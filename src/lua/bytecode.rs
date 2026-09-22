@@ -21,15 +21,20 @@ pub fn compile(name: &str, source: &str) -> Result<Vec<u8>, String> {
     Ok(function.dump(false))
 }
 
-pub fn is_incomplete(source: &str) -> bool {
-    let lua = Lua::new();
+pub fn is_expression(source: &str) -> bool {
+    Lua::new()
+        .load(format!("return {source}"))
+        .into_function()
+        .is_ok()
+}
 
-    if lua.load(format!("return {source}")).into_function().is_ok() {
+pub fn is_incomplete(source: &str) -> bool {
+    if is_expression(source) {
         return false;
     }
 
     matches!(
-        lua.load(source).into_function(),
+        Lua::new().load(source).into_function(),
         Err(mlua::Error::SyntaxError {
             incomplete_input: true,
             ..

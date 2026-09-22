@@ -17,7 +17,7 @@ impl LuaSession {
         &self.cx
     }
 
-    pub async fn eval(&self, script: &Script) -> Result<serde_json::Value, LuaError> {
+    pub async fn eval(&self, script: &Script) -> Result<Option<String>, LuaError> {
         self.engine.eval_session(&self.cx, &self.lua, script).await
     }
 }
