@@ -277,7 +277,12 @@ impl PushActor {
             return;
         }
 
-        let project_id = self.shared_actor_state.settings.fcm_project_id.clone();
+        let project_id = self
+            .shared_actor_state
+            .settings
+            .notify_android
+            .fcm_project_id
+            .clone();
 
         let access_token = match token_provider.token(&[FCM_SCOPE]).await {
             Ok(t) => t,

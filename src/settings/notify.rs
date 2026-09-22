@@ -10,6 +10,7 @@ pub type NotifyTargets = HashMap<String, NotifySource>;
 pub struct RawNotifySettings {
     pub targets: NotifyTargets,
     pub disabled: Vec<String>,
+    pub android: super::NotifyAndroidSettings,
 }
 
 #[derive(Debug, Deserialize, Clone, JsonSchema)]

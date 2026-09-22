@@ -40,6 +40,7 @@ pub mod mqtt_protocol;
 pub mod mqtt_protocols;
 pub mod no_parameters;
 pub mod notify;
+pub mod notify_android;
 pub mod notify_filter;
 pub mod notify_source;
 pub mod oauth;
@@ -110,6 +111,7 @@ pub use notify::{
     NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory, NotifySource, NotifyTargets,
     RawNotifySettings, validate_acknowledge,
 };
+pub use notify_android::NotifyAndroidSettings;
 pub use notify_filter::NotifyFilter;
 pub use notify_source::NotificationSource;
 pub use oauth::OAuthSettings;
@@ -159,10 +161,9 @@ pub struct Settings {
     pub graphql: GraphqlSettings,
     pub actors: ActorSettings,
     pub tracing: TracingSettings,
-    pub fcm_project_id: String,
-    pub fcm_service_account_json: String,
     pub mqtt: MqttSettings,
     pub notify: NotifyFilter,
+    pub notify_android: NotifyAndroidSettings,
     pub workflows: HashMap<String, WorkflowDefinition>,
     pub workflow: WorkflowSettings,
     pub reconciler: ReconcilerSettings,
@@ -196,10 +197,6 @@ pub struct RawSettings {
     graphql: GraphqlSettings,
     actors: ActorSettings,
     tracing: TracingSettings,
-    #[serde(default)]
-    fcm_project_id: String,
-    #[serde(default)]
-    fcm_service_account_json: String,
     mqtt: MqttSettings,
     notify: RawNotifySettings,
     #[serde(default)]
@@ -239,8 +236,6 @@ impl RawSettings {
             graphql,
             actors,
             tracing: tracing_settings,
-            fcm_project_id,
-            fcm_service_account_json,
             mqtt,
             notify,
             devices,
@@ -397,10 +392,9 @@ impl RawSettings {
                 graphql,
                 actors,
                 tracing: tracing_settings,
-                fcm_project_id,
-                fcm_service_account_json,
                 mqtt,
                 notify: NotifyFilter::new(&notify.disabled),
+                notify_android: notify.android,
                 workflows: resolved,
                 integrations,
                 watchdog,
@@ -1111,7 +1105,7 @@ mod tests {
         let secrets = r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1146,7 +1140,7 @@ integrations:
         let secrets = r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1480,7 +1474,7 @@ integrations:
         let secrets = r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1518,7 +1512,7 @@ integrations:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1569,7 +1563,7 @@ auth:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1629,7 +1623,7 @@ auth:
         let base = r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   username: x
@@ -1719,7 +1713,7 @@ integrations:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1775,7 +1769,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -1833,7 +1827,7 @@ workflows:
         let base = r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2047,7 +2041,7 @@ vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_ob
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2102,7 +2096,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2156,7 +2150,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2211,7 +2205,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2265,7 +2259,7 @@ workflows:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2364,7 +2358,7 @@ devices:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883
@@ -2444,7 +2438,7 @@ devices:
             r#"
 api_key: x
 database_url: x
-notify: { targets: {}, disabled: [] }
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
 mqtt:
   url: x
   port: 1883

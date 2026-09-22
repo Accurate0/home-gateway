@@ -18,9 +18,13 @@ pub async fn spawn_push(
             .timeout_for(HttpClientKind::Push),
     )?;
 
-    let sa_json = shared_actor_state.settings.fcm_service_account_json.clone();
+    let sa_json = shared_actor_state
+        .settings
+        .notify_android
+        .fcm_service_account_json
+        .clone();
     let token_provider: Option<Arc<dyn TokenProvider>> = if sa_json.is_empty() {
-        tracing::warn!("fcm_service_account_json not set, android push disabled");
+        tracing::warn!("notify.android.fcm_service_account_json not set, android push disabled");
         None
     } else {
         match CustomServiceAccount::from_json(&sa_json) {

@@ -29,14 +29,6 @@
     "tracing": {
       "$ref": "#/$defs/TracingSettings"
     },
-    "fcm_project_id": {
-      "type": "string",
-      "default": ""
-    },
-    "fcm_service_account_json": {
-      "type": "string",
-      "default": ""
-    },
     "mqtt": {
       "$ref": "#/$defs/MqttSettings"
     },
@@ -603,11 +595,15 @@
           "items": {
             "type": "string"
           }
+        },
+        "android": {
+          "$ref": "#/$defs/NotifyAndroidSettings"
         }
       },
       "required": [
         "targets",
-        "disabled"
+        "disabled",
+        "android"
       ]
     },
     "NotifySource": {
@@ -625,6 +621,21 @@
             "type"
           ]
         }
+      ]
+    },
+    "NotifyAndroidSettings": {
+      "type": "object",
+      "properties": {
+        "fcm_project_id": {
+          "type": "string"
+        },
+        "fcm_service_account_json": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "fcm_project_id"
       ]
     },
     "RawDevice": {

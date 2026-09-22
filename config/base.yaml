@@ -34,8 +34,8 @@ notify:
     android_app:
       type: android_app
   disabled: []
-
-fcm_project_id: home-gateway-22
+  android:
+    fcm_project_id: home-gateway-22
 
 sun:
   catch_up_within: 2h

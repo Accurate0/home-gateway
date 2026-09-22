@@ -127,8 +127,8 @@ notify:
     android_app:
       type: android_app
   disabled: []
-
-fcm_project_id: home-gateway-22
+  android:
+    fcm_project_id: home-gateway-22
 
 location:
   latitude: -31.952429
