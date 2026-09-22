@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
+use futures::{SinkExt, StreamExt};
 use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use home_gateway::cli::client::{Client, DEFAULT_BASE_URL, REQUEST_TIMEOUT};
 use home_gateway::cli::credentials;
@@ -11,6 +12,10 @@ use home_gateway::http::get_traced_http_client;
 use reqwest::{Method, StatusCode};
 use serde_json::{Value, json};
 use std::path::PathBuf;
+use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::{HeaderName, HeaderValue};
 use uuid::Uuid;
 
 #[derive(Parser)]
@@ -200,6 +205,13 @@ fn input_map(inputs: &[(String, Value)]) -> Value {
 #[derive(Subcommand)]
 enum LuaCommand {
     Run(LuaRunArgs),
+    Repl(LuaReplArgs),
+}
+
+#[derive(Args)]
+struct LuaReplArgs {
+    #[arg(long)]
+    dry_run: bool,
 }
 
 #[derive(Args)]
@@ -1252,7 +1264,10 @@ fn curl(client: &Client, args: &CurlArgs) -> Result<()> {
 }
 
 async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()> {
-    let LuaCommand::Run(args) = command;
+    let args = match command {
+        LuaCommand::Run(args) => args,
+        LuaCommand::Repl(args) => return lua_repl(client, args, as_json).await,
+    };
 
     let script = match (&args.file, &args.expression) {
         (Some(file), _) => std::fs::read_to_string(file)
@@ -1261,14 +1276,117 @@ async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()>
         (None, None) => anyhow::bail!("pass a script file or -e <expression>"),
     };
 
+    let result = execute_lua(client, &script, &args.vars, args.dry_run).await?;
+
+    print_lua_result(&result, as_json)
+}
+
+async fn lua_repl(client: &Client, args: &LuaReplArgs, as_json: bool) -> Result<()> {
+    let mut editor = rustyline::DefaultEditor::new()?;
+    let history = credentials::path()?.with_file_name("lua_history");
+
+    if let Err(e) = editor.load_history(&history) {
+        tracing::debug!("no lua history loaded: {e}");
+    }
+
+    let path = format!("/v1/lua/repl?dry_run={}", args.dry_run);
+    let mut request = events::websocket_url(client.base_url(), &path)
+        .into_client_request()
+        .context("invalid websocket url")?;
+
+    if let Value::Object(headers) = client.auth_payload() {
+        for (name, value) in headers {
+            let name = HeaderName::from_bytes(name.as_bytes())?;
+            let value = HeaderValue::from_str(value.as_str().unwrap_or_default())?;
+            request.headers_mut().insert(name, value);
+        }
+    }
+
+    let (mut socket, _) = connect_async(request)
+        .await
+        .context("failed to open a lua repl session")?;
+
+    let mode = if args.dry_run { " (dry run)" } else { "" };
+    println!("connected to {}{mode}, ctrl-d to exit", client.base_url());
+
+    let mut buffer = String::new();
+
+    loop {
+        let prompt = if buffer.is_empty() { "lua> " } else { "...> " };
+
+        let line = match editor.readline(prompt) {
+            Ok(line) => line,
+            Err(rustyline::error::ReadlineError::Interrupted) => {
+                buffer.clear();
+                continue;
+            }
+            Err(rustyline::error::ReadlineError::Eof) => break,
+            Err(e) => return Err(e.into()),
+        };
+
+        if buffer.is_empty() && line.trim().is_empty() {
+            continue;
+        }
+
+        if !buffer.is_empty() {
+            buffer.push('\n');
+        }
+        buffer.push_str(&line);
+
+        if home_gateway::lua::bytecode::is_incomplete(&buffer) {
+            continue;
+        }
+
+        let script = std::mem::take(&mut buffer);
+        editor.add_history_entry(script.as_str())?;
+
+        socket
+            .send(Message::text(json!({ "script": script }).to_string()))
+            .await
+            .context("lua repl session closed")?;
+
+        let reply = loop {
+            match socket.next().await {
+                Some(Ok(Message::Text(text))) => break text,
+                Some(Ok(Message::Close(_))) | None => anyhow::bail!("lua repl session closed"),
+                Some(Ok(_)) => continue,
+                Some(Err(e)) => return Err(e).context("lua repl session failed"),
+            }
+        };
+
+        let reply: Value = serde_json::from_str(&reply).context("malformed repl reply")?;
+
+        match reply["type"].as_str() {
+            Some("result") => print_lua_result(&reply["result"], as_json)?,
+            Some("error") => eprintln!("error: {}", reply["error"].as_str().unwrap_or_default()),
+            other => eprintln!("unexpected repl reply: {other:?}"),
+        }
+    }
+
+    socket.close(None).await.ok();
+
+    if let Some(dir) = history.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    editor.save_history(&history)?;
+
+    Ok(())
+}
+
+async fn execute_lua(
+    client: &Client,
+    script: &str,
+    vars: &[(String, Value)],
+    dry_run: bool,
+) -> Result<Value> {
     let response = client
         .send(
             Method::POST,
             "/v1/lua/execute",
             Some(&json!({
                 "script": script,
-                "vars": input_map(&args.vars),
-                "dry_run": args.dry_run,
+                "vars": input_map(vars),
+                "dry_run": dry_run,
             })),
         )
         .await?;
@@ -1281,13 +1399,16 @@ async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()>
     }
 
     let parsed: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
-    let result = parsed.get("result").cloned().unwrap_or(Value::Null);
 
+    Ok(parsed.get("result").cloned().unwrap_or(Value::Null))
+}
+
+fn print_lua_result(result: &Value, as_json: bool) -> Result<()> {
     if as_json {
-        return print_json(&result);
+        return print_json(result);
     }
 
-    match &result {
+    match result {
         Value::Null => println!("ok"),
         Value::String(text) => println!("{text}"),
         other => println!("{}", serde_json::to_string_pretty(other)?),

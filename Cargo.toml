@@ -92,6 +92,7 @@ mlua = { version = "0.12.1", features = ["lua54", "vendored", "async", "send", "
 icalendar = { version = "0.17.13", features = ["parser"] }
 wildmatch = "2.6.1"
 strum = { version = "0.28.0", features = ["derive"] }
+rustyline = "17"
 
 [build-dependencies]
 serde_yaml = "0.9.34"

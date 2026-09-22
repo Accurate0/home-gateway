@@ -36,7 +36,7 @@ subscription($filter: String!) {
 }
 "#;
 
-pub fn websocket_url(base_url: &str) -> String {
+pub fn websocket_url(base_url: &str, path: &str) -> String {
     let url = if let Some(rest) = base_url.strip_prefix("https://") {
         format!("wss://{rest}")
     } else if let Some(rest) = base_url.strip_prefix("http://") {
@@ -45,11 +45,11 @@ pub fn websocket_url(base_url: &str) -> String {
         base_url.to_owned()
     };
 
-    format!("{}/v1/graphql/ws", url.trim_end_matches('/'))
+    format!("{}{path}", url.trim_end_matches('/'))
 }
 
 pub async fn tail(client: &Client, filter: &str, as_json: bool) -> Result<()> {
-    let mut request = websocket_url(client.base_url())
+    let mut request = websocket_url(client.base_url(), "/v1/graphql/ws")
         .into_client_request()
         .context("invalid websocket url")?;
 
@@ -151,12 +151,12 @@ mod tests {
     #[test]
     fn http_schemes_become_websocket_schemes() {
         assert_eq!(
-            websocket_url("https://home.anurag.sh"),
+            websocket_url("https://home.anurag.sh", "/v1/graphql/ws"),
             "wss://home.anurag.sh/v1/graphql/ws"
         );
         assert_eq!(
-            websocket_url("http://localhost:8080/"),
-            "ws://localhost:8080/v1/graphql/ws"
+            websocket_url("http://localhost:8080/", "/v1/lua/repl"),
+            "ws://localhost:8080/v1/lua/repl"
         );
     }
 }

@@ -13,7 +13,8 @@ use crate::variables::{Node, VarType, Vars};
 use super::bridge::{install_vars, returned_node};
 use super::error::InstructionLimit;
 use super::{
-    CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSource, Script, builtin, bytecode,
+    CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSession, LuaSource, Script, builtin,
+    bytecode,
 };
 
 pub(super) fn sandboxed_libs() -> StdLib {
@@ -139,6 +140,38 @@ impl LuaEngine {
         }
 
         lua.from_value(value).map_err(LuaError::from_mlua)
+    }
+
+    pub fn session(&self, cx: LuaCallContext) -> Result<LuaSession, LuaError> {
+        let lua = self
+            .prepare(&cx, &Vars::default())
+            .map_err(LuaError::from_mlua)?;
+
+        Ok(LuaSession::new(self.clone(), lua, cx))
+    }
+
+    pub(super) async fn eval_session(
+        &self,
+        cx: &LuaCallContext,
+        lua: &Lua,
+        script: &Script,
+    ) -> Result<serde_json::Value, LuaError> {
+        install_instruction_limit(lua, self.settings.max_instructions)
+            .map_err(LuaError::from_mlua)?;
+
+        let value = self.eval_in(cx, lua, script).await?;
+
+        if value.is_nil() {
+            return Ok(serde_json::Value::Null);
+        }
+
+        match lua.from_value(value.clone()) {
+            Ok(json) => Ok(json),
+            Err(_) => value
+                .to_string()
+                .map(serde_json::Value::String)
+                .map_err(LuaError::from_mlua),
+        }
     }
 
     pub async fn run_unit(

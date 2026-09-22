@@ -21,6 +21,22 @@ pub fn compile(name: &str, source: &str) -> Result<Vec<u8>, String> {
     Ok(function.dump(false))
 }
 
+pub fn is_incomplete(source: &str) -> bool {
+    let lua = Lua::new();
+
+    if lua.load(format!("return {source}")).into_function().is_ok() {
+        return false;
+    }
+
+    matches!(
+        lua.load(source).into_function(),
+        Err(mlua::Error::SyntaxError {
+            incomplete_input: true,
+            ..
+        })
+    )
+}
+
 pub fn load<'lua>(lua: &'lua Lua, name: &str, bytecode: &[u8]) -> mlua::Result<Chunk<'lua>> {
     Ok(lua
         .load(bytecode.to_vec())
@@ -34,7 +50,7 @@ pub async fn eval(lua: &Lua, name: &str, bytecode: &[u8]) -> mlua::Result<LuaVal
 
 #[cfg(test)]
 mod tests {
-    use super::{compile, eval};
+    use super::{compile, eval, is_incomplete};
     use mlua::Value as LuaValue;
 
     #[tokio::test]
@@ -71,5 +87,18 @@ mod tests {
         let error = compile("script", "return 1 +").expect_err("expected a syntax error");
 
         assert!(error.contains("syntax"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn an_open_block_is_incomplete() {
+        assert!(is_incomplete("for i = 1, 3 do"));
+        assert!(is_incomplete("local t = {"));
+    }
+
+    #[test]
+    fn finished_or_broken_chunks_are_not_incomplete() {
+        assert!(!is_incomplete("1 + 1"));
+        assert!(!is_incomplete("local x = 1"));
+        assert!(!is_incomplete("local = )"));
     }
 }

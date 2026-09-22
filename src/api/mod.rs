@@ -199,6 +199,7 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         .route("/control/light", post(light_control))
         .route("/workflow/execute", post(workflow_execute))
         .route("/lua/execute", post(routes::lua::execute::lua_execute))
+        .route("/lua/repl", get(routes::lua::repl::lua_repl))
         .route("/ingest/synergy", post(synergy))
         .route("/epd/config", post(epd::config))
         .route("/epd/image/{hash}", get(epd::image))
@@ -278,6 +279,7 @@ mod tests {
         "/control/light",
         "/workflow/execute",
         "/lua/execute",
+        "/lua/repl",
         "/ingest/synergy",
         "/ingest/home/alarm",
         "/ingest/home/push-token",
