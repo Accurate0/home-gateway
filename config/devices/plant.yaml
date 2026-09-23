@@ -13,3 +13,19 @@
         name: Hallway Plant
     - type: plant
       config: { id: hallway-plant }
+
+- id: living-room-plant
+  state: enabled
+  room: living-room
+  transport:
+    type: mqtt
+    address: apollo-plt-1b-livingroom
+  model: apollo_plt_1b
+  roles:
+    - type: environment
+      config:
+        id: living-room-plant
+        name: Living Room Plant
+    - type: plant
+      config: { id: living-room-plant }
+    - type: battery

@@ -1458,8 +1458,8 @@ integrations:
         let watched: Vec<&String> = registry.watchdog_devices().map(|(key, _)| key).collect();
         assert_eq!(
             watched.len(),
-            20,
-            "every enabled device has a watchdog (21 configured, 1 disabled)"
+            21,
+            "every enabled device has a watchdog (22 configured, 1 disabled)"
         );
         for key in watched {
             assert!(

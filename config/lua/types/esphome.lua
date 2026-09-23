@@ -1,6 +1,6 @@
 ---@meta
 
----@alias EsphomeRole "environment"|"plant"|"light"|"presence"
+---@alias EsphomeRole "battery"|"environment"|"plant"|"light"|"presence"
 ---@alias EsphomeDomain "sensor"|"binary_sensor"|"light"
 
 ---@class EsphomeEntities

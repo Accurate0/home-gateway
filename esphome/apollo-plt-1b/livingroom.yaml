@@ -1,0 +1,11 @@
+substitutions:
+  wet_voltage: "1.46"
+  dry_voltage: "2.79"
+
+esphome:
+  name: "${name}-livingroom"
+  friendly_name: Apollo PLT-1B Living Room
+  comment: Apollo PLT-1B Living Room
+
+packages:
+  core: !include core.yaml

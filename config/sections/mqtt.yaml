@@ -20,7 +20,7 @@ protocols:
   esphome:
     payload: esphome_domain
     entities: enabled
-    roles: [environment, plant, light, presence]
+    roles: [battery, environment, plant, light, presence]
     topics:
       state: "{address}/{domain}/{object_id}/state"
     command: "{address}/{domain}/{object_id}/command"

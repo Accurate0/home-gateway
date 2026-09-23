@@ -70,6 +70,7 @@ configMapGenerator:
     files:
       - lua/mqtt/apollo_mtr_1.lua
       - lua/mqtt/apollo_plt_1.lua
+      - lua/mqtt/apollo_plt_1b.lua
       - lua/mqtt/aqara_fp1e.lua
       - lua/mqtt/aqara_mccgq12lm.lua
       - lua/mqtt/aqara_t1.lua
