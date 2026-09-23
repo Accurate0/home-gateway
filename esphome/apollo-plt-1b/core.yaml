@@ -393,7 +393,7 @@ switch:
     name: "Prevent Sleep"
     id: prevent_sleep
     icon: mdi:sleep
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
     entity_category: "config"
     on_turn_on:
