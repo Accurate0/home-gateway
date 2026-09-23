@@ -582,6 +582,7 @@ type MediaPlayerMutation {
 	stop: Boolean!
 	next: Boolean!
 	previous: Boolean!
+	playMedia(url: String!, announcement: Boolean! = false): Boolean!
 	volumeSet(level: Float!): Boolean!
 	mute(muted: Boolean!): Boolean!
 	turnOff: Boolean!

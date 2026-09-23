@@ -29,8 +29,11 @@ async fn main() -> anyhow::Result<()> {
     let cancellation_token = CancellationToken::new();
     handle_cancellation(cancellation_token.clone());
 
-    let Handles { registry, mqtt } =
-        startup::handles::build(&storage, &feature_flag_client).await?;
+    let Handles {
+        registry,
+        mqtt,
+        esphome_nodes,
+    } = startup::handles::build(&storage, &feature_flag_client).await?;
 
     let listen_addr = storage.settings.http.listen_address;
     let devices = storage.devices.clone();
@@ -75,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
     let event_bus = state.event_bus.clone();
     let home_assistant = state.handles.get::<HomeAssistant>().cloned();
     let home_assistant_websocket = state.settings.home_assistant.websocket;
+    let esphome = state.settings.integrations.esphome.clone();
 
     let eink = state.handles.expect::<EinkDisplayManager>().clone();
 
@@ -87,6 +91,8 @@ async fn main() -> anyhow::Result<()> {
             mqtt,
             home_assistant,
             home_assistant_websocket,
+            esphome,
+            esphome_nodes,
             devices,
             cancellation_token,
             feature_flag_client,

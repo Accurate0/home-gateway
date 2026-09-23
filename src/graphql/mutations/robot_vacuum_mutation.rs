@@ -5,8 +5,6 @@ use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
 use crate::device_command::CommandTargets;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
-use crate::integrations::home_assistant::HomeAssistant;
-use crate::integrations::mqtt::MqttClient;
 use crate::settings::RobotVacuumSettings;
 use crate::settings::workflow::VacuumCommand;
 
@@ -26,13 +24,10 @@ impl RobotVacuumMutation {
         ctx: &async_graphql::Context<'_>,
         vacuum_command: VacuumCommand,
     ) -> async_graphql::Result<bool> {
-        let targets = CommandTargets {
-            devices: ctx.data::<DeviceRegistry>()?,
-            mqtt: crate::graphql::require::<MqttClient>(ctx, "mqtt")?,
-            home_assistant: ctx
-                .data::<crate::state::HandleRegistry>()?
-                .get::<HomeAssistant>(),
-        };
+        let targets = CommandTargets::new(
+            ctx.data::<DeviceRegistry>()?,
+            ctx.data::<crate::state::HandleRegistry>()?,
+        );
 
         command::send(&targets, &self.settings, vacuum_command)
             .await

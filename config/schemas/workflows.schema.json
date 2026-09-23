@@ -1496,7 +1496,7 @@
           ]
         },
         {
-          "description": "Fires on a plant sensor's soil moisture reading, the flattened comparison\nbeing the threshold. The dispatcher fires on the rising edge. Air metrics\nfrom the same device are matched with [`TriggerMatcher::Environment`].",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "sensor": {

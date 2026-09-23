@@ -10,6 +10,7 @@ use super::models::load_models;
 #[derive(Debug, Default, Clone)]
 pub struct ModelSources {
     pub mqtt: BTreeMap<String, String>,
+    pub esphome_native_api: BTreeMap<String, String>,
     pub home_assistant: BTreeMap<String, String>,
     pub library: BTreeMap<String, String>,
 }
@@ -24,6 +25,13 @@ impl ModelSources {
             mqtt: load_models(
                 Transport::Mqtt,
                 &self.mqtt,
+                &self.library,
+                settings,
+                protocols,
+            )?,
+            esphome_native_api: load_models(
+                Transport::EsphomeNativeApi,
+                &self.esphome_native_api,
                 &self.library,
                 settings,
                 protocols,
@@ -45,6 +53,7 @@ impl ModelSources {
     ) -> Result<LuaDecoder, LuaError> {
         let sources = match transport {
             Transport::Mqtt => &self.mqtt,
+            Transport::EsphomeNativeApi => &self.esphome_native_api,
             Transport::HomeAssistant => &self.home_assistant,
             Transport::EinkDisplayFirmware | Transport::Trmnl => {
                 return Err(LuaError::Runtime(format!(

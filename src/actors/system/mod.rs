@@ -1,6 +1,7 @@
 pub mod adhoc;
 pub mod battery;
 pub mod cron;
+pub mod esphome_native_api_ingest;
 pub mod home_assistant_ingest;
 pub mod mqtt_ingest;
 pub mod push;

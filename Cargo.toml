@@ -93,12 +93,15 @@ icalendar = { version = "0.17.13", features = ["parser"] }
 wildmatch = "2.6.1"
 strum = { version = "0.28.0", features = ["derive"] }
 rustyline = "18"
+prost = "0.14"
+snow = "0.10"
 
 [build-dependencies]
 serde_yaml = "0.9.34"
 serde_json = { version = "1.0.150", features = ["preserve_order"] }
 yaml-include = "0.8"
 jsonschema = { version = "0.56", default-features = false }
+prost-build = "0.14"
 
 [[test]]
 name = "integration"

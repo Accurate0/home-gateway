@@ -148,7 +148,8 @@ impl Roles {
                 });
             }
             DeviceConfig::MediaPlayer(media_player) => {
-                if !address.starts_with("media_player.") {
+                if cx.transport == Transport::HomeAssistant && !address.starts_with("media_player.")
+                {
                     return Err(format!(
                         "device {id}: `media_player` address `{address}` must be a home assistant `media_player.` entity id"
                     ));

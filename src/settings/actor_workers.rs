@@ -9,6 +9,7 @@ use crate::decoding::DeviceRoleName;
 pub struct ActorWorkerSettings {
     pub mqtt_ingest: usize,
     pub home_assistant_ingest: usize,
+    pub esphome_native_api_ingest: usize,
     devices: BTreeMap<DeviceRoleName, usize>,
 }
 
@@ -42,7 +43,7 @@ mod tests {
 
     fn workers(devices: &str) -> ActorWorkerSettings {
         serde_yaml::from_str(&format!(
-            "{{ mqtt_ingest: 1, home_assistant_ingest: 1, devices: {devices} }}"
+            "{{ mqtt_ingest: 1, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: {devices} }}"
         ))
         .expect("workers")
     }

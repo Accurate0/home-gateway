@@ -1,3 +1,4 @@
+pub mod esphome;
 pub mod fuelwatch;
 pub mod holidays;
 pub mod home_assistant;

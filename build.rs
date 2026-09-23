@@ -64,6 +64,8 @@ fn main() {
     };
     println!("cargo:rustc-env=HOME_GATEWAY_VERSION={version}");
 
+    compile_esphome_api(manifest_dir);
+
     println!("cargo:rerun-if-env-changed=SKIP_SCHEMA_VALIDATION");
     if std::env::var_os("SKIP_SCHEMA_VALIDATION").is_some() {
         return;
@@ -82,6 +84,21 @@ fn main() {
 
     validate_schema(&config_dir, value.clone());
     validate_semantics(&value);
+}
+
+fn compile_esphome_api(manifest_dir: &Path) {
+    let proto_dir = manifest_dir.join("proto").join("esphome");
+    let api = proto_dir.join("api.proto");
+
+    println!("cargo:rerun-if-changed={}", api.display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        proto_dir.join("api_options.proto").display()
+    );
+
+    prost_build::Config::new()
+        .compile_protos(&[&api], &[&proto_dir])
+        .unwrap_or_else(|e| panic!("failed to compile {}: {e}", api.display()));
 }
 
 fn validate_schema(config_dir: &Path, mut value: serde_json::Value) {

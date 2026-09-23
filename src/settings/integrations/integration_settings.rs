@@ -1,3 +1,4 @@
+use super::esphome::EsphomeSettings;
 use super::fuelwatch::FuelWatchSettings;
 use super::holidays::HolidaySettings;
 use super::s3::S3Settings;
@@ -10,6 +11,7 @@ use super::woolworths::WoolworthsSettings;
 #[derive(Debug, Clone)]
 pub struct IntegrationSettings {
     pub s3: S3Settings,
+    pub esphome: EsphomeSettings,
     pub holidays: HolidaySettings,
     pub woolworths: WoolworthsSettings,
     pub trmnl: TrmnlSettings,

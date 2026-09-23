@@ -8,10 +8,11 @@ use crate::device_registry::DeviceRegistry;
 use crate::eink::EinkDisplayManager;
 use crate::error::MainError;
 use crate::event_bus::EventBus;
+use crate::integrations::esphome_native_api::{self, Node};
 use crate::integrations::feature_flag::{self, FeatureFlagClient};
 use crate::integrations::home_assistant::{self, HomeAssistant};
 use crate::integrations::mqtt::Mqtt;
-use crate::settings::HomeAssistantWebsocketSettings;
+use crate::settings::{EsphomeSettings, HomeAssistantWebsocketSettings};
 use crate::utils::axum_shutdown_signal;
 
 pub struct Tasks {
@@ -19,6 +20,8 @@ pub struct Tasks {
     pub mqtt: Mqtt,
     pub home_assistant: Option<HomeAssistant>,
     pub home_assistant_websocket: HomeAssistantWebsocketSettings,
+    pub esphome: EsphomeSettings,
+    pub esphome_nodes: Vec<Node>,
     pub devices: DeviceRegistry,
     pub cancellation_token: CancellationToken,
     pub feature_flag_client: FeatureFlagClient,
@@ -34,6 +37,8 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         mut mqtt,
         home_assistant,
         home_assistant_websocket,
+        esphome,
+        esphome_nodes,
         devices,
         cancellation_token,
         feature_flag_client,
@@ -74,6 +79,24 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
                 home_assistant_cancellation_token,
             )
             .await;
+            Ok::<(), MainError>(())
+        });
+    }
+
+    for node in esphome_nodes {
+        let Some(key) = esphome.encryption_key.clone() else {
+            tracing::error!(
+                "esphome node {} has no encryption key, skipping it",
+                node.address
+            );
+            continue;
+        };
+
+        let esphome = esphome.clone();
+        let node_cancellation_token = cancellation_token.child_token();
+
+        task_set.spawn(async move {
+            esphome_native_api::process_events(node, esphome, key, node_cancellation_token).await;
             Ok::<(), MainError>(())
         });
     }

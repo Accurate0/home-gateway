@@ -1,0 +1,714 @@
+substitutions:
+  name: apollo-cast-1
+  version: "26.9.21.1"
+  device_description: ${name} made by Apollo Automation - version ${version}.
+
+
+packages:
+  wizmote: !include wizmote.yaml
+  wifi: !include ../common/wifi.yaml
+  api: !include ../common/api.yaml
+
+esphome:
+  friendly_name: Apollo CAST-1
+  comment: Apollo CAST-1
+  name_add_mac_suffix: false
+  project:
+    name: "ApolloAutomation.CAST-1"
+    version: "${version}"
+  # network: priority: (WiFi + Ethernet in one firmware) needs 2026.8
+  min_version: 2026.8.0
+  platformio_options:
+    board_build.flash_mode: dio
+  # List form so package on_boot entries (wizmote.yaml) merge
+  on_boot:
+    - priority: 800
+      then:
+        - if:
+            condition:
+              - lambda: "return id(runTest);"
+            then:
+              - lambda: "id(testScript).execute();"
+    # Keep WiFi off when Ethernet is expected, so the fallback hotspot can't
+    # broadcast while Ethernet waits for DHCP
+    # Must run after globals restore (800) and before wifi setup (245)
+    - priority: 600
+      then:
+        - if:
+            condition:
+              lambda: "return id(ethernet_expected);"
+            then:
+              - lambda: |-
+                  id(wifi_1).set_enable_on_boot(false);
+                  id(espnow_component).set_wifi_channel(1);
+    # Park the W5500 helper task when no HAT is present, so it stops polling a
+    # floating SPI bus and panicking the device every ~100s
+    # Must run after ethernet setup (250)
+    - priority: 200
+      then:
+        - if:
+            condition:
+              lambda: "return id(ethernet_1).is_failed();"
+            then:
+              - lambda: |-
+                  TaskHandle_t orphan = xTaskGetHandle("w5500_tsk");
+                  if (orphan != nullptr) {
+                    vTaskSuspend(orphan);
+                    ESP_LOGW("ethernet", "No Ethernet HAT detected; parked the W5500 helper task");
+                  }
+    - priority: 500
+      then:
+        - text_sensor.template.publish:
+            id: apollo_firmware_version
+            state: "${version}"
+    # Ethernet never came up, so bring WiFi back for rejoin or provisioning
+    - priority: -100
+      then:
+        - if:
+            condition:
+              lambda: "return id(ethernet_expected);"
+            then:
+              - wait_until:
+                  condition:
+                    ethernet.connected:
+                  timeout: 20s
+              - if:
+                  condition:
+                    not:
+                      ethernet.connected:
+                  then:
+                    - lambda: "id(ethernet_expected) = false;"
+                    - wifi.enable:
+    - priority: -300
+      then:
+        - if:
+            condition:
+              switch.is_on: bluetooth_proxy_switch
+            then:
+              - esp32_ble_tracker.start_scan:
+                  continuous: true
+            else:
+              - esp32_ble_tracker.stop_scan:
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+
+safe_mode:
+  id: safe_mode_1
+
+logger:
+  id: logger_1
+
+# Prefer Ethernet whenever it is connected; ESPHome arbitrates the route
+network:
+  id: network_1
+  priority:
+    - ethernet
+    - wifi
+
+ethernet:
+  id: ethernet_1
+  type: W5500
+  clock_speed: 40MHz
+  clk_pin: GPIO7
+  mosi_pin: GPIO12
+  miso_pin: GPIO11
+  cs_pin: GPIO6
+  interrupt_pin: GPIO13
+  reset_pin: GPIO21
+  on_connect:
+    # Keep WiFi up alongside Ethernet so Home Assistant's connection to the
+    # WiFi address survives; release it only when WiFi has no network to offer
+    - if:
+        condition:
+          wifi.enabled:
+        then:
+          - if:
+              condition:
+                wifi.ap_active:
+              then:
+                # Fallback hotspot is broadcasting: WiFi has no network.
+                - script.execute: wifi_release_radio
+              else:
+                # WiFi may still be associating at boot, so wait it out
+                # Ends early if the fallback AP starts
+                - wait_until:
+                    condition:
+                      or:
+                        - wifi.connected:
+                        - wifi.ap_active:
+                    timeout: 30s
+                - if:
+                    condition:
+                      wifi.connected:
+                    then:
+                      - lambda: "id(ethernet_expected) = false;"
+                    else:
+                      # Leave WiFi alone if the cable vanished during the wait
+                      - if:
+                          condition:
+                            ethernet.connected:
+                          then:
+                            - script.execute: wifi_release_radio
+        else:
+          # WiFi-silent boot (ethernet_expected): stays off.
+          - lambda: "id(ethernet_expected) = true;"
+    - component.update: network_connection
+  on_disconnect:
+    # Cable gone, so bring WiFi up to rejoin or open the provisioning hotspot
+    - lambda: "id(ethernet_expected) = false;"
+    - wifi.enable:
+    - component.update: network_connection
+
+wifi:
+  id: wifi_1
+  on_connect:
+    # Must stay set: gates the recovery probe so it never pops the hotspot on
+    # a device that was never provisioned
+    - lambda: "id(wifi_provisioned) = true;"
+  on_disconnect:
+    # Turn WiFi off after 60s without reassociation, which keeps the 90s
+    # fallback hotspot from ever starting while Ethernet carries the device
+    - if:
+        condition:
+          ethernet.connected:
+        then:
+          - wait_until:
+              condition:
+                wifi.connected:
+              timeout: 60s
+          - if:
+              condition:
+                and:
+                  - wifi.enabled:
+                  - not:
+                      wifi.connected:
+                  - ethernet.connected:
+              then:
+                - script.execute: wifi_release_radio
+  # Workaround: roam scans drop active audio
+  post_connect_roaming: false
+  ap:
+    ssid: "Apollo CAST 1 Hotspot"
+  power_save_mode: none
+
+captive_portal:
+  id: captive_portal_1
+
+improv_serial:
+  id: improv_serial_1
+
+esp32_improv:
+  id: esp32_improv_1
+  authorizer: none
+
+esp32:
+  variant: ESP32S3
+  flash_size: 8MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      CONFIG_ESP32S3_DATA_CACHE_32KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB: "y"
+
+      CONFIG_SPIRAM_RODATA: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+
+      # Allocate BT in PSRAM so internal RAM stays free for audio
+      CONFIG_BT_ALLOCATION_FROM_SPIRAM_FIRST: "y"
+      CONFIG_BT_BLE_DYNAMIC_ENV_MEMORY: "y"
+
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      CONFIG_MBEDTLS_SSL_PROTO_TLS1_3: "y"
+
+esp32_ble_tracker:
+  id: ble_tracker
+  scan_parameters:
+    continuous: true
+
+bluetooth_proxy:
+  id: bluetooth_proxy_1
+
+api:
+  id: api_1
+  # Disable the no-client reboot: sendspin streams from Music Assistant over
+  # its own connection, so a device with no API client is normal here
+  reboot_timeout: 0s
+
+globals:
+  - id: cycleCounter
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: button_press_timestamp
+    restore_value: no
+    type: uint32_t
+    initial_value: '0'
+  - id: runTest
+    restore_value: yes
+    type: bool
+    initial_value: "true"
+  - id: testCycleCount
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: announcement_triggered
+    type: bool
+    initial_value: 'false'
+  # True when WiFi was released while Ethernet carried the device, which makes
+  # the next boot start WiFi-silent
+  - id: ethernet_expected
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+  # True once WiFi has ever connected, which gates the WiFi recovery probe
+  - id: wifi_provisioned
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+psram:
+  id: psram_1
+  mode: octal
+  speed: 80MHz
+  # Guarantee PSRAM; unlocks fast network tier
+  ignore_not_found: false
+
+web_server:
+  id: web_server_1
+  port: 80
+  version: 3
+
+i2c:
+  sda: GPIO47
+  scl: GPIO48
+  id: bus_a
+
+button:
+  - platform: restart
+    id: restart_button
+    icon: mdi:power-cycle
+    name: "ESP Reboot"
+
+binary_sensor:
+  - platform: status
+    name: Online
+    id: ink_ha_connected
+
+  - platform: gpio
+    pin:
+      number: GPIO0
+      inverted: true
+      ignore_strapping_warning: true
+      mode:
+        input: true
+        pullup: true
+    id: reset_button
+    on_press:
+      then:
+        - lambda: |-
+            id(button_press_timestamp) = millis();
+    on_release:
+      then:
+        - lambda: |-
+            if (millis() - id(button_press_timestamp) >= 8000) {
+              id(factory_reset_switch).turn_on();
+            }
+            else if (millis() - id(button_press_timestamp) >= 1000) {
+              // StatusCheck
+              id(statusCheck).execute();
+              delay(3000);
+              id(testCycleCount) = 0;
+              id(runTest) = true;
+              id(testScript).execute();
+            }
+
+sensor:
+  - platform: internal_temperature
+    name: "ESP Temperature"
+    id: sys_esp_temperature
+    disabled_by_default: true
+
+  - platform: uptime
+    name: Uptime
+    id: sys_uptime
+    update_interval: 60s
+
+switch:
+  - platform: factory_reset
+    disabled_by_default: True
+    name: "Factory Reset ESP"
+    id: factory_reset_all
+
+  - platform: factory_reset
+    id: factory_reset_switch
+    internal: true
+
+  - platform: template
+    name: "Bluetooth Proxy"
+    id: bluetooth_proxy_switch
+    icon: mdi:bluetooth
+    entity_category: "config"
+    restore_mode: RESTORE_DEFAULT_OFF
+    optimistic: true
+    on_turn_on:
+      - esp32_ble_tracker.start_scan:
+          continuous: true
+    on_turn_off:
+      - esp32_ble_tracker.stop_scan:
+
+text_sensor:
+  # Which path is carrying the device, for troubleshooting and HA notifications
+  - platform: template
+    name: "Network Connection"
+    id: network_connection
+    icon: "mdi:network"
+    entity_category: "diagnostic"
+    update_interval: 10s
+    lambda: |-
+      const bool eth = id(ethernet_1).is_connected();
+      const bool sta = !id(wifi_1).is_disabled() && id(wifi_1).is_connected();
+      const bool ap  = !id(wifi_1).is_disabled() && id(wifi_1).is_ap_active();
+      if (eth && sta) return std::string("Ethernet + WiFi");
+      if (eth) return std::string("Ethernet");
+      if (sta) return std::string("WiFi");
+      if (ap) return std::string("Hotspot");
+      return std::string("Connecting");
+
+  - platform: ethernet_info
+    ip_address:
+      name: "Ethernet IP Address"
+      id: eth_ip
+      entity_category: "diagnostic"
+
+  - platform: wifi_info
+    ip_address:
+      name: "WiFi IP Address"
+      id: wifi_ip
+      entity_category: "diagnostic"
+
+  - platform: sendspin
+    id: sendspin_track_title
+    type: title
+    name: Track Title
+
+  - platform: sendspin
+    id: sendspin_artist
+    type: artist
+    name: Artist
+
+  - platform: sendspin
+    id: sendspin_album
+    type: album
+    name: Album
+
+  - platform: version
+    id: esphome_version_sensor
+    name: "ESPHome Version"
+    hide_timestamp: true
+    entity_category: "diagnostic"
+
+  - platform: template
+    name: "Apollo Firmware Version"
+    id: apollo_firmware_version
+    update_interval: never
+    entity_category: "diagnostic"
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_light
+    name: "RGB Light"
+    pin: GPIO4
+    default_transition_length: 0s
+    chipset: WS2812
+    num_leds: 4
+    channel_colors: GRB
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 1000ms
+          update_interval: 1000ms
+          min_brightness: 50%
+          max_brightness: 100%
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 50%
+          max_brightness: 100%
+
+audio_dac:
+  - platform: pcm5122
+    id: external_dac
+    i2c_id: bus_a
+    address: 0x4D
+    bits_per_sample: 16bit
+
+i2s_audio:
+- id: i2s_out
+  i2s_lrclk_pin: GPIO10
+  i2s_bclk_pin: GPIO14
+  
+speaker:
+  - platform: i2s_audio
+    id: i2s_speaker_id
+    i2s_audio_id: i2s_out
+    sample_rate: 48000
+    i2s_dout_pin: GPIO9
+    bits_per_sample: 16bit
+    dac_type: external
+    channel: stereo
+    timeout: never
+    buffer_duration: 100ms
+
+  - platform: mixer
+    id: mixer_speaker_id
+    output_speaker: i2s_speaker_id
+    num_channels: 2
+    task_stack_in_psram: true
+    source_speakers:
+      - id: announcement_mixer_input
+        timeout: never
+      - id: media_mixer_input
+        timeout: never
+
+  # These stacks must stay in internal RAM, so leave task_stack_in_psram unset
+  - platform: resampler
+    id: announcement_resampling_speaker
+    output_speaker: announcement_mixer_input
+    sample_rate: 48000
+    bits_per_sample: 16
+
+  - platform: resampler
+    id: media_resampling_speaker
+    output_speaker: media_mixer_input
+    sample_rate: 48000
+    bits_per_sample: 16
+
+
+sendspin:
+  id: sendspin_hub
+  # PSRAM stack skews time sync; keep internal
+  task_stack_in_psram: false
+
+media_source:
+  - platform: sendspin
+    id: sendspin_source
+
+  - platform: audio_http
+    id: http_media_source
+    buffer_size: 500000
+
+  - platform: audio_http
+    id: http_announcement_source
+    buffer_size: 250000
+
+media_player:
+  - platform: sendspin
+    id: sendspin_group_media_player
+    name: "Sendspin Player"
+
+  - platform: speaker_source
+    id: external_media_player
+    name: "Player"
+    volume_increment: 0.05
+
+    announcement_pipeline:
+      format: FLAC     # Least CPU-intensive codec
+      num_channels: 1  # Mono suffices for announcements
+      sample_rate: 48000
+      speaker: announcement_resampling_speaker
+      sources:
+        - http_announcement_source
+
+    media_pipeline:
+      speaker: media_resampling_speaker
+      format: FLAC     # Least CPU-intensive codec
+      num_channels: 2
+      sample_rate: 48000
+      sources:
+        - sendspin_source
+        - http_media_source
+
+    on_announcement:
+      - if:
+          condition:
+            - lambda: return (!id(announcement_triggered));
+          then:
+            - lambda: id(announcement_triggered) = true;
+            - light.turn_on:
+                id: rgb_light
+                blue: 100%
+                red: 0%
+                green: 100%
+                brightness: 50%
+            - mixer_speaker.apply_ducking:
+                id: media_mixer_input
+                decibel_reduction: 40
+                duration: 0.0s
+            - wait_until:
+                media_player.is_announcing: external_media_player
+            - wait_until:
+                - not:
+                    media_player.is_announcing: external_media_player
+            - mixer_speaker.apply_ducking:
+                id: media_mixer_input
+                decibel_reduction: 0
+                duration: 1.0s
+            - light.turn_off:
+                id: rgb_light
+            - lambda: id(announcement_triggered) = false;
+
+    on_state:
+      # pcm5122 boots muted; unmute (idempotent)
+      - audio_dac.mute_off: external_dac
+      - if:
+          condition:
+            and:
+              - lambda: return (!id(announcement_triggered));
+              - not:
+                  media_player.is_announcing: external_media_player
+          then:
+            - mixer_speaker.apply_ducking:
+                id: media_mixer_input
+                decibel_reduction: 0
+                duration: 1.0s
+
+
+
+
+
+# Retry a released WiFi while Ethernet is up, so an outage doesn't leave the
+# radio silent until the next cable pull
+interval:
+  - id: wifi_recovery_interval
+    interval: 10min
+    then:
+      - if:
+          condition:
+            and:
+              - ethernet.connected:
+              - not:
+                  wifi.enabled:
+              - lambda: "return id(wifi_provisioned);"
+          then:
+            - script.execute: wifi_recovery_probe
+
+script:
+  - id: wifi_recovery_probe
+    # Re-attempt WiFi while Ethernet carries the device; rejoin restores
+    # dual-home, failure releases the radio again for ESP-NOW.
+    then:
+      - wifi.enable:
+      - wait_until:
+          condition:
+            wifi.connected:
+          timeout: 60s
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - lambda: "id(ethernet_expected) = false;"
+          else:
+            - if:
+                condition:
+                  ethernet.connected:
+                then:
+                  - script.execute: wifi_release_radio
+
+  - id: wifi_release_radio
+    # Turn WiFi off while Ethernet carries the device, ending AP+STA and the
+    # captive portal, and bounce ESP-NOW so it re-inits standalone for the WizMote
+    then:
+      - lambda: "id(ethernet_expected) = true;"
+      - if:
+          condition:
+            wifi.ap_active:
+          then:
+            # Must reboot to clear a live hotspot: ESPHome can't relaunch a
+            # once-started AP in the same boot, leaving it serving nothing
+            - lambda: |-
+                ESP_LOGW("network", "Rebooting to fully release the active hotspot (one-time)");
+            - delay: 500ms
+            - lambda: "App.safe_reboot();"
+          else:
+            - wifi.disable:
+            - lambda: |-
+                if (id(captive_portal_1).is_active()) {
+                  id(captive_portal_1).end();
+                }
+                id(espnow_component).disable();
+                id(espnow_component).enable();
+
+  - id: statusCheck
+    then:
+      - if:
+          condition:
+            - lambda: 'return id(ink_ha_connected).state;'
+          then:
+            - logger.log: "Apollo Automation: Connected To HA"
+            - light.turn_on: 
+                id: rgb_light
+                brightness: 100%
+                red: 0%
+                green: 0%
+                blue: 100%
+      - delay: 5s
+      - light.turn_off: rgb_light
+  
+  - id: testScript
+    then:
+      if: 
+        condition:
+          - lambda: "return id(runTest) == true;"
+        then:
+          - lambda: "id(runTest) = false;"
+          - lambda: "id(testCycleCount) = 0;"
+          - delay: 2s
+          - while:
+              condition:
+                - lambda: "return id(testCycleCount) < 5;"
+              then:
+                - lambda: "id(runTest) = false;"
+                - delay: 1s
+                - lambda: "id(testCycleCount) += 1;"
+
+          ## TODO: Update
+          - if:
+              condition:
+                - lambda: "return true;"
+              then:
+                - lambda: "id(runTest) = false;"
+                - light.turn_on:
+                    id: rgb_light
+                    red: 0%
+                    green: 100%
+                    blue: 0%
+                - delay: 5s
+                - light.turn_on:
+                    id: rgb_light
+                    red: 0%
+                    green: 0%
+                    blue: 0%
+                - light.turn_off:
+                    id: rgb_light
+                
+              else:
+                - lambda: "id(runTest) = false;"
+                - light.turn_on:
+                    id: rgb_light
+                    red: 100%
+                    green: 0%
+                    blue: 0%
+                - delay: 5s
+                - light.turn_on:
+                    id: rgb_light
+                    red: 0%
+                    green: 0%
+                    blue: 0%
+                - light.turn_off:
+                    id: rgb_light

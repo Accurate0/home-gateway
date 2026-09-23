@@ -6,6 +6,7 @@ restart:
 workers:
   mqtt_ingest: 5
   home_assistant_ingest: 2
+  esphome_native_api_ingest: 1
   devices:
     control_switch: 3
     door: 1

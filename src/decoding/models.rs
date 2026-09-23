@@ -276,6 +276,19 @@ fn resolve_entities(
 
             Ok(ModelEntities::Esphome(entities))
         }
+        (Transport::EsphomeNativeApi, _) => {
+            let declared = decoder
+                .field::<serde_json::Value>(slug, "entities")
+                .map_err(error)?;
+
+            if declared.is_some() {
+                return Err(format!(
+                    "{kind} model {slug}: the node lists its own entities over the api, so `entities` is not allowed"
+                ));
+            }
+
+            Ok(ModelEntities::Payload)
+        }
         (Transport::HomeAssistant, _) => {
             let entities = decoder
                 .field::<HomeAssistantEntities>(slug, "entities")

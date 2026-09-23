@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use super::esphome::EsphomeSettings;
 use super::fuelwatch::FuelWatchSettings;
 use super::holidays::HolidaySettings;
 use super::integration_settings::IntegrationSettings;
@@ -20,6 +21,7 @@ fn missing(value: Option<&str>) -> bool {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct RawIntegrationSettings {
     s3: S3Settings,
+    pub(crate) esphome: EsphomeSettings,
     holidays: HolidaySettings,
     woolworths: WoolworthsSettings,
     trmnl: TrmnlSettings,
@@ -33,6 +35,7 @@ impl RawIntegrationSettings {
     pub fn resolve(self) -> Result<IntegrationSettings, String> {
         let RawIntegrationSettings {
             s3,
+            esphome,
             holidays,
             woolworths,
             trmnl,
@@ -42,6 +45,7 @@ impl RawIntegrationSettings {
             transperth,
         } = self;
 
+        validate_esphome(&esphome)?;
         validate_holidays(&holidays)?;
         validate_willyweather(&willyweather)?;
 
@@ -53,6 +57,7 @@ impl RawIntegrationSettings {
 
         Ok(IntegrationSettings {
             s3,
+            esphome,
             holidays,
             woolworths,
             trmnl,
@@ -62,6 +67,17 @@ impl RawIntegrationSettings {
             transperth,
         })
     }
+}
+
+fn validate_esphome(esphome: &EsphomeSettings) -> Result<(), String> {
+    if esphome.state.is_enabled() && missing(esphome.encryption_key.as_deref()) {
+        return Err(
+            "integrations.esphome.encryption_key is required (set INTEGRATIONS__ESPHOME__ENCRYPTION_KEY)"
+                .to_owned(),
+        );
+    }
+
+    Ok(())
 }
 
 fn validate_holidays(holidays: &HolidaySettings) -> Result<(), String> {

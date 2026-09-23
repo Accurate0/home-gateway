@@ -62,3 +62,14 @@
       config:
         id: test-study
         name: Test Study
+
+- id: test-speaker
+  state: enabled
+  room: study
+  transport:
+    type: esphome_native_api
+    address: test-speaker.iot
+  model: test_speaker
+  roles:
+    - type: media_player
+      config: { name: Test Speaker }

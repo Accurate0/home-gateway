@@ -1,5 +1,6 @@
 use crate::decoding::DeviceRoleName;
 use crate::device_registry::Transport;
+use crate::integrations::esphome_native_api::EsphomeNativeApiError;
 use crate::integrations::home_assistant::HomeAssistantError;
 use crate::integrations::mqtt::MqttError;
 
@@ -17,8 +18,14 @@ pub enum DeviceCommandError {
     PayloadForService(String),
     #[error("home assistant is not configured")]
     HomeAssistantNotConfigured,
+    #[error("the esphome native api is not configured")]
+    EsphomeNativeApiNotConfigured,
+    #[error("{0}: esphome native api commands are json payloads, not service names")]
+    ServiceForPayload(String),
     #[error(transparent)]
     HomeAssistant(#[from] HomeAssistantError),
+    #[error(transparent)]
+    EsphomeNativeApi(#[from] EsphomeNativeApiError),
     #[error(transparent)]
     Mqtt(#[from] MqttError),
     #[error("no mqtt command topic: {0}")]

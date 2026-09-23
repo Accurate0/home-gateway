@@ -52,6 +52,23 @@ fn device_ids_alias_to_addresses() {
 }
 
 #[test]
+fn an_esphome_native_api_node_registers_without_mqtt_topics() {
+    let (_, devices) = load();
+
+    let nodes: Vec<&String> = devices.esphome_native_api_nodes().collect();
+    assert_eq!(nodes, vec!["test-speaker.iot"]);
+
+    assert!(
+        devices.media_player("test-speaker.iot").is_some(),
+        "the node should carry its media player role"
+    );
+    assert!(
+        devices.mqtt_topics_for("test-speaker.iot").is_empty(),
+        "a native api node subscribes to no mqtt topics"
+    );
+}
+
+#[test]
 fn esphome_state_topics_are_subscribed() {
     let (_, devices) = load();
 
@@ -129,7 +146,7 @@ fn build_with_devices(devices_yaml: &str) -> String {
     )
     .unwrap();
 
-    for models in ["lua/mqtt", "lua/home_assistant"] {
+    for models in ["lua/mqtt", "lua/esphome_native_api", "lua/home_assistant"] {
         std::fs::create_dir_all(dir.join(models)).unwrap();
 
         for entry in std::fs::read_dir(Path::new(FIXTURE_CONFIG).join(models)).unwrap() {

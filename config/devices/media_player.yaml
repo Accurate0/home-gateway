@@ -10,3 +10,17 @@
     - type: media_player
       config:
         name: Living Room TV
+
+- id: living-room-speaker
+  state: enabled
+  room: living-room
+  transport:
+    type: esphome_native_api
+    address: apollo-cast-1-livingroom.iot
+  model: apollo_cast_1
+  roles:
+    - type: light
+      config: { name: Living Room Speaker }
+    - type: media_player
+      config:
+        name: Living Room Speaker

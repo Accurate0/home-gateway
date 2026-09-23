@@ -1,4 +1,5 @@
 pub mod esphome;
+pub mod esphome_native_api;
 pub mod feature_flag;
 pub mod fuelwatch;
 pub mod holidays;

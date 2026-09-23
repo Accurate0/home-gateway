@@ -91,6 +91,23 @@
             },
             "type": {
               "type": "string",
+              "const": "esphome_native_api"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
               "const": "eink_display_firmware"
             }
           },

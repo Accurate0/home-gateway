@@ -86,6 +86,9 @@ configMapGenerator:
     files:
       - lua/home_assistant/media_player.lua
       - lua/home_assistant/roborock.lua
+  - name: home-gateway-config-lua-esphome-native-api
+    files:
+      - lua/esphome_native_api/apollo_cast_1.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

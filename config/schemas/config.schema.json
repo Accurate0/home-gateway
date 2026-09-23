@@ -299,6 +299,11 @@
           "format": "uint",
           "minimum": 0
         },
+        "esphome_native_api_ingest": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
         "devices": {
           "type": "object",
           "properties": {
@@ -369,6 +374,7 @@
       "required": [
         "mqtt_ingest",
         "home_assistant_ingest",
+        "esphome_native_api_ingest",
         "devices"
       ]
     },
@@ -700,6 +706,23 @@
             "type": {
               "type": "string",
               "const": "mqtt"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "esphome_native_api"
             }
           },
           "additionalProperties": false,
@@ -2804,7 +2827,7 @@
           ]
         },
         {
-          "description": "Fires on a plant sensor's soil moisture reading, the flattened comparison\nbeing the threshold. The dispatcher fires on the rising edge. Air metrics\nfrom the same device are matched with [`TriggerMatcher::Environment`].",
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
           "type": "object",
           "properties": {
             "sensor": {
@@ -3378,6 +3401,9 @@
         "s3": {
           "$ref": "#/$defs/S3Settings"
         },
+        "esphome": {
+          "$ref": "#/$defs/EsphomeSettings"
+        },
         "holidays": {
           "$ref": "#/$defs/HolidaySettings"
         },
@@ -3402,6 +3428,7 @@
       },
       "required": [
         "s3",
+        "esphome",
         "holidays",
         "woolworths",
         "trmnl",
@@ -3432,6 +3459,47 @@
       "required": [
         "bucket",
         "region"
+      ]
+    },
+    "EsphomeSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "models": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "encryption_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "keep_alive": {
+          "type": "string"
+        },
+        "silence_timeout": {
+          "type": "string"
+        },
+        "reconnect_delay": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "models",
+        "port",
+        "keep_alive",
+        "silence_timeout",
+        "reconnect_delay"
       ]
     },
     "HolidaySettings": {

@@ -3,6 +3,14 @@ s3:
   bucket: home-gateway-bucket
   region: ap-southeast-2
 
+esphome:
+  state: enabled
+  models: lua/esphome_native_api
+  port: 6053
+  keep_alive: 20s
+  silence_timeout: 90s
+  reconnect_delay: 5s
+
 holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
   regions: [Western Australia]

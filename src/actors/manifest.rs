@@ -25,6 +25,7 @@ use crate::actors::system::{
     adhoc::AdhocTaskActor,
     battery::BatteryActor,
     cron::CronActor,
+    esphome_native_api_ingest::EsphomeNativeApiIngest,
     home_assistant_ingest::HomeAssistantIngest,
     mqtt_ingest::MqttIngest,
     push::PushActor,
@@ -34,6 +35,7 @@ use crate::actors::system::{
 };
 use crate::actors::vacation::VacationActor;
 use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
+use crate::integrations::esphome_native_api::EsphomeNativeApi;
 use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
@@ -258,6 +260,26 @@ pub static ACTORS: &[ActorSpec] = &[
                     Some(ReconcilerSweeper::NAME.to_owned()),
                     ReconcilerSweeper { shared_actor_state },
                     (),
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
+        name: EsphomeNativeApiIngest::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[Requirement::Handle {
+            label: "esphome native api",
+            present: |handles| handles.contains::<EsphomeNativeApi>(),
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                crate::actors::system::esphome_native_api_ingest::spawn::spawn_esphome_native_api_ingest(
+                    &root,
+                    shared_actor_state,
                 )
                 .await?;
 
@@ -559,6 +581,7 @@ mod tests {
                 VacationActor::NAME,
                 ReconcilerWorker::NAME,
                 ReconcilerSweeper::NAME,
+                EsphomeNativeApiIngest::NAME,
                 HomeAssistantIngest::NAME,
                 TransperthActor::NAME,
                 TrmnlActor::NAME,

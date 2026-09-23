@@ -422,6 +422,13 @@ impl DeviceRegistryInner {
         environment.chain(plant).collect()
     }
 
+    pub fn esphome_native_api_nodes(&self) -> impl Iterator<Item = &String> {
+        self.devices
+            .iter()
+            .filter(|(_, device)| device.transport == Transport::EsphomeNativeApi)
+            .map(|(address, _)| address)
+    }
+
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
         self.watchdog.iter()
     }

@@ -42,6 +42,25 @@ pub async fn send(
                 }
             }
         }
+        Transport::EsphomeNativeApi => {
+            let Outbound::Json(payload) = outbound else {
+                return Err(DeviceCommandError::ServiceForPayload(address.to_owned()));
+            };
+
+            if role != DeviceRoleName::Light {
+                return Err(DeviceCommandError::Unsupported {
+                    address: address.to_owned(),
+                    transport: device.transport,
+                    role,
+                });
+            }
+
+            targets
+                .esphome_native_api
+                .ok_or(DeviceCommandError::EsphomeNativeApiNotConfigured)?
+                .light(address, payload)
+                .await?;
+        }
         Transport::HomeAssistant => {
             let Outbound::Text(service) = outbound else {
                 return Err(DeviceCommandError::PayloadForService(address.to_owned()));

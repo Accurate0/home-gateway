@@ -6,6 +6,7 @@ use crate::auth::{AuthManager, OAuthValidator};
 use crate::eink::EinkDisplayManager;
 use crate::http::get_traced_http_client;
 use crate::http::public_client::PublicHttpClient;
+use crate::integrations::esphome_native_api::{EsphomeNativeApi, Node};
 use crate::integrations::{
     feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
@@ -25,6 +26,7 @@ use super::Storage;
 pub struct Handles {
     pub registry: HandleRegistry,
     pub mqtt: Mqtt,
+    pub esphome_nodes: Vec<Node>,
 }
 
 pub async fn build(
@@ -104,6 +106,28 @@ pub async fn build(
         None
     };
 
+    let (esphome_native_api, esphome_nodes) = match integrations.esphome.state.is_enabled() {
+        true => {
+            let (client, nodes) = EsphomeNativeApi::new(
+                storage
+                    .devices
+                    .esphome_native_api_nodes()
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            );
+
+            match client.is_empty() {
+                true => (None, Vec::new()),
+                false => {
+                    tracing::info!("esphome native api enabled for {} node(s)", nodes.len());
+
+                    (Some(client), nodes)
+                }
+            }
+        }
+        false => (None, Vec::new()),
+    };
+
     let oauth = settings
         .auth
         .oauth
@@ -128,6 +152,7 @@ pub async fn build(
         .insert(http_client)
         .insert(public_http_client)
         .insert_optional(home_assistant)
+        .insert_optional(esphome_native_api)
         .insert_optional(transperth)
         .insert_optional(fuelwatch)
         .insert_optional(goodwe)
@@ -135,7 +160,11 @@ pub async fn build(
 
     assert_required(&registry);
 
-    Ok(Handles { registry, mqtt })
+    Ok(Handles {
+        registry,
+        mqtt,
+        esphome_nodes,
+    })
 }
 
 crate::required_handles! {
