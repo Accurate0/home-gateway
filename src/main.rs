@@ -64,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
         schema,
     };
 
-    let (_, root_supervisor) = Actor::spawn(
+    let (root_supervisor, root_supervisor_handle) = Actor::spawn(
         None,
         RootSupervisor {
             shared_actor_state: state.clone(),
@@ -98,6 +98,7 @@ async fn main() -> anyhow::Result<()> {
             feature_flag_client,
             event_bus,
             root_supervisor,
+            root_supervisor_handle,
             eink,
             started,
         },

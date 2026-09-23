@@ -9,7 +9,9 @@ pub struct Telemetry {
 }
 
 pub fn init() -> Telemetry {
-    aws_lc_rs::default_provider().install_default().unwrap();
+    if aws_lc_rs::default_provider().install_default().is_err() {
+        tracing::debug!("a rustls crypto provider was already installed");
+    }
 
     let sampling = tracing_setup::init();
     let metrics_registry = tracing_setup::init_metrics();

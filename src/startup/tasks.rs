@@ -1,9 +1,11 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::Router;
+use ractor::ActorRef;
 use tokio::task::{JoinHandle, JoinSet};
 use tokio_util::sync::CancellationToken;
 
+use crate::actors::root::RootMessage;
 use crate::device_registry::DeviceRegistry;
 use crate::eink::EinkDisplayManager;
 use crate::error::MainError;
@@ -13,7 +15,8 @@ use crate::integrations::feature_flag::{self, FeatureFlagClient};
 use crate::integrations::home_assistant::{self, HomeAssistant};
 use crate::integrations::mqtt::Mqtt;
 use crate::settings::{EsphomeSettings, HomeAssistantWebsocketSettings};
-use crate::utils::axum_shutdown_signal;
+
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct Tasks {
     pub router: Router,
@@ -26,7 +29,8 @@ pub struct Tasks {
     pub cancellation_token: CancellationToken,
     pub feature_flag_client: FeatureFlagClient,
     pub event_bus: EventBus,
-    pub root_supervisor: JoinHandle<()>,
+    pub root_supervisor: ActorRef<RootMessage>,
+    pub root_supervisor_handle: JoinHandle<()>,
     pub eink: EinkDisplayManager,
     pub started: Instant,
 }
@@ -44,6 +48,7 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         feature_flag_client,
         event_bus,
         root_supervisor,
+        root_supervisor_handle,
         eink,
         started,
     } = tasks;
@@ -56,9 +61,10 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
 
     let mut task_set = JoinSet::new();
 
+    let axum_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
         axum::serve(listener, router)
-            .with_graceful_shutdown(axum_shutdown_signal())
+            .with_graceful_shutdown(axum_cancellation_token.cancelled_owned())
             .await
             .map_err(MainError::from)
     });
@@ -107,9 +113,15 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         Ok::<(), MainError>(())
     });
 
+    let supervisor_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
-        root_supervisor.await?;
-        tracing::error!("the root supervisor stopped, shutting down");
+        root_supervisor_handle.await?;
+
+        match supervisor_cancellation_token.is_cancelled() {
+            true => tracing::info!("the root supervisor stopped"),
+            false => tracing::error!("the root supervisor stopped, shutting down"),
+        }
+
         Ok::<(), MainError>(())
     });
 
@@ -123,7 +135,31 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         }
     }
 
-    tracing::info!("shutting down all tasks");
+    cancellation_token.cancel();
+
+    tracing::info!("stopping the actor tree");
+
+    if let Err(e) = root_supervisor
+        .stop_and_wait(None, Some(SHUTDOWN_TIMEOUT))
+        .await
+    {
+        tracing::error!("the root supervisor did not stop cleanly: {e}");
+    }
+
+    tracing::info!("waiting for all tasks to finish");
+
+    let drained = tokio::time::timeout(SHUTDOWN_TIMEOUT, async {
+        while task_set.join_next().await.is_some() {}
+    })
+    .await;
+
+    if drained.is_err() {
+        tracing::warn!(
+            "tasks did not finish within {}s",
+            SHUTDOWN_TIMEOUT.as_secs()
+        );
+    }
+
     task_set.shutdown().await;
 
     Ok(())
