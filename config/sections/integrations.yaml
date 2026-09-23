@@ -7,8 +7,8 @@ esphome:
   state: enabled
   models: lua/esphome_native_api
   port: 6053
-  keep_alive: 20s
-  silence_timeout: 90s
+  keep_alive: 5s
+  silence_timeout: 15s
   reconnect_delay: 5s
 
 holidays:
