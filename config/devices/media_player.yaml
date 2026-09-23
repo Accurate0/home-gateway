@@ -12,7 +12,7 @@
         name: Living Room TV
 
 - id: living-room-speaker
-  state: enabled
+  state: disabled
   room: living-room
   transport:
     type: esphome_native_api

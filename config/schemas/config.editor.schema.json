@@ -3700,8 +3700,8 @@
         "silence_timeout": {
           "type": "string"
         },
-        "reconnect_delay": {
-          "type": "string"
+        "reconnect": {
+          "$ref": "#/$defs/ReconnectSettings"
         }
       },
       "required": [
@@ -3710,7 +3710,28 @@
         "port",
         "keep_alive",
         "silence_timeout",
-        "reconnect_delay"
+        "reconnect"
+      ]
+    },
+    "ReconnectSettings": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "log_attempts": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "min",
+        "max",
+        "log_attempts"
       ]
     },
     "HolidaySettings": {

@@ -6,6 +6,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::settings::enabled_state::EnabledState;
+use crate::settings::reconnect::ReconnectSettings;
 use crate::timedelta_format::time_delta_from_str;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -21,9 +22,7 @@ pub struct EsphomeSettings {
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     pub silence_timeout: TimeDelta,
-    #[serde(with = "time_delta_from_str")]
-    #[schemars(with = "String")]
-    pub reconnect_delay: TimeDelta,
+    pub reconnect: ReconnectSettings,
 }
 
 impl EsphomeSettings {
@@ -33,9 +32,5 @@ impl EsphomeSettings {
 
     pub fn silence_timeout(&self) -> Duration {
         self.silence_timeout.to_std().unwrap_or_default()
-    }
-
-    pub fn reconnect_delay(&self) -> Duration {
-        self.reconnect_delay.to_std().unwrap_or_default()
     }
 }

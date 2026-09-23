@@ -19,6 +19,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::actors::system::esphome_native_api_ingest::{self, EsphomeNativeApiIngest};
 use crate::media_control::MediaCommand;
+use crate::reconnect::{Attempt, Reconnect};
 use crate::settings::EsphomeSettings;
 
 use command::Command;
@@ -134,21 +135,20 @@ pub async fn process_events(
     cancellation_token: CancellationToken,
 ) {
     let mut reported = None;
+    let mut reconnect = Reconnect::new(settings.reconnect);
 
     loop {
         tokio::select! {
-            result = connected(&mut node, &settings, &key, &mut reported) => {
+            result = connected(&mut node, &settings, &key, &mut reported, &mut reconnect) => {
+                let attempt = reconnect.failed();
+
                 if let Err(e) = result {
-                    tracing::error!(
-                        "esphome node {} error, reconnecting in {:?}: {e}",
-                        node.address,
-                        settings.reconnect_delay()
-                    );
+                    log_failure(&node.address, &attempt, &e);
                 }
 
                 dispatch_connection(&mut reported, &node.address, false);
 
-                tokio::time::sleep(settings.reconnect_delay()).await;
+                tokio::time::sleep(attempt.delay).await;
             }
             _ = cancellation_token.cancelled() => {
                 tracing::info!("esphome node {} cancellation requested", node.address);
@@ -158,13 +158,41 @@ pub async fn process_events(
     }
 }
 
+fn log_failure(address: &str, attempt: &Attempt, error: &EsphomeNativeApiError) {
+    if !attempt.log {
+        tracing::debug!(
+            "esphome node {address} error after {} attempts, reconnecting in {:?}: {error}",
+            attempt.failures,
+            attempt.delay
+        );
+        return;
+    }
+
+    tracing::error!(
+        "esphome node {address} error, reconnecting in {:?}: {error}",
+        attempt.delay
+    );
+
+    if attempt.last_log {
+        tracing::error!(
+            "esphome node {address} failed {} times, further errors logged at debug until it reconnects",
+            attempt.failures
+        );
+    }
+}
+
 async fn connected(
     node: &mut Node,
     settings: &EsphomeSettings,
     key: &str,
     reported: &mut Option<bool>,
+    reconnect: &mut Reconnect,
 ) -> Result<(), EsphomeNativeApiError> {
     let mut session = Session::connect(&node.address, settings, key).await?;
+
+    if reconnect.connected() {
+        tracing::info!("esphome node {} reconnected", node.address);
+    }
 
     dispatch_connection(reported, &node.address, true);
 

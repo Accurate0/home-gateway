@@ -94,7 +94,10 @@ integrations:
     port: 6053
     keep_alive: 20s
     silence_timeout: 90s
-    reconnect_delay: 5s
+    reconnect:
+      min: 5s
+      max: 5m
+      log_attempts: 3
   holidays:
     url: http://127.0.0.1:9/holidays.ics
     regions: [Western Australia]

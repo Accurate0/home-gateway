@@ -9,7 +9,10 @@ esphome:
   port: 6053
   keep_alive: 5s
   silence_timeout: 15s
-  reconnect_delay: 5s
+  reconnect:
+    min: 5s
+    max: 5m
+    log_attempts: 3
 
 holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics

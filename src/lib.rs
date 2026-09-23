@@ -20,6 +20,7 @@ pub mod lua;
 pub mod media_control;
 pub mod metrics;
 pub mod mode;
+pub mod reconnect;
 pub mod repo;
 pub mod routes;
 pub mod serde_lenient;

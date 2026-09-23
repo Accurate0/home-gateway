@@ -66,7 +66,7 @@ impl Session {
     ) -> Result<Self, EsphomeNativeApiError> {
         let target = with_port(address, settings.port);
 
-        tracing::info!("connecting to esphome node {target}");
+        tracing::debug!("connecting to esphome node {target}");
 
         let mut stream = TcpStream::connect(&target).await?;
         stream.set_nodelay(true)?;
