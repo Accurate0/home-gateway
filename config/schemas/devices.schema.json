@@ -439,11 +439,15 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "name": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id"
+        "id",
+        "name"
       ]
     },
     "RawLightBlock": {

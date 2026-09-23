@@ -55,6 +55,15 @@ pub struct EnvironmentUpdate {
 }
 
 #[derive(SimpleObject)]
+pub struct PlantUpdate {
+    pub event_id: Uuid,
+    pub id: ID,
+    pub name: String,
+    pub sensor: String,
+    pub soil_moisture: f64,
+}
+
+#[derive(SimpleObject)]
 pub struct CronUpdate {
     pub event_id: Uuid,
     pub name: String,
@@ -236,6 +245,7 @@ pub enum EventUpdate {
     Door(DoorUpdate),
     Switch(SwitchUpdate),
     Environment(EnvironmentUpdate),
+    Plant(PlantUpdate),
     Cron(CronUpdate),
     Sun(SunUpdate),
     Light(LightUpdate),
@@ -339,6 +349,26 @@ impl EventUpdate {
                 device: ieee_addr.to_string(),
                 action,
             }),
+            EventBusMessage::Plant {
+                event_id,
+                sensor,
+                soil_moisture,
+            } => {
+                let settings = registry.plant(&sensor);
+                let id = settings
+                    .map(|s| s.id.clone())
+                    .unwrap_or_else(|| slug(&sensor));
+                let name = settings
+                    .map(|s| s.name.clone())
+                    .unwrap_or_else(|| id.clone());
+                EventUpdate::Plant(PlantUpdate {
+                    event_id,
+                    id: ID(id),
+                    name,
+                    sensor,
+                    soil_moisture,
+                })
+            }
             EventBusMessage::Environment {
                 event_id,
                 sensor,

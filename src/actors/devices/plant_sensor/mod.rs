@@ -1,15 +1,11 @@
-use std::collections::BTreeMap;
-
 use crate::actors::devices::handler::DeviceHandler;
-use crate::{
-    event_bus::{EventBusMessage, SensorReading},
-    state::AppState,
-};
+use crate::repo::plant::PlantReading;
+use crate::{event_bus::EventBusMessage, state::AppState};
 use uuid::Uuid;
 
 pub struct Entity {
     pub address: String,
-    pub readings: BTreeMap<String, f64>,
+    pub soil_moisture: f64,
 }
 
 pub struct NewEvent {
@@ -43,21 +39,33 @@ pub struct PlantSensorHandler {
 impl PlantSensorHandler {
     pub const NAME: &str = "plant-sensor";
 
-    fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
+    async fn handle(&self, message: Message) -> Result<(), anyhow::Error> {
         let Message::NewEvent(event) = message;
-        let Entity { address, readings } = event.entity;
+        let Entity {
+            address,
+            soil_moisture,
+        } = event.entity;
 
-        let readings = readings
-            .into_iter()
-            .map(|(metric, value)| SensorReading::new(metric.into(), value))
-            .collect();
+        if let Some(settings) = self.shared_actor_state.devices.plant(&address) {
+            self.shared_actor_state
+                .repos
+                .plant()
+                .record(&PlantReading {
+                    event_id: event.event_id,
+                    id: Some(settings.id.clone()),
+                    friendly_name: settings.name.clone(),
+                    address: address.clone(),
+                    soil_moisture,
+                })
+                .await?;
+        }
 
         self.shared_actor_state
             .event_bus
-            .publish(EventBusMessage::Environment {
+            .publish(EventBusMessage::Plant {
                 event_id: event.event_id,
                 sensor: address,
-                readings,
+                soil_moisture,
             });
 
         Ok(())
@@ -81,6 +89,6 @@ impl DeviceHandler for PlantSensorHandler {
     }
 
     async fn handle(&self, message: Self::Message, _state: &mut Self::State) -> anyhow::Result<()> {
-        Self::handle(self, message)
+        Self::handle(self, message).await
     }
 }

@@ -69,6 +69,9 @@
 ---@field presence boolean?
 ---@field sensor string?
 
+---@class PlantFields
+---@field soil_moisture number?
+
 ---@class ControlSwitchFields
 ---@field action string?
 
@@ -89,7 +92,7 @@
 ---@field battery integer?
 ---@field door DoorFields?
 ---@field environment table<DeviceEnvironmentMetric, number>?
----@field plant table<string, number>?
+---@field plant PlantFields?
 ---@field light LightFields?
 ---@field smart_switch SmartSwitchFields?
 ---@field presence PresenceFields?

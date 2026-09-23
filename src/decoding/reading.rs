@@ -15,7 +15,7 @@ pub struct DeviceReading {
     #[serde(default)]
     pub environment: Option<HashMap<Metric, f64>>,
     #[serde(default)]
-    pub plant: Option<BTreeMap<String, f64>>,
+    pub plant: Option<PlantFields>,
     #[serde(default)]
     pub light: Option<LightFields>,
     #[serde(default)]
@@ -102,6 +102,13 @@ pub struct PresenceFields {
     pub presence: Option<bool>,
     #[serde(default)]
     pub sensor: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlantFields {
+    #[serde(default)]
+    pub soil_moisture: Option<f64>,
 }
 
 #[derive(Debug, Default, Deserialize)]

@@ -1,8 +1,8 @@
 use crate::repo::{
     AdhocRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo, EnvironmentRepo,
     FuelWatchRepo, HolidayRepo, HomeAssistantRepo, IntentRepo, LightRepo, MediaPlayerRepo,
-    MetricRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo,
-    WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
+    MetricRepo, PlantRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo,
+    UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
@@ -25,6 +25,7 @@ struct Repos {
     light: LightRepo,
     media_player: MediaPlayerRepo,
     metric: MetricRepo,
+    plant: PlantRepo,
     robot_vacuum: RobotVacuumRepo,
     smart_switch: SmartSwitchRepo,
     push: PushRepo,
@@ -60,6 +61,7 @@ impl RepoRegistry {
                 light: LightRepo::new(db.clone()),
                 media_player: MediaPlayerRepo::new(db.clone()),
                 metric: MetricRepo::new(db.clone()),
+                plant: PlantRepo::new(db.clone()),
                 robot_vacuum: RobotVacuumRepo::new(db.clone()),
                 smart_switch: SmartSwitchRepo::new(db.clone()),
                 push: PushRepo::new(db.clone()),
@@ -145,6 +147,10 @@ impl RepoRegistry {
 
     pub fn smart_switch(&self) -> &SmartSwitchRepo {
         &self.inner.smart_switch
+    }
+
+    pub fn plant(&self) -> &PlantRepo {
+        &self.inner.plant
     }
 
     pub fn push(&self) -> &PushRepo {

@@ -158,36 +158,16 @@ impl DecodedRole for plant_sensor::Entity {
         reading: &DeviceReading,
     ) -> Option<Self> {
         let address = &device.address;
-        let declared = &device.profile.plant;
-
         let reported = reading.plant.as_ref()?;
 
-        let readings: std::collections::BTreeMap<String, f64> = reported
-            .iter()
-            .filter(|(metric, _)| {
-                let known = declared.contains(metric);
-
-                if !known {
-                    tracing::warn!(
-                        "{} model {} reported undeclared plant metric {metric} for {address}",
-                        device.profile.source(),
-                        device.profile.slug
-                    );
-                }
-
-                known
-            })
-            .map(|(metric, value)| (metric.clone(), *value))
-            .collect();
-
-        if readings.is_empty() {
-            tracing::info!("skipping plant reading for {address}: no declared metrics");
+        let Some(soil_moisture) = reported.soil_moisture else {
+            tracing::info!("skipping plant reading for {address}: no soil moisture");
             return None;
-        }
+        };
 
         Some(plant_sensor::Entity {
             address: address.clone(),
-            readings,
+            soil_moisture,
         })
     }
 

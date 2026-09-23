@@ -24,7 +24,6 @@ pub struct ModelProfile {
     pub roles: BTreeSet<DeviceRoleName>,
     pub capabilities: Vec<Capability>,
     pub environment: Vec<Metric>,
-    pub plant: Vec<String>,
     pub entities: ModelEntities,
     pub commands: ModelCommands,
     pub ranges: ModelRanges,

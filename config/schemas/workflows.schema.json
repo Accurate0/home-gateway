@@ -1496,6 +1496,32 @@
           ]
         },
         {
+          "description": "Fires on a plant sensor's soil moisture reading, the flattened comparison\nbeing the threshold. The dispatcher fires on the rising edge. Air metrics\nfrom the same device are matched with [`TriggerMatcher::Environment`].",
+          "type": "object",
+          "properties": {
+            "sensor": {
+              "type": "string"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "plant"
+            }
+          },
+          "required": [
+            "type",
+            "sensor",
+            "op",
+            "value"
+          ]
+        },
+        {
           "description": "Fires on a recurring schedule. `schedule` is a standard 5-field cron\nexpression (e.g. `\"0 20 * * THU\"`), evaluated in local time. Driven by the\n[`crate::actors::system::cron::CronActor`] producer, which matches by trigger name.",
           "type": "object",
           "properties": {

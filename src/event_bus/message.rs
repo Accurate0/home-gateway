@@ -7,8 +7,9 @@ use super::reading::SensorReading;
 use super::variables::{
     CommandFailedVariables, CronVariables, DeviceBatteryVariables, DoorVariables,
     EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables, HomeAssistantVariables,
-    LightVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
-    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
+    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
+    SolarVariables, SunVariables, SwitchVariables, UnifiVariables, WeatherVariables,
+    WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
@@ -50,6 +51,11 @@ pub enum EventBusMessage {
         event_id: Uuid,
         sensor: String,
         readings: Vec<SensorReading>,
+    },
+    Plant {
+        event_id: Uuid,
+        sensor: String,
+        soil_moisture: f64,
     },
     /// A scheduled `Cron` trigger came due. `name` identifies the trigger so the
     /// dispatcher can match it; the schedule itself lives in the trigger config
@@ -218,6 +224,7 @@ impl EventBusMessage {
             | EventBusMessage::Door { event_id, .. }
             | EventBusMessage::SwitchAction { event_id, .. }
             | EventBusMessage::Environment { event_id, .. }
+            | EventBusMessage::Plant { event_id, .. }
             | EventBusMessage::Cron { event_id, .. }
             | EventBusMessage::Sun { event_id, .. }
             | EventBusMessage::Light { event_id, .. }
@@ -243,6 +250,7 @@ impl EventBusMessage {
             EventBusMessage::Door { .. } => "door",
             EventBusMessage::SwitchAction { .. } => "switch",
             EventBusMessage::Environment { .. } => "environment",
+            EventBusMessage::Plant { .. } => "plant",
             EventBusMessage::Cron { .. } => "cron",
             EventBusMessage::Sun { .. } => "sun",
             EventBusMessage::Light { .. } => "light",
@@ -266,6 +274,7 @@ impl EventBusMessage {
         "door",
         "switch",
         "environment",
+        "plant",
         "cron",
         "sun",
         "light",
@@ -286,7 +295,8 @@ impl EventBusMessage {
     pub fn entity(&self) -> String {
         match self {
             EventBusMessage::Presence { sensor, .. }
-            | EventBusMessage::Environment { sensor, .. } => sensor.clone(),
+            | EventBusMessage::Environment { sensor, .. }
+            | EventBusMessage::Plant { sensor, .. } => sensor.clone(),
             EventBusMessage::Door { ieee_addr, .. }
             | EventBusMessage::SwitchAction { ieee_addr, .. }
             | EventBusMessage::Light { ieee_addr, .. } => ieee_addr.to_string(),
@@ -336,6 +346,11 @@ impl EventBusMessage {
             EventBusMessage::Environment {
                 sensor, readings, ..
             } => EnvironmentVariables::node(sensor, readings),
+            EventBusMessage::Plant {
+                sensor,
+                soil_moisture,
+                ..
+            } => PlantVariables::node(sensor, *soil_moisture),
             EventBusMessage::Cron { name, .. } => CronVariables { name: name.clone() }.to_node(),
             EventBusMessage::Sun { transition, .. } => SunVariables {
                 transition: transition.as_str().to_owned(),

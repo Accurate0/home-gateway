@@ -21,6 +21,7 @@ pub mod light;
 pub mod light_command;
 pub mod light_state;
 pub mod media_player;
+pub mod plant;
 pub mod presence;
 pub mod robot_vacuum;
 
@@ -31,6 +32,7 @@ pub use environment::EnvironmentEntity;
 pub use light::LightEntity;
 pub use light_command::{LightCommandResultObject, LightCommandStatusObject};
 pub use media_player::MediaPlayerEntity;
+pub use plant::PlantEntity;
 pub use presence::PresenceEntity;
 pub use robot_vacuum::RobotVacuumEntity;
 
@@ -58,6 +60,7 @@ pub enum EntityCategory {
     Doors,
     Presence,
     Environment,
+    Plants,
     Displays,
     Vacuums,
     Media,
@@ -65,11 +68,12 @@ pub enum EntityCategory {
 
 impl EntityCategory {
     /// Every category in the order sections should render.
-    pub const ORDERED: [EntityCategory; 7] = [
+    pub const ORDERED: [EntityCategory; 8] = [
         EntityCategory::Lights,
         EntityCategory::Doors,
         EntityCategory::Presence,
         EntityCategory::Environment,
+        EntityCategory::Plants,
         EntityCategory::Displays,
         EntityCategory::Vacuums,
         EntityCategory::Media,
@@ -83,6 +87,7 @@ impl std::fmt::Display for EntityCategory {
             EntityCategory::Doors => "Doors",
             EntityCategory::Presence => "Presence",
             EntityCategory::Environment => "Environment",
+            EntityCategory::Plants => "Plants",
             EntityCategory::Displays => "Displays",
             EntityCategory::Vacuums => "Vacuums",
             EntityCategory::Media => "Media",
@@ -112,6 +117,7 @@ impl EntitySection {
 pub enum Entity {
     Light(LightEntity),
     Environment(EnvironmentEntity),
+    Plant(PlantEntity),
     Door(DoorEntity),
     Presence(PresenceEntity),
     EinkDisplay(EinkDisplayEntity),

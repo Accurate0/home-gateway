@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_plant_sensor (entity_id, name, address, soil_moisture, updated_at) VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT (entity_id)\n            DO UPDATE SET\n                name = EXCLUDED.name,\n                address = EXCLUDED.address,\n                soil_moisture = EXCLUDED.soil_moisture,\n                updated_at = EXCLUDED.updated_at\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Float8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "60bde28b9c2197428256c4329c4e6416e195195c55ca6972b8ecd1b6af628bd1"
+}

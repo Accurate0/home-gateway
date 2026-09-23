@@ -16,6 +16,7 @@ import {
   Play,
   SlidersHorizontal,
   Square,
+  Sprout,
   Thermometer,
   Tv,
   UserX,
@@ -428,6 +429,62 @@ function EnvironmentTile({ entity, now }: { entity: Entity; now: number }) {
       </Popover.Trigger>
       <EnvironmentDetails entity={entity} now={now} />
     </Popover.Root>
+  );
+}
+
+const DRY = 20;
+const WET = 80;
+
+function PlantTile({ entity, now }: { entity: Entity; now: number }) {
+  const moisture = entity.soilMoisture;
+  const pct = moisture == null ? 0 : Math.max(0, Math.min(100, moisture));
+  const tone =
+    moisture == null
+      ? "bg-muted-foreground/40"
+      : moisture < DRY || moisture > WET
+        ? "bg-state-open/70"
+        : "bg-state-present/70";
+
+  return (
+    <Tile className="col-span-2 justify-between sm:col-span-1 lg:col-span-2">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-muted text-muted-foreground grid size-9 place-items-center rounded-xl">
+            <Sprout className="size-5" strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="leading-tight font-medium">{entity.name}</div>
+            <div className="text-muted-foreground flex items-center gap-1 text-xs">
+              <span>{entity.id}</span>
+              <LastSeen entity={entity} now={now} />
+            </div>
+          </div>
+        </div>
+        <div className="font-display text-3xl font-semibold tracking-tight">
+          {fmt(moisture, "%", 0)}
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="text-muted-foreground mb-1.5 flex justify-between text-xs">
+          <span>Soil moisture</span>
+          <span>
+            {moisture == null
+              ? "-"
+              : moisture < DRY
+                ? "dry"
+                : moisture > WET
+                  ? "overwatered"
+                  : "ok"}
+          </span>
+        </div>
+        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+          <div
+            className={cn("h-full rounded-full transition-[width]", tone)}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </Tile>
   );
 }
 
@@ -944,6 +1001,8 @@ export default function EntityCard({
       return <LightTile entity={entity} actions={lightActions} now={now} />;
     case "environment":
       return <EnvironmentTile entity={entity} now={now} />;
+    case "plant":
+      return <PlantTile entity={entity} now={now} />;
     case "door":
       return (
         <StatusTile

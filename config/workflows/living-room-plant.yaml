@@ -1,14 +1,27 @@
 # yaml-language-server: $schema=../schemas/workflows.schema.json
-- name: Living room plant moisture check
-  slug: living-room-plant-moisture-check
+- name: Living room plant dry
+  slug: living-room-plant-dry
   group: Plants
-  on: { type: cron, schedule: "0 19 * * WED" }
+  on: { type: plant, sensor: living-room-plant, op: lt, value: 20 }
+  cooldown: 24h
   modes: [home, away, guest]
   run:
     - type: notify
       notify: { type: android_app }
       category: general
-      message: "Check the living room plant's soil moisture"
+      message: "Living room plant is dry (soil moisture below 20%)"
+
+- name: Living room plant overwatered
+  slug: living-room-plant-overwatered
+  group: Plants
+  on: { type: plant, sensor: living-room-plant, op: gt, value: 80 }
+  cooldown: 24h
+  modes: [home, away, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "Living room plant is overwatered (soil moisture above 80%)"
 
 - name: Living room plant water and fertilise
   slug: living-room-plant-water-fertilise

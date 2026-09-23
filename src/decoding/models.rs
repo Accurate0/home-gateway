@@ -126,17 +126,6 @@ fn resolve_profile(
         ));
     }
 
-    let plant = decoder
-        .field::<Vec<String>>(slug, "plant")
-        .map_err(error)?
-        .unwrap_or_default();
-
-    if roles.contains(&DeviceRoleName::Plant) == plant.is_empty() {
-        return Err(format!(
-            "{kind} model {slug}: `plant` metrics are required with the `plant` role, and only with it"
-        ));
-    }
-
     let watchdog = decoder
         .field::<String>(slug, "watchdog")
         .map_err(error)?
@@ -157,7 +146,6 @@ fn resolve_profile(
         roles,
         capabilities,
         environment,
-        plant,
         entities,
         commands,
         ranges,
@@ -438,24 +426,6 @@ mod tests {
 
         assert_eq!(entities.light(), Some("rgb"));
         assert_eq!(entities.binary_sensor, ["motion"]);
-    }
-
-    #[test]
-    fn the_plant_role_and_plant_metrics_come_together() {
-        let missing = load_protocol(
-            "esphome",
-            r#"return {
-                roles = { "plant" },
-                entities = { sensor = { "soil_moisture" } },
-                decode = function(e) return {} end,
-            }"#,
-        )
-        .expect_err("plant without metrics");
-
-        assert!(
-            missing.contains("`plant` metrics are required"),
-            "{missing}"
-        );
     }
 
     #[test]

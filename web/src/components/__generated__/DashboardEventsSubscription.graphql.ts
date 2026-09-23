@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6817f34380be8b232d92881bc06d06b0>>
+ * @generated SignedSource<<cdee84738826b35917e081c6cf6f1e73>>
  * @lightSyntaxTransform
  */
 
@@ -45,6 +45,11 @@ export type DashboardEventsSubscription$data = {
     readonly source: string | null | undefined;
     readonly state: string;
     readonly volumeLevel: number | null | undefined;
+  } | {
+    readonly __typename: "PlantUpdate";
+    readonly id: string;
+    readonly name: string;
+    readonly soilMoisture: number;
   } | {
     readonly __typename: "PresenceUpdate";
     readonly id: string;
@@ -181,6 +186,22 @@ v8 = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
+      "name": "soilMoisture",
+      "storageKey": null
+    }
+  ],
+  "type": "PlantUpdate",
+  "abstractKey": null
+},
+v9 = {
+  "kind": "InlineFragment",
+  "selections": [
+    (v2/*:: as any*/),
+    (v3/*:: as any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
       "name": "room",
       "storageKey": null
     },
@@ -272,7 +293,7 @@ v8 = {
   "type": "MediaPlayerUpdate",
   "abstractKey": null
 },
-v9 = [
+v10 = [
   (v2/*:: as any*/)
 ];
 return {
@@ -295,7 +316,8 @@ return {
           (v5/*:: as any*/),
           (v6/*:: as any*/),
           (v7/*:: as any*/),
-          (v8/*:: as any*/)
+          (v8/*:: as any*/),
+          (v9/*:: as any*/)
         ],
         "storageKey": "events(filter:\"*\")"
       }
@@ -323,21 +345,22 @@ return {
           (v6/*:: as any*/),
           (v7/*:: as any*/),
           (v8/*:: as any*/),
+          (v9/*:: as any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v9/*:: as any*/),
+            "selections": (v10/*:: as any*/),
             "type": "CommandFailedUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v9/*:: as any*/),
+            "selections": (v10/*:: as any*/),
             "type": "DeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v9/*:: as any*/),
+            "selections": (v10/*:: as any*/),
             "type": "HomeAssistantUpdate",
             "abstractKey": null
           }
@@ -347,16 +370,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "463ca54e8364db870ae15ecd0fef5fbd",
+    "cacheID": "1c501355617547c3029155c7ccc46bc2",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7c486af8dd8c639e824611297fe5f59e";
+(node as any).hash = "7debce465e17fda2a7e652e6f7e31a8a";
 
 export default node;

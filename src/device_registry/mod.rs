@@ -417,7 +417,7 @@ impl DeviceRegistryInner {
             .roles
             .plant
             .iter()
-            .flat_map(|_| profile.plant.iter().cloned().map(SensorMetric::from));
+            .map(|_| SensorMetric::SoilMoisture);
 
         environment.chain(plant).collect()
     }
@@ -472,6 +472,10 @@ impl DeviceRegistryInner {
 
     pub fn plant(&self, address: &str) -> Option<&PlantSensorSettings> {
         self.roles(address)?.plant.as_ref()
+    }
+
+    pub fn plant_devices(&self) -> impl Iterator<Item = (&String, &PlantSensorSettings)> {
+        self.each(|roles| roles.plant.as_ref())
     }
 
     pub fn battery(&self, address: &str) -> Option<&BatterySettings> {

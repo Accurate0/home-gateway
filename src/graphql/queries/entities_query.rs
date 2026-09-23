@@ -6,7 +6,7 @@ use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::entity_object::{
     DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, LightEntity,
-    MediaPlayerEntity, PresenceEntity, RobotVacuumEntity,
+    MediaPlayerEntity, PlantEntity, PresenceEntity, RobotVacuumEntity,
 };
 
 #[derive(Default)]
@@ -66,6 +66,15 @@ impl EntitiesQuery {
                     .environment_devices()
                     .filter_map(|(address, _)| EnvironmentEntity::from_registry(registry, address))
                     .map(Entity::Environment),
+            );
+        }
+
+        if auth.has(&Scope::new(Resource::Plant, Action::Read)) {
+            out.extend(
+                registry
+                    .plant_devices()
+                    .filter_map(|(address, _)| PlantEntity::from_registry(registry, address))
+                    .map(Entity::Plant),
             );
         }
 
@@ -163,6 +172,18 @@ impl EntitiesQuery {
         let address = registry.address_or_self(&id).to_owned();
         EnvironmentEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown environment sensor `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Plant, Action::Read)))]
+    async fn plant(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<PlantEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.address_or_self(&id).to_owned();
+        PlantEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown plant sensor `{id}`")))
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Epd, Action::Read)))]

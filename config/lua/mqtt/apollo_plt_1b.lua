@@ -11,7 +11,6 @@ return {
 	roles = { "battery", "environment", "plant" },
 	watchdog = "26h",
 	capabilities = { "temperature", "humidity", "lux", "uv_index" },
-	plant = { "soil_moisture" },
 
 	entities = {
 		sensor = {

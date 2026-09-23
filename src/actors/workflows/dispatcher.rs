@@ -322,6 +322,34 @@ impl WorkflowDispatcher {
 
                 true
             }
+            (
+                TriggerMatcher::Plant { sensor, cmp },
+                EventBusMessage::Plant {
+                    sensor: s,
+                    soil_moisture,
+                    ..
+                },
+            ) => {
+                if devices.address_or_self(sensor) != s.as_str() {
+                    return false;
+                }
+
+                let satisfied = cmp.matches(*soil_moisture);
+                let key = (workflow.name.clone(), s.clone(), SensorMetric::SoilMoisture);
+
+                if !satisfied {
+                    state.last_satisfied.insert(key, false);
+                    return false;
+                }
+
+                if state.last_satisfied.get(&key).copied().unwrap_or(false) {
+                    return false;
+                }
+
+                *pending = Some(PendingLatch::Sensor(key));
+
+                true
+            }
             (TriggerMatcher::Cron { .. }, EventBusMessage::Cron { name, .. }) => {
                 &workflow.name == name
             }

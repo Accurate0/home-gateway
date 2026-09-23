@@ -42,7 +42,6 @@ configMapGenerator:
       - workflows/eink-battery.yaml
       - workflows/forecast.yaml
       - workflows/fuel.yaml
-      - workflows/hallway-plant.yaml
       - workflows/holidays.yaml
       - workflows/living-room-lamp.yaml
       - workflows/living-room-plant.yaml

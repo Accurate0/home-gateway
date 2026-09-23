@@ -2,6 +2,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use mlua::{ExternalError, Lua, Table, Value as LuaValue};
 
 use crate::auth::scope::{Action, Resource, Scope};
+use crate::device_registry::last_seen;
 use crate::lua::{LuaCallContext, LuaClass, LuaField, LuaFunction, LuaModule, LuaParam, LuaType};
 use crate::repo::metric::MetricRow;
 
@@ -104,13 +105,14 @@ impl LuaModule for DeviceLua {
                 async move {
                     let keys = vec![cx.state.devices.address_or_self(&device).to_owned()];
 
-                    let rows = cx
+                    let found = cx
                         .query("device.last_seen", || async {
-                            cx.state.repos.device().last_seen_many(&keys).await
+                            last_seen::lookup(&cx.state.devices, cx.state.repos.device(), &keys)
+                                .await
                         })
                         .await?;
 
-                    Ok(rows.iter().map(|row| row.last_seen.timestamp()).max())
+                    Ok(found.values().map(|at| at.timestamp()).max())
                 }
             })
         })?;
@@ -124,9 +126,10 @@ impl LuaModule for DeviceLua {
                     let aliases = cx.state.devices.aliases();
                     let keys: Vec<String> = aliases.values().map(|a| a.to_string()).collect();
 
-                    let rows = cx
+                    let found = cx
                         .query("device.offline", || async {
-                            cx.state.repos.device().last_seen_many(&keys).await
+                            last_seen::lookup(&cx.state.devices, cx.state.repos.device(), &keys)
+                                .await
                         })
                         .await?;
 
@@ -135,9 +138,9 @@ impl LuaModule for DeviceLua {
                     let mut offline: Vec<String> = aliases
                         .iter()
                         .filter(|(_, address)| {
-                            rows.iter()
-                                .filter(|row| row.address == address.as_str())
-                                .all(|row| row.last_seen < cutoff)
+                            found
+                                .get(address.as_str())
+                                .is_none_or(|last_seen| *last_seen < cutoff)
                         })
                         .map(|(id, _)| id.to_string())
                         .collect();

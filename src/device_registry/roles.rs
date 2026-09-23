@@ -104,7 +104,10 @@ impl Roles {
                 });
             }
             DeviceConfig::Plant(plant) => {
-                self.plant = Some(PlantSensorSettings { id: plant.id });
+                self.plant = Some(PlantSensorSettings {
+                    id: plant.id,
+                    name: plant.name,
+                });
             }
             DeviceConfig::Light(light) => {
                 self.set_light(id, light.name)?;

@@ -28,6 +28,7 @@ use crate::graphql::{
     dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
     dataloader::media_player_state::MediaPlayerStateDataLoader,
+    dataloader::plant::LatestPlantDataLoader,
     dataloader::robot_vacuum_state::RobotVacuumStateDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
     dataloader::workflow_run_steps::WorkflowRunStepsDataLoader,
@@ -114,6 +115,12 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
         tokio::spawn,
     ))
     .data(DataLoader::new(
+        LatestPlantDataLoader {
+            repo: state.repos.plant().clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
         WorkflowRunStepsDataLoader {
             repo: state.repos.workflow().clone(),
         },
@@ -122,6 +129,7 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     .data(DataLoader::new(
         LastSeenDataLoader {
             repo: state.repos.device().clone(),
+            devices: state.devices.clone(),
         },
         tokio::spawn,
     ))

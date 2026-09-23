@@ -2,8 +2,11 @@
 source: src/actors/workflows/plan.rs
 expression: out
 ---
-# Living room plant moisture check  (on: cron(0 19 * * 3))
-  notify: notify(AndroidApp, general): Check the living room plant's soil moisture
+# Living room plant dry  (on: plant(living-room-plant).soil_moisture Lt 20)
+  notify: notify(AndroidApp, general): Living room plant is dry (soil moisture below 20%)
+
+# Living room plant overwatered  (on: plant(living-room-plant).soil_moisture Gt 80)
+  notify: notify(AndroidApp, general): Living room plant is overwatered (soil moisture above 80%)
 
 # Living room plant water and fertilise  (on: cron(0 9 * * 0))
   notify: notify(AndroidApp, general): Water and fertilise the living room plant

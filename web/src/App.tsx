@@ -6,6 +6,7 @@ import RunsPage from "./components/RunsPage";
 import AdhocTasksPage from "./components/AdhocTasksPage";
 import HomeAssistantPage from "./components/HomeAssistantPage";
 import BatteryPage from "./components/BatteryPage";
+import PlantsPage from "./components/PlantsPage";
 import ModesPage from "./components/ModesPage";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ const TABS = [
   { to: "/runs", label: "Runs" },
   { to: "/adhoc-tasks", label: "Adhoc Tasks" },
   { to: "/batteries", label: "Batteries" },
+  { to: "/plants", label: "Plants" },
   { to: "/modes", label: "Modes" },
   { to: "/home-assistant", label: "Home Assistant" },
   { to: "/lua", label: "Lua" },
@@ -64,6 +66,7 @@ export default function App() {
           <Route path="/runs" element={<RunsPage />} />
           <Route path="/adhoc-tasks" element={<AdhocTasksPage />} />
           <Route path="/batteries" element={<BatteryPage />} />
+          <Route path="/plants" element={<PlantsPage />} />
           <Route path="/modes" element={<ModesPage />} />
           <Route path="/home-assistant" element={<HomeAssistantPage />} />
           <Route path="/lua" element={<LuaPlaygroundPage />} />

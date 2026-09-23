@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 
 use crate::device_registry::DeviceRegistry;
+use crate::event_bus::SensorMetric;
 use crate::event_bus::variables::{
     CommandFailedVariables, CronVariables, DeviceBatteryVariables, DoorVariables,
     EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables, HomeAssistantVariables,
-    LightVariables, MediaPlayerVariables, ModeVariables, PresenceVariables, SolarVariables,
-    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
+    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
+    SolarVariables, SunVariables, SwitchVariables, UnifiVariables, WeatherVariables,
+    WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
 
@@ -29,6 +31,17 @@ impl TriggerMatcher {
             TriggerMatcher::Light { .. } => LightVariables::shape(),
             TriggerMatcher::CommandFailed { .. } => CommandFailedVariables::shape(),
             TriggerMatcher::FeatureFlag { .. } => FeatureFlagVariables::shape(),
+            TriggerMatcher::Plant { sensor, .. } => {
+                let metrics = registry.sensor_metrics(registry.address_or_self(sensor));
+
+                if !metrics.contains(&SensorMetric::SoilMoisture) {
+                    return Err(format!(
+                        "plant trigger on `{sensor}`: sensor does not report soil moisture"
+                    ));
+                }
+
+                PlantVariables::shape()
+            }
             TriggerMatcher::Environment { sensor, metric, .. } => {
                 let metrics = registry.sensor_metrics(registry.address_or_self(sensor));
 

@@ -5,6 +5,7 @@ pub mod forecast;
 pub mod home_assistant_state;
 pub mod last_seen;
 pub mod media_player_state;
+pub mod plant;
 pub mod robot_vacuum_state;
 pub mod temperature;
 pub mod workflow_run_steps;

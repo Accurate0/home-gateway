@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<41b44e7d68b190d455378768cbb94a68>>
+ * @generated SignedSource<<fdf3f84ea9bf2dc2583b388a37d3ddd5>>
  * @lightSyntaxTransform
  */
 
@@ -11,7 +11,7 @@ import { ConcreteRequest } from 'relay-runtime';
 export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PM_25" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "VOC_INDEX" | "%future added value";
 export type EinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
 export type EinkMode = "ALBUM" | "DASHBOARD" | "REDDIT" | "%future added value";
-export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PRESENCE" | "VACUUMS" | "%future added value";
+export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PLANTS" | "PRESENCE" | "VACUUMS" | "%future added value";
 export type Orientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
 export type RobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
 export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
@@ -88,6 +88,15 @@ export type DashboardEntitiesQuery$data = {
     readonly source: string | null | undefined;
     readonly state: string | null | undefined;
     readonly volumeLevel: number | null | undefined;
+  } | {
+    readonly __typename: "PlantEntity";
+    readonly category: EntityCategory;
+    readonly id: string;
+    readonly lastSeen: any | null | undefined;
+    readonly name: string;
+    readonly room: string | null | undefined;
+    readonly soilMoisture: number | null | undefined;
+    readonly time: any | null | undefined;
   } | {
     readonly __typename: "PresenceEntity";
     readonly category: EntityCategory;
@@ -173,10 +182,17 @@ v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "time",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "batteryPercentage",
   "storageKey": null
 },
-v7 = [
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -312,16 +328,30 @@ v7 = [
             "name": "uvIndex",
             "storageKey": null
           },
+          (v6/*:: as any*/),
+          (v5/*:: as any*/)
+        ],
+        "type": "EnvironmentEntity",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v0/*:: as any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "time",
+            "name": "soilMoisture",
             "storageKey": null
           },
+          (v6/*:: as any*/),
           (v5/*:: as any*/)
         ],
-        "type": "EnvironmentEntity",
+        "type": "PlantEntity",
         "abstractKey": null
       },
       {
@@ -345,7 +375,7 @@ v7 = [
             "name": "batteryVoltage",
             "storageKey": null
           },
-          (v6/*:: as any*/),
+          (v7/*:: as any*/),
           (v5/*:: as any*/),
           {
             "alias": null,
@@ -550,7 +580,7 @@ v7 = [
             "name": "status",
             "storageKey": null
           },
-          (v6/*:: as any*/),
+          (v7/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -594,7 +624,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "DashboardEntitiesQuery",
-    "selections": (v7/*:: as any*/),
+    "selections": (v8/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -603,19 +633,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "DashboardEntitiesQuery",
-    "selections": (v7/*:: as any*/)
+    "selections": (v8/*:: as any*/)
   },
   "params": {
-    "cacheID": "95cb51e0025fad1a4f6c4bee6aa7f2f9",
+    "cacheID": "2d4e2d0c2fc603da9c61df0841198a6e",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on PlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f789ddd65bba81b0ed85bcacee57474a";
+(node as any).hash = "d970a31a2a5f14e5e0ee229c35265de5";
 
 export default node;

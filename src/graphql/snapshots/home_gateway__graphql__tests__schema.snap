@@ -227,7 +227,7 @@ type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
+union Entity = LightEntity | EnvironmentEntity | PlantEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
 
 """
 The dashboard section a device kind is displayed under. Owned by the backend
@@ -239,6 +239,7 @@ enum EntityCategory {
 	DOORS
 	PRESENCE
 	ENVIRONMENT
+	PLANTS
 	DISPLAYS
 	VACUUMS
 	MEDIA
@@ -301,7 +302,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -693,6 +694,31 @@ type PlainMode implements ModeState {
 	mode: Mode!
 }
 
+type PlantEntity {
+	category: EntityCategory!
+	id: String!
+	name: String!
+	room: String
+	battery: DeviceBattery
+	soilMoisture: Float
+	time: DateTime
+	history(since: DateTime!): [PlantPoint!]!
+	lastSeen: DateTime
+}
+
+type PlantPoint {
+	soilMoisture: Float!
+	time: DateTime!
+}
+
+type PlantUpdate {
+	eventId: UUID!
+	id: ID!
+	name: String!
+	sensor: String!
+	soilMoisture: Float!
+}
+
 type PresenceEntity {
 	category: EntityCategory!
 	id: String!
@@ -795,6 +821,7 @@ type QueryRoot {
 	door(id: String!): DoorEntity!
 	presence(id: String!): PresenceEntity!
 	environment(id: String!): EnvironmentEntity!
+	plant(id: String!): PlantEntity!
 	einkDisplay(id: String!): EinkDisplayEntity!
 	robotVacuum(id: String!): RobotVacuumEntity!
 	solar: SolarObject!

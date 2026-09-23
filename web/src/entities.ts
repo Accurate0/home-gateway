@@ -14,6 +14,7 @@ export type EntityKind =
   | "door"
   | "presence"
   | "environment"
+  | "plant"
   | "einkDisplay"
   | "robotVacuum"
   | "mediaPlayer";
@@ -55,6 +56,7 @@ export interface Entity {
   pressure?: number | null;
   lux?: number | null;
   uvIndex?: number | null;
+  soilMoisture?: number | null;
   time?: string | null;
   lastSeen?: string | null;
   batteryVoltage?: number | null;
@@ -123,6 +125,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   DoorEntity: "door",
   PresenceEntity: "presence",
   EnvironmentEntity: "environment",
+  PlantEntity: "plant",
   EinkDisplayEntity: "einkDisplay",
   RobotVacuumEntity: "robotVacuum",
   MediaPlayerEntity: "mediaPlayer",
@@ -130,6 +133,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   DoorUpdate: "door",
   PresenceUpdate: "presence",
   EnvironmentUpdate: "environment",
+  PlantUpdate: "plant",
   DeviceBatteryUpdate: "einkDisplay",
   MediaPlayerUpdate: "mediaPlayer",
 };

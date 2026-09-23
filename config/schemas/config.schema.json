@@ -1047,11 +1047,15 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "name": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id"
+        "id",
+        "name"
       ]
     },
     "RawLightBlock": {
@@ -2795,6 +2799,32 @@
             "type",
             "sensor",
             "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
+          "description": "Fires on a plant sensor's soil moisture reading, the flattened comparison\nbeing the threshold. The dispatcher fires on the rising edge. Air metrics\nfrom the same device are matched with [`TriggerMatcher::Environment`].",
+          "type": "object",
+          "properties": {
+            "sensor": {
+              "type": "string"
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "plant"
+            }
+          },
+          "required": [
+            "type",
+            "sensor",
             "op",
             "value"
           ]

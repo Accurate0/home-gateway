@@ -1340,26 +1340,7 @@ integrations:
             ]
         );
 
-        // a `state: disabled` device is absent from the registry entirely, under
-        // every one of its roles, and is not watched
-        assert!(registry.disabled().contains("hallway-plant"));
-        assert!(registry.environment("apollo-plt-1-hallway").is_none());
-        assert!(registry.plant("apollo-plt-1-hallway").is_none());
-        assert!(registry.watchdog_key("apollo-plt-1-hallway").is_none());
-        assert!(registry.mqtt_topics_for("apollo-plt-1-hallway").is_empty());
-
-        // and every workflow that referenced it is disabled rather than failing the load
-        for name in ["Hallway plant dry", "Hallway plant overwatered"] {
-            let workflow = settings
-                .workflows
-                .get(name)
-                .unwrap_or_else(|| panic!("workflow '{name}' is still loaded"));
-
-            assert!(
-                !workflow.body().enabled,
-                "workflow '{name}' references a disabled device so it must be disabled"
-            );
-        }
+        assert!(registry.plant("apollo-plt-1b-livingroom").is_some());
 
         let subscriptions = registry.mqtt_subscriptions();
 

@@ -81,6 +81,15 @@ const EntitiesQuery = graphql`
         time
         lastSeen
       }
+      ... on PlantEntity {
+        category
+        id
+        name
+        room
+        soilMoisture
+        time
+        lastSeen
+      }
       ... on EinkDisplayEntity {
         category
         id
@@ -167,6 +176,11 @@ const EventsSubscription = graphql`
           metric
           value
         }
+      }
+      ... on PlantUpdate {
+        id
+        name
+        soilMoisture
       }
       ... on MediaPlayerUpdate {
         id

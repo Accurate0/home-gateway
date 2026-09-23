@@ -1,3 +1,4 @@
+use crate::device_registry::{DeviceRegistry, last_seen};
 use crate::repo::DeviceRepo;
 use async_graphql::dataloader::Loader;
 use chrono::{DateTime, Utc};
@@ -5,6 +6,7 @@ use std::{collections::HashMap, sync::Arc};
 
 pub struct LastSeenDataLoader {
     pub repo: DeviceRepo,
+    pub devices: DeviceRegistry,
 }
 
 impl Loader<String> for LastSeenDataLoader {
@@ -12,8 +14,6 @@ impl Loader<String> for LastSeenDataLoader {
     type Error = Arc<sqlx::Error>;
 
     async fn load(&self, keys: &[String]) -> Result<HashMap<String, Self::Value>, Self::Error> {
-        let rows = self.repo.last_seen_many(keys).await?;
-
-        Ok(rows.into_iter().map(|r| (r.address, r.last_seen)).collect())
+        Ok(last_seen::lookup(&self.devices, &self.repo, keys).await?)
     }
 }

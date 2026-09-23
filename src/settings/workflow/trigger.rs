@@ -45,6 +45,11 @@ pub enum TriggerMatcher {
         #[serde(flatten)]
         cmp: Comparison,
     },
+    Plant {
+        sensor: String,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
     /// Fires on a recurring schedule. `schedule` is a standard 5-field cron
     /// expression (e.g. `"0 20 * * THU"`), evaluated in local time. Driven by the
     /// [`crate::actors::system::cron::CronActor`] producer, which matches by trigger name.
@@ -173,6 +178,7 @@ impl TriggerMatcher {
             TriggerMatcher::Door { .. } => "door",
             TriggerMatcher::Switch { .. } => "switch",
             TriggerMatcher::Environment { .. } => "environment",
+            TriggerMatcher::Plant { .. } => "plant",
             TriggerMatcher::Cron { .. } => "cron",
             TriggerMatcher::Sun { .. } => "sun",
             TriggerMatcher::Mode { .. } => "mode",
@@ -228,6 +234,7 @@ impl TriggerMatcher {
                     cmp: *cmp,
                 })
             }
+            TriggerMatcher::Plant { .. } => None,
             TriggerMatcher::Solar { metric, cmp } => Some(LeafCondition::Solar {
                 metric: *metric,
                 cmp: *cmp,
@@ -304,6 +311,9 @@ impl TriggerMatcher {
                     "environment({sensor}).{metric:?} {:?} {}",
                     cmp.op, cmp.value
                 )
+            }
+            TriggerMatcher::Plant { sensor, cmp } => {
+                format!("plant({sensor}).soil_moisture {:?} {}", cmp.op, cmp.value)
             }
             TriggerMatcher::Mode { to, from } => {
                 let side = |mode: &Option<Mode>| mode.map_or("*", |mode| mode.as_str());
@@ -446,7 +456,8 @@ impl TriggerMatcher {
             TriggerMatcher::CommandFailed { device: None, .. }
             | TriggerMatcher::FeatureFlag { .. } => {}
             TriggerMatcher::Presence { sensor, .. }
-            | TriggerMatcher::Environment { sensor, .. } => {
+            | TriggerMatcher::Environment { sensor, .. }
+            | TriggerMatcher::Plant { sensor, .. } => {
                 validate_device(sensor, devices)?;
             }
             TriggerMatcher::Mode {

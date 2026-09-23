@@ -7,7 +7,7 @@ pub struct DeviceRepo {
 }
 
 pub struct LastSeenRow {
-    pub address: String,
+    pub device_key: String,
     pub last_seen: DateTime<Utc>,
 }
 
@@ -46,14 +46,9 @@ impl DeviceRepo {
         sqlx::query_as!(
             LastSeenRow,
             r#"
-            SELECT kd.ieee_addr AS "address!", dls.last_seen AS "last_seen!"
-            FROM device_last_seen dls
-            JOIN known_devices kd ON kd.name = dls.device_key
-            WHERE kd.ieee_addr = ANY($1)
-            UNION
-            SELECT dls.device_key AS "address!", dls.last_seen AS "last_seen!"
-            FROM device_last_seen dls
-            WHERE dls.device_key = ANY($1)
+            SELECT device_key AS "device_key!", last_seen AS "last_seen!"
+            FROM device_last_seen
+            WHERE device_key = ANY($1)
             "#,
             keys
         )
