@@ -91,8 +91,12 @@ fn dispatch(update: StateUpdate) {
     send(address, esphome_native_api_ingest::Message::State(update));
 }
 
+fn is_transition(reported: &mut Option<bool>, connected: bool) -> bool {
+    reported.replace(connected) != Some(connected)
+}
+
 fn dispatch_connection(reported: &mut Option<bool>, address: &str, connected: bool) {
-    if reported.replace(connected) == Some(connected) {
+    if !is_transition(reported, connected) {
         return;
     }
 
@@ -169,4 +173,34 @@ async fn connected(
     session.close().await;
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_change_in_reachability_is_reported() {
+        let mut reported = None;
+
+        assert!(is_transition(&mut reported, false));
+        assert!(!is_transition(&mut reported, false));
+        assert!(is_transition(&mut reported, true));
+        assert!(!is_transition(&mut reported, true));
+        assert!(is_transition(&mut reported, false));
+    }
+
+    #[test]
+    fn a_node_that_never_connects_is_reported_once() {
+        let mut reported = None;
+
+        assert!(
+            is_transition(&mut reported, false),
+            "a node that is down at startup should be reported"
+        );
+        assert!(
+            !is_transition(&mut reported, false),
+            "every reconnect attempt should not re-report it"
+        );
+    }
 }
