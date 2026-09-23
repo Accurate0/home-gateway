@@ -1,7 +1,7 @@
 use crate::http::{HttpCreationError, get_traced_http_client};
 use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
-use types::{UVXMLDocument, WeatherDetails};
+use types::UVXMLDocument;
 
 pub mod types;
 
@@ -26,36 +26,12 @@ pub struct WeatherAPI {
 
 impl WeatherAPI {
     const UV_LEVELS_XML: &str = "https://uvdata.arpansa.gov.au/xml/uvvalues.xml";
-    const WEATHER_API_DETAILS: &str = "https://api.weather.bom.gov.au/v1/locations/{}/observations";
     pub const PERTH_NAME: &str = "per";
-    pub const JANDAKOT_GEOCODE: &str = "qd63he";
 
     pub fn new(timeout: std::time::Duration) -> Result<Self, WeatherAPIError> {
         Ok(Self {
             http: get_traced_http_client(timeout)?,
         })
-    }
-
-    #[instrument(name = "weather.get_weather_details", skip(self))]
-    pub async fn get_weather_details(
-        &self,
-        geocode: &str,
-    ) -> Result<WeatherDetails, WeatherAPIError> {
-        let weather_details = self
-            .http
-            .get(Self::WEATHER_API_DETAILS.replace("{}", geocode))
-            .with_extension(crate::http::UrlTemplate(
-                "/v1/locations/{geocode}/observations",
-            ))
-            .send()
-            .await?
-            .error_for_status()?
-            .json::<WeatherDetails>()
-            .await?;
-
-        tracing::debug!("fetched weather details");
-
-        Ok(weather_details)
     }
 
     #[instrument(name = "weather.get_uv_level", skip(self))]

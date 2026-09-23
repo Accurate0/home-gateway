@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::SensorMetric;
 use crate::event_bus::variables::{
-    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DoorVariables,
-    EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables, HomeAssistantVariables,
-    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
-    SolarVariables, SunVariables, SwitchVariables, UnifiVariables, WeatherVariables,
-    WoolworthsVariables,
+    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
+    DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
+    HomeAssistantVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
+    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
+    WeatherVariables, WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
 
@@ -26,6 +26,7 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => WoolworthsVariables::shape(),
             TriggerMatcher::FuelWatch { .. } => FuelWatchVariables::shape(),
             TriggerMatcher::DeviceBattery { .. } => DeviceBatteryVariables::shape(),
+            TriggerMatcher::DeviceConnection { .. } => DeviceConnectionVariables::shape(),
             TriggerMatcher::MediaPlayer { .. } => MediaPlayerVariables::shape(),
             TriggerMatcher::Unifi { .. } => UnifiVariables::shape(),
             TriggerMatcher::Light { .. } => LightVariables::shape(),

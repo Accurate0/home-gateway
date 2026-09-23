@@ -111,6 +111,15 @@ pub enum TriggerMatcher {
         #[serde(default)]
         below: Option<f64>,
     },
+    /// Fires when a device's connection to the gateway comes up or goes down,
+    /// published by the transport that owns the connection (the esphome native
+    /// api). Optionally gate on the `device` id and on `connected`.
+    DeviceConnection {
+        #[serde(default)]
+        device: Option<String>,
+        #[serde(default)]
+        connected: Option<bool>,
+    },
     /// Fires on a `media_player` playback edge, driven by the
     /// [`crate::actors::devices::media_player`] handler. Every field is an optional
     /// gate: the configured `device` id, `state`
@@ -186,6 +195,7 @@ impl TriggerMatcher {
             TriggerMatcher::Woolworths { .. } => "woolworths",
             TriggerMatcher::FuelWatch { .. } => "fuelwatch",
             TriggerMatcher::DeviceBattery { .. } => "device_battery",
+            TriggerMatcher::DeviceConnection { .. } => "device_connection",
             TriggerMatcher::MediaPlayer { .. } => "media_player",
             TriggerMatcher::Solar { .. } => "solar",
             TriggerMatcher::Weather { .. } => "weather",
@@ -275,6 +285,7 @@ impl TriggerMatcher {
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
+            | TriggerMatcher::DeviceConnection { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Custom { .. }
             | TriggerMatcher::Unifi { .. } => None,
@@ -369,6 +380,15 @@ impl TriggerMatcher {
                 match below {
                     Some(v) => format!("device_battery({device}) < {v}"),
                     None => format!("device_battery({device})"),
+                }
+            }
+            TriggerMatcher::DeviceConnection { device, connected } => {
+                let device = device.clone().unwrap_or_else(|| "*".to_owned());
+
+                match connected {
+                    Some(true) => format!("device_connection({device}) -> connected"),
+                    Some(false) => format!("device_connection({device}) -> disconnected"),
+                    None => format!("device_connection({device})"),
                 }
             }
             TriggerMatcher::MediaPlayer { device, state, app } => {
@@ -473,6 +493,7 @@ impl TriggerMatcher {
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
+            | TriggerMatcher::DeviceConnection { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Solar { .. }
             | TriggerMatcher::Custom { .. } => {}

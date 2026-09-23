@@ -210,6 +210,23 @@ impl DeviceBatteryUpdate {
 
 #[derive(SimpleObject)]
 #[graphql(complex)]
+pub struct DeviceConnectionUpdate {
+    pub event_id: Uuid,
+    pub device_id: String,
+    pub transport: String,
+    pub room: Option<String>,
+    pub connected: bool,
+}
+
+#[ComplexObject]
+impl DeviceConnectionUpdate {
+    async fn id(&self) -> ID {
+        ID(self.device_id.clone())
+    }
+}
+
+#[derive(SimpleObject)]
+#[graphql(complex)]
 pub struct MediaPlayerUpdate {
     pub event_id: Uuid,
     pub device_id: String,
@@ -254,6 +271,7 @@ pub enum EventUpdate {
     HomeAssistant(HomeAssistantUpdate),
     Woolworths(WoolworthsUpdate),
     DeviceBattery(DeviceBatteryUpdate),
+    DeviceConnection(DeviceConnectionUpdate),
     MediaPlayer(MediaPlayerUpdate),
     Solar(SolarUpdate),
     Weather(WeatherUpdate),
@@ -553,6 +571,19 @@ impl EventUpdate {
                 kind,
                 battery_voltage,
                 battery_percent,
+            }),
+            EventBusMessage::DeviceConnection {
+                event_id,
+                device_id,
+                transport,
+                room,
+                connected,
+            } => EventUpdate::DeviceConnection(DeviceConnectionUpdate {
+                event_id,
+                device_id,
+                transport,
+                room,
+                connected,
             }),
             EventBusMessage::MediaPlayer {
                 event_id,

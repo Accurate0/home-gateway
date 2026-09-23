@@ -3240,6 +3240,33 @@
           ]
         },
         {
+          "description": "Fires when a device's connection to the gateway comes up or goes down,\npublished by the transport that owns the connection (the esphome native\napi). Optionally gate on the `device` id and on `connected`.",
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "connected": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "device_connection"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
           "description": "Fires on a `media_player` playback edge, driven by the\n[`crate::actors::devices::media_player`] handler. Every field is an optional\ngate: the configured `device` id, `state`\n(`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.\n`Jellyfin`, `YouTube`).",
           "type": "object",
           "properties": {

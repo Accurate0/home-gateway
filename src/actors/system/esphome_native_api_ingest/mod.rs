@@ -8,6 +8,8 @@ use serde_json::json;
 use tracing::Instrument;
 use uuid::Uuid;
 
+use crate::device_registry::Transport;
+use crate::event_bus::EventBusMessage;
 use crate::integrations::esphome_native_api::StateUpdate;
 use crate::state::AppState;
 
@@ -18,6 +20,7 @@ mod worker_state;
 
 pub enum Message {
     State(StateUpdate),
+    Connection { address: String, connected: bool },
 }
 
 pub struct EsphomeNativeApiIngest {
@@ -40,7 +43,40 @@ fn ingest_error(address: &str, kind: &'static str, error: &str) {
 impl EsphomeNativeApiIngest {
     pub const NAME: &str = "esphome-native-api-ingest";
 
-    async fn handle(&self, state: &mut WorkerState, Message::State(update): Message) {
+    async fn handle(&self, state: &mut WorkerState, message: Message) {
+        match message {
+            Message::State(update) => self.handle_state(state, update).await,
+            Message::Connection { address, connected } => {
+                self.handle_connection(&address, connected)
+            }
+        }
+    }
+
+    fn handle_connection(&self, address: &str, connected: bool) {
+        let devices = &self.shared_actor_state.devices;
+
+        let Some(device_id) = devices.id_for_address(address) else {
+            tracing::warn!("connection change for unregistered esphome node {address}");
+            return;
+        };
+
+        match connected {
+            true => tracing::info!("esphome node {device_id} ({address}) is connected"),
+            false => tracing::warn!("esphome node {device_id} ({address}) is disconnected"),
+        }
+
+        self.shared_actor_state
+            .event_bus
+            .publish(EventBusMessage::DeviceConnection {
+                event_id: Uuid::new_v4(),
+                device_id: device_id.to_owned(),
+                transport: Transport::EsphomeNativeApi.to_string(),
+                room: devices.room(address).map(str::to_owned),
+                connected,
+            });
+    }
+
+    async fn handle_state(&self, state: &mut WorkerState, update: StateUpdate) {
         let StateUpdate {
             address,
             domain,

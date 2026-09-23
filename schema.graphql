@@ -128,6 +128,15 @@ type DeviceBatteryUpdate {
 	batteryPercentage: Float
 }
 
+type DeviceConnectionUpdate {
+	eventId: UUID!
+	deviceId: String!
+	transport: String!
+	room: String
+	connected: Boolean!
+	id: ID!
+}
+
 type DoorEntity {
 	category: EntityCategory!
 	id: String!
@@ -298,7 +307,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!

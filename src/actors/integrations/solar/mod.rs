@@ -6,6 +6,7 @@ use crate::{
     repo::solar::SolarReading,
     state::AppState,
 };
+use chrono::{DateTime, Utc};
 use ractor::{Actor, RpcReplyPort};
 use std::time::Duration;
 use uuid::Uuid;
@@ -26,6 +27,42 @@ pub struct SolarActor {
 impl SolarActor {
     pub const NAME: &str = "solar";
 
+    async fn cached_temperature(&self) -> Option<f64> {
+        let location = &self
+            .shared_actor_state
+            .settings
+            .integrations
+            .willyweather
+            .default_location;
+
+        let forecast = match self
+            .shared_actor_state
+            .repos
+            .willyweather()
+            .forecast(location)
+            .await
+        {
+            Ok(forecast) => forecast?,
+            Err(e) => {
+                tracing::error!("error reading the cached willyweather forecast: {e}");
+                return None;
+            }
+        };
+
+        let now = Utc::now();
+
+        forecast
+            .hours
+            .iter()
+            .filter_map(|hour| {
+                let time = DateTime::parse_from_rfc3339(&hour.date_time).ok()?;
+
+                Some(((now - time.with_timezone(&Utc)).abs(), hour.temperature?))
+            })
+            .min_by_key(|(distance, _)| *distance)
+            .map(|(_, temperature)| temperature)
+    }
+
     async fn poll(&self) -> Result<Vec<WeatherReading>, ractor::ActorProcessingErr> {
         let solar = async {
             let login_data = self.goodwe.get_new_or_cached_login_data().await?;
@@ -33,11 +70,10 @@ impl SolarActor {
             self.goodwe.get_solar_data(login_data).await
         };
 
-        let (solar_data, uv_level, weather) = tokio::join!(
+        let (solar_data, uv_level, temperature) = tokio::join!(
             solar,
             self.weather.get_uv_level(WeatherAPI::PERTH_NAME),
-            self.weather
-                .get_weather_details(WeatherAPI::JANDAKOT_GEOCODE),
+            self.cached_temperature(),
         );
 
         let solar_data = solar_data?;
@@ -54,16 +90,6 @@ impl SolarActor {
                 None
             }
         };
-
-        let observation = match weather {
-            Ok(weather) => Some(weather.data),
-            Err(e) => {
-                tracing::error!("error getting weather details: {e}");
-                None
-            }
-        };
-
-        let temperature = observation.as_ref().map(|observation| observation.temp);
 
         tracing::debug!("fetched uv level:{uv_level:?}, temperature: {temperature:?}");
 
@@ -88,32 +114,8 @@ impl SolarActor {
                 current_wh: current_kwh,
             });
 
-        let observed = observation
-            .map(|observation| {
-                vec![
-                    (WeatherMetric::Temperature, observation.temp),
-                    (WeatherMetric::FeelsLike, observation.temp_feels_like),
-                    (WeatherMetric::Humidity, observation.humidity as f64),
-                    (
-                        WeatherMetric::WindSpeed,
-                        observation.wind.speed_kilometre as f64,
-                    ),
-                    (
-                        WeatherMetric::GustSpeed,
-                        observation.gust.speed_kilometre as f64,
-                    ),
-                    (
-                        WeatherMetric::MaxGustSpeed,
-                        observation.max_gust.speed_kilometre as f64,
-                    ),
-                    (WeatherMetric::RainSince9am, observation.rain_since_9am),
-                    (WeatherMetric::MaxTemp, observation.max_temp.value),
-                    (WeatherMetric::MinTemp, observation.min_temp.value),
-                ]
-            })
-            .unwrap_or_default();
-
-        let readings: Vec<WeatherReading> = observed
+        let readings: Vec<WeatherReading> = temperature
+            .map(|temperature| (WeatherMetric::Temperature, temperature))
             .into_iter()
             .chain(uv_level.map(|uv| (WeatherMetric::Uv, uv)))
             .map(|(metric, value)| WeatherReading {

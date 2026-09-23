@@ -86,17 +86,34 @@ fn ingest_actor() -> Option<ActorRef<FactoryMessage<String, esphome_native_api_i
 }
 
 fn dispatch(update: StateUpdate) {
+    let address = update.address.clone();
+
+    send(address, esphome_native_api_ingest::Message::State(update));
+}
+
+fn dispatch_connection(reported: &mut Option<bool>, address: &str, connected: bool) {
+    if reported.replace(connected) == Some(connected) {
+        return;
+    }
+
+    send(
+        address.to_owned(),
+        esphome_native_api_ingest::Message::Connection {
+            address: address.to_owned(),
+            connected,
+        },
+    );
+}
+
+fn send(address: String, msg: esphome_native_api_ingest::Message) {
     let Some(actor) = ingest_actor() else {
-        tracing::error!(
-            "esphome native api ingest actor is not registered, dropping {}",
-            update.address
-        );
+        tracing::error!("esphome native api ingest actor is not registered, dropping {address}");
         return;
     };
 
     let response = actor.send_message(FactoryMessage::Dispatch(Job {
-        key: update.address.clone(),
-        msg: esphome_native_api_ingest::Message::State(update),
+        key: address,
+        msg,
         options: JobOptions::default(),
         accepted: None,
     }));
@@ -112,9 +129,11 @@ pub async fn process_events(
     key: String,
     cancellation_token: CancellationToken,
 ) {
+    let mut reported = None;
+
     loop {
         tokio::select! {
-            result = connected(&mut node, &settings, &key) => {
+            result = connected(&mut node, &settings, &key, &mut reported) => {
                 if let Err(e) = result {
                     tracing::error!(
                         "esphome node {} error, reconnecting in {:?}: {e}",
@@ -122,6 +141,8 @@ pub async fn process_events(
                         settings.reconnect_delay()
                     );
                 }
+
+                dispatch_connection(&mut reported, &node.address, false);
 
                 tokio::time::sleep(settings.reconnect_delay()).await;
             }
@@ -137,8 +158,11 @@ async fn connected(
     node: &mut Node,
     settings: &EsphomeSettings,
     key: &str,
+    reported: &mut Option<bool>,
 ) -> Result<(), EsphomeNativeApiError> {
     let mut session = Session::connect(&node.address, settings, key).await?;
+
+    dispatch_connection(reported, &node.address, true);
 
     let result = session.run(&mut node.receiver, settings, dispatch).await;
 

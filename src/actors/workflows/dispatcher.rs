@@ -442,6 +442,17 @@ impl WorkflowDispatcher {
                     && below.is_none_or(|threshold| level.is_some_and(|l| l < threshold))
             }
             (
+                TriggerMatcher::DeviceConnection { device, connected },
+                EventBusMessage::DeviceConnection {
+                    device_id,
+                    connected: is_connected,
+                    ..
+                },
+            ) => {
+                device.as_ref().is_none_or(|want| want == device_id)
+                    && connected.is_none_or(|want| want == *is_connected)
+            }
+            (
                 TriggerMatcher::MediaPlayer { device, state, app },
                 EventBusMessage::MediaPlayer {
                     device_id: d,

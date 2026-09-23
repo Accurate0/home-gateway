@@ -1,6 +1,7 @@
 mod command_failed_variables;
 mod cron_variables;
 mod device_battery_variables;
+mod device_connection_variables;
 mod door_variables;
 mod environment_variables;
 mod feature_flag_variables;
@@ -21,6 +22,7 @@ mod woolworths_variables;
 pub use command_failed_variables::CommandFailedVariables;
 pub use cron_variables::CronVariables;
 pub use device_battery_variables::DeviceBatteryVariables;
+pub use device_connection_variables::DeviceConnectionVariables;
 pub use door_variables::DoorVariables;
 pub use environment_variables::EnvironmentVariables;
 pub use feature_flag_variables::FeatureFlagVariables;

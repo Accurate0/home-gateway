@@ -42,12 +42,17 @@ fn ingest_actor() -> ActorRef<FactoryMessage<(), mqtt_ingest::Message>> {
 }
 
 fn publish(topic: &str, payload: serde_json::Value) {
+    publish_with_retain(topic, payload, false);
+}
+
+fn publish_with_retain(topic: &str, payload: serde_json::Value, retained: bool) {
     ingest_actor()
         .send_message(FactoryMessage::Dispatch(Job {
             key: (),
             msg: mqtt_ingest::Message::MqttPacket {
                 payload: serde_json::to_vec(&payload).unwrap().into(),
                 topic: topic.to_owned(),
+                retained,
             },
             options: JobOptions::default(),
             accepted: None,
@@ -236,6 +241,58 @@ async fn free_form_zigbee_metrics_land_in_the_generic_sink() {
         .expect("expected a voltage metric");
     assert_eq!(voltage.1, Some(3021.0));
     assert_eq!(voltage.2, None);
+}
+
+#[tokio::test]
+#[serial]
+async fn a_retained_replay_does_not_refresh_last_seen() {
+    let harness = Harness::start().await;
+    spawn_mqtt_ingest(&harness.root, harness.state.clone())
+        .await
+        .unwrap();
+    spawn_handler::<EnvironmentSensorHandler>(&harness.root, harness.state.clone())
+        .await
+        .unwrap();
+
+    publish_with_retain(
+        "zigbee2mqtt/test-environment",
+        zigbee_payload(
+            ENVIRONMENT_ADDRESS,
+            serde_json::json!({ "temperature": 21.5 }),
+        ),
+        true,
+    );
+
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    let seen: Option<i64> =
+        sqlx::query_scalar("SELECT count(*) FROM device_last_seen WHERE device_key = $1")
+            .bind(
+                harness
+                    .state
+                    .devices
+                    .watchdog_key(ENVIRONMENT_ADDRESS)
+                    .expect("the fixture device has a watchdog key"),
+            )
+            .fetch_one(&harness.db)
+            .await
+            .unwrap();
+
+    assert_eq!(
+        seen,
+        Some(0),
+        "a message the broker had retained says nothing about the device being alive"
+    );
+
+    let temperature: i64 = sqlx::query_scalar("SELECT count(*) FROM temperature_sensor")
+        .fetch_one(&harness.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        temperature, 1,
+        "the retained value should still seed the device state"
+    );
 }
 
 #[tokio::test]

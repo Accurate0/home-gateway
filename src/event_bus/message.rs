@@ -5,11 +5,11 @@ use super::fuel_change::FuelChange;
 use super::playback::PlaybackState;
 use super::reading::SensorReading;
 use super::variables::{
-    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DoorVariables,
-    EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables, HomeAssistantVariables,
-    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
-    SolarVariables, SunVariables, SwitchVariables, UnifiVariables, WeatherVariables,
-    WoolworthsVariables,
+    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
+    DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
+    HomeAssistantVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
+    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
+    WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
@@ -116,6 +116,13 @@ pub enum EventBusMessage {
         name: String,
         battery_voltage: Option<f64>,
         battery_percent: Option<f64>,
+    },
+    DeviceConnection {
+        event_id: Uuid,
+        device_id: String,
+        transport: String,
+        room: Option<String>,
+        connected: bool,
     },
     /// A Home Assistant `media_player` entity reached a playback edge, derived by
     /// the [`crate::actors::devices::media_player`] handler from HA `state_changed`
@@ -233,6 +240,7 @@ impl EventBusMessage {
             | EventBusMessage::HomeAssistant { event_id, .. }
             | EventBusMessage::Woolworths { event_id, .. }
             | EventBusMessage::DeviceBattery { event_id, .. }
+            | EventBusMessage::DeviceConnection { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
             | EventBusMessage::Solar { event_id, .. }
             | EventBusMessage::Weather { event_id, .. }
@@ -259,6 +267,7 @@ impl EventBusMessage {
             EventBusMessage::HomeAssistant { .. } => "home_assistant",
             EventBusMessage::Woolworths { .. } => "woolworths",
             EventBusMessage::DeviceBattery { .. } => "device_battery",
+            EventBusMessage::DeviceConnection { .. } => "device_connection",
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
             EventBusMessage::Weather { .. } => "weather",
@@ -283,6 +292,7 @@ impl EventBusMessage {
         "home_assistant",
         "woolworths",
         "device_battery",
+        "device_connection",
         "media_player",
         "solar",
         "weather",
@@ -309,8 +319,9 @@ impl EventBusMessage {
             EventBusMessage::Mode { mode, .. } => mode.as_str().to_string(),
             EventBusMessage::HomeAssistant { entity_id, .. } => entity_id.clone(),
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
-            EventBusMessage::DeviceBattery { device_id, .. } => device_id.clone(),
-            EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
+            EventBusMessage::DeviceBattery { device_id, .. }
+            | EventBusMessage::DeviceConnection { device_id, .. }
+            | EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
             EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
             EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
@@ -395,6 +406,19 @@ impl EventBusMessage {
                 name: name.clone(),
                 battery_voltage: *battery_voltage,
                 battery_percent: *battery_percent,
+            }
+            .to_node(),
+            EventBusMessage::DeviceConnection {
+                device_id,
+                transport,
+                room,
+                connected,
+                ..
+            } => DeviceConnectionVariables {
+                device_id: device_id.clone(),
+                transport: transport.clone(),
+                room: room.clone(),
+                connected: *connected,
             }
             .to_node(),
             EventBusMessage::MediaPlayer {
