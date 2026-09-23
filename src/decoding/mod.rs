@@ -1,5 +1,6 @@
 mod capability_range;
 mod decoded_device;
+mod decoders;
 mod device_models;
 mod dispatch;
 mod esphome_entities;
@@ -16,6 +17,7 @@ mod role_name;
 
 pub use capability_range::CapabilityRange;
 pub use decoded_device::DecodedDevice;
+pub use decoders::Decoders;
 pub use device_models::DeviceModels;
 pub use dispatch::dispatch;
 pub use esphome_entities::EsphomeEntities;

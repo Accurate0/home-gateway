@@ -51,9 +51,6 @@ where
     Ok(body)
 }
 
-/// Runs the `Noise_NNpsk0` handshake the esphome api expects: a bare hello
-/// frame, the initiator's `e` message behind a zero byte, the device's chosen
-/// protocol and name, and finally its handshake reply.
 pub async fn handshake<S>(
     stream: &mut S,
     key: &str,

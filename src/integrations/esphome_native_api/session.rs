@@ -191,8 +191,6 @@ impl Session {
         EsphomeNativeApiError::Disconnected(reason.as_str_name().to_owned())
     }
 
-    /// Reads state updates until the connection drops, applying commands from
-    /// the client handle on the same task so the cipher stays single-owner.
     pub async fn run(
         &mut self,
         commands: &mut mpsc::Receiver<Command>,

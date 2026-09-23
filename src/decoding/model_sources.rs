@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::device_registry::Transport;
 use crate::lua::{LuaDecoder, LuaError};
 use crate::settings::{LuaSettings, MqttProtocols};
 
+use super::decoders::Decoders;
 use super::device_models::DeviceModels;
 use super::models::load_models;
 
@@ -44,6 +45,22 @@ impl ModelSources {
                 protocols,
             )?,
         })
+    }
+
+    pub fn decoders(&self, settings: &LuaSettings) -> Result<Decoders, LuaError> {
+        let transports = [
+            Transport::Mqtt,
+            Transport::EsphomeNativeApi,
+            Transport::HomeAssistant,
+        ];
+
+        let mut by_transport = HashMap::new();
+
+        for transport in transports {
+            by_transport.insert(transport, self.decoder(transport, settings)?);
+        }
+
+        Ok(Decoders::new(by_transport))
     }
 
     pub fn decoder(

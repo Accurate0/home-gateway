@@ -160,7 +160,8 @@ impl Mqtt {
                                     key: (),
                                     msg: mqtt_ingest::Message::MqttPacket {
                                         payload: publish.payload,
-                                        topic: publish.topic
+                                        topic: publish.topic,
+                                        retained: publish.retain
                                     },
                                     options: JobOptions::default(),
                                     accepted: None

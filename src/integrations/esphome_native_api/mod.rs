@@ -30,8 +30,6 @@ pub use state_update::StateUpdate;
 
 const COMMAND_QUEUE: usize = 16;
 
-/// Command side of the native api: one channel per node, each drained by that
-/// node's connection task.
 #[derive(Clone)]
 pub struct EsphomeNativeApi {
     nodes: HashMap<String, mpsc::Sender<Command>>,

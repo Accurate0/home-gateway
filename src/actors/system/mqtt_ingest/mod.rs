@@ -23,6 +23,7 @@ pub enum Message {
     MqttPacket {
         payload: bytes::Bytes,
         topic: String,
+        retained: bool,
     },
 }
 
@@ -202,6 +203,7 @@ impl MqttIngest {
         decoder: &LuaDecoder,
         candidates: Vec<TopicMatch>,
         payload: &[u8],
+        retained: bool,
     ) {
         let mut failures = Vec::new();
 
@@ -212,7 +214,14 @@ impl MqttIngest {
                     friendly_name,
                     input,
                 }) => {
-                    self.record_last_seen(&device.address).await;
+                    match retained {
+                        true => tracing::debug!(
+                            "not recording last seen for {}: the broker replayed a retained {} message",
+                            device.address,
+                            device.profile.source()
+                        ),
+                        false => self.record_last_seen(&device.address).await,
+                    }
 
                     tracing::debug!(
                         "received {} message for {friendly_name} ({}, model {})",
@@ -234,7 +243,11 @@ impl MqttIngest {
     }
 
     async fn handle(&self, decoder: &LuaDecoder, message: Message) -> Result<(), anyhow::Error> {
-        let Message::MqttPacket { payload, topic } = message;
+        let Message::MqttPacket {
+            payload,
+            topic,
+            retained,
+        } = message;
         let mqtt_topic =
             MqttTopic::classify(self.shared_actor_state.devices.mqtt_protocols(), &topic);
 
@@ -249,7 +262,8 @@ impl MqttIngest {
                 self.handle_discovery(protocol, address, &payload).await?;
             }
             MqttTopic::Report(candidates) => {
-                self.handle_report(decoder, candidates, &payload).await;
+                self.handle_report(decoder, candidates, &payload, retained)
+                    .await;
             }
             MqttTopic::Unhandled => {
                 tracing::warn!("ignoring mqtt packet on unhandled topic: {topic}");

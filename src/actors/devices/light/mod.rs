@@ -5,11 +5,11 @@ pub mod light_encode_input;
 pub mod lua;
 
 use crate::actors::devices::handler::DeviceHandler;
+use crate::decoding::Decoders;
 use crate::decoding::{CapabilityRange, DeviceRoleName};
 use crate::device_command::{self, CommandTargets, DeviceCommandError, Outbound};
-use crate::lua::LuaDecoder;
 use crate::{
-    device_registry::{Capability, Transport},
+    device_registry::Capability,
     event_bus::EventBusMessage,
     repo::intent::{DeviceKind, DeviceReport, IntentAttributes, IntentStatus},
     repo::light::{HistorySource, LightAttributes, LightSample, LightState},
@@ -303,7 +303,7 @@ impl LightHandler {
 
     async fn apply_set(
         &self,
-        decoder: &LuaDecoder,
+        decoders: &Decoders,
         ieee_addr: &str,
         request: SetRequest,
     ) -> Result<LightState, anyhow::Error> {
@@ -353,7 +353,7 @@ impl LightHandler {
             colour,
         };
 
-        let sent = self.send(decoder, ieee_addr, &command).await?;
+        let sent = self.send(decoders, ieee_addr, &command).await?;
 
         if !sent {
             return self.stored_state(ieee_addr).await;
@@ -383,7 +383,7 @@ impl LightHandler {
 
     async fn handle(
         &self,
-        decoder: &LuaDecoder,
+        decoders: &Decoders,
         message: LightHandlerMessage,
     ) -> Result<(), anyhow::Error> {
         match message {
@@ -401,12 +401,12 @@ impl LightHandler {
                 attributes,
                 ..
             } => {
-                self.send(decoder, &ieee_addr, &LightCommand::reapply(&attributes))
+                self.send(decoders, &ieee_addr, &LightCommand::reapply(&attributes))
                     .await?;
             }
             LightHandlerMessage::TurnOn { ieee_addr } => {
                 self.send_and_record(
-                    decoder,
+                    decoders,
                     &ieee_addr,
                     &LightCommand::power(true),
                     &LightAttributes::state("ON"),
@@ -415,7 +415,7 @@ impl LightHandler {
             }
             LightHandlerMessage::TurnOff { ieee_addr } => {
                 self.send_and_record(
-                    decoder,
+                    decoders,
                     &ieee_addr,
                     &LightCommand::power(false),
                     &LightAttributes::state("OFF"),
@@ -427,7 +427,7 @@ impl LightHandler {
                 let target = if on { "OFF" } else { "ON" };
 
                 self.send_and_record(
-                    decoder,
+                    decoders,
                     &ieee_addr,
                     &LightCommand::Toggle,
                     &LightAttributes::state(target),
@@ -440,7 +440,7 @@ impl LightHandler {
                     ..SetRequest::default()
                 };
 
-                self.apply_set(decoder, &ieee_addr, request).await?;
+                self.apply_set(decoders, &ieee_addr, request).await?;
             }
             LightHandlerMessage::SetBrightness { ieee_addr, value } => {
                 let request = SetRequest {
@@ -448,7 +448,7 @@ impl LightHandler {
                     ..SetRequest::default()
                 };
 
-                self.apply_set(decoder, &ieee_addr, request).await?;
+                self.apply_set(decoders, &ieee_addr, request).await?;
             }
             LightHandlerMessage::SetColour { ieee_addr, hex } => {
                 let request = SetRequest {
@@ -456,7 +456,7 @@ impl LightHandler {
                     ..SetRequest::default()
                 };
 
-                self.apply_set(decoder, &ieee_addr, request).await?;
+                self.apply_set(decoders, &ieee_addr, request).await?;
             }
             LightHandlerMessage::BrightnessMove {
                 ieee_addr,
@@ -467,7 +467,7 @@ impl LightHandler {
 
                 let command = LightCommand::BrightnessMove { value, on_off };
 
-                if self.send(decoder, &ieee_addr, &command).await? {
+                if self.send(decoders, &ieee_addr, &command).await? {
                     self.record_intent(&ieee_addr, &LightAttributes::default(), true)
                         .await;
                 }
@@ -477,7 +477,7 @@ impl LightHandler {
 
                 let command = LightCommand::ColourTempMove { value };
 
-                if self.send(decoder, &ieee_addr, &command).await? {
+                if self.send(decoders, &ieee_addr, &command).await? {
                     self.record_intent(&ieee_addr, &LightAttributes::default(), true)
                         .await;
                 }
@@ -487,7 +487,7 @@ impl LightHandler {
                 request,
                 reply,
             } => {
-                let state = self.apply_set(decoder, &ieee_addr, *request).await?;
+                let state = self.apply_set(decoders, &ieee_addr, *request).await?;
 
                 reply.send(state)?;
             }
@@ -518,12 +518,12 @@ impl LightHandler {
 
     async fn send_and_record(
         &self,
-        decoder: &LuaDecoder,
+        decoders: &Decoders,
         ieee_addr: &str,
         command: &LightCommand,
         attributes: &LightAttributes,
     ) -> Result<(), anyhow::Error> {
-        if self.send(decoder, ieee_addr, command).await? {
+        if self.send(decoders, ieee_addr, command).await? {
             self.record_intent(ieee_addr, attributes, false).await;
         }
 
@@ -532,17 +532,27 @@ impl LightHandler {
 
     async fn send(
         &self,
-        decoder: &LuaDecoder,
+        decoders: &Decoders,
         ieee_addr: &str,
         command: &LightCommand,
     ) -> Result<bool, anyhow::Error> {
         let devices = &self.shared_actor_state.devices;
 
-        let Some(profile) = devices
-            .device(ieee_addr)
-            .and_then(|device| device.profile.as_ref())
-        else {
+        let Some(device) = devices.device(ieee_addr) else {
+            tracing::warn!("not sending light command to {ieee_addr}: not a registered device");
+            return Ok(false);
+        };
+
+        let Some(profile) = device.profile.as_ref() else {
             tracing::warn!("not sending light command to {ieee_addr}: no model");
+            return Ok(false);
+        };
+
+        let Some(decoder) = decoders.get(device.transport) else {
+            tracing::warn!(
+                "not sending light command to {ieee_addr}: no `{}` models are loaded",
+                device.transport
+            );
             return Ok(false);
         };
 
@@ -590,7 +600,7 @@ impl DeviceHandler for LightHandler {
     const NAME: &'static str = LightHandler::NAME;
 
     type Message = LightHandlerMessage;
-    type State = LuaDecoder;
+    type State = Decoders;
 
     fn new(shared_actor_state: AppState) -> Self {
         Self { shared_actor_state }
@@ -601,17 +611,15 @@ impl DeviceHandler for LightHandler {
     fn init_state(&self) -> anyhow::Result<Self::State> {
         let settings = &self.shared_actor_state.settings;
 
-        Ok(settings
-            .model_sources
-            .decoder(Transport::Mqtt, &settings.lua)?)
+        Ok(settings.model_sources.decoders(&settings.lua)?)
     }
 
     async fn handle(
         &self,
         message: Self::Message,
-        decoder: &mut Self::State,
+        decoders: &mut Self::State,
     ) -> anyhow::Result<()> {
-        Self::handle(self, decoder, message).await
+        Self::handle(self, decoders, message).await
     }
 }
 
