@@ -4,6 +4,7 @@ use home_gateway::eink::EinkDisplayManager;
 use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::home_assistant::HomeAssistant;
+use home_gateway::integrations::jellyfin::Jellyfin;
 use home_gateway::startup::{self, Handles, Tasks};
 use home_gateway::state::AppState;
 use home_gateway::tracing_setup::SampleRatios;
@@ -79,6 +80,8 @@ async fn main() -> anyhow::Result<()> {
     let home_assistant = state.handles.get::<HomeAssistant>().cloned();
     let home_assistant_websocket = state.settings.home_assistant.websocket;
     let esphome = state.settings.integrations.esphome.clone();
+    let jellyfin = state.handles.get::<Jellyfin>().cloned();
+    let jellyfin_websocket = state.settings.integrations.jellyfin.websocket;
 
     let eink = state.handles.expect::<EinkDisplayManager>().clone();
 
@@ -93,6 +96,8 @@ async fn main() -> anyhow::Result<()> {
             home_assistant_websocket,
             esphome,
             esphome_nodes,
+            jellyfin,
+            jellyfin_websocket,
             devices,
             cancellation_token,
             feature_flag_client,

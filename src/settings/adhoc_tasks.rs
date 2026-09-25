@@ -15,6 +15,7 @@ pub struct AdhocTasksSettings {
     pub trim_device_metric: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_door_sensor: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_home_assistant_events: AdhocCronTaskSettings<RetentionParameters>,
+    pub trim_jellyfin_playback_events: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_light_history: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_robot_vacuum_events: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_smart_switch: AdhocCronTaskSettings<RetentionParameters>,

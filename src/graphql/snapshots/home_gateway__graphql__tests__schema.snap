@@ -311,7 +311,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -406,6 +406,50 @@ type HomeAssistantUpdate {
 A scalar that can represent any JSON value.
 """
 scalar JSON
+
+type JellyfinObject {
+	nowPlaying: [JellyfinSession!]!
+}
+
+type JellyfinSession {
+	eventId: UUID!
+	sessionId: String!
+	user: String!
+	device: String!
+	client: String!
+	itemId: String!
+	itemName: String!
+	itemType: String!
+	seriesName: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	runtimeSeconds: Float
+	playMethod: String
+	paused: Boolean!
+	updatedAt: DateTime!
+	id: ID!
+	progress: Float
+}
+
+type JellyfinUpdate {
+	eventId: UUID!
+	state: String!
+	sessionId: String!
+	user: String!
+	device: String!
+	client: String!
+	itemId: String!
+	itemName: String!
+	itemType: String!
+	seriesName: String
+	season: Int
+	episode: Int
+	positionSeconds: Float
+	runtimeSeconds: Float
+	playMethod: String
+	id: ID!
+}
 
 type LightCommandResult {
 	status: LightCommandStatus!
@@ -843,6 +887,7 @@ type QueryRoot {
 	workflows: [WorkflowStatus!]!
 	mode: ModeStatus!
 	workflowRuns(slug: String, eventId: UUID, limit: Int): [WorkflowRun!]!
+	jellyfin: JellyfinObject!
 	adhocCronTasks: [AdhocCronTaskStatus!]!
 	adhocTasks: [AdhocTaskStatus!]!
 	pushNotifications(limit: Int): [PushNotification!]!

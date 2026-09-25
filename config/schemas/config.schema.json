@@ -180,6 +180,9 @@
         "home_assistant": {
           "$ref": "#/$defs/HttpClientOverride"
         },
+        "jellyfin": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
         "oauth": {
           "$ref": "#/$defs/HttpClientOverride"
         },
@@ -3083,6 +3086,49 @@
           ]
         },
         {
+          "type": "object",
+          "properties": {
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlaybackState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "user": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "item_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "jellyfin"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
           "description": "Fires on a `media_player` playback edge, driven by the\n[`crate::actors::devices::media_player`] handler. Every field is an optional\ngate: the configured `device` id, `state`\n(`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.\n`Jellyfin`, `YouTube`).",
           "type": "object",
           "properties": {
@@ -3434,6 +3480,9 @@
         "holidays": {
           "$ref": "#/$defs/HolidaySettings"
         },
+        "jellyfin": {
+          "$ref": "#/$defs/JellyfinSettings"
+        },
         "woolworths": {
           "$ref": "#/$defs/WoolworthsSettings"
         },
@@ -3457,6 +3506,7 @@
         "s3",
         "esphome",
         "holidays",
+        "jellyfin",
         "woolworths",
         "trmnl",
         "willyweather",
@@ -3566,6 +3616,59 @@
       "required": [
         "url",
         "regions"
+      ]
+    },
+    "JellyfinSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "url": {
+          "type": "string"
+        },
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "poll_interval": {
+          "type": "string"
+        },
+        "websocket": {
+          "$ref": "#/$defs/JellyfinWebsocketSettings"
+        }
+      },
+      "required": [
+        "state",
+        "url",
+        "poll_interval",
+        "websocket"
+      ]
+    },
+    "JellyfinWebsocketSettings": {
+      "type": "object",
+      "properties": {
+        "keep_alive": {
+          "type": "string"
+        },
+        "silence_timeout": {
+          "type": "string"
+        },
+        "sessions_interval": {
+          "type": "string"
+        },
+        "reconnect": {
+          "$ref": "#/$defs/ReconnectSettings"
+        }
+      },
+      "required": [
+        "keep_alive",
+        "silence_timeout",
+        "sessions_interval",
+        "reconnect"
       ]
     },
     "WoolworthsSettings": {
@@ -4308,6 +4411,9 @@
         "trim_home_assistant_events": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
+        "trim_jellyfin_playback_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
         "trim_light_history": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
@@ -4334,6 +4440,7 @@
         "trim_device_metric",
         "trim_door_sensor",
         "trim_home_assistant_events",
+        "trim_jellyfin_playback_events",
         "trim_light_history",
         "trim_robot_vacuum_events",
         "trim_smart_switch",

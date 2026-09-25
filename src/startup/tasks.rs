@@ -13,8 +13,9 @@ use crate::event_bus::EventBus;
 use crate::integrations::esphome_native_api::{self, Node};
 use crate::integrations::feature_flag::{self, FeatureFlagClient};
 use crate::integrations::home_assistant::{self, HomeAssistant};
+use crate::integrations::jellyfin::{self, Jellyfin};
 use crate::integrations::mqtt::Mqtt;
-use crate::settings::{EsphomeSettings, HomeAssistantWebsocketSettings};
+use crate::settings::{EsphomeSettings, HomeAssistantWebsocketSettings, JellyfinWebsocketSettings};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -25,6 +26,8 @@ pub struct Tasks {
     pub home_assistant_websocket: HomeAssistantWebsocketSettings,
     pub esphome: EsphomeSettings,
     pub esphome_nodes: Vec<Node>,
+    pub jellyfin: Option<Jellyfin>,
+    pub jellyfin_websocket: JellyfinWebsocketSettings,
     pub devices: DeviceRegistry,
     pub cancellation_token: CancellationToken,
     pub feature_flag_client: FeatureFlagClient,
@@ -43,6 +46,8 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         home_assistant_websocket,
         esphome,
         esphome_nodes,
+        jellyfin,
+        jellyfin_websocket,
         devices,
         cancellation_token,
         feature_flag_client,
@@ -83,6 +88,19 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
                 home_assistant,
                 home_assistant_websocket,
                 home_assistant_cancellation_token,
+            )
+            .await;
+            Ok::<(), MainError>(())
+        });
+    }
+
+    if let Some(jellyfin) = jellyfin {
+        let jellyfin_cancellation_token = cancellation_token.child_token();
+        task_set.spawn(async move {
+            jellyfin::websocket::process_events(
+                jellyfin,
+                jellyfin_websocket,
+                jellyfin_cancellation_token,
             )
             .await;
             Ok::<(), MainError>(())

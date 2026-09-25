@@ -3,6 +3,56 @@ use mlua::{Lua, Table, Value as LuaValue};
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::lua::{LuaCallContext, LuaClass, LuaField, LuaFunction, LuaModule, LuaParam, LuaType};
 
+const SESSION: LuaClass = LuaClass {
+    name: "JellyfinSession",
+    fields: &[
+        LuaField {
+            name: "user",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "device",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "client",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "item",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "item_type",
+            ty: LuaType::String,
+        },
+        LuaField {
+            name: "series",
+            ty: LuaType::Optional(&LuaType::String),
+        },
+        LuaField {
+            name: "season",
+            ty: LuaType::Optional(&LuaType::Integer),
+        },
+        LuaField {
+            name: "episode",
+            ty: LuaType::Optional(&LuaType::Integer),
+        },
+        LuaField {
+            name: "position",
+            ty: LuaType::Optional(&LuaType::Number),
+        },
+        LuaField {
+            name: "runtime",
+            ty: LuaType::Optional(&LuaType::Number),
+        },
+        LuaField {
+            name: "paused",
+            ty: LuaType::Boolean,
+        },
+    ],
+};
+
 const PLAYER_STATE: LuaClass = LuaClass {
     name: "MediaPlayerState",
     fields: &[
@@ -45,6 +95,13 @@ const PLAYER_STATE: LuaClass = LuaClass {
     ],
 };
 
+const JELLYFIN: LuaFunction = LuaFunction {
+    name: "jellyfin",
+    params: &[],
+    returns: Some(LuaType::Array(&LuaType::Class(&SESSION))),
+    scope: Some(Scope::new(Resource::Jellyfin, Action::Read)),
+};
+
 const PLAYER: LuaFunction = LuaFunction {
     name: "player",
     params: &[LuaParam {
@@ -55,7 +112,7 @@ const PLAYER: LuaFunction = LuaFunction {
     scope: Some(Scope::new(Resource::MediaPlayer, Action::Read)),
 };
 
-const FUNCTIONS: &[LuaFunction] = &[PLAYER];
+const FUNCTIONS: &[LuaFunction] = &[JELLYFIN, PLAYER];
 
 pub struct MediaLua;
 
@@ -69,6 +126,43 @@ impl LuaModule for MediaLua {
     }
 
     fn register(&self, lua: &Lua, table: &Table, cx: &LuaCallContext) -> mlua::Result<()> {
+        let jellyfin_cx = cx.clone();
+        cx.expose(table, &JELLYFIN, || {
+            lua.create_async_function(move |lua, ()| {
+                let cx = jellyfin_cx.clone();
+
+                async move {
+                    let sessions = cx
+                        .query("media.jellyfin", || async {
+                            cx.state.repos.jellyfin().sessions().await
+                        })
+                        .await?;
+
+                    let result = lua.create_table()?;
+
+                    for session in sessions {
+                        let entry = lua.create_table()?;
+
+                        entry.set("user", session.user_name)?;
+                        entry.set("device", session.device_name)?;
+                        entry.set("client", session.client)?;
+                        entry.set("item", session.item_name)?;
+                        entry.set("item_type", session.item_type)?;
+                        entry.set("series", session.series_name)?;
+                        entry.set("season", session.season)?;
+                        entry.set("episode", session.episode)?;
+                        entry.set("position", session.position_seconds)?;
+                        entry.set("runtime", session.runtime_seconds)?;
+                        entry.set("paused", session.paused)?;
+
+                        result.push(entry)?;
+                    }
+
+                    Ok(result)
+                }
+            })
+        })?;
+
         let player_cx = cx.clone();
         cx.expose(table, &PLAYER, || {
             lua.create_async_function(move |lua, device: String| {

@@ -51,6 +51,6 @@ complete -c home -n '__home_seen_path transperth' -f -a '(__home_transperth_rout
 complete -c home -n '__home_seen_path mode set' -f -a 'home away vacation guest'
 complete -c home -n '__home_seen_path events' -f -a '"*"'
 
-for domain in presence door switch environment cron light unifi sun mode home_assistant woolworths device_battery media_player solar weather fuelwatch command_failed custom
+for domain in presence door switch environment cron light unifi sun mode home_assistant woolworths device_battery jellyfin media_player solar weather fuelwatch command_failed custom
     complete -c home -n '__home_seen_path events' -f -a "$domain:\*"
 end

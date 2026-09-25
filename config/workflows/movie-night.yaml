@@ -1,0 +1,58 @@
+- name: Living room lights off (movie playing)
+  slug: living-room-lights-off-movie
+  group: Living Room
+  tags: [living-room]
+  on: { type: jellyfin, state: started, device: Living Room TV, item_type: Movie }
+  modes: [home, guest]
+  run:
+    - type: run_workflow
+      workflow: living-room-lamps-off
+      with: {}
+
+- name: Living room lights off (movie resumed)
+  slug: living-room-lights-off-movie-resumed
+  group: Living Room
+  tags: [living-room]
+  on: { type: jellyfin, state: resumed, device: Living Room TV, item_type: Movie }
+  modes: [home, guest]
+  run:
+    - type: run_workflow
+      workflow: living-room-lamps-off
+      with: {}
+
+- name: Living room lights dim (movie paused)
+  slug: living-room-lights-dim-movie-paused
+  group: Living Room
+  tags: [living-room]
+  on: { type: jellyfin, state: paused, device: Living Room TV, item_type: Movie }
+  modes: [home, guest]
+  run:
+    - type: light
+      device: floor-lamp-living-room
+      state: SET_BRIGHTNESS
+      value: 76
+
+- name: Living room lights fade up (movie ended)
+  slug: living-room-lights-fade-up-movie-ended
+  group: Living Room
+  tags: [living-room]
+  on: { type: jellyfin, state: stopped, device: Living Room TV, item_type: Movie }
+  modes: [home, guest]
+  run:
+    - type: scene
+      when: { type: light, device: floor-lamp-living-room, on: false }
+      run:
+        - type: light
+          device: floor-lamp-living-room
+          state: SET_BRIGHTNESS
+          value: 1
+    - type: light
+      device: floor-lamp-living-room
+      state: INCREASE_BRIGHTNESS
+      value: 3
+    - type: delay
+      seconds: 5
+    - type: light
+      when: { type: light, device: living-room-table-lamp, on: false }
+      device: living-room-table-lamp
+      state: ON

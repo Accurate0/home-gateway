@@ -7,9 +7,9 @@ use super::reading::SensorReading;
 use super::variables::{
     CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
     DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
-    HomeAssistantVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
-    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
-    WeatherVariables, WoolworthsVariables,
+    HomeAssistantVariables, JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables,
+    PlantVariables, PresenceVariables, SolarVariables, SunVariables, SwitchVariables,
+    UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
@@ -123,6 +123,23 @@ pub enum EventBusMessage {
         transport: String,
         room: Option<String>,
         connected: bool,
+    },
+    Jellyfin {
+        event_id: Uuid,
+        state: PlaybackState,
+        session_id: String,
+        user: String,
+        device: String,
+        client: String,
+        item_id: String,
+        item_name: String,
+        item_type: String,
+        series_name: Option<String>,
+        season: Option<i32>,
+        episode: Option<i32>,
+        position_seconds: Option<f64>,
+        runtime_seconds: Option<f64>,
+        play_method: Option<String>,
     },
     /// A Home Assistant `media_player` entity reached a playback edge, derived by
     /// the [`crate::actors::devices::media_player`] handler from HA `state_changed`
@@ -241,6 +258,7 @@ impl EventBusMessage {
             | EventBusMessage::Woolworths { event_id, .. }
             | EventBusMessage::DeviceBattery { event_id, .. }
             | EventBusMessage::DeviceConnection { event_id, .. }
+            | EventBusMessage::Jellyfin { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
             | EventBusMessage::Solar { event_id, .. }
             | EventBusMessage::Weather { event_id, .. }
@@ -268,6 +286,7 @@ impl EventBusMessage {
             EventBusMessage::Woolworths { .. } => "woolworths",
             EventBusMessage::DeviceBattery { .. } => "device_battery",
             EventBusMessage::DeviceConnection { .. } => "device_connection",
+            EventBusMessage::Jellyfin { .. } => "jellyfin",
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
             EventBusMessage::Weather { .. } => "weather",
@@ -293,6 +312,7 @@ impl EventBusMessage {
         "woolworths",
         "device_battery",
         "device_connection",
+        "jellyfin",
         "media_player",
         "solar",
         "weather",
@@ -322,6 +342,7 @@ impl EventBusMessage {
             EventBusMessage::DeviceBattery { device_id, .. }
             | EventBusMessage::DeviceConnection { device_id, .. }
             | EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
+            EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
             EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
             EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
@@ -419,6 +440,37 @@ impl EventBusMessage {
                 transport: transport.clone(),
                 room: room.clone(),
                 connected: *connected,
+            }
+            .to_node(),
+            EventBusMessage::Jellyfin {
+                state,
+                session_id,
+                user,
+                device,
+                client,
+                item_name,
+                item_type,
+                series_name,
+                season,
+                episode,
+                position_seconds,
+                runtime_seconds,
+                play_method,
+                ..
+            } => JellyfinVariables {
+                state: state.as_str().to_owned(),
+                session_id: session_id.clone(),
+                user: user.clone(),
+                device: device.clone(),
+                client: client.clone(),
+                item: item_name.clone(),
+                item_type: item_type.clone(),
+                series: series_name.clone(),
+                season: *season,
+                episode: *episode,
+                position: *position_seconds,
+                runtime: *runtime_seconds,
+                play_method: play_method.clone(),
             }
             .to_node(),
             EventBusMessage::MediaPlayer {

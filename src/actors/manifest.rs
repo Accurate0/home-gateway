@@ -15,7 +15,7 @@ use crate::actors::devices::{
 };
 use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
-    fuelwatch::FuelWatchActor, solar::SolarActor, synergy::SynergyActor,
+    fuelwatch::FuelWatchActor, jellyfin::JellyfinActor, solar::SolarActor, synergy::SynergyActor,
     transperth::TransperthActor, trmnl::TrmnlActor, unifi::UnifiConnectedClientHandler,
     willyweather::WillyWeatherActor, woolworths::WoolworthsActor,
 };
@@ -38,6 +38,7 @@ use crate::actors::workflows::{WorkflowWorker, dispatcher::WorkflowDispatcher};
 use crate::integrations::esphome_native_api::EsphomeNativeApi;
 use crate::integrations::fuelwatch::FuelWatch;
 use crate::integrations::home_assistant::HomeAssistant;
+use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
 use crate::integrations::transperth::Transperth;
 use crate::integrations::trmnl::Trmnl;
@@ -300,6 +301,32 @@ pub static ACTORS: &[ActorSpec] = &[
                 crate::actors::system::home_assistant_ingest::spawn::spawn_home_assistant_ingest(
                     &root,
                     shared_actor_state,
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
+        name: JellyfinActor::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[Requirement::Handle {
+            label: "jellyfin",
+            present: |handles| handles.contains::<Jellyfin>(),
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                let jellyfin = shared_actor_state.handles.expect::<Jellyfin>().clone();
+
+                root.spawn_linked(
+                    Some(JellyfinActor::NAME.to_owned()),
+                    JellyfinActor {
+                        shared_actor_state,
+                        jellyfin,
+                    },
+                    (),
                 )
                 .await?;
 
@@ -583,6 +610,7 @@ mod tests {
                 ReconcilerSweeper::NAME,
                 EsphomeNativeApiIngest::NAME,
                 HomeAssistantIngest::NAME,
+                JellyfinActor::NAME,
                 TransperthActor::NAME,
                 TrmnlActor::NAME,
                 FuelWatchActor::NAME,

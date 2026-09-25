@@ -11,6 +11,7 @@ use crate::integrations::{
     feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
     home_assistant::HomeAssistant,
+    jellyfin::Jellyfin,
     mqtt::{Mqtt, MqttClient},
     reddit::Reddit,
     s3::S3,
@@ -63,6 +64,18 @@ pub async fn build(
         &settings.home_assistant,
         http.timeout_for(HttpClientKind::HomeAssistant),
     );
+
+    let jellyfin = integrations
+        .jellyfin
+        .state
+        .is_enabled()
+        .then(|| {
+            Jellyfin::new(
+                &integrations.jellyfin,
+                http.timeout_for(HttpClientKind::Jellyfin),
+            )
+        })
+        .transpose()?;
 
     let transperth = integrations
         .transperth
@@ -152,6 +165,7 @@ pub async fn build(
         .insert(http_client)
         .insert(public_http_client)
         .insert_optional(home_assistant)
+        .insert_optional(jellyfin)
         .insert_optional(esphome_native_api)
         .insert_optional(transperth)
         .insert_optional(fuelwatch)

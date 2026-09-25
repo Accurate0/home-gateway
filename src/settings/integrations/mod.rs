@@ -4,6 +4,8 @@ pub mod holidays;
 pub mod home_assistant;
 pub mod home_assistant_websocket;
 pub mod integration_settings;
+pub mod jellyfin;
+pub mod jellyfin_websocket;
 pub mod raw_integration_settings;
 pub mod s3;
 pub mod solar;

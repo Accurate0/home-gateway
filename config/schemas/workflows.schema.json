@@ -1752,6 +1752,49 @@
           ]
         },
         {
+          "type": "object",
+          "properties": {
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlaybackState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "user": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "item_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "jellyfin"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
           "description": "Fires on a `media_player` playback edge, driven by the\n[`crate::actors::devices::media_player`] handler. Every field is an optional\ngate: the configured `device` id, `state`\n(`started`/`stopped`/`paused`/`resumed`), and the casting `app` (e.g.\n`Jellyfin`, `YouTube`).",
           "type": "object",
           "properties": {

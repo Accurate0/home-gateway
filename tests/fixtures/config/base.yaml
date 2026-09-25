@@ -101,6 +101,18 @@ integrations:
   holidays:
     url: http://127.0.0.1:9/holidays.ics
     regions: [Western Australia]
+  jellyfin:
+    state: disabled
+    url: http://127.0.0.1:9
+    poll_interval: 30s
+    websocket:
+      keep_alive: 30s
+      silence_timeout: 60s
+      sessions_interval: 1500ms
+      reconnect:
+        min: 1s
+        max: 60s
+        log_attempts: 3
   woolworths:
     state: enabled
     refresh: 1h
@@ -455,6 +467,11 @@ adhoc:
       schedule: "25 3 * * *"
       parameters:
         retention: 2160h
+    trim_jellyfin_playback_events:
+      state: enabled
+      schedule: "35 3 * * *"
+      parameters:
+        retention: 4320h
     trim_light_history:
       state: enabled
       schedule: "50 3 * * *"

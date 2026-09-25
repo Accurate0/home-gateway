@@ -4,6 +4,8 @@ pub mod energy_object;
 pub mod entity_object;
 pub mod fuelwatch_object;
 pub mod home_assistant_object;
+pub mod jellyfin_object;
+pub mod jellyfin_session_object;
 pub mod lua_api_object;
 pub mod mode_object;
 pub mod mode_status;

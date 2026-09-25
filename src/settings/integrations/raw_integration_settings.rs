@@ -7,6 +7,7 @@ use super::esphome::EsphomeSettings;
 use super::fuelwatch::FuelWatchSettings;
 use super::holidays::HolidaySettings;
 use super::integration_settings::IntegrationSettings;
+use super::jellyfin::JellyfinSettings;
 use super::s3::S3Settings;
 use super::solar::SolarSettings;
 use super::transperth::{RawTransperthSettings, TransperthSettings};
@@ -23,6 +24,7 @@ pub struct RawIntegrationSettings {
     s3: S3Settings,
     pub(crate) esphome: EsphomeSettings,
     holidays: HolidaySettings,
+    jellyfin: JellyfinSettings,
     woolworths: WoolworthsSettings,
     trmnl: TrmnlSettings,
     willyweather: WillyWeatherSettings,
@@ -37,6 +39,7 @@ impl RawIntegrationSettings {
             s3,
             esphome,
             holidays,
+            jellyfin,
             woolworths,
             trmnl,
             willyweather,
@@ -47,6 +50,7 @@ impl RawIntegrationSettings {
 
         validate_esphome(&esphome)?;
         validate_holidays(&holidays)?;
+        validate_jellyfin(&jellyfin)?;
         validate_willyweather(&willyweather)?;
 
         let transperth = transperth.resolve()?;
@@ -59,6 +63,7 @@ impl RawIntegrationSettings {
             s3,
             esphome,
             holidays,
+            jellyfin,
             woolworths,
             trmnl,
             willyweather,
@@ -87,6 +92,29 @@ fn validate_holidays(holidays: &HolidaySettings) -> Result<(), String> {
 
     if holidays.regions.is_empty() {
         return Err("integrations.holidays.regions must declare at least one region".to_owned());
+    }
+
+    Ok(())
+}
+
+fn validate_jellyfin(jellyfin: &JellyfinSettings) -> Result<(), String> {
+    if !jellyfin.state.is_enabled() {
+        return Ok(());
+    }
+
+    if jellyfin.url.trim().is_empty() {
+        return Err("integrations.jellyfin.url must not be empty".to_owned());
+    }
+
+    if missing(jellyfin.api_key.as_deref()) {
+        return Err(
+            "integrations.jellyfin.api_key is required (set INTEGRATIONS__JELLYFIN__API_KEY)"
+                .to_owned(),
+        );
+    }
+
+    if jellyfin.poll_interval <= chrono::TimeDelta::zero() {
+        return Err("integrations.jellyfin.poll_interval must be positive".to_owned());
     }
 
     Ok(())

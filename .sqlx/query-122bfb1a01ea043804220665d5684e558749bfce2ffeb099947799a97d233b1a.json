@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM jellyfin_state",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "122bfb1a01ea043804220665d5684e558749bfce2ffeb099947799a97d233b1a"
+}

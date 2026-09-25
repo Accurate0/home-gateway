@@ -5,6 +5,7 @@ pub enum HttpClientKind {
     GoodWe,
     Holidays,
     HomeAssistant,
+    Jellyfin,
     OAuth,
     Push,
     Reddit,

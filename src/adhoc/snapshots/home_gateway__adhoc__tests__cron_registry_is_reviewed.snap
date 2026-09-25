@@ -10,6 +10,7 @@ trim_device_intent  -
 trim_device_metric  -
 trim_door_sensor  -
 trim_home_assistant_events  -
+trim_jellyfin_playback_events  -
 trim_light_history  -
 trim_robot_vacuum_events  -
 trim_smart_switch  -

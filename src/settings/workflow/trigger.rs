@@ -120,6 +120,16 @@ pub enum TriggerMatcher {
         #[serde(default)]
         connected: Option<bool>,
     },
+    Jellyfin {
+        #[serde(default)]
+        state: Option<PlaybackState>,
+        #[serde(default)]
+        user: Option<String>,
+        #[serde(default)]
+        device: Option<String>,
+        #[serde(default)]
+        item_type: Option<String>,
+    },
     /// Fires on a `media_player` playback edge, driven by the
     /// [`crate::actors::devices::media_player`] handler. Every field is an optional
     /// gate: the configured `device` id, `state`
@@ -196,6 +206,7 @@ impl TriggerMatcher {
             TriggerMatcher::FuelWatch { .. } => "fuelwatch",
             TriggerMatcher::DeviceBattery { .. } => "device_battery",
             TriggerMatcher::DeviceConnection { .. } => "device_connection",
+            TriggerMatcher::Jellyfin { .. } => "jellyfin",
             TriggerMatcher::MediaPlayer { .. } => "media_player",
             TriggerMatcher::Solar { .. } => "solar",
             TriggerMatcher::Weather { .. } => "weather",
@@ -286,6 +297,7 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
+            | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Custom { .. }
             | TriggerMatcher::Unifi { .. } => None,
@@ -391,6 +403,23 @@ impl TriggerMatcher {
                     None => format!("device_connection({device})"),
                 }
             }
+            TriggerMatcher::Jellyfin {
+                state,
+                user,
+                device,
+                item_type,
+            } => {
+                let subject = user
+                    .clone()
+                    .or_else(|| device.clone())
+                    .or_else(|| item_type.clone())
+                    .unwrap_or_else(|| "*".to_owned());
+
+                match state {
+                    Some(state) => format!("jellyfin({subject}) -> {}", state.as_str()),
+                    None => format!("jellyfin({subject})"),
+                }
+            }
             TriggerMatcher::MediaPlayer { device, state, app } => {
                 let subject = device
                     .clone()
@@ -494,6 +523,7 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
+            | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Solar { .. }
             | TriggerMatcher::Custom { .. } => {}

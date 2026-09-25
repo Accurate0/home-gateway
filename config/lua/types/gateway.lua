@@ -84,6 +84,19 @@
 ---@field ok boolean
 ---@field body string
 
+---@class gw.JellyfinSession
+---@field user string
+---@field device string
+---@field client string
+---@field item string
+---@field item_type string
+---@field series? string
+---@field season? integer
+---@field episode? integer
+---@field position? number
+---@field runtime? number
+---@field paused boolean
+
 ---@class gw.LowBattery
 ---@field device string
 ---@field level number
@@ -560,6 +573,10 @@ function unifi.clients() end
 
 ---@class gw.api.media
 media = {}
+
+---Requires the `jellyfin:read` scope.
+---@return gw.JellyfinSession[]
+function media.jellyfin() end
 
 ---Requires the `media.player:read` scope.
 ---@param device string

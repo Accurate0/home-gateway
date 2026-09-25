@@ -18,6 +18,19 @@ holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
   regions: [Western Australia]
 
+jellyfin:
+  state: enabled
+  url: http://jellyfin.media.internal
+  poll_interval: 30s
+  websocket:
+    keep_alive: 30s
+    silence_timeout: 60s
+    sessions_interval: 1500ms
+    reconnect:
+      min: 1s
+      max: 60s
+      log_attempts: 3
+
 woolworths:
   state: enabled
   refresh: 1h

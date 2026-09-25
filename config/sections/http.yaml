@@ -13,6 +13,8 @@ clients:
     timeout: 30s
   home_assistant:
     timeout: 30s
+  jellyfin:
+    timeout: 30s
   oauth:
     timeout: 30s
   push:

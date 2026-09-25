@@ -453,6 +453,26 @@ impl WorkflowDispatcher {
                     && connected.is_none_or(|want| want == *is_connected)
             }
             (
+                TriggerMatcher::Jellyfin {
+                    state,
+                    user,
+                    device,
+                    item_type,
+                },
+                EventBusMessage::Jellyfin {
+                    state: s,
+                    user: u,
+                    device: d,
+                    item_type: t,
+                    ..
+                },
+            ) => {
+                state.is_none_or(|state| state == *s)
+                    && user.as_ref().is_none_or(|user| user == u)
+                    && device.as_ref().is_none_or(|device| device == d)
+                    && item_type.as_ref().is_none_or(|item_type| item_type == t)
+            }
+            (
                 TriggerMatcher::MediaPlayer { device, state, app },
                 EventBusMessage::MediaPlayer {
                     device_id: d,

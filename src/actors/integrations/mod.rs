@@ -1,4 +1,5 @@
 pub mod fuelwatch;
+pub mod jellyfin;
 pub mod solar;
 pub mod synergy;
 pub mod transperth;

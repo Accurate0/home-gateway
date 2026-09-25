@@ -44,6 +44,7 @@ configMapGenerator:
       - workflows/fuel.yaml
       - workflows/holidays.yaml
       - workflows/living-room-lamp.yaml
+      - workflows/movie-night.yaml
       - workflows/living-room-plant.yaml
       - workflows/rain.yaml
       - workflows/small-switch.yaml

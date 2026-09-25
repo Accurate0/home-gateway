@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO jellyfin_state (\n                user_name, session_id, device_name, client, item_id, item_name,\n                item_type, series_name, season, episode, position_seconds,\n                runtime_seconds, play_method, paused, event_id, updated_at\n            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())\n            ON CONFLICT (user_name)\n            DO UPDATE SET\n                session_id = EXCLUDED.session_id,\n                device_name = EXCLUDED.device_name,\n                client = EXCLUDED.client,\n                item_id = EXCLUDED.item_id,\n                item_name = EXCLUDED.item_name,\n                item_type = EXCLUDED.item_type,\n                series_name = EXCLUDED.series_name,\n                season = EXCLUDED.season,\n                episode = EXCLUDED.episode,\n                position_seconds = EXCLUDED.position_seconds,\n                runtime_seconds = EXCLUDED.runtime_seconds,\n                play_method = EXCLUDED.play_method,\n                paused = EXCLUDED.paused,\n                event_id = EXCLUDED.event_id,\n                updated_at = EXCLUDED.updated_at\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Float8",
+        "Float8",
+        "Text",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6ffb0b4efd4a1d22957b7cadd32b9606455131f506db7318fabdc5f8d048ba6c"
+}

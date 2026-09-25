@@ -252,20 +252,34 @@ mod tests {
         insta::assert_snapshot!(rendered(&all, &entry));
     }
 
+    fn workflow_file(path: &std::path::Path) -> Vec<WorkflowDefinition> {
+        let yaml = std::fs::read_to_string(path).expect("read workflow file");
+
+        serde_yaml::from_str(&yaml).expect("deserialize workflows")
+    }
+
+    fn all_workflows() -> HashMap<String, WorkflowDefinition> {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("config/workflows");
+
+        std::fs::read_dir(dir)
+            .expect("read workflows dir")
+            .map(|entry| entry.expect("workflow dir entry").path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "yaml"))
+            .filter(|path| path.file_stem().is_some_and(|stem| stem != "index"))
+            .flat_map(|path| workflow_file(&path))
+            .map(|wf| (wf.body().name.clone(), wf))
+            .collect()
+    }
+
     #[rstest::rstest]
     fn real_workflows(
         #[files("config/workflows/*.yaml")]
         #[exclude("index")]
         path: std::path::PathBuf,
     ) {
-        let yaml = std::fs::read_to_string(&path).expect("read workflow file");
-        let file_workflows: Vec<WorkflowDefinition> =
-            serde_yaml::from_str(&yaml).expect("deserialize workflows");
+        let file_workflows = workflow_file(&path);
+        let workflows = all_workflows();
 
-        let workflows: HashMap<String, WorkflowDefinition> = file_workflows
-            .iter()
-            .map(|wf| (wf.body().name.clone(), wf.clone()))
-            .collect();
         let mut out = String::new();
         for definition in &file_workflows {
             let wf = definition.body();

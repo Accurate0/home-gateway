@@ -1,8 +1,8 @@
 use crate::repo::{
     AdhocRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo, EnvironmentRepo,
-    FuelWatchRepo, HolidayRepo, HomeAssistantRepo, IntentRepo, LightRepo, MediaPlayerRepo,
-    MetricRepo, PlantRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo,
-    UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
+    FuelWatchRepo, HolidayRepo, HomeAssistantRepo, IntentRepo, JellyfinRepo, LightRepo,
+    MediaPlayerRepo, MetricRepo, PlantRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo, SolarRepo,
+    SunRepo, UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
@@ -17,6 +17,7 @@ struct Repos {
     fuelwatch: FuelWatchRepo,
     holiday: HolidayRepo,
     home_assistant: HomeAssistantRepo,
+    jellyfin: JellyfinRepo,
     solar: SolarRepo,
     unifi: UnifiRepo,
     woolworths: WoolworthsRepo,
@@ -53,6 +54,7 @@ impl RepoRegistry {
                 fuelwatch: FuelWatchRepo::new(db.clone()),
                 holiday: HolidayRepo::new(db.clone()),
                 home_assistant: HomeAssistantRepo::new(db.clone()),
+                jellyfin: JellyfinRepo::new(db.clone()),
                 solar: SolarRepo::new(db.clone()),
                 unifi: UnifiRepo::new(db.clone()),
                 woolworths: WoolworthsRepo::new(db.clone()),
@@ -99,6 +101,10 @@ impl RepoRegistry {
 
     pub fn home_assistant(&self) -> &HomeAssistantRepo {
         &self.inner.home_assistant
+    }
+
+    pub fn jellyfin(&self) -> &JellyfinRepo {
+        &self.inner.jellyfin
     }
 
     pub fn solar(&self) -> &SolarRepo {

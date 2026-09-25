@@ -217,7 +217,9 @@ fn check_device_refs(node: Option<&serde_json::Value>, ids: &HashSet<String>, wo
     let Some(node) = node else { return };
     match node {
         serde_json::Value::Object(map) => {
-            for key in ["device", "sensor"] {
+            let external = map.get("type").and_then(|v| v.as_str()) == Some("jellyfin");
+
+            for key in ["device", "sensor"].into_iter().filter(|_| !external) {
                 if let Some(reference) = map.get(key).and_then(|v| v.as_str())
                     && !ids.contains(reference)
                 {
