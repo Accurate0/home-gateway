@@ -1,3 +1,4 @@
+use reqwest::header::CONTENT_TYPE;
 use reqwest::{Method, StatusCode};
 use reqwest_middleware::{ClientWithMiddleware, RequestBuilder};
 use serde::Serialize;
@@ -102,13 +103,23 @@ impl Client {
             None => builder,
         };
 
-        let response = builder.send().await?;
+        check(builder.send().await?)
+    }
 
-        match response.status() {
-            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-            StatusCode::FORBIDDEN => Err(ClientError::Forbidden),
-            _ => Ok(response),
-        }
+    pub async fn send_bytes(
+        &self,
+        method: Method,
+        path: &str,
+        body: Vec<u8>,
+    ) -> Result<reqwest::Response, ClientError> {
+        let response = self
+            .request(method, path)
+            .header(CONTENT_TYPE, "text/csv")
+            .body(body)
+            .send()
+            .await?;
+
+        check(response)
     }
 
     pub async fn json<T: DeserializeOwned>(
@@ -140,6 +151,14 @@ impl Client {
 
         let payload: Value = response.json().await?;
         extract_data(payload)
+    }
+}
+
+fn check(response: reqwest::Response) -> Result<reqwest::Response, ClientError> {
+    match response.status() {
+        StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
+        StatusCode::FORBIDDEN => Err(ClientError::Forbidden),
+        _ => Ok(response),
     }
 }
 

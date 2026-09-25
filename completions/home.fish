@@ -43,6 +43,7 @@ complete -c home -n "__fish_home_needs_command" -f -a "lua"
 complete -c home -n "__fish_home_needs_command" -f -a "push"
 complete -c home -n "__fish_home_needs_command" -f -a "adhoc"
 complete -c home -n "__fish_home_needs_command" -f -a "eink"
+complete -c home -n "__fish_home_needs_command" -f -a "synergy"
 complete -c home -n "__fish_home_needs_command" -f -a "weather"
 complete -c home -n "__fish_home_needs_command" -f -a "solar"
 complete -c home -n "__fish_home_needs_command" -f -a "energy"
@@ -264,14 +265,15 @@ complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from help" -f -a "regenerate"
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from help" -f -a "revoke"
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -l base-url -r
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -l api-key -r
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -l issuer -r
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -l client-id -r
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -l json
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -s h -l help -d 'Print help'
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -f -a "run"
-complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l base-url -r
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l issuer -r
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l client-id -r
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l json
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -s h -l help -d 'Print help'
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -f -a "run"
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -f -a "repl"
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -s e -l expression -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l var -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l base-url -r
@@ -281,7 +283,15 @@ complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcomman
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l dry-run
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l json
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -s h -l help -d 'Print help'
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l base-url -r
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l issuer -r
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l client-id -r
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l dry-run
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l json
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from help" -f -a "run"
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from help" -f -a "repl"
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l api-key -r
@@ -373,6 +383,32 @@ complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from help" -f -a "screenshot"
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l base-url -r
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l issuer -r
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l client-id -r
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l json
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -s h -l help -d 'Print help'
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -f -a "upload"
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -f -a "gaps"
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l base-url -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l issuer -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l client-id -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l json
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -s h -l help -d 'Print help'
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l since -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l interval -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l base-url -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l issuer -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l client-id -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l json
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -s h -l help -d 'Print help'
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from help" -f -a "upload"
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from help" -f -a "gaps"
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand weather" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand weather" -l api-key -r
 complete -c home -n "__fish_home_using_subcommand weather" -l issuer -r
@@ -424,27 +460,28 @@ complete -c home -n "__fish_home_using_subcommand completions" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand completions" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand completions" -l json
 complete -c home -n "__fish_home_using_subcommand completions" -s h -l help -d 'Print help'
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "login"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "logout"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "whoami"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "ls"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "light"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "workflow"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "mode"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "keys"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "lua"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "push"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "adhoc"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "eink"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "weather"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "solar"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "energy"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "transperth"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "fuel"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "events"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "curl"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "completions"
-complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink weather solar energy transperth fuel events curl completions help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "login"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "logout"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "whoami"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "ls"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "light"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "workflow"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "mode"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "keys"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "lua"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "push"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "adhoc"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "eink"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "synergy"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "weather"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "solar"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "energy"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "transperth"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "fuel"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "events"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "curl"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "completions"
+complete -c home -n "__fish_home_using_subcommand help; and not __fish_seen_subcommand_from login logout whoami ls light workflow mode keys lua push adhoc eink synergy weather solar energy transperth fuel events curl completions help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from light" -f -a "on"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from light" -f -a "off"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from light" -f -a "toggle"
@@ -463,6 +500,7 @@ complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from keys" -f -a "regenerate"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from keys" -f -a "revoke"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from lua" -f -a "run"
+complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from lua" -f -a "repl"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from push" -f -a "send"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from push" -f -a "list"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from adhoc" -f -a "list"
@@ -470,3 +508,5 @@ complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from adhoc" -f -a "run-pending"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from adhoc" -f -a "run"
 complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from eink" -f -a "screenshot"
+complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from synergy" -f -a "upload"
+complete -c home -n "__fish_home_using_subcommand help; and __fish_seen_subcommand_from synergy" -f -a "gaps"

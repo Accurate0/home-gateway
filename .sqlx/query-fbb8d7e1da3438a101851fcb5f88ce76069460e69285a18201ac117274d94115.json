@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT previous AS \"start!\", time AS \"end!\"\n            FROM (\n                SELECT time, LAG(time) OVER (ORDER BY time) AS previous\n                FROM (\n                    SELECT time FROM energy_consumption WHERE time >= $1\n                    UNION ALL SELECT $1\n                    UNION ALL SELECT now()\n                ) readings\n            ) steps\n            WHERE time - previous > $2\n            ORDER BY previous ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "start!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "end!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Interval"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "fbb8d7e1da3438a101851fcb5f88ce76069460e69285a18201ac117274d94115"
+}

@@ -12,7 +12,7 @@ use home_gateway::cli::oauth::{self, DEFAULT_CLIENT_ID, DEFAULT_ISSUER};
 use home_gateway::http::get_traced_http_client;
 use reqwest::{Method, StatusCode};
 use serde_json::{Value, json};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -58,6 +58,8 @@ enum Command {
     Adhoc(AdhocCommand),
     #[command(subcommand)]
     Eink(EinkCommand),
+    #[command(subcommand)]
+    Synergy(SynergyCommand),
     Weather {
         location: String,
     },
@@ -106,6 +108,19 @@ enum AdhocCommand {
 #[derive(Subcommand)]
 enum EinkCommand {
     Screenshot,
+}
+
+#[derive(Subcommand)]
+enum SynergyCommand {
+    Upload {
+        file: PathBuf,
+    },
+    Gaps {
+        #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, default_value = "90d")]
+        since: i64,
+        #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, default_value = "30m")]
+        interval: i64,
+    },
 }
 
 #[derive(Args)]
@@ -393,6 +408,7 @@ async fn run(cli: &Cli) -> Result<()> {
                 .await?;
             report(&data, cli.json, "screenshot requested")
         }
+        Command::Synergy(command) => synergy(&client, command, cli.json).await,
         Command::Weather { location } => weather(&client, location, cli.json).await,
         Command::Solar => solar(&client, cli.json).await,
         Command::Energy { since } => energy(&client, *since, cli.json).await,
@@ -488,6 +504,78 @@ async fn adhoc(client: &Client, command: &AdhocCommand, as_json: bool) -> Result
             report(&data, as_json, &format!("ran {name}"))
         }
     }
+}
+
+async fn synergy(client: &Client, command: &SynergyCommand, as_json: bool) -> Result<()> {
+    match command {
+        SynergyCommand::Upload { file } => synergy_upload(client, file, as_json).await,
+        SynergyCommand::Gaps { since, interval } => {
+            synergy_gaps(client, *since, *interval, as_json).await
+        }
+    }
+}
+
+async fn synergy_gaps(client: &Client, since: i64, interval: i64, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            "query($input: EnergyGapsInput!) { energy { gaps(input: $input) { start end missingIntervals } } }",
+            json!({ "input": { "since": since_timestamp(since), "intervalSeconds": interval } }),
+        )
+        .await?;
+
+    let gaps = &data["energy"]["gaps"];
+
+    if as_json {
+        return print_json(gaps);
+    }
+
+    let gaps = gaps.as_array().cloned().unwrap_or_default();
+
+    if gaps.is_empty() {
+        println!("no gaps");
+        return Ok(());
+    }
+
+    for gap in &gaps {
+        println!(
+            "{} -> {}  {:>6} missing",
+            local_time(text(gap, "start"))?,
+            local_time(text(gap, "end"))?,
+            gap["missingIntervals"]
+        );
+    }
+
+    Ok(())
+}
+
+fn local_time(timestamp: &str) -> Result<String> {
+    let parsed = DateTime::parse_from_rfc3339(timestamp)
+        .with_context(|| format!("unreadable timestamp {timestamp}"))?;
+
+    Ok(parsed
+        .with_timezone(&chrono::Local)
+        .format("%Y-%m-%d %H:%M")
+        .to_string())
+}
+
+async fn synergy_upload(client: &Client, file: &Path, as_json: bool) -> Result<()> {
+    let csv = std::fs::read(file).with_context(|| format!("failed to read {}", file.display()))?;
+
+    let response = client
+        .send_bytes(Method::POST, "/v1/ingest/synergy", csv)
+        .await?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!("synergy upload failed with {status}: {body}");
+    }
+
+    report(
+        &json!({ "accepted": true }),
+        as_json,
+        &format!("uploaded {}", file.display()),
+    )
 }
 
 async fn weather(client: &Client, location: &str, as_json: bool) -> Result<()> {
@@ -1630,6 +1718,29 @@ mod tests {
         let elapsed = Utc::now() - timestamp.with_timezone(&Utc);
 
         assert!(elapsed.num_seconds() >= 7200 && elapsed.num_seconds() < 7260);
+    }
+
+    #[test]
+    fn synergy_upload_takes_a_file_path() {
+        let cli = Cli::try_parse_from(["home", "synergy", "upload", "usage.csv"]).unwrap();
+
+        let Command::Synergy(SynergyCommand::Upload { file }) = cli.command else {
+            panic!("expected synergy upload");
+        };
+
+        assert_eq!(file, PathBuf::from("usage.csv"));
+    }
+
+    #[test]
+    fn synergy_gaps_defaults_to_half_hour_intervals() {
+        let cli = Cli::try_parse_from(["home", "synergy", "gaps"]).unwrap();
+
+        let Command::Synergy(SynergyCommand::Gaps { since, interval }) = cli.command else {
+            panic!("expected synergy gaps");
+        };
+
+        assert_eq!(interval, 1800);
+        assert_eq!(since, 90 * 86400);
     }
 
     #[test]

@@ -9,7 +9,20 @@ pub struct EnergyHistoryInput {
     pub since: DateTime<Utc>,
 }
 
+#[derive(InputObject)]
+pub struct EnergyGapsInput {
+    pub since: DateTime<Utc>,
+    pub interval_seconds: i64,
+}
+
 pub struct EnergyObject {}
+
+#[derive(SimpleObject, Debug)]
+pub struct EnergyGap {
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+    pub missing_intervals: i64,
+}
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -39,6 +52,31 @@ impl EnergyObject {
                 time: r.time,
                 used: r.energy_used,
                 solar_exported: r.solar_exported,
+            })
+            .collect_vec())
+    }
+
+    pub async fn gaps(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        input: EnergyGapsInput,
+    ) -> async_graphql::Result<Vec<EnergyGap>> {
+        if input.interval_seconds <= 0 {
+            return Err("intervalSeconds must be positive".into());
+        }
+
+        let repos = ctx.data::<RepoRegistry>()?;
+        let interval = chrono::TimeDelta::seconds(input.interval_seconds);
+
+        Ok(repos
+            .energy()
+            .gaps_since(input.since, interval)
+            .await?
+            .into_iter()
+            .map(|gap| EnergyGap {
+                start: gap.start,
+                end: gap.end,
+                missing_intervals: (gap.end - gap.start).num_seconds() / input.interval_seconds - 1,
             })
             .collect_vec())
     }

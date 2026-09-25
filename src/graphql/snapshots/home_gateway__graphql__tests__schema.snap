@@ -228,12 +228,24 @@ type EnergyConsumption {
 	time: DateTime!
 }
 
+type EnergyGap {
+	start: DateTime!
+	end: DateTime!
+	missingIntervals: Int!
+}
+
+input EnergyGapsInput {
+	since: DateTime!
+	intervalSeconds: Int!
+}
+
 input EnergyHistoryInput {
 	since: DateTime!
 }
 
 type EnergyObject {
 	history(input: EnergyHistoryInput!): [EnergyConsumption!]!
+	gaps(input: EnergyGapsInput!): [EnergyGap!]!
 }
 
 union Entity = LightEntity | EnvironmentEntity | PlantEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity

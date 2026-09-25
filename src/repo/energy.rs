@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use sqlx::postgres::types::PgInterval;
 use sqlx::{Pool, Postgres};
 
 pub struct EnergyConsumptionRow {
@@ -6,6 +7,11 @@ pub struct EnergyConsumptionRow {
     pub energy_used: f64,
     pub solar_exported: f64,
     pub time: DateTime<Utc>,
+}
+
+pub struct EnergyGapRow {
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
 }
 
 #[derive(Clone)]
@@ -56,6 +62,43 @@ impl EnergyRepo {
                 energy_used: row.energy_used,
                 solar_exported: row.solar_exported,
                 time: row.time,
+            })
+            .collect())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.energy.gaps_since", err)]
+    pub async fn gaps_since(
+        &self,
+        since: DateTime<Utc>,
+        interval: chrono::TimeDelta,
+    ) -> Result<Vec<EnergyGapRow>, sqlx::Error> {
+        let interval = PgInterval::try_from(interval).map_err(sqlx::Error::Encode)?;
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT previous AS "start!", time AS "end!"
+            FROM (
+                SELECT time, LAG(time) OVER (ORDER BY time) AS previous
+                FROM (
+                    SELECT time FROM energy_consumption WHERE time >= $1
+                    UNION ALL SELECT $1
+                    UNION ALL SELECT now()
+                ) readings
+            ) steps
+            WHERE time - previous > $2
+            ORDER BY previous ASC
+            "#,
+            since,
+            interval
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| EnergyGapRow {
+                start: row.start,
+                end: row.end,
             })
             .collect())
     }
