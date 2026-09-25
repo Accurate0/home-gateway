@@ -630,14 +630,14 @@ mod tests {
     }
 
     fn library() -> BTreeMap<String, String> {
-        crate::lua::sources::load_directory(std::path::Path::new("./config/lua/model_lib"))
+        crate::lua::sources::load_directory(std::path::Path::new("./config/lua/models/lib"))
             .expect("expected the committed model library to be readable")
     }
 
     #[test]
     fn every_committed_mqtt_model_loads() {
         let sources =
-            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/mqtt"))
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/models/mqtt"))
                 .expect("expected the committed mqtt models to be readable");
 
         let models = load_models(
@@ -657,7 +657,7 @@ mod tests {
     #[test]
     fn every_committed_home_assistant_model_loads() {
         let sources = crate::lua::sources::load_directory(std::path::Path::new(
-            "./config/lua/home_assistant",
+            "./config/lua/models/home_assistant",
         ))
         .expect("expected the committed home assistant models to be readable");
 
@@ -742,7 +742,7 @@ mod tests {
         on: bool,
     ) -> Option<Value> {
         let sources =
-            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/mqtt"))
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/models/mqtt"))
                 .expect("committed mqtt models");
         let library = library();
         let models = load_models(

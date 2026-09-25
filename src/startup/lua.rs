@@ -257,8 +257,10 @@ mod tests {
             "config/lua/lib",
             "config/lua/workflows",
             "config/lua/integrations",
-            "config/lua/mqtt",
-            "config/lua/home_assistant",
+            "config/lua/models/lib",
+            "config/lua/models/mqtt",
+            "config/lua/models/home_assistant",
+            "config/lua/models/esphome_native_api",
         ] {
             let sources =
                 load_directory(&PathBuf::from(directory)).expect("expected the directory to load");

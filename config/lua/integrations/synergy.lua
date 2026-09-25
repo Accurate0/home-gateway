@@ -27,13 +27,19 @@ local function positions(header)
 	end
 
 	local result = {}
+	local missing = {}
 
 	for key, name in pairs(columns) do
 		if found[name] == nil then
-			error("synergy export has no `" .. name .. "` column, header is: " .. header)
+			table.insert(missing, "`" .. name .. "`")
 		end
 
 		result[key] = found[name]
+	end
+
+	if #missing > 0 then
+		table.sort(missing)
+		error("synergy export is missing " .. table.concat(missing, ", ") .. ", header is: " .. header)
 	end
 
 	return result

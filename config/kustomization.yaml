@@ -57,9 +57,9 @@ configMapGenerator:
       - lua/lib/lights.lua
   - name: home-gateway-config-lua-model-lib
     files:
-      - lua/model_lib/esphome_light.lua
-      - lua/model_lib/zigbee_light.lua
-      - lua/model_lib/zigbee_switch.lua
+      - lua/models/lib/esphome_light.lua
+      - lua/models/lib/zigbee_light.lua
+      - lua/models/lib/zigbee_switch.lua
   - name: home-gateway-config-lua-workflows
     files:
       - lua/workflows/brief.lua
@@ -72,28 +72,28 @@ configMapGenerator:
       - lua/integrations/synergy.lua
   - name: home-gateway-config-lua-mqtt
     files:
-      - lua/mqtt/apollo_mtr_1.lua
-      - lua/mqtt/apollo_plt_1.lua
-      - lua/mqtt/apollo_plt_1b.lua
-      - lua/mqtt/aqara_fp1e.lua
-      - lua/mqtt/aqara_mccgq12lm.lua
-      - lua/mqtt/aqara_t1.lua
-      - lua/mqtt/aqara_wsdcgq12lm.lua
-      - lua/mqtt/aqara_wxkg11lm.lua
-      - lua/mqtt/ikea_e2001.lua
-      - lua/mqtt/ikea_e2112.lua
-      - lua/mqtt/ikea_led2201g8.lua
-      - lua/mqtt/lumi_wsdcgq11lm.lua
-      - lua/mqtt/phillips_9290012573a.lua
-      - lua/mqtt/ts011f_plug.lua
-      - lua/mqtt/valetudo.lua
+      - lua/models/mqtt/apollo_mtr_1.lua
+      - lua/models/mqtt/apollo_plt_1.lua
+      - lua/models/mqtt/apollo_plt_1b.lua
+      - lua/models/mqtt/aqara_fp1e.lua
+      - lua/models/mqtt/aqara_mccgq12lm.lua
+      - lua/models/mqtt/aqara_t1.lua
+      - lua/models/mqtt/aqara_wsdcgq12lm.lua
+      - lua/models/mqtt/aqara_wxkg11lm.lua
+      - lua/models/mqtt/ikea_e2001.lua
+      - lua/models/mqtt/ikea_e2112.lua
+      - lua/models/mqtt/ikea_led2201g8.lua
+      - lua/models/mqtt/lumi_wsdcgq11lm.lua
+      - lua/models/mqtt/phillips_9290012573a.lua
+      - lua/models/mqtt/ts011f_plug.lua
+      - lua/models/mqtt/valetudo.lua
   - name: home-gateway-config-lua-home-assistant
     files:
-      - lua/home_assistant/media_player.lua
-      - lua/home_assistant/roborock.lua
+      - lua/models/home_assistant/media_player.lua
+      - lua/models/home_assistant/roborock.lua
   - name: home-gateway-config-lua-esphome-native-api
     files:
-      - lua/esphome_native_api/apollo_cast_1.lua
+      - lua/models/esphome_native_api/apollo_cast_1.lua
   - name: home-gateway-dashboard
     files:
       - dashboards/home-gateway.json

@@ -146,7 +146,11 @@ fn build_with_devices(devices_yaml: &str) -> String {
     )
     .unwrap();
 
-    for models in ["lua/mqtt", "lua/esphome_native_api", "lua/home_assistant"] {
+    for models in [
+        "lua/models/mqtt",
+        "lua/models/esphome_native_api",
+        "lua/models/home_assistant",
+    ] {
         std::fs::create_dir_all(dir.join(models)).unwrap();
 
         for entry in std::fs::read_dir(Path::new(FIXTURE_CONFIG).join(models)).unwrap() {

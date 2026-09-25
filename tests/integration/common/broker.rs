@@ -125,7 +125,7 @@ pub async fn start(devices: DeviceRegistry) -> TestBroker {
     let cancellation_token = CancellationToken::new();
 
     let settings = MqttSettings {
-        models: "lua/mqtt".into(),
+        models: "lua/models/mqtt".into(),
         protocols: devices.mqtt_protocols().clone(),
         url: broker.host.clone(),
         port: broker.port,

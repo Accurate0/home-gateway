@@ -54,7 +54,9 @@ async fn an_export_missing_a_column_is_rejected() {
         .expect_err("a missing column should fail the upload");
 
     assert!(
-        error.to_string().contains("Solar export (Units)"),
+        error
+            .to_string()
+            .contains("missing `ANYTIME (KWH)`, `Solar export (Units)`"),
         "unexpected error: {error}"
     );
 }

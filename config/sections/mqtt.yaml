@@ -6,7 +6,7 @@ channel_capacity: 100
 reconnect:
   min: 1s
   max: 60s
-models: lua/mqtt
+models: lua/models/mqtt
 protocols:
   zigbee:
     payload: json

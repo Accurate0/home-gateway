@@ -290,7 +290,6 @@ mod tests {
         "/ingest/home/alarm",
         "/ingest/home/push-token",
         "/ingest/unifi",
-        "/ingest/lua/{name}",
         "/epd/config",
         "/epd/image/{hash}",
         "/epd/firmware",

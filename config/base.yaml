@@ -56,7 +56,7 @@ lua:
   library: lua/lib
   workflows: lua/workflows
   integrations: lua/integrations
-  model_library: lua/model_lib
+  model_library: lua/models/lib
 
 reconciler:
   state: enabled

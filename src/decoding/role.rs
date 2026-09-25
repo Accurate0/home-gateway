@@ -508,7 +508,7 @@ mod tests {
     fn test_device(kind: Transport, slug: &str, source: &str, address: &str) -> TestDevice {
         let sources = BTreeMap::from([(slug.to_owned(), source.to_owned())]);
         let library =
-            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/model_lib"))
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/models/lib"))
                 .expect("model library");
         let models = load_models(
             kind,
@@ -562,12 +562,12 @@ mod tests {
             .collect()
     }
 
-    const AQARA_DOOR: &str = include_str!("../../config/lua/mqtt/aqara_mccgq12lm.lua");
-    const LUMI_ENVIRONMENT: &str = include_str!("../../config/lua/mqtt/lumi_wsdcgq11lm.lua");
-    const AQARA_FP1E: &str = include_str!("../../config/lua/mqtt/aqara_fp1e.lua");
-    const TS011F_PLUG: &str = include_str!("../../config/lua/mqtt/ts011f_plug.lua");
-    const AQARA_SWITCH: &str = include_str!("../../config/lua/mqtt/aqara_wxkg11lm.lua");
-    const AQARA_T1: &str = include_str!("../../config/lua/mqtt/aqara_t1.lua");
+    const AQARA_DOOR: &str = include_str!("../../config/lua/models/mqtt/aqara_mccgq12lm.lua");
+    const LUMI_ENVIRONMENT: &str = include_str!("../../config/lua/models/mqtt/lumi_wsdcgq11lm.lua");
+    const AQARA_FP1E: &str = include_str!("../../config/lua/models/mqtt/aqara_fp1e.lua");
+    const TS011F_PLUG: &str = include_str!("../../config/lua/models/mqtt/ts011f_plug.lua");
+    const AQARA_SWITCH: &str = include_str!("../../config/lua/models/mqtt/aqara_wxkg11lm.lua");
+    const AQARA_T1: &str = include_str!("../../config/lua/models/mqtt/aqara_t1.lua");
 
     #[test]
     fn extracts_an_aqara_door_payload() {
@@ -752,7 +752,7 @@ mod tests {
         assert_eq!(action, "single");
     }
 
-    const APOLLO_MTR_1: &str = include_str!("../../config/lua/mqtt/apollo_mtr_1.lua");
+    const APOLLO_MTR_1: &str = include_str!("../../config/lua/models/mqtt/apollo_mtr_1.lua");
 
     fn esphome(
         device: &TestDevice,
@@ -839,7 +839,7 @@ mod tests {
         assert_eq!(attributes.colour.as_deref(), Some("#ff8800"));
     }
 
-    const VALETUDO: &str = include_str!("../../config/lua/mqtt/valetudo.lua");
+    const VALETUDO: &str = include_str!("../../config/lua/models/mqtt/valetudo.lua");
 
     fn valetudo(topic: &str, payload: Value) -> robot_vacuum::RobotVacuumReading {
         let device = test_device(Transport::Mqtt, "valetudo", VALETUDO, "rockrobo");
@@ -882,8 +882,9 @@ mod tests {
         assert!(attributes.attributes.is_some());
     }
 
-    const ROBOROCK: &str = include_str!("../../config/lua/home_assistant/roborock.lua");
-    const MEDIA_PLAYER: &str = include_str!("../../config/lua/home_assistant/media_player.lua");
+    const ROBOROCK: &str = include_str!("../../config/lua/models/home_assistant/roborock.lua");
+    const MEDIA_PLAYER: &str =
+        include_str!("../../config/lua/models/home_assistant/media_player.lua");
 
     fn entity_device(slug: &str, source: &str, address: &str) -> TestDevice {
         test_device(Transport::HomeAssistant, slug, source, address)

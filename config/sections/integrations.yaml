@@ -5,7 +5,7 @@ s3:
 
 esphome:
   state: enabled
-  models: lua/esphome_native_api
+  models: lua/models/esphome_native_api
   port: 6053
   keep_alive: 5s
   silence_timeout: 15s

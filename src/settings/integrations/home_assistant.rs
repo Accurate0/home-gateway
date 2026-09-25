@@ -74,7 +74,7 @@ mod tests {
         HomeAssistantSettings {
             url: None,
             token: None,
-            models: PathBuf::from("lua/home_assistant"),
+            models: PathBuf::from("lua/models/home_assistant"),
             websocket: HomeAssistantWebsocketSettings {
                 keep_alive: TimeDelta::seconds(30),
                 silence_timeout: TimeDelta::seconds(90),

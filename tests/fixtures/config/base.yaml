@@ -15,7 +15,7 @@ mqtt:
   reconnect:
     min: 1s
     max: 60s
-  models: lua/mqtt
+  models: lua/models/mqtt
   protocols:
     zigbee:
       payload: json
@@ -90,7 +90,7 @@ integrations:
     region: ap-southeast-2
   esphome:
     state: disabled
-    models: lua/esphome_native_api
+    models: lua/models/esphome_native_api
     port: 6053
     keep_alive: 20s
     silence_timeout: 90s
@@ -388,7 +388,7 @@ alarm:
   poll_interval: 60s
 
 home_assistant:
-  models: lua/home_assistant
+  models: lua/models/home_assistant
   websocket:
     keep_alive: 30s
     silence_timeout: 90s
