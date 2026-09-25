@@ -2,7 +2,7 @@
   slug: living-room-lights-off-movie
   group: Living Room
   tags: [living-room]
-  on: { type: jellyfin, state: started, device: Living Room TV, item_type: Movie }
+  on: { type: jellyfin, state: started, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
     - type: run_workflow
@@ -13,7 +13,7 @@
   slug: living-room-lights-off-movie-resumed
   group: Living Room
   tags: [living-room]
-  on: { type: jellyfin, state: resumed, device: Living Room TV, item_type: Movie }
+  on: { type: jellyfin, state: resumed, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
     - type: run_workflow
@@ -24,7 +24,7 @@
   slug: living-room-lights-dim-movie-paused
   group: Living Room
   tags: [living-room]
-  on: { type: jellyfin, state: paused, device: Living Room TV, item_type: Movie }
+  on: { type: jellyfin, state: paused, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
     - type: light
@@ -36,7 +36,7 @@
   slug: living-room-lights-fade-up-movie-ended
   group: Living Room
   tags: [living-room]
-  on: { type: jellyfin, state: stopped, device: Living Room TV, item_type: Movie }
+  on: { type: jellyfin, state: stopped, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
     - type: scene
