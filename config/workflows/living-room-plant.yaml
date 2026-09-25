@@ -3,7 +3,7 @@
   slug: living-room-plant-dry
   group: Plants
   on: { type: plant, sensor: living-room-plant, op: lt, value: 20 }
-  cooldown: 24h
+  cooldown: 3d
   modes: [home, away, guest]
   run:
     - type: notify
@@ -15,7 +15,7 @@
   slug: living-room-plant-overwatered
   group: Plants
   on: { type: plant, sensor: living-room-plant, op: gt, value: 80 }
-  cooldown: 24h
+  cooldown: 3d
   modes: [home, away, guest]
   run:
     - type: notify
