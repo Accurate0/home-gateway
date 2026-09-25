@@ -5,6 +5,9 @@
   on: { type: jellyfin, state: started, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
+    - type: set_workflows_enabled
+      tag: living-room-occupancy
+      state: DISABLED
     - type: run_workflow
       workflow: living-room-lamps-off
       with: {}
@@ -16,6 +19,9 @@
   on: { type: jellyfin, state: resumed, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
+    - type: set_workflows_enabled
+      tag: living-room-occupancy
+      state: DISABLED
     - type: run_workflow
       workflow: living-room-lamps-off
       with: {}
@@ -39,6 +45,9 @@
   on: { type: jellyfin, state: stopped, device: Living room TV, item_type: Movie }
   modes: [home, guest]
   run:
+    - type: set_workflows_enabled
+      tag: living-room-occupancy
+      state: ENABLED
     - type: scene
       when: { type: light, device: floor-lamp-living-room, on: false }
       run:
