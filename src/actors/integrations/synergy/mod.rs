@@ -1,9 +1,12 @@
+pub mod interval;
 pub mod lua;
 
+use crate::lua::LuaCallContext;
 use crate::state::AppState;
 use bytes::Bytes;
-use chrono::{DateTime, FixedOffset};
+use interval::EnergyInterval;
 use ractor::Actor;
+use uuid::Uuid;
 
 pub enum SynergyMessage {
     NewUpload(Bytes),
@@ -16,58 +19,32 @@ pub struct SynergyActor {
 impl SynergyActor {
     pub const NAME: &str = "synergy";
 
-    async fn ingest(&self, csv: Bytes) -> Result<u32, ractor::ActorProcessingErr> {
-        let mut count = 0;
-        let mut skipped = 0;
-        let mut rdr = csv::Reader::from_reader(csv.as_ref());
+    async fn ingest(&self, csv: Bytes) -> Result<usize, ractor::ActorProcessingErr> {
+        let state = &self.shared_actor_state;
+        let csv = String::from_utf8(csv.to_vec())?;
+        let parser = &state.settings.integrations.synergy.parser;
+        let cx = LuaCallContext::new(state.clone(), Uuid::new_v4(), "synergy");
 
-        for result in rdr.deserialize() {
-            let record: Result<CsvRecord, csv::Error> = result;
+        let intervals: Vec<EnergyInterval> = state
+            .lua
+            .call_integration(&cx, parser, &[serde_json::Value::String(csv)])
+            .await?;
 
-            match record {
-                Ok(r) => {
-                    self.shared_actor_state
-                        .repos
-                        .energy()
-                        .record(r.usage, r.solar_export, r.time()?)
-                        .await?;
+        for interval in &intervals {
+            let time = interval.time().ok_or_else(|| {
+                format!("{parser} returned an out of range epoch {}", interval.at)
+            })?;
 
-                    tracing::info!("record: {count} added");
-                    count += 1;
-                }
-                Err(e) => {
-                    tracing::info!("record: {count} skipped");
-                    tracing::warn!("skipping because of {e}");
-                    count += 1;
-                    skipped += 1;
-                }
-            }
+            state
+                .repos
+                .energy()
+                .record(interval.used, interval.exported, time)
+                .await?;
         }
 
-        tracing::info!("processing completed: {count} records, {skipped} skipped");
+        tracing::info!("recorded {} intervals from {parser}", intervals.len());
 
-        Ok(skipped)
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct CsvRecord {
-    #[serde(rename = "Date")]
-    date: String,
-    #[serde(rename = "Time")]
-    time: String,
-    #[serde(rename = "ANYTIME (KWH)")]
-    usage: f64,
-    #[serde(rename = "Solar export (Units)")]
-    solar_export: f64,
-}
-
-impl CsvRecord {
-    fn time(&self) -> Result<DateTime<FixedOffset>, chrono::ParseError> {
-        DateTime::parse_from_str(
-            &format!("{} {} +0800", self.date, self.time),
-            "%d/%m/%Y %H:%M %z",
-        )
+        Ok(intervals.len())
     }
 }
 
@@ -104,16 +81,10 @@ impl Actor for SynergyActor {
                 let started = std::time::Instant::now();
 
                 match self.ingest(csv).await {
-                    Ok(skipped) => {
-                        let outcome = if skipped > 0 {
-                            "partial_error"
-                        } else {
-                            "success"
-                        };
-
+                    Ok(_) => {
                         crate::metrics::record_integration_poll(
                             "synergy",
-                            outcome,
+                            "success",
                             started.elapsed(),
                         );
                     }
@@ -131,37 +102,5 @@ impl Actor for SynergyActor {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const EXPORT: &str = "Date,Time,ANYTIME (KWH),Solar export (Units),Billing Status\n\
-        26/06/2026,00:00,0.190,0.000,Billed\n\
-        23/09/2026,23:30,0.185,1.250,Not yet billed\n";
-
-    fn records() -> Vec<CsvRecord> {
-        csv::Reader::from_reader(EXPORT.as_bytes())
-            .deserialize()
-            .collect::<Result<_, _>>()
-            .unwrap()
-    }
-
-    #[test]
-    fn an_interval_export_reads_every_row() {
-        let records = records();
-
-        assert_eq!(records.len(), 2);
-        assert_eq!(records[0].usage, 0.190);
-        assert_eq!(records[1].solar_export, 1.250);
-    }
-
-    #[test]
-    fn an_interval_time_is_perth_local() {
-        let time = records()[1].time().unwrap();
-
-        assert_eq!(time.to_rfc3339(), "2026-09-23T23:30:00+08:00");
     }
 }

@@ -57,6 +57,9 @@ solar:
   state: enabled
   refresh: 1m
 
+synergy:
+  parser: synergy.parse
+
 transperth:
   state: enabled
   refresh_peak: 3m

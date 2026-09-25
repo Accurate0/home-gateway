@@ -179,37 +179,63 @@ pub fn build(settings: &Settings, handles: &HandleRegistry) -> anyhow::Result<Lu
     let registry = registry(handles.contains::<HomeAssistant>());
 
     let library = load_configured(settings.lua.library.as_deref())?;
-    let scripts = load_configured(settings.lua.scripts.as_deref())?;
+    let workflows = load_configured(settings.lua.workflows.as_deref())?;
+    let integrations = load_configured(settings.lua.integrations.as_deref())?;
 
     tracing::info!(
-        "lua namespaces: [{}], library: [{}], workflow scripts: [{}]",
+        "lua namespaces: [{}], library: [{}], workflow scripts: [{}], integration scripts: [{}]",
         registry.namespaces().join(", "),
         library.keys().cloned().collect::<Vec<_>>().join(", "),
-        scripts.keys().cloned().collect::<Vec<_>>().join(", ")
+        workflows.keys().cloned().collect::<Vec<_>>().join(", "),
+        integrations.keys().cloned().collect::<Vec<_>>().join(", ")
     );
 
-    assert_endpoint_targets(settings, &scripts)?;
+    assert_endpoint_targets(settings, &workflows)?;
+    assert_integration_targets(settings, &integrations)?;
 
-    LuaEngine::new(registry, library, scripts, settings.lua.clone())
-        .map_err(|error| anyhow::anyhow!(error))
+    LuaEngine::new(
+        registry,
+        library,
+        workflows,
+        integrations,
+        settings.lua.clone(),
+    )
+    .map_err(|error| anyhow::anyhow!(error))
+}
+
+fn assert_integration_targets(
+    settings: &Settings,
+    integrations: &BTreeMap<String, String>,
+) -> anyhow::Result<()> {
+    let parser = &settings.integrations.synergy.parser;
+
+    if !integrations.contains_key(parser.script()) {
+        anyhow::bail!(
+            "integrations.synergy.parser calls unknown lua integration script `{}`; available: [{}]",
+            parser.script(),
+            integrations.keys().cloned().collect::<Vec<_>>().join(", ")
+        );
+    }
+
+    Ok(())
 }
 
 fn assert_endpoint_targets(
     settings: &Settings,
-    scripts: &BTreeMap<String, String>,
+    workflows: &BTreeMap<String, String>,
 ) -> anyhow::Result<()> {
     for endpoint in &settings.endpoints.routes {
         let LuaSource::Call { call, .. } = &endpoint.source else {
             continue;
         };
 
-        if !scripts.contains_key(call.script()) {
+        if !workflows.contains_key(call.script()) {
             anyhow::bail!(
-                "endpoint `{} {}` calls unknown lua script `{}`; available: [{}]",
+                "endpoint `{} {}` calls unknown lua workflow script `{}`; available: [{}]",
                 endpoint.method,
                 endpoint.path,
                 call.script(),
-                scripts.keys().cloned().collect::<Vec<_>>().join(", ")
+                workflows.keys().cloned().collect::<Vec<_>>().join(", ")
             );
         }
     }
@@ -230,6 +256,7 @@ mod tests {
         for directory in [
             "config/lua/lib",
             "config/lua/workflows",
+            "config/lua/integrations",
             "config/lua/mqtt",
             "config/lua/home_assistant",
         ] {

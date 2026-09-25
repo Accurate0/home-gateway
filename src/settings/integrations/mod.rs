@@ -9,6 +9,7 @@ pub mod jellyfin_websocket;
 pub mod raw_integration_settings;
 pub mod s3;
 pub mod solar;
+pub mod synergy;
 pub mod transperth;
 pub mod transperth_cache;
 pub mod trmnl;

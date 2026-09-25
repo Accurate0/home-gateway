@@ -526,58 +526,6 @@ async fn the_graphql_mutation_executes_a_script() {
 
 #[tokio::test]
 #[serial]
-async fn a_scripted_ingest_source_parses_its_payload() {
-    let harness = start().await;
-    let router = harness.router();
-    let key = mint_key(&harness, &["ingest.lua:write"]).await;
-
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/ingest/lua/test-doorbell")
-                .header("content-type", "application/json")
-                .header("X-Api-Key", &key)
-                .body(Body::from(r#"{"event": "pressed"}"#))
-                .unwrap(),
-        )
-        .await
-        .expect("the router should not fail");
-
-    assert_eq!(response.status(), StatusCode::NO_CONTENT);
-
-    let published = harness
-        .recorder
-        .expect_publish("test/ingest/doorbell")
-        .await;
-    assert_eq!(published, serde_json::json!({ "event": "pressed" }));
-}
-
-#[tokio::test]
-#[serial]
-async fn an_unknown_ingest_source_is_not_found() {
-    let harness = start().await;
-    let router = harness.router();
-    let key = mint_key(&harness, &["ingest.lua:write"]).await;
-
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/v1/ingest/lua/nope")
-                .header("content-type", "application/json")
-                .header("X-Api-Key", &key)
-                .body(Body::from("{}"))
-                .unwrap(),
-        )
-        .await
-        .expect("the router should not fail");
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
-}
-
-#[tokio::test]
-#[serial]
 async fn a_run_records_its_step_trace_including_lua_annotations() {
     let harness = start().await;
 

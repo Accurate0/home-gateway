@@ -14,6 +14,10 @@ function format.clock(time)
 	local hour, minute = time:match("^(%d+):(%d+)$")
 
 	if hour == nil then
+		hour, minute = time:match("^%d+%-%d+%-%d+T(%d+):(%d+)")
+	end
+
+	if hour == nil then
 		return time
 	end
 

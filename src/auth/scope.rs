@@ -75,7 +75,6 @@ scopes! {
     HomeAssistant => "home_assistant" [Read, Write],
     Http => "http" [Write],
     IngestHome => "ingest.home" [Write],
-    IngestLua => "ingest.lua" [Write],
     IngestSynergy => "ingest.synergy" [Write],
     IngestUnifi => "ingest.unifi" [Write],
     Jellyfin => "jellyfin" [Read],

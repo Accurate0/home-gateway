@@ -54,7 +54,8 @@ lua:
   max_instructions: 5000000
   max_memory: 67108864
   library: lua/lib
-  scripts: lua/workflows
+  workflows: lua/workflows
+  integrations: lua/integrations
   model_library: lua/model_lib
 
 reconciler:

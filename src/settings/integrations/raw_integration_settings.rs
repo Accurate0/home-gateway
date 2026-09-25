@@ -10,6 +10,7 @@ use super::integration_settings::IntegrationSettings;
 use super::jellyfin::JellyfinSettings;
 use super::s3::S3Settings;
 use super::solar::SolarSettings;
+use super::synergy::SynergySettings;
 use super::transperth::{RawTransperthSettings, TransperthSettings};
 use super::trmnl::TrmnlSettings;
 use super::willyweather::WillyWeatherSettings;
@@ -30,6 +31,7 @@ pub struct RawIntegrationSettings {
     willyweather: WillyWeatherSettings,
     fuelwatch: FuelWatchSettings,
     solar: SolarSettings,
+    synergy: SynergySettings,
     transperth: RawTransperthSettings,
 }
 
@@ -45,6 +47,7 @@ impl RawIntegrationSettings {
             willyweather,
             fuelwatch,
             solar,
+            synergy,
             transperth,
         } = self;
 
@@ -69,6 +72,7 @@ impl RawIntegrationSettings {
             willyweather,
             fuelwatch,
             solar,
+            synergy,
             transperth,
         })
     }

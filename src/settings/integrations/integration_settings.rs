@@ -4,6 +4,7 @@ use super::holidays::HolidaySettings;
 use super::jellyfin::JellyfinSettings;
 use super::s3::S3Settings;
 use super::solar::SolarSettings;
+use super::synergy::SynergySettings;
 use super::transperth::TransperthSettings;
 use super::trmnl::TrmnlSettings;
 use super::willyweather::WillyWeatherSettings;
@@ -20,5 +21,6 @@ pub struct IntegrationSettings {
     pub willyweather: WillyWeatherSettings,
     pub fuelwatch: FuelWatchSettings,
     pub solar: SolarSettings,
+    pub synergy: SynergySettings,
     pub transperth: TransperthSettings,
 }

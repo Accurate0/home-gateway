@@ -67,6 +67,9 @@ configMapGenerator:
       - lua/workflows/movie.lua
       - lua/workflows/prices.lua
       - lua/workflows/reminders.lua
+  - name: home-gateway-config-lua-integrations
+    files:
+      - lua/integrations/synergy.lua
   - name: home-gateway-config-lua-mqtt
     files:
       - lua/mqtt/apollo_mtr_1.lua

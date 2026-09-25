@@ -46,7 +46,6 @@ use crate::routes::{
     health::{actor_health, health},
     ingest::{
         home::{alarm::alarm, push_token::push_token},
-        lua::lua_ingest,
         synergy::synergy,
         unifi::unifi,
     },
@@ -217,7 +216,6 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         .route("/ingest/home/alarm", post(alarm))
         .route("/ingest/home/push-token", post(push_token))
         .route("/ingest/unifi", post(unifi))
-        .route("/ingest/lua/{name}", post(lua_ingest))
         .route("/admin/keys", post(create_key).get(list_keys))
         .route("/admin/keys/{id}", delete(revoke_key).patch(update_key))
         .route("/admin/keys/{id}/regenerate", post(regenerate_key))

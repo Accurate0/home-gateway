@@ -14,5 +14,6 @@ mod push;
 mod reconciler;
 mod repo;
 mod solar;
+mod synergy;
 mod tracing;
 mod workflows;

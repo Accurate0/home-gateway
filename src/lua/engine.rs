@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use mlua::{
     Function, HookTriggers, Lua, LuaSerdeExt, MultiValue, StdLib, Table, Value as LuaValue,
 };
+use serde::de::DeserializeOwned;
 use tracing::{Instrument, Span};
 
 use crate::settings::LuaSettings;
@@ -13,6 +14,7 @@ use crate::variables::{Node, VarType, Vars};
 use super::bridge::{install_vars, returned_node};
 use super::error::InstructionLimit;
 use super::inspect::inspect;
+use super::modules::Modules;
 use super::{
     CallTarget, LuaApiRegistry, LuaCallContext, LuaError, LuaSession, LuaSource, Script, builtin,
     bytecode,
@@ -40,21 +42,27 @@ const ALLOWED_OS: [&str; 3] = ["time", "date", "clock"];
 pub struct LuaEngine {
     registry: LuaApiRegistry,
     library: Arc<BTreeMap<String, Vec<u8>>>,
-    scripts: Arc<BTreeMap<String, Vec<u8>>>,
+    workflows: Arc<BTreeMap<String, Vec<u8>>>,
+    integrations: Arc<BTreeMap<String, Vec<u8>>>,
     settings: LuaSettings,
 }
+
+const WORKFLOW_SCRIPT: &str = "workflow script";
+const INTEGRATION_SCRIPT: &str = "integration script";
 
 impl LuaEngine {
     pub fn new(
         registry: LuaApiRegistry,
         library: BTreeMap<String, String>,
-        scripts: BTreeMap<String, String>,
+        workflows: BTreeMap<String, String>,
+        integrations: BTreeMap<String, String>,
         settings: LuaSettings,
     ) -> Result<Self, String> {
         Ok(LuaEngine {
             registry,
             library: Arc::new(precompile("library", library)?),
-            scripts: Arc::new(precompile("workflow script", scripts)?),
+            workflows: Arc::new(precompile(WORKFLOW_SCRIPT, workflows)?),
+            integrations: Arc::new(precompile(INTEGRATION_SCRIPT, integrations)?),
             settings,
         })
     }
@@ -150,6 +158,28 @@ impl LuaEngine {
         lua.from_value(value).map_err(LuaError::from_mlua)
     }
 
+    pub async fn call_integration<T: DeserializeOwned>(
+        &self,
+        cx: &LuaCallContext,
+        call: &CallTarget,
+        args: &[serde_json::Value],
+    ) -> Result<T, LuaError> {
+        let lua = self
+            .prepare(cx, &Vars::default())
+            .map_err(LuaError::from_mlua)?;
+
+        let modules = Modules {
+            kind: INTEGRATION_SCRIPT,
+            sources: &self.integrations,
+        };
+
+        let value = self
+            .eval_call(cx, &lua, modules, call, args, Some(self.settings.timeout()))
+            .await?;
+
+        lua.from_value(value).map_err(LuaError::from_mlua)
+    }
+
     pub fn session(&self, cx: LuaCallContext) -> Result<LuaSession, LuaError> {
         let lua = self
             .prepare(&cx, &Vars::default())
@@ -200,7 +230,14 @@ impl LuaEngine {
     ) -> Result<LuaValue, LuaError> {
         match source {
             LuaSource::Script { script } => self.eval_in(cx, lua, script, timeout).await,
-            LuaSource::Call { call, args } => self.eval_call(cx, lua, call, args, timeout).await,
+            LuaSource::Call { call, args } => {
+                let modules = Modules {
+                    kind: WORKFLOW_SCRIPT,
+                    sources: &self.workflows,
+                };
+
+                self.eval_call(cx, lua, modules, call, args, timeout).await
+            }
         }
     }
 
@@ -208,6 +245,7 @@ impl LuaEngine {
         &self,
         cx: &LuaCallContext,
         lua: &Lua,
+        modules: Modules<'_>,
         call: &CallTarget,
         args: &[serde_json::Value],
         timeout: Option<Duration>,
@@ -215,11 +253,17 @@ impl LuaEngine {
         let started = Instant::now();
 
         let run = async {
-            let source = self.scripts.get(call.script()).ok_or_else(|| {
+            let source = modules.sources.get(call.script()).ok_or_else(|| {
                 mlua::Error::external(format!(
-                    "unknown lua workflow script `{}`; available: [{}]",
+                    "unknown lua {} `{}`; available: [{}]",
+                    modules.kind,
                     call.script(),
-                    self.scripts.keys().cloned().collect::<Vec<_>>().join(", ")
+                    modules
+                        .sources
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ))
             })?;
 
@@ -229,7 +273,7 @@ impl LuaEngine {
 
             let function: Option<Function> = module.get(call.function())?;
             let function = function.ok_or_else(|| {
-                mlua::Error::external(format!("lua workflow script has no function `{call}`"))
+                mlua::Error::external(format!("lua {} has no function `{call}`", modules.kind))
             })?;
 
             let args = args

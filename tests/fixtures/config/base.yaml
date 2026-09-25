@@ -135,6 +135,8 @@ integrations:
   solar:
     state: enabled
     refresh: 1m
+  synergy:
+    parser: synergy.parse
   transperth:
     state: disabled
     refresh_peak: 3m
@@ -164,13 +166,7 @@ lua:
   timeout: 5s
   max_instructions: 1000000
   max_memory: 67108864
-
-ingest:
-  sources:
-    - name: test-doorbell
-      script: |
-        local body = json.decode(raw)
-        mqtt.publish("test/ingest/doorbell", json.encode({ event = body.event }), false)
+  integrations: lua/integrations
 
 endpoints:
   routes:

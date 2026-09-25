@@ -13,6 +13,7 @@ pub mod execute;
 pub mod flag;
 mod inspect;
 mod module;
+mod modules;
 pub mod regex;
 mod registry;
 mod script;
