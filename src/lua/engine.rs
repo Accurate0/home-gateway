@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use mlua::{
     Function, HookTriggers, Lua, LuaSerdeExt, MultiValue, StdLib, Table, Value as LuaValue,
@@ -71,7 +71,10 @@ impl LuaEngine {
     ) -> Result<bool, LuaError> {
         let lua = self.prepare(cx, vars).map_err(LuaError::from_mlua)?;
 
-        match self.eval_source(cx, &lua, source).await? {
+        match self
+            .eval_source(cx, &lua, source, Some(self.settings.timeout()))
+            .await?
+        {
             LuaValue::Boolean(flag) => Ok(flag),
             other => Err(LuaError::ReturnType {
                 got: other.type_name(),
@@ -88,7 +91,7 @@ impl LuaEngine {
         declared: &BTreeMap<String, VarType>,
     ) -> Result<Node, LuaError> {
         let lua = self.prepare(cx, vars).map_err(LuaError::from_mlua)?;
-        let value = self.eval_source(cx, &lua, source).await?;
+        let value = self.eval_source(cx, &lua, source, None).await?;
 
         if declared.is_empty() {
             return Ok(Node::empty());
@@ -110,7 +113,9 @@ impl LuaEngine {
         vars: &Vars,
     ) -> Result<serde_json::Value, LuaError> {
         let lua = self.prepare(cx, vars).map_err(LuaError::from_mlua)?;
-        let value = self.eval_in(cx, &lua, script).await?;
+        let value = self
+            .eval_in(cx, &lua, script, Some(self.settings.timeout()))
+            .await?;
 
         if value.is_nil() {
             return Ok(serde_json::Value::Null);
@@ -134,7 +139,9 @@ impl LuaEngine {
             .set("request", request)
             .map_err(LuaError::from_mlua)?;
 
-        let value = self.eval_source(cx, &lua, source).await?;
+        let value = self
+            .eval_source(cx, &lua, source, Some(self.settings.timeout()))
+            .await?;
 
         if value.is_nil() {
             return Ok(serde_json::Value::Null);
@@ -160,7 +167,9 @@ impl LuaEngine {
         install_instruction_limit(lua, self.settings.max_instructions)
             .map_err(LuaError::from_mlua)?;
 
-        let value = self.eval_in(cx, lua, script).await?;
+        let value = self
+            .eval_in(cx, lua, script, Some(self.settings.timeout()))
+            .await?;
 
         if value.is_nil() && !bytecode::is_expression(script.raw()) {
             return Ok(None);
@@ -177,7 +186,9 @@ impl LuaEngine {
     ) -> Result<(), LuaError> {
         let lua = self.prepare(cx, vars).map_err(LuaError::from_mlua)?;
 
-        self.eval_in(cx, &lua, script).await.map(|_| ())
+        self.eval_in(cx, &lua, script, Some(self.settings.timeout()))
+            .await
+            .map(|_| ())
     }
 
     async fn eval_source(
@@ -185,10 +196,11 @@ impl LuaEngine {
         cx: &LuaCallContext,
         lua: &Lua,
         source: &LuaSource,
+        timeout: Option<Duration>,
     ) -> Result<LuaValue, LuaError> {
         match source {
-            LuaSource::Script { script } => self.eval_in(cx, lua, script).await,
-            LuaSource::Call { call, args } => self.eval_call(cx, lua, call, args).await,
+            LuaSource::Script { script } => self.eval_in(cx, lua, script, timeout).await,
+            LuaSource::Call { call, args } => self.eval_call(cx, lua, call, args, timeout).await,
         }
     }
 
@@ -198,8 +210,8 @@ impl LuaEngine {
         lua: &Lua,
         call: &CallTarget,
         args: &[serde_json::Value],
+        timeout: Option<Duration>,
     ) -> Result<LuaValue, LuaError> {
-        let timeout = self.settings.timeout();
         let started = Instant::now();
 
         let run = async {
@@ -229,13 +241,7 @@ impl LuaEngine {
         };
 
         let span = eval_span(cx, &call.to_string());
-        let result = match tokio::time::timeout(timeout, run)
-            .instrument(span.clone())
-            .await
-        {
-            Ok(evaluated) => evaluated.map_err(LuaError::from_mlua),
-            Err(_) => Err(LuaError::Timeout(timeout)),
-        };
+        let result = within(timeout, run).instrument(span.clone()).await;
 
         if let Err(e) = &result {
             crate::tracing_context::record_error(&span, &e.to_string());
@@ -251,19 +257,14 @@ impl LuaEngine {
         cx: &LuaCallContext,
         lua: &Lua,
         script: &Script,
+        timeout: Option<Duration>,
     ) -> Result<LuaValue, LuaError> {
-        let timeout = self.settings.timeout();
         let started = Instant::now();
 
         let span = eval_span(cx, "script");
-        let result =
-            match tokio::time::timeout(timeout, bytecode::eval(lua, "script", script.bytecode()))
-                .instrument(span.clone())
-                .await
-            {
-                Ok(evaluated) => evaluated.map_err(LuaError::from_mlua),
-                Err(_) => Err(LuaError::Timeout(timeout)),
-            };
+        let result = within(timeout, bytecode::eval(lua, "script", script.bytecode()))
+            .instrument(span.clone())
+            .await;
 
         if let Err(e) = &result {
             crate::tracing_context::record_error(&span, &e.to_string());
@@ -294,6 +295,20 @@ impl LuaEngine {
         crate::metrics::record_lua_vm_setup("script", started.elapsed());
 
         prepared
+    }
+}
+
+async fn within(
+    timeout: Option<Duration>,
+    run: impl Future<Output = mlua::Result<LuaValue>>,
+) -> Result<LuaValue, LuaError> {
+    let Some(timeout) = timeout else {
+        return run.await.map_err(LuaError::from_mlua);
+    };
+
+    match tokio::time::timeout(timeout, run).await {
+        Ok(evaluated) => evaluated.map_err(LuaError::from_mlua),
+        Err(_) => Err(LuaError::Timeout(timeout)),
     }
 }
 

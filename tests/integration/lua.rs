@@ -416,6 +416,47 @@ async fn a_config_authored_script_keeps_full_access() {
 
 #[tokio::test]
 #[serial]
+async fn a_deferred_function_runs_after_the_script_returns_and_is_traced() {
+    let harness = start().await;
+
+    let source = home_gateway::lua::LuaSource::Script {
+        script: Script::parse(
+            r#"gw.defer(0.2, "publish marker", function()
+                mqtt.publish("test/lua/defer", '{"deferred":true}')
+            end)"#,
+        )
+        .expect("the script should compile"),
+    };
+
+    let cx = home_gateway::lua::LuaCallContext::new(
+        harness.state.clone(),
+        Uuid::new_v4(),
+        "workflow:test",
+    );
+
+    harness
+        .state
+        .lua
+        .run_returning(&cx, &source, &Vars::default(), &BTreeMap::new())
+        .await
+        .expect("the script should return without waiting for the deferred function");
+
+    harness.recorder.assert_no_publish("test/lua/defer");
+
+    let steps = cx.trace.steps();
+    let defer = steps
+        .iter()
+        .find(|step| step.kind == "defer")
+        .expect("the defer should be in the step trace");
+
+    assert_eq!(defer.detail.as_deref(), Some("publish marker in 200ms"));
+
+    let published = harness.recorder.expect_publish("test/lua/defer").await;
+    assert_eq!(published, serde_json::json!({ "deferred": true }));
+}
+
+#[tokio::test]
+#[serial]
 async fn the_rest_route_executes_a_script_and_returns_its_value() {
     let harness = start().await;
     let router = harness.router();

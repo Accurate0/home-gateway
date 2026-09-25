@@ -203,6 +203,11 @@ function gw.log(message) end
 ---@param seconds number
 function gw.sleep(seconds) end
 
+---@param seconds number
+---@param detail string
+---@param run fun(): ...
+function gw.defer(seconds, detail, run) end
+
 ---@param scope string
 ---@return boolean
 function gw.has(scope) end

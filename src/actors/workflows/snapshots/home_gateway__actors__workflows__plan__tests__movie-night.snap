@@ -2,22 +2,5 @@
 source: src/actors/workflows/plan.rs
 expression: out
 ---
-# Living room lights off (movie playing)  (on: jellyfin(Living room TV) -> started)
-  set_workflows_enabled: set_workflows_enabled(#living-room-occupancy) -> Disabled
-    light: light(floor-lamp-living-room) -> Off [when: light(floor-lamp-living-room) is on]
-    light: light(living-room-table-lamp) -> Off [when: light(living-room-table-lamp) is on]
-
-# Living room lights off (movie resumed)  (on: jellyfin(Living room TV) -> resumed)
-  set_workflows_enabled: set_workflows_enabled(#living-room-occupancy) -> Disabled
-    light: light(floor-lamp-living-room) -> Off [when: light(floor-lamp-living-room) is on]
-    light: light(living-room-table-lamp) -> Off [when: light(living-room-table-lamp) is on]
-
-# Living room lights dim (movie paused)  (on: jellyfin(Living room TV) -> paused)
-  light: light(floor-lamp-living-room) -> SetBrightness { value: 190 }
-
-# Living room lights fade up (movie ended)  (on: jellyfin(Living room TV) -> stopped)
-  set_workflows_enabled: set_workflows_enabled(#living-room-occupancy) -> Enabled
-  light: light(floor-lamp-living-room) -> SetBrightness { value: 1 } [when: light(floor-lamp-living-room) is off]
-  light: light(floor-lamp-living-room) -> IncreaseBrightness { value: 13, on_off: false }
-  delay: delay 5s
-  light: light(living-room-table-lamp) -> On [when: light(living-room-table-lamp) is off]
+# Living room movie night  (on: jellyfin(Living room TV))
+  lua: lua(call movie.playback) -> []

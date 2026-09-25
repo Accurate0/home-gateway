@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::TimeDelta;
+use chrono::{TimeDelta, Utc};
 
 use async_graphql::Variables;
 use async_graphql::parser::parse_query;
@@ -15,6 +15,7 @@ use crate::event_bus::{CustomEventSource, EventBusMessage};
 use crate::http::public_client::PublicHttpClient;
 use crate::lua::bridge::lua_to_value;
 use crate::variables::Node;
+use crate::workflow_trace::{StepOutcome, StepTrace};
 use mlua::{ExternalError, ExternalResult, Lua, LuaSerdeExt, Table, Value as LuaValue};
 
 use super::signature::{LuaClass, LuaField, LuaFunction, LuaParam, LuaType};
@@ -91,6 +92,26 @@ const SLEEP: LuaFunction = LuaFunction {
         name: "seconds",
         ty: LuaType::Number,
     }],
+    returns: None,
+    scope: None,
+};
+
+const DEFER: LuaFunction = LuaFunction {
+    name: "defer",
+    params: &[
+        LuaParam {
+            name: "seconds",
+            ty: LuaType::Number,
+        },
+        LuaParam {
+            name: "detail",
+            ty: LuaType::String,
+        },
+        LuaParam {
+            name: "run",
+            ty: LuaType::Function,
+        },
+    ],
     returns: None,
     scope: None,
 };
@@ -183,8 +204,9 @@ const GRAPHQL: LuaFunction = LuaFunction {
     scope: None,
 };
 
-pub const GW_FUNCTIONS: &[LuaFunction] =
-    &[LOG, SLEEP, HAS, REQUIRE, HTTP, GRAPHQL, LIB, COOLDOWN, EMIT];
+pub const GW_FUNCTIONS: &[LuaFunction] = &[
+    LOG, SLEEP, DEFER, HAS, REQUIRE, HTTP, GRAPHQL, LIB, COOLDOWN, EMIT,
+];
 
 const DECODE: LuaFunction = LuaFunction {
     name: "decode",
@@ -247,6 +269,47 @@ fn gateway_table(
 
             Ok(())
         })
+    })?;
+
+    let defer_cx = cx.clone();
+    cx.expose(&table, &DEFER, || {
+        lua.create_function(
+            move |lua, (seconds, detail, run): (f64, String, mlua::Function)| {
+                let lua = lua.clone();
+                let event_id = defer_cx.event_id;
+                let delay = Duration::from_secs_f64(seconds.max(0.0));
+
+                tracing::info!("[{event_id}] lua deferring `{detail}` by {delay:?}");
+
+                defer_cx.trace.record(StepTrace {
+                    depth: defer_cx.trace_depth(),
+                    kind: "defer".to_owned(),
+                    outcome: StepOutcome::Ran,
+                    guard: None,
+                    detail: Some(format!("{detail} in {delay:?}")),
+                    error: None,
+                    duration: Duration::ZERO,
+                    at: Utc::now(),
+                });
+
+                tokio::spawn(async move {
+                    tokio::time::sleep(delay).await;
+
+                    tracing::info!("[{event_id}] lua running deferred `{detail}`");
+
+                    match run.call_async::<()>(()).await {
+                        Ok(()) => tracing::info!("[{event_id}] lua deferred `{detail}` finished"),
+                        Err(e) => {
+                            tracing::error!("[{event_id}] lua deferred `{detail}` failed: {e}")
+                        }
+                    }
+
+                    drop(lua);
+                });
+
+                Ok(())
+            },
+        )
     })?;
 
     let has_cx = cx.clone();

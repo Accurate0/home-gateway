@@ -64,6 +64,7 @@ configMapGenerator:
     files:
       - lua/workflows/brief.lua
       - lua/workflows/buttons.lua
+      - lua/workflows/movie.lua
       - lua/workflows/prices.lua
       - lua/workflows/reminders.lua
   - name: home-gateway-config-lua-mqtt
