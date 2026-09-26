@@ -44,16 +44,16 @@ openfeature-provider = { git = "https://github.com/Accurate0/inf-k8s.git", branc
 chrono-tz = "0.10.4"
 rust-s3 = { version = "0.37.2", default-features = false, features = ["tokio-rustls-tls", "tags"] }
 csv = "1.4.0"
-opentelemetry = { version = "0.32.0", features = ["metrics", "trace"] }
-opentelemetry-otlp = { version = "0.32.0", features = ["trace", "metrics", "grpc-tonic", "reqwest-blocking-client", "logs", "reqwest-rustls", "http-json"] }
-opentelemetry-semantic-conventions = { version = "0.32.0", features = ["semconv_experimental"] }
-opentelemetry-resource-detectors = { version = "0.12" }
-opentelemetry-proto = { version = "0.32.0"}
+opentelemetry = { version = "0.33.0", features = ["metrics", "trace"] }
+opentelemetry-otlp = { version = "0.33.0", features = ["trace", "metrics", "grpc-tonic", "reqwest-blocking-client", "logs", "reqwest-rustls", "http-json"] }
+opentelemetry-semantic-conventions = { version = "0.33.0", features = ["semconv_experimental"] }
+opentelemetry-resource-detectors = { version = "0.13" }
+opentelemetry-proto = { version = "0.33.0"}
 tonic = { version = "0.14.6", features = ["tls-native-roots"] }
-opentelemetry_sdk = "0.32.1"
-tracing-opentelemetry = "0.33.0"
+opentelemetry_sdk = "0.33.0"
+tracing-opentelemetry = "0.34.0"
 
-opentelemetry-appender-tracing = "0.32.0"
+opentelemetry-appender-tracing = "0.33.0"
 reqwest-middleware = { version = "0.5.2", features = ["json", "query", "form"] }
 reqwest-tracing = { version = "0.7.1", features = ["opentelemetry_0_32"] }
 regex = "1.12.3"
@@ -70,7 +70,7 @@ tracing-futures = "0.2.5"
 async-trait = "0.1.89"
 yaml-include = "0.8.1"
 schemars = { version = "1", features = ["chrono04", "uuid1"] }
-opentelemetry-prometheus = "0.32"
+opentelemetry-prometheus = "0.33"
 prometheus = "0.14.0"
 croner = { version = "4.0.0", features = ["serde"] }
 sha2 = "0.11"
@@ -100,7 +100,7 @@ snow = "0.10"
 serde_yaml = "0.9.34"
 serde_json = { version = "1.0.150", features = ["preserve_order"] }
 yaml-include = "0.8"
-jsonschema = { version = "0.56", default-features = false }
+jsonschema = { version = "0.58", default-features = false }
 prost-build = "0.14"
 
 [[test]]
@@ -108,11 +108,11 @@ name = "integration"
 path = "tests/integration/main.rs"
 
 [dev-dependencies]
-opentelemetry_sdk = { version = "0.32.1", features = ["testing"] }
+opentelemetry_sdk = { version = "0.33.0", features = ["testing"] }
 pretty_assertions = "1.4.1"
 rstest = "0.27.0"
 insta = "1"
-testcontainers = { version = "0.27.3", features = ["reusable-containers"] }
+testcontainers = { version = "0.28.0", features = ["reusable-containers"] }
 testcontainers-modules = { version = "0.15.0", features = ["mosquitto"] }
 serial_test = "4.0.0"
 http-body-util = "0.1.5"
