@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<75031e7f587f6c230bb6266ae348c60e>>
+ * @generated SignedSource<<d6e59c963173525c700e508804c99351>>
  * @lightSyntaxTransform
  */
 
@@ -136,6 +136,12 @@ return {
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
+            "type": "DeviceConnectionUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
             "type": "DoorUpdate",
             "abstractKey": null
           },
@@ -143,6 +149,12 @@ return {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
             "type": "EnvironmentUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
+            "type": "JellyfinUpdate",
             "abstractKey": null
           },
           {
@@ -175,12 +187,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e71a8ffc30eb745d2d1b688d17cba113",
+    "cacheID": "d9bcadbe5046cfb83e30a662fa14bff5",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageSubscription",
     "operationKind": "subscription",
-    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PlantUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PlantUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
