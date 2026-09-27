@@ -1,21 +1,11 @@
 # yaml-language-server: $schema=../schemas/workflows.schema.json
-- name: Small Switch single toggles living room
-  slug: small-switch-single-toggle
+- name: Small Switch
+  slug: small-switch
   group: Living Room
-  on: { type: switch, device: small-switch, action: single }
+  on: { type: switch, device: small-switch }
   modes: [home, away, guest]
   run:
     - type: lua
-      call: buttons.toggle
+      call: small_switch.tap
       returns: {}
-      args: [floor-lamp-living-room, living-room-lamps-on, living-room-lamps-off]
-
-- name: Small Switch double toggles living room automations
-  slug: small-switch-double-toggle-automations
-  group: Living Room
-  on: { type: switch, device: small-switch, action: double }
-  modes: [home, away, guest]
-  run:
-    - type: set_workflows_enabled
-      tag: living-room
-      state: TOGGLE
+      args: []

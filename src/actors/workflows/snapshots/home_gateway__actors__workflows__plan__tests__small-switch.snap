@@ -2,8 +2,5 @@
 source: src/actors/workflows/plan.rs
 expression: out
 ---
-# Small Switch single toggles living room  (on: switch(small-switch) action=single)
-  lua: lua(call buttons.toggle) -> []
-
-# Small Switch double toggles living room automations  (on: switch(small-switch) action=double)
-  set_workflows_enabled: set_workflows_enabled(#living-room) -> Toggle
+# Small Switch  (on: switch(small-switch) any action)
+  lua: lua(call small_switch.tap) -> []

@@ -67,6 +67,7 @@ configMapGenerator:
       - lua/workflows/movie.lua
       - lua/workflows/prices.lua
       - lua/workflows/reminders.lua
+      - lua/workflows/small_switch.lua
   - name: home-gateway-config-lua-integrations
     files:
       - lua/integrations/synergy.lua

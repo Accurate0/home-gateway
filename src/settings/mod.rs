@@ -1181,7 +1181,7 @@ integrations:
             .filter_map(WorkflowDefinition::triggered)
             .find(|w| {
                 matches!(&w.on, TriggerMatcher::Switch { ieee_addr, action }
-                if ieee_addr == "small-switch" && action.as_deref() == Some("single"))
+                if ieee_addr == "small-switch" && action.is_none())
             })
             .expect("expected a switch workflow for the small switch");
         assert!(
