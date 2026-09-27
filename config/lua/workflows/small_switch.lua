@@ -8,6 +8,7 @@ local LAMPS_OFF = "living-room-lamps-off"
 local AUTOMATIONS_TAG = "living-room"
 local INDICATOR = "livingroom-motion"
 local FLASH_SECONDS = 0.25
+local FLASH_BRIGHTNESS = 128
 
 local TAPS = {
 	single = 1,
@@ -44,6 +45,10 @@ local function flash(taps)
 		local on = light.is_on(INDICATOR)
 		local away = on and "OFF" or "ON"
 		local back = on and "ON" or "OFF"
+
+		if not on then
+			light.set(INDICATOR, { state = "SET_BRIGHTNESS", value = FLASH_BRIGHTNESS })
+		end
 
 		for _ = 1, taps do
 			light.set(INDICATOR, { state = away })
