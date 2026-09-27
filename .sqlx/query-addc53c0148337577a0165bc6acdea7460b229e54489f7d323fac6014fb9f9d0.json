@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE latest_device_metric SET device_id = $2 WHERE device_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "addc53c0148337577a0165bc6acdea7460b229e54489f7d323fac6014fb9f9d0"
+}

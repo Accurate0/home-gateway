@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM latest_temperature_sensor WHERE entity_id = $1 AND EXISTS (SELECT 1 FROM latest_temperature_sensor WHERE entity_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "96b39b908fe2679386c542037e332dc90c30777e85b1284fd83e926747db3a75"
+}

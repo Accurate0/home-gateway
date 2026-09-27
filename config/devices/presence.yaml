@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: livingroom-motion
+- id: presence-mtr1-1
+  aliases: [livingroom-motion]
   state: enabled
   room: living-room
   transport:
@@ -15,10 +16,10 @@
         name: Living Room Motion
     - type: environment
       config:
-        id: living-room-mtr-1
         name: Living Room
 
-- id: closet-presence
+- id: presence-fp1e-1
+  aliases: [closet-presence]
   state: enabled
   room: bedroom
   transport:

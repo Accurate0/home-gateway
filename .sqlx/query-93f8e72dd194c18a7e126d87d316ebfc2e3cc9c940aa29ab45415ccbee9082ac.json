@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM device_battery_latest WHERE device_id = $1 AND EXISTS (SELECT 1 FROM device_battery_latest WHERE device_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "93f8e72dd194c18a7e126d87d316ebfc2e3cc9c940aa29ab45415ccbee9082ac"
+}

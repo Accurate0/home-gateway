@@ -22,7 +22,5 @@ pub struct EnvironmentSensorSettings {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RawEnvironmentBlock {
-    pub(crate) id: String,
-    #[serde(default)]
-    pub(crate) name: Option<String>,
+    pub(crate) name: String,
 }

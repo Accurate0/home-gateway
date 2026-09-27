@@ -85,7 +85,7 @@ async fn seed(harness: &Harness) {
          VALUES ($1, $2, $3, $4, $5)",
     )
     .bind("Test Room")
-    .bind("test-room")
+    .bind("env-test-1")
     .bind(ENVIRONMENT_ADDRESS)
     .bind(19.5_f64)
     .bind(55.0_f64)
@@ -189,7 +189,7 @@ async fn a_bulk_query_span_reports_its_batch_size() {
         repos
             .environment()
             .latest_many(&[
-                "test-room".to_owned(),
+                "env-test-1".to_owned(),
                 "other-room".to_owned(),
                 "third-room".to_owned(),
             ])
@@ -224,7 +224,7 @@ async fn every_db_query_is_recorded_on_its_enclosing_span() {
     async {
         repos
             .environment()
-            .latest_many(&["test-room".to_owned()])
+            .latest_many(&["env-test-1".to_owned()])
             .await
             .expect("the bulk read should succeed");
     }
@@ -300,7 +300,7 @@ async fn a_failed_query_marks_its_repo_span_as_errored() {
     let spans = spans_for(|| async move {
         let result = repos
             .environment()
-            .latest_many(&["test-room".to_owned()])
+            .latest_many(&["env-test-1".to_owned()])
             .await;
 
         assert!(result.is_err(), "the query should fail without its table");

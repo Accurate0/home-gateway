@@ -9,6 +9,7 @@ use super::transport::Transport;
 #[derive(Debug, Clone)]
 pub struct Device {
     pub id: String,
+    pub aliases: Vec<String>,
     pub address: String,
     pub transport: Transport,
     pub profile: Option<Arc<ModelProfile>>,

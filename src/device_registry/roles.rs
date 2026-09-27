@@ -88,7 +88,7 @@ impl Roles {
 
         match config {
             DeviceConfig::Door(door) => {
-                self.door = Some(door.resolve(notify)?);
+                self.door = Some(door.resolve(id, notify)?);
             }
             DeviceConfig::Presence(presence) => {
                 self.presence = Some(PresenceSettings {
@@ -96,16 +96,14 @@ impl Roles {
                 });
             }
             DeviceConfig::Environment(environment) => {
-                let name = environment.name.unwrap_or_else(|| environment.id.clone());
-
                 self.environment = Some(EnvironmentSensorSettings {
-                    id: environment.id,
-                    name,
+                    id: id.to_owned(),
+                    name: environment.name,
                 });
             }
             DeviceConfig::Plant(plant) => {
                 self.plant = Some(PlantSensorSettings {
-                    id: plant.id,
+                    id: id.to_owned(),
                     name: plant.name,
                 });
             }

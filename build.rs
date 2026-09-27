@@ -159,7 +159,16 @@ fn validate_semantics(value: &serde_json::Value) {
                 .iter()
                 .filter_map(|inner| inner.as_array())
                 .flatten()
-                .filter_map(|d| d.get("id").and_then(|i| i.as_str()).map(String::from))
+                .flat_map(|d| {
+                    let aliases = d
+                        .get("aliases")
+                        .and_then(|a| a.as_array())
+                        .into_iter()
+                        .flatten();
+
+                    d.get("id").into_iter().chain(aliases)
+                })
+                .filter_map(|reference| reference.as_str().map(String::from))
                 .collect()
         })
         .unwrap_or_default();

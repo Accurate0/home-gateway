@@ -1,12 +1,15 @@
 mod capability;
 mod device;
 mod device_config;
+mod device_names;
+mod id_or_alias;
 pub mod last_seen;
 pub mod lua;
 mod raw_device;
 mod raw_transport;
 mod roles;
 mod transport;
+mod unknown_device;
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
@@ -18,7 +21,7 @@ use crate::event_bus::SensorMetric;
 use crate::integrations::mqtt::{MqttProtocol, TopicVars};
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
-    BatterySettings, DeviceAliases, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
+    BatterySettings, DeviceAliases, DeviceIds, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
     EnvironmentSensorSettings, IEEEAddress, MediaPlayerSettings, MqttProtocols,
     PlantSensorSettings, PresenceSettings, RobotVacuumSettings, TrmnlDeviceSettings,
 };
@@ -26,16 +29,21 @@ use crate::settings::{
 pub use capability::Capability;
 pub use device::Device;
 pub use device_config::DeviceConfig;
+pub use device_names::is_device_id;
+pub use id_or_alias::IdOrAlias;
 pub use raw_device::RawDevice;
 pub use raw_transport::RawTransport;
 pub use roles::Roles;
 pub use transport::Transport;
+pub use unknown_device::UnknownDevice;
 
+use device_names::DeviceNames;
 use roles::RoleContext;
 
 #[derive(Debug)]
 pub struct DeviceRegistryInner {
     devices: HashMap<String, Device>,
+    ids: DeviceIds,
     aliases: DeviceAliases,
     mqtt_protocols: MqttProtocols,
     mqtt_topics: HashMap<String, Vec<String>>,
@@ -65,9 +73,12 @@ impl DeviceRegistry {
         models: &DeviceModels,
         mqtt_protocols: &MqttProtocols,
     ) -> Result<Self, String> {
+        let aliases = DeviceNames::check(&raw)?;
+
         let mut reg = DeviceRegistryInner {
             devices: HashMap::new(),
-            aliases: DeviceAliases::default(),
+            ids: DeviceIds::default(),
+            aliases,
             mqtt_protocols: mqtt_protocols.clone(),
             mqtt_topics: HashMap::new(),
             home_assistant_entities: HashMap::new(),
@@ -79,6 +90,7 @@ impl DeviceRegistry {
         for device in raw {
             let RawDevice {
                 id,
+                aliases,
                 state,
                 transport,
                 model,
@@ -96,9 +108,7 @@ impl DeviceRegistry {
             let transport_kind = transport.kind();
             let address = transport.into_address();
 
-            if reg.aliases.insert(id.clone(), address.clone()).is_some() {
-                return Err(format!("duplicate device id: {id}"));
-            }
+            reg.ids.insert(id.clone(), address.clone());
 
             let profile = resolve_model(&id, transport_kind, model, models)?;
 
@@ -140,6 +150,7 @@ impl DeviceRegistry {
 
             let device = Device {
                 id: id.clone(),
+                aliases,
                 address: address.clone(),
                 transport: transport_kind,
                 profile,
@@ -281,6 +292,10 @@ impl DeviceRegistryInner {
         self.devices.get(address)
     }
 
+    pub fn ids(&self) -> &DeviceIds {
+        &self.ids
+    }
+
     pub fn aliases(&self) -> &DeviceAliases {
         &self.aliases
     }
@@ -289,10 +304,35 @@ impl DeviceRegistryInner {
         &self.disabled
     }
 
-    pub fn address_or_self<'a>(&'a self, reference: &'a str) -> &'a str {
-        self.aliases
+    pub fn resolve_id<'a>(&'a self, reference: &'a str) -> Option<&'a str> {
+        let id = self
+            .aliases
             .get(reference)
-            .map_or(reference, |a| a.as_str())
+            .map_or(reference, String::as_str);
+
+        self.ids.get_key_value(id).map(|(id, _)| id.as_str())
+    }
+
+    pub fn address_for(&self, reference: &str) -> Option<&str> {
+        let id = self.resolve_id(reference)?;
+
+        self.ids.get(id).map(String::as_str)
+    }
+
+    pub fn lookup(&self, reference: &IdOrAlias) -> Result<&Device, UnknownDevice> {
+        self.address_for(&reference.0)
+            .and_then(|address| self.devices.get(address))
+            .ok_or_else(|| UnknownDevice(reference.clone()))
+    }
+
+    pub fn address_or_self<'a>(&'a self, reference: &'a str) -> &'a str {
+        self.address_for(reference).unwrap_or(reference)
+    }
+
+    pub fn aliases_for(&self, address: &str) -> &[String] {
+        self.devices
+            .get(address)
+            .map_or(&[], |device| device.aliases.as_slice())
     }
 
     pub fn id_for_address(&self, address: &str) -> Option<&str> {
@@ -433,11 +473,11 @@ impl DeviceRegistryInner {
         self.watchdog.iter()
     }
 
-    pub fn watchdog_key(&self, address_or_id: &str) -> Option<&str> {
+    pub fn watchdog_key(&self, reference: &str) -> Option<&str> {
         let device = self
             .devices
-            .get(address_or_id)
-            .or_else(|| self.devices.get(self.aliases.get(address_or_id)?))?;
+            .get(reference)
+            .or_else(|| self.devices.get(self.address_for(reference)?))?;
 
         Some(&device.watchdog_key)
     }

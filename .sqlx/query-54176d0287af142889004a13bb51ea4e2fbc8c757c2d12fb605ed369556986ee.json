@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE derived_door_events SET id = $2 WHERE id = $1 AND time IN ( SELECT time FROM derived_door_events WHERE id = $1 ORDER BY time LIMIT $3 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54176d0287af142889004a13bb51ea4e2fbc8c757c2d12fb605ed369556986ee"
+}

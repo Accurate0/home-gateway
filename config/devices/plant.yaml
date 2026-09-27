@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: living-room-plant
+- id: plant-plt1b-1
+  aliases: [living-room-plant]
   state: enabled
   room: living-room
   transport:
@@ -9,8 +10,7 @@
   roles:
     - type: environment
       config:
-        id: living-room-plant
         name: Living Room Plant
     - type: plant
-      config: { id: living-room-plant, name: Living Room Plant }
+      config: { name: Living Room Plant }
     - type: battery

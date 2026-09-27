@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f9ae15b15e5f05f696f2791f028a8777>>
+ * @generated SignedSource<<3f914224aab76a2a648cd8b7ea476214>>
  * @lightSyntaxTransform
  */
 
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "056f6b57d5458c0c574f5fdffa583578",
+    "cacheID": "218736ff7ffdecd877f694d6dd4aec0f",
     "id": null,
     "metadata": {},
     "name": "DashboardSetOffMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardSetOffMutation(\n  $id: String!\n) {\n  light(id: $id) {\n    off\n  }\n}\n"
+    "text": "mutation DashboardSetOffMutation(\n  $id: IdOrAlias!\n) {\n  light(id: $id) {\n    off\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8b821fc0ea4432a804b21f4f6b400d11";
+(node as any).hash = "901d9ee0b446a9c7b0927b861ba1b452";
 
 export default node;

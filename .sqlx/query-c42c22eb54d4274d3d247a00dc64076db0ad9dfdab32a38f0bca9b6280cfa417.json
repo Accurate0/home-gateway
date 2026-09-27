@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM latest_robot_vacuum_state WHERE device_id = $1 AND EXISTS (SELECT 1 FROM latest_robot_vacuum_state WHERE device_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c42c22eb54d4274d3d247a00dc64076db0ad9dfdab32a38f0bca9b6280cfa417"
+}

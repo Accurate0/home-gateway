@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: living-room-epd
+- id: display-epd-1
+  aliases: [living-room-epd]
   state: enabled
   room: living-room
   transport:
@@ -24,7 +25,8 @@
           max_consecutive: 12
     - type: battery
 
-- id: hallway-epd
+- id: display-epd-2
+  aliases: [hallway-epd]
   state: enabled
   room: hallway
   transport:

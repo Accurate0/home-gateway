@@ -140,6 +140,7 @@ type DeviceConnectionUpdate {
 type DoorEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	capabilities: [Capability!]!
 	room: String
@@ -188,6 +189,7 @@ type EinkDisplayConfig {
 type EinkDisplayEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	kind: EinkDisplayKind!
 	capabilities: [Capability!]!
@@ -270,6 +272,7 @@ type EntitySection {
 type EnvironmentEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	capabilities: [Capability!]!
 	room: String
@@ -410,6 +413,8 @@ type HomeAssistantUpdate {
 	id: ID!
 }
 
+scalar IdOrAlias
+
 """
 A scalar that can represent any JSON value.
 """
@@ -472,6 +477,7 @@ enum LightCommandStatus {
 type LightEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	capabilities: [Capability!]!
 	room: String
@@ -609,6 +615,7 @@ type LuaNamespaceObject {
 type MediaPlayerEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	room: String
 	state: String
@@ -699,10 +706,10 @@ type ModeUpdate {
 }
 
 type MutationRoot {
-	light(id: String!): LightMutation!
-	robotVacuum(id: String!): RobotVacuumMutation!
-	mediaPlayer(id: String!): MediaPlayerMutation!
-	einkDisplay(id: String!): EinkDisplayMutation!
+	light(id: IdOrAlias!): LightMutation!
+	robotVacuum(id: IdOrAlias!): RobotVacuumMutation!
+	mediaPlayer(id: IdOrAlias!): MediaPlayerMutation!
+	einkDisplay(id: IdOrAlias!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
 	setMode(mode: Mode!): Mode!
 	runWorkflow(slug: String!, inputs: JSON, dryRun: Boolean): UUID!
@@ -759,6 +766,7 @@ type PlainMode implements ModeState {
 type PlantEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	room: String
 	battery: DeviceBattery
@@ -784,6 +792,7 @@ type PlantUpdate {
 type PresenceEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	capabilities: [Capability!]!
 	room: String
@@ -878,14 +887,14 @@ type QueryRoot {
 	"""
 	entitySections: [EntitySection!]!
 	entities: [Entity!]!
-	mediaPlayer(id: String!): MediaPlayerEntity!
-	light(id: String!): LightEntity!
-	door(id: String!): DoorEntity!
-	presence(id: String!): PresenceEntity!
-	environment(id: String!): EnvironmentEntity!
-	plant(id: String!): PlantEntity!
-	einkDisplay(id: String!): EinkDisplayEntity!
-	robotVacuum(id: String!): RobotVacuumEntity!
+	mediaPlayer(id: IdOrAlias!): MediaPlayerEntity!
+	light(id: IdOrAlias!): LightEntity!
+	door(id: IdOrAlias!): DoorEntity!
+	presence(id: IdOrAlias!): PresenceEntity!
+	environment(id: IdOrAlias!): EnvironmentEntity!
+	plant(id: IdOrAlias!): PlantEntity!
+	einkDisplay(id: IdOrAlias!): EinkDisplayEntity!
+	robotVacuum(id: IdOrAlias!): RobotVacuumEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!
@@ -914,6 +923,7 @@ enum RedditTimespan {
 type RobotVacuumEntity {
 	category: EntityCategory!
 	id: String!
+	aliases: [String!]!
 	name: String!
 	room: String
 	battery: DeviceBattery

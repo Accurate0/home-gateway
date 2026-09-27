@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: front-door
+- id: door-mccgq12lm-1
+  aliases: [front-door]
   state: enabled
   room: entry
   transport:
@@ -12,13 +13,13 @@
     - type: door
       config:
         name: Front Door
-        id: front-door
         state: armed
         timeout: 3m
         notify: [android_app]
     - type: battery
 
-- id: garage-door
+- id: door-mccgq12lm-2
+  aliases: [garage-door]
   state: enabled
   room: garage
   transport:
@@ -29,7 +30,6 @@
     - type: door
       config:
         name: Garage Door
-        id: garage-door
         state: unarmed
         notify: [android_app]
     - type: battery

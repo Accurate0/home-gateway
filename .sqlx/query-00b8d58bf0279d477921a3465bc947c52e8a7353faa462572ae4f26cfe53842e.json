@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE eink_display SET device_id = $2 WHERE device_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "00b8d58bf0279d477921a3465bc947c52e8a7353faa462572ae4f26cfe53842e"
+}

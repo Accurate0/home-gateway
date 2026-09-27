@@ -92,7 +92,8 @@ fn esphome_state_topics_are_subscribed() {
 fn unknown_mqtt_model_is_rejected() {
     let error = build_with_devices(
         r#"
-- id: broken
+- id: door-broken-1
+  aliases: []
   state: enabled
   room: test
   transport:
@@ -101,7 +102,7 @@ fn unknown_mqtt_model_is_rejected() {
   model: not_a_real_model
   roles:
     - type: door
-      config: { name: Broken, id: broken, state: unarmed, notify: [android_app] }
+      config: { name: Broken, state: unarmed, notify: [android_app] }
 "#,
     );
 
@@ -115,7 +116,8 @@ fn unknown_mqtt_model_is_rejected() {
 fn mqtt_device_without_a_model_names_the_transport() {
     let error = build_with_devices(
         r#"
-- id: broken
+- id: env-broken-1
+  aliases: []
   state: enabled
   room: test
   transport:
@@ -123,7 +125,7 @@ fn mqtt_device_without_a_model_names_the_transport() {
     address: broken-node
   roles:
     - type: environment
-      config: { id: broken, name: Broken }
+      config: { name: Broken }
 "#,
     );
 

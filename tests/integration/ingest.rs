@@ -119,7 +119,7 @@ async fn zigbee_environment_report_lands_in_the_db_and_on_the_bus() {
             sqlx::query_scalar::<_, Option<f64>>(
                 "SELECT temperature FROM latest_temperature_sensor WHERE entity_id = $1",
             )
-            .bind("test-room")
+            .bind("env-test-1")
             .fetch_optional(&harness.db)
             .await
             .unwrap()

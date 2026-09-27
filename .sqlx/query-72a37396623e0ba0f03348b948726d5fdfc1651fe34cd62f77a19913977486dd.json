@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_last_seen SET device_key = split_part(device_key, ':', 1) || ':' || $2 WHERE split_part(device_key, ':', 2) = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "72a37396623e0ba0f03348b948726d5fdfc1651fe34cd62f77a19913977486dd"
+}

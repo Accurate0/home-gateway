@@ -10,6 +10,7 @@ pub struct MediaPlayerEntity {
     pub id: String,
     pub name: String,
     pub room: Option<String>,
+    pub aliases: Vec<String>,
 }
 
 impl MediaPlayerEntity {
@@ -20,6 +21,7 @@ impl MediaPlayerEntity {
             id: settings.id.clone(),
             name: settings.name.clone(),
             room: registry.room(address).map(str::to_owned),
+            aliases: registry.aliases_for(address).to_vec(),
         })
     }
 
@@ -41,6 +43,10 @@ impl MediaPlayerEntity {
 
     async fn id(&self) -> &str {
         &self.id
+    }
+
+    async fn aliases(&self) -> &[String] {
+        &self.aliases
     }
 
     async fn name(&self) -> &str {

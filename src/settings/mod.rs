@@ -137,9 +137,9 @@ use crate::settings::device_scope::DeviceScope;
 
 pub type IEEEAddress = String;
 
-/// Named device aliases (`alias -> ieee address`) declared under the top-level
-/// `devices:` key. Referenced from workflow steps so addresses are written once.
-pub type DeviceAliases = HashMap<String, IEEEAddress>;
+pub type DeviceIds = HashMap<String, IEEEAddress>;
+
+pub type DeviceAliases = HashMap<String, String>;
 
 /// Validate a workflow device reference. References must be device registry ids;
 /// the id is kept as-is and resolved to an address at runtime. Unknown ids are
@@ -289,7 +289,7 @@ impl RawSettings {
             &models,
             &mqtt.protocols,
         )?;
-        let scope = DeviceScope::new(registry.aliases(), registry.disabled());
+        let scope = DeviceScope::new(registry.ids(), registry.aliases(), registry.disabled());
 
         let mut resolved = HashMap::new();
         let mut scopes = HashMap::new();
@@ -565,7 +565,7 @@ impl std::ops::Deref for SettingsContainer {
 mod tests {
     use super::*;
     use crate::decoding::{DeviceModels, DeviceRoleName, ReadingMetric};
-    use crate::device_registry::{Capability, RawDevice};
+    use crate::device_registry::{Capability, IdOrAlias, RawDevice};
     use crate::event_bus::SensorMetric;
     use crate::integrations::mqtt::MqttProtocol;
     use std::collections::BTreeMap;
@@ -573,7 +573,8 @@ mod tests {
     fn lamp_registry() -> DeviceRegistry {
         let devices: Vec<RawDevice> = serde_yaml::from_str(
             r#"
-- id: living-room-table-lamp
+- id: plug-ts011f-1
+  aliases: [living-room-table-lamp]
   state: enabled
   transport:
     type: mqtt
@@ -652,7 +653,8 @@ mod tests {
     fn a_home_assistant_device_without_a_model_is_rejected() {
         let err = build_devices(
             r#"
-- id: roborock
+- id: vacuum-roborock-1
+  aliases: []
   state: enabled
   transport:
     type: home_assistant
@@ -674,7 +676,8 @@ mod tests {
     fn a_home_assistant_entity_can_only_belong_to_one_device() {
         let err = build_devices(
             r#"
-- id: roborock
+- id: vacuum-roborock-1
+  aliases: []
   state: enabled
   transport:
     type: home_assistant
@@ -684,7 +687,8 @@ mod tests {
     - type: robot_vacuum
       config: { name: Roborock }
 
-- id: impostor
+- id: media-impostor-1
+  aliases: []
   state: enabled
   transport:
     type: home_assistant
@@ -706,7 +710,8 @@ mod tests {
         for (yaml, expected) in [
             (
                 r#"
-- id: robot
+- id: vacuum-rockrobo-1
+  aliases: []
   state: enabled
   transport: { type: mqtt, address: rockrobo }
   model: valetudo
@@ -714,32 +719,34 @@ mod tests {
     - type: robot_vacuum
       config: { name: Vacuum }
     - type: environment
-      config: { id: robot, name: Robot }
+      config: { name: Robot }
 "#,
                 "has no `environment` mapping",
             ),
             (
                 r#"
-- id: node
+- id: presence-mtr1-1
+  aliases: []
   state: enabled
   transport: { type: mqtt, address: apollo-mtr-1-livingroom }
   model: apollo_mtr_1
   roles:
     - type: door
-      config: { name: Node Door, id: node, state: unarmed }
+      config: { name: Node Door, state: unarmed }
 "#,
                 "has no `door` mapping",
             ),
             (
                 r#"
-- id: fridge
+- id: display-trmnl-1
+  aliases: []
   state: enabled
   transport: { type: trmnl, address: "653VZN" }
   roles:
     - type: trmnl
       config: { name: Fridge }
     - type: door
-      config: { name: Fridge Door, id: fridge, state: unarmed }
+      config: { name: Fridge Door, state: unarmed }
 "#,
                 "can't declare the `door` role",
             ),
@@ -754,7 +761,8 @@ mod tests {
     fn a_one_to_one_transport_needs_its_own_role() {
         let err = build_devices(
             r#"
-- id: fridge
+- id: display-trmnl-1
+  aliases: []
   state: enabled
   transport: { type: trmnl, address: "653VZN" }
   roles:
@@ -770,7 +778,8 @@ mod tests {
     fn a_valetudo_vacuum_takes_its_commands_from_the_model() {
         let registry = build_devices(
             r#"
-- id: valetudo
+- id: vacuum-rockrobo-1
+  aliases: []
   state: enabled
   transport: { type: mqtt, address: rockrobo }
   model: valetudo
@@ -796,7 +805,8 @@ mod tests {
     fn a_role_declared_twice_is_rejected() {
         let err = build_devices(
             r#"
-- id: lamp
+- id: plug-ts011f-1
+  aliases: []
   state: enabled
   transport: { type: mqtt, address: "0xabc" }
   model: ts011f_plug
@@ -819,13 +829,15 @@ mod tests {
     fn two_devices_cannot_share_an_address() {
         let err = build_devices(
             r#"
-- id: lamp
+- id: plug-ts011f-1
+  aliases: []
   state: enabled
   transport: { type: mqtt, address: "0xabc" }
   model: ts011f_plug
   roles: []
 
-- id: lamp-again
+- id: plug-ts011f-2
+  aliases: []
   state: enabled
   transport: { type: mqtt, address: "0xabc" }
   model: ts011f_plug
@@ -834,7 +846,10 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err.contains("already used by device lamp"), "{err}");
+        assert!(
+            err.contains("already used by device plug-ts011f-1"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -843,16 +858,43 @@ mod tests {
 
         assert_eq!(
             registry.id_for_address("0xa4c1389fe5cea26e"),
-            Some("living-room-table-lamp")
+            Some("plug-ts011f-1")
         );
         assert_eq!(registry.id_for_address("0xnope"), None);
+    }
+
+    #[test]
+    fn an_alias_resolves_to_its_device() {
+        let registry = lamp_registry();
+
+        assert_eq!(
+            registry.resolve_id("living-room-table-lamp"),
+            Some("plug-ts011f-1")
+        );
+        assert_eq!(registry.resolve_id("plug-ts011f-1"), Some("plug-ts011f-1"));
+        assert_eq!(registry.resolve_id("nope"), None);
+
+        assert_eq!(
+            registry.address_or_self("living-room-table-lamp"),
+            "0xa4c1389fe5cea26e"
+        );
+
+        let device = registry
+            .lookup(&IdOrAlias("living-room-table-lamp".to_owned()))
+            .unwrap();
+        assert_eq!(device.id, "plug-ts011f-1");
+        assert_eq!(device.aliases, ["living-room-table-lamp"]);
+
+        let err = registry.lookup(&IdOrAlias("nope".to_owned())).unwrap_err();
+        assert_eq!(err.to_string(), "unknown device `nope`");
     }
 
     #[test]
     fn a_home_assistant_device_cannot_declare_a_zigbee_only_role() {
         let err = build_devices(
             r#"
-- id: roborock
+- id: vacuum-roborock-1
+  aliases: []
   state: enabled
   transport:
     type: home_assistant
@@ -883,7 +925,8 @@ mod tests {
     fn an_mqtt_device_without_a_model_is_rejected() {
         let err = build_devices(
             r#"
-- id: mystery
+- id: button-mystery-1
+  aliases: []
   state: enabled
   transport:
     type: mqtt
@@ -901,7 +944,8 @@ mod tests {
     fn a_media_player_on_the_wrong_transport_is_rejected() {
         let err = build_devices(
             r#"
-- id: tv
+- id: media-tv-1
+  aliases: []
   state: enabled
   transport:
     type: mqtt
@@ -925,7 +969,8 @@ mod tests {
     fn a_media_player_address_that_is_not_an_entity_id_is_rejected() {
         let err = build_devices(
             r#"
-- id: tv
+- id: media-tv-1
+  aliases: []
   state: enabled
   transport:
     type: home_assistant
@@ -946,7 +991,8 @@ mod tests {
     fn an_unknown_model_slug_is_rejected_and_lists_known_models() {
         let err = build_devices(
             r#"
-- id: mystery
+- id: button-mystery-1
+  aliases: []
   state: enabled
   transport:
     type: mqtt
@@ -969,7 +1015,8 @@ mod tests {
     fn a_role_the_model_does_not_map_is_rejected() {
         let err = build_devices(
             r#"
-- id: mystery
+- id: button-mystery-1
+  aliases: []
   state: enabled
   transport:
     type: mqtt
@@ -977,7 +1024,7 @@ mod tests {
   model: ts011f_plug
   roles:
     - type: door
-      config: { name: Mystery Door, id: mystery, state: armed, timeout: 3m }
+      config: { name: Mystery Door, state: armed, timeout: 3m }
 "#,
         )
         .unwrap_err();
@@ -989,7 +1036,8 @@ mod tests {
     fn a_model_on_a_transport_without_decoders_is_rejected() {
         let err = build_devices(
             r#"
-- id: fridge
+- id: display-trmnl-1
+  aliases: []
   state: enabled
   transport:
     type: trmnl
@@ -1009,7 +1057,8 @@ mod tests {
     fn a_model_from_another_transport_is_unknown() {
         let err = build_devices(
             r#"
-- id: living-room-mtr-1
+- id: presence-mtr1-1
+  aliases: []
   state: enabled
   transport:
     type: home_assistant
@@ -1032,7 +1081,8 @@ mod tests {
     fn entity_lists_on_a_role_are_rejected() {
         let err = serde_yaml::from_str::<Vec<RawDevice>>(
             r#"
-- id: living-room-mtr-1
+- id: presence-mtr1-1
+  aliases: []
   state: enabled
   transport:
     type: mqtt
@@ -1086,7 +1136,8 @@ mod tests {
 
         let plain_plug = build_devices(
             r#"
-- id: living-room-table-lamp
+- id: plug-ts011f-1
+  aliases: [living-room-table-lamp]
   state: enabled
   transport:
     type: mqtt
@@ -1237,7 +1288,7 @@ integrations:
             .media_player(tv_address)
             .expect("living room tv resolves");
         assert_eq!(tv_address, "media_player.living_room_tv");
-        assert_eq!(tv.id, "living-room-tv");
+        assert_eq!(tv.id, "media-tv-1");
         assert_eq!(tv.name, "Living Room TV");
         assert_eq!(tv.address, "media_player.living_room_tv");
         assert_eq!(registry.room(tv_address), Some("living-room"));
@@ -1273,7 +1324,7 @@ integrations:
                 .home_assistant_device(entity_id)
                 .unwrap_or_else(|| panic!("{entity_id} routes to a decoded device"));
 
-            assert_eq!(device.id, "roborock");
+            assert_eq!(device.id, "vacuum-roborock-1");
             assert_eq!(device.address, "vacuum.robot");
             assert_eq!(device.profile.slug, "roborock");
         }
@@ -1422,30 +1473,40 @@ integrations:
         // watchdog keys are `transport:device_id`, resolvable by address or id
         assert_eq!(
             registry.watchdog_key("0x54ef441000d2b0b0"),
-            Some("zigbee:front-door")
+            Some("zigbee:door-mccgq12lm-1")
+        );
+        assert_eq!(
+            registry.watchdog_key("door-mccgq12lm-1"),
+            Some("zigbee:door-mccgq12lm-1")
         );
         assert_eq!(
             registry.watchdog_key("front-door"),
-            Some("zigbee:front-door")
+            Some("zigbee:door-mccgq12lm-1")
         );
         assert_eq!(
             registry.watchdog_key("apollo-mtr-1-livingroom"),
-            Some("esphome:livingroom-motion")
+            Some("esphome:presence-mtr1-1")
         );
         assert_eq!(
             registry.watchdog_key("media_player.living_room_tv"),
-            Some("home_assistant:living-room-tv")
+            Some("home_assistant:media-tv-1")
         );
         assert_eq!(
             registry.watchdog_key("roborock"),
-            Some("home_assistant:roborock")
+            Some("home_assistant:vacuum-roborock-1")
         );
-        assert_eq!(registry.watchdog_key("rockrobo"), Some("valetudo:valetudo"));
+        assert_eq!(
+            registry.watchdog_key("rockrobo"),
+            Some("valetudo:vacuum-rockrobo-1")
+        );
         assert_eq!(
             registry.watchdog_key("e83dc1fb1c98"),
-            Some("eink_display_firmware:living-room-epd")
+            Some("eink_display_firmware:display-epd-1")
         );
-        assert_eq!(registry.watchdog_key("653VZN"), Some("trmnl:fridge-trmnl"));
+        assert_eq!(
+            registry.watchdog_key("653VZN"),
+            Some("trmnl:display-trmnl-1")
+        );
         assert_eq!(registry.watchdog_key("0xdeadbeef"), None);
 
         // every device is watched, and under the same key the heartbeat writes
@@ -1671,15 +1732,15 @@ integrations:
                 .unwrap_or_else(|| panic!("{key} is watched"))
         };
 
-        let garage = watchdog("zigbee:garage-door");
+        let garage = watchdog("zigbee:door-mccgq12lm-2");
         assert_eq!(garage.timeout, Some(chrono::TimeDelta::hours(24)));
         assert!(garage.notify.is_empty());
 
-        let front = watchdog("zigbee:front-door");
+        let front = watchdog("zigbee:door-mccgq12lm-1");
         assert_eq!(front.timeout, Some(chrono::TimeDelta::hours(24)));
         assert_eq!(front.notify.len(), 1);
 
-        let display = watchdog("eink_display_firmware:hallway-epd");
+        let display = watchdog("eink_display_firmware:display-epd-2");
         assert_eq!(display.timeout, Some(chrono::TimeDelta::hours(12)));
     }
 
@@ -2305,7 +2366,8 @@ eink_display:
     art: {}
 devices:
 -
-  - id: epd
+  - id: display-epd-1
+    aliases: []
     state: enabled
     transport:
       type: eink_display_firmware
@@ -2396,7 +2458,8 @@ vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_ob
 
 devices:
 -
-  - id: epd
+  - id: display-epd-1
+    aliases: []
     state: enabled
     transport:
       type: eink_display_firmware
@@ -2476,7 +2539,8 @@ vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_ob
 
 devices:
 -
-  - id: epd
+  - id: display-epd-1
+    aliases: []
     state: enabled
     transport:
       type: eink_display_firmware

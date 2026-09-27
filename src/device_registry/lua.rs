@@ -123,8 +123,8 @@ impl LuaModule for DeviceLua {
                 let cx = offline_cx.clone();
 
                 async move {
-                    let aliases = cx.state.devices.aliases();
-                    let keys: Vec<String> = aliases.values().map(|a| a.to_string()).collect();
+                    let ids = cx.state.devices.ids();
+                    let keys: Vec<String> = ids.values().map(|a| a.to_string()).collect();
 
                     let found = cx
                         .query("device.offline", || async {
@@ -135,7 +135,7 @@ impl LuaModule for DeviceLua {
 
                     let cutoff = Utc::now() - TimeDelta::minutes(minutes.max(0));
 
-                    let mut offline: Vec<String> = aliases
+                    let mut offline: Vec<String> = ids
                         .iter()
                         .filter(|(_, address)| {
                             found

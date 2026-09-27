@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE plant_sensor SET id = $2 WHERE id = $1 AND time IN ( SELECT time FROM plant_sensor WHERE id = $1 ORDER BY time LIMIT $3 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b58f2060fde5eec5563306506f497f803941c82066fb05aad7207bbfddc49f2"
+}

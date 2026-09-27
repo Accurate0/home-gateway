@@ -1,58 +1,58 @@
-mutation LightOn($id: String!) {
+mutation LightOn($id: IdOrAlias!) {
   light(id: $id) {
     on
   }
 }
 
-mutation LightOff($id: String!) {
+mutation LightOff($id: IdOrAlias!) {
   light(id: $id) {
     off
   }
 }
 
-mutation LightSetBrightness($id: String!, $value: Int!) {
+mutation LightSetBrightness($id: IdOrAlias!, $value: Int!) {
   light(id: $id) {
     setBrightness(input: { value: $value })
   }
 }
 
-mutation LightSetColourTemperature($id: String!, $value: Int!) {
+mutation LightSetColourTemperature($id: IdOrAlias!, $value: Int!) {
   light(id: $id) {
     setColourTemperature(input: { value: $value })
   }
 }
 
-mutation MediaPlayPause($id: String!) {
+mutation MediaPlayPause($id: IdOrAlias!) {
   mediaPlayer(id: $id) {
     playPause
   }
 }
 
-mutation MediaStop($id: String!) {
+mutation MediaStop($id: IdOrAlias!) {
   mediaPlayer(id: $id) {
     stop
   }
 }
 
-mutation VacuumStart($id: String!) {
+mutation VacuumStart($id: IdOrAlias!) {
   robotVacuum(id: $id) {
     start
   }
 }
 
-mutation VacuumStop($id: String!) {
+mutation VacuumStop($id: IdOrAlias!) {
   robotVacuum(id: $id) {
     stop
   }
 }
 
-mutation VacuumDock($id: String!) {
+mutation VacuumDock($id: IdOrAlias!) {
   robotVacuum(id: $id) {
     dock
   }
 }
 
-mutation EinkTakeScreenshot($id: String!) {
+mutation EinkTakeScreenshot($id: IdOrAlias!) {
   einkDisplay(id: $id) {
     takeScreenshot
   }

@@ -17,6 +17,7 @@ pub struct RobotVacuumEntity {
     pub id: String,
     pub name: String,
     pub room: Option<String>,
+    pub aliases: Vec<String>,
     pub capabilities: Vec<Capability>,
     kind: RobotVacuumKind,
 }
@@ -45,6 +46,7 @@ impl RobotVacuumEntity {
             id,
             name: settings.name.clone(),
             room: registry.room(address).map(str::to_owned),
+            aliases: registry.aliases_for(address).to_vec(),
             capabilities: registry.capabilities(address).to_vec(),
             kind,
         })
@@ -68,6 +70,10 @@ impl RobotVacuumEntity {
 
     async fn id(&self) -> &str {
         &self.id
+    }
+
+    async fn aliases(&self) -> &[String] {
+        &self.aliases
     }
 
     async fn name(&self) -> &str {

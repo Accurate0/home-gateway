@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: control-switch
+- id: button-styrbar-1
+  aliases: [control-switch]
   state: enabled
   transport:
     type: mqtt
@@ -9,7 +10,8 @@
     - type: control_switch
     - type: battery
 
-- id: small-switch
+- id: button-wxkg11lm-1
+  aliases: [small-switch]
   state: enabled
   transport:
     type: mqtt

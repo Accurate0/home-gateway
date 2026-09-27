@@ -75,6 +75,7 @@ apollo {
     service("gateway") {
         packageName.set("net.infk8s.homegateway.graphql")
         schemaFiles.from(file("../../schema.graphql"))
+        mapScalarToKotlinString("IdOrAlias")
     }
 }
 

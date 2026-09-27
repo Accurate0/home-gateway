@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_battery SET device_id = $2 WHERE device_id = $1 AND time IN ( SELECT time FROM device_battery WHERE device_id = $1 ORDER BY time LIMIT $3 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "808b83629ac2732e1594a11a77e2a23a73545248d9540fc53a6ca15bcf6bba94"
+}

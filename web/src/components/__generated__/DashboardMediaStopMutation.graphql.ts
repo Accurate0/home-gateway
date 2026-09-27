@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9966dbb40e5c993aed355fb0f8f00c13>>
+ * @generated SignedSource<<3701de64b13eaaa80ac5977e06aec370>>
  * @lightSyntaxTransform
  */
 
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "d2979917f0f67ea71ba43aeebd24d07b",
+    "cacheID": "b2e1707e05876963771a3cf10efa9558",
     "id": null,
     "metadata": {},
     "name": "DashboardMediaStopMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardMediaStopMutation(\n  $id: String!\n) {\n  mediaPlayer(id: $id) {\n    stop\n  }\n}\n"
+    "text": "mutation DashboardMediaStopMutation(\n  $id: IdOrAlias!\n) {\n  mediaPlayer(id: $id) {\n    stop\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e80cf3ca5e666ca9041f6e5373e3dbdc";
+(node as any).hash = "fa889cad8d030b7bdeb80272b4417a7f";
 
 export default node;

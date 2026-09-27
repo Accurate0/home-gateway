@@ -1,4 +1,5 @@
-- id: test-door
+- id: door-test-1
+  aliases: [test-door]
   state: enabled
   room: entry
   transport:
@@ -9,12 +10,12 @@
     - type: door
       config:
         name: Test Door
-        id: test-door
         state: unarmed
         notify: [android_app]
     - type: battery
 
-- id: test-environment
+- id: env-test-1
+  aliases: [test-environment]
   state: enabled
   room: living-room
   transport:
@@ -23,10 +24,11 @@
   model: test_environment
   roles:
     - type: environment
-      config: { id: test-room, name: Test Room }
+      config: { name: Test Room }
     - type: battery
 
-- id: test-lamp
+- id: plug-test-1
+  aliases: [test-lamp]
   state: enabled
   room: living-room
   transport:
@@ -39,7 +41,8 @@
         name: Test Lamp
         as: light
 
-- id: test-presence
+- id: presence-test-1
+  aliases: [test-presence]
   state: enabled
   room: living-room
   transport:
@@ -50,7 +53,8 @@
     - type: presence
       config: { name: Test Motion }
 
-- id: test-esphome-environment
+- id: env-testnode-1
+  aliases: [test-esphome-environment]
   state: enabled
   room: study
   transport:
@@ -60,10 +64,10 @@
   roles:
     - type: environment
       config:
-        id: test-study
         name: Test Study
 
-- id: test-speaker
+- id: media-testspeaker-1
+  aliases: [test-speaker]
   state: enabled
   room: study
   transport:

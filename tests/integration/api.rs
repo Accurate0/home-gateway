@@ -148,7 +148,7 @@ async fn temperature_readings_are_queryable_over_graphql() {
          VALUES ($1, $2, $3, $4, $5)",
     )
     .bind("Test Room")
-    .bind("test-room")
+    .bind("env-test-1")
     .bind(ENVIRONMENT_ADDRESS)
     .bind(19.5_f64)
     .bind(55.0_f64)
@@ -161,7 +161,7 @@ async fn temperature_readings_are_queryable_over_graphql() {
     let (status, body) = client
         .graphql(
             Some(&key),
-            r#"{ environment(id: "test-environment") { id name temperature humidity } }"#,
+            r#"{ environment(id: "test-environment") { id aliases name temperature humidity } }"#,
         )
         .await;
 
@@ -169,9 +169,32 @@ async fn temperature_readings_are_queryable_over_graphql() {
 
     let environment = &body["data"]["environment"];
 
+    assert_eq!(environment["id"], "env-test-1", "got {body}");
+    assert_eq!(
+        environment["aliases"],
+        serde_json::json!(["test-environment"])
+    );
     assert_eq!(environment["name"], "Test Room", "got {body}");
     assert_eq!(environment["temperature"], 19.5);
     assert_eq!(environment["humidity"], 55.0);
+}
+
+#[tokio::test]
+#[serial]
+async fn an_unknown_device_reference_is_a_graphql_error() {
+    let harness = Harness::start().await;
+    let client = Client::new(&harness);
+    let key = mint_key(&harness, "test-reader", &["**:*"]).await;
+
+    let (status, body) = client
+        .graphql(Some(&key), r#"{ environment(id: "nope") { id } }"#)
+        .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["errors"][0]["message"], "unknown device `nope`",
+        "got {body}"
+    );
 }
 
 #[tokio::test]

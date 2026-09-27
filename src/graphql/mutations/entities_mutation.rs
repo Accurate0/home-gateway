@@ -1,6 +1,6 @@
 use async_graphql::Object;
 
-use crate::device_registry::DeviceRegistry;
+use crate::device_registry::{DeviceRegistry, IdOrAlias};
 use crate::graphql::mutations::eink_display_mutation::EinkDisplayMutation;
 use crate::graphql::mutations::light_mutation::LightMutation;
 use crate::graphql::mutations::media_player_mutation::MediaPlayerMutation;
@@ -14,10 +14,10 @@ impl EntitiesMutation {
     async fn light(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<LightMutation> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         let capabilities = registry.capabilities(&address).to_vec();
         Ok(LightMutation {
             address,
@@ -28,10 +28,10 @@ impl EntitiesMutation {
     async fn robot_vacuum(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<RobotVacuumMutation> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
 
         if let Some(settings) = registry.robot_vacuum(&address) {
             return Ok(RobotVacuumMutation::new(settings));
@@ -45,10 +45,10 @@ impl EntitiesMutation {
     async fn media_player(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<MediaPlayerMutation> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
 
         let Some(settings) = registry.media_player(&address) else {
             return Err(async_graphql::Error::new(format!(
@@ -62,10 +62,10 @@ impl EntitiesMutation {
     async fn eink_display(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<EinkDisplayMutation> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
 
         if registry.eink_display(&address).is_none() {
             return Err(async_graphql::Error::new(format!(

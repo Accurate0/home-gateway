@@ -19,6 +19,7 @@ pub struct DoorEntity {
     pub address: String,
     pub capabilities: Vec<Capability>,
     pub room: Option<String>,
+    pub aliases: Vec<String>,
 }
 
 impl DoorEntity {
@@ -30,6 +31,7 @@ impl DoorEntity {
             address: address.to_owned(),
             capabilities: registry.capabilities(address).to_vec(),
             room: registry.room(address).map(str::to_owned),
+            aliases: registry.aliases_for(address).to_vec(),
         })
     }
 }
@@ -42,6 +44,10 @@ impl DoorEntity {
 
     async fn id(&self) -> &str {
         &self.id
+    }
+
+    async fn aliases(&self) -> &[String] {
+        &self.aliases
     }
 
     async fn name(&self) -> &str {

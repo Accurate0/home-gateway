@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a2c88207236dd358e7494b1c6efa3a03>>
+ * @generated SignedSource<<d767049b8964954aa0c78ba9fbfe2f63>>
  * @lightSyntaxTransform
  */
 
@@ -102,16 +102,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "6fd2e19681f623ea9c1daefcbfb880db",
+    "cacheID": "4b249140d312818864755b25180eca54",
     "id": null,
     "metadata": {},
     "name": "DashboardEinkConfigQuery",
     "operationKind": "query",
-    "text": "query DashboardEinkConfigQuery(\n  $id: String!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n  }\n}\n"
+    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "730f7b7f8ee203c4687c8297f008a8e7";
+(node as any).hash = "52221abde1cca51858ab8c131d2d7fdc";
 
 export default node;

@@ -204,7 +204,7 @@ const EventsSubscription = graphql`
 `;
 
 const SetOnMutation = graphql`
-  mutation DashboardSetOnMutation($id: String!) {
+  mutation DashboardSetOnMutation($id: IdOrAlias!) {
     light(id: $id) {
       on
     }
@@ -212,7 +212,7 @@ const SetOnMutation = graphql`
 `;
 
 const SetOffMutation = graphql`
-  mutation DashboardSetOffMutation($id: String!) {
+  mutation DashboardSetOffMutation($id: IdOrAlias!) {
     light(id: $id) {
       off
     }
@@ -220,7 +220,7 @@ const SetOffMutation = graphql`
 `;
 
 const SetBrightnessMutation = graphql`
-  mutation DashboardSetBrightnessMutation($id: String!, $value: Int!) {
+  mutation DashboardSetBrightnessMutation($id: IdOrAlias!, $value: Int!) {
     light(id: $id) {
       setBrightness(input: { value: $value })
     }
@@ -228,7 +228,7 @@ const SetBrightnessMutation = graphql`
 `;
 
 const ColourMoveMutation = graphql`
-  mutation DashboardColourMoveMutation($id: String!, $value: Int!) {
+  mutation DashboardColourMoveMutation($id: IdOrAlias!, $value: Int!) {
     light(id: $id) {
       colourTemperatureMove(input: { value: $value })
     }
@@ -236,7 +236,7 @@ const ColourMoveMutation = graphql`
 `;
 
 const SetColourMutation = graphql`
-  mutation DashboardSetColourMutation($id: String!, $hex: String!) {
+  mutation DashboardSetColourMutation($id: IdOrAlias!, $hex: String!) {
     light(id: $id) {
       setColour(input: { hex: $hex })
     }
@@ -244,7 +244,7 @@ const SetColourMutation = graphql`
 `;
 
 const MediaPlayPauseMutation = graphql`
-  mutation DashboardMediaPlayPauseMutation($id: String!) {
+  mutation DashboardMediaPlayPauseMutation($id: IdOrAlias!) {
     mediaPlayer(id: $id) {
       playPause
     }
@@ -252,7 +252,7 @@ const MediaPlayPauseMutation = graphql`
 `;
 
 const MediaStopMutation = graphql`
-  mutation DashboardMediaStopMutation($id: String!) {
+  mutation DashboardMediaStopMutation($id: IdOrAlias!) {
     mediaPlayer(id: $id) {
       stop
     }
@@ -260,7 +260,7 @@ const MediaStopMutation = graphql`
 `;
 
 const VacuumStartMutation = graphql`
-  mutation DashboardVacuumStartMutation($id: String!) {
+  mutation DashboardVacuumStartMutation($id: IdOrAlias!) {
     robotVacuum(id: $id) {
       start
     }
@@ -268,7 +268,7 @@ const VacuumStartMutation = graphql`
 `;
 
 const VacuumStopMutation = graphql`
-  mutation DashboardVacuumStopMutation($id: String!) {
+  mutation DashboardVacuumStopMutation($id: IdOrAlias!) {
     robotVacuum(id: $id) {
       stop
     }
@@ -276,7 +276,7 @@ const VacuumStopMutation = graphql`
 `;
 
 const VacuumDockMutation = graphql`
-  mutation DashboardVacuumDockMutation($id: String!) {
+  mutation DashboardVacuumDockMutation($id: IdOrAlias!) {
     robotVacuum(id: $id) {
       dock
     }
@@ -284,7 +284,7 @@ const VacuumDockMutation = graphql`
 `;
 
 const EinkConfigQuery = graphql`
-  query DashboardEinkConfigQuery($id: String!) {
+  query DashboardEinkConfigQuery($id: IdOrAlias!) {
     einkDisplay(id: $id) {
       deviceConfig {
         refreshIntervalMins
@@ -296,7 +296,7 @@ const EinkConfigQuery = graphql`
 `;
 
 const TakeScreenshotMutation = graphql`
-  mutation DashboardTakeScreenshotMutation($id: String!) {
+  mutation DashboardTakeScreenshotMutation($id: IdOrAlias!) {
     einkDisplay(id: $id) {
       takeScreenshot
     }

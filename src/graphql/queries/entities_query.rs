@@ -2,7 +2,7 @@ use async_graphql::Object;
 
 use crate::auth::context::AuthContext;
 use crate::auth::scope::{Action, Resource, Scope};
-use crate::device_registry::DeviceRegistry;
+use crate::device_registry::{DeviceRegistry, IdOrAlias};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::entity_object::{
     DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, LightEntity,
@@ -118,10 +118,10 @@ impl EntitiesQuery {
     async fn media_player(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<MediaPlayerEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         MediaPlayerEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown media player `{id}`")))
     }
@@ -130,10 +130,10 @@ impl EntitiesQuery {
     async fn light(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<LightEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         LightEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown light `{id}`")))
     }
@@ -142,10 +142,10 @@ impl EntitiesQuery {
     async fn door(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<DoorEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         DoorEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown door `{id}`")))
     }
@@ -154,10 +154,10 @@ impl EntitiesQuery {
     async fn presence(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<PresenceEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         PresenceEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown presence sensor `{id}`")))
     }
@@ -166,10 +166,10 @@ impl EntitiesQuery {
     async fn environment(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<EnvironmentEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         EnvironmentEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown environment sensor `{id}`")))
     }
@@ -178,10 +178,10 @@ impl EntitiesQuery {
     async fn plant(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<PlantEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         PlantEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown plant sensor `{id}`")))
     }
@@ -190,10 +190,10 @@ impl EntitiesQuery {
     async fn eink_display(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<EinkDisplayEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         EinkDisplayEntity::from_firmware(registry, &address)
             .or_else(|| EinkDisplayEntity::from_trmnl(registry, &address))
             .ok_or_else(|| async_graphql::Error::new(format!("unknown eink display `{id}`")))
@@ -203,10 +203,10 @@ impl EntitiesQuery {
     async fn robot_vacuum(
         &self,
         ctx: &async_graphql::Context<'_>,
-        id: String,
+        id: IdOrAlias,
     ) -> async_graphql::Result<RobotVacuumEntity> {
         let registry = ctx.data::<DeviceRegistry>()?;
-        let address = registry.address_or_self(&id).to_owned();
+        let address = registry.lookup(&id)?.address.clone();
         RobotVacuumEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown robot vacuum `{id}`")))
     }

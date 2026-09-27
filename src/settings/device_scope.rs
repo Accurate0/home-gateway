@@ -1,17 +1,23 @@
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashSet};
 
-use crate::settings::DeviceAliases;
+use crate::settings::{DeviceAliases, DeviceIds};
 
 pub(crate) struct DeviceScope<'a> {
+    ids: &'a DeviceIds,
     aliases: &'a DeviceAliases,
     disabled: &'a HashSet<String>,
     seen_disabled: RefCell<BTreeSet<String>>,
 }
 
 impl<'a> DeviceScope<'a> {
-    pub(crate) fn new(aliases: &'a DeviceAliases, disabled: &'a HashSet<String>) -> Self {
+    pub(crate) fn new(
+        ids: &'a DeviceIds,
+        aliases: &'a DeviceAliases,
+        disabled: &'a HashSet<String>,
+    ) -> Self {
         Self {
+            ids,
             aliases,
             disabled,
             seen_disabled: RefCell::new(BTreeSet::new()),
@@ -19,11 +25,16 @@ impl<'a> DeviceScope<'a> {
     }
 
     pub(crate) fn validate(&self, reference: &str) -> Result<(), String> {
-        if self.aliases.contains_key(reference) {
+        let id = self
+            .aliases
+            .get(reference)
+            .map_or(reference, String::as_str);
+
+        if self.ids.contains_key(id) {
             return Ok(());
         }
 
-        if self.disabled.contains(reference) {
+        if self.disabled.contains(id) {
             self.seen_disabled.borrow_mut().insert(reference.to_owned());
 
             return Ok(());

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE robot_vacuum_events SET device_id = $2 WHERE device_id = $1 AND time IN ( SELECT time FROM robot_vacuum_events WHERE device_id = $1 ORDER BY time LIMIT $3 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d1dcee792dc60cf73422c74090db3e97c2be762b0cee8a0475623792e8bd7d12"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM device_last_seen WHERE split_part(device_key, ':', 2) = $1 AND EXISTS ( SELECT 1 FROM device_last_seen current WHERE current.device_key = split_part(device_last_seen.device_key, ':', 1) || ':' || $2 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "108a524fdc4ade86f54bbf0c691036e7340b31fc19100695d0a902d8962a1952"
+}

@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: env-living-room
+- id: env-wsdcgq11lm-1
+  aliases: [env-living-room]
   state: enabled
   room: living-room
   transport:
@@ -8,10 +9,11 @@
   model: lumi_wsdcgq11lm
   roles:
     - type: environment
-      config: { id: living-room, name: Living Room }
+      config: { name: Living Room }
     - type: battery
 
-- id: env-bathroom
+- id: env-wsdcgq11lm-2
+  aliases: [env-bathroom]
   state: enabled
   room: bathroom
   transport:
@@ -20,21 +22,23 @@
   model: lumi_wsdcgq11lm
   roles:
     - type: environment
-      config: { id: bathroom, name: Bathroom }
+      config: { name: Bathroom }
     - type: battery
 
-- id: env-bedroom
+- id: env-vindstyrka-1
+  aliases: [env-living-room-air]
   state: enabled
-  room: bedroom
+  room: living-room
   transport:
     type: mqtt
     address: "0xb0c7defffef6a9be"
   model: ikea_e2112
   roles:
     - type: environment
-      config: { id: bedroom, name: Bedroom }
+      config: { name: Living Room Air }
 
-- id: env-outdoor
+- id: env-wsdcgq12lm-1
+  aliases: [env-outdoor]
   state: enabled
   room: outdoor
   transport:
@@ -43,5 +47,5 @@
   model: aqara_wsdcgq12lm
   roles:
     - type: environment
-      config: { id: outdoor, name: Outdoor }
+      config: { name: Outdoor }
     - type: battery

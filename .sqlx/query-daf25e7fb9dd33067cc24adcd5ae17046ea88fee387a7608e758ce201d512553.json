@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE latest_plant_sensor SET entity_id = $2 WHERE entity_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "daf25e7fb9dd33067cc24adcd5ae17046ea88fee387a7608e758ce201d512553"
+}

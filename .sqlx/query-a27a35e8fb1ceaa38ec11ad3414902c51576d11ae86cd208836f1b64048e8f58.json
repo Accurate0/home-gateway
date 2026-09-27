@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_metric SET device_id = $2 WHERE device_id = $1 AND time IN ( SELECT time FROM device_metric WHERE device_id = $1 ORDER BY time LIMIT $3 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a27a35e8fb1ceaa38ec11ad3414902c51576d11ae86cd208836f1b64048e8f58"
+}

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<58ca84ab30bc7a89c37bf8f2517f844c>>
+ * @generated SignedSource<<bbcaac1ad811cdffdd7af4cf29de079e>>
  * @lightSyntaxTransform
  */
 
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "1ea7e286705530df8f1cf92e0439608e",
+    "cacheID": "cf1f339c35abdee188c7cde4f5a4be93",
     "id": null,
     "metadata": {},
     "name": "DashboardVacuumStopMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardVacuumStopMutation(\n  $id: String!\n) {\n  robotVacuum(id: $id) {\n    stop\n  }\n}\n"
+    "text": "mutation DashboardVacuumStopMutation(\n  $id: IdOrAlias!\n) {\n  robotVacuum(id: $id) {\n    stop\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "93aa318c98cbd1c19e9c08c72d42a7cd";
+(node as any).hash = "f3e2b6d41302a3f059b182abe718a335";
 
 export default node;

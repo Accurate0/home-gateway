@@ -267,16 +267,6 @@
         }
       ]
     },
-    "ingest": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/IngestSettings"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
     "endpoints": {
       "anyOf": [
         {
@@ -837,6 +827,12 @@
         "id": {
           "type": "string"
         },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "state": {
           "$ref": "#/$defs/EnabledState"
         },
@@ -877,6 +873,7 @@
       "additionalProperties": false,
       "required": [
         "id",
+        "aliases",
         "state",
         "transport",
         "roles"
@@ -1165,9 +1162,6 @@
         "name": {
           "type": "string"
         },
-        "id": {
-          "type": "string"
-        },
         "notify": {
           "type": "array",
           "items": {
@@ -1176,8 +1170,7 @@
         }
       },
       "required": [
-        "name",
-        "id"
+        "name"
       ],
       "oneOf": [
         {
@@ -1236,35 +1229,24 @@
     "RawEnvironmentBlock": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
         "name": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id"
+        "name"
       ]
     },
     "RawPlantBlock": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id",
         "name"
       ]
     },
@@ -3682,6 +3664,9 @@
         "solar": {
           "$ref": "#/$defs/SolarSettings"
         },
+        "synergy": {
+          "$ref": "#/$defs/SynergySettings"
+        },
         "transperth": {
           "$ref": "#/$defs/RawTransperthSettings"
         }
@@ -3696,6 +3681,7 @@
         "willyweather",
         "fuelwatch",
         "solar",
+        "synergy",
         "transperth"
       ]
     },
@@ -3988,6 +3974,17 @@
       "required": [
         "state",
         "refresh"
+      ]
+    },
+    "SynergySettings": {
+      "type": "object",
+      "properties": {
+        "parser": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parser"
       ]
     },
     "RawTransperthSettings": {
@@ -4748,7 +4745,14 @@
           ],
           "default": null
         },
-        "scripts": {
+        "workflows": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "integrations": {
           "type": [
             "string",
             "null"
@@ -4767,32 +4771,6 @@
         "timeout",
         "max_instructions",
         "max_memory"
-      ]
-    },
-    "IngestSettings": {
-      "type": "object",
-      "properties": {
-        "sources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/IngestSource"
-          }
-        }
-      }
-    },
-    "IngestSource": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "script": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "script"
       ]
     },
     "EndpointSettings": {

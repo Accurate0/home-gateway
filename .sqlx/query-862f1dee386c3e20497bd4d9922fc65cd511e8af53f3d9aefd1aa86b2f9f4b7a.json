@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE latest_robot_vacuum_state SET device_id = $2 WHERE device_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "862f1dee386c3e20497bd4d9922fc65cd511e8af53f3d9aefd1aa86b2f9f4b7a"
+}

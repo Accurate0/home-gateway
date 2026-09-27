@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM media_player_state WHERE device_id = $1 AND EXISTS (SELECT 1 FROM media_player_state WHERE device_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "76f34e78f9bbf0eb356cea301818e92e69ff9c51e099f6befc01458c889be22d"
+}

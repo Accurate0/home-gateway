@@ -22,6 +22,7 @@ pub struct PlantEntity {
     pub name: String,
     pub address: String,
     pub room: Option<String>,
+    pub aliases: Vec<String>,
 }
 
 impl PlantEntity {
@@ -32,6 +33,7 @@ impl PlantEntity {
             name: settings.name.clone(),
             address: address.to_owned(),
             room: registry.room(address).map(str::to_owned),
+            aliases: registry.aliases_for(address).to_vec(),
         })
     }
 
@@ -60,6 +62,10 @@ impl PlantEntity {
 
     async fn id(&self) -> &str {
         &self.id
+    }
+
+    async fn aliases(&self) -> &[String] {
+        &self.aliases
     }
 
     async fn name(&self) -> &str {

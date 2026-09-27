@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: roborock
+- id: vacuum-roborock-1
+  aliases: [roborock]
   state: enabled
   room: dining-room
   transport:
@@ -12,7 +13,8 @@
         name: Roborock
     - type: battery
 
-- id: valetudo
+- id: vacuum-rockrobo-1
+  aliases: [valetudo]
   state: enabled
   room: spare-room
   transport:

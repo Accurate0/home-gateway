@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE device_battery_latest SET device_id = $2 WHERE device_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f78bbeecc33f6880c9498ed3d42c06b5f6a8f722aef9a2b59f20223aecc5321d"
+}

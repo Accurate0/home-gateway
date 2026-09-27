@@ -27,7 +27,6 @@ pub struct DoorSettings {
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct RawDoorSettings {
     name: String,
-    id: String,
     #[serde(flatten)]
     armed: ArmedDoorStates,
     #[serde(default)]
@@ -35,10 +34,10 @@ pub struct RawDoorSettings {
 }
 
 impl RawDoorSettings {
-    pub(crate) fn resolve(self, targets: &NotifyTargets) -> Result<DoorSettings, String> {
+    pub(crate) fn resolve(self, id: &str, targets: &NotifyTargets) -> Result<DoorSettings, String> {
         Ok(DoorSettings {
             name: self.name,
-            id: self.id,
+            id: id.to_owned(),
             armed: self.armed,
             notify: resolve_notify(self.notify, targets)?,
         })

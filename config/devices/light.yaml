@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: closet-light
+- id: light-t1-1
+  aliases: [closet-light]
   state: enabled
   room: bedroom
   transport:
@@ -10,7 +11,8 @@
     - type: light
       config: { name: Closet Light }
 
-- id: table-lamp-bedroom
+- id: light-hue-e27-1
+  aliases: [table-lamp-bedroom]
   state: enabled
   room: bedroom
   transport:
@@ -21,7 +23,8 @@
     - type: light
       config: { name: Bedroom Table Lamp }
 
-- id: floor-lamp-living-room
+- id: light-tradfri-1
+  aliases: [floor-lamp-living-room]
   state: enabled
   room: living-room
   transport:

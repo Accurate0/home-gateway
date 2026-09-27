@@ -24,6 +24,16 @@ impl RawTransport {
         }
     }
 
+    pub fn address(&self) -> &str {
+        match self {
+            RawTransport::Mqtt { address }
+            | RawTransport::EsphomeNativeApi { address }
+            | RawTransport::EinkDisplayFirmware { address }
+            | RawTransport::Trmnl { address }
+            | RawTransport::HomeAssistant { address } => address,
+        }
+    }
+
     pub fn into_address(self) -> String {
         match self {
             RawTransport::Mqtt { address }

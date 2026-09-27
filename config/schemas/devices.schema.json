@@ -12,6 +12,12 @@
         "id": {
           "type": "string"
         },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "state": {
           "$ref": "#/$defs/EnabledState"
         },
@@ -52,6 +58,7 @@
       "additionalProperties": false,
       "required": [
         "id",
+        "aliases",
         "state",
         "transport",
         "roles"
@@ -347,9 +354,6 @@
         "name": {
           "type": "string"
         },
-        "id": {
-          "type": "string"
-        },
         "notify": {
           "type": "array",
           "items": {
@@ -358,8 +362,7 @@
         }
       },
       "required": [
-        "name",
-        "id"
+        "name"
       ],
       "oneOf": [
         {
@@ -435,35 +438,24 @@
     "RawEnvironmentBlock": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
         "name": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id"
+        "name"
       ]
     },
     "RawPlantBlock": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id",
         "name"
       ]
     },

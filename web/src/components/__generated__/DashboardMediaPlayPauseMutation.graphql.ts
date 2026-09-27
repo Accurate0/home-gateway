@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c99cb4708c781c00a9a072241125e3f5>>
+ * @generated SignedSource<<55a6b4ad3c3c2f40045ea846af023418>>
  * @lightSyntaxTransform
  */
 
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "df3ada6583e3f303952ab1c08d6dfcf8",
+    "cacheID": "4b07121857b460e8a9d28e7878b4d979",
     "id": null,
     "metadata": {},
     "name": "DashboardMediaPlayPauseMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardMediaPlayPauseMutation(\n  $id: String!\n) {\n  mediaPlayer(id: $id) {\n    playPause\n  }\n}\n"
+    "text": "mutation DashboardMediaPlayPauseMutation(\n  $id: IdOrAlias!\n) {\n  mediaPlayer(id: $id) {\n    playPause\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f6864a625e37b90f04aaf2f42e4678e9";
+(node as any).hash = "b09c7c0d42e36e4519de36585f1f9217";
 
 export default node;

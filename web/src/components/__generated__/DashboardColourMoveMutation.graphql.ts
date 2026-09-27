@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5515b6776503b9c0d981f63d78e852d5>>
+ * @generated SignedSource<<5af48acbf988d57ece98b4f5eb2859bb>>
  * @lightSyntaxTransform
  */
 
@@ -91,16 +91,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "e01f547b8714e7053a456e6da5ff7c1e",
+    "cacheID": "070b9582822adb88a022d070f9482fd9",
     "id": null,
     "metadata": {},
     "name": "DashboardColourMoveMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardColourMoveMutation(\n  $id: String!\n  $value: Int!\n) {\n  light(id: $id) {\n    colourTemperatureMove(input: {value: $value})\n  }\n}\n"
+    "text": "mutation DashboardColourMoveMutation(\n  $id: IdOrAlias!\n  $value: Int!\n) {\n  light(id: $id) {\n    colourTemperatureMove(input: {value: $value})\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7c6926828958380b366631917bed8889";
+(node as any).hash = "ce410f1aa3ca4130801c630dc4c97640";
 
 export default node;

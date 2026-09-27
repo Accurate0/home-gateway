@@ -11,6 +11,7 @@ use super::raw_transport::RawTransport;
 #[serde(deny_unknown_fields)]
 pub struct RawDevice {
     pub id: String,
+    pub aliases: Vec<String>,
     pub state: EnabledState,
     pub transport: RawTransport,
     #[serde(default)]

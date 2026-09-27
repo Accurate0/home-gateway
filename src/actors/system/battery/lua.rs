@@ -79,7 +79,7 @@ impl LuaModule for BatteryLua {
                     let keys: Vec<String> = cx
                         .state
                         .devices
-                        .aliases()
+                        .ids()
                         .values()
                         .map(|address| address.to_string())
                         .collect();

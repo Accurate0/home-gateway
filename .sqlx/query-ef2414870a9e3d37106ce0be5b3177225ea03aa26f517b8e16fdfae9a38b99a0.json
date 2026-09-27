@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM eink_display WHERE device_id = $1 AND EXISTS (SELECT 1 FROM eink_display WHERE device_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef2414870a9e3d37106ce0be5b3177225ea03aa26f517b8e16fdfae9a38b99a0"
+}

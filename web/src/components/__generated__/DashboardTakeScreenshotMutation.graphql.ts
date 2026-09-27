@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4d6a982097ccc5d81f45e6515135f681>>
+ * @generated SignedSource<<ea9c86b2159d67cf2aaddadc782fb3cf>>
  * @lightSyntaxTransform
  */
 
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "bf399f810b2439a07ddba918aa7da861",
+    "cacheID": "ea8d0cb22f0b37f0e15af1762ba5e90c",
     "id": null,
     "metadata": {},
     "name": "DashboardTakeScreenshotMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardTakeScreenshotMutation(\n  $id: String!\n) {\n  einkDisplay(id: $id) {\n    takeScreenshot\n  }\n}\n"
+    "text": "mutation DashboardTakeScreenshotMutation(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    takeScreenshot\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6f4e7e37af57fee41f19829e9bea2ce1";
+(node as any).hash = "003416817e0f566950fe064314b64252";
 
 export default node;
