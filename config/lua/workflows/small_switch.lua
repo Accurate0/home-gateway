@@ -7,7 +7,7 @@ local LAMPS_ON = "living-room-lamps-on"
 local LAMPS_OFF = "living-room-lamps-off"
 local AUTOMATIONS_TAG = "living-room"
 local INDICATOR = "livingroom-motion"
-local FLASH_SECONDS = 0.6
+local FLASH_SECONDS = 0.25
 
 local TAPS = {
 	single = 1,
