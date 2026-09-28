@@ -23,8 +23,8 @@
       category: general
       message: "Living room plant is overwatered (soil moisture above 80%)"
 
-- name: Living room plant water and fertilise
-  slug: living-room-plant-water-fertilise
+- name: Living room plant fertilise
+  slug: living-room-plant-fertilise
   group: Plants
   on: { type: cron, schedule: "0 9 * * SUN" }
   modes: [home, away, guest]
@@ -32,4 +32,4 @@
     - type: notify
       notify: { type: android_app }
       category: general
-      message: "Water and fertilise the living room plant"
+      message: "Fertilise the living room plant"
