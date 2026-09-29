@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT device_id, state AS \"state: GarageDoorState\", contact, changed_at, updated_at\n            FROM latest_garage_door_state\n            WHERE device_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "state: GarageDoorState",
+        "type_info": {
+          "Custom": {
+            "name": "garage_door_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "opening",
+                "closed",
+                "closing"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "contact",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "changed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f9f982eceb2958282c00307423e4dbc39f4ad23cb726a598af2cc83a14ecd9b7"
+}

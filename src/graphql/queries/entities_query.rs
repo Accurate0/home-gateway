@@ -5,8 +5,8 @@ use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::{DeviceRegistry, IdOrAlias};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::entity_object::{
-    DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, LightEntity,
-    MediaPlayerEntity, PlantEntity, PresenceEntity, RobotVacuumEntity,
+    DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, GarageDoorEntity,
+    LightEntity, MediaPlayerEntity, PlantEntity, PresenceEntity, RobotVacuumEntity,
 };
 
 #[derive(Default)]
@@ -99,6 +99,15 @@ impl EntitiesQuery {
                     .robot_vacuums()
                     .filter_map(|(address, _)| RobotVacuumEntity::from_registry(registry, address))
                     .map(Entity::RobotVacuum),
+            );
+        }
+
+        if auth.has(&Scope::new(Resource::GarageDoor, Action::Read)) {
+            out.extend(
+                registry
+                    .garage_doors()
+                    .filter_map(|(address, _)| GarageDoorEntity::from_registry(registry, address))
+                    .map(Entity::GarageDoor),
             );
         }
 
@@ -209,5 +218,17 @@ impl EntitiesQuery {
         let address = registry.lookup(&id)?.address.clone();
         RobotVacuumEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown robot vacuum `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::GarageDoor, Action::Read)))]
+    async fn garage_door(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: IdOrAlias,
+    ) -> async_graphql::Result<GarageDoorEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.lookup(&id)?.address.clone();
+        GarageDoorEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown garage door `{id}`")))
     }
 }

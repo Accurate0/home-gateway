@@ -36,6 +36,11 @@ tasks:
     schedule: "5 3 * * *"
     parameters:
       retention: 365d
+  trim_garage_door_events:
+    state: enabled
+    schedule: "10 3 * * *"
+    parameters:
+      retention: 365d
   trim_home_assistant_events:
     state: enabled
     schedule: "25 3 * * *"

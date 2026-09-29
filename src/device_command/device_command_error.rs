@@ -3,6 +3,7 @@ use crate::device_registry::Transport;
 use crate::integrations::esphome_native_api::EsphomeNativeApiError;
 use crate::integrations::home_assistant::HomeAssistantError;
 use crate::integrations::mqtt::MqttError;
+use crate::integrations::tuya::TuyaError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DeviceCommandError {
@@ -20,8 +21,12 @@ pub enum DeviceCommandError {
     HomeAssistantNotConfigured,
     #[error("the esphome native api is not configured")]
     EsphomeNativeApiNotConfigured,
-    #[error("{0}: esphome native api commands are json payloads, not service names")]
+    #[error("{0}: esphome native api and tuya commands are json payloads, not service names")]
     ServiceForPayload(String),
+    #[error("tuya is not configured")]
+    TuyaNotConfigured,
+    #[error(transparent)]
+    Tuya(#[from] TuyaError),
     #[error(transparent)]
     HomeAssistant(#[from] HomeAssistantError),
     #[error(transparent)]

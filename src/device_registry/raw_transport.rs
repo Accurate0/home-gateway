@@ -11,6 +11,7 @@ pub enum RawTransport {
     EinkDisplayFirmware { address: String },
     Trmnl { address: String },
     HomeAssistant { address: String },
+    Tuya { address: String },
 }
 
 impl RawTransport {
@@ -21,6 +22,7 @@ impl RawTransport {
             RawTransport::EinkDisplayFirmware { .. } => Transport::EinkDisplayFirmware,
             RawTransport::Trmnl { .. } => Transport::Trmnl,
             RawTransport::HomeAssistant { .. } => Transport::HomeAssistant,
+            RawTransport::Tuya { .. } => Transport::Tuya,
         }
     }
 
@@ -30,7 +32,8 @@ impl RawTransport {
             | RawTransport::EsphomeNativeApi { address }
             | RawTransport::EinkDisplayFirmware { address }
             | RawTransport::Trmnl { address }
-            | RawTransport::HomeAssistant { address } => address,
+            | RawTransport::HomeAssistant { address }
+            | RawTransport::Tuya { address } => address,
         }
     }
 
@@ -40,7 +43,8 @@ impl RawTransport {
             | RawTransport::EsphomeNativeApi { address }
             | RawTransport::EinkDisplayFirmware { address }
             | RawTransport::Trmnl { address }
-            | RawTransport::HomeAssistant { address } => address,
+            | RawTransport::HomeAssistant { address }
+            | RawTransport::Tuya { address } => address,
         }
     }
 }

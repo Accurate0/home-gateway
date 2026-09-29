@@ -15,7 +15,10 @@ use crate::integrations::feature_flag::{self, FeatureFlagClient};
 use crate::integrations::home_assistant::{self, HomeAssistant};
 use crate::integrations::jellyfin::{self, Jellyfin};
 use crate::integrations::mqtt::Mqtt;
-use crate::settings::{EsphomeSettings, HomeAssistantWebsocketSettings, JellyfinWebsocketSettings};
+use crate::integrations::tuya::{self, TuyaDevice};
+use crate::settings::{
+    EsphomeSettings, HomeAssistantWebsocketSettings, JellyfinWebsocketSettings, TuyaSettings,
+};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -26,6 +29,8 @@ pub struct Tasks {
     pub home_assistant_websocket: HomeAssistantWebsocketSettings,
     pub esphome: EsphomeSettings,
     pub esphome_nodes: Vec<Node>,
+    pub tuya: TuyaSettings,
+    pub tuya_devices: Vec<TuyaDevice>,
     pub jellyfin: Option<Jellyfin>,
     pub jellyfin_websocket: JellyfinWebsocketSettings,
     pub devices: DeviceRegistry,
@@ -46,6 +51,8 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         home_assistant_websocket,
         esphome,
         esphome_nodes,
+        tuya,
+        tuya_devices,
         jellyfin,
         jellyfin_websocket,
         devices,
@@ -121,6 +128,16 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
 
         task_set.spawn(async move {
             esphome_native_api::process_events(node, esphome, key, node_cancellation_token).await;
+            Ok::<(), MainError>(())
+        });
+    }
+
+    for device in tuya_devices {
+        let tuya = tuya.clone();
+        let device_cancellation_token = cancellation_token.child_token();
+
+        task_set.spawn(async move {
+            tuya::process_events(device, tuya, device_cancellation_token).await;
             Ok::<(), MainError>(())
         });
     }

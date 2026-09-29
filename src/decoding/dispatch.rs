@@ -1,8 +1,8 @@
 use uuid::Uuid;
 
 use crate::actors::devices::{
-    control_switch, door_sensor, environment_sensor, light, media_player, plant_sensor,
-    presence_sensor, robot_vacuum, smart_switch,
+    control_switch, door_sensor, environment_sensor, garage_door, light, media_player,
+    plant_sensor, presence_sensor, robot_vacuum, smart_switch,
 };
 use crate::device_metric::DeviceMetric;
 use crate::state::AppState;
@@ -46,6 +46,7 @@ pub async fn dispatch(
         friendly_name,
         &reading,
     );
+    role::run::<garage_door::GarageDoorReading>(event_id, devices, device, friendly_name, &reading);
 
     let device_id = devices.id_for_address(address).map(str::to_owned);
 

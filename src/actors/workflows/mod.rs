@@ -1,3 +1,4 @@
+use crate::actors::devices::garage_door;
 use crate::actors::devices::robot_vacuum;
 use crate::actors::system::push;
 use crate::actors::system::rpc;
@@ -9,7 +10,7 @@ use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaSource};
 use crate::settings::NotificationSource;
-use crate::settings::workflow::{HttpMethod, VacuumCommand};
+use crate::settings::workflow::{GarageDoorCommand, HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
 use crate::workflow_trace::{StepOutcome, TraceRecorder};
@@ -65,6 +66,10 @@ pub enum WorkflowError {
     MissingScope { step: &'static str, scope: Scope },
     #[error("`{0}` is not a robot vacuum")]
     NotARobotVacuum(String),
+    #[error("`{0}` is not a garage door")]
+    NotAGarageDoor(String),
+    #[error(transparent)]
+    GarageDoor(#[from] garage_door::GarageDoorCommandError),
     #[error("http request to {url} returned {status}")]
     Http {
         url: String,
@@ -399,6 +404,9 @@ impl WorkflowWorker {
             Step::RobotVacuum {
                 ieee_addr, command, ..
             } => self.run_robot_vacuum(ieee_addr, *command).await,
+            Step::GarageDoor {
+                device, command, ..
+            } => self.run_garage_door(device, *command).await.map(|_| ()),
             Step::Lua { .. } => unreachable!("a lua step is dispatched before this match"),
         };
 
@@ -522,6 +530,21 @@ impl WorkflowWorker {
         robot_vacuum::command::send(&targets, settings, command).await?;
 
         Ok(())
+    }
+
+    pub async fn run_garage_door(
+        &self,
+        device: &str,
+        command: GarageDoorCommand,
+    ) -> Result<garage_door::CommandOutcome, WorkflowError> {
+        let registry = &self.shared_actor_state.devices;
+        let address = registry.address_or_self(device);
+
+        if registry.garage_door(address).is_none() {
+            return Err(WorkflowError::NotAGarageDoor(device.to_owned()));
+        }
+
+        Ok(garage_door::command::send(address, command).await?)
     }
 
     /// Enable/disable every workflow carrying `tag`, skipping the workflow the

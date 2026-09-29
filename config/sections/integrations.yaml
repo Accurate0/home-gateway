@@ -14,6 +14,20 @@ esphome:
     max: 5m
     log_attempts: 3
 
+tuya:
+  state: enabled
+  models: lua/models/tuya
+  port: 6668
+  heartbeat: 10s
+  silence_timeout: 30s
+  reconnect:
+    min: 5s
+    max: 5m
+    log_attempts: 3
+  devices:
+    garage-tuya-csh-gapnt-178-1:
+      host: 172.16.88.175
+
 holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
   regions: [Western Australia]

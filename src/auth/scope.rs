@@ -71,6 +71,7 @@ scopes! {
     Epd => "epd" [Read, Write],
     FeatureFlag => "feature_flag" [Read],
     FuelWatch => "fuelwatch" [Read],
+    GarageDoor => "garage_door" [Read, Write],
     Holiday => "holiday" [Read],
     HomeAssistant => "home_assistant" [Read, Write],
     Http => "http" [Write],
@@ -105,6 +106,7 @@ scopes! {
     EventsDoor => "events.door" [Read],
     EventsEnvironment => "events.environment" [Read],
     EventsFuelWatch => "events.fuelwatch" [Read],
+    EventsGarageDoor => "events.garage_door" [Read],
     EventsHomeAssistant => "events.home_assistant" [Read],
     EventsJellyfin => "events.jellyfin" [Read],
     EventsLight => "events.light" [Read],
@@ -125,6 +127,7 @@ impl Resource {
         Some(match kind {
             "presence" => Self::EventsPresence,
             "door" => Self::EventsDoor,
+            "garage_door" => Self::EventsGarageDoor,
             "switch" => Self::EventsSwitch,
             "environment" => Self::EventsEnvironment,
             "plant" => Self::EventsPlant,

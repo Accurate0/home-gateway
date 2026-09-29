@@ -9,6 +9,7 @@ use crate::graphql::mutations::workflows_mutation::WorkflowsMutation;
 pub mod adhoc_mutation;
 pub mod eink_display_mutation;
 pub mod entities_mutation;
+pub mod garage_door_mutation;
 pub mod light_mutation;
 pub mod lua_mutation;
 pub mod media_player_mutation;

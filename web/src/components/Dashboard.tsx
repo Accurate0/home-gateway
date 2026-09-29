@@ -16,12 +16,15 @@ import type { DashboardSetColourMutation } from "./__generated__/DashboardSetCol
 import type { DashboardVacuumStartMutation } from "./__generated__/DashboardVacuumStartMutation.graphql";
 import type { DashboardVacuumStopMutation } from "./__generated__/DashboardVacuumStopMutation.graphql";
 import type { DashboardVacuumDockMutation } from "./__generated__/DashboardVacuumDockMutation.graphql";
+import type { DashboardGarageDoorOpenMutation } from "./__generated__/DashboardGarageDoorOpenMutation.graphql";
+import type { DashboardGarageDoorCloseMutation } from "./__generated__/DashboardGarageDoorCloseMutation.graphql";
 import type { DashboardMediaPlayPauseMutation } from "./__generated__/DashboardMediaPlayPauseMutation.graphql";
 import type { DashboardMediaStopMutation } from "./__generated__/DashboardMediaStopMutation.graphql";
 import type { DashboardEinkConfigQuery } from "./__generated__/DashboardEinkConfigQuery.graphql";
 import type { DashboardTakeScreenshotMutation } from "./__generated__/DashboardTakeScreenshotMutation.graphql";
 import EntityCard, {
   type EinkActions,
+  type GarageDoorActions,
   type LightActions,
   type MediaPlayerActions,
   type VacuumActions,
@@ -131,6 +134,17 @@ const EntitiesQuery = graphql`
         artworkUrl
         lastSeen
       }
+      ... on GarageDoorEntity {
+        category
+        id
+        name
+        room
+        garageState: state
+        battery {
+          percentage
+        }
+        lastSeen
+      }
       ... on RobotVacuumEntity {
         category
         id
@@ -163,6 +177,11 @@ const EventsSubscription = graphql`
         id
         name
         open
+      }
+      ... on GarageDoorUpdate {
+        id
+        name
+        garageState: state
       }
       ... on PresenceUpdate {
         id
@@ -279,6 +298,22 @@ const VacuumDockMutation = graphql`
   mutation DashboardVacuumDockMutation($id: IdOrAlias!) {
     robotVacuum(id: $id) {
       dock
+    }
+  }
+`;
+
+const GarageDoorOpenMutation = graphql`
+  mutation DashboardGarageDoorOpenMutation($id: IdOrAlias!) {
+    garageDoor(id: $id) {
+      open
+    }
+  }
+`;
+
+const GarageDoorCloseMutation = graphql`
+  mutation DashboardGarageDoorCloseMutation($id: IdOrAlias!) {
+    garageDoor(id: $id) {
+      close
     }
   }
 `;
@@ -428,6 +463,12 @@ export default function Dashboard() {
     useMutation<DashboardVacuumStopMutation>(VacuumStopMutation);
   const [commitVacuumDock] =
     useMutation<DashboardVacuumDockMutation>(VacuumDockMutation);
+  const [commitGarageDoorOpen] = useMutation<DashboardGarageDoorOpenMutation>(
+    GarageDoorOpenMutation,
+  );
+  const [commitGarageDoorClose] = useMutation<DashboardGarageDoorCloseMutation>(
+    GarageDoorCloseMutation,
+  );
   const [commitMediaPlayPause] = useMutation<DashboardMediaPlayPauseMutation>(
     MediaPlayPauseMutation,
   );
@@ -477,6 +518,11 @@ export default function Dashboard() {
     onStart: () => commitVacuumStart({ variables: { id: entity.id } }),
     onStop: () => commitVacuumStop({ variables: { id: entity.id } }),
     onDock: () => commitVacuumDock({ variables: { id: entity.id } }),
+  });
+
+  const garageDoorActionsFor = (entity: Entity): GarageDoorActions => ({
+    onOpen: () => commitGarageDoorOpen({ variables: { id: entity.id } }),
+    onClose: () => commitGarageDoorClose({ variables: { id: entity.id } }),
   });
 
   const mediaPlayerActionsFor = (entity: Entity): MediaPlayerActions => ({
@@ -596,6 +642,11 @@ export default function Dashboard() {
                 vacuumActions={
                   entity.kind === "robotVacuum"
                     ? vacuumActionsFor(entity)
+                    : undefined
+                }
+                garageDoorActions={
+                  entity.kind === "garageDoor"
+                    ? garageDoorActionsFor(entity)
                     : undefined
                 }
                 mediaPlayerActions={

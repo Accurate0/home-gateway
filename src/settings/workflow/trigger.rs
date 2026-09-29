@@ -6,6 +6,7 @@ use serde::Deserialize;
 use super::{Comparison, EnvMetric, LeafCondition};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
+use crate::db::GarageDoorState;
 use crate::event_bus::{
     CustomEventSource, FeatureFlagState, ForecastDay, FuelChange, PlaybackState, SensorMetric,
     SolarMetric, WeatherMetric, WeatherSource,
@@ -29,6 +30,11 @@ pub enum TriggerMatcher {
         #[serde(rename = "device", alias = "ieeeAddr")]
         ieee_addr: IEEEAddress,
         open: bool,
+    },
+    GarageDoor {
+        device: IEEEAddress,
+        #[serde(default)]
+        state: Option<GarageDoorState>,
     },
     Switch {
         #[serde(rename = "device", alias = "ieeeAddr")]
@@ -195,6 +201,7 @@ impl TriggerMatcher {
         match self {
             TriggerMatcher::Presence { .. } => "presence",
             TriggerMatcher::Door { .. } => "door",
+            TriggerMatcher::GarageDoor { .. } => "garage_door",
             TriggerMatcher::Switch { .. } => "switch",
             TriggerMatcher::Environment { .. } => "environment",
             TriggerMatcher::Plant { .. } => "plant",
@@ -231,6 +238,13 @@ impl TriggerMatcher {
             TriggerMatcher::Door { ieee_addr, open } => Some(LeafCondition::Door {
                 ieee_addr: ieee_addr.clone(),
                 open: *open,
+            }),
+            TriggerMatcher::GarageDoor {
+                device,
+                state: Some(state),
+            } => Some(LeafCondition::GarageDoor {
+                device: device.clone(),
+                state: *state,
             }),
             TriggerMatcher::Environment {
                 sensor,
@@ -286,6 +300,7 @@ impl TriggerMatcher {
                 on: *on,
             }),
             TriggerMatcher::HomeAssistant { state: None, .. }
+            | TriggerMatcher::GarageDoor { state: None, .. }
             | TriggerMatcher::Light { on: None, .. }
             | TriggerMatcher::CommandFailed { .. }
             | TriggerMatcher::FeatureFlag { .. }
@@ -317,6 +332,10 @@ impl TriggerMatcher {
                     if *open { "open" } else { "closed" }
                 )
             }
+            TriggerMatcher::GarageDoor { device, state } => match state {
+                Some(state) => format!("garage_door({device}) -> {state}"),
+                None => format!("garage_door({device})"),
+            },
             TriggerMatcher::Switch {
                 ieee_addr,
                 action: Some(action),
@@ -493,7 +512,10 @@ impl TriggerMatcher {
         match self {
             TriggerMatcher::Door { ieee_addr, .. }
             | TriggerMatcher::Switch { ieee_addr, .. }
-            | TriggerMatcher::Light { ieee_addr, .. } => {
+            | TriggerMatcher::Light { ieee_addr, .. }
+            | TriggerMatcher::GarageDoor {
+                device: ieee_addr, ..
+            } => {
                 validate_device(ieee_addr, devices)?;
             }
             TriggerMatcher::CommandFailed {

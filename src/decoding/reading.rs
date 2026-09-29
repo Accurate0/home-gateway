@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Deserializer};
 
+use crate::db::GarageDoorState;
 use crate::device_metric::MetricValue;
 use crate::settings::Metric;
 
@@ -28,6 +29,8 @@ pub struct DeviceReading {
     pub robot_vacuum: Option<RobotVacuumFields>,
     #[serde(default)]
     pub media_player: Option<MediaPlayerFields>,
+    #[serde(default)]
+    pub garage_door: Option<GarageDoorFields>,
     #[serde(default)]
     pub metrics: BTreeMap<String, ReadingMetric>,
 }
@@ -58,6 +61,15 @@ pub struct MediaPlayerFields {
     pub state: Option<String>,
     #[serde(default)]
     pub attributes: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GarageDoorFields {
+    #[serde(default)]
+    pub state: Option<GarageDoorState>,
+    #[serde(default)]
+    pub contact: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

@@ -25,6 +25,7 @@ use crate::graphql::{
     dataloader::device_battery_history::DeviceBatteryHistoryDataLoader,
     dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::forecast::ForecastDataLoader,
+    dataloader::garage_door_state::GarageDoorStateDataLoader,
     dataloader::home_assistant_state::HomeAssistantStateDataLoader,
     dataloader::last_seen::LastSeenDataLoader,
     dataloader::media_player_state::MediaPlayerStateDataLoader,
@@ -165,6 +166,12 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     .data(DataLoader::new(
         RobotVacuumStateDataLoader {
             repo: state.repos.robot_vacuum().clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        GarageDoorStateDataLoader {
+            repo: state.repos.garage_door().clone(),
         },
         tokio::spawn,
     ))

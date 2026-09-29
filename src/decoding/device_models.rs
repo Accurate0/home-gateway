@@ -7,6 +7,7 @@ pub struct DeviceModels {
     pub mqtt: Models,
     pub esphome_native_api: Models,
     pub home_assistant: Models,
+    pub tuya: Models,
 }
 
 impl DeviceModels {
@@ -15,6 +16,7 @@ impl DeviceModels {
             Transport::Mqtt => Some(&self.mqtt),
             Transport::EsphomeNativeApi => Some(&self.esphome_native_api),
             Transport::HomeAssistant => Some(&self.home_assistant),
+            Transport::Tuya => Some(&self.tuya),
             Transport::EinkDisplayFirmware | Transport::Trmnl => None,
         }
     }

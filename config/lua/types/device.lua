@@ -54,9 +54,18 @@
 
 ---@alias LightEncoder fun(input: LightEncodeInput): table?
 
+---@alias GarageDoorState "open"|"opening"|"closed"|"closing"
+
+---@class GarageDoorEncodeInput
+---@field command "open"|"close"
+---@field current GarageDoorState?
+
+---@alias GarageDoorEncoder fun(input: GarageDoorEncodeInput): table?
+
 ---@class DeviceEncoders
 ---@field light LightEncoder?
 ---@field smart_switch LightEncoder?
+---@field garage_door GarageDoorEncoder?
 
 ---@class SmartSwitchFields
 ---@field state string?
@@ -88,6 +97,10 @@
 ---@field state string?
 ---@field attributes table<string, any>?
 
+---@class GarageDoorFields
+---@field state GarageDoorState?
+---@field contact boolean?
+
 ---@class DeviceReading
 ---@field battery integer?
 ---@field door DoorFields?
@@ -99,4 +112,5 @@
 ---@field control_switch ControlSwitchFields?
 ---@field robot_vacuum RobotVacuumFields?
 ---@field media_player MediaPlayerFields?
+---@field garage_door GarageDoorFields?
 ---@field metrics table<string, number|string|boolean>?

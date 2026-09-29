@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use crate::actors::alarm::lua::AlarmLua;
 use crate::actors::devices::door_events::lua::DoorLua;
 use crate::actors::devices::environment_sensor::lua::EnvironmentLua;
+use crate::actors::devices::garage_door::lua::GarageDoorLua;
 use crate::actors::devices::light::lua::LightLua;
 use crate::actors::devices::media_player::lua::MediaLua;
 use crate::actors::devices::presence_sensor::lua::PresenceLua;
@@ -128,6 +129,7 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(DeviceLua)
         .insert(BatteryLua)
         .insert(VacuumLua)
+        .insert(GarageDoorLua)
         .insert(EnergyLua)
         .insert(WoolworthsLua)
         .insert(TransperthLua)
@@ -261,6 +263,7 @@ mod tests {
             "config/lua/models/mqtt",
             "config/lua/models/home_assistant",
             "config/lua/models/esphome_native_api",
+            "config/lua/models/tuya",
         ] {
             let sources =
                 load_directory(&PathBuf::from(directory)).expect("expected the directory to load");

@@ -152,6 +152,7 @@ fn build_with_devices(devices_yaml: &str) -> String {
         "lua/models/mqtt",
         "lua/models/esphome_native_api",
         "lua/models/home_assistant",
+        "lua/models/tuya",
     ] {
         std::fs::create_dir_all(dir.join(models)).unwrap();
 

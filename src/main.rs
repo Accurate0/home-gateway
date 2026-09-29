@@ -34,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
         registry,
         mqtt,
         esphome_nodes,
+        tuya_devices,
     } = startup::handles::build(&storage, &feature_flag_client).await?;
 
     let listen_addr = storage.settings.http.listen_address;
@@ -80,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
     let home_assistant = state.handles.get::<HomeAssistant>().cloned();
     let home_assistant_websocket = state.settings.home_assistant.websocket;
     let esphome = state.settings.integrations.esphome.clone();
+    let tuya = state.settings.integrations.tuya.clone();
     let jellyfin = state.handles.get::<Jellyfin>().cloned();
     let jellyfin_websocket = state.settings.integrations.jellyfin.websocket;
 
@@ -96,6 +98,8 @@ async fn main() -> anyhow::Result<()> {
             home_assistant_websocket,
             esphome,
             esphome_nodes,
+            tuya,
+            tuya_devices,
             jellyfin,
             jellyfin_websocket,
             devices,

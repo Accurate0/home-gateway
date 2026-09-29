@@ -8,6 +8,8 @@ pub enum NotificationSource {
     WatchdogRecovered,
     #[strum(to_string = "door.left_open")]
     DoorLeftOpen,
+    #[strum(to_string = "garage_door.left_open")]
+    GarageDoorLeftOpen,
     #[strum(to_string = "workflow.notify.{slug}")]
     Workflow { slug: String },
     #[strum(to_string = "lua.notify.{origin}")]

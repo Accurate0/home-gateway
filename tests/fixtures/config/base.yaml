@@ -68,10 +68,12 @@ actors:
     mqtt_ingest: 5
     home_assistant_ingest: 1
     esphome_native_api_ingest: 1
+    tuya_ingest: 1
     devices:
       control_switch: 3
       door: 1
       environment: 1
+      garage_door: 1
       light: 1
       media_player: 1
       plant: 1
@@ -98,6 +100,17 @@ integrations:
       min: 5s
       max: 5m
       log_attempts: 3
+  tuya:
+    state: disabled
+    models: lua/models/tuya
+    port: 6668
+    heartbeat: 10s
+    silence_timeout: 30s
+    reconnect:
+      min: 5s
+      max: 5m
+      log_attempts: 3
+    devices: {}
   holidays:
     url: http://127.0.0.1:9/holidays.ics
     regions: [Western Australia]
@@ -456,6 +469,11 @@ adhoc:
     trim_door_sensor:
       state: enabled
       schedule: "5 3 * * *"
+      parameters:
+        retention: 8760h
+    trim_garage_door_events:
+      state: enabled
+      schedule: "10 3 * * *"
       parameters:
         retention: 8760h
     trim_home_assistant_events:

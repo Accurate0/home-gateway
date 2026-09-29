@@ -80,6 +80,11 @@ type CommandFailedUpdate {
 	colour: String
 }
 
+enum CommandOutcome {
+	SENT
+	UNCHANGED
+}
+
 type CronUpdate {
 	eventId: UUID!
 	name: String!
@@ -250,7 +255,7 @@ type EnergyObject {
 	gaps(input: EnergyGapsInput!): [EnergyGap!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | PlantEntity | DoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
+union Entity = LightEntity | EnvironmentEntity | PlantEntity | DoorEntity | GarageDoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
 
 """
 The dashboard section a device kind is displayed under. Owned by the backend
@@ -326,7 +331,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -388,6 +393,39 @@ type FuelWatchUpdate {
 	address: String!
 	oldPrice: Float!
 	newPrice: Float!
+}
+
+type GarageDoorEntity {
+	category: EntityCategory!
+	id: String!
+	aliases: [String!]!
+	name: String!
+	room: String
+	battery: DeviceBattery
+	state: GarageDoorState
+	open: Boolean
+	contact: Boolean
+	changedAt: DateTime
+	lastSeen: DateTime
+}
+
+type GarageDoorMutation {
+	open: CommandOutcome!
+	close: CommandOutcome!
+}
+
+enum GarageDoorState {
+	OPEN
+	OPENING
+	CLOSED
+	CLOSING
+}
+
+type GarageDoorUpdate {
+	eventId: UUID!
+	id: ID!
+	name: String!
+	state: GarageDoorState!
 }
 
 type GenerationHistory {
@@ -712,6 +750,7 @@ type ModeUpdate {
 type MutationRoot {
 	light(id: IdOrAlias!): LightMutation!
 	robotVacuum(id: IdOrAlias!): RobotVacuumMutation!
+	garageDoor(id: IdOrAlias!): GarageDoorMutation!
 	mediaPlayer(id: IdOrAlias!): MediaPlayerMutation!
 	einkDisplay(id: IdOrAlias!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
@@ -899,6 +938,7 @@ type QueryRoot {
 	plant(id: IdOrAlias!): PlantEntity!
 	einkDisplay(id: IdOrAlias!): EinkDisplayEntity!
 	robotVacuum(id: IdOrAlias!): RobotVacuumEntity!
+	garageDoor(id: IdOrAlias!): GarageDoorEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!

@@ -88,6 +88,17 @@ const BatteryQuery = graphql`
           }
         }
       }
+      ... on GarageDoorEntity {
+        id
+        name
+        room
+        battery {
+          history(since: $since) {
+            time
+            batteryPercentage
+          }
+        }
+      }
     }
   }
 `;

@@ -7,10 +7,12 @@ workers:
   mqtt_ingest: 5
   home_assistant_ingest: 2
   esphome_native_api_ingest: 1
+  tuya_ingest: 1
   devices:
     control_switch: 3
     door: 1
     environment: 1
+    garage_door: 1
     light: 1
     media_player: 1
     plant: 1

@@ -208,7 +208,11 @@ fn resolve_commands(
         ));
     }
 
-    for role in [DeviceRoleName::Light, DeviceRoleName::SmartSwitch] {
+    for role in [
+        DeviceRoleName::Light,
+        DeviceRoleName::SmartSwitch,
+        DeviceRoleName::GarageDoor,
+    ] {
         let name = role.to_string();
         let encodes = decoder
             .has_function_at(slug, &["encode", &name])
@@ -284,6 +288,19 @@ fn resolve_entities(
             if declared.is_some() {
                 return Err(format!(
                     "{kind} model {slug}: the node lists its own entities over the api, so `entities` is not allowed"
+                ));
+            }
+
+            Ok(ModelEntities::Payload)
+        }
+        (Transport::Tuya, _) => {
+            let declared = decoder
+                .field::<serde_json::Value>(slug, "entities")
+                .map_err(error)?;
+
+            if declared.is_some() {
+                return Err(format!(
+                    "{kind} model {slug}: tuya devices report data points, so `entities` is not allowed"
                 ));
             }
 
@@ -851,5 +868,103 @@ mod tests {
                 "{command}"
             );
         }
+    }
+
+    fn garage_door() -> (Models, LuaDecoder) {
+        let sources =
+            crate::lua::sources::load_directory(std::path::Path::new("./config/lua/models/tuya"))
+                .expect("committed tuya models");
+        let library = library();
+
+        let models = load_models(
+            Transport::Tuya,
+            &sources,
+            &library,
+            &LuaSettings::default(),
+            &MqttProtocols::committed(),
+        )
+        .expect("committed models");
+
+        let decoder =
+            LuaDecoder::load("tuya", &sources, &library, &LuaSettings::default()).expect("decoder");
+
+        (models, decoder)
+    }
+
+    fn decode_garage_door(dps: Value, changed: Value) -> DeviceReading {
+        let (models, decoder) = garage_door();
+        let input = serde_json::json!({ "dps": dps, "changed": changed });
+
+        models["csh_gapnt_178"]
+            .decode(&decoder, &input)
+            .expect("decode")
+    }
+
+    fn encode_garage_door(command: &str, current: Option<&str>) -> Option<Value> {
+        let (models, decoder) = garage_door();
+        let input = serde_json::json!({ "command": command, "current": current });
+
+        models["csh_gapnt_178"]
+            .encode(&decoder, DeviceRoleName::GarageDoor, &input)
+            .expect("encode")
+    }
+
+    #[test]
+    fn the_garage_door_opener_reports_its_state_contact_and_battery() {
+        use crate::db::GarageDoorState;
+        use serde_json::json;
+
+        let snapshot = json!({ "101": "fopen", "102": "closed", "104": 100, "105": false });
+
+        let reading = decode_garage_door(snapshot.clone(), snapshot);
+        let door = reading.garage_door.expect("garage door");
+
+        assert_eq!(door.state, Some(GarageDoorState::Closed));
+        assert_eq!(door.contact, Some(false));
+        assert_eq!(reading.battery, Some(100));
+
+        let reading = decode_garage_door(
+            json!({ "102": "openning", "104": 100, "105": false }),
+            json!({ "102": "openning" }),
+        );
+
+        assert_eq!(
+            reading.garage_door.expect("garage door").state,
+            Some(GarageDoorState::Opening)
+        );
+        assert_eq!(reading.battery, None);
+    }
+
+    #[test]
+    fn a_battery_only_report_is_not_a_door_reading() {
+        use serde_json::json;
+
+        let reading = decode_garage_door(
+            json!({ "102": "closed", "104": 90, "105": false }),
+            json!({ "104": 90 }),
+        );
+
+        assert!(reading.garage_door.is_none());
+        assert_eq!(reading.battery, Some(90));
+    }
+
+    #[test]
+    fn the_garage_door_opener_only_moves_when_it_would_change_state() {
+        use serde_json::json;
+
+        assert_eq!(
+            encode_garage_door("open", Some("closed")),
+            Some(json!({ "101": "fopen" }))
+        );
+        assert_eq!(
+            encode_garage_door("close", Some("open")),
+            Some(json!({ "101": "fclose" }))
+        );
+        assert_eq!(
+            encode_garage_door("open", None),
+            Some(json!({ "101": "fopen" }))
+        );
+        assert_eq!(encode_garage_door("open", Some("open")), None);
+        assert_eq!(encode_garage_door("close", Some("closed")), None);
     }
 }

@@ -3,10 +3,11 @@ use crate::{
     actors::devices::{
         control_switch, control_switch::ControlSwitchHandler, door_sensor,
         door_sensor::DoorSensorHandler, environment_sensor,
-        environment_sensor::EnvironmentSensorHandler, light, light::LightHandler, media_player,
-        media_player::MediaPlayerHandler, plant_sensor, plant_sensor::PlantSensorHandler,
-        presence_sensor, presence_sensor::PresenceSensorHandler, robot_vacuum,
-        robot_vacuum::RobotVacuumHandler, smart_switch, smart_switch::SmartSwitchHandler,
+        environment_sensor::EnvironmentSensorHandler, garage_door, garage_door::GarageDoorHandler,
+        light, light::LightHandler, media_player, media_player::MediaPlayerHandler, plant_sensor,
+        plant_sensor::PlantSensorHandler, presence_sensor, presence_sensor::PresenceSensorHandler,
+        robot_vacuum, robot_vacuum::RobotVacuumHandler, smart_switch,
+        smart_switch::SmartSwitchHandler,
     },
     device_registry::DeviceRegistry,
     repo::light::LightAttributes,
@@ -447,6 +448,49 @@ impl DecodedRole for media_player::MediaPlayerReading {
 
     fn into_message(self, event_id: Uuid) -> Self::Message {
         media_player::Message::HomeAssistant(media_player::Update {
+            event_id,
+            traceparent: crate::tracing_context::inject_current(),
+            reading: self,
+        })
+    }
+}
+
+impl DecodedRole for garage_door::GarageDoorReading {
+    type Message = garage_door::Message;
+
+    const ACTOR: &'static str = GarageDoorHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.garage_door.is_some()
+    }
+
+    fn declared(devices: &DeviceRegistry, address: &str) -> bool {
+        devices.garage_door(address).is_some()
+    }
+
+    fn extract(
+        device: &DecodedDevice,
+        _friendly_name: &str,
+        reading: &DeviceReading,
+    ) -> Option<Self> {
+        let address = &device.address;
+
+        let fields = reading.garage_door.as_ref()?;
+
+        let Some(state) = fields.state else {
+            tracing::info!("skipping garage door reading for {address}: no state");
+            return None;
+        };
+
+        Some(garage_door::GarageDoorReading {
+            address: address.clone(),
+            state,
+            contact: fields.contact,
+        })
+    }
+
+    fn into_message(self, event_id: Uuid) -> Self::Message {
+        garage_door::Message::NewEvent(garage_door::NewEvent {
             event_id,
             traceparent: crate::tracing_context::inject_current(),
             reading: self,

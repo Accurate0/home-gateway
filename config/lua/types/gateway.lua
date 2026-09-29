@@ -4,6 +4,8 @@
 
 ---@alias gw.EnvMetric "temperature"|"humidity"|"pressure"|"lux"|"uv_index"
 
+---@alias gw.GarageDoorCommand "open"|"close"
+
 ---@alias gw.LightState { state: "ON" }|{ state: "OFF" }|{ state: "TOGGLE" }|{ value: integer, state: "SET_BRIGHTNESS" }|{ value: integer, on_off?: boolean, state: "INCREASE_BRIGHTNESS" }|{ value: integer, on_off?: boolean, state: "DECREASE_BRIGHTNESS" }|{ value: integer, state: "INCREASE_COLOUR_TEMPERATURE" }|{ value: integer, state: "DECREASE_COLOUR_TEMPERATURE" }|{ state: "STOP_COLOUR_TEMPERATURE" }|{ state: "STOP_BRIGHTNESS" }
 
 ---@alias gw.Mode "home"|"away"|"vacation"|"guest"
@@ -72,6 +74,13 @@
 ---@field price_tomorrow? number
 ---@field latitude number
 ---@field longitude number
+
+---@class gw.GarageDoorStatus
+---@field state string
+---@field open boolean
+---@field contact? boolean
+---@field changed_at integer
+---@field updated_at integer
 
 ---@class gw.HttpRequest
 ---@field url string
@@ -488,6 +497,19 @@ function vacuum.state(device) end
 ---@param device string
 ---@param command gw.VacuumCommand
 function vacuum.command(device, command) end
+
+---@class gw.api.garage_door
+garage_door = {}
+
+---Requires the `garage_door:read` scope.
+---@param device string
+---@return gw.GarageDoorStatus?
+function garage_door.state(device) end
+
+---Requires the `garage_door:write` scope.
+---@param device string
+---@param command gw.GarageDoorCommand
+function garage_door.command(device, command) end
 
 ---@class gw.api.energy
 energy = {}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO latest_garage_door_state (device_id, state, contact) VALUES ($1, $2, $3) ON CONFLICT (device_id) DO UPDATE SET changed_at = CASE WHEN latest_garage_door_state.state = EXCLUDED.state THEN latest_garage_door_state.changed_at ELSE now() END, state = EXCLUDED.state, contact = COALESCE(EXCLUDED.contact, latest_garage_door_state.contact), updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        {
+          "Custom": {
+            "name": "garage_door_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "opening",
+                "closed",
+                "closing"
+              ]
+            }
+          }
+        },
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ac88f9abc89f25b521e46491644e58d061a9915d463578a8d01c617f1931318"
+}

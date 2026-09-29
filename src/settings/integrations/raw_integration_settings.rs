@@ -13,6 +13,7 @@ use super::solar::SolarSettings;
 use super::synergy::SynergySettings;
 use super::transperth::{RawTransperthSettings, TransperthSettings};
 use super::trmnl::TrmnlSettings;
+use super::tuya::TuyaSettings;
 use super::willyweather::WillyWeatherSettings;
 use super::woolworths::WoolworthsSettings;
 
@@ -33,6 +34,7 @@ pub struct RawIntegrationSettings {
     solar: SolarSettings,
     synergy: SynergySettings,
     transperth: RawTransperthSettings,
+    pub(crate) tuya: TuyaSettings,
 }
 
 impl RawIntegrationSettings {
@@ -49,9 +51,11 @@ impl RawIntegrationSettings {
             solar,
             synergy,
             transperth,
+            tuya,
         } = self;
 
         validate_esphome(&esphome)?;
+        validate_tuya(&tuya)?;
         validate_holidays(&holidays)?;
         validate_jellyfin(&jellyfin)?;
         validate_willyweather(&willyweather)?;
@@ -74,8 +78,43 @@ impl RawIntegrationSettings {
             solar,
             synergy,
             transperth,
+            tuya,
         })
     }
+}
+
+fn validate_tuya(tuya: &TuyaSettings) -> Result<(), String> {
+    if !tuya.state.is_enabled() {
+        return Ok(());
+    }
+
+    for (id, device) in &tuya.devices {
+        let variable = format!("INTEGRATIONS__TUYA__DEVICES__{id}__LOCAL_KEY");
+
+        let Some(local_key) = device
+            .local_key
+            .as_deref()
+            .filter(|key| !missing(Some(key)))
+        else {
+            return Err(format!(
+                "integrations.tuya.devices.{id}.local_key is required (set {variable})"
+            ));
+        };
+
+        if local_key.len() != 16 {
+            return Err(format!(
+                "integrations.tuya.devices.{id}.local_key must be 16 bytes (check {variable})"
+            ));
+        }
+
+        if device.host.trim().is_empty() {
+            return Err(format!(
+                "integrations.tuya.devices.{id}.host must not be empty"
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_esphome(esphome: &EsphomeSettings) -> Result<(), String> {

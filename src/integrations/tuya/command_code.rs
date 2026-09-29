@@ -1,0 +1,9 @@
+pub const SESS_KEY_NEG_START: u32 = 0x03;
+pub const SESS_KEY_NEG_RESP: u32 = 0x04;
+pub const SESS_KEY_NEG_FINISH: u32 = 0x05;
+pub const CONTROL: u32 = 0x07;
+pub const STATUS: u32 = 0x08;
+pub const HEART_BEAT: u32 = 0x09;
+pub const DP_QUERY: u32 = 0x0a;
+pub const CONTROL_NEW: u32 = 0x0d;
+pub const DP_QUERY_NEW: u32 = 0x10;

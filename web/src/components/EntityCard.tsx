@@ -1,4 +1,6 @@
 import {
+  ArrowDownToLine,
+  ArrowUpToLine,
   BatteryFull,
   BatteryLow,
   BatteryMedium,
@@ -22,12 +24,18 @@ import {
   UserX,
   Volume2,
   VolumeX,
+  Warehouse,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog, Popover, Slider } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { authHeaders } from "@/relay";
-import { formatLastSeen, isPlaying, type Entity } from "@/entities";
+import {
+  formatLastSeen,
+  isGarageDoorMoving,
+  isPlaying,
+  type Entity,
+} from "@/entities";
 
 export interface LightActions {
   onToggle: () => void;
@@ -41,6 +49,11 @@ export interface VacuumActions {
   onStart: () => void;
   onStop: () => void;
   onDock: () => void;
+}
+
+export interface GarageDoorActions {
+  onOpen: () => void;
+  onClose: () => void;
 }
 
 export interface MediaPlayerActions {
@@ -981,10 +994,85 @@ function VacuumControls({ actions }: { actions?: VacuumActions }) {
   );
 }
 
+function GarageDoorTile({
+  entity,
+  actions,
+  now,
+}: {
+  entity: Entity;
+  actions?: GarageDoorActions;
+  now: number;
+}) {
+  const state = entity.garageState;
+  const open = state != null && state !== "CLOSED";
+  const moving = isGarageDoorMoving(state);
+  const percentage = entity.battery?.percentage;
+  const t = STATUS_TONES.open;
+  const cls =
+    "border-border text-muted-foreground hover:bg-muted flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-xs font-medium disabled:opacity-40";
+  return (
+    <Tile className={cn("col-span-1 justify-between gap-3", open && t.active)}>
+      <div className="flex items-start justify-between">
+        <div
+          className={cn(
+            "grid size-10 place-items-center rounded-xl transition-colors",
+            open ? t.iconActive : "bg-muted text-muted-foreground",
+          )}
+        >
+          <Warehouse
+            className={cn("size-5", moving && "animate-pulse")}
+            strokeWidth={1.5}
+          />
+        </div>
+        {percentage != null && (
+          <div
+            className="text-muted-foreground flex items-center gap-1.5 tabular-nums"
+            title="Door sensor battery"
+          >
+            <BatteryMedium className="size-4" strokeWidth={1.75} />
+            <span className="text-sm">{Math.round(percentage)}%</span>
+          </div>
+        )}
+      </div>
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+        <StatePill tone={state == null ? "unknown" : open ? "on" : "off"}>
+          {state?.toLowerCase() ?? "unknown"}
+        </StatePill>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={actions?.onOpen}
+          disabled={state === "OPEN" || state === "OPENING"}
+          className={cls}
+        >
+          <ArrowUpToLine className="size-3.5" strokeWidth={2} />
+          Open
+        </button>
+        <button
+          type="button"
+          onClick={actions?.onClose}
+          disabled={state === "CLOSED" || state === "CLOSING"}
+          className={cls}
+        >
+          <ArrowDownToLine className="size-3.5" strokeWidth={2} />
+          Close
+        </button>
+      </div>
+    </Tile>
+  );
+}
+
 export default function EntityCard({
   entity,
   lightActions,
   vacuumActions,
+  garageDoorActions,
   mediaPlayerActions,
   einkActions,
   now,
@@ -992,6 +1080,7 @@ export default function EntityCard({
   entity: Entity;
   lightActions?: LightActions;
   vacuumActions?: VacuumActions;
+  garageDoorActions?: GarageDoorActions;
   mediaPlayerActions?: MediaPlayerActions;
   einkActions?: EinkActions;
   now: number;
@@ -1034,6 +1123,10 @@ export default function EntityCard({
     case "robotVacuum":
       return (
         <RobotVacuumTile entity={entity} actions={vacuumActions} now={now} />
+      );
+    case "garageDoor":
+      return (
+        <GarageDoorTile entity={entity} actions={garageDoorActions} now={now} />
       );
     case "mediaPlayer":
       return (

@@ -157,6 +157,23 @@
             "type",
             "address"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "tuya"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
         }
       ]
     },
@@ -327,6 +344,22 @@
             },
             "config": {
               "$ref": "#/$defs/RawMediaPlayerBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "garage_door"
+            },
+            "config": {
+              "$ref": "#/$defs/RawGarageDoorSettings"
             }
           },
           "required": [
@@ -712,6 +745,53 @@
       },
       "required": [
         "name"
+      ]
+    },
+    "RawGarageDoorSettings": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NotifyRef"
+          }
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "timeout": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string",
+              "const": "armed"
+            }
+          },
+          "required": [
+            "state",
+            "timeout"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "const": "unarmed"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        }
       ]
     },
     "RawDeviceWatchdog": {

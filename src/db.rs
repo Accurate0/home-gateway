@@ -46,3 +46,27 @@ pub enum DoorState {
     Open,
     Closed,
 }
+
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    sqlx::Type,
+    Serialize,
+    Deserialize,
+    Enum,
+    Eq,
+    Copy,
+    schemars::JsonSchema,
+    strum::Display,
+)]
+#[sqlx(type_name = "garage_door_state", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum GarageDoorState {
+    Open,
+    Opening,
+    Closed,
+    Closing,
+}

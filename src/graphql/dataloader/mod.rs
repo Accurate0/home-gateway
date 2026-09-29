@@ -2,6 +2,7 @@ pub mod device_battery;
 pub mod device_battery_history;
 pub mod eink_battery;
 pub mod forecast;
+pub mod garage_door_state;
 pub mod home_assistant_state;
 pub mod last_seen;
 pub mod media_player_state;

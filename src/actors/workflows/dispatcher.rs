@@ -251,6 +251,17 @@ impl WorkflowDispatcher {
                 },
             ) => devices.address_or_self(ieee_addr) == a.as_str() && open == o,
             (
+                TriggerMatcher::GarageDoor { device, state },
+                EventBusMessage::GarageDoor {
+                    device_id,
+                    state: s,
+                    ..
+                },
+            ) => {
+                devices.resolve_id(device) == Some(device_id.as_str())
+                    && state.is_none_or(|state| state == *s)
+            }
+            (
                 TriggerMatcher::Light { ieee_addr, on },
                 EventBusMessage::Light {
                     ieee_addr: a,

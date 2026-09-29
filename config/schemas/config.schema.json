@@ -304,6 +304,11 @@
           "format": "uint",
           "minimum": 0
         },
+        "tuya_ingest": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
         "devices": {
           "type": "object",
           "properties": {
@@ -328,6 +333,11 @@
               "minimum": 0
             },
             "environment": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            },
+            "garage_door": {
               "type": "integer",
               "format": "uint",
               "minimum": 0
@@ -375,6 +385,7 @@
         "mqtt_ingest",
         "home_assistant_ingest",
         "esphome_native_api_ingest",
+        "tuya_ingest",
         "devices"
       ]
     },
@@ -568,6 +579,7 @@
         "control_switch",
         "robot_vacuum",
         "media_player",
+        "garage_door",
         "eink_display_firmware",
         "trmnl"
       ]
@@ -788,6 +800,23 @@
             "type",
             "address"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "tuya"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "address"
+          ]
         }
       ]
     },
@@ -958,6 +987,22 @@
             },
             "config": {
               "$ref": "#/$defs/RawMediaPlayerBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "garage_door"
+            },
+            "config": {
+              "$ref": "#/$defs/RawGarageDoorSettings"
             }
           },
           "required": [
@@ -1326,6 +1371,53 @@
       },
       "required": [
         "name"
+      ]
+    },
+    "RawGarageDoorSettings": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "notify": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NotifyRef"
+          }
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "timeout": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string",
+              "const": "armed"
+            }
+          },
+          "required": [
+            "state",
+            "timeout"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "const": "unarmed"
+            }
+          },
+          "required": [
+            "state"
+          ]
+        }
       ]
     },
     "RawDeviceWatchdog": {
@@ -2021,6 +2113,36 @@
         {
           "type": "object",
           "properties": {
+            "device": {
+              "type": "string"
+            },
+            "command": {
+              "$ref": "#/$defs/GarageDoorCommand"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "garage_door"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "command"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "returns": {
               "type": "object",
               "additionalProperties": {
@@ -2225,6 +2347,26 @@
             "type",
             "device",
             "open"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "state": {
+              "$ref": "#/$defs/GarageDoorState"
+            },
+            "type": {
+              "type": "string",
+              "const": "garage_door"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "state"
           ]
         },
         {
@@ -2498,6 +2640,15 @@
         "eq"
       ]
     },
+    "GarageDoorState": {
+      "type": "string",
+      "enum": [
+        "open",
+        "opening",
+        "closed",
+        "closing"
+      ]
+    },
     "SunPeriod": {
       "type": "string",
       "enum": [
@@ -2722,6 +2873,13 @@
         "dock"
       ]
     },
+    "GarageDoorCommand": {
+      "type": "string",
+      "enum": [
+        "open",
+        "close"
+      ]
+    },
     "TriggerMatcher": {
       "description": "Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]\nvariants; the dispatcher matches messages against these.",
       "oneOf": [
@@ -2763,6 +2921,33 @@
             "type",
             "device",
             "open"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GarageDoorState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "garage_door"
+            }
+          },
+          "required": [
+            "type",
+            "device"
           ]
         },
         {
@@ -3492,6 +3677,9 @@
         },
         "transperth": {
           "$ref": "#/$defs/RawTransperthSettings"
+        },
+        "tuya": {
+          "$ref": "#/$defs/TuyaSettings"
         }
       },
       "required": [
@@ -3505,7 +3693,8 @@
         "fuelwatch",
         "solar",
         "synergy",
-        "transperth"
+        "transperth",
+        "tuya"
       ]
     },
     "S3Settings": {
@@ -3941,6 +4130,66 @@
       "required": [
         "capacity",
         "ttl"
+      ]
+    },
+    "TuyaSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "models": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "heartbeat": {
+          "type": "string"
+        },
+        "silence_timeout": {
+          "type": "string"
+        },
+        "reconnect": {
+          "$ref": "#/$defs/ReconnectSettings"
+        },
+        "devices": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/TuyaDeviceSettings"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "models",
+        "port",
+        "heartbeat",
+        "silence_timeout",
+        "reconnect",
+        "devices"
+      ]
+    },
+    "TuyaDeviceSettings": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "local_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "host"
       ]
     },
     "WatchdogSettings": {
@@ -4412,6 +4661,9 @@
         "trim_door_sensor": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
+        "trim_garage_door_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
         "trim_home_assistant_events": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
@@ -4443,6 +4695,7 @@
         "trim_device_intent",
         "trim_device_metric",
         "trim_door_sensor",
+        "trim_garage_door_events",
         "trim_home_assistant_events",
         "trim_jellyfin_playback_events",
         "trim_light_history",

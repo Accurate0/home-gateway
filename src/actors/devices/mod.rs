@@ -4,6 +4,7 @@ pub mod control_switch;
 pub mod door_events;
 pub mod door_sensor;
 pub mod environment_sensor;
+pub mod garage_door;
 pub mod light;
 pub mod media_player;
 pub mod plant_sensor;

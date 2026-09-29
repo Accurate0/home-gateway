@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b959f07a48f7747eb9c06cb000f3e9f2>>
+ * @generated SignedSource<<57baec96d6b450f8cfee6342483d237b>>
  * @lightSyntaxTransform
  */
 
@@ -8,6 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type GarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
 export type DashboardEventsSubscription$variables = Record<PropertyKey, never>;
 export type DashboardEventsSubscription$data = {
   readonly events: {
@@ -23,6 +24,11 @@ export type DashboardEventsSubscription$data = {
       readonly metric: string;
       readonly value: number;
     }>;
+  } | {
+    readonly __typename: "GarageDoorUpdate";
+    readonly garageState: GarageDoorState;
+    readonly id: string;
+    readonly name: string;
   } | {
     readonly __typename: "LightUpdate";
     readonly id: string;
@@ -133,6 +139,22 @@ v6 = {
     (v2/*:: as any*/),
     (v3/*:: as any*/),
     {
+      "alias": "garageState",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "state",
+      "storageKey": null
+    }
+  ],
+  "type": "GarageDoorUpdate",
+  "abstractKey": null
+},
+v7 = {
+  "kind": "InlineFragment",
+  "selections": [
+    (v2/*:: as any*/),
+    (v3/*:: as any*/),
+    {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
@@ -143,7 +165,7 @@ v6 = {
   "type": "PresenceUpdate",
   "abstractKey": null
 },
-v7 = {
+v8 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -177,7 +199,7 @@ v7 = {
   "type": "EnvironmentUpdate",
   "abstractKey": null
 },
-v8 = {
+v9 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -193,7 +215,7 @@ v8 = {
   "type": "PlantUpdate",
   "abstractKey": null
 },
-v9 = {
+v10 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -293,7 +315,7 @@ v9 = {
   "type": "MediaPlayerUpdate",
   "abstractKey": null
 },
-v10 = [
+v11 = [
   (v2/*:: as any*/)
 ];
 return {
@@ -317,7 +339,8 @@ return {
           (v6/*:: as any*/),
           (v7/*:: as any*/),
           (v8/*:: as any*/),
-          (v9/*:: as any*/)
+          (v9/*:: as any*/),
+          (v10/*:: as any*/)
         ],
         "storageKey": "events(filter:\"*\")"
       }
@@ -346,33 +369,34 @@ return {
           (v7/*:: as any*/),
           (v8/*:: as any*/),
           (v9/*:: as any*/),
+          (v10/*:: as any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v10/*:: as any*/),
+            "selections": (v11/*:: as any*/),
             "type": "CommandFailedUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v10/*:: as any*/),
+            "selections": (v11/*:: as any*/),
             "type": "DeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v10/*:: as any*/),
+            "selections": (v11/*:: as any*/),
             "type": "DeviceConnectionUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v10/*:: as any*/),
+            "selections": (v11/*:: as any*/),
             "type": "HomeAssistantUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v10/*:: as any*/),
+            "selections": (v11/*:: as any*/),
             "type": "JellyfinUpdate",
             "abstractKey": null
           }
@@ -382,16 +406,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e42c9781792a077e9a1e885af8d5724a",
+    "cacheID": "e34fe6280c09e6e381f80b98362c5539",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on GarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7debce465e17fda2a7e652e6f7e31a8a";
+(node as any).hash = "da66a5101863ea0143dee362267d28b2";
 
 export default node;

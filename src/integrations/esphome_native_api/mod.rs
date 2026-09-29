@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::actors::system::esphome_native_api_ingest::{self, EsphomeNativeApiIngest};
 use crate::media_control::MediaCommand;
-use crate::reconnect::{Attempt, Reconnect};
+use crate::reconnect::{Reachability, Reconnect};
 use crate::settings::EsphomeSettings;
 
 use command::Command;
@@ -92,12 +92,8 @@ fn dispatch(update: StateUpdate) {
     send(address, esphome_native_api_ingest::Message::State(update));
 }
 
-fn is_transition(reported: &mut Option<bool>, connected: bool) -> bool {
-    reported.replace(connected) != Some(connected)
-}
-
-fn dispatch_connection(reported: &mut Option<bool>, address: &str, connected: bool) {
-    if !is_transition(reported, connected) {
+fn dispatch_connection(reachability: &mut Reachability, address: &str, connected: bool) {
+    if !reachability.changed(connected) {
         return;
     }
 
@@ -134,19 +130,19 @@ pub async fn process_events(
     key: String,
     cancellation_token: CancellationToken,
 ) {
-    let mut reported = None;
+    let mut reachability = Reachability::default();
     let mut reconnect = Reconnect::new(settings.reconnect);
 
     loop {
         tokio::select! {
-            result = connected(&mut node, &settings, &key, &mut reported, &mut reconnect) => {
+            result = connected(&mut node, &settings, &key, &mut reachability, &mut reconnect) => {
                 let attempt = reconnect.failed();
 
                 if let Err(e) = result {
-                    log_failure(&node.address, &attempt, &e);
+                    attempt.log_failure(format_args!("esphome node {}", node.address), e);
                 }
 
-                dispatch_connection(&mut reported, &node.address, false);
+                dispatch_connection(&mut reachability, &node.address, false);
 
                 tokio::time::sleep(attempt.delay).await;
             }
@@ -158,34 +154,11 @@ pub async fn process_events(
     }
 }
 
-fn log_failure(address: &str, attempt: &Attempt, error: &EsphomeNativeApiError) {
-    if !attempt.log {
-        tracing::debug!(
-            "esphome node {address} error after {} attempts, reconnecting in {:?}: {error}",
-            attempt.failures,
-            attempt.delay
-        );
-        return;
-    }
-
-    tracing::error!(
-        "esphome node {address} error, reconnecting in {:?}: {error}",
-        attempt.delay
-    );
-
-    if attempt.last_log {
-        tracing::error!(
-            "esphome node {address} failed {} times, further errors logged at debug until it reconnects",
-            attempt.failures
-        );
-    }
-}
-
 async fn connected(
     node: &mut Node,
     settings: &EsphomeSettings,
     key: &str,
-    reported: &mut Option<bool>,
+    reachability: &mut Reachability,
     reconnect: &mut Reconnect,
 ) -> Result<(), EsphomeNativeApiError> {
     let mut session = Session::connect(&node.address, settings, key).await?;
@@ -194,41 +167,11 @@ async fn connected(
         tracing::info!("esphome node {} reconnected", node.address);
     }
 
-    dispatch_connection(reported, &node.address, true);
+    dispatch_connection(reachability, &node.address, true);
 
     let result = session.run(&mut node.receiver, settings, dispatch).await;
 
     session.close().await;
 
     result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_a_change_in_reachability_is_reported() {
-        let mut reported = None;
-
-        assert!(is_transition(&mut reported, false));
-        assert!(!is_transition(&mut reported, false));
-        assert!(is_transition(&mut reported, true));
-        assert!(!is_transition(&mut reported, true));
-        assert!(is_transition(&mut reported, false));
-    }
-
-    #[test]
-    fn a_node_that_never_connects_is_reported_once() {
-        let mut reported = None;
-
-        assert!(
-            is_transition(&mut reported, false),
-            "a node that is down at startup should be reported"
-        );
-        assert!(
-            !is_transition(&mut reported, false),
-            "every reconnect attempt should not re-report it"
-        );
-    }
 }

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO garage_door_events (event_id, device_id, state, contact) VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "garage_door_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "opening",
+                "closed",
+                "closing"
+              ]
+            }
+          }
+        },
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc1056b1702ec9d83595bd9c27803ced210a4fc005517388adc504fea8fe336b"
+}

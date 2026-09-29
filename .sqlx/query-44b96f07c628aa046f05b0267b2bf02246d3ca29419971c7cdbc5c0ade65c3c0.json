@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n                 SELECT 1 FROM garage_door_events\n                 WHERE device_id = $1 AND state = 'closed' AND \"time\" > $2\n               ) AS \"closed!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "closed!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "44b96f07c628aa046f05b0267b2bf02246d3ca29419971c7cdbc5c0ade65c3c0"
+}

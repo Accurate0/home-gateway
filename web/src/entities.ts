@@ -17,7 +17,8 @@ export type EntityKind =
   | "plant"
   | "einkDisplay"
   | "robotVacuum"
-  | "mediaPlayer";
+  | "mediaPlayer"
+  | "garageDoor";
 
 export type VacuumKind = "ROBOROCK" | "VALETUDO";
 
@@ -84,6 +85,8 @@ export interface Entity {
   volumeLevel?: number | null;
   muted?: boolean | null;
   artworkUrl?: string | null;
+  battery?: { readonly percentage?: number | null } | null;
+  garageState?: string | null;
 }
 
 const SHORT_UNITS: Record<string, string> = {
@@ -129,6 +132,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   EinkDisplayEntity: "einkDisplay",
   RobotVacuumEntity: "robotVacuum",
   MediaPlayerEntity: "mediaPlayer",
+  GarageDoorEntity: "garageDoor",
   LightUpdate: "light",
   DoorUpdate: "door",
   PresenceUpdate: "presence",
@@ -136,7 +140,12 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   PlantUpdate: "plant",
   DeviceBatteryUpdate: "einkDisplay",
   MediaPlayerUpdate: "mediaPlayer",
+  GarageDoorUpdate: "garageDoor",
 };
+
+export function isGarageDoorMoving(state: string | null | undefined): boolean {
+  return state === "OPENING" || state === "CLOSING";
+}
 
 export function kindOf(typename: string | undefined): EntityKind | null {
   return (typename && TYPENAME_TO_KIND[typename]) || null;

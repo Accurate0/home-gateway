@@ -9,6 +9,7 @@
 use super::WorkflowError;
 use crate::actors::sun::calc;
 use crate::actors::workflows::manager::WorkflowManager;
+use crate::db::GarageDoorState;
 use crate::lua::{LuaAuthority, LuaCallContext};
 use crate::{
     actors::{
@@ -134,6 +135,10 @@ async fn eval_leaf(
         LeafCondition::Door { ieee_addr, open } => {
             Ok(query_door_open(state.devices.address_or_self(ieee_addr), timeout).await? == *open)
         }
+        LeafCondition::GarageDoor {
+            device,
+            state: expected,
+        } => eval_garage_door(state, device, *expected).await,
         LeafCondition::Presence { sensor, present } => {
             Ok(query_presence(state.devices.address_or_self(sensor), timeout).await? == *present)
         }
@@ -317,6 +322,31 @@ async fn eval_smart_switch(
     };
 
     Ok(cmp.matches(value))
+}
+
+async fn eval_garage_door(
+    state: &AppState,
+    device: &str,
+    expected: GarageDoorState,
+) -> Result<bool, WorkflowError> {
+    let Some(id) = state.devices.resolve_id(device) else {
+        tracing::warn!("{device} is not a registered garage door");
+        return Ok(false);
+    };
+
+    let latest = state
+        .repos
+        .garage_door()
+        .latest(id)
+        .await
+        .map_err(anyhow::Error::from)?;
+
+    let Some(latest) = latest else {
+        tracing::warn!("no readings for garage door {id}");
+        return Ok(false);
+    };
+
+    Ok(latest.state == expected)
 }
 
 pub async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {

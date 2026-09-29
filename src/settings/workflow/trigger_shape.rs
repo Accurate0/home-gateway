@@ -5,9 +5,9 @@ use crate::event_bus::SensorMetric;
 use crate::event_bus::variables::{
     CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
     DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
-    HomeAssistantVariables, JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables,
-    PlantVariables, PresenceVariables, SolarVariables, SunVariables, SwitchVariables,
-    UnifiVariables, WeatherVariables, WoolworthsVariables,
+    GarageDoorVariables, HomeAssistantVariables, JellyfinVariables, LightVariables,
+    MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables, SolarVariables,
+    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
 
@@ -18,6 +18,7 @@ impl TriggerMatcher {
         let shape = match self {
             TriggerMatcher::Presence { .. } => PresenceVariables::shape(),
             TriggerMatcher::Door { .. } => DoorVariables::shape(),
+            TriggerMatcher::GarageDoor { .. } => GarageDoorVariables::shape(),
             TriggerMatcher::Switch { .. } => SwitchVariables::shape(),
             TriggerMatcher::Cron { .. } => CronVariables::shape(),
             TriggerMatcher::Sun { .. } => SunVariables::shape(),

@@ -13,5 +13,7 @@ pub mod synergy;
 pub mod transperth;
 pub mod transperth_cache;
 pub mod trmnl;
+pub mod tuya;
+pub mod tuya_device;
 pub mod willyweather;
 pub mod woolworths;

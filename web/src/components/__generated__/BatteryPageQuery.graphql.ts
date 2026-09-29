@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b6d1f3a49a9028f32179653f66b5f90>>
+ * @generated SignedSource<<c2601340304f121df0984d8f728dcd9c>>
  * @lightSyntaxTransform
  */
 
@@ -36,6 +36,17 @@ export type BatteryPageQuery$data = {
     readonly room: string | null | undefined;
   } | {
     readonly __typename: "EnvironmentEntity";
+    readonly battery: {
+      readonly history: ReadonlyArray<{
+        readonly batteryPercentage: number | null | undefined;
+        readonly time: any;
+      }>;
+    } | null | undefined;
+    readonly id: string;
+    readonly name: string;
+    readonly room: string | null | undefined;
+  } | {
+    readonly __typename: "GarageDoorEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -213,6 +224,12 @@ v2 = [
         "selections": (v1/*:: as any*/),
         "type": "RobotVacuumEntity",
         "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": (v1/*:: as any*/),
+        "type": "GarageDoorEntity",
+        "abstractKey": null
       }
     ],
     "storageKey": null
@@ -236,16 +253,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "9f13313d089ff5f4c4eeb96541e02d35",
+    "cacheID": "ad640a28910c71d0df1230cfa99767a9",
     "id": null,
     "metadata": {},
     "name": "BatteryPageQuery",
     "operationKind": "query",
-    "text": "query BatteryPageQuery(\n  $since: DateTime!\n) {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on EinkDisplayEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on RobotVacuumEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query BatteryPageQuery(\n  $since: DateTime!\n) {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on EinkDisplayEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on RobotVacuumEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on GarageDoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "74c3d172b75837723dcccb2734197365";
+(node as any).hash = "08a5e8f9d8c694871315c9127431bc9a";
 
 export default node;

@@ -72,6 +72,7 @@ pub use devices::eink::{
 };
 pub use devices::eink_defaults::EinkDefaults;
 pub use devices::environment::{EnvironmentSensorSettings, Metric, RawEnvironmentBlock};
+pub use devices::garage_door::{GarageDoorSettings, RawGarageDoorSettings};
 pub use devices::light::RawLightBlock;
 pub use devices::media_player::{MediaPlayerSettings, RawMediaPlayerBlock};
 pub use devices::plant::{PlantSensorSettings, RawPlantBlock};
@@ -102,6 +103,8 @@ pub use integrations::transperth::{
 };
 pub use integrations::transperth_cache::TransperthCacheSettings;
 pub use integrations::trmnl::TrmnlSettings;
+pub use integrations::tuya::TuyaSettings;
+pub use integrations::tuya_device::TuyaDeviceSettings;
 pub use integrations::willyweather::WillyWeatherSettings;
 pub use integrations::woolworths::WoolworthsSettings;
 pub use location::LocationSettings;
@@ -289,6 +292,9 @@ impl RawSettings {
             &models,
             &mqtt.protocols,
         )?;
+
+        validate_tuya_devices(&integrations.tuya, &registry)?;
+
         let scope = DeviceScope::new(registry.ids(), registry.aliases(), registry.disabled());
 
         let mut resolved = HashMap::new();
@@ -416,6 +422,33 @@ impl RawSettings {
     }
 }
 
+fn validate_tuya_devices(tuya: &TuyaSettings, registry: &DeviceRegistry) -> Result<(), String> {
+    if !tuya.state.is_enabled() {
+        return Ok(());
+    }
+
+    for device in registry.tuya_devices() {
+        if !tuya.devices.contains_key(&device.id) {
+            return Err(format!(
+                "device {}: a `tuya` device needs an `integrations.tuya.devices.{}` entry",
+                device.id, device.id
+            ));
+        }
+    }
+
+    for id in tuya.devices.keys() {
+        let registered = registry.ids().contains_key(id) || registry.disabled().contains(id);
+
+        if !registered {
+            return Err(format!(
+                "integrations.tuya.devices.{id} does not name a device"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn validate_scopes(owner: &str, scopes: &[String]) -> Result<(), String> {
     for scope in scopes {
         if let Err(e) = ScopePattern::parse(scope) {
@@ -450,6 +483,7 @@ impl SettingsContainer {
             mqtt: load("mqtt", &raw.mqtt.models)?,
             esphome_native_api: load("esphome_native_api", &raw.integrations.esphome.models)?,
             home_assistant: load("home_assistant", &raw.home_assistant.models)?,
+            tuya: load("tuya", &raw.integrations.tuya.models)?,
             library: match &raw.lua.model_library {
                 Some(relative) => load("library", relative)?,
                 None => BTreeMap::new(),
@@ -632,6 +666,10 @@ mod tests {
                         .to_owned(),
                 ),
             ]),
+            tuya: BTreeMap::from([(
+                "csh_gapnt_178".to_owned(),
+                include_str!("../../config/lua/models/tuya/csh_gapnt_178.lua").to_owned(),
+            )]),
             library: BTreeMap::from([
                 (
                     "esphome_light".to_owned(),
@@ -1172,6 +1210,10 @@ http:
 integrations:
   esphome:
     encryption_key: x
+  tuya:
+    devices:
+      garage-tuya-csh-gapnt-178-1:
+        local_key: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1194,6 +1236,87 @@ integrations:
         assert_eq!(registry.address_or_self("hallway-epd"), "94a990cf8384");
     }
 
+    const SECRETS_WITHOUT_TUYA: &str = r#"
+api_key: x
+database_url: x
+notify: { targets: {}, disabled: [], android: { fcm_project_id: x } }
+mqtt:
+  url: x
+  port: 1883
+  username: x
+  password: x
+http:
+  listen_address: "[::]:8000"
+integrations:
+  esphome:
+    encryption_key: x
+  willyweather:
+    api_key: x
+  jellyfin:
+    api_key: x
+  transperth:
+    reference_data_api_key: x
+"#;
+
+    fn build_with_env(env: &[(&str, &str)]) -> Result<(Settings, DeviceRegistry), ConfigError> {
+        let env = env
+            .iter()
+            .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+            .collect();
+
+        let config = SettingsContainer::config_sources(Path::new("./config"))
+            .unwrap()
+            .add_source(File::from_str(SECRETS_WITHOUT_TUYA, FileFormat::Yaml))
+            .add_source(Environment::default().separator("__").source(Some(env)))
+            .build()
+            .unwrap();
+
+        SettingsContainer::build(config, Path::new("./config"))
+    }
+
+    #[test]
+    fn a_tuya_local_key_is_read_from_an_env_var_named_after_a_hyphenated_device_id() {
+        let (settings, registry) = build_with_env(&[(
+            "INTEGRATIONS__TUYA__DEVICES__garage-tuya-csh-gapnt-178-1__LOCAL_KEY",
+            "0123456789abcdef",
+        )])
+        .expect("config");
+
+        let device = &settings.integrations.tuya.devices["garage-tuya-csh-gapnt-178-1"];
+
+        assert_eq!(device.local_key.as_deref(), Some("0123456789abcdef"));
+        assert_eq!(device.host, "172.16.88.175");
+        assert!(registry.garage_door("bf29cac95f2db311c1ggxq").is_some());
+        assert!(registry.battery("bf29cac95f2db311c1ggxq").is_some());
+        assert_eq!(
+            registry.watchdog_key("garage"),
+            Some("tuya:garage-tuya-csh-gapnt-178-1")
+        );
+    }
+
+    #[test]
+    fn a_missing_tuya_local_key_names_its_env_var() {
+        let error = build_with_env(&[]).expect_err("missing key");
+
+        assert!(
+            error
+                .to_string()
+                .contains("INTEGRATIONS__TUYA__DEVICES__garage-tuya-csh-gapnt-178-1__LOCAL_KEY"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_tuya_local_key_must_be_16_bytes() {
+        let error = build_with_env(&[(
+            "INTEGRATIONS__TUYA__DEVICES__garage-tuya-csh-gapnt-178-1__LOCAL_KEY",
+            "short",
+        )])
+        .expect_err("short key");
+
+        assert!(error.to_string().contains("must be 16 bytes"), "{error}");
+    }
+
     #[test]
     fn config_yaml_parses_and_resolves() {
         // secrets normally come from the environment; supply dummies for the test
@@ -1211,6 +1334,10 @@ http:
 integrations:
   esphome:
     encryption_key: x
+  tuya:
+    devices:
+      garage-tuya-csh-gapnt-178-1:
+        local_key: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1507,14 +1634,18 @@ integrations:
             registry.watchdog_key("653VZN"),
             Some("trmnl:display-trmnl-1")
         );
+        assert_eq!(
+            registry.watchdog_key("bf29cac95f2db311c1ggxq"),
+            Some("tuya:garage-tuya-csh-gapnt-178-1")
+        );
         assert_eq!(registry.watchdog_key("0xdeadbeef"), None);
 
         // every device is watched, and under the same key the heartbeat writes
         let watched: Vec<&String> = registry.watchdog_devices().map(|(key, _)| key).collect();
         assert_eq!(
             watched.len(),
-            21,
-            "every enabled device has a watchdog (23 configured, 2 disabled)"
+            22,
+            "every enabled device has a watchdog (24 configured, 2 disabled)"
         );
         for key in watched {
             assert!(
@@ -1540,6 +1671,10 @@ http:
 integrations:
   esphome:
     encryption_key: x
+  tuya:
+    devices:
+      garage-tuya-csh-gapnt-178-1:
+        local_key: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1591,7 +1726,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -1599,8 +1734,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
@@ -1642,7 +1777,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -1650,8 +1785,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
@@ -1690,6 +1825,10 @@ mqtt:
 integrations:
   esphome:
     encryption_key: x
+  tuya:
+    devices:
+      garage-tuya-csh-gapnt-178-1:
+        local_key: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1796,7 +1935,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1805,8 +1944,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1852,7 +1991,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1861,8 +2000,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -1910,7 +2049,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -1919,8 +2058,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 "#;
@@ -2124,7 +2263,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2133,8 +2272,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2179,7 +2318,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2188,8 +2327,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2233,7 +2372,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2242,8 +2381,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2288,7 +2427,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2297,8 +2436,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2342,7 +2481,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2351,8 +2490,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 eink_display:
@@ -2442,7 +2581,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2451,8 +2590,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2523,7 +2662,7 @@ http:
   clients: { default: { timeout: 30s } }
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
-actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
+actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
@@ -2532,8 +2671,8 @@ workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_t
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
-integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
-adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
+integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
+adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_derived_door_events: { state: enabled, schedule: "0 3 * * *", parameters: { retention: 8760h } }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_device_metric: { state: enabled, schedule: "15 3 * * *", parameters: { retention: 4320h } }, trim_door_sensor: { state: enabled, schedule: "5 3 * * *", parameters: { retention: 8760h } }, trim_garage_door_events: { state: enabled, schedule: "10 3 * * *", parameters: { retention: 8760h } }, trim_home_assistant_events: { state: enabled, schedule: "25 3 * * *", parameters: { retention: 2160h } }, trim_jellyfin_playback_events: { state: enabled, schedule: "35 3 * * *", parameters: { retention: 4320h } }, trim_light_history: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 2160h } }, trim_robot_vacuum_events: { state: enabled, schedule: "40 3 * * *", parameters: { retention: 4320h } }, trim_smart_switch: { state: enabled, schedule: "30 3 * * *", parameters: { retention: 4320h } }, trim_temperature_sensor: { state: enabled, schedule: "20 3 * * *", parameters: { retention: 4320h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
 eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
@@ -2622,6 +2761,7 @@ devices:
             "lua/models/mqtt/",
             "lua/models/home_assistant/",
             "lua/models/esphome_native_api/",
+            "lua/models/tuya/",
         ] {
             for entry in std::fs::read_dir(Path::new("./config").join(dir)).unwrap() {
                 let name = entry.unwrap().file_name().to_string_lossy().into_owned();

@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT state AS \"state: GarageDoorState\" FROM latest_garage_door_state WHERE device_id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "state: GarageDoorState",
+        "type_info": {
+          "Custom": {
+            "name": "garage_door_state",
+            "kind": {
+              "Enum": [
+                "open",
+                "opening",
+                "closed",
+                "closing"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dccc80f4f27023c59b7464e5fc114b4a58091ba0a8a7746791ae4e1583e6dcb2"
+}

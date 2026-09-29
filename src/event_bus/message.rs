@@ -7,13 +7,14 @@ use super::reading::SensorReading;
 use super::variables::{
     CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
     DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
-    HomeAssistantVariables, JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables,
-    PlantVariables, PresenceVariables, SolarVariables, SunVariables, SwitchVariables,
-    UnifiVariables, WeatherVariables, WoolworthsVariables,
+    GarageDoorVariables, HomeAssistantVariables, JellyfinVariables, LightVariables,
+    MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables, SolarVariables,
+    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
 use crate::actors::sun::calc::SunTransition;
+use crate::db::GarageDoorState;
 use crate::mode::Mode;
 use crate::repo::intent::{DeviceKind, IntentAttributes};
 use crate::settings::IEEEAddress;
@@ -35,6 +36,12 @@ pub enum EventBusMessage {
         event_id: Uuid,
         ieee_addr: IEEEAddress,
         open: bool,
+    },
+    GarageDoor {
+        event_id: Uuid,
+        device_id: String,
+        name: String,
+        state: GarageDoorState,
     },
     /// A control switch / button reported an action (e.g. `single`, `on`).
     SwitchAction {
@@ -246,6 +253,7 @@ impl EventBusMessage {
         match self {
             EventBusMessage::Presence { event_id, .. }
             | EventBusMessage::Door { event_id, .. }
+            | EventBusMessage::GarageDoor { event_id, .. }
             | EventBusMessage::SwitchAction { event_id, .. }
             | EventBusMessage::Environment { event_id, .. }
             | EventBusMessage::Plant { event_id, .. }
@@ -274,6 +282,7 @@ impl EventBusMessage {
         match self {
             EventBusMessage::Presence { .. } => "presence",
             EventBusMessage::Door { .. } => "door",
+            EventBusMessage::GarageDoor { .. } => "garage_door",
             EventBusMessage::SwitchAction { .. } => "switch",
             EventBusMessage::Environment { .. } => "environment",
             EventBusMessage::Plant { .. } => "plant",
@@ -300,6 +309,7 @@ impl EventBusMessage {
     pub const KINDS: &'static [&'static str] = &[
         "presence",
         "door",
+        "garage_door",
         "switch",
         "environment",
         "plant",
@@ -341,6 +351,7 @@ impl EventBusMessage {
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
             EventBusMessage::DeviceBattery { device_id, .. }
             | EventBusMessage::DeviceConnection { device_id, .. }
+            | EventBusMessage::GarageDoor { device_id, .. }
             | EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
@@ -366,6 +377,18 @@ impl EventBusMessage {
             } => DoorVariables {
                 device: ieee_addr.clone(),
                 open: *open,
+            }
+            .to_node(),
+            EventBusMessage::GarageDoor {
+                device_id,
+                name,
+                state,
+                ..
+            } => GarageDoorVariables {
+                device: device_id.clone(),
+                name: name.clone(),
+                state: state.to_string(),
+                open: *state != GarageDoorState::Closed,
             }
             .to_node(),
             EventBusMessage::SwitchAction {

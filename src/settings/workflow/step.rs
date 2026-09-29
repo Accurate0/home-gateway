@@ -4,7 +4,9 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::condition::resolve_opt;
-use super::{Condition, EnableState, HttpMethod, LightState, SwitchState, VacuumCommand};
+use super::{
+    Condition, EnableState, GarageDoorCommand, HttpMethod, LightState, SwitchState, VacuumCommand,
+};
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
 use crate::lua::LuaSource;
@@ -110,6 +112,12 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    GarageDoor {
+        device: IEEEAddress,
+        command: GarageDoorCommand,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
     Lua {
         #[serde(flatten)]
         source: LuaSource,
@@ -135,6 +143,7 @@ impl Step {
             Step::MqttPublish { .. } => "mqtt_publish",
             Step::Http { .. } => "http",
             Step::RobotVacuum { .. } => "robot_vacuum",
+            Step::GarageDoor { .. } => "garage_door",
             Step::Lua { .. } => "lua",
         }
     }
@@ -152,6 +161,7 @@ impl Step {
             Step::MqttPublish { .. } => (Resource::Mqtt, Action::Write),
             Step::Http { .. } => (Resource::Http, Action::Write),
             Step::RobotVacuum { .. } => (Resource::RobotVacuum, Action::Write),
+            Step::GarageDoor { .. } => (Resource::GarageDoor, Action::Write),
             Step::Lua { .. } => (Resource::Lua, Action::Write),
             Step::Scene { .. } | Step::Delay { .. } => return None,
         };
@@ -174,6 +184,7 @@ impl Step {
             | Step::MqttPublish { when, .. }
             | Step::Http { when, .. }
             | Step::RobotVacuum { when, .. }
+            | Step::GarageDoor { when, .. }
             | Step::Lua { when, .. } => when.as_ref(),
         }
     }
@@ -208,6 +219,7 @@ impl Step {
             | Step::SetWorkflowsEnabled { .. }
             | Step::HomeAssistant { .. }
             | Step::RobotVacuum { .. }
+            | Step::GarageDoor { .. }
             | Step::Lua { .. } => Vec::new(),
         }
     }
@@ -279,6 +291,9 @@ impl Step {
             Step::RobotVacuum {
                 ieee_addr, command, ..
             } => Some(format!("robot_vacuum({ieee_addr}) -> {command:?}")),
+            Step::GarageDoor {
+                device, command, ..
+            } => Some(format!("garage_door({device}) -> {command}")),
             Step::Scene { .. } | Step::RunWorkflow { .. } | Step::Lua { .. } => None,
         }
     }
@@ -293,6 +308,11 @@ impl Step {
             }
             | Step::RobotVacuum {
                 ieee_addr, when, ..
+            }
+            | Step::GarageDoor {
+                device: ieee_addr,
+                when,
+                ..
             } => {
                 validate_device(ieee_addr, devices)?;
                 resolve_opt(when, devices)?;
@@ -345,6 +365,12 @@ impl Step {
                     return Err(format!("robot_vacuum {ieee_addr} is not a robot vacuum"));
                 }
             }
+            Step::GarageDoor { device, .. } => {
+                let address = registry.address_or_self(device);
+                if registry.garage_door(address).is_none() {
+                    return Err(format!("garage_door {device} is not a garage door"));
+                }
+            }
             Step::Scene { run, .. } => {
                 for step in run {
                     step.validate_capabilities(registry)?;
@@ -376,14 +402,27 @@ mod tests {
 - type: robot_vacuum
   device: roborock
   command: dock
+- type: garage_door
+  device: garage
+  command: close
 "#,
         )
         .unwrap();
 
         assert_eq!(
             steps.iter().map(Step::kind).collect::<Vec<_>>(),
-            ["mqtt_publish", "http", "robot_vacuum"]
+            ["mqtt_publish", "http", "robot_vacuum", "garage_door"]
         );
+
+        match &steps[3] {
+            Step::GarageDoor {
+                device, command, ..
+            } => {
+                assert_eq!(device, "garage");
+                assert_eq!(*command, GarageDoorCommand::Close);
+            }
+            other => panic!("expected garage_door, got {}", other.kind()),
+        }
 
         match &steps[0] {
             Step::MqttPublish { topic, retain, .. } => {

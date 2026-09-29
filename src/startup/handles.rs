@@ -7,6 +7,7 @@ use crate::eink::EinkDisplayManager;
 use crate::http::get_traced_http_client;
 use crate::http::public_client::PublicHttpClient;
 use crate::integrations::esphome_native_api::{EsphomeNativeApi, Node};
+use crate::integrations::tuya::{Tuya, TuyaDevice};
 use crate::integrations::{
     feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
@@ -28,6 +29,7 @@ pub struct Handles {
     pub registry: HandleRegistry,
     pub mqtt: Mqtt,
     pub esphome_nodes: Vec<Node>,
+    pub tuya_devices: Vec<TuyaDevice>,
 }
 
 pub async fn build(
@@ -141,6 +143,22 @@ pub async fn build(
         false => (None, Vec::new()),
     };
 
+    let (tuya, tuya_devices) = match integrations.tuya.state.is_enabled() {
+        true => {
+            let (client, devices) = Tuya::new(&storage.devices, &integrations.tuya);
+
+            match client.is_empty() {
+                true => (None, Vec::new()),
+                false => {
+                    tracing::info!("tuya enabled for {} device(s)", devices.len());
+
+                    (Some(client), devices)
+                }
+            }
+        }
+        false => (None, Vec::new()),
+    };
+
     let oauth = settings
         .auth
         .oauth
@@ -167,6 +185,7 @@ pub async fn build(
         .insert_optional(home_assistant)
         .insert_optional(jellyfin)
         .insert_optional(esphome_native_api)
+        .insert_optional(tuya)
         .insert_optional(transperth)
         .insert_optional(fuelwatch)
         .insert_optional(goodwe)
@@ -178,6 +197,7 @@ pub async fn build(
         registry,
         mqtt,
         esphome_nodes,
+        tuya_devices,
     })
 }
 

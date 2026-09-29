@@ -22,7 +22,7 @@ use crate::integrations::mqtt::{MqttProtocol, TopicVars};
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DeviceAliases, DeviceIds, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
-    EnvironmentSensorSettings, IEEEAddress, MediaPlayerSettings, MqttProtocols,
+    EnvironmentSensorSettings, GarageDoorSettings, IEEEAddress, MediaPlayerSettings, MqttProtocols,
     PlantSensorSettings, PresenceSettings, RobotVacuumSettings, TrmnlDeviceSettings,
 };
 
@@ -469,6 +469,12 @@ impl DeviceRegistryInner {
             .map(|(address, _)| address)
     }
 
+    pub fn tuya_devices(&self) -> impl Iterator<Item = &Device> {
+        self.devices
+            .values()
+            .filter(|device| device.transport == Transport::Tuya)
+    }
+
     pub fn watchdog_devices(&self) -> impl Iterator<Item = (&String, &DeviceWatchdog)> {
         self.watchdog.iter()
     }
@@ -567,5 +573,13 @@ impl DeviceRegistryInner {
 
     pub fn media_players(&self) -> impl Iterator<Item = (&String, &MediaPlayerSettings)> {
         self.each(|roles| roles.media_player.as_ref())
+    }
+
+    pub fn garage_door(&self, address: &str) -> Option<&GarageDoorSettings> {
+        self.roles(address)?.garage_door.as_ref()
+    }
+
+    pub fn garage_doors(&self) -> impl Iterator<Item = (&String, &GarageDoorSettings)> {
+        self.each(|roles| roles.garage_door.as_ref())
     }
 }

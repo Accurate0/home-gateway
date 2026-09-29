@@ -78,6 +78,17 @@ pub async fn send(
                 .call_service(domain, service, json!({ "entity_id": address }))
                 .await?;
         }
+        Transport::Tuya => {
+            let Outbound::Json(payload) = outbound else {
+                return Err(DeviceCommandError::ServiceForPayload(address.to_owned()));
+            };
+
+            targets
+                .tuya
+                .ok_or(DeviceCommandError::TuyaNotConfigured)?
+                .set_dps(address, payload)
+                .await?;
+        }
         Transport::EinkDisplayFirmware | Transport::Trmnl => {
             return Err(DeviceCommandError::Unsupported {
                 address: address.to_owned(),

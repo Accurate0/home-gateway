@@ -52,6 +52,18 @@ mutation VacuumDock($id: IdOrAlias!) {
   }
 }
 
+mutation GarageDoorOpen($id: IdOrAlias!) {
+  garageDoor(id: $id) {
+    open
+  }
+}
+
+mutation GarageDoorClose($id: IdOrAlias!) {
+  garageDoor(id: $id) {
+    close
+  }
+}
+
 mutation EinkTakeScreenshot($id: IdOrAlias!) {
   einkDisplay(id: $id) {
     takeScreenshot

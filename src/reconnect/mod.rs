@@ -1,6 +1,8 @@
 mod attempt;
+mod reachability;
 
 pub use attempt::Attempt;
+pub use reachability::Reachability;
 
 use std::time::Duration;
 

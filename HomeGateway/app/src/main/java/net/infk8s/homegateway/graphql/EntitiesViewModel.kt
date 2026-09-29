@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import net.infk8s.homegateway.EntityControls
 import net.infk8s.homegateway.graphql.type.Capability
 import net.infk8s.homegateway.graphql.type.EntityCategory
+import net.infk8s.homegateway.graphql.type.GarageDoorState
 
 /// A single entity rendered in the list, with just the state we display.
 sealed interface EntityUi {
@@ -44,6 +45,17 @@ sealed interface EntityUi {
         val open: Boolean?,
     ) : EntityUi {
         override val key get() = "door:$id"
+    }
+
+    data class GarageDoor(
+        override val id: String,
+        override val name: String,
+        override val room: String?,
+        override val category: EntityCategory,
+        val state: GarageDoorState?,
+        val batteryPercentage: Double?,
+    ) : EntityUi {
+        override val key get() = "garage_door:$id"
     }
 
     data class Presence(
@@ -212,6 +224,9 @@ class EntitiesViewModel : ViewModel() {
         event.onDoorUpdate != null && this is EntityUi.Door && id == event.onDoorUpdate.id ->
             copy(open = event.onDoorUpdate.open)
 
+        event.onGarageDoorUpdate != null && this is EntityUi.GarageDoor && id == event.onGarageDoorUpdate.id ->
+            copy(state = event.onGarageDoorUpdate.garageState)
+
         event.onPresenceUpdate != null && this is EntityUi.Presence && id == event.onPresenceUpdate.id ->
             copy(present = event.onPresenceUpdate.present)
 
@@ -240,6 +255,8 @@ class EntitiesViewModel : ViewModel() {
         vacuumStart = { mutate(VacuumStartMutation(it)) },
         vacuumStop = { mutate(VacuumStopMutation(it)) },
         vacuumDock = { mutate(VacuumDockMutation(it)) },
+        garageDoorOpen = { mutate(GarageDoorOpenMutation(it)) },
+        garageDoorClose = { mutate(GarageDoorCloseMutation(it)) },
         takeScreenshot = { mutate(EinkTakeScreenshotMutation(it)) },
     )
 
@@ -292,6 +309,16 @@ class EntitiesViewModel : ViewModel() {
                 room = onDoorEntity.room,
                 category = onDoorEntity.category,
                 open = onDoorEntity.open,
+            )
+
+        onGarageDoorEntity != null ->
+            EntityUi.GarageDoor(
+                id = onGarageDoorEntity.id,
+                name = onGarageDoorEntity.name,
+                room = onGarageDoorEntity.room,
+                category = onGarageDoorEntity.category,
+                state = onGarageDoorEntity.garageState,
+                batteryPercentage = onGarageDoorEntity.battery?.percentage,
             )
 
         onPresenceEntity != null ->

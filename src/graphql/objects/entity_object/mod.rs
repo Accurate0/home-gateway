@@ -17,6 +17,7 @@ pub mod battery;
 pub mod door;
 pub mod eink_display;
 pub mod environment;
+pub mod garage_door;
 pub mod light;
 pub mod light_command;
 pub mod light_state;
@@ -29,6 +30,7 @@ pub use battery::{BatteryPoint, DeviceBattery, battery_for};
 pub use door::DoorEntity;
 pub use eink_display::EinkDisplayEntity;
 pub use environment::EnvironmentEntity;
+pub use garage_door::GarageDoorEntity;
 pub use light::LightEntity;
 pub use light_command::{LightCommandResultObject, LightCommandStatusObject};
 pub use media_player::MediaPlayerEntity;
@@ -119,6 +121,7 @@ pub enum Entity {
     Environment(EnvironmentEntity),
     Plant(PlantEntity),
     Door(DoorEntity),
+    GarageDoor(GarageDoorEntity),
     Presence(PresenceEntity),
     EinkDisplay(EinkDisplayEntity),
     RobotVacuum(RobotVacuumEntity),

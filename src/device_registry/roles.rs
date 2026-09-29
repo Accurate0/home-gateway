@@ -4,8 +4,8 @@ use crate::decoding::ModelProfile;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     BatterySettings, DoorSettings, EinkDisplaySettings, EnvironmentSensorSettings,
-    MediaPlayerSettings, PlantSensorSettings, PresenceSettings, RobotVacuumSettings, SwitchRole,
-    TrmnlDeviceSettings,
+    GarageDoorSettings, MediaPlayerSettings, PlantSensorSettings, PresenceSettings,
+    RobotVacuumSettings, SwitchRole, TrmnlDeviceSettings,
 };
 
 use super::device_config::DeviceConfig;
@@ -25,6 +25,7 @@ pub struct Roles {
     pub trmnl: Option<TrmnlDeviceSettings>,
     pub robot_vacuum: Option<RobotVacuumSettings>,
     pub media_player: Option<MediaPlayerSettings>,
+    pub garage_door: Option<GarageDoorSettings>,
 }
 
 pub struct RoleContext<'a> {
@@ -154,6 +155,9 @@ impl Roles {
                 }
 
                 self.media_player = Some(media_player.resolve(id, address));
+            }
+            DeviceConfig::GarageDoor(garage_door) => {
+                self.garage_door = Some(garage_door.resolve(id, address, notify)?);
             }
             DeviceConfig::Battery => {
                 self.battery = Some(BatterySettings {

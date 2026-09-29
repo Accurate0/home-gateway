@@ -9,6 +9,10 @@ subscription Events {
       id
       open
     }
+    ... on GarageDoorUpdate {
+      id
+      garageState: state
+    }
     ... on PresenceUpdate {
       id
       present

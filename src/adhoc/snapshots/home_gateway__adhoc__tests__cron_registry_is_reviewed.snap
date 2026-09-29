@@ -9,6 +9,7 @@ trim_derived_door_events  -
 trim_device_intent  -
 trim_device_metric  -
 trim_door_sensor  -
+trim_garage_door_events  -
 trim_home_assistant_events  -
 trim_jellyfin_playback_events  -
 trim_light_history  -

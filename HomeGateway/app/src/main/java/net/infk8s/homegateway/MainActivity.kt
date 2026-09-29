@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import net.infk8s.homegateway.graphql.EntitiesUiState
 import net.infk8s.homegateway.graphql.EntitiesViewModel
 import net.infk8s.homegateway.graphql.EntityUi
+import net.infk8s.homegateway.graphql.type.GarageDoorState
 import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
 import net.infk8s.homegateway.notifications.NotificationInteractions
 import net.infk8s.homegateway.notifications.NotificationsScreen
@@ -221,6 +222,8 @@ data class EntityControls(
     val vacuumStart: (String) -> Unit,
     val vacuumStop: (String) -> Unit,
     val vacuumDock: (String) -> Unit,
+    val garageDoorOpen: (String) -> Unit,
+    val garageDoorClose: (String) -> Unit,
     val takeScreenshot: (String) -> Unit,
 )
 
@@ -290,6 +293,21 @@ private fun EntityActions(entity: EntityUi, controls: EntityControls) {
             AssistChip(
                 onClick = { controls.takeScreenshot(entity.id) },
                 label = { Text("Refresh") },
+            )
+        }
+
+        is EntityUi.GarageDoor -> ActionRow {
+            AssistChip(
+                onClick = { controls.garageDoorOpen(entity.id) },
+                enabled = entity.state != GarageDoorState.OPEN &&
+                    entity.state != GarageDoorState.OPENING,
+                label = { Text("Open") },
+            )
+            AssistChip(
+                onClick = { controls.garageDoorClose(entity.id) },
+                enabled = entity.state != GarageDoorState.CLOSED &&
+                    entity.state != GarageDoorState.CLOSING,
+                label = { Text("Close") },
             )
         }
 
@@ -369,6 +387,10 @@ private fun ActionRow(content: @Composable RowScope.() -> Unit) {
 private fun EntityUi.details(): String = when (this) {
     is EntityUi.Light -> on?.let { if (it) "On" else "Off" } ?: "Unknown"
     is EntityUi.Door -> open?.let { if (it) "Open" else "Closed" } ?: "Unknown"
+    is EntityUi.GarageDoor -> buildList {
+        add(state?.rawValue?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Unknown")
+        batteryPercentage?.let { add("%.0f%%".format(it)) }
+    }.joinToString(" · ")
     is EntityUi.Presence -> present?.let { if (it) "Present" else "Away" } ?: "Unknown"
     is EntityUi.Environment -> buildList {
         temperature?.let { add("%.1f°C".format(it)) }

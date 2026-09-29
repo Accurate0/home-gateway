@@ -8,4 +8,5 @@ pub mod push;
 pub mod reconciler;
 pub mod rpc;
 pub mod sampling;
+pub mod tuya_ingest;
 pub mod watchdog;

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drop_chunks('garage_door_events', older_than => now() - make_interval(secs => $1))::text",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drop_chunks",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c9cc33838fe871aba9dc831aab6bcf7083c7050d342659c97b5e6e38a8f96f64"
+}

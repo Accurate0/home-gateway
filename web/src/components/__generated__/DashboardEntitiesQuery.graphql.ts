@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fdf3f84ea9bf2dc2583b388a37d3ddd5>>
+ * @generated SignedSource<<fcea2cbb95b435ec09371fdb098a6298>>
  * @lightSyntaxTransform
  */
 
@@ -12,6 +12,7 @@ export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PM
 export type EinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
 export type EinkMode = "ALBUM" | "DASHBOARD" | "REDDIT" | "%future added value";
 export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PLANTS" | "PRESENCE" | "VACUUMS" | "%future added value";
+export type GarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
 export type Orientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
 export type RobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
 export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
@@ -58,6 +59,17 @@ export type DashboardEntitiesQuery$data = {
     readonly temperature: number | null | undefined;
     readonly time: any | null | undefined;
     readonly uvIndex: number | null | undefined;
+  } | {
+    readonly __typename: "GarageDoorEntity";
+    readonly battery: {
+      readonly percentage: number | null | undefined;
+    } | null | undefined;
+    readonly category: EntityCategory;
+    readonly garageState: GarageDoorState | null | undefined;
+    readonly id: string;
+    readonly lastSeen: any | null | undefined;
+    readonly name: string;
+    readonly room: string | null | undefined;
   } | {
     readonly __typename: "LightEntity";
     readonly capabilities: ReadonlyArray<Capability>;
@@ -565,6 +577,43 @@ v8 = [
           (v1/*:: as any*/),
           (v2/*:: as any*/),
           (v3/*:: as any*/),
+          {
+            "alias": "garageState",
+            "args": null,
+            "kind": "ScalarField",
+            "name": "state",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "DeviceBattery",
+            "kind": "LinkedField",
+            "name": "battery",
+            "plural": false,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "percentage",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          (v5/*:: as any*/)
+        ],
+        "type": "GarageDoorEntity",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v0/*:: as any*/),
+          (v1/*:: as any*/),
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
           (v4/*:: as any*/),
           {
             "alias": null,
@@ -636,16 +685,16 @@ return {
     "selections": (v8/*:: as any*/)
   },
   "params": {
-    "cacheID": "2d4e2d0c2fc603da9c61df0841198a6e",
+    "cacheID": "4292b56407efc3996fff7821953acba9",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on PlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on PlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on GarageDoorEntity {\n      category\n      id\n      name\n      room\n      garageState: state\n      battery {\n        percentage\n      }\n      lastSeen\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d970a31a2a5f14e5e0ee229c35265de5";
+(node as any).hash = "323b35de9248969eccb5af0417206b92";
 
 export default node;

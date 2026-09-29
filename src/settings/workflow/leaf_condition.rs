@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 use super::{CompareOp, Comparison, EnvMetric, SwitchMetric};
 use crate::actors::sun::calc::SunPeriod;
+use crate::db::GarageDoorState;
 use crate::event_bus::{ForecastDay, SolarMetric, WeatherMetric, WeatherSource};
 use crate::lua::LuaSource;
 use crate::mode::Mode;
@@ -33,6 +34,10 @@ pub enum LeafCondition {
         #[serde(rename = "device", alias = "ieeeAddr")]
         ieee_addr: IEEEAddress,
         open: bool,
+    },
+    GarageDoor {
+        device: IEEEAddress,
+        state: GarageDoorState,
     },
     TimeOfDay {
         #[serde(default)]
@@ -92,6 +97,9 @@ impl LeafCondition {
         match self {
             LeafCondition::Light { ieee_addr, .. }
             | LeafCondition::Door { ieee_addr, .. }
+            | LeafCondition::GarageDoor {
+                device: ieee_addr, ..
+            }
             | LeafCondition::SmartSwitch { ieee_addr, .. } => {
                 validate_device(ieee_addr, devices)?;
             }
@@ -132,6 +140,9 @@ impl LeafCondition {
                     "door({ieee_addr}) is {}",
                     if *open { "open" } else { "closed" }
                 )
+            }
+            LeafCondition::GarageDoor { device, state } => {
+                format!("garage_door({device}) is {state}")
             }
             LeafCondition::TimeOfDay { after, before } => match (after, before) {
                 (Some(a), Some(b)) => format!("time in [{a}, {b})"),

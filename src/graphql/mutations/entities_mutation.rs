@@ -2,6 +2,7 @@ use async_graphql::Object;
 
 use crate::device_registry::{DeviceRegistry, IdOrAlias};
 use crate::graphql::mutations::eink_display_mutation::EinkDisplayMutation;
+use crate::graphql::mutations::garage_door_mutation::GarageDoorMutation;
 use crate::graphql::mutations::light_mutation::LightMutation;
 use crate::graphql::mutations::media_player_mutation::MediaPlayerMutation;
 use crate::graphql::mutations::robot_vacuum_mutation::RobotVacuumMutation;
@@ -40,6 +41,23 @@ impl EntitiesMutation {
         Err(async_graphql::Error::new(format!(
             "unknown robot vacuum `{id}`"
         )))
+    }
+
+    async fn garage_door(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: IdOrAlias,
+    ) -> async_graphql::Result<GarageDoorMutation> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.lookup(&id)?.address.clone();
+
+        if registry.garage_door(&address).is_none() {
+            return Err(async_graphql::Error::new(format!(
+                "unknown garage door `{id}`"
+            )));
+        }
+
+        Ok(GarageDoorMutation::new(address))
     }
 
     async fn media_player(

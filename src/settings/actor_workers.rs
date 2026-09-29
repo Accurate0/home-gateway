@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
+use strum::IntoEnumIterator;
 
 use crate::decoding::DeviceRoleName;
 
@@ -10,12 +11,13 @@ pub struct ActorWorkerSettings {
     pub mqtt_ingest: usize,
     pub home_assistant_ingest: usize,
     pub esphome_native_api_ingest: usize,
+    pub tuya_ingest: usize,
     devices: BTreeMap<DeviceRoleName, usize>,
 }
 
 impl ActorWorkerSettings {
     pub fn validate(&self) -> Result<(), String> {
-        for role in DeviceRoleName::ALL {
+        for role in DeviceRoleName::iter() {
             match (role.has_handler(), self.devices.contains_key(&role)) {
                 (true, false) => {
                     return Err(format!("actors.workers.devices is missing `{role}`"));
@@ -43,12 +45,12 @@ mod tests {
 
     fn workers(devices: &str) -> ActorWorkerSettings {
         serde_yaml::from_str(&format!(
-            "{{ mqtt_ingest: 1, home_assistant_ingest: 1, esphome_native_api_ingest: 1, devices: {devices} }}"
+            "{{ mqtt_ingest: 1, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: {devices} }}"
         ))
         .expect("workers")
     }
 
-    const ALL_HANDLERS: &str = "{ door: 1, environment: 1, plant: 1, light: 2, smart_switch: 1, presence: 1, control_switch: 1, robot_vacuum: 1, media_player: 1 }";
+    const ALL_HANDLERS: &str = "{ door: 1, environment: 1, plant: 1, light: 2, smart_switch: 1, presence: 1, control_switch: 1, robot_vacuum: 1, media_player: 1, garage_door: 1 }";
 
     #[test]
     fn every_handled_role_resolves_its_worker_count() {

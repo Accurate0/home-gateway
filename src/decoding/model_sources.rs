@@ -13,6 +13,7 @@ pub struct ModelSources {
     pub mqtt: BTreeMap<String, String>,
     pub esphome_native_api: BTreeMap<String, String>,
     pub home_assistant: BTreeMap<String, String>,
+    pub tuya: BTreeMap<String, String>,
     pub library: BTreeMap<String, String>,
 }
 
@@ -44,6 +45,13 @@ impl ModelSources {
                 settings,
                 protocols,
             )?,
+            tuya: load_models(
+                Transport::Tuya,
+                &self.tuya,
+                &self.library,
+                settings,
+                protocols,
+            )?,
         })
     }
 
@@ -52,6 +60,7 @@ impl ModelSources {
             Transport::Mqtt,
             Transport::EsphomeNativeApi,
             Transport::HomeAssistant,
+            Transport::Tuya,
         ];
 
         let mut by_transport = HashMap::new();
@@ -72,6 +81,7 @@ impl ModelSources {
             Transport::Mqtt => &self.mqtt,
             Transport::EsphomeNativeApi => &self.esphome_native_api,
             Transport::HomeAssistant => &self.home_assistant,
+            Transport::Tuya => &self.tuya,
             Transport::EinkDisplayFirmware | Transport::Trmnl => {
                 return Err(LuaError::Runtime(format!(
                     "{transport} devices have no lua models"

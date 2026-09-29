@@ -4,8 +4,9 @@ use serde::Deserialize;
 use crate::decoding::DeviceRoleName;
 use crate::settings::devices::door::RawDoorSettings;
 use crate::settings::{
-    RawEinkDisplayBlock, RawEnvironmentBlock, RawLightBlock, RawMediaPlayerBlock, RawPlantBlock,
-    RawPresenceBlock, RawRobotVacuumBlock, RawSmartSwitchBlock, RawTrmnlBlock,
+    RawEinkDisplayBlock, RawEnvironmentBlock, RawGarageDoorSettings, RawLightBlock,
+    RawMediaPlayerBlock, RawPlantBlock, RawPresenceBlock, RawRobotVacuumBlock, RawSmartSwitchBlock,
+    RawTrmnlBlock,
 };
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -23,6 +24,7 @@ pub enum DeviceConfig {
     Trmnl(RawTrmnlBlock),
     RobotVacuum(RawRobotVacuumBlock),
     MediaPlayer(RawMediaPlayerBlock),
+    GarageDoor(RawGarageDoorSettings),
     Battery,
 }
 
@@ -40,6 +42,7 @@ impl DeviceConfig {
             DeviceConfig::Trmnl(_) => DeviceRoleName::Trmnl,
             DeviceConfig::RobotVacuum(_) => DeviceRoleName::RobotVacuum,
             DeviceConfig::MediaPlayer(_) => DeviceRoleName::MediaPlayer,
+            DeviceConfig::GarageDoor(_) => DeviceRoleName::GarageDoor,
             DeviceConfig::Battery => DeviceRoleName::Battery,
         }
     }

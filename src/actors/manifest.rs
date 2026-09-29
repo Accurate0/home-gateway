@@ -8,8 +8,8 @@ use crate::actors::devices::door_events::DoorEventsSupervisor;
 use crate::actors::devices::handler::{DeviceHandler, spawn_handler};
 use crate::actors::devices::{
     control_switch::ControlSwitchHandler, door_sensor::DoorSensorHandler,
-    environment_sensor::EnvironmentSensorHandler, light::LightHandler,
-    media_player::MediaPlayerHandler, plant_sensor::PlantSensorHandler,
+    environment_sensor::EnvironmentSensorHandler, garage_door::GarageDoorHandler,
+    light::LightHandler, media_player::MediaPlayerHandler, plant_sensor::PlantSensorHandler,
     presence_sensor::PresenceSensorHandler, robot_vacuum::RobotVacuumHandler,
     smart_switch::SmartSwitchHandler,
 };
@@ -31,6 +31,7 @@ use crate::actors::system::{
     push::PushActor,
     reconciler::{ReconcilerSweeper, ReconcilerWorker},
     sampling::SamplingActor,
+    tuya_ingest::TuyaIngest,
     watchdog::WatchdogActor,
 };
 use crate::actors::vacation::VacationActor;
@@ -42,6 +43,7 @@ use crate::integrations::jellyfin::Jellyfin;
 use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
 use crate::integrations::transperth::Transperth;
 use crate::integrations::trmnl::Trmnl;
+use crate::integrations::tuya::Tuya;
 use crate::integrations::willyweather::WillyWeather;
 use crate::integrations::woolworths::Woolworths;
 use crate::settings::SettingsContainer;
@@ -154,6 +156,7 @@ pub static ACTORS: &[ActorSpec] = &[
     device!(ControlSwitchHandler),
     device!(MediaPlayerHandler),
     device!(RobotVacuumHandler),
+    device!(GarageDoorHandler),
     plain!(AlarmActor),
     plain!(BatteryActor),
     plain!(CronActor),
@@ -279,6 +282,26 @@ pub static ACTORS: &[ActorSpec] = &[
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::esphome_native_api_ingest::spawn::spawn_esphome_native_api_ingest(
+                    &root,
+                    shared_actor_state,
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
+        name: TuyaIngest::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[Requirement::Handle {
+            label: "tuya",
+            present: |handles| handles.contains::<Tuya>(),
+        }],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                crate::actors::system::tuya_ingest::spawn::spawn_tuya_ingest(
                     &root,
                     shared_actor_state,
                 )
@@ -570,6 +593,7 @@ mod tests {
     use super::*;
     use crate::decoding::DeviceRoleName;
     use std::collections::HashSet;
+    use strum::IntoEnumIterator;
 
     #[test]
     fn every_role_with_a_handler_has_exactly_one_device_actor() {
@@ -583,10 +607,10 @@ mod tests {
             ControlSwitchHandler::ROLE,
             MediaPlayerHandler::ROLE,
             RobotVacuumHandler::ROLE,
+            GarageDoorHandler::ROLE,
         ];
 
-        let expected: HashSet<DeviceRoleName> = DeviceRoleName::ALL
-            .into_iter()
+        let expected: HashSet<DeviceRoleName> = DeviceRoleName::iter()
             .filter(|role| role.has_handler())
             .collect();
 
@@ -609,6 +633,7 @@ mod tests {
                 ReconcilerWorker::NAME,
                 ReconcilerSweeper::NAME,
                 EsphomeNativeApiIngest::NAME,
+                TuyaIngest::NAME,
                 HomeAssistantIngest::NAME,
                 JellyfinActor::NAME,
                 TransperthActor::NAME,

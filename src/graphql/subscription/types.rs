@@ -1,6 +1,7 @@
 use async_graphql::{ComplexObject, ID, Json, SimpleObject, Union};
 use uuid::Uuid;
 
+use crate::db::GarageDoorState;
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBusMessage;
 use crate::mode::Mode;
@@ -27,6 +28,14 @@ pub struct DoorUpdate {
     /// Raw device address the event was emitted for.
     pub device: String,
     pub open: bool,
+}
+
+#[derive(SimpleObject)]
+pub struct GarageDoorUpdate {
+    pub event_id: Uuid,
+    pub id: ID,
+    pub name: String,
+    pub state: GarageDoorState,
 }
 
 #[derive(SimpleObject)]
@@ -287,6 +296,7 @@ impl MediaPlayerUpdate {
 pub enum EventUpdate {
     Presence(PresenceUpdate),
     Door(DoorUpdate),
+    GarageDoor(GarageDoorUpdate),
     Switch(SwitchUpdate),
     Environment(EnvironmentUpdate),
     Plant(PlantUpdate),
@@ -386,6 +396,17 @@ impl EventUpdate {
                     open,
                 })
             }
+            EventBusMessage::GarageDoor {
+                event_id,
+                device_id,
+                name,
+                state,
+            } => EventUpdate::GarageDoor(GarageDoorUpdate {
+                event_id,
+                id: ID(device_id),
+                name,
+                state,
+            }),
             EventBusMessage::SwitchAction {
                 event_id,
                 ieee_addr,

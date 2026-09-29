@@ -3,6 +3,7 @@ pub mod door;
 pub mod eink;
 pub mod eink_defaults;
 pub mod environment;
+pub mod garage_door;
 pub mod light;
 pub mod media_player;
 pub mod plant;
