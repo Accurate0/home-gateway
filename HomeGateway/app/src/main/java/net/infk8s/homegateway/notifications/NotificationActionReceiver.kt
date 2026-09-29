@@ -14,7 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import net.infk8s.homegateway.graphql.ApolloProvider
+import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.graphql.RunWorkflowMutation
 import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
 
@@ -35,7 +35,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
                 launchAsync {
                     try {
-                        val response = ApolloProvider.client.mutation(RunWorkflowMutation(slug)).execute()
+                        val response = context.gateway.apollo.mutation(RunWorkflowMutation(slug)).execute()
                         if (response.hasErrors()) {
                             Log.w(TAG, "runWorkflow($slug) returned errors: ${response.errors}")
                         }
@@ -63,14 +63,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         .build()
                 )
 
-                report(notificationId, NotificationInteractionKind.SNOOZED)
+                report(context, notificationId, NotificationInteractionKind.SNOOZED)
             }
 
-            KIND_DISMISS -> report(notificationId, NotificationInteractionKind.DISMISSED)
+            KIND_DISMISS -> report(context, notificationId, NotificationInteractionKind.DISMISSED)
 
-            KIND_ACKNOWLEDGE -> report(notificationId, NotificationInteractionKind.ACKNOWLEDGED)
+            KIND_ACKNOWLEDGE -> report(context, notificationId, NotificationInteractionKind.ACKNOWLEDGED)
 
-            KIND_SWIPED -> report(notificationId, NotificationInteractionKind.SWIPED)
+            KIND_SWIPED -> report(context, notificationId, NotificationInteractionKind.SWIPED)
 
             else -> Unit
         }
@@ -88,10 +88,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun report(notificationId: String?, kind: NotificationInteractionKind) {
+    private fun report(context: Context, notificationId: String?, kind: NotificationInteractionKind) {
         if (notificationId == null) return
 
-        launchAsync { NotificationInteractions.record(notificationId, kind) }
+        launchAsync { NotificationInteractions.record(context.gateway.apollo, notificationId, kind) }
     }
 
     companion object {

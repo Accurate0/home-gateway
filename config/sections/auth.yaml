@@ -27,7 +27,7 @@ api_keys:
   - name: unifi-ingest
     scopes: ["ingest.unifi:write"]
   - name: home-gateway-app
-    scopes: ["**:*"]
+    scopes: ["ingest.home:write"]
   - name: home-ui
     scopes: ["**:*"]
   - name: oled-remote

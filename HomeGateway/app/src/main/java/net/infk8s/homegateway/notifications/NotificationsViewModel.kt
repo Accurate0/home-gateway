@@ -1,14 +1,15 @@
 package net.infk8s.homegateway.notifications
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import net.infk8s.homegateway.graphql.ApolloProvider
+import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.graphql.PushNotificationsQuery
 import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
 import net.infk8s.homegateway.graphql.type.PushNotificationActionKind
@@ -32,8 +33,8 @@ sealed interface NotificationsUiState {
     data class Loaded(val notifications: List<NotificationUi>) : NotificationsUiState
 }
 
-class NotificationsViewModel : ViewModel() {
-    private val apollo = ApolloProvider.client
+class NotificationsViewModel(application: Application) : AndroidViewModel(application) {
+    private val apollo = application.gateway.apollo
 
     private val _state = MutableStateFlow<NotificationsUiState>(NotificationsUiState.Loading)
     val state: StateFlow<NotificationsUiState> = _state.asStateFlow()
@@ -44,7 +45,7 @@ class NotificationsViewModel : ViewModel() {
 
     fun acknowledge(id: String) {
         viewModelScope.launch {
-            NotificationInteractions.record(id, NotificationInteractionKind.ACKNOWLEDGED)
+            NotificationInteractions.record(apollo, id, NotificationInteractionKind.ACKNOWLEDGED)
             load()
         }
     }

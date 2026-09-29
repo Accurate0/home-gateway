@@ -1,16 +1,25 @@
 package net.infk8s.homegateway.graphql
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.apollographql.apollo.api.Mutation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import net.infk8s.homegateway.EntityControls
+import net.infk8s.homegateway.dashboard.DashboardLayout
+import net.infk8s.homegateway.dashboard.EntityControls
+import net.infk8s.homegateway.dashboard.LightLevels
+import net.infk8s.homegateway.dashboard.SectionPosition
+import net.infk8s.homegateway.dashboard.TilePosition
+import net.infk8s.homegateway.dashboard.move
+import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.graphql.type.Capability
 import net.infk8s.homegateway.graphql.type.EntityCategory
 import net.infk8s.homegateway.graphql.type.GarageDoorState
@@ -120,7 +129,11 @@ sealed interface EntityUi {
 }
 
 /// One dashboard section, in the display order the backend chose.
-data class EntitySectionUi(val title: String, val items: List<EntityUi>)
+data class EntitySectionUi(
+    val category: EntityCategory,
+    val title: String,
+    val items: List<EntityUi>,
+)
 
 sealed interface EntitiesUiState {
     data object Loading : EntitiesUiState
@@ -128,11 +141,61 @@ sealed interface EntitiesUiState {
     data class Loaded(val sections: List<EntitySectionUi>) : EntitiesUiState
 }
 
-class EntitiesViewModel : ViewModel() {
-    private val apollo = ApolloProvider.client
+class EntitiesViewModel(application: Application) : AndroidViewModel(application) {
+    private val apollo = application.gateway.apollo
+
+    private val dashboard = application.gateway.database.dashboard()
 
     private val _state = MutableStateFlow<EntitiesUiState>(EntitiesUiState.Loading)
-    val state: StateFlow<EntitiesUiState> = _state.asStateFlow()
+
+    private val layout = MutableStateFlow<DashboardLayout?>(null)
+
+    val lightLevels = LightLevels()
+
+    val state: StateFlow<EntitiesUiState> = combine(_state, layout) { state, layout ->
+        when {
+            layout == null -> EntitiesUiState.Loading
+            state is EntitiesUiState.Loaded -> EntitiesUiState.Loaded(layout.arrange(state.sections))
+            else -> state
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, EntitiesUiState.Loading)
+
+    init {
+        viewModelScope.launch {
+            layout.value = DashboardLayout.from(dashboard.sections(), dashboard.tiles())
+        }
+    }
+
+    fun moveTile(from: String, to: String) {
+        val current = layout.value ?: return
+        val sections = (_state.value as? EntitiesUiState.Loaded)?.sections?.let(current::arrange) ?: return
+        val section = sections.firstOrNull { section -> section.items.any { it.key == from } } ?: return
+
+        val order = section.items.map { it.key }.toMutableList()
+        if (!order.move(from, to)) {
+            return
+        }
+
+        layout.value = current.withTiles(order)
+        viewModelScope.launch {
+            dashboard.upsertTiles(order.mapIndexed { index, key -> TilePosition(key, index) })
+        }
+    }
+
+    fun moveSection(from: EntityCategory, to: EntityCategory) {
+        val current = layout.value ?: return
+        val sections = (_state.value as? EntitiesUiState.Loaded)?.sections?.let(current::arrange) ?: return
+
+        val order = sections.map { it.category.rawValue }.toMutableList()
+        if (!order.move(from.rawValue, to.rawValue)) {
+            return
+        }
+
+        layout.value = current.withSections(order)
+        viewModelScope.launch {
+            dashboard.upsertSections(order.mapIndexed { index, category -> SectionPosition(category, index) })
+        }
+    }
 
     /// Drives the live connection for as long as the caller's coroutine is active.
     /// The Activity launches this from a STARTED-scoped lifecycle, so the WebSocket
@@ -195,7 +258,7 @@ class EntitiesViewModel : ViewModel() {
             .sortedBy { it.name.lowercase() }
 
         if (inSection.isEmpty()) null
-        else EntitySectionUi(titles[category] ?: category.rawValue.lowercase(), inSection)
+        else EntitySectionUi(category, titles[category] ?: category.rawValue.lowercase(), inSection)
     }
 
     private suspend fun subscribe() {
