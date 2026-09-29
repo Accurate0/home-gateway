@@ -107,6 +107,17 @@ impl EnvironmentEntity {
         self.load(ctx, |t| t.pressure).await
     }
 
+    async fn pm25(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<i64>> {
+        self.load(ctx, |t| t.pm25).await
+    }
+
+    async fn voc_index(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<i64>> {
+        self.load(ctx, |t| t.voc_index).await
+    }
+
     async fn lux(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<f64>> {
         self.load(ctx, |t| t.lux).await
     }

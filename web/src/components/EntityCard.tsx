@@ -360,6 +360,20 @@ const ENVIRONMENT_METRICS: {
     digits: 0,
   },
   { label: "UV index", field: "uvIndex", capability: "UV_INDEX", unit: "" },
+  {
+    label: "PM2.5",
+    field: "pm25",
+    capability: "PM_25",
+    unit: " µg/m³",
+    digits: 0,
+  },
+  {
+    label: "VOC index",
+    field: "vocIndex",
+    capability: "VOC_INDEX",
+    unit: "",
+    digits: 0,
+  },
 ];
 
 function environmentMetrics(entity: Entity) {

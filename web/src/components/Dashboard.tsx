@@ -79,6 +79,8 @@ const EntitiesQuery = graphql`
         temperature
         humidity
         pressure
+        pm25
+        vocIndex
         lux
         uvIndex
         time

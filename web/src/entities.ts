@@ -55,6 +55,8 @@ export interface Entity {
   temperature?: number | null;
   humidity?: number | null;
   pressure?: number | null;
+  pm25?: number | null;
+  vocIndex?: number | null;
   lux?: number | null;
   uvIndex?: number | null;
   soilMoisture?: number | null;
@@ -166,8 +168,10 @@ const METRIC_FIELDS: Record<string, keyof Entity> = {
   temperature: "temperature",
   humidity: "humidity",
   pressure: "pressure",
+  pm25: "pm25",
+  voc_index: "vocIndex",
   lux: "lux",
-  uvIndex: "uvIndex",
+  uv_index: "uvIndex",
 };
 
 export function applyReadings(

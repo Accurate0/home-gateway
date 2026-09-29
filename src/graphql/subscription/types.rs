@@ -456,7 +456,7 @@ impl EventUpdate {
                     readings: readings
                         .into_iter()
                         .map(|reading| MetricReading {
-                            metric: format!("{:?}", reading.metric()),
+                            metric: reading.metric().to_string(),
                             value: reading.value(),
                         })
                         .collect(),

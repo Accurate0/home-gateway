@@ -293,6 +293,8 @@ type EnvironmentEntity {
 	temperature: Float
 	humidity: Float
 	pressure: Float
+	pm25: Int
+	vocIndex: Int
 	lux: Float
 	uvIndex: Float
 	"""
