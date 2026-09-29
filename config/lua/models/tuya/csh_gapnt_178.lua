@@ -24,7 +24,7 @@ local SETTLED = {
 ---@type TuyaModel
 return {
 	roles = { "garage_door", "battery" },
-	watchdog = "1h",
+	watchdog = "7d",
 
 	encode = {
 		garage_door = function(input)
