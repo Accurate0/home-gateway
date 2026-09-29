@@ -20,7 +20,7 @@
 
 - id: door-mccgq12lm-2
   aliases: [garage-door]
-  state: enabled
+  state: disabled
   room: garage
   transport:
     type: mqtt
