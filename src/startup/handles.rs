@@ -174,11 +174,7 @@ pub async fn build(
         .insert(eink)
         .insert(workflow_manager)
         .insert(ActorHealthRegistry::new())
-        .insert(AuthManager::new(
-            pool.clone(),
-            oauth,
-            &settings.auth.api_key_cache,
-        ))
+        .insert(AuthManager::new(pool.clone(), oauth, &settings.auth))
         .insert(willyweather)
         .insert(http_client)
         .insert(public_http_client)

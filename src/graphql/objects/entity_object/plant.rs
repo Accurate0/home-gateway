@@ -1,5 +1,5 @@
 use async_graphql::{Object, SimpleObject, dataloader::DataLoader};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 
 use crate::{
     device_registry::DeviceRegistry,
@@ -7,8 +7,11 @@ use crate::{
         dataloader::plant::{LatestPlantDataLoader, PlantModel},
         objects::entity_object::last_seen_for,
     },
+    history_window::clamp_since,
     repo::RepoRegistry,
 };
+
+const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(90);
 
 #[derive(SimpleObject)]
 #[graphql(rename_fields = "camelCase")]
@@ -103,6 +106,7 @@ impl PlantEntity {
         since: DateTime<Utc>,
     ) -> async_graphql::Result<Vec<PlantPoint>> {
         let repos = ctx.data::<RepoRegistry>()?;
+        let since = clamp_since(since, Utc::now(), MAX_HISTORY_WINDOW);
 
         Ok(repos
             .plant()

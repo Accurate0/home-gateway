@@ -14,6 +14,10 @@ pub struct LuaSettings {
     pub timeout: TimeDelta,
     pub max_instructions: u32,
     pub max_memory: usize,
+    #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    pub max_delay: TimeDelta,
+    pub max_http_response_bytes: usize,
     #[serde(default)]
     pub library: Option<PathBuf>,
     #[serde(default)]
@@ -28,6 +32,10 @@ impl LuaSettings {
     pub fn timeout(&self) -> Duration {
         self.timeout.to_std().unwrap_or_default()
     }
+
+    pub fn max_delay(&self) -> Duration {
+        self.max_delay.to_std().unwrap_or_default()
+    }
 }
 
 impl Default for LuaSettings {
@@ -36,6 +44,8 @@ impl Default for LuaSettings {
             timeout: TimeDelta::seconds(5),
             max_instructions: 5_000_000,
             max_memory: 64 * 1024 * 1024,
+            max_delay: TimeDelta::hours(1),
+            max_http_response_bytes: 8 * 1024 * 1024,
             library: None,
             workflows: None,
             integrations: None,

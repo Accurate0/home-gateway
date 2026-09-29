@@ -1,10 +1,14 @@
 pub mod api_types;
+pub mod client_ip;
 pub mod context;
+pub mod lockout;
 pub mod manager;
 pub mod oauth;
 pub mod scope;
 
+pub use client_ip::{ClientIp, client_ip};
 pub use context::AuthContext;
+pub use lockout::AuthLockout;
 pub use manager::AuthManager;
 pub use oauth::OAuthValidator;
 
@@ -63,7 +67,8 @@ async fn resolve_api_key(
         state
             .handles
             .expect::<AuthManager>()
-            .touch_last_used(key.id);
+            .touch_last_used(key.id)
+            .await;
 
         return Ok(Some(AuthContext::from_scopes(
             Some(key.id),
@@ -148,12 +153,29 @@ pub async fn auth_middleware(
     mut req: Request,
     next: Next,
 ) -> Response {
+    let lockout = state.handles.expect::<AuthManager>().lockout();
+    let ip = client_ip(req.headers(), req.extensions());
+
+    if let Some(ip) = ip
+        && lockout.is_locked(ip).await
+    {
+        return StatusCode::TOO_MANY_REQUESTS.into_response();
+    }
+
     match resolve_auth(req.headers(), &state).await {
         Ok(auth) => {
             req.extensions_mut().insert(auth);
             next.run(req).await
         }
-        Err(status) => status.into_response(),
+        Err(status) => {
+            if status == StatusCode::UNAUTHORIZED
+                && let Some(ip) = ip
+            {
+                lockout.record_failure(ip).await;
+            }
+
+            status.into_response()
+        }
     }
 }
 

@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use crate::auth::AuthLockout;
 use crate::auth::api_types::{ApiKeyInfo, CreatedKey};
-use crate::settings::CacheSettings;
+use crate::settings::AuthSettings;
 use chrono::{DateTime, Utc};
 use moka::future::Cache;
 use rand::{RngExt, distr::Alphanumeric};
@@ -28,6 +29,8 @@ pub struct CachedKey {
 pub struct AuthManager {
     db: Pool<Postgres>,
     cache: Cache<String, Option<Arc<CachedKey>>>,
+    touched: Cache<Uuid, ()>,
+    lockout: AuthLockout,
     oauth: Option<Arc<OAuthValidator>>,
 }
 
@@ -35,14 +38,29 @@ impl AuthManager {
     pub fn new(
         db: Pool<Postgres>,
         oauth: Option<Arc<OAuthValidator>>,
-        cache: &CacheSettings,
+        settings: &AuthSettings,
     ) -> Self {
         let cache = Cache::builder()
-            .max_capacity(cache.capacity)
-            .time_to_live(cache.ttl())
+            .max_capacity(settings.api_key_cache.capacity)
+            .time_to_live(settings.api_key_cache.ttl())
             .build();
 
-        Self { db, cache, oauth }
+        let touched = Cache::builder()
+            .max_capacity(settings.api_key_cache.capacity)
+            .time_to_live(settings.last_used_interval())
+            .build();
+
+        Self {
+            db,
+            cache,
+            touched,
+            lockout: AuthLockout::new(&settings.lockout),
+            oauth,
+        }
+    }
+
+    pub fn lockout(&self) -> &AuthLockout {
+        &self.lockout
     }
 
     pub async fn validate_oauth(&self, token: &str) -> Option<Result<AuthContext, StatusCode>> {
@@ -73,7 +91,11 @@ impl AuthManager {
             .await
     }
 
-    pub fn touch_last_used(&self, id: Uuid) {
+    pub async fn touch_last_used(&self, id: Uuid) {
+        if !self.touched.entry(id).or_insert(()).await.is_fresh() {
+            return;
+        }
+
         let db = self.db.clone();
         tokio::spawn(async move {
             if let Err(e) =

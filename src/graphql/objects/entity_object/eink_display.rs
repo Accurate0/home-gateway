@@ -7,9 +7,10 @@ use crate::{
     device_registry::{Capability, DeviceRegistry},
     eink::EinkDisplayManager,
     graphql::dataloader::{
-        device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
+        device_battery_history::{DeviceBatteryHistoryDataLoader, MAX_HISTORY_WINDOW},
         eink_battery::EinkDisplayDataLoader,
     },
+    history_window::clamp_since,
     routes::epd::{DeviceReport, EpdConfig},
     settings::EinkDisplaySettings,
     settings::{EinkMode, Orientation, RedditTimespan},
@@ -218,7 +219,7 @@ impl EinkDisplayEntity {
         since: DateTime<Utc>,
     ) -> async_graphql::Result<Vec<BatteryPoint>> {
         let loader = ctx.data::<DataLoader<DeviceBatteryHistoryDataLoader>>()?;
-        let since = clamp_since(since, Utc::now());
+        let since = clamp_since(since, Utc::now(), MAX_HISTORY_WINDOW);
 
         Ok(loader
             .load_one((self.address.clone(), since))

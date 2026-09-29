@@ -2,6 +2,11 @@
 api_key_cache:
   capacity: 1024
   ttl: 1h
+last_used_interval: 1m
+lockout:
+  attempts: 20
+  window: 5m
+  capacity: 10000
 oauth:
   issuer: https://idm.anurag.sh/oauth2/openid/home-gateway
   jwks_url: https://idm.anurag.sh/oauth2/openid/home-gateway/public_key.jwk

@@ -92,6 +92,76 @@ async fn health_is_unauthenticated() {
 
 #[tokio::test]
 #[serial]
+async fn cluster_routes_live_outside_the_public_prefix() {
+    let harness = Harness::start().await;
+    let client = Client::new(&harness);
+
+    for path in ["/metrics", "/health/actors"] {
+        let (status, _) = client
+            .send(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await;
+
+        assert!(
+            status == StatusCode::OK || status == StatusCode::SERVICE_UNAVAILABLE,
+            "`{path}` should be served at the root, got {status}"
+        );
+
+        let (status, _) = client
+            .send(
+                Request::builder()
+                    .uri(format!("/v1{path}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await;
+
+        assert_eq!(
+            status,
+            StatusCode::NOT_FOUND,
+            "`/v1{path}` is routed by the ingress and must not exist"
+        );
+    }
+}
+
+#[tokio::test]
+#[serial]
+async fn repeated_failed_auth_locks_out_the_client() {
+    let harness = Harness::start().await;
+    let client = Client::new(&harness);
+    let attempts = harness.state.settings.auth.lockout.attempts;
+
+    let attempt = |ip: &'static str| {
+        Request::builder()
+            .method("POST")
+            .uri("/v1/graphql")
+            .header("content-type", "application/json")
+            .header("X-Api-Key", "not-a-key")
+            .header("x-real-ip", ip)
+            .body(Body::from(r#"{"query":"{ __typename }"}"#))
+            .unwrap()
+    };
+
+    for _ in 0..attempts {
+        let (status, _) = client.send(attempt("203.0.113.7")).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+
+    let (status, _) = client.send(attempt("203.0.113.7")).await;
+
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+
+    let (status, _) = client.send(attempt("203.0.113.8")).await;
+
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "another client should not be locked out"
+    );
+}
+
+#[tokio::test]
+#[serial]
 async fn requests_without_credentials_are_rejected() {
     let harness = Harness::start().await;
     let client = Client::new(&harness);

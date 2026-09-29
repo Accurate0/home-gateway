@@ -5,8 +5,9 @@ use crate::{
     battery::{BatteryChemistry, voltage_to_percentage},
     graphql::dataloader::{
         device_battery::DeviceBatteryDataLoader,
-        device_battery_history::{DeviceBatteryHistoryDataLoader, clamp_since},
+        device_battery_history::{DeviceBatteryHistoryDataLoader, MAX_HISTORY_WINDOW},
     },
+    history_window::clamp_since,
 };
 
 #[derive(SimpleObject)]
@@ -81,7 +82,7 @@ impl DeviceBattery {
         since: DateTime<Utc>,
     ) -> async_graphql::Result<Vec<BatteryPoint>> {
         let loader = ctx.data::<DataLoader<DeviceBatteryHistoryDataLoader>>()?;
-        let since = clamp_since(since, Utc::now());
+        let since = clamp_since(since, Utc::now(), MAX_HISTORY_WINDOW);
 
         Ok(loader
             .load_one((self.device_id.clone(), since))

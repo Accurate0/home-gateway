@@ -1,6 +1,6 @@
 use chrono::TimeDelta;
 use home_gateway::auth::{AuthManager, hash_key};
-use home_gateway::settings::CacheSettings;
+use home_gateway::settings::{AuthLockoutSettings, AuthSettings, CacheSettings};
 use pretty_assertions::assert_eq;
 use uuid::Uuid;
 
@@ -10,9 +10,19 @@ async fn manager() -> AuthManager {
     AuthManager::new(
         fresh_database().await.pool,
         None,
-        &CacheSettings {
-            capacity: 1024,
-            ttl: TimeDelta::hours(1),
+        &AuthSettings {
+            api_key_cache: CacheSettings {
+                capacity: 1024,
+                ttl: TimeDelta::hours(1),
+            },
+            last_used_interval: TimeDelta::minutes(1),
+            lockout: AuthLockoutSettings {
+                attempts: 20,
+                window: TimeDelta::minutes(5),
+                capacity: 1024,
+            },
+            api_keys: Vec::new(),
+            oauth: None,
         },
     )
 }

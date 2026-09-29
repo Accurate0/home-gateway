@@ -107,11 +107,7 @@ impl Harness {
                 &settings.workflow.enabled_cache,
             ))
             .insert(ActorHealthRegistry::new())
-            .insert(AuthManager::new(
-                db.clone(),
-                None,
-                &settings.auth.api_key_cache,
-            ))
+            .insert(AuthManager::new(db.clone(), None, &settings.auth))
             .insert(
                 WillyWeather::new(
                     &settings.integrations.willyweather,

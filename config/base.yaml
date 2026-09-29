@@ -53,6 +53,8 @@ lua:
   timeout: 5s
   max_instructions: 5000000
   max_memory: 67108864
+  max_delay: 1h
+  max_http_response_bytes: 8388608
   library: lua/lib
   workflows: lua/workflows
   integrations: lua/integrations

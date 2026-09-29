@@ -1,3 +1,4 @@
+use crate::history_window::clamp_since;
 use crate::integrations::solar::types::{
     GenerationHistory, SolarCurrentResponse, SolarCurrentStatistics, SolarCurrentStatisticsAverages,
 };
@@ -93,15 +94,11 @@ pub async fn current(db: &Pool<Postgres>) -> Result<SolarCurrentResponse, SolarQ
 
 pub const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(30);
 
-fn clamp_since(since: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
-    since.max(now - MAX_HISTORY_WINDOW)
-}
-
 pub async fn history_since(
     db: &Pool<Postgres>,
     since: DateTime<Utc>,
 ) -> Result<Vec<GenerationHistory>, SolarQueryError> {
-    let since = clamp_since(since, Utc::now());
+    let since = clamp_since(since, Utc::now(), MAX_HISTORY_WINDOW);
 
     let history = SolarRepo::new(db.clone())
         .buckets_since(since)
@@ -129,14 +126,6 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
-    fn an_ancient_since_is_clamped_to_the_history_window() {
-        let now = Utc.with_ymd_and_hms(2026, 8, 16, 0, 0, 0).unwrap();
-        let epoch = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
-
-        assert_eq!(clamp_since(epoch, now), now - MAX_HISTORY_WINDOW);
-    }
-
-    #[test]
     fn yesterday_spans_the_previous_perth_day() {
         let now = Utc.with_ymd_and_hms(2026, 8, 16, 2, 0, 0).unwrap();
         let day = yesterday(now);
@@ -149,13 +138,5 @@ mod tests {
             day.end,
             Utc.with_ymd_and_hms(2026, 8, 15, 16, 0, 0).unwrap()
         );
-    }
-
-    #[test]
-    fn a_recent_since_is_left_alone() {
-        let now = Utc.with_ymd_and_hms(2026, 8, 16, 0, 0, 0).unwrap();
-        let recent = now - TimeDelta::days(1);
-
-        assert_eq!(clamp_since(recent, now), recent);
     }
 }

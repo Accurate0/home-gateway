@@ -20,10 +20,6 @@ pub struct BatteryHistoryPoint {
     pub time: DateTime<Utc>,
 }
 
-pub fn clamp_since(since: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
-    since.max(now - MAX_HISTORY_WINDOW)
-}
-
 fn partition(
     keys: &[BatteryHistoryKey],
     rows: Vec<Row>,
@@ -113,17 +109,5 @@ mod tests {
         let map = partition(&keys, vec![row("a", 1)]);
 
         assert!(map[&keys[1]].is_empty());
-    }
-
-    #[test]
-    fn since_is_clamped_to_the_max_window() {
-        let now = at(12);
-        let ancient = now - Duration::days(400);
-
-        assert_eq!(clamp_since(ancient, now), now - MAX_HISTORY_WINDOW);
-        assert_eq!(
-            clamp_since(now - Duration::days(1), now),
-            now - Duration::days(1)
-        );
     }
 }

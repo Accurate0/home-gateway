@@ -179,6 +179,8 @@ lua:
   timeout: 5s
   max_instructions: 1000000
   max_memory: 67108864
+  max_delay: 1h
+  max_http_response_bytes: 8388608
   integrations: lua/integrations
 
 endpoints:
@@ -391,6 +393,11 @@ auth:
   api_key_cache:
     capacity: 1024
     ttl: 1h
+  last_used_interval: 1m
+  lockout:
+    attempts: 20
+    window: 5m
+    capacity: 10000
   api_keys:
     - name: test-reader
       scopes: ["epd:read"]

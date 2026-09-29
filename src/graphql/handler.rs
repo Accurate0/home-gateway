@@ -4,10 +4,11 @@ use axum::{
     extract::{State, WebSocketUpgrade},
     response::{IntoResponse, Response},
 };
+use http::StatusCode;
 use serde_json::Value;
 
 use crate::{
-    auth::{Auth, resolve_ws_auth},
+    auth::{Auth, AuthManager, ClientIp, resolve_ws_auth},
     error::AppError,
     state::AppState,
 };
@@ -39,10 +40,18 @@ pub async fn graphiql() -> impl IntoResponse {
 
 pub async fn graphql_ws_handler(
     State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
     protocol: GraphQLProtocol,
     upgrade: WebSocketUpgrade,
 ) -> Response {
     let schema = state.schema.clone();
+    let lockout = state.handles.expect::<AuthManager>().lockout().clone();
+
+    if let Some(ip) = ip
+        && lockout.is_locked(ip).await
+    {
+        return StatusCode::TOO_MANY_REQUESTS.into_response();
+    }
 
     upgrade
         .protocols(ALL_WEBSOCKET_PROTOCOLS)
@@ -50,9 +59,18 @@ pub async fn graphql_ws_handler(
             GraphQLWebSocket::new(stream, schema, protocol)
                 .on_connection_init(move |payload| async move {
                     let token = token_from_payload(&payload);
-                    let auth = resolve_ws_auth(token.as_deref(), &state)
-                        .await
-                        .map_err(|_| async_graphql::Error::new("unauthorized"))?;
+                    let auth = match resolve_ws_auth(token.as_deref(), &state).await {
+                        Ok(auth) => auth,
+                        Err(status) => {
+                            if status == StatusCode::UNAUTHORIZED
+                                && let Some(ip) = ip
+                            {
+                                lockout.record_failure(ip).await;
+                            }
+
+                            return Err(async_graphql::Error::new("unauthorized"));
+                        }
+                    };
                     let mut data = Data::default();
                     data.insert(auth);
                     data.insert(state.clone());

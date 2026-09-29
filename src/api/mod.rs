@@ -69,7 +69,7 @@ fn metric_route(req: &Request) -> String {
 
 async fn log_request(req: Request, next: Next) -> Response {
     let path = req.uri().path().to_owned();
-    if path.contains("/health") || path.contains("/metrics") {
+    if path.contains("/health") {
         return next.run(req).await;
     }
 
@@ -231,6 +231,11 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         .layer(OtelAxumLayer::default())
         .route("/graphql/ws", get(graphql_ws_handler))
         .route("/health", get(health))
+        .layer(cors)
+        .layer(from_fn(log_request))
+        .with_state(state.clone());
+
+    let cluster_routes = Router::new()
         .route("/health/actors", get(actor_health))
         .route(
             "/metrics",
@@ -239,11 +244,9 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
                 async move { routes::metrics::render(&registry) }
             }),
         )
-        .layer(cors)
-        .layer(from_fn(log_request))
         .with_state(state);
 
-    Router::new().nest("/v1", api_routes)
+    Router::new().nest("/v1", api_routes).merge(cluster_routes)
 }
 
 #[cfg(test)]
@@ -307,8 +310,6 @@ mod tests {
         "/admin/keys/{id}/regenerate",
         "/weather/forecast",
         "/health",
-        "/health/actors",
-        "/metrics",
     ];
 
     #[test]

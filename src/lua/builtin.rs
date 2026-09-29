@@ -263,9 +263,12 @@ fn gateway_table(
         })
     })?;
 
+    let max_delay = cx.state.settings.lua.max_delay();
+    let timeout = cx.state.settings.lua.timeout();
+
     cx.expose(&table, &SLEEP, || {
-        lua.create_async_function(|_, seconds: f64| async move {
-            tokio::time::sleep(Duration::from_secs_f64(seconds.max(0.0))).await;
+        lua.create_async_function(move |_, seconds: f64| async move {
+            tokio::time::sleep(delay(seconds, max_delay)?).await;
 
             Ok(())
         })
@@ -277,7 +280,7 @@ fn gateway_table(
             move |lua, (seconds, detail, run): (f64, String, mlua::Function)| {
                 let lua = lua.clone();
                 let event_id = defer_cx.event_id;
-                let delay = Duration::from_secs_f64(seconds.max(0.0));
+                let delay = delay(seconds, max_delay)?;
 
                 tracing::info!("[{event_id}] lua deferring `{detail}` by {delay:?}");
 
@@ -297,11 +300,16 @@ fn gateway_table(
 
                     tracing::info!("[{event_id}] lua running deferred `{detail}`");
 
-                    match run.call_async::<()>(()).await {
-                        Ok(()) => tracing::info!("[{event_id}] lua deferred `{detail}` finished"),
-                        Err(e) => {
+                    match tokio::time::timeout(timeout, run.call_async::<()>(())).await {
+                        Ok(Ok(())) => {
+                            tracing::info!("[{event_id}] lua deferred `{detail}` finished")
+                        }
+                        Ok(Err(e)) => {
                             tracing::error!("[{event_id}] lua deferred `{detail}` failed: {e}")
                         }
+                        Err(_) => tracing::error!(
+                            "[{event_id}] lua deferred `{detail}` timed out after {timeout:?}"
+                        ),
                     }
 
                     drop(lua);
@@ -424,7 +432,7 @@ async fn http(lua: &Lua, cx: &LuaCallContext, request: Table) -> mlua::Result<Ta
         .await?;
 
     let status = response.status();
-    let text = response.text().await.into_lua_err()?;
+    let text = read_capped(response, cx.state.settings.lua.max_http_response_bytes).await?;
 
     tracing::info!("[{}] lua http {detail} returned {status}", cx.event_id);
 
@@ -434,6 +442,47 @@ async fn http(lua: &Lua, cx: &LuaCallContext, request: Table) -> mlua::Result<Ta
     result.set("body", text)?;
 
     Ok(result)
+}
+
+fn delay(seconds: f64, max: Duration) -> mlua::Result<Duration> {
+    if !seconds.is_finite() {
+        return Err(
+            format!("a delay must be a finite number of seconds, got {seconds}").into_lua_err(),
+        );
+    }
+
+    let seconds = seconds.max(0.0);
+
+    if seconds > max.as_secs_f64() {
+        return Err(
+            format!("a delay of {seconds}s is longer than the {max:?} limit").into_lua_err(),
+        );
+    }
+
+    Ok(Duration::from_secs_f64(seconds))
+}
+
+async fn read_capped(mut response: reqwest::Response, limit: usize) -> mlua::Result<String> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > limit as u64)
+    {
+        return Err(format!("the response is larger than the {limit} byte limit").into_lua_err());
+    }
+
+    let mut body = Vec::new();
+
+    while let Some(chunk) = response.chunk().await.into_lua_err()? {
+        if body.len() + chunk.len() > limit {
+            return Err(
+                format!("the response is larger than the {limit} byte limit").into_lua_err(),
+            );
+        }
+
+        body.extend_from_slice(&chunk);
+    }
+
+    Ok(String::from_utf8_lossy(&body).into_owned())
 }
 
 async fn graphql(
@@ -601,4 +650,34 @@ fn json_table(lua: &Lua, cx: &LuaCallContext) -> mlua::Result<Table> {
     })?;
 
     Ok(table)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::delay;
+    use std::time::Duration;
+
+    const MAX: Duration = Duration::from_secs(60);
+
+    #[test]
+    fn a_delay_within_the_limit_is_kept() {
+        assert_eq!(delay(1.5, MAX).unwrap(), Duration::from_millis(1500));
+    }
+
+    #[test]
+    fn a_negative_delay_runs_immediately() {
+        assert_eq!(delay(-3.0, MAX).unwrap(), Duration::ZERO);
+    }
+
+    #[test]
+    fn a_delay_past_the_limit_is_rejected() {
+        assert!(delay(61.0, MAX).is_err());
+        assert!(delay(1e30, MAX).is_err());
+    }
+
+    #[test]
+    fn a_non_finite_delay_is_rejected() {
+        assert!(delay(f64::INFINITY, MAX).is_err());
+        assert!(delay(f64::NAN, MAX).is_err());
+    }
 }

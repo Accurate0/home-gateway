@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use axum::Router;
@@ -43,7 +44,7 @@ pub struct Tasks {
     pub started: Instant,
 }
 
-pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Result<()> {
+pub async fn run(listen_addr: SocketAddr, tasks: Tasks) -> anyhow::Result<()> {
     let Tasks {
         router,
         mut mqtt,
@@ -75,10 +76,13 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
 
     let axum_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {
-        axum::serve(listener, router)
-            .with_graceful_shutdown(axum_cancellation_token.cancelled_owned())
-            .await
-            .map_err(MainError::from)
+        axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .with_graceful_shutdown(axum_cancellation_token.cancelled_owned())
+        .await
+        .map_err(MainError::from)
     });
 
     let mqtt_cancellation_token = cancellation_token.child_token();
