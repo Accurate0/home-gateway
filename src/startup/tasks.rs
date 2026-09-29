@@ -142,11 +142,15 @@ pub async fn run(listen_addr: std::net::SocketAddr, tasks: Tasks) -> anyhow::Res
         });
     }
 
-    task_set.spawn(async move {
+    if feature_flag_client.has_live_provider() {
+        task_set.spawn(async move {
+            feature_flag::publish_provider_events(feature_flag_client, event_bus).await;
+            tracing::warn!("the feature flag watcher stopped");
+            Ok::<(), MainError>(())
+        });
+    } else {
         feature_flag::publish_provider_events(feature_flag_client, event_bus).await;
-        tracing::warn!("the feature flag watcher stopped");
-        Ok::<(), MainError>(())
-    });
+    }
 
     let supervisor_cancellation_token = cancellation_token.child_token();
     task_set.spawn(async move {

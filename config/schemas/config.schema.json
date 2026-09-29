@@ -4161,6 +4161,13 @@
           "additionalProperties": {
             "$ref": "#/$defs/TuyaDeviceSettings"
           }
+        },
+        "local_keys": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
         }
       },
       "required": [
@@ -4178,13 +4185,6 @@
       "properties": {
         "host": {
           "type": "string"
-        },
-        "local_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
         }
       },
       "additionalProperties": false,

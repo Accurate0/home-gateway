@@ -51,9 +51,8 @@ impl Tuya {
                 continue;
             };
 
-            let local_key = config
-                .local_key
-                .as_deref()
+            let local_key = settings
+                .local_key(&device.id)
                 .and_then(|key| <[u8; 16]>::try_from(key.as_bytes()).ok());
 
             let Some(local_key) = local_key else {

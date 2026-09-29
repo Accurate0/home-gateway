@@ -25,9 +25,22 @@ pub struct TuyaSettings {
     pub silence_timeout: TimeDelta,
     pub reconnect: ReconnectSettings,
     pub devices: BTreeMap<String, TuyaDeviceSettings>,
+    #[serde(default)]
+    pub local_keys: BTreeMap<String, String>,
 }
 
 impl TuyaSettings {
+    pub fn local_key(&self, id: &str) -> Option<&str> {
+        self.local_keys.get(&local_key_name(id)).map(String::as_str)
+    }
+
+    pub fn local_key_variable(id: &str) -> String {
+        format!(
+            "INTEGRATIONS__TUYA__LOCAL_KEYS__{}",
+            local_key_name(id).to_uppercase()
+        )
+    }
+
     pub fn heartbeat(&self) -> Duration {
         self.heartbeat.to_std().unwrap_or_default()
     }
@@ -35,4 +48,8 @@ impl TuyaSettings {
     pub fn silence_timeout(&self) -> Duration {
         self.silence_timeout.to_std().unwrap_or_default()
     }
+}
+
+fn local_key_name(id: &str) -> String {
+    id.replace('-', "_").to_lowercase()
 }

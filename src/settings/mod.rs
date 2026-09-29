@@ -1211,9 +1211,8 @@ integrations:
   esphome:
     encryption_key: x
   tuya:
-    devices:
-      garage-tuya-csh-gapnt-178-1:
-        local_key: "0123456789abcdef"
+    local_keys:
+      garage_tuya_csh_gapnt_178_1: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1275,16 +1274,22 @@ integrations:
     }
 
     #[test]
-    fn a_tuya_local_key_is_read_from_an_env_var_named_after_a_hyphenated_device_id() {
+    fn a_tuya_local_key_is_read_from_a_shell_safe_env_var() {
         let (settings, registry) = build_with_env(&[(
-            "INTEGRATIONS__TUYA__DEVICES__garage-tuya-csh-gapnt-178-1__LOCAL_KEY",
+            "INTEGRATIONS__TUYA__LOCAL_KEYS__GARAGE_TUYA_CSH_GAPNT_178_1",
             "0123456789abcdef",
         )])
         .expect("config");
 
         let device = &settings.integrations.tuya.devices["garage-tuya-csh-gapnt-178-1"];
 
-        assert_eq!(device.local_key.as_deref(), Some("0123456789abcdef"));
+        assert_eq!(
+            settings
+                .integrations
+                .tuya
+                .local_key("garage-tuya-csh-gapnt-178-1"),
+            Some("0123456789abcdef")
+        );
         assert_eq!(device.host, "lwip0.iot");
         assert!(registry.garage_door("bf29cac95f2db311c1ggxq").is_some());
         assert!(registry.battery("bf29cac95f2db311c1ggxq").is_some());
@@ -1301,7 +1306,7 @@ integrations:
         assert!(
             error
                 .to_string()
-                .contains("INTEGRATIONS__TUYA__DEVICES__garage-tuya-csh-gapnt-178-1__LOCAL_KEY"),
+                .contains("INTEGRATIONS__TUYA__LOCAL_KEYS__GARAGE_TUYA_CSH_GAPNT_178_1"),
             "{error}"
         );
     }
@@ -1309,7 +1314,7 @@ integrations:
     #[test]
     fn a_tuya_local_key_must_be_16_bytes() {
         let error = build_with_env(&[(
-            "INTEGRATIONS__TUYA__DEVICES__garage-tuya-csh-gapnt-178-1__LOCAL_KEY",
+            "INTEGRATIONS__TUYA__LOCAL_KEYS__GARAGE_TUYA_CSH_GAPNT_178_1",
             "short",
         )])
         .expect_err("short key");
@@ -1335,9 +1340,8 @@ integrations:
   esphome:
     encryption_key: x
   tuya:
-    devices:
-      garage-tuya-csh-gapnt-178-1:
-        local_key: "0123456789abcdef"
+    local_keys:
+      garage_tuya_csh_gapnt_178_1: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1672,9 +1676,8 @@ integrations:
   esphome:
     encryption_key: x
   tuya:
-    devices:
-      garage-tuya-csh-gapnt-178-1:
-        local_key: "0123456789abcdef"
+    local_keys:
+      garage_tuya_csh_gapnt_178_1: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:
@@ -1826,9 +1829,8 @@ integrations:
   esphome:
     encryption_key: x
   tuya:
-    devices:
-      garage-tuya-csh-gapnt-178-1:
-        local_key: "0123456789abcdef"
+    local_keys:
+      garage_tuya_csh_gapnt_178_1: "0123456789abcdef"
   willyweather:
     api_key: x
   jellyfin:

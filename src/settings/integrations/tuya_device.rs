@@ -5,6 +5,4 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 pub struct TuyaDeviceSettings {
     pub host: String,
-    #[serde(default)]
-    pub local_key: Option<String>,
 }

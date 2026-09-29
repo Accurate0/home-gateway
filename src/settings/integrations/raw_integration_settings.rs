@@ -89,21 +89,17 @@ fn validate_tuya(tuya: &TuyaSettings) -> Result<(), String> {
     }
 
     for (id, device) in &tuya.devices {
-        let variable = format!("INTEGRATIONS__TUYA__DEVICES__{id}__LOCAL_KEY");
+        let variable = TuyaSettings::local_key_variable(id);
 
-        let Some(local_key) = device
-            .local_key
-            .as_deref()
-            .filter(|key| !missing(Some(key)))
-        else {
+        let Some(local_key) = tuya.local_key(id).filter(|key| !missing(Some(key))) else {
             return Err(format!(
-                "integrations.tuya.devices.{id}.local_key is required (set {variable})"
+                "tuya device {id} needs a local key (set {variable})"
             ));
         };
 
         if local_key.len() != 16 {
             return Err(format!(
-                "integrations.tuya.devices.{id}.local_key must be 16 bytes (check {variable})"
+                "tuya device {id}: the local key must be 16 bytes (check {variable})"
             ));
         }
 

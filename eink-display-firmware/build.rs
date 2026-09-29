@@ -9,9 +9,11 @@ fn main() {
         .or_else(git_short_sha)
         .unwrap_or_else(|| "unknown".to_owned());
 
-    let version = format!("v{}-{}", env!("CARGO_PKG_VERSION"), sha);
+    let version = std::env::var("FIRMWARE_VERSION")
+        .unwrap_or_else(|_| format!("v{}-{}", env!("CARGO_PKG_VERSION"), sha));
 
     println!("cargo:rustc-env=FIRMWARE_VERSION={version}");
+    println!("cargo:rerun-if-env-changed=FIRMWARE_VERSION");
     println!("cargo:rerun-if-env-changed=GITHUB_SHA");
     println!("cargo:rerun-if-changed=../.git/HEAD");
 }
