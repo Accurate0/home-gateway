@@ -4,7 +4,7 @@ use async_graphql::Object;
 use chrono::Utc;
 
 use crate::adhoc::task::checksum;
-use crate::adhoc::{cron_registry, registry};
+use crate::adhoc::{SealedTask, cron_registry, registry};
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::adhoc_object::{AdhocCronTaskStatus, AdhocTaskStatus};
@@ -61,7 +61,7 @@ impl AdhocQuery {
 
         Ok(registry()
             .into_iter()
-            .map(|task| {
+            .map(|SealedTask { task, .. }| {
                 let run = runs.get(&task.ordinal());
 
                 AdhocTaskStatus {

@@ -87,6 +87,8 @@ mod tests {
         ("doors", DOORS),
     ];
 
+    const RETIRED: [&str; 2] = ["env-wsdcgq11lm-1", "env-wsdcgq11lm-2"];
+
     #[test]
     fn no_old_id_is_renamed_twice() {
         for (name, map) in MAPS {
@@ -133,7 +135,7 @@ mod tests {
         }
 
         for (name, map) in MAPS {
-            for rekey in map {
+            for rekey in map.iter().filter(|rekey| !RETIRED.contains(&rekey.to)) {
                 assert!(
                     configured.contains(rekey.to),
                     "{name}: `{}` is not a configured device",

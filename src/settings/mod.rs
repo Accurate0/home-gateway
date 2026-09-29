@@ -1871,9 +1871,9 @@ integrations:
                 .unwrap_or_else(|| panic!("{key} is watched"))
         };
 
-        let garage = watchdog("zigbee:door-mccgq12lm-2");
-        assert_eq!(garage.timeout, Some(chrono::TimeDelta::hours(24)));
-        assert!(garage.notify.is_empty());
+        let button = watchdog("zigbee:button-wxkg11lm-1");
+        assert_eq!(button.timeout, Some(chrono::TimeDelta::hours(24)));
+        assert!(button.notify.is_empty());
 
         let front = watchdog("zigbee:door-mccgq12lm-1");
         assert_eq!(front.timeout, Some(chrono::TimeDelta::hours(24)));

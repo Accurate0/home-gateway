@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE adhoc_task_run SET checksum = $2 WHERE ordinal = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2471905c3f86992865f6e6f916ac56a717f392d84b293fa1a502141c38f1f25c"
+}

@@ -67,6 +67,19 @@ impl AdhocRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.adhoc.reseal_ledger", err)]
+    pub async fn reseal_ledger(&self, ordinal: i64, checksum: &str) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE adhoc_task_run SET checksum = $2 WHERE ordinal = $1",
+            ordinal,
+            checksum
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all, name = "db.adhoc.record_cron_run", err)]
     pub async fn record_cron_run(
         &self,

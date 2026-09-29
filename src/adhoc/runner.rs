@@ -8,6 +8,7 @@ use super::any_cron_task::AnyAdhocCronTask;
 use super::context::AdhocTaskContext;
 use super::error::AdhocTaskError;
 use super::registry;
+use super::seal::{Seal, SealedTask};
 use super::task::{AdhocTask, checksum};
 use crate::state::AppState;
 
@@ -20,22 +21,24 @@ enum Step {
 enum Ledger {
     Completed,
     Pending,
+    Resealed,
     Tampered,
 }
 
-fn classify(existing: Option<(&str, &str)>, name: &str, expected: &str) -> Ledger {
+fn classify(existing: Option<(&str, &str)>, name: &str, expected: &str, seal: Seal) -> Ledger {
     match existing {
         None => Ledger::Pending,
         Some((row_name, row_checksum)) if row_name == name && row_checksum == expected => {
             Ledger::Completed
         }
+        Some((row_name, _)) if row_name == name && seal == Seal::Unlocked => Ledger::Resealed,
         Some(_) => Ledger::Tampered,
     }
 }
 
 pub async fn run_pending(state: &AppState, force: bool) {
-    for task in registry() {
-        match run_one(state, task, force).await {
+    for SealedTask { task, seal } in registry() {
+        match run_one(state, task, seal, force).await {
             Step::Continue => continue,
             Step::Park => {
                 tracing::warn!(
@@ -52,7 +55,7 @@ pub async fn run_pending(state: &AppState, force: bool) {
     tracing::debug!("adhoc queue is fully drained");
 }
 
-async fn run_one(state: &AppState, task: &'static dyn AdhocTask, force: bool) -> Step {
+async fn run_one(state: &AppState, task: &'static dyn AdhocTask, seal: Seal, force: bool) -> Step {
     let expected = checksum(task.source());
 
     let row = match state.repos.adhoc().read_ledger(task.ordinal()).await {
@@ -70,6 +73,7 @@ async fn run_one(state: &AppState, task: &'static dyn AdhocTask, force: bool) ->
             .map(|row| (row.name.as_str(), row.checksum.as_str())),
         task.name(),
         &expected,
+        seal,
     );
 
     match ledger {
@@ -77,6 +81,35 @@ async fn run_one(state: &AppState, task: &'static dyn AdhocTask, force: bool) ->
             tracing::trace!("adhoc task {} already completed, skipping", task.name());
 
             return Step::Continue;
+        }
+        Ledger::Resealed => {
+            let row = row.expect("resealed implies a ledger row");
+            tracing::warn!(
+                "adhoc task {} (ordinal {}) is unlocked and was edited after running: resealing ledger checksum {} as {}",
+                task.name(),
+                task.ordinal(),
+                row.checksum,
+                expected
+            );
+
+            return match state
+                .repos
+                .adhoc()
+                .reseal_ledger(task.ordinal(), &expected)
+                .await
+            {
+                Ok(()) => {
+                    crate::metrics::record_adhoc_task(task.name(), "resealed");
+
+                    Step::Continue
+                }
+                Err(e) => {
+                    tracing::error!("failed resealing adhoc ledger for {}: {e}", task.name());
+                    crate::metrics::record_adhoc_task(task.name(), "ledger_error");
+
+                    Step::Park
+                }
+            };
         }
         Ledger::Tampered => {
             let row = row.expect("tampered implies a ledger row");
@@ -285,13 +318,21 @@ mod tests {
 
     #[test]
     fn missing_row_is_pending() {
-        assert_eq!(classify(None, "trim", "abc"), Ledger::Pending);
+        assert_eq!(classify(None, "trim", "abc", Seal::Locked), Ledger::Pending);
+        assert_eq!(
+            classify(None, "trim", "abc", Seal::Unlocked),
+            Ledger::Pending
+        );
     }
 
     #[test]
     fn matching_row_is_completed() {
         assert_eq!(
-            classify(Some(("trim", "abc")), "trim", "abc"),
+            classify(Some(("trim", "abc")), "trim", "abc", Seal::Locked),
+            Ledger::Completed
+        );
+        assert_eq!(
+            classify(Some(("trim", "abc")), "trim", "abc", Seal::Unlocked),
             Ledger::Completed
         );
     }
@@ -299,15 +340,27 @@ mod tests {
     #[test]
     fn changed_checksum_is_tampered() {
         assert_eq!(
-            classify(Some(("trim", "old")), "trim", "abc"),
+            classify(Some(("trim", "old")), "trim", "abc", Seal::Locked),
             Ledger::Tampered
+        );
+    }
+
+    #[test]
+    fn changed_checksum_on_an_unlocked_task_is_resealed() {
+        assert_eq!(
+            classify(Some(("trim", "old")), "trim", "abc", Seal::Unlocked),
+            Ledger::Resealed
         );
     }
 
     #[test]
     fn reused_ordinal_under_new_name_is_tampered() {
         assert_eq!(
-            classify(Some(("other", "abc")), "trim", "abc"),
+            classify(Some(("other", "abc")), "trim", "abc", Seal::Locked),
+            Ledger::Tampered
+        );
+        assert_eq!(
+            classify(Some(("other", "abc")), "trim", "abc", Seal::Unlocked),
             Ledger::Tampered
         );
     }

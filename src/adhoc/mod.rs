@@ -4,6 +4,7 @@ pub mod cron_task;
 pub mod cron_tasks;
 pub mod error;
 pub mod runner;
+pub mod seal;
 pub mod task;
 pub mod tasks;
 
@@ -11,11 +12,12 @@ pub use any_cron_task::AnyAdhocCronTask;
 pub use context::AdhocTaskContext;
 pub use cron_task::AdhocCronTask;
 pub use error::AdhocTaskError;
+pub use seal::{Seal, SealedTask};
 pub use task::AdhocTask;
 
-pub fn registry() -> Vec<&'static dyn AdhocTask> {
+pub fn registry() -> Vec<SealedTask> {
     let mut tasks = tasks::all();
-    tasks.sort_by_key(|task| task.ordinal());
+    tasks.sort_by_key(|sealed| sealed.task.ordinal());
 
     tasks
 }
@@ -33,15 +35,16 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::collections::HashSet;
 
-    fn manifest(tasks: &[&'static dyn AdhocTask]) -> String {
+    fn manifest(tasks: &[SealedTask]) -> String {
         tasks
             .iter()
-            .map(|task| {
+            .map(|SealedTask { task, seal }| {
                 format!(
-                    "{}  {}  {}  {}",
+                    "{}  {}  {}  {}  {}",
                     task.ordinal(),
                     task.name(),
                     task.flag().unwrap_or("-"),
+                    seal,
                     task::checksum(task.source()),
                 )
             })
@@ -79,7 +82,7 @@ mod tests {
     fn cron_names_do_not_collide_with_one_shot_names() {
         let one_shot = registry()
             .iter()
-            .map(|task| task.name())
+            .map(|sealed| sealed.task.name())
             .collect::<HashSet<_>>();
 
         for task in cron_registry() {
@@ -95,7 +98,7 @@ mod tests {
     fn ordinals_are_strictly_increasing() {
         let ordinals = registry()
             .iter()
-            .map(|task| task.ordinal())
+            .map(|sealed| sealed.task.ordinal())
             .collect::<Vec<_>>();
 
         let mut sorted = ordinals.clone();
@@ -108,7 +111,10 @@ mod tests {
     #[test]
     fn names_are_unique() {
         let tasks = registry();
-        let unique = tasks.iter().map(|task| task.name()).collect::<HashSet<_>>();
+        let unique = tasks
+            .iter()
+            .map(|sealed| sealed.task.name())
+            .collect::<HashSet<_>>();
 
         assert_eq!(tasks.len(), unique.len());
     }
@@ -117,7 +123,7 @@ mod tests {
     fn flags_are_unique() {
         let flags = registry()
             .iter()
-            .filter_map(|task| task.flag())
+            .filter_map(|sealed| sealed.task.flag())
             .collect::<Vec<_>>();
 
         let unique = flags.iter().collect::<HashSet<_>>();
@@ -127,7 +133,7 @@ mod tests {
 
     #[test]
     fn checksums_are_populated() {
-        for task in registry() {
+        for SealedTask { task, .. } in registry() {
             assert!(
                 !task.source().is_empty(),
                 "{} has empty source",
