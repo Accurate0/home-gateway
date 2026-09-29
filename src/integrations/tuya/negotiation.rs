@@ -1,6 +1,6 @@
-use aes_gcm::aead::{AeadInPlace, KeyInit};
-use aes_gcm::{Aes128Gcm, Nonce};
-use hmac::{Hmac, KeyInit as _, Mac};
+use aes_gcm::Aes128Gcm;
+use aes_gcm::aead::{AeadInOut, KeyInit};
+use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
 use super::error::TuyaError;
@@ -53,7 +53,13 @@ pub fn session_key(
     let mut key: [u8; 16] = std::array::from_fn(|i| local_nonce[i] ^ remote_nonce[i]);
 
     Aes128Gcm::new(local_key.into())
-        .encrypt_in_place_detached(Nonce::from_slice(&local_nonce[..12]), &[], &mut key)
+        .encrypt_inout_detached(
+            local_nonce[..12]
+                .try_into()
+                .map_err(|_| TuyaError::Encrypt)?,
+            &[],
+            key.as_mut_slice().into(),
+        )
         .map_err(|_| TuyaError::Encrypt)?;
 
     Ok(key)

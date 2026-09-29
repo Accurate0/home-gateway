@@ -1,5 +1,5 @@
-use aes_gcm::aead::{AeadInPlace, KeyInit};
-use aes_gcm::{Aes128Gcm, Nonce, Tag};
+use aes_gcm::aead::{AeadInOut, KeyInit};
+use aes_gcm::{Aes128Gcm, Nonce};
 
 use super::error::TuyaError;
 
@@ -35,7 +35,11 @@ fn encode_with_iv(key: &[u8; 16], frame: &Frame, iv: [u8; IV_LEN]) -> Result<Vec
     let mut body = frame.payload.clone();
 
     let tag = Aes128Gcm::new(key.into())
-        .encrypt_in_place_detached(Nonce::from_slice(&iv), &bytes[4..HEADER_LEN], &mut body)
+        .encrypt_inout_detached(
+            &Nonce::from(iv),
+            &bytes[4..HEADER_LEN],
+            body.as_mut_slice().into(),
+        )
         .map_err(|_| TuyaError::Encrypt)?;
 
     bytes.extend(iv);
@@ -87,11 +91,11 @@ fn decode(bytes: &[u8], length: usize, key: &[u8; 16]) -> Result<Frame, TuyaErro
     let mut payload = bytes[HEADER_LEN + IV_LEN..end - TAG_LEN].to_vec();
 
     Aes128Gcm::new(key.into())
-        .decrypt_in_place_detached(
-            Nonce::from_slice(iv),
+        .decrypt_inout_detached(
+            iv.try_into().map_err(|_| TuyaError::Authentication)?,
             &bytes[4..HEADER_LEN],
-            &mut payload,
-            Tag::from_slice(tag),
+            payload.as_mut_slice().into(),
+            tag.try_into().map_err(|_| TuyaError::Authentication)?,
         )
         .map_err(|_| TuyaError::Authentication)?;
 

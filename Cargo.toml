@@ -75,7 +75,7 @@ prometheus = "0.14.0"
 croner = { version = "4.0.0", features = ["serde"] }
 sha2 = "0.11"
 hmac = "0.13"
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 hex = "0.4"
 rand = "0.10"
 moka = { version = "0.12", features = ["future"] }
@@ -102,7 +102,7 @@ snow = "0.10"
 serde_yaml = "0.9.34"
 serde_json = { version = "1.0.150", features = ["preserve_order"] }
 yaml-include = "0.8"
-jsonschema = { version = "0.56", default-features = false }
+jsonschema = { version = "0.58", default-features = false }
 prost-build = "0.14"
 
 [[test]]
