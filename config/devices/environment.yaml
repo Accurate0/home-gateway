@@ -1,30 +1,4 @@
 # yaml-language-server: $schema=../schemas/devices.schema.json
-- id: env-wsdcgq11lm-1
-  aliases: [env-living-room]
-  state: enabled
-  room: living-room
-  transport:
-    type: mqtt
-    address: "0x00158d008b8798a7"
-  model: lumi_wsdcgq11lm
-  roles:
-    - type: environment
-      config: { name: Living Room }
-    - type: battery
-
-- id: env-wsdcgq11lm-2
-  aliases: [env-bathroom]
-  state: enabled
-  room: bathroom
-  transport:
-    type: mqtt
-    address: "0x00158d008b879b53"
-  model: lumi_wsdcgq11lm
-  roles:
-    - type: environment
-      config: { name: Bathroom }
-    - type: battery
-
 - id: env-vindstyrka-1
   aliases: [env-living-room-air]
   state: enabled
