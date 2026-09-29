@@ -26,7 +26,7 @@ tuya:
     log_attempts: 3
   devices:
     garage-tuya-csh-gapnt-178-1:
-      host: 172.16.88.175
+      host: lwip0.iot
 
 holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
