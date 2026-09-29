@@ -1,5 +1,6 @@
 pub mod adhoc_object;
 pub mod auth_object;
+pub mod device_connection_object;
 pub mod energy_object;
 pub mod entity_object;
 pub mod fuelwatch_object;

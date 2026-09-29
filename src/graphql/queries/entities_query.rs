@@ -4,10 +4,12 @@ use crate::auth::context::AuthContext;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::{DeviceRegistry, IdOrAlias};
 use crate::graphql::guard::ScopeGuard;
+use crate::graphql::objects::device_connection_object::DeviceConnectionObject;
 use crate::graphql::objects::entity_object::{
     DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, GarageDoorEntity,
     LightEntity, MediaPlayerEntity, PlantEntity, PresenceEntity, RobotVacuumEntity,
 };
+use crate::repo::RepoRegistry;
 
 #[derive(Default)]
 pub struct EntitiesQuery;
@@ -22,6 +24,28 @@ impl EntitiesQuery {
     /// and titles this returns.
     async fn entity_sections(&self) -> Vec<EntitySection> {
         EntitySection::ordered()
+    }
+
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::Device, Action::Read)))]
+    async fn device_connections(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Vec<DeviceConnectionObject>> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let repos = ctx.data::<RepoRegistry>()?;
+
+        Ok(repos
+            .device()
+            .connections()
+            .await?
+            .into_iter()
+            .filter(|row| registry.address_for(&row.device_id).is_some())
+            .map(|row| DeviceConnectionObject {
+                device_id: row.device_id,
+                connected: row.connected,
+                changed_at: row.changed_at,
+            })
+            .collect())
     }
 
     async fn entities(

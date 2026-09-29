@@ -241,7 +241,10 @@ impl Transperth {
         }))
     }
 
-    pub async fn refresh_routes(&self, now: DateTime<Utc>) -> Result<(), TransperthError> {
+    pub async fn refresh_routes(
+        &self,
+        now: DateTime<Utc>,
+    ) -> Result<Vec<Arc<RouteDepartures>>, TransperthError> {
         let index = self.index.load();
 
         let Some(index) = index.as_ref() else {
@@ -249,6 +252,7 @@ impl Transperth {
         };
 
         let dates = service_dates(now);
+        let mut refreshed = Vec::with_capacity(self.routes.len());
 
         for routes in self.routes.iter() {
             let mut departures = departures::build(index, routes, now, self.horizon, &dates);
@@ -260,21 +264,22 @@ impl Transperth {
                 );
             }
 
+            let route = Arc::new(RouteDepartures {
+                id: routes.id.clone(),
+                origin: routes.from.clone(),
+                destination: routes.to.clone(),
+                updated_at: now,
+                departures,
+            });
+
             self.route_departures
-                .insert(
-                    routes.id.clone(),
-                    Arc::new(RouteDepartures {
-                        id: routes.id.clone(),
-                        origin: routes.from.clone(),
-                        destination: routes.to.clone(),
-                        updated_at: now,
-                        departures,
-                    }),
-                )
+                .insert(routes.id.clone(), route.clone())
                 .await;
+
+            refreshed.push(route);
         }
 
-        Ok(())
+        Ok(refreshed)
     }
 
     async fn apply_realtime(

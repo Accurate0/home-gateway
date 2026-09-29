@@ -9,7 +9,6 @@ use tracing::Instrument;
 use uuid::Uuid;
 
 use crate::device_registry::Transport;
-use crate::event_bus::EventBusMessage;
 use crate::integrations::tuya::DpsUpdate;
 use crate::state::AppState;
 
@@ -47,33 +46,17 @@ impl TuyaIngest {
         match message {
             Message::Dps(update) => self.handle_dps(state, update).await,
             Message::Connection { address, connected } => {
-                self.handle_connection(&address, connected)
+                crate::device_registry::connection::record(
+                    &self.shared_actor_state.devices,
+                    self.shared_actor_state.repos.device(),
+                    &self.shared_actor_state.event_bus,
+                    Transport::Tuya,
+                    &address,
+                    connected,
+                )
+                .await
             }
         }
-    }
-
-    fn handle_connection(&self, address: &str, connected: bool) {
-        let devices = &self.shared_actor_state.devices;
-
-        let Some(device_id) = devices.id_for_address(address) else {
-            tracing::warn!("connection change for unregistered tuya device {address}");
-            return;
-        };
-
-        match connected {
-            true => tracing::info!("tuya device {device_id} ({address}) is connected"),
-            false => tracing::warn!("tuya device {device_id} ({address}) is disconnected"),
-        }
-
-        self.shared_actor_state
-            .event_bus
-            .publish(EventBusMessage::DeviceConnection {
-                event_id: Uuid::new_v4(),
-                device_id: device_id.to_owned(),
-                transport: Transport::Tuya.to_string(),
-                room: devices.room(address).map(str::to_owned),
-                connected,
-            });
     }
 
     async fn handle_dps(&self, state: &mut WorkerState, update: DpsUpdate) {

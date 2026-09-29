@@ -11,6 +11,12 @@ pub struct LastSeenRow {
     pub last_seen: DateTime<Utc>,
 }
 
+pub struct DeviceConnectionRow {
+    pub device_id: String,
+    pub connected: bool,
+    pub changed_at: DateTime<Utc>,
+}
+
 impl DeviceRepo {
     pub fn new(db: Pool<Postgres>) -> Self {
         Self { db }
@@ -51,6 +57,34 @@ impl DeviceRepo {
             WHERE device_key = ANY($1)
             "#,
             keys
+        )
+        .fetch_all(&self.db)
+        .await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.device.record_connection", err)]
+    pub async fn record_connection(
+        &self,
+        device_id: &str,
+        connected: bool,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO device_connection (device_id, connected, changed_at) VALUES ($1, $2, now()) \
+             ON CONFLICT (device_id) DO UPDATE SET connected = $2, changed_at = now()",
+            device_id,
+            connected
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.device.connections", err)]
+    pub async fn connections(&self) -> Result<Vec<DeviceConnectionRow>, sqlx::Error> {
+        sqlx::query_as!(
+            DeviceConnectionRow,
+            "SELECT device_id, connected, changed_at FROM device_connection"
         )
         .fetch_all(&self.db)
         .await

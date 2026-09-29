@@ -137,6 +137,12 @@ type DeviceBatteryUpdate {
 	batteryPercentage: Float
 }
 
+type DeviceConnection {
+	deviceId: String!
+	connected: Boolean!
+	changedAt: DateTime!
+}
+
 type DeviceConnectionUpdate {
 	eventId: UUID!
 	deviceId: String!
@@ -333,7 +339,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -931,6 +937,7 @@ type QueryRoot {
 	and titles this returns.
 	"""
 	entitySections: [EntitySection!]!
+	deviceConnections: [DeviceConnection!]!
 	entities: [Entity!]!
 	mediaPlayer(id: IdOrAlias!): MediaPlayerEntity!
 	light(id: IdOrAlias!): LightEntity!
@@ -1081,6 +1088,18 @@ type SwitchUpdate {
 type TransperthObject {
 	routes: [RouteDeparturesObject!]!
 	route(id: String!): RouteDeparturesObject
+}
+
+type TransperthUpdate {
+	eventId: UUID!
+	routeId: String!
+	origin: String!
+	destination: String!
+	departures: Int!
+	nextLine: String
+	nextHeadsign: String
+	nextMinutesAway: Int
+	nextDelayMinutes: Int
 }
 
 """

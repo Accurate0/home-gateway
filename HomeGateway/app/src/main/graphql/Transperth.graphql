@@ -13,9 +13,17 @@ query TransperthRoutes {
         scheduledDeparture
         liveDeparture
         delayMinutes
-        minutesAway
         live
       }
+    }
+  }
+}
+
+subscription TransperthUpdates {
+  events(filter: "transperth:*") {
+    __typename
+    ... on TransperthUpdate {
+      routeId
     }
   }
 }

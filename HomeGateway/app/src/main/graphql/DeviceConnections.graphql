@@ -1,0 +1,6 @@
+query DeviceConnections {
+  deviceConnections {
+    deviceId
+    connected
+  }
+}

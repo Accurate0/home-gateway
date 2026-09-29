@@ -182,6 +182,19 @@ pub struct FuelWatchUpdate {
 }
 
 #[derive(SimpleObject)]
+pub struct TransperthUpdate {
+    pub event_id: Uuid,
+    pub route_id: String,
+    pub origin: String,
+    pub destination: String,
+    pub departures: i32,
+    pub next_line: Option<String>,
+    pub next_headsign: Option<String>,
+    pub next_minutes_away: Option<i32>,
+    pub next_delay_minutes: Option<i32>,
+}
+
+#[derive(SimpleObject)]
 pub struct CommandFailedUpdate {
     pub event_id: Uuid,
     pub id: ID,
@@ -314,6 +327,7 @@ pub enum EventUpdate {
     Solar(SolarUpdate),
     Weather(WeatherUpdate),
     FuelWatch(FuelWatchUpdate),
+    Transperth(TransperthUpdate),
     CommandFailed(CommandFailedUpdate),
     Custom(CustomUpdate),
 }
@@ -583,6 +597,27 @@ impl EventUpdate {
                 address,
                 old_price,
                 new_price,
+            }),
+            EventBusMessage::Transperth {
+                event_id,
+                route_id,
+                origin,
+                destination,
+                departures,
+                next_line,
+                next_headsign,
+                next_minutes_away,
+                next_delay_minutes,
+            } => EventUpdate::Transperth(TransperthUpdate {
+                event_id,
+                route_id,
+                origin,
+                destination,
+                departures,
+                next_line,
+                next_headsign,
+                next_minutes_away,
+                next_delay_minutes,
             }),
             EventBusMessage::CommandFailed {
                 event_id,

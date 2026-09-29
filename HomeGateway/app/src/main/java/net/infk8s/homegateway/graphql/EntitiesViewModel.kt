@@ -412,6 +412,24 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
 
         snapshot.value = EntitiesSnapshot.Loaded(fetched.entities, fetched.categories)
         refreshSurfaces()
+        loadConnections()
+    }
+
+    private suspend fun loadConnections() {
+        try {
+            val response = apollo.query(DeviceConnectionsQuery()).execute()
+            val connections = response.data?.deviceConnections
+            if (connections == null) {
+                Log.w("EntitiesViewModel", "deviceConnections returned errors: ${response.errors}")
+                return
+            }
+
+            offline.value = connections.filterNot { it.connected }.map { it.deviceId }.toSet()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("EntitiesViewModel", "failed to load device connections", e)
+        }
     }
 
     private fun refreshSurfaces() {

@@ -15,11 +15,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.time.Duration
+import java.time.Instant
+import kotlinx.coroutines.delay
 import net.infk8s.homegateway.ui.OutlinedPill
 import net.infk8s.homegateway.ui.Panel
 import net.infk8s.homegateway.ui.clock
@@ -46,13 +51,20 @@ fun TransperthScreen(state: TransperthUiState, modifier: Modifier = Modifier) {
                 )
             }
         } else {
+            val now by produceState(Instant.now()) {
+                while (true) {
+                    delay(CLOCK_TICK_MS)
+                    value = Instant.now()
+                }
+            }
+
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.routes, key = { it.id }) { route ->
-                    RouteCard(route)
+                    RouteCard(route, now)
                 }
             }
         }
@@ -60,7 +72,9 @@ fun TransperthScreen(state: TransperthUiState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RouteCard(route: RouteUi) {
+private fun RouteCard(route: RouteUi, now: Instant) {
+    val upcoming = route.departures.filter { it.departsAt.isAfter(now.minus(DEPARTED_GRACE)) }
+
     Panel(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth(),
@@ -89,7 +103,7 @@ private fun RouteCard(route: RouteUi) {
             }
         }
 
-        if (route.departures.isEmpty()) {
+        if (upcoming.isEmpty()) {
             Text(
                 "No upcoming departures",
                 style = MaterialTheme.typography.bodySmall,
@@ -98,18 +112,20 @@ private fun RouteCard(route: RouteUi) {
             )
         }
 
-        route.departures.forEachIndexed { index, departure ->
+        upcoming.forEachIndexed { index, departure ->
             if (index > 0) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
 
-            DepartureRow(departure, Modifier.padding(top = if (index == 0) 12.dp else 8.dp, bottom = 8.dp))
+            DepartureRow(departure, now, Modifier.padding(top = if (index == 0) 12.dp else 8.dp, bottom = 8.dp))
         }
     }
 }
 
 @Composable
-private fun DepartureRow(departure: DepartureUi, modifier: Modifier) {
+private fun DepartureRow(departure: DepartureUi, now: Instant, modifier: Modifier) {
+    val minutesAway = Duration.between(now, departure.departsAt).toMinutes()
+
     Row(
         modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -126,7 +142,7 @@ private fun DepartureRow(departure: DepartureUi, modifier: Modifier) {
                 listOfNotNull(
                     departure.line,
                     departure.platform?.let { "platform $it" },
-                    departure.departsAt?.clock(),
+                    departure.departsAt.clock(),
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -137,7 +153,7 @@ private fun DepartureRow(departure: DepartureUi, modifier: Modifier) {
 
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                if (departure.minutesAway <= 0) "now" else "${departure.minutesAway} min",
+                if (minutesAway <= 0) "now" else "$minutesAway min",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = if (departure.live) StateTone.PRESENT.accent else MaterialTheme.colorScheme.onSurface,
@@ -160,3 +176,7 @@ private fun DelayText(label: String, late: Boolean) {
         color = if (late) StateTone.OPEN.accent else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+private const val CLOCK_TICK_MS = 30_000L
+
+private val DEPARTED_GRACE = Duration.ofMinutes(1)

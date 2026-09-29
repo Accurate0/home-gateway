@@ -1,4 +1,5 @@
 mod capability;
+pub mod connection;
 mod device;
 mod device_config;
 mod device_names;

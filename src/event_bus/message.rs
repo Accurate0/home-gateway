@@ -9,7 +9,8 @@ use super::variables::{
     DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
     GarageDoorVariables, HomeAssistantVariables, JellyfinVariables, LightVariables,
     MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables, SolarVariables,
-    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
+    SunVariables, SwitchVariables, TransperthVariables, UnifiVariables, WeatherVariables,
+    WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
@@ -195,6 +196,17 @@ pub enum EventBusMessage {
         old_price: f64,
         new_price: f64,
     },
+    Transperth {
+        event_id: Uuid,
+        route_id: String,
+        origin: String,
+        destination: String,
+        departures: i32,
+        next_line: Option<String>,
+        next_headsign: Option<String>,
+        next_minutes_away: Option<i32>,
+        next_delay_minutes: Option<i32>,
+    },
     CommandFailed {
         event_id: Uuid,
         kind: DeviceKind,
@@ -271,6 +283,7 @@ impl EventBusMessage {
             | EventBusMessage::Solar { event_id, .. }
             | EventBusMessage::Weather { event_id, .. }
             | EventBusMessage::FuelWatch { event_id, .. }
+            | EventBusMessage::Transperth { event_id, .. }
             | EventBusMessage::CommandFailed { event_id, .. }
             | EventBusMessage::FeatureFlag { event_id, .. }
             | EventBusMessage::Custom { event_id, .. } => *event_id,
@@ -300,6 +313,7 @@ impl EventBusMessage {
             EventBusMessage::Solar { .. } => "solar",
             EventBusMessage::Weather { .. } => "weather",
             EventBusMessage::FuelWatch { .. } => "fuelwatch",
+            EventBusMessage::Transperth { .. } => "transperth",
             EventBusMessage::CommandFailed { .. } => "command_failed",
             EventBusMessage::FeatureFlag { .. } => "feature_flag",
             EventBusMessage::Custom { .. } => "custom",
@@ -327,6 +341,7 @@ impl EventBusMessage {
         "solar",
         "weather",
         "fuelwatch",
+        "transperth",
         "command_failed",
         "feature_flag",
         "custom",
@@ -357,6 +372,7 @@ impl EventBusMessage {
             EventBusMessage::Solar { .. } => "solar".to_string(),
             EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
             EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
+            EventBusMessage::Transperth { route_id, .. } => route_id.clone(),
             EventBusMessage::CommandFailed { address, .. } => address.clone(),
             EventBusMessage::FeatureFlag { state, .. } => state.to_string(),
             EventBusMessage::Custom { name, .. } => name.clone(),
@@ -559,6 +575,27 @@ impl EventBusMessage {
                 old_price: *old_price,
                 new_price: *new_price,
                 drop: old_price - new_price,
+            }
+            .to_node(),
+            EventBusMessage::Transperth {
+                route_id,
+                origin,
+                destination,
+                departures,
+                next_line,
+                next_headsign,
+                next_minutes_away,
+                next_delay_minutes,
+                ..
+            } => TransperthVariables {
+                route: route_id.clone(),
+                origin: origin.clone(),
+                destination: destination.clone(),
+                departures: *departures,
+                next_line: next_line.clone(),
+                next_headsign: next_headsign.clone(),
+                next_minutes_away: *next_minutes_away,
+                next_delay_minutes: *next_delay_minutes,
             }
             .to_node(),
             EventBusMessage::Custom {
