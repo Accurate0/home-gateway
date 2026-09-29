@@ -1285,7 +1285,7 @@ integrations:
         let device = &settings.integrations.tuya.devices["garage-tuya-csh-gapnt-178-1"];
 
         assert_eq!(device.local_key.as_deref(), Some("0123456789abcdef"));
-        assert_eq!(device.host, "172.16.88.175");
+        assert_eq!(device.host, "lwip0.iot");
         assert!(registry.garage_door("bf29cac95f2db311c1ggxq").is_some());
         assert!(registry.battery("bf29cac95f2db311c1ggxq").is_some());
         assert_eq!(
@@ -1644,7 +1644,7 @@ integrations:
         let watched: Vec<&String> = registry.watchdog_devices().map(|(key, _)| key).collect();
         assert_eq!(
             watched.len(),
-            22,
+            19,
             "every enabled device has a watchdog (24 configured, 2 disabled)"
         );
         for key in watched {

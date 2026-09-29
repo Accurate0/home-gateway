@@ -1,0 +1,31 @@
+query Modes {
+  mode {
+    active
+    node(mode: VACATION) {
+      mode
+      ... on VacationMode {
+        enabled
+        window
+        jitter
+        minObservations
+        lights {
+          address
+          deviceId
+          name
+          coverage
+          currentTarget
+          actions {
+            at
+            on
+            slot
+            onFraction
+          }
+        }
+      }
+    }
+  }
+}
+
+mutation SetMode($mode: Mode!) {
+  setMode(mode: $mode)
+}

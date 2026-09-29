@@ -93,6 +93,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.appauth)
     implementation(libs.reorderable)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.core.ktx)

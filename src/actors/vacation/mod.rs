@@ -15,7 +15,7 @@ use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::event_bus::{Recipient, Subscription};
 use crate::state::AppState;
-use crate::vacation::{PlannedAction, build_plan, target_at};
+use crate::vacation::{DayPlan, build_plan, target_at};
 
 pub mod lua;
 pub mod subscriber;
@@ -36,7 +36,7 @@ pub struct VacationActor {
 pub struct VacationState {
     _subscription: Subscription,
     armed: bool,
-    plan: Vec<PlannedAction>,
+    plan: DayPlan,
     timers: Vec<ractor::concurrency::JoinHandle<Result<(), ractor::MessagingErr<VacationMessage>>>>,
 }
 
@@ -94,7 +94,7 @@ impl VacationActor {
         let now = Utc::now();
         let mut armed = 0;
 
-        for action in &state.plan {
+        for action in &state.plan.actions {
             let Ok(delay) = (action.at - now).to_std() else {
                 continue;
             };
@@ -121,18 +121,11 @@ impl VacationActor {
                 .push(myself.send_after(delay, || VacationMessage::Rebuild));
         }
 
-        let mut addresses: Vec<&str> = state
-            .plan
-            .iter()
-            .map(|action| action.address.as_str())
-            .collect();
-
-        addresses.sort_unstable();
-        addresses.dedup();
+        let addresses = state.plan.addresses();
 
         tracing::info!(
             "vacation plan for {day}: {} actions, {armed} still ahead across {} lights",
-            state.plan.len(),
+            state.plan.actions.len(),
             addresses.len()
         );
 
@@ -204,7 +197,7 @@ impl Actor for VacationActor {
         let mut state = VacationState {
             _subscription: subscription,
             armed: self.armed_now().await,
-            plan: Vec::new(),
+            plan: DayPlan::default(),
             timers: Vec::new(),
         };
 
@@ -238,7 +231,7 @@ impl Actor for VacationActor {
                 tracing::info!("vacation mode disarmed, dropping the plan");
                 state.armed = false;
                 state.cancel_timers();
-                state.plan.clear();
+                state.plan = DayPlan::default();
             }
             VacationMessage::Rebuild => {
                 if state.armed {

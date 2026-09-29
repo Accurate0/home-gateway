@@ -102,22 +102,30 @@ private fun EntityOptions(entity: EntityUi, controls: EntityControls, lightLevel
             ActionButton("Refresh") { controls.takeScreenshot(entity.id) }
         }
 
-        is EntityUi.Environment -> EnvironmentMetrics(entity)
+        is EntityUi.Environment -> MetricGrid(
+            listOfNotNull(
+                entity.temperature?.let { Metric("Temperature", "%.1f°C".format(it)) },
+                entity.humidity?.let { Metric("Humidity", "%.0f%%".format(it)) },
+                entity.pressure?.let { Metric("Pressure", "%.0f hPa".format(it)) },
+                entity.lux?.let { Metric("Illuminance", "%.0f lx".format(it)) },
+                entity.uvIndex?.let { Metric("UV index", "%.1f".format(it)) },
+            ),
+        )
+
+        is EntityUi.Plant -> MetricGrid(
+            listOfNotNull(
+                entity.soilMoisture?.let { Metric("Soil moisture", "%.0f%%".format(it)) },
+                entity.moistureStatus()?.let { Metric("Status", it) },
+                entity.batteryPercentage?.let { Metric("Battery", "%.0f%%".format(it)) },
+            ),
+        )
 
         is EntityUi.Door, is EntityUi.Presence -> Unit
     }
 }
 
 @Composable
-private fun EnvironmentMetrics(entity: EntityUi.Environment) {
-    val metrics = listOfNotNull(
-        entity.temperature?.let { Metric("Temperature", "%.1f°C".format(it)) },
-        entity.humidity?.let { Metric("Humidity", "%.0f%%".format(it)) },
-        entity.pressure?.let { Metric("Pressure", "%.0f hPa".format(it)) },
-        entity.lux?.let { Metric("Illuminance", "%.0f lx".format(it)) },
-        entity.uvIndex?.let { Metric("UV index", "%.1f".format(it)) },
-    )
-
+private fun MetricGrid(metrics: List<Metric>) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         metrics.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth()) {

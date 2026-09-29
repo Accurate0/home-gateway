@@ -59,10 +59,30 @@ fun EntityTile(
             .clip(TileShape)
             .combinedClickable(enabled = !editing, onClick = onClick, onLongClick = onLongClick),
     ) {
-        if (entity is EntityUi.Environment) {
-            EnvironmentContent(entity, editing, dragHandle)
-        } else {
-            StandardContent(entity, tone, editing, dragHandle)
+        when (entity) {
+            is EntityUi.Environment -> WideContent(
+                entity,
+                editing,
+                dragHandle,
+                value = entity.temperature?.let { "%.1f°".format(it) } ?: "—",
+                barLabel = "Humidity",
+                barValue = entity.humidity?.let { "%.0f%%".format(it) } ?: "—",
+                progress = entity.humidity,
+                barTone = StateTone.PRESENT,
+            )
+
+            is EntityUi.Plant -> WideContent(
+                entity,
+                editing,
+                dragHandle,
+                value = entity.soilMoisture?.let { "%.0f%%".format(it) } ?: "—",
+                barLabel = "Soil moisture",
+                barValue = entity.moistureStatus() ?: "—",
+                progress = entity.soilMoisture,
+                barTone = entity.moistureTone(),
+            )
+
+            else -> StandardContent(entity, tone, editing, dragHandle)
         }
     }
 }
@@ -118,10 +138,15 @@ private fun StandardContent(
 }
 
 @Composable
-private fun EnvironmentContent(
-    entity: EntityUi.Environment,
+private fun WideContent(
+    entity: EntityUi,
     editing: Boolean,
     dragHandle: @Composable () -> Unit,
+    value: String,
+    barLabel: String,
+    barValue: String,
+    progress: Double?,
+    barTone: StateTone?,
 ) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
@@ -157,7 +182,7 @@ private fun EnvironmentContent(
                 dragHandle()
             } else {
                 Text(
-                    entity.temperature?.let { "%.1f°".format(it) } ?: "—",
+                    value,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -167,21 +192,21 @@ private fun EnvironmentContent(
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    "Humidity",
+                    barLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    entity.humidity?.let { "%.0f%%".format(it) } ?: "—",
+                    barValue,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
             LinearProgressIndicator(
-                progress = { ((entity.humidity ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f) },
+                progress = { ((progress ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = StateTone.PRESENT.accent.copy(alpha = 0.7f),
+                color = (barTone?.accent ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.7f),
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 strokeCap = StrokeCap.Round,
                 gapSize = 0.dp,

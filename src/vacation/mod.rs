@@ -1,3 +1,3 @@
 pub mod plan;
 
-pub use plan::{PlannedAction, build_plan, coverage, target_at};
+pub use plan::{DayPlan, build_days, build_plan, coverage, target_at};

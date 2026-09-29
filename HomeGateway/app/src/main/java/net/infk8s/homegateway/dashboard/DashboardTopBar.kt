@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -19,8 +21,11 @@ import net.infk8s.homegateway.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardTopBar(
+    mode: DashboardMode?,
     editing: Boolean,
     onToggleEditing: () -> Unit,
+    onModeChange: (DashboardMode) -> Unit,
+    onAddSection: () -> Unit,
     onReorderSections: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -42,6 +47,28 @@ fun DashboardTopBar(
                 }
 
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DashboardMode.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.label) },
+                            leadingIcon = { RadioButton(selected = option == mode, onClick = null) },
+                            onClick = {
+                                menuOpen = false
+                                onModeChange(option)
+                            },
+                        )
+                    }
+
+                    HorizontalDivider()
+
+                    if (mode == DashboardMode.CUSTOM) {
+                        DropdownMenuItem(
+                            text = { Text("Add section") },
+                            onClick = {
+                                menuOpen = false
+                                onAddSection()
+                            },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Reorder sections") },
                         onClick = {

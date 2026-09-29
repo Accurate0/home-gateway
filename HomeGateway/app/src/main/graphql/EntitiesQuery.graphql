@@ -38,6 +38,16 @@ query Entities {
       lux
       uvIndex
     }
+    ... on PlantEntity {
+      category
+      id
+      name
+      room
+      soilMoisture
+      battery {
+        percentage
+      }
+    }
     ... on EinkDisplayEntity {
       category
       id

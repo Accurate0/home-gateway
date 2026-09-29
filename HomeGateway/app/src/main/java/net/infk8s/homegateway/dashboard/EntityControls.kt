@@ -3,6 +3,7 @@ package net.infk8s.homegateway.dashboard
 /// The mutations a card can invoke, passed down so the composables stay
 /// previewable and free of a ViewModel dependency.
 data class EntityControls(
+    val run: (String, EntityCommand) -> Unit,
     val setLight: (String, Boolean) -> Unit,
     val setBrightness: (String, Int) -> Unit,
     val setColourTemperature: (String, Int) -> Unit,

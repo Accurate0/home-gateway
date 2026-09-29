@@ -1,0 +1,51 @@
+query Workflows {
+  workflows {
+    id
+    slug
+    name
+    group
+    enabled
+    dryRun
+    reusable
+    modes
+  }
+}
+
+mutation SetWorkflowEnabled($slug: String!, $enabled: Boolean!) {
+  setWorkflowEnabled(slug: $slug, enabled: $enabled)
+}
+
+mutation DryRunWorkflow($slug: String!) {
+  runWorkflow(slug: $slug, dryRun: true)
+}
+
+query WorkflowRuns($slug: String) {
+  workflowRuns(slug: $slug, limit: 100) {
+    id
+    eventId
+    slug
+    name
+    outcome
+    dryRun
+    durationMs
+    error
+    startedAt
+  }
+}
+
+query WorkflowRunTrace($eventId: UUID!) {
+  workflowRuns(eventId: $eventId) {
+    id
+    trigger
+    steps {
+      seq
+      depth
+      kind
+      outcome
+      guard
+      detail
+      error
+      durationUs
+    }
+  }
+}

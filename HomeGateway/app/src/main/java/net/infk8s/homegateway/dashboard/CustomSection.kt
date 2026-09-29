@@ -3,8 +3,9 @@ package net.infk8s.homegateway.dashboard
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "tile_position")
-data class TilePosition(
-    @PrimaryKey val key: String,
+@Entity(tableName = "custom_section")
+data class CustomSection(
+    @PrimaryKey val id: String,
+    val title: String,
     val position: Int,
 )

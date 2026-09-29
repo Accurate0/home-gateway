@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.apollographql.apollo.api.Mutation
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,14 +14,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
+import net.infk8s.homegateway.dashboard.CustomSection
+import net.infk8s.homegateway.dashboard.CustomTile
 import net.infk8s.homegateway.dashboard.DashboardLayout
+import net.infk8s.homegateway.dashboard.DashboardMode
 import net.infk8s.homegateway.dashboard.EntityControls
+import net.infk8s.homegateway.dashboard.LayoutSection
+import net.infk8s.homegateway.dashboard.LayoutTile
 import net.infk8s.homegateway.dashboard.LightLevels
-import net.infk8s.homegateway.dashboard.SectionPosition
-import net.infk8s.homegateway.dashboard.TilePosition
 import net.infk8s.homegateway.dashboard.move
 import net.infk8s.homegateway.gateway
-import net.infk8s.homegateway.graphql.type.Capability
+import net.infk8s.homegateway.quicktiles.QuickTiles
+import net.infk8s.homegateway.widget.EntityWidgets
 import net.infk8s.homegateway.graphql.type.EntityCategory
 import net.infk8s.homegateway.graphql.type.GarageDoorState
 
@@ -91,6 +97,17 @@ sealed interface EntityUi {
         override val key get() = "environment:$id"
     }
 
+    data class Plant(
+        override val id: String,
+        override val name: String,
+        override val room: String?,
+        override val category: EntityCategory,
+        val soilMoisture: Double?,
+        val batteryPercentage: Double?,
+    ) : EntityUi {
+        override val key get() = "plant:$id"
+    }
+
     data class EinkDisplay(
         override val id: String,
         override val name: String,
@@ -128,17 +145,25 @@ sealed interface EntityUi {
     }
 }
 
-/// One dashboard section, in the display order the backend chose.
+data class CategoryUi(val category: EntityCategory, val title: String)
+
 data class EntitySectionUi(
-    val category: EntityCategory,
+    val key: String,
     val title: String,
     val items: List<EntityUi>,
+    val editable: Boolean,
 )
 
 sealed interface EntitiesUiState {
     data object Loading : EntitiesUiState
     data class Error(val message: String) : EntitiesUiState
-    data class Loaded(val sections: List<EntitySectionUi>) : EntitiesUiState
+    data class Loaded(val mode: DashboardMode, val sections: List<EntitySectionUi>) : EntitiesUiState
+}
+
+private sealed interface EntitiesSnapshot {
+    data object Loading : EntitiesSnapshot
+    data class Error(val message: String) : EntitiesSnapshot
+    data class Loaded(val entities: List<EntityUi>, val categories: List<CategoryUi>) : EntitiesSnapshot
 }
 
 class EntitiesViewModel(application: Application) : AndroidViewModel(application) {
@@ -146,54 +171,190 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
 
     private val dashboard = application.gateway.database.dashboard()
 
-    private val _state = MutableStateFlow<EntitiesUiState>(EntitiesUiState.Loading)
+    private val preferences = application.gateway.dashboardPreferences
+
+    private val source = application.gateway.entities
+
+    private var surfaceRefresh: Job? = null
+
+    private val snapshot = MutableStateFlow<EntitiesSnapshot>(EntitiesSnapshot.Loading)
 
     private val layout = MutableStateFlow<DashboardLayout?>(null)
 
     val lightLevels = LightLevels()
 
-    val state: StateFlow<EntitiesUiState> = combine(_state, layout) { state, layout ->
+    val state: StateFlow<EntitiesUiState> = combine(snapshot, layout) { snapshot, layout ->
         when {
             layout == null -> EntitiesUiState.Loading
-            state is EntitiesUiState.Loaded -> EntitiesUiState.Loaded(layout.arrange(state.sections))
-            else -> state
+            snapshot is EntitiesSnapshot.Loaded ->
+                EntitiesUiState.Loaded(layout.mode, layout.arrange(snapshot.entities, snapshot.categories))
+            snapshot is EntitiesSnapshot.Error -> EntitiesUiState.Error(snapshot.message)
+            else -> EntitiesUiState.Loading
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, EntitiesUiState.Loading)
 
     init {
         viewModelScope.launch {
-            layout.value = DashboardLayout.from(dashboard.sections(), dashboard.tiles())
+            layout.value = DashboardLayout.from(
+                preferences.mode,
+                dashboard.sections(),
+                dashboard.tiles(),
+                dashboard.customSections(),
+                dashboard.customTiles(),
+            )
         }
+    }
+
+    fun setMode(mode: DashboardMode) {
+        val current = layout.value ?: return
+        if (current.mode == mode) {
+            return
+        }
+
+        preferences.mode = mode
+        if (mode != DashboardMode.CUSTOM || current.customSections.isNotEmpty()) {
+            layout.value = current.copy(mode = mode)
+            return
+        }
+
+        val source = arranged(current).orEmpty()
+        val sections = source.mapIndexed { index, section ->
+            CustomSection(UUID.randomUUID().toString(), section.title, index)
+        }
+        val tiles = source.zip(sections).flatMap { (from, section) ->
+            from.items.mapIndexed { index, entity -> CustomTile(entity.key, section.id, index) }
+        }
+
+        layout.value = current.copy(mode = mode).withCustomSections(sections).withCustomTiles(tiles, emptyList())
+        viewModelScope.launch { dashboard.seedCustom(sections, tiles) }
     }
 
     fun moveTile(from: String, to: String) {
         val current = layout.value ?: return
-        val sections = (_state.value as? EntitiesUiState.Loaded)?.sections?.let(current::arrange) ?: return
-        val section = sections.firstOrNull { section -> section.items.any { it.key == from } } ?: return
+        val sections = arranged(current) ?: return
 
-        val order = section.items.map { it.key }.toMutableList()
+        val flat = sections
+            .flatMap { listOf(DashboardLayout.headerKey(it.key)) + it.items.map(EntityUi::key) }
+            .toMutableList()
+        if (!flat.move(from, to)) {
+            return
+        }
+
+        val regrouped = regroup(flat) ?: return
+        val before = sections.associate { section -> section.key to section.items.map(EntityUi::key) }
+        val changed = regrouped.filter { (section, keys) -> before[section] != keys }
+        if (changed.isEmpty()) {
+            return
+        }
+
+        if (current.mode == DashboardMode.CUSTOM) {
+            placeCustomTiles(current, changed)
+        } else {
+            reorderTiles(current, before, changed)
+        }
+    }
+
+    fun moveSection(from: String, to: String) {
+        val current = layout.value ?: return
+        val sections = arranged(current) ?: return
+
+        val order = sections
+            .map { it.key }
+            .filterNot { current.mode == DashboardMode.CUSTOM && it == DashboardLayout.UNSORTED_KEY }
+            .toMutableList()
         if (!order.move(from, to)) {
             return
         }
 
-        layout.value = current.withTiles(order)
-        viewModelScope.launch {
-            dashboard.upsertTiles(order.mapIndexed { index, key -> TilePosition(key, index) })
+        if (current.mode == DashboardMode.CUSTOM) {
+            val byId = current.customSections.associateBy { it.id }
+            val updated = order.mapIndexedNotNull { index, id -> byId[id]?.copy(position = index) }
+
+            layout.value = current.withCustomSections(updated)
+            viewModelScope.launch { dashboard.upsertCustomSections(updated) }
+        } else {
+            layout.value = current.withSectionOrder(order)
+            viewModelScope.launch {
+                dashboard.upsertSections(order.mapIndexed { index, key -> LayoutSection(current.mode, key, index) })
+            }
         }
     }
 
-    fun moveSection(from: EntityCategory, to: EntityCategory) {
+    fun addSection(title: String) {
         val current = layout.value ?: return
-        val sections = (_state.value as? EntitiesUiState.Loaded)?.sections?.let(current::arrange) ?: return
+        val position = (current.customSections.maxOfOrNull { it.position } ?: -1) + 1
+        val section = CustomSection(UUID.randomUUID().toString(), title.trim(), position)
 
-        val order = sections.map { it.category.rawValue }.toMutableList()
-        if (!order.move(from.rawValue, to.rawValue)) {
+        layout.value = current.withCustomSections(current.customSections + section)
+        viewModelScope.launch { dashboard.upsertCustomSections(listOf(section)) }
+    }
+
+    fun renameSection(id: String, title: String) {
+        val current = layout.value ?: return
+        val section = current.customSections.firstOrNull { it.id == id }?.copy(title = title.trim()) ?: return
+
+        layout.value = current.withCustomSections(current.customSections.map { if (it.id == id) section else it })
+        viewModelScope.launch { dashboard.upsertCustomSections(listOf(section)) }
+    }
+
+    fun deleteSection(id: String) {
+        val current = layout.value ?: return
+
+        layout.value = current.withCustomSections(current.customSections.filterNot { it.id == id })
+        viewModelScope.launch { dashboard.deleteCustomSection(id) }
+    }
+
+    private fun arranged(layout: DashboardLayout): List<EntitySectionUi>? =
+        (snapshot.value as? EntitiesSnapshot.Loaded)?.let { layout.arrange(it.entities, it.categories) }
+
+    private fun regroup(flat: List<String>): Map<String, List<String>>? {
+        val groups = LinkedHashMap<String, MutableList<String>>()
+        var section: MutableList<String>? = null
+
+        for (key in flat) {
+            if (DashboardLayout.isHeaderKey(key)) {
+                section = mutableListOf()
+                groups[DashboardLayout.sectionOfHeader(key)] = section
+            } else {
+                section ?: return null
+                section.add(key)
+            }
+        }
+
+        return groups
+    }
+
+    private fun reorderTiles(
+        current: DashboardLayout,
+        before: Map<String, List<String>>,
+        changed: Map<String, List<String>>,
+    ) {
+        val crossesSections = changed.any { (section, keys) -> keys.toSet() != before[section].orEmpty().toSet() }
+        if (crossesSections) {
             return
         }
 
-        layout.value = current.withSections(order)
+        val order = changed.values.flatten()
+
+        layout.value = current.withTileOrder(order)
         viewModelScope.launch {
-            dashboard.upsertSections(order.mapIndexed { index, category -> SectionPosition(category, index) })
+            dashboard.upsertTiles(order.mapIndexed { index, key -> LayoutTile(current.mode, key, index) })
+        }
+    }
+
+    private fun placeCustomTiles(current: DashboardLayout, changed: Map<String, List<String>>) {
+        val placed = changed
+            .filterKeys { it != DashboardLayout.UNSORTED_KEY }
+            .flatMap { (section, keys) -> keys.mapIndexed { index, key -> CustomTile(key, section, index) } }
+        val unsorted = changed[DashboardLayout.UNSORTED_KEY].orEmpty()
+
+        layout.value = current.withCustomTiles(placed, unsorted).withTileOrder(unsorted)
+        viewModelScope.launch {
+            dashboard.placeCustomTiles(
+                placed,
+                unsorted,
+                unsorted.mapIndexed { index, key -> LayoutTile(DashboardMode.CUSTOM, key, index) },
+            )
         }
     }
 
@@ -218,8 +379,8 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
                 Log.w("EntitiesViewModel", "live connection lost, reconnecting in ${backoffMs}ms", e)
                 // Keep showing the last snapshot while reconnecting; only surface an
                 // error if we never managed to load anything in the first place.
-                if (_state.value !is EntitiesUiState.Loaded) {
-                    _state.value = EntitiesUiState.Error(e.message ?: "Failed to load entities")
+                if (snapshot.value !is EntitiesSnapshot.Loaded) {
+                    snapshot.value = EntitiesSnapshot.Error(e.message ?: "Failed to load entities")
                 }
                 delay(backoffMs)
                 backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
@@ -228,37 +389,22 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun loadSnapshot() {
-        val response = apollo.query(EntitiesQuery()).execute()
-        val data = response.data
-            ?: throw IllegalStateException(
-                response.errors?.firstOrNull()?.message ?: "Failed to load entities",
-            )
-        // Partial errors (e.g. an unreachable actor) only null individual fields,
-        // not the entity — keep rendering the list and just log them.
-        if (response.hasErrors()) {
-            Log.w("EntitiesViewModel", "entities query returned field errors: ${response.errors}")
-        }
+        val fetched = source.fetch()
 
-        val items = data.entities.mapNotNull { it.toUi() }
-        // Section order and titles are a backend concern: render whatever it returns,
-        // then append any category it didn't describe so nothing silently disappears.
-        val titles = data.entitySections.associate { it.category to it.title }
-        val ordered = data.entitySections.map { it.category } +
-            items.map { it.category }.filterNot { titles.containsKey(it) }
-
-        _state.value = EntitiesUiState.Loaded(ordered.distinct().toSections(items, titles))
+        snapshot.value = EntitiesSnapshot.Loaded(fetched.entities, fetched.categories)
+        refreshSurfaces()
     }
 
-    private fun List<EntityCategory>.toSections(
-        items: List<EntityUi>,
-        titles: Map<EntityCategory, String>,
-    ): List<EntitySectionUi> = mapNotNull { category ->
-        val inSection = items
-            .filter { it.category == category }
-            .sortedBy { it.name.lowercase() }
+    private fun refreshSurfaces() {
+        if (surfaceRefresh?.isActive == true) {
+            return
+        }
 
-        if (inSection.isEmpty()) null
-        else EntitySectionUi(category, titles[category] ?: category.rawValue.lowercase(), inSection)
+        surfaceRefresh = viewModelScope.launch {
+            delay(SURFACE_REFRESH_DELAY_MS)
+            EntityWidgets.refreshAll(getApplication())
+            QuickTiles.refreshAll(getApplication())
+        }
     }
 
     private suspend fun subscribe() {
@@ -272,12 +418,15 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun applyEvent(event: EventsSubscription.Events) {
-        val current = _state.value as? EntitiesUiState.Loaded ?: return
-
-        val updated = current.sections.map { section ->
-            section.copy(items = section.items.map { it.applyEvent(event) })
+        val current = snapshot.value as? EntitiesSnapshot.Loaded ?: return
+        val updated = current.entities.map { it.applyEvent(event) }
+        if (updated == current.entities) {
+            return
         }
-        _state.value = EntitiesUiState.Loaded(updated)
+
+        snapshot.value = current.copy(entities = updated)
+        source.update(EntitySnapshot(updated, current.categories))
+        refreshSurfaces()
     }
 
     private fun EntityUi.applyEvent(event: EventsSubscription.Events): EntityUi = when {
@@ -296,6 +445,9 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         event.onEnvironmentUpdate != null && this is EntityUi.Environment && id == event.onEnvironmentUpdate.id ->
             applyReadings(event.onEnvironmentUpdate.readings)
 
+        event.onPlantUpdate != null && this is EntityUi.Plant && id == event.onPlantUpdate.id ->
+            copy(soilMoisture = event.onPlantUpdate.soilMoisture)
+
         event.onMediaPlayerUpdate != null && this is EntityUi.MediaPlayer && id == event.onMediaPlayerUpdate.id ->
             copy(
                 playing = event.onMediaPlayerUpdate.state in PLAYING_STATES,
@@ -308,6 +460,7 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun controls() = EntityControls(
+        run = { id, command -> mutate(command.mutation(id)) },
         setLight = { id, on -> mutate(if (on) LightOnMutation(id) else LightOffMutation(id)) },
         setBrightness = { id, value -> mutate(LightSetBrightnessMutation(id, value)) },
         setColourTemperature = { id, value ->
@@ -353,98 +506,10 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         )
     }
 
-    private fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
-        onLightEntity != null ->
-            EntityUi.Light(
-                id = onLightEntity.id,
-                name = onLightEntity.name,
-                room = onLightEntity.room,
-                category = onLightEntity.category,
-                on = onLightEntity.on,
-                dimmable = onLightEntity.capabilities.any { it == Capability.BRIGHTNESS },
-                tunable = onLightEntity.capabilities.any { it == Capability.COLOUR_TEMP },
-            )
-
-        onDoorEntity != null ->
-            EntityUi.Door(
-                id = onDoorEntity.id,
-                name = onDoorEntity.name,
-                room = onDoorEntity.room,
-                category = onDoorEntity.category,
-                open = onDoorEntity.open,
-            )
-
-        onGarageDoorEntity != null ->
-            EntityUi.GarageDoor(
-                id = onGarageDoorEntity.id,
-                name = onGarageDoorEntity.name,
-                room = onGarageDoorEntity.room,
-                category = onGarageDoorEntity.category,
-                state = onGarageDoorEntity.garageState,
-                batteryPercentage = onGarageDoorEntity.battery?.percentage,
-            )
-
-        onPresenceEntity != null ->
-            EntityUi.Presence(
-                id = onPresenceEntity.id,
-                name = onPresenceEntity.name,
-                room = onPresenceEntity.room,
-                category = onPresenceEntity.category,
-                present = onPresenceEntity.present,
-            )
-
-        onEnvironmentEntity != null ->
-            EntityUi.Environment(
-                id = onEnvironmentEntity.id,
-                name = onEnvironmentEntity.name,
-                room = onEnvironmentEntity.room,
-                category = onEnvironmentEntity.category,
-                temperature = onEnvironmentEntity.temperature,
-                humidity = onEnvironmentEntity.humidity,
-                pressure = onEnvironmentEntity.pressure,
-                lux = onEnvironmentEntity.lux,
-                uvIndex = onEnvironmentEntity.uvIndex,
-            )
-
-        onEinkDisplayEntity != null ->
-            EntityUi.EinkDisplay(
-                id = onEinkDisplayEntity.id,
-                name = onEinkDisplayEntity.name,
-                room = onEinkDisplayEntity.room,
-                category = onEinkDisplayEntity.category,
-                batteryPercentage = onEinkDisplayEntity.batteryPercentage,
-                isCharging = onEinkDisplayEntity.isCharging,
-            )
-
-        onRobotVacuumEntity != null ->
-            EntityUi.RobotVacuum(
-                id = onRobotVacuumEntity.id,
-                name = onRobotVacuumEntity.name,
-                room = onRobotVacuumEntity.room,
-                category = onRobotVacuumEntity.category,
-                status = onRobotVacuumEntity.status,
-                batteryPercentage = onRobotVacuumEntity.batteryPercentage,
-                currentRoom = onRobotVacuumEntity.currentRoom,
-            )
-
-        onMediaPlayerEntity != null ->
-            EntityUi.MediaPlayer(
-                id = onMediaPlayerEntity.id,
-                name = onMediaPlayerEntity.name,
-                room = onMediaPlayerEntity.room,
-                category = onMediaPlayerEntity.category,
-                playing = onMediaPlayerEntity.playing,
-                appName = onMediaPlayerEntity.appName,
-                mediaTitle = onMediaPlayerEntity.mediaTitle,
-                mediaSeriesTitle = onMediaPlayerEntity.mediaSeriesTitle,
-            )
-
-        else -> null
-    }
-
     private companion object {
         val PLAYING_STATES = setOf("started", "resumed", "playing")
         const val INITIAL_BACKOFF_MS = 1_000L
         const val MAX_BACKOFF_MS = 30_000L
+        const val SURFACE_REFRESH_DELAY_MS = 3_000L
     }
 }

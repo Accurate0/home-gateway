@@ -27,7 +27,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import net.infk8s.homegateway.R
 import net.infk8s.homegateway.graphql.EntitySectionUi
-import net.infk8s.homegateway.graphql.type.EntityCategory
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -35,17 +34,13 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun SectionOrderSheet(
     sections: List<EntitySectionUi>,
-    onMove: (EntityCategory, EntityCategory) -> Unit,
+    onMove: (String, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
     val listState = rememberLazyListState()
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
-        val categories = sections.associate { it.category.rawValue to it.category }
-        val source = categories[from.key] ?: return@rememberReorderableLazyListState
-        val target = categories[to.key] ?: return@rememberReorderableLazyListState
-
-        onMove(source, target)
+        onMove(from.key as String, to.key as String)
         haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
     }
 
@@ -64,8 +59,8 @@ fun SectionOrderSheet(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(sections, key = { it.category.rawValue }) { section ->
-                ReorderableItem(reorderState, key = section.category.rawValue) { dragging ->
+            items(sections, key = { it.key }) { section ->
+                ReorderableItem(reorderState, key = section.key) { dragging ->
                     val elevation by animateDpAsState(if (dragging) 6.dp else 0.dp, label = "section elevation")
 
                     Surface(

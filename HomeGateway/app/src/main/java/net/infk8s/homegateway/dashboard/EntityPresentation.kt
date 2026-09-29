@@ -1,7 +1,6 @@
 package net.infk8s.homegateway.dashboard
 
 import androidx.annotation.DrawableRes
-import net.infk8s.homegateway.R
 import net.infk8s.homegateway.graphql.EntityUi
 import net.infk8s.homegateway.graphql.type.GarageDoorState
 import net.infk8s.homegateway.ui.theme.StateTone
@@ -13,20 +12,46 @@ fun EntityUi.activeTone(): StateTone? = when (this) {
     is EntityUi.Door -> StateTone.OPEN.takeIf { open == true }
     is EntityUi.GarageDoor -> StateTone.OPEN.takeIf { state != null && state != GarageDoorState.CLOSED }
     is EntityUi.Presence -> StateTone.PRESENT.takeIf { present == true }
-    is EntityUi.Environment, is EntityUi.EinkDisplay, is EntityUi.RobotVacuum, is EntityUi.MediaPlayer -> null
+    is EntityUi.Environment, is EntityUi.Plant, is EntityUi.EinkDisplay,
+    is EntityUi.RobotVacuum, is EntityUi.MediaPlayer -> null
+}
+
+fun EntityUi.Plant.moistureStatus(): String? = soilMoisture?.let {
+    when {
+        it < PLANT_DRY -> "dry"
+        it > PLANT_WET -> "overwatered"
+        else -> "ok"
+    }
+}
+
+fun EntityUi.Plant.moistureTone(): StateTone? = soilMoisture?.let {
+    if (it < PLANT_DRY || it > PLANT_WET) StateTone.OPEN else StateTone.PRESENT
+}
+
+fun EntityUi.glyph(): EntityGlyph = when (this) {
+    is EntityUi.Light -> if (on == true) EntityGlyph.LIGHT_ON else EntityGlyph.LIGHT_OFF
+    is EntityUi.Door -> if (open == true) EntityGlyph.DOOR_OPEN else EntityGlyph.DOOR_CLOSED
+    is EntityUi.GarageDoor -> EntityGlyph.GARAGE
+    is EntityUi.Presence -> if (present == true) EntityGlyph.PERSON else EntityGlyph.PERSON_AWAY
+    is EntityUi.Environment -> EntityGlyph.THERMOMETER
+    is EntityUi.Plant -> EntityGlyph.PLANT
+    is EntityUi.EinkDisplay -> EntityGlyph.DISPLAY
+    is EntityUi.RobotVacuum -> EntityGlyph.ROBOT
+    is EntityUi.MediaPlayer -> EntityGlyph.TV
 }
 
 @DrawableRes
-fun EntityUi.icon(): Int = when (this) {
-    is EntityUi.Light -> if (on == true) R.drawable.ic_light_on else R.drawable.ic_light_off
-    is EntityUi.Door -> if (open == true) R.drawable.ic_door_open else R.drawable.ic_door_closed
-    is EntityUi.GarageDoor -> R.drawable.ic_garage
-    is EntityUi.Presence -> if (present == true) R.drawable.ic_person else R.drawable.ic_person_away
-    is EntityUi.Environment -> R.drawable.ic_thermometer
-    is EntityUi.EinkDisplay -> R.drawable.ic_display
-    is EntityUi.RobotVacuum -> R.drawable.ic_robot
-    is EntityUi.MediaPlayer -> R.drawable.ic_tv
+fun EntityUi.icon(): Int = glyph().drawable
+
+fun EntityUi.isActive(): Boolean = activeTone() != null || (this is EntityUi.MediaPlayer && playing)
+
+fun EntityUi.headline(): String? = when (this) {
+    is EntityUi.Environment -> temperature?.let { "%.1f°".format(it) }
+    is EntityUi.Plant -> soilMoisture?.let { "%.0f%%".format(it) }
+    else -> null
 }
+
+fun EntityUi.status(): String = pill()?.label ?: details()
 
 fun EntityUi.pill(): TilePill? = when (this) {
     is EntityUi.Light -> on.toPill("on", "off")
@@ -39,13 +64,14 @@ fun EntityUi.pill(): TilePill? = when (this) {
     is EntityUi.MediaPlayer -> TilePill(if (playing) "playing" else "paused", playing)
     is EntityUi.RobotVacuum -> TilePill(status ?: "unknown", status?.let { true })
     is EntityUi.EinkDisplay -> if (isCharging == true) TilePill("charging", true) else null
-    is EntityUi.Environment -> null
+    is EntityUi.Environment, is EntityUi.Plant -> null
 }
 
 fun EntityUi.battery(): Double? = when (this) {
     is EntityUi.GarageDoor -> batteryPercentage
     is EntityUi.EinkDisplay -> batteryPercentage
     is EntityUi.RobotVacuum -> batteryPercentage
+    is EntityUi.Plant -> batteryPercentage
     is EntityUi.Light, is EntityUi.Door, is EntityUi.Presence,
     is EntityUi.Environment, is EntityUi.MediaPlayer -> null
 }
@@ -56,29 +82,25 @@ fun EntityUi.subtitle(): String = when (this) {
     else -> null
 } ?: room ?: id
 
-fun EntityUi.mainAction(controls: EntityControls): (() -> Unit)? = when (this) {
-    is EntityUi.Light -> {
-        { controls.setLight(id, on != true) }
-    }
+fun EntityUi.primaryCommand(): EntityCommand? = when (this) {
+    is EntityUi.Light -> if (on == true) EntityCommand.LIGHT_OFF else EntityCommand.LIGHT_ON
 
     is EntityUi.GarageDoor -> when (state) {
-        GarageDoorState.OPEN, GarageDoorState.OPENING -> {
-            { controls.garageDoorClose(id) }
-        }
-
-        GarageDoorState.CLOSED, GarageDoorState.CLOSING -> {
-            { controls.garageDoorOpen(id) }
-        }
-
+        GarageDoorState.OPEN, GarageDoorState.OPENING -> EntityCommand.GARAGE_CLOSE
+        GarageDoorState.CLOSED, GarageDoorState.CLOSING -> EntityCommand.GARAGE_OPEN
         else -> null
     }
 
-    is EntityUi.MediaPlayer -> {
-        { controls.mediaPlayPause(id) }
-    }
+    is EntityUi.MediaPlayer -> EntityCommand.MEDIA_PLAY_PAUSE
 
-    is EntityUi.Door, is EntityUi.Presence, is EntityUi.Environment,
+    is EntityUi.Door, is EntityUi.Presence, is EntityUi.Environment, is EntityUi.Plant,
     is EntityUi.EinkDisplay, is EntityUi.RobotVacuum -> null
+}
+
+fun EntityUi.mainAction(controls: EntityControls): (() -> Unit)? {
+    val command = primaryCommand() ?: return null
+
+    return { controls.run(id, command) }
 }
 
 fun EntityUi.details(): String = when (this) {
@@ -92,6 +114,11 @@ fun EntityUi.details(): String = when (this) {
     is EntityUi.Environment -> buildList {
         temperature?.let { add("%.1f°C".format(it)) }
         humidity?.let { add("%.0f%%".format(it)) }
+    }.joinToString(" · ").ifEmpty { "Unknown" }
+
+    is EntityUi.Plant -> buildList {
+        soilMoisture?.let { add("%.0f%% moisture".format(it)) }
+        moistureStatus()?.let { add(it.replaceFirstChar { c -> c.uppercase() }) }
     }.joinToString(" · ").ifEmpty { "Unknown" }
 
     is EntityUi.EinkDisplay -> buildList {
@@ -111,6 +138,9 @@ fun EntityUi.details(): String = when (this) {
         listOfNotNull(mediaSeriesTitle, mediaTitle).firstOrNull()?.let { add(it) }
     }.joinToString(" · ")
 }
+
+private const val PLANT_DRY = 20.0
+private const val PLANT_WET = 80.0
 
 private fun Boolean?.toPill(on: String, off: String): TilePill = when (this) {
     true -> TilePill(on, true)

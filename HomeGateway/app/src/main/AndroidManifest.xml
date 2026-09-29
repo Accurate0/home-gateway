@@ -34,6 +34,89 @@
                 </action>
             </intent-filter>
         </receiver>
+        <receiver
+            android:name=".widget.EntityWidgetReceiver"
+            android:exported="true"
+            android:label="@string/entity_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/entity_widget_info" />
+        </receiver>
+        <activity
+            android:name=".widget.EntityWidgetConfigureActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.HomeGateway">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".quicktiles.QuickTileConfigureActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.HomeGateway">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
+        <service
+            android:name=".quicktiles.QuickTile1"
+            android:exported="true"
+            android:icon="@drawable/ic_nav_home"
+            android:label="@string/quick_tile_1"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".quicktiles.QuickTile2"
+            android:exported="true"
+            android:icon="@drawable/ic_nav_home"
+            android:label="@string/quick_tile_2"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".quicktiles.QuickTile3"
+            android:exported="true"
+            android:icon="@drawable/ic_nav_home"
+            android:label="@string/quick_tile_3"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".quicktiles.QuickTile4"
+            android:exported="true"
+            android:icon="@drawable/ic_nav_home"
+            android:label="@string/quick_tile_4"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".quicktiles.QuickTile5"
+            android:exported="true"
+            android:icon="@drawable/ic_nav_home"
+            android:label="@string/quick_tile_5"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:theme="@style/Theme.AppCompat.Translucent.NoTitleBar"
+            tools:node="merge" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

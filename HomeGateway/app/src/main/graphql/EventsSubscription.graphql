@@ -24,6 +24,10 @@ subscription Events {
         value
       }
     }
+    ... on PlantUpdate {
+      id
+      soilMoisture
+    }
     ... on MediaPlayerUpdate {
       id
       appName

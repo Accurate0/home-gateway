@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Home Gateway</string>
+    <string name="entity_widget_label">Device card</string>
+    <string name="entity_widget_description">Any dashboard card, from 1×1 up to 4×2. Tap for its quick action.</string>
+    <string name="quick_tile_1">Home Gateway 1</string>
+    <string name="quick_tile_2">Home Gateway 2</string>
+    <string name="quick_tile_3">Home Gateway 3</string>
+    <string name="quick_tile_4">Home Gateway 4</string>
+    <string name="quick_tile_5">Home Gateway 5</string>
 </resources>

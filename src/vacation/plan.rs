@@ -1,12 +1,20 @@
 use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
 use chrono_tz::Australia::Perth;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use crate::repo::light::ProfileBucket;
 use crate::settings::VacationSettings;
 
 pub const SLOTS_PER_DAY: i16 = 48;
 const SLOT_MINUTES: i64 = 30;
+
+const THRESHOLD_LOW: f64 = 0.35;
+const THRESHOLD_HIGH: f64 = 0.65;
+const HYSTERESIS: f64 = 0.1;
+const MIN_RUN_SLOTS: usize = 2;
+
+const JITTER_SALT: u64 = 1;
+const THRESHOLD_SALT: u64 = 2;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlannedAction {
@@ -15,6 +23,30 @@ pub struct PlannedAction {
     pub on: bool,
     pub slot: i16,
     pub on_fraction: f64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DayPlan {
+    pub initial: HashMap<String, bool>,
+    pub actions: Vec<PlannedAction>,
+    pub closing: HashMap<String, bool>,
+}
+
+impl DayPlan {
+    pub fn addresses(&self) -> BTreeSet<&str> {
+        self.initial
+            .keys()
+            .map(String::as_str)
+            .chain(self.actions.iter().map(|action| action.address.as_str()))
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Run {
+    value: Option<bool>,
+    start: usize,
+    len: usize,
 }
 
 fn mix(mut value: u64) -> u64 {
@@ -56,23 +88,85 @@ fn slot_start(day: NaiveDate, slot: i16) -> DateTime<Utc> {
         .with_timezone(&Utc)
 }
 
-/// The target states of one light across a day, indexed by slot: `Some(on)` where
-/// history is dense enough to have an opinion, `None` where the light is left
-/// alone.
-fn slot_states(
+fn profiles<'a>(
+    buckets: &'a [ProfileBucket],
+    day: NaiveDate,
+    settings: &VacationSettings,
+) -> HashMap<&'a str, HashMap<i16, &'a ProfileBucket>> {
+    let isodow = day.weekday().number_from_monday() as i16;
+    let mut by_address: HashMap<&str, HashMap<i16, &ProfileBucket>> = HashMap::new();
+
+    for bucket in buckets {
+        if bucket.isodow != isodow || bucket.observations < settings.min_observations {
+            continue;
+        }
+
+        by_address
+            .entry(bucket.address.as_str())
+            .or_default()
+            .insert(bucket.slot, bucket);
+    }
+
+    by_address
+}
+
+fn day_targets(
     settings: &VacationSettings,
     address: &str,
     day: NaiveDate,
-    buckets: &HashMap<i16, &ProfileBucket>,
-) -> Vec<Option<(bool, f64)>> {
-    (0..SLOTS_PER_DAY)
-        .map(|slot| {
-            let bucket = buckets.get(&slot)?;
-            let on = draw(settings, address, day, slot, 0) < bucket.on_fraction;
+    slots: Option<&HashMap<i16, &ProfileBucket>>,
+    initial: Option<bool>,
+) -> Vec<Option<bool>> {
+    let threshold = THRESHOLD_LOW
+        + (THRESHOLD_HIGH - THRESHOLD_LOW) * draw(settings, address, day, 0, THRESHOLD_SALT);
 
-            Some((on, bucket.on_fraction))
-        })
-        .collect()
+    let mut state = initial;
+    let mut targets = Vec::with_capacity(SLOTS_PER_DAY as usize);
+
+    for slot in 0..SLOTS_PER_DAY {
+        if let Some(bucket) = slots.and_then(|slots| slots.get(&slot)) {
+            let fraction = bucket.on_fraction;
+
+            state = Some(match state {
+                Some(true) => fraction >= threshold - HYSTERESIS,
+                Some(false) => fraction >= threshold + HYSTERESIS,
+                None => fraction >= threshold,
+            });
+        }
+
+        targets.push(state);
+    }
+
+    smooth(&mut targets);
+
+    targets
+}
+
+fn smooth(targets: &mut [Option<bool>]) {
+    let mut runs: Vec<Run> = Vec::new();
+
+    for (index, target) in targets.iter().enumerate() {
+        match runs.last_mut() {
+            Some(run) if run.value == *target => run.len += 1,
+            _ => runs.push(Run {
+                value: *target,
+                start: index,
+                len: 1,
+            }),
+        }
+    }
+
+    for index in 1..runs.len().saturating_sub(1) {
+        let run = runs[index];
+        let fill = runs[index - 1].value;
+
+        if run.value.is_none() || fill.is_none() || run.len >= MIN_RUN_SLOTS {
+            continue;
+        }
+
+        targets[run.start..run.start + run.len].fill(fill);
+        runs[index].value = fill;
+    }
 }
 
 pub fn coverage(buckets: &[ProfileBucket], address: &str, day: NaiveDate, min: i64) -> usize {
@@ -86,77 +180,108 @@ pub fn coverage(buckets: &[ProfileBucket], address: &str, day: NaiveDate, min: i
         .count()
 }
 
-/// Turn the historical profile into the day's switching plan: draw a target state
-/// per 30 minute slot, keep only the transitions, and jitter each one so the
-/// house does not switch on the half hour every night.
-pub fn build_plan(
+fn plan_day(
     buckets: &[ProfileBucket],
     day: NaiveDate,
     settings: &VacationSettings,
-) -> Vec<PlannedAction> {
-    let isodow = day.weekday().number_from_monday() as i16;
-
-    let mut by_address: HashMap<&str, HashMap<i16, &ProfileBucket>> = HashMap::new();
-    for bucket in buckets {
-        if bucket.isodow != isodow || bucket.observations < settings.min_observations {
-            continue;
-        }
-
-        by_address
-            .entry(bucket.address.as_str())
-            .or_default()
-            .insert(bucket.slot, bucket);
-    }
+    initial: &HashMap<String, bool>,
+) -> DayPlan {
+    let profiles = profiles(buckets, day, settings);
+    let addresses: BTreeSet<&str> = profiles
+        .keys()
+        .copied()
+        .chain(initial.keys().map(String::as_str))
+        .collect();
 
     let jitter_seconds = settings.jitter.num_seconds().max(0);
-    let mut actions = Vec::new();
+    let mut plan = DayPlan::default();
 
-    for (address, slots) in by_address {
-        let mut previous = None;
+    for address in addresses {
+        let slots = profiles.get(address);
+        let start = initial.get(address).copied();
+        let mut last = start;
 
-        for (slot, state) in slot_states(settings, address, day, &slots)
+        for (slot, target) in day_targets(settings, address, day, slots, start)
             .into_iter()
             .enumerate()
         {
             let slot = slot as i16;
 
-            let Some((on, on_fraction)) = state else {
-                previous = None;
+            let Some(on) = target else {
                 continue;
             };
 
-            if previous == Some(on) {
+            if last == Some(on) {
                 continue;
             }
 
-            previous = Some(on);
+            last = Some(on);
 
-            let offset =
-                (draw(settings, address, day, slot, 1) * 2.0 - 1.0) * jitter_seconds as f64;
-            let at = slot_start(day, slot) + Duration::seconds(offset as i64);
+            let offset = (draw(settings, address, day, slot, JITTER_SALT) * 2.0 - 1.0)
+                * jitter_seconds as f64;
 
-            actions.push(PlannedAction {
+            plan.actions.push(PlannedAction {
                 address: address.to_owned(),
-                at,
+                at: slot_start(day, slot) + Duration::seconds(offset as i64),
                 on,
                 slot,
-                on_fraction,
+                on_fraction: slots
+                    .and_then(|slots| slots.get(&slot))
+                    .map_or(0.0, |bucket| bucket.on_fraction),
             });
+        }
+
+        if let Some(start) = start {
+            plan.initial.insert(address.to_owned(), start);
+        }
+
+        if let Some(last) = last {
+            plan.closing.insert(address.to_owned(), last);
         }
     }
 
-    actions.sort_by(|a, b| a.at.cmp(&b.at).then_with(|| a.address.cmp(&b.address)));
+    plan.actions
+        .sort_by(|a, b| a.at.cmp(&b.at).then_with(|| a.address.cmp(&b.address)));
 
-    actions
+    plan
 }
 
-/// The state a light should be in right now: the most recent action at or before
-/// `now`, or `None` when the plan has not reached the light yet today.
-pub fn target_at(actions: &[PlannedAction], address: &str, now: DateTime<Utc>) -> Option<bool> {
-    actions
+pub fn build_days(
+    buckets: &[ProfileBucket],
+    first: NaiveDate,
+    days: usize,
+    settings: &VacationSettings,
+) -> Vec<DayPlan> {
+    let previous = first.pred_opt().unwrap_or(first);
+    let mut carried = plan_day(buckets, previous, settings, &HashMap::new()).closing;
+    let mut plans = Vec::with_capacity(days);
+
+    for day in first.iter_days().take(days) {
+        let plan = plan_day(buckets, day, settings, &carried);
+        carried = plan.closing.clone();
+        plans.push(plan);
+    }
+
+    plans
+}
+
+pub fn build_plan(
+    buckets: &[ProfileBucket],
+    day: NaiveDate,
+    settings: &VacationSettings,
+) -> DayPlan {
+    build_days(buckets, day, 1, settings)
+        .into_iter()
+        .next()
+        .unwrap_or_default()
+}
+
+pub fn target_at(plan: &DayPlan, address: &str, now: DateTime<Utc>) -> Option<bool> {
+    plan.actions
         .iter()
         .rfind(|action| action.address == address && action.at <= now)
         .map(|action| action.on)
+        .or_else(|| plan.initial.get(address).copied())
 }
 
 #[cfg(test)]
@@ -183,10 +308,10 @@ mod tests {
         NaiveDate::from_ymd_opt(2026, 9, 8).expect("valid date")
     }
 
-    fn bucket(slot: i16, on_fraction: f64, observations: i64) -> ProfileBucket {
+    fn bucket_on(isodow: i16, slot: i16, on_fraction: f64, observations: i64) -> ProfileBucket {
         ProfileBucket {
             address: "0x001".to_owned(),
-            isodow: 2,
+            isodow,
             slot,
             on_fraction,
             observations,
@@ -194,9 +319,13 @@ mod tests {
         }
     }
 
+    fn bucket(slot: i16, on_fraction: f64, observations: i64) -> ProfileBucket {
+        bucket_on(2, slot, on_fraction, observations)
+    }
+
     #[test]
     fn an_empty_profile_plans_nothing() {
-        assert_eq!(build_plan(&[], day(), &settings()), Vec::new());
+        assert_eq!(build_plan(&[], day(), &settings()), DayPlan::default());
     }
 
     #[test]
@@ -207,9 +336,9 @@ mod tests {
 
         let plan = build_plan(&buckets, day(), &settings());
 
-        assert_eq!(plan.len(), 1);
-        assert!(plan[0].on);
-        assert_eq!(plan[0].slot, 0);
+        assert_eq!(plan.actions.len(), 1);
+        assert!(plan.actions[0].on);
+        assert_eq!(plan.actions[0].slot, 0);
     }
 
     #[test]
@@ -232,8 +361,20 @@ mod tests {
 
         let plan = build_plan(&buckets, day(), &settings());
 
-        assert_eq!(plan.len(), 1);
+        assert_eq!(plan.actions.len(), 1);
         assert_eq!(coverage(&buckets, "0x001", day(), 8), 24);
+    }
+
+    #[test]
+    fn a_thin_slot_holds_the_state_instead_of_repeating_it() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .map(|slot| bucket(slot, 0.0, if slot == 20 { 1 } else { 30 }))
+            .collect::<Vec<_>>();
+
+        let plan = build_plan(&buckets, day(), &settings());
+
+        assert_eq!(plan.actions.len(), 1);
+        assert!(!plan.actions[0].on);
     }
 
     #[test]
@@ -242,13 +383,68 @@ mod tests {
             .map(|slot| bucket(slot, 0.5, 30))
             .collect::<Vec<_>>();
 
-        for action in build_plan(&buckets, day(), &settings()) {
+        for action in build_plan(&buckets, day(), &settings()).actions {
             let drift = (action.at - slot_start(day(), action.slot))
                 .num_seconds()
                 .abs();
 
             assert!(drift <= settings().jitter.num_seconds(), "drifted {drift}s");
         }
+    }
+
+    #[test]
+    fn a_flickering_profile_is_smoothed_into_runs() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .map(|slot| bucket(slot, if slot % 2 == 0 { 0.2 } else { 0.8 }, 30))
+            .collect::<Vec<_>>();
+
+        let plan = build_plan(&buckets, day(), &settings());
+
+        for pair in plan.actions.windows(2) {
+            let gap = (pair[1].slot - pair[0].slot) as usize;
+
+            assert!(gap >= MIN_RUN_SLOTS, "a {gap} slot run survived: {pair:?}");
+        }
+    }
+
+    #[test]
+    fn values_hovering_around_the_threshold_do_not_flicker() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .map(|slot| bucket(slot, if slot % 3 == 0 { 0.47 } else { 0.53 }, 30))
+            .collect::<Vec<_>>();
+
+        let plan = build_plan(&buckets, day(), &settings());
+
+        assert_eq!(plan.actions.len(), 1);
+    }
+
+    #[test]
+    fn an_evening_session_becomes_one_on_and_one_off() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .map(|slot| bucket(slot, if (36..42).contains(&slot) { 0.9 } else { 0.1 }, 30))
+            .collect::<Vec<_>>();
+
+        let plan = build_plan(&buckets, day(), &settings());
+        let switches = plan
+            .actions
+            .iter()
+            .map(|action| (action.slot, action.on))
+            .collect::<Vec<_>>();
+
+        assert_eq!(switches, vec![(0, false), (36, true), (42, false)]);
+    }
+
+    #[test]
+    fn the_next_day_continues_from_the_previous_one() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .flat_map(|slot| [bucket_on(2, slot, 0.0, 30), bucket_on(3, slot, 0.0, 30)])
+            .collect::<Vec<_>>();
+
+        let plans = build_days(&buckets, day(), 2, &settings());
+
+        assert_eq!(plans[0].actions.len(), 1);
+        assert!(plans[1].actions.is_empty());
+        assert_eq!(plans[1].initial.get("0x001"), Some(&false));
     }
 
     #[test]
@@ -260,10 +456,22 @@ mod tests {
         let plan = build_plan(&buckets, day(), &settings());
 
         assert_eq!(
-            target_at(&plan, "0x001", plan[0].at - Duration::hours(1)),
+            target_at(&plan, "0x001", plan.actions[0].at - Duration::hours(1)),
             None
         );
-        assert_eq!(target_at(&plan, "0x001", plan[0].at), Some(true));
+        assert_eq!(target_at(&plan, "0x001", plan.actions[0].at), Some(true));
+    }
+
+    #[test]
+    fn before_the_first_switch_the_carried_state_is_the_target() {
+        let buckets = (0..SLOTS_PER_DAY)
+            .flat_map(|slot| [bucket_on(1, slot, 1.0, 30), bucket_on(2, slot, 1.0, 30)])
+            .collect::<Vec<_>>();
+
+        let plan = build_plan(&buckets, day(), &settings());
+
+        assert!(plan.actions.is_empty());
+        assert_eq!(target_at(&plan, "0x001", slot_start(day(), 0)), Some(true));
     }
 
     #[test]
@@ -274,11 +482,11 @@ mod tests {
 
         let plan = build_plan(&buckets, day(), &settings());
 
-        assert_eq!(plan.len(), 2);
-        assert!(!plan[0].on);
-        assert!(plan[1].on);
+        assert_eq!(plan.actions.len(), 2);
+        assert!(!plan.actions[0].on);
+        assert!(plan.actions[1].on);
 
-        let midway = plan[1].at + Duration::hours(4);
+        let midway = plan.actions[1].at + Duration::hours(4);
 
         assert_eq!(target_at(&plan, "0x001", midway), Some(true));
     }

@@ -9,7 +9,7 @@ use crate::mode::Mode;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
 use crate::timedelta_format::humanize;
-use crate::vacation::{build_plan, coverage, target_at};
+use crate::vacation::{build_days, coverage, target_at};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, async_graphql::Enum)]
 pub enum LightTarget {
@@ -80,17 +80,17 @@ impl VacationMode {
 
         let now = Utc::now();
         let today = now.with_timezone(&Perth).date_naive();
-        let tomorrow = today.succ_opt().unwrap_or(today);
 
-        let mut plan = build_plan(&buckets, today, settings);
-        plan.extend(build_plan(&buckets, tomorrow, settings));
+        let plans = build_days(&buckets, today, 2, settings);
+        let today_plan = plans.first().cloned().unwrap_or_default();
 
         let horizon = now + Duration::hours(24);
         let mut lights = Vec::new();
 
         for (address, name) in devices.lights() {
-            let actions = plan
+            let actions = plans
                 .iter()
+                .flat_map(|plan| plan.actions.iter())
                 .filter(|action| {
                     &action.address == address && action.at >= now && action.at <= horizon
                 })
@@ -102,7 +102,7 @@ impl VacationMode {
                 })
                 .collect();
 
-            let current_target = match target_at(&plan, address, now) {
+            let current_target = match target_at(&today_plan, address, now) {
                 Some(true) => LightTarget::On,
                 Some(false) => LightTarget::Off,
                 None => LightTarget::LeaveAlone,
