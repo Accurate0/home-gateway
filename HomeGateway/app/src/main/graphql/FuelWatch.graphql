@@ -1,0 +1,24 @@
+query FuelSites {
+  fuelwatch {
+    sites(limit: 20) {
+      siteId
+      name
+      brand
+      suburb
+      address
+      price
+      priceTomorrow
+      latitude
+      longitude
+    }
+  }
+}
+
+subscription FuelWatchUpdates {
+  events(filter: "fuelwatch:*") {
+    __typename
+    ... on FuelWatchUpdate {
+      siteId
+    }
+  }
+}

@@ -1,0 +1,40 @@
+query JellyfinSessions {
+  jellyfin {
+    nowPlaying {
+      sessionId
+      user
+      device
+      client
+      itemName
+      itemType
+      seriesName
+      season
+      episode
+      positionSeconds
+      runtimeSeconds
+      playMethod
+      paused
+    }
+  }
+}
+
+subscription JellyfinUpdates {
+  events(filter: "jellyfin:*") {
+    __typename
+    ... on JellyfinUpdate {
+      state
+      sessionId
+      user
+      device
+      client
+      itemName
+      itemType
+      seriesName
+      season
+      episode
+      positionSeconds
+      runtimeSeconds
+      playMethod
+    }
+  }
+}

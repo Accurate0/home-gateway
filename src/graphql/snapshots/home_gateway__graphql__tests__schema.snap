@@ -1169,6 +1169,7 @@ type WoolworthsPricePoint {
 }
 
 type WoolworthsProducts {
+	productId: Int!
 	name: String!
 	price: Float!
 }

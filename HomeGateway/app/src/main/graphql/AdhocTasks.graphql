@@ -1,0 +1,31 @@
+query AdhocTasks {
+  adhocCronTasks {
+    id
+    name
+    schedule
+    flag
+    nextRunAt
+    lastRunAt
+    durationMs
+    rowsAffected
+    outcome
+  }
+  adhocTasks {
+    id
+    ordinal
+    name
+    flag
+    completedAt
+    durationMs
+    pending
+    checksumDrifted
+  }
+}
+
+mutation RunAdhocCronTask($name: String!) {
+  runAdhocCronTask(name: $name)
+}
+
+mutation RunPendingAdhocTasks {
+  runPendingAdhocTasks
+}

@@ -8,17 +8,23 @@ import com.apollographql.apollo.api.Mutation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import java.time.Instant
 import java.util.UUID
 import net.infk8s.homegateway.dashboard.CustomSection
 import net.infk8s.homegateway.dashboard.CustomTile
 import net.infk8s.homegateway.dashboard.DashboardLayout
 import net.infk8s.homegateway.dashboard.DashboardMode
+import net.infk8s.homegateway.dashboard.EinkConfigUi
 import net.infk8s.homegateway.dashboard.EntityControls
 import net.infk8s.homegateway.dashboard.LayoutSection
 import net.infk8s.homegateway.dashboard.LayoutTile
@@ -48,6 +54,7 @@ sealed interface EntityUi {
         val on: Boolean?,
         val dimmable: Boolean,
         val tunable: Boolean,
+        val colour: Boolean,
     ) : EntityUi {
         override val key get() = "light:$id"
     }
@@ -93,6 +100,9 @@ sealed interface EntityUi {
         val pressure: Double?,
         val lux: Double?,
         val uvIndex: Double?,
+        val pm25: Int?,
+        val vocIndex: Int?,
+        val lastSeen: Instant?,
     ) : EntityUi {
         override val key get() = "environment:$id"
     }
@@ -157,7 +167,11 @@ data class EntitySectionUi(
 sealed interface EntitiesUiState {
     data object Loading : EntitiesUiState
     data class Error(val message: String) : EntitiesUiState
-    data class Loaded(val mode: DashboardMode, val sections: List<EntitySectionUi>) : EntitiesUiState
+    data class Loaded(
+        val mode: DashboardMode,
+        val sections: List<EntitySectionUi>,
+        val offline: Set<String>,
+    ) : EntitiesUiState
 }
 
 private sealed interface EntitiesSnapshot {
@@ -181,13 +195,18 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
 
     private val layout = MutableStateFlow<DashboardLayout?>(null)
 
+    private val offline = MutableStateFlow<Set<String>>(emptySet())
+
+    private val _commandFailures = MutableSharedFlow<String>(extraBufferCapacity = COMMAND_FAILURE_BUFFER)
+    val commandFailures: SharedFlow<String> = _commandFailures.asSharedFlow()
+
     val lightLevels = LightLevels()
 
-    val state: StateFlow<EntitiesUiState> = combine(snapshot, layout) { snapshot, layout ->
+    val state: StateFlow<EntitiesUiState> = combine(snapshot, layout, offline) { snapshot, layout, offline ->
         when {
             layout == null -> EntitiesUiState.Loading
             snapshot is EntitiesSnapshot.Loaded ->
-                EntitiesUiState.Loaded(layout.mode, layout.arrange(snapshot.entities, snapshot.categories))
+                EntitiesUiState.Loaded(layout.mode, layout.arrange(snapshot.entities, snapshot.categories), offline)
             snapshot is EntitiesSnapshot.Error -> EntitiesUiState.Error(snapshot.message)
             else -> EntitiesUiState.Loading
         }
@@ -418,7 +437,19 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun applyEvent(event: EventsSubscription.Events) {
+        event.onDeviceConnectionUpdate?.let { update ->
+            offline.value = if (update.connected) offline.value - update.deviceId else offline.value + update.deviceId
+            return
+        }
+
         val current = snapshot.value as? EntitiesSnapshot.Loaded ?: return
+
+        event.onCommandFailedUpdate?.let { failure ->
+            val name = current.entities.firstOrNull { it.id == failure.id }?.name ?: failure.id
+            _commandFailures.tryEmit("$name didn't respond to a ${failure.kind} command after ${failure.attempts} attempts")
+            return
+        }
+
         val updated = current.entities.map { it.applyEvent(event) }
         if (updated == current.entities) {
             return
@@ -466,6 +497,8 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         setColourTemperature = { id, value ->
             mutate(LightSetColourTemperatureMutation(id, value))
         },
+        colourTemperatureMove = { id, value -> mutate(LightColourTemperatureMoveMutation(id, value)) },
+        setColour = { id, hex -> mutate(LightSetColourMutation(id, hex)) },
         mediaPlayPause = { mutate(MediaPlayPauseMutation(it)) },
         mediaStop = { mutate(MediaStopMutation(it)) },
         vacuumStart = { mutate(VacuumStartMutation(it)) },
@@ -474,7 +507,24 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         garageDoorOpen = { mutate(GarageDoorOpenMutation(it)) },
         garageDoorClose = { mutate(GarageDoorCloseMutation(it)) },
         takeScreenshot = { mutate(EinkTakeScreenshotMutation(it)) },
+        loadEinkConfig = ::loadEinkConfig,
     )
+
+    private suspend fun loadEinkConfig(id: String): EinkConfigUi? = try {
+        val response = apollo.query(EinkConfigQuery(id)).execute()
+        if (response.hasErrors()) {
+            Log.w("EntitiesViewModel", "einkConfig($id) returned errors: ${response.errors}")
+        }
+
+        response.data?.einkDisplay?.deviceConfig?.let { config ->
+            EinkConfigUi(config.refreshIntervalMins, config.imageUrl, config.clearScreen)
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w("EntitiesViewModel", "einkConfig($id) failed", e)
+        null
+    }
 
     /// Fire-and-forget: the resulting device state arrives over the subscription, so
     /// the mutation response itself is only interesting when it fails.
@@ -503,6 +553,9 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
             pressure = byMetric["pressure"] ?: pressure,
             lux = byMetric["lux"] ?: lux,
             uvIndex = byMetric["uv_index"] ?: byMetric["uvIndex"] ?: uvIndex,
+            pm25 = byMetric["pm25"]?.roundToInt() ?: pm25,
+            vocIndex = byMetric["voc_index"]?.roundToInt() ?: vocIndex,
+            lastSeen = Instant.now(),
         )
     }
 
@@ -511,5 +564,6 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         const val INITIAL_BACKOFF_MS = 1_000L
         const val MAX_BACKOFF_MS = 30_000L
         const val SURFACE_REFRESH_DELAY_MS = 3_000L
+        const val COMMAND_FAILURE_BUFFER = 8
     }
 }

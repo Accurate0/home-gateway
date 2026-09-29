@@ -35,5 +35,14 @@ subscription Events {
       mediaSeriesTitle
       state
     }
+    ... on DeviceConnectionUpdate {
+      deviceId
+      connected
+    }
+    ... on CommandFailedUpdate {
+      id
+      kind
+      attempts
+    }
   }
 }

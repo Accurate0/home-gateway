@@ -1,0 +1,15 @@
+query PlantHistory($since: DateTime!) {
+  entities {
+    __typename
+    ... on PlantEntity {
+      id
+      name
+      room
+      soilMoisture
+      history(since: $since) {
+        time
+        soilMoisture
+      }
+    }
+  }
+}

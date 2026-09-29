@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -41,6 +42,7 @@ import net.infk8s.homegateway.ui.theme.StateTone
 @Composable
 fun EntityTile(
     entity: EntityUi,
+    offline: Boolean,
     editing: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -56,6 +58,7 @@ fun EntityTile(
         color = accent?.copy(alpha = 0.15f)?.compositeOver(base) ?: base,
         border = BorderStroke(1.dp, accent?.copy(alpha = 0.5f) ?: MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
+            .alpha(if (offline) OFFLINE_ALPHA else 1f)
             .clip(TileShape)
             .combinedClickable(enabled = !editing, onClick = onClick, onLongClick = onLongClick),
     ) {
@@ -281,3 +284,5 @@ private fun StatePill(pill: TilePill) {
 }
 
 private val TileShape = RoundedCornerShape(16.dp)
+
+private const val OFFLINE_ALPHA = 0.45f

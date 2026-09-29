@@ -1,0 +1,82 @@
+query BatteryHistory($since: DateTime!) {
+  entities {
+    __typename
+    ... on LightEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+    ... on DoorEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+    ... on PresenceEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+    ... on EnvironmentEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+    ... on EinkDisplayEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+    ... on RobotVacuumEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+    ... on GarageDoorEntity {
+      id
+      name
+      room
+      battery {
+        history(since: $since) {
+          time
+          batteryPercentage
+        }
+      }
+    }
+  }
+}

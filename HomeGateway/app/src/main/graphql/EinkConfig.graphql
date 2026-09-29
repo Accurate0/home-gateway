@@ -1,0 +1,9 @@
+query EinkConfig($id: IdOrAlias!) {
+  einkDisplay(id: $id) {
+    deviceConfig {
+      refreshIntervalMins
+      imageUrl
+      clearScreen
+    }
+  }
+}

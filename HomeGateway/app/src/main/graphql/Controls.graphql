@@ -69,3 +69,15 @@ mutation EinkTakeScreenshot($id: IdOrAlias!) {
     takeScreenshot
   }
 }
+
+mutation LightSetColour($id: IdOrAlias!, $hex: String!) {
+  light(id: $id) {
+    setColour(input: { hex: $hex })
+  }
+}
+
+mutation LightColourTemperatureMove($id: IdOrAlias!, $value: Int!) {
+  light(id: $id) {
+    colourTemperatureMove(input: { value: $value })
+  }
+}

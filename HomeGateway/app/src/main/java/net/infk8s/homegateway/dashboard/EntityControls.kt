@@ -7,6 +7,8 @@ data class EntityControls(
     val setLight: (String, Boolean) -> Unit,
     val setBrightness: (String, Int) -> Unit,
     val setColourTemperature: (String, Int) -> Unit,
+    val colourTemperatureMove: (String, Int) -> Unit,
+    val setColour: (String, String) -> Unit,
     val mediaPlayPause: (String) -> Unit,
     val mediaStop: (String) -> Unit,
     val vacuumStart: (String) -> Unit,
@@ -15,4 +17,5 @@ data class EntityControls(
     val garageDoorOpen: (String) -> Unit,
     val garageDoorClose: (String) -> Unit,
     val takeScreenshot: (String) -> Unit,
+    val loadEinkConfig: suspend (String) -> EinkConfigUi?,
 )

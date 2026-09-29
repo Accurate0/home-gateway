@@ -6,7 +6,9 @@ use itertools::Itertools;
 pub struct WoolworthsObject {}
 
 #[derive(SimpleObject)]
+#[graphql(rename_fields = "camelCase")]
 pub struct WoolworthsProducts {
+    pub product_id: i64,
     pub name: String,
     pub price: f64,
 }
@@ -40,6 +42,7 @@ impl WoolworthsObject {
             .await?
             .into_iter()
             .map(|r| WoolworthsProducts {
+                product_id: r.product_id,
                 name: r.display_name,
                 price: r.price,
             })

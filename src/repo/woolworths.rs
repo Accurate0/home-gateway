@@ -8,6 +8,7 @@ pub struct WoolworthsRepo {
 }
 
 pub struct WoolworthsProductRow {
+    pub product_id: i64,
     pub display_name: String,
     pub price: f64,
 }
@@ -79,7 +80,7 @@ impl WoolworthsRepo {
     pub async fn products(&self) -> Result<Vec<WoolworthsProductRow>, sqlx::Error> {
         sqlx::query_as!(
             WoolworthsProductRow,
-            r#"SELECT display_name, price FROM woolworths_product_price"#,
+            r#"SELECT product_id, display_name, price FROM woolworths_product_price ORDER BY display_name"#,
         )
         .fetch_all(&self.db)
         .await

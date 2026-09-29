@@ -1,0 +1,21 @@
+query TransperthRoutes {
+  transperth {
+    routes {
+      id
+      origin
+      destination
+      updatedAt
+      stale
+      departures {
+        line
+        headsign
+        platform
+        scheduledDeparture
+        liveDeparture
+        delayMinutes
+        minutesAway
+        live
+      }
+    }
+  }
+}

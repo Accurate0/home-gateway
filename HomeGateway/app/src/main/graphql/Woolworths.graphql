@@ -1,0 +1,27 @@
+query WoolworthsProducts {
+  woolworths {
+    products {
+      productId
+      name
+      price
+    }
+  }
+}
+
+query WoolworthsPriceHistory($productId: Int!, $since: DateTime!) {
+  woolworths {
+    priceHistory(input: { productId: $productId, since: $since }) {
+      price
+      time
+    }
+  }
+}
+
+subscription WoolworthsUpdates {
+  events(filter: "woolworths:*") {
+    __typename
+    ... on WoolworthsUpdate {
+      productId
+    }
+  }
+}

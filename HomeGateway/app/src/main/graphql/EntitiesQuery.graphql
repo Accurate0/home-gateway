@@ -37,6 +37,9 @@ query Entities {
       pressure
       lux
       uvIndex
+      pm25
+      vocIndex
+      lastSeen
     }
     ... on PlantEntity {
       category

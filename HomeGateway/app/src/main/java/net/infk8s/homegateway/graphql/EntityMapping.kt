@@ -1,6 +1,7 @@
 package net.infk8s.homegateway.graphql
 
 import net.infk8s.homegateway.graphql.type.Capability
+import net.infk8s.homegateway.ui.parseInstant
 
 fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
     onLightEntity != null ->
@@ -12,6 +13,7 @@ fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
             on = onLightEntity.on,
             dimmable = onLightEntity.capabilities.any { it == Capability.BRIGHTNESS },
             tunable = onLightEntity.capabilities.any { it == Capability.COLOUR_TEMP },
+            colour = onLightEntity.capabilities.any { it == Capability.RGB },
         )
 
     onDoorEntity != null ->
@@ -53,6 +55,9 @@ fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
             pressure = onEnvironmentEntity.pressure,
             lux = onEnvironmentEntity.lux,
             uvIndex = onEnvironmentEntity.uvIndex,
+            pm25 = onEnvironmentEntity.pm25,
+            vocIndex = onEnvironmentEntity.vocIndex,
+            lastSeen = parseInstant(onEnvironmentEntity.lastSeen),
         )
 
     onPlantEntity != null ->

@@ -18,11 +18,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -54,6 +57,24 @@ import net.infk8s.homegateway.notifications.NotificationInteractions
 import net.infk8s.homegateway.notifications.NotificationsScreen
 import net.infk8s.homegateway.notifications.NotificationsViewModel
 import net.infk8s.homegateway.notifications.PushPayload
+import net.infk8s.homegateway.fuel.FuelScreen
+import net.infk8s.homegateway.fuel.FuelViewModel
+import net.infk8s.homegateway.jellyfin.JellyfinScreen
+import net.infk8s.homegateway.jellyfin.JellyfinViewModel
+import net.infk8s.homegateway.more.MorePage
+import net.infk8s.homegateway.more.MoreScreen
+import net.infk8s.homegateway.transperth.TransperthScreen
+import net.infk8s.homegateway.transperth.TransperthViewModel
+import net.infk8s.homegateway.woolworths.WoolworthsScreen
+import net.infk8s.homegateway.woolworths.WoolworthsViewModel
+import net.infk8s.homegateway.system.adhoc.AdhocTasksScreen
+import net.infk8s.homegateway.system.adhoc.AdhocTasksViewModel
+import net.infk8s.homegateway.system.batteries.BatteriesViewModel
+import net.infk8s.homegateway.system.history.HistoryScreen
+import net.infk8s.homegateway.system.history.HistoryViewModel
+import net.infk8s.homegateway.system.homeassistant.HomeAssistantScreen
+import net.infk8s.homegateway.system.homeassistant.HomeAssistantViewModel
+import net.infk8s.homegateway.system.plants.PlantsViewModel
 import net.infk8s.homegateway.ui.TitleTopBar
 import net.infk8s.homegateway.ui.theme.HomeGatewayTheme
 import net.infk8s.homegateway.workflows.RunsScreen
@@ -79,6 +100,22 @@ class MainActivity : ComponentActivity() {
     private val runsViewModel: RunsViewModel by viewModels()
 
     private val modesViewModel: ModesViewModel by viewModels()
+
+    private val batteriesViewModel: BatteriesViewModel by viewModels()
+
+    private val plantsViewModel: PlantsViewModel by viewModels()
+
+    private val adhocTasksViewModel: AdhocTasksViewModel by viewModels()
+
+    private val homeAssistantViewModel: HomeAssistantViewModel by viewModels()
+
+    private val transperthViewModel: TransperthViewModel by viewModels()
+
+    private val fuelViewModel: FuelViewModel by viewModels()
+
+    private val woolworthsViewModel: WoolworthsViewModel by viewModels()
+
+    private val jellyfinViewModel: JellyfinViewModel by viewModels()
 
     private var selectedTab by mutableStateOf(AppTab.HOME)
 
@@ -119,6 +156,7 @@ class MainActivity : ComponentActivity() {
         var runsOpen by rememberSaveable { mutableStateOf(false) }
         var runsFilter by rememberSaveable { mutableStateOf<String?>(null) }
         var pendingRun by rememberSaveable { mutableStateOf<String?>(null) }
+        var morePage by rememberSaveable { mutableStateOf<MorePage?>(null) }
 
         val entities by entitiesViewModel.state.collectAsStateWithLifecycle()
         val loaded = entities as? EntitiesUiState.Loaded
@@ -130,12 +168,23 @@ class MainActivity : ComponentActivity() {
         }
 
         BackHandler(enabled = selectedTab == AppTab.WORKFLOWS && runsOpen) { runsOpen = false }
+        BackHandler(enabled = selectedTab == AppTab.MORE && morePage != null) { morePage = null }
+
+        val snackbarHostState = remember { SnackbarHostState() }
+        LaunchedEffect(Unit) {
+            entitiesViewModel.commandFailures.collect { snackbarHostState.showSnackbar(it) }
+        }
 
         val tabStates = rememberSaveableStateHolder()
-        val tabKey = if (selectedTab == AppTab.WORKFLOWS && runsOpen) "runs" else selectedTab.name
+        val tabKey = when {
+            selectedTab == AppTab.WORKFLOWS && runsOpen -> "runs"
+            selectedTab == AppTab.MORE && morePage != null -> "more:${morePage?.name}"
+            else -> selectedTab.name
+        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 when (selectedTab) {
                     AppTab.HOME -> DashboardTopBar(
@@ -161,6 +210,11 @@ class MainActivity : ComponentActivity() {
                     AppTab.MODES -> TitleTopBar("Modes")
 
                     AppTab.NOTIFICATIONS -> Unit
+
+                    AppTab.MORE -> when (val page = morePage) {
+                        null -> TitleTopBar("More")
+                        else -> TitleTopBar(page.title, onBack = { morePage = null })
+                    }
                 }
             },
             bottomBar = {
@@ -299,9 +353,124 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding),
                         )
                     }
+
+                    AppTab.MORE -> MoreContent(
+                        page = morePage,
+                        onOpen = { morePage = it },
+                        modifier = Modifier.padding(innerPadding),
+                    )
                 }
             }
         }
+    }
+
+    @Composable
+    private fun MoreContent(page: MorePage?, onOpen: (MorePage) -> Unit, modifier: Modifier) {
+        val lifecycleOwner = LocalLifecycleOwner.current
+
+        when (page) {
+            null -> MoreScreen(onOpen = onOpen, modifier = modifier)
+
+            MorePage.TRANSPERTH -> {
+                val state by transperthViewModel.state.collectAsStateWithLifecycle()
+                RunWhileStarted(transperthViewModel::run)
+
+                TransperthScreen(state, modifier)
+            }
+
+            MorePage.FUEL -> {
+                val state by fuelViewModel.state.collectAsStateWithLifecycle()
+                RunWhileStarted(fuelViewModel::run)
+
+                FuelScreen(state, modifier)
+            }
+
+            MorePage.WOOLWORTHS -> {
+                val state by woolworthsViewModel.state.collectAsStateWithLifecycle()
+                val histories by woolworthsViewModel.histories.collectAsStateWithLifecycle()
+                RunWhileStarted(woolworthsViewModel::run)
+
+                WoolworthsScreen(
+                    state = state,
+                    histories = histories,
+                    range = woolworthsViewModel.range,
+                    onExpand = woolworthsViewModel::loadHistory,
+                    modifier = modifier,
+                )
+            }
+
+            MorePage.JELLYFIN -> {
+                val state by jellyfinViewModel.state.collectAsStateWithLifecycle()
+                RunWhileStarted(jellyfinViewModel::run)
+
+                JellyfinScreen(state, modifier)
+            }
+
+            MorePage.BATTERIES -> HistoryContent(batteriesViewModel, BATTERY_HEALTHY, modifier)
+
+            MorePage.PLANTS -> HistoryContent(plantsViewModel, PLANT_HEALTHY, modifier)
+
+            MorePage.ADHOC_TASKS -> {
+                val state by adhocTasksViewModel.state.collectAsStateWithLifecycle()
+                val running by adhocTasksViewModel.running.collectAsStateWithLifecycle()
+                val runError by adhocTasksViewModel.runError.collectAsStateWithLifecycle()
+                LaunchedEffect(lifecycleOwner) {
+                    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        adhocTasksViewModel.refresh()
+                    }
+                }
+
+                AdhocTasksScreen(
+                    state = state,
+                    running = running,
+                    runError = runError,
+                    onRunCron = { adhocTasksViewModel.runCron(it.name) },
+                    onRunPending = adhocTasksViewModel::runPending,
+                    modifier = modifier,
+                )
+            }
+
+            MorePage.HOME_ASSISTANT -> {
+                val state by homeAssistantViewModel.state.collectAsStateWithLifecycle()
+                RunWhileStarted(homeAssistantViewModel::run)
+
+                HomeAssistantScreen(state, modifier)
+            }
+        }
+    }
+
+    @Composable
+    private fun RunWhileStarted(block: suspend () -> Unit) {
+        val lifecycleOwner = LocalLifecycleOwner.current
+        LaunchedEffect(lifecycleOwner) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                block()
+            }
+        }
+    }
+
+    @Composable
+    private fun HistoryContent(
+        viewModel: HistoryViewModel,
+        healthy: ClosedFloatingPointRange<Double>,
+        modifier: Modifier,
+    ) {
+        val state by viewModel.state.collectAsStateWithLifecycle()
+        val range by viewModel.range.collectAsStateWithLifecycle()
+        val lifecycleOwner = LocalLifecycleOwner.current
+        LaunchedEffect(lifecycleOwner, viewModel) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.refresh()
+            }
+        }
+
+        HistoryScreen(
+            state = state,
+            range = range,
+            healthy = healthy,
+            onRange = viewModel::select,
+            modifier = modifier,
+        )
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -379,5 +548,10 @@ class MainActivity : ComponentActivity() {
             // Listener runs on the main thread; register off it to avoid network-on-main.
             thread { PushTokenRegistrar.register(token) }
         }
+    }
+
+    private companion object {
+        val BATTERY_HEALTHY = 20.0..100.0
+        val PLANT_HEALTHY = 20.0..80.0
     }
 }

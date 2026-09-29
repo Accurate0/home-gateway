@@ -1,0 +1,21 @@
+query HomeAssistantEntities {
+  homeAssistant {
+    entities {
+      id
+      entityId
+      state
+      time
+    }
+  }
+}
+
+subscription HomeAssistantUpdates {
+  events(filter: "home_assistant:*") {
+    __typename
+    ... on HomeAssistantUpdate {
+      id
+      entityId
+      state
+    }
+  }
+}

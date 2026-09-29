@@ -64,6 +64,7 @@ fun DashboardScreen(
             state.sections.filterNot {
                 state.mode == DashboardMode.CUSTOM && !editing && it.key == DashboardLayout.UNSORTED_KEY
             },
+            state.offline,
             controls,
             lightLevels,
             editing,
@@ -79,6 +80,7 @@ fun DashboardScreen(
 private fun DashboardGrid(
     mode: DashboardMode,
     sections: List<EntitySectionUi>,
+    offline: Set<String>,
     controls: EntityControls,
     lightLevels: LightLevels,
     editing: Boolean,
@@ -135,6 +137,7 @@ private fun DashboardGrid(
 
                     EntityTile(
                         entity,
+                        offline = entity.id in offline,
                         editing,
                         onClick = { entity.mainAction(controls)?.invoke() ?: run { selectedKey = entity.key } },
                         onLongClick = { selectedKey = entity.key },
@@ -167,7 +170,13 @@ private fun DashboardGrid(
     }
 
     if (selected != null && !editing) {
-        EntityOptionsSheet(selected, controls, lightLevels, onDismiss = { selectedKey = null })
+        EntityOptionsSheet(
+            selected,
+            offline = selected.id in offline,
+            controls,
+            lightLevels,
+            onDismiss = { selectedKey = null },
+        )
     }
 
     val editingSection = editingSectionKey?.let { key -> sections.firstOrNull { it.key == key && it.editable } }
