@@ -5,7 +5,7 @@ use std::time::Duration;
 use ractor::Actor;
 
 use crate::actors::health::Lifecycle;
-use crate::actors::manifest::{ACTORS, Spawned, find};
+use crate::actors::manifest::{ACTORS, Spawned, find, startup_order};
 use crate::settings::RestartSettings;
 use crate::state::AppState;
 
@@ -89,7 +89,10 @@ impl Actor for RootSupervisor {
     ) -> Result<Self::State, ractor::ActorProcessingErr> {
         let mut state = RootState::default();
 
-        for spec in ACTORS.iter().filter(|spec| spec.autostart) {
+        for spec in startup_order(ACTORS)?
+            .into_iter()
+            .filter(|spec| spec.autostart)
+        {
             match self.spawn(&myself, spec.name).await {
                 Ok(Spawned::Started) => {
                     state

@@ -89,6 +89,7 @@ pub struct ActorSpec {
     pub autostart: bool,
     pub optional: bool,
     pub requires: &'static [Requirement],
+    pub depends_on: &'static [&'static str],
     pub spawn: SpawnFn,
 }
 
@@ -105,13 +106,50 @@ pub fn find(name: &str) -> Option<&'static ActorSpec> {
     ACTORS.iter().find(|spec| spec.name == name)
 }
 
+pub fn startup_order(specs: &[ActorSpec]) -> Result<Vec<&ActorSpec>, ActorProcessingErr> {
+    for spec in specs {
+        if let Some(missing) = spec
+            .depends_on
+            .iter()
+            .find(|dependency| !specs.iter().any(|other| other.name == **dependency))
+        {
+            return Err(format!("{} depends on unknown actor `{missing}`", spec.name).into());
+        }
+    }
+
+    let mut ordered: Vec<&ActorSpec> = Vec::with_capacity(specs.len());
+    let mut pending: Vec<&ActorSpec> = specs.iter().collect();
+
+    while !pending.is_empty() {
+        let ready = pending.iter().position(|spec| {
+            spec.depends_on
+                .iter()
+                .all(|dependency| ordered.iter().any(|started| started.name == *dependency))
+        });
+
+        let Some(index) = ready else {
+            let stuck: Vec<&str> = pending.iter().map(|spec| spec.name).collect();
+
+            return Err(format!("actor dependency cycle among: {}", stuck.join(", ")).into());
+        };
+
+        ordered.push(pending.remove(index));
+    }
+
+    Ok(ordered)
+}
+
 macro_rules! plain {
     ($actor:ident) => {
+        plain!($actor, &[])
+    };
+    ($actor:ident, $deps:expr) => {
         ActorSpec {
             name: $actor::NAME,
             autostart: true,
             optional: false,
             requires: &[],
+            depends_on: $deps,
             spawn: |root, shared_actor_state| {
                 Box::pin(async move {
                     root.spawn_linked(
@@ -130,11 +168,15 @@ macro_rules! plain {
 
 macro_rules! device {
     ($handler:path) => {
+        device!($handler, &[])
+    };
+    ($handler:path, $deps:expr) => {
         ActorSpec {
             name: <$handler as DeviceHandler>::NAME,
             autostart: true,
             optional: false,
             requires: &[],
+            depends_on: $deps,
             spawn: |root, shared_actor_state| {
                 Box::pin(async move {
                     spawn_handler::<$handler>(&root, shared_actor_state).await?;
@@ -146,22 +188,36 @@ macro_rules! device {
     };
 }
 
+const DISPATCH_TARGETS: &[&str] = &[
+    <LightHandler as DeviceHandler>::NAME,
+    <DoorSensorHandler as DeviceHandler>::NAME,
+    <PresenceSensorHandler as DeviceHandler>::NAME,
+    <EnvironmentSensorHandler as DeviceHandler>::NAME,
+    <PlantSensorHandler as DeviceHandler>::NAME,
+    <SmartSwitchHandler as DeviceHandler>::NAME,
+    <ControlSwitchHandler as DeviceHandler>::NAME,
+    <MediaPlayerHandler as DeviceHandler>::NAME,
+    <RobotVacuumHandler as DeviceHandler>::NAME,
+    <GarageDoorHandler as DeviceHandler>::NAME,
+    BatteryActor::NAME,
+];
+
 pub static ACTORS: &[ActorSpec] = &[
     device!(LightHandler),
     device!(DoorSensorHandler),
     device!(PresenceSensorHandler),
     device!(EnvironmentSensorHandler),
     device!(PlantSensorHandler),
-    device!(SmartSwitchHandler),
+    device!(SmartSwitchHandler, &[<LightHandler as DeviceHandler>::NAME]),
     device!(ControlSwitchHandler),
     device!(MediaPlayerHandler),
-    device!(RobotVacuumHandler),
-    device!(GarageDoorHandler),
-    plain!(AlarmActor),
+    device!(RobotVacuumHandler, &[BatteryActor::NAME]),
+    device!(GarageDoorHandler, &[PushActor::NAME]),
+    plain!(AlarmActor, &[WorkflowWorker::NAME]),
     plain!(BatteryActor),
     plain!(CronActor),
-    plain!(DoorEventsSupervisor),
-    plain!(EInkDisplayActor),
+    plain!(DoorEventsSupervisor, &[PushActor::NAME]),
+    plain!(EInkDisplayActor, &[BatteryActor::NAME]),
     ActorSpec {
         name: VacationActor::NAME,
         autostart: true,
@@ -170,6 +226,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "vacation.state",
             present: |settings| settings.vacation.state.is_enabled(),
         }],
+        depends_on: &[<LightHandler as DeviceHandler>::NAME],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 root.spawn_linked(
@@ -186,13 +243,14 @@ pub static ACTORS: &[ActorSpec] = &[
     plain!(SamplingActor),
     plain!(SynergyActor),
     plain!(UnifiConnectedClientHandler),
-    plain!(WatchdogActor),
-    plain!(WorkflowDispatcher),
+    plain!(WatchdogActor, &[PushActor::NAME]),
+    plain!(WorkflowDispatcher, &[WorkflowWorker::NAME]),
     ActorSpec {
         name: AdhocTaskActor::NAME,
         autostart: true,
         optional: true,
         requires: &[],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 root.spawn_linked(
@@ -211,6 +269,7 @@ pub static ACTORS: &[ActorSpec] = &[
         autostart: true,
         optional: false,
         requires: &[],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::push::spawn::spawn_push(&root, shared_actor_state).await?;
@@ -224,6 +283,15 @@ pub static ACTORS: &[ActorSpec] = &[
         autostart: true,
         optional: false,
         requires: &[],
+        depends_on: &[
+            <LightHandler as DeviceHandler>::NAME,
+            <EnvironmentSensorHandler as DeviceHandler>::NAME,
+            <PresenceSensorHandler as DeviceHandler>::NAME,
+            <GarageDoorHandler as DeviceHandler>::NAME,
+            DoorEventsSupervisor::NAME,
+            SolarActor::NAME,
+            PushActor::NAME,
+        ],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::workflows::spawn::spawn_workflows(&root, shared_actor_state).await?;
@@ -232,7 +300,7 @@ pub static ACTORS: &[ActorSpec] = &[
             })
         },
     },
-    plain!(SunActor),
+    plain!(SunActor, &[WorkflowDispatcher::NAME, WorkflowWorker::NAME]),
     ActorSpec {
         name: ReconcilerWorker::NAME,
         autostart: true,
@@ -241,6 +309,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "reconciler.state",
             present: |settings| settings.reconciler.state.is_enabled(),
         }],
+        depends_on: &[<LightHandler as DeviceHandler>::NAME],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::reconciler::spawn_reconciler(&root, shared_actor_state)
@@ -258,6 +327,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "reconciler.state",
             present: |settings| settings.reconciler.state.is_enabled(),
         }],
+        depends_on: &[ReconcilerWorker::NAME],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 root.spawn_linked(
@@ -279,6 +349,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "esphome native api",
             present: |handles| handles.contains::<EsphomeNativeApi>(),
         }],
+        depends_on: DISPATCH_TARGETS,
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::esphome_native_api_ingest::spawn::spawn_esphome_native_api_ingest(
@@ -299,6 +370,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "tuya",
             present: |handles| handles.contains::<Tuya>(),
         }],
+        depends_on: DISPATCH_TARGETS,
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::tuya_ingest::spawn::spawn_tuya_ingest(
@@ -319,6 +391,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "home assistant",
             present: |handles| handles.contains::<HomeAssistant>(),
         }],
+        depends_on: DISPATCH_TARGETS,
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::home_assistant_ingest::spawn::spawn_home_assistant_ingest(
@@ -339,6 +412,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "jellyfin",
             present: |handles| handles.contains::<Jellyfin>(),
         }],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let jellyfin = shared_actor_state.handles.expect::<Jellyfin>().clone();
@@ -365,6 +439,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "transperth",
             present: |handles| handles.contains::<Transperth>(),
         }],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let transperth = shared_actor_state.handles.expect::<Transperth>().clone();
@@ -397,6 +472,7 @@ pub static ACTORS: &[ActorSpec] = &[
                 present: |settings| settings.integrations.trmnl.api_key.is_some(),
             },
         ],
+        depends_on: &[BatteryActor::NAME],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let api_key = shared_actor_state
@@ -444,6 +520,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "fuelwatch",
             present: |handles| handles.contains::<FuelWatch>(),
         }],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let fuelwatch = shared_actor_state.handles.expect::<FuelWatch>().clone();
@@ -478,6 +555,7 @@ pub static ACTORS: &[ActorSpec] = &[
                 present: |handles| handles.contains::<WillyWeather>(),
             },
         ],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let willyweather = shared_actor_state.handles.expect::<WillyWeather>().clone();
@@ -509,6 +587,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "integrations.woolworths.state",
             present: |settings| settings.integrations.woolworths.state.is_enabled(),
         }],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let woolworths = Woolworths::new(
@@ -542,6 +621,7 @@ pub static ACTORS: &[ActorSpec] = &[
             label: "goodwe",
             present: |handles| handles.contains::<GoodWeSemsAPI>(),
         }],
+        depends_on: &[],
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 let goodwe = shared_actor_state.handles.expect::<GoodWeSemsAPI>().clone();
@@ -574,6 +654,7 @@ pub static ACTORS: &[ActorSpec] = &[
         autostart: true,
         optional: false,
         requires: &[],
+        depends_on: DISPATCH_TARGETS,
         spawn: |root, shared_actor_state| {
             Box::pin(async move {
                 crate::actors::system::mqtt_ingest::spawn::spawn_mqtt_ingest(
@@ -688,11 +769,79 @@ mod tests {
         }
     }
 
-    #[test]
-    fn mqtt_ingest_starts_last_so_packets_arrive_after_the_handlers() {
-        let last = ACTORS.last().expect("a non-empty manifest");
+    fn spec(name: &'static str, depends_on: &'static [&'static str]) -> ActorSpec {
+        ActorSpec {
+            name,
+            autostart: true,
+            optional: false,
+            requires: &[],
+            depends_on,
+            spawn: |_, _| Box::pin(async { Ok(Spawned::Skipped) }),
+        }
+    }
 
-        assert_eq!(last.name, MqttIngest::NAME);
-        assert!(last.autostart);
+    #[test]
+    fn the_manifest_has_no_dependency_cycle() {
+        if let Err(e) = startup_order(ACTORS) {
+            panic!("manifest dependencies are invalid: {e}");
+        }
+    }
+
+    #[test]
+    fn every_dependency_starts_before_its_dependent() {
+        let order: Vec<&str> = startup_order(ACTORS)
+            .expect("a valid manifest")
+            .into_iter()
+            .map(|spec| spec.name)
+            .collect();
+
+        let position = |name: &str| order.iter().position(|started| *started == name);
+
+        for spec in ACTORS {
+            for dependency in spec.depends_on {
+                assert!(
+                    position(dependency) < position(spec.name),
+                    "{dependency} should start before {}",
+                    spec.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn startup_order_includes_every_actor_once() {
+        let order = startup_order(ACTORS).expect("a valid manifest");
+
+        let names: HashSet<&str> = order.iter().map(|spec| spec.name).collect();
+
+        assert_eq!(order.len(), ACTORS.len());
+        assert_eq!(names.len(), ACTORS.len());
+    }
+
+    #[test]
+    fn startup_order_keeps_manifest_order_when_unconstrained() {
+        let specs = [spec("b", &["c"]), spec("a", &[]), spec("c", &[])];
+
+        let order: Vec<&str> = startup_order(&specs)
+            .expect("no cycle")
+            .into_iter()
+            .map(|spec| spec.name)
+            .collect();
+
+        assert_eq!(order, vec!["a", "c", "b"]);
+    }
+
+    #[test]
+    fn startup_order_rejects_a_cycle() {
+        let specs = [spec("a", &["b"]), spec("b", &["a"])];
+
+        assert!(startup_order(&specs).is_err());
+    }
+
+    #[test]
+    fn startup_order_rejects_an_unknown_dependency() {
+        let specs = [spec("a", &["missing"])];
+
+        assert!(startup_order(&specs).is_err());
     }
 }
