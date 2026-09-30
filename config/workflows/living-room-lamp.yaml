@@ -32,7 +32,7 @@
   group: Living Room
   tags: [living-room, living-room-occupancy]
   on: { type: presence, sensor: livingroom-motion, present: true }
-  when: { type: sun, is: night }
+  when: { type: sun, is: night, offset: -30m }
   modes: [home, away, guest]
   run:
     - type: run_workflow

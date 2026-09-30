@@ -162,7 +162,6 @@ pub static ACTORS: &[ActorSpec] = &[
     plain!(CronActor),
     plain!(DoorEventsSupervisor),
     plain!(EInkDisplayActor),
-    plain!(SunActor),
     ActorSpec {
         name: VacationActor::NAME,
         autostart: true,
@@ -233,6 +232,7 @@ pub static ACTORS: &[ActorSpec] = &[
             })
         },
     },
+    plain!(SunActor),
     ActorSpec {
         name: ReconcilerWorker::NAME,
         autostart: true,
