@@ -1745,6 +1745,8 @@ eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults:
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
   api_key_cache: { capacity: 1024, ttl: 1h }
+  last_used_interval: 1m
+  lockout: { attempts: 20, window: 5m, capacity: 10000 }
   api_keys:
     - name: bad-key
       scopes: ["bogus:read"]
@@ -1796,6 +1798,8 @@ eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, defaults:
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
   api_key_cache: { capacity: 1024, ttl: 1h }
+  last_used_interval: 1m
+  lockout: { attempts: 20, window: 5m, capacity: 10000 }
   oauth:
     issuer: i
     jwks_url: j
@@ -1942,7 +1946,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -1998,7 +2002,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2056,7 +2060,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2270,7 +2274,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2325,7 +2329,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2379,7 +2383,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2434,7 +2438,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2488,7 +2492,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2588,7 +2592,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
@@ -2669,7 +2673,7 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-auth: { api_key_cache: { capacity: 1024, ttl: 1h } }
+auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
