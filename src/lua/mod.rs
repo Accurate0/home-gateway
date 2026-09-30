@@ -21,6 +21,7 @@ mod session;
 mod signature;
 pub mod sources;
 pub mod state;
+pub mod testing;
 pub mod time;
 pub mod typegen;
 

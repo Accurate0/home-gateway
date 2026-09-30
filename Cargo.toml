@@ -109,6 +109,11 @@ prost-build = "0.14"
 name = "integration"
 path = "tests/integration/main.rs"
 
+[[test]]
+name = "lua"
+path = "tests/lua.rs"
+harness = false
+
 [dev-dependencies]
 opentelemetry_sdk = { version = "0.32.1", features = ["testing"] }
 pretty_assertions = "1.4.1"
@@ -120,6 +125,7 @@ serial_test = "4.0.0"
 http-body-util = "0.1.5"
 url = "2.5.8"
 tower = { version = "0.5.3", features = ["util"] }
+libtest-mimic = "0.8.2"
 
 [workspace.dependencies]
 axum = { version = "0.8.9", features = ["macros", "ws"] }

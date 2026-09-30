@@ -630,24 +630,23 @@ async fn cooldown(cx: &LuaCallContext, key: &str, seconds: i64) -> mlua::Result<
     Ok(passed)
 }
 
+pub(super) fn json_decode(lua: &Lua, raw: String) -> mlua::Result<LuaValue> {
+    let parsed: serde_json::Value = serde_json::from_str(&raw).into_lua_err()?;
+
+    lua.to_value(&parsed)
+}
+
+pub(super) fn json_encode(lua: &Lua, value: LuaValue) -> mlua::Result<String> {
+    let parsed: serde_json::Value = lua.from_value(value)?;
+
+    serde_json::to_string(&parsed).into_lua_err()
+}
+
 fn json_table(lua: &Lua, cx: &LuaCallContext) -> mlua::Result<Table> {
     let table = lua.create_table()?;
 
-    cx.expose(&table, &DECODE, || {
-        lua.create_function(|lua, raw: String| {
-            let parsed: serde_json::Value = serde_json::from_str(&raw).into_lua_err()?;
-
-            lua.to_value(&parsed)
-        })
-    })?;
-
-    cx.expose(&table, &ENCODE, || {
-        lua.create_function(|lua, value: LuaValue| {
-            let parsed: serde_json::Value = lua.from_value(value)?;
-
-            serde_json::to_string(&parsed).into_lua_err()
-        })
-    })?;
+    cx.expose(&table, &DECODE, || lua.create_function(json_decode))?;
+    cx.expose(&table, &ENCODE, || lua.create_function(json_encode))?;
 
     Ok(table)
 }
