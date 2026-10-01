@@ -2,25 +2,23 @@ use crate::{
     actors::alarm::{AlarmActor, AlarmMessage, types::AndroidAppAlarmPayload},
     actors::system::rpc,
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope},
+        AuthContext,
+        scope::{Action, Resource},
     },
+    error::AppError,
 };
+use anyhow::Context;
 use axum::Json;
 use http::StatusCode;
 
-pub async fn alarm(Auth(auth): Auth, Json(payload): Json<AndroidAppAlarmPayload>) -> StatusCode {
-    if auth
-        .require(&Scope::new(Resource::IngestHome, Action::Write))
-        .is_err()
-    {
-        return StatusCode::FORBIDDEN;
-    }
+pub async fn alarm(
+    auth: AuthContext,
+    Json(payload): Json<AndroidAppAlarmPayload>,
+) -> Result<StatusCode, AppError> {
+    auth.require(Resource::IngestHome, Action::Write)?;
 
-    if let Err(e) = rpc::cast(AlarmActor::NAME, AlarmMessage::NextAlarm(payload)) {
-        tracing::error!("error forwarding alarm event: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR;
-    }
+    rpc::cast(AlarmActor::NAME, AlarmMessage::NextAlarm(payload))
+        .context("forwarding alarm event")?;
 
-    StatusCode::NO_CONTENT
+    Ok(StatusCode::NO_CONTENT)
 }

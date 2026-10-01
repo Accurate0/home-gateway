@@ -1,4 +1,5 @@
 pub mod adhoc;
+pub mod api_key;
 pub mod battery;
 pub mod device;
 pub mod door;
@@ -30,6 +31,7 @@ pub mod woolworths;
 pub mod workflow;
 
 pub use adhoc::AdhocRepo;
+pub use api_key::ApiKeyRepo;
 pub use battery::BatteryRepo;
 pub use device::DeviceRepo;
 pub use door::DoorRepo;

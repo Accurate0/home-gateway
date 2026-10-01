@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::auth::{
-    Auth, AuthContext,
-    scope::{Action, Resource, Scope},
+    AuthContext,
+    scope::{Action, Resource},
 };
 use crate::error::AppError;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaSession, Script};
@@ -32,12 +32,11 @@ enum LuaReplReply {
 
 pub async fn lua_repl(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Query(query): Query<LuaReplQuery>,
     upgrade: WebSocketUpgrade,
 ) -> Result<Response, AppError> {
-    auth.require(&Scope::new(Resource::Lua, Action::Write))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::Lua, Action::Write)?;
 
     Ok(upgrade.on_upgrade(move |socket| serve(state, auth, query.dry_run, socket)))
 }

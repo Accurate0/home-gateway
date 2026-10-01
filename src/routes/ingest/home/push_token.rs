@@ -1,10 +1,12 @@
 use crate::{
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope},
+        AuthContext,
+        scope::{Action, Resource},
     },
+    error::AppError,
     state::AppState,
 };
+use anyhow::Context;
 use axum::{Json, extract::State};
 use http::StatusCode;
 use serde::Deserialize;
@@ -16,23 +18,16 @@ pub struct PushTokenPayload {
 
 pub async fn push_token(
     State(AppState { ref repos, .. }): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Json(payload): Json<PushTokenPayload>,
-) -> StatusCode {
-    if auth
-        .require(&Scope::new(Resource::IngestHome, Action::Write))
-        .is_err()
-    {
-        return StatusCode::FORBIDDEN;
-    }
+) -> Result<StatusCode, AppError> {
+    auth.require(Resource::IngestHome, Action::Write)?;
 
-    let result = repos.push().upsert_token(&payload.token).await;
+    repos
+        .push()
+        .upsert_token(&payload.token)
+        .await
+        .context("registering push token")?;
 
-    match result {
-        Ok(_) => StatusCode::NO_CONTENT,
-        Err(e) => {
-            tracing::error!("failed to register push token: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    }
+    Ok(StatusCode::NO_CONTENT)
 }

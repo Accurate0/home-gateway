@@ -2,13 +2,13 @@ use crate::{
     actors::devices::light::{LightHandler, LightHandlerMessage},
     actors::system::rpc,
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope},
+        AuthContext,
+        scope::{Action, Resource},
     },
     error::AppError,
-    settings::IEEEAddress,
     state::AppState,
 };
+use anyhow::Context;
 use axum::{Json, extract::State};
 use http::StatusCode;
 
@@ -25,28 +25,38 @@ pub enum LightControlChange {
 
 #[derive(Deserialize)]
 pub struct LightControlPayload {
-    pub change: HashMap<IEEEAddress, LightControlChange>,
+    pub change: HashMap<String, LightControlChange>,
 }
 
 pub async fn light_control(
-    State(AppState { .. }): State<AppState>,
-    Auth(auth): Auth,
+    State(state): State<AppState>,
+    auth: AuthContext,
     Json(control): Json<LightControlPayload>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&Scope::new(Resource::Light, Action::Write))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::Light, Action::Write)?;
 
-    for (ieee_addr, change) in control.change {
-        let message = match change {
+    let mut messages = Vec::with_capacity(control.change.len());
+
+    for (reference, change) in control.change {
+        let ieee_addr = state.devices.address_or_self(&reference).to_owned();
+
+        if state.devices.light(&ieee_addr).is_none() {
+            tracing::warn!("rejected light control for `{reference}`, which is not a light");
+
+            return Err(AppError::bad_request(format!(
+                "`{reference}` is not a light"
+            )));
+        }
+
+        messages.push(match change {
             LightControlChange::Off => LightHandlerMessage::TurnOff { ieee_addr },
             LightControlChange::On => LightHandlerMessage::TurnOn { ieee_addr },
             LightControlChange::Toggle => LightHandlerMessage::Toggle { ieee_addr },
-        };
+        });
+    }
 
-        if let Err(e) = rpc::cast_factory(LightHandler::NAME, message) {
-            tracing::error!("error dispatching light control: {e}");
-            return Ok(StatusCode::INTERNAL_SERVER_ERROR);
-        }
+    for message in messages {
+        rpc::cast_factory(LightHandler::NAME, message).context("dispatching light control")?;
     }
 
     Ok(StatusCode::NO_CONTENT)

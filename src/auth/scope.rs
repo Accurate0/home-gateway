@@ -18,13 +18,15 @@ impl Action {
             _ => return None,
         })
     }
+}
 
-    fn as_str(&self) -> &'static str {
-        match self {
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
             Self::Read => "read",
             Self::Write => "write",
             Self::Run => "run",
-        }
+        })
     }
 }
 
@@ -38,17 +40,19 @@ macro_rules! scopes {
         impl Resource {
             pub const ALL: &'static [Resource] = &[$(Resource::$variant),+];
 
-            pub fn as_str(&self) -> &'static str {
-                match self {
-                    $(Self::$variant => $path),+
-                }
-            }
-
             fn from_path(s: &str) -> Option<Self> {
                 match s {
                     $($path => Some(Self::$variant),)+
                     _ => None,
                 }
+            }
+        }
+
+        impl fmt::Display for Resource {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str(match self {
+                    $(Self::$variant => $path),+
+                })
             }
         }
 
@@ -181,8 +185,8 @@ impl Scope {
         let scope = Scope::new(resource, action);
         if !Scope::ALL.contains(&scope) {
             return Err(ScopeParseError::UnsupportedAction {
-                resource: resource.as_str().to_owned(),
-                action: action.as_str().to_owned(),
+                resource: resource.to_string(),
+                action: action.to_string(),
             });
         }
 
@@ -192,7 +196,7 @@ impl Scope {
 
 impl fmt::Display for Scope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.resource.as_str(), self.action.as_str())
+        write!(f, "{}:{}", self.resource, self.action)
     }
 }
 
@@ -289,8 +293,8 @@ impl ScopePattern {
             && !Scope::ALL.contains(&Scope::new(resource, action))
         {
             return Err(ScopeParseError::UnsupportedAction {
-                resource: resource.as_str().to_owned(),
-                action: action.as_str().to_owned(),
+                resource: resource.to_string(),
+                action: action.to_string(),
             });
         }
 
@@ -304,7 +308,9 @@ impl ScopePattern {
             ActionSegment::Exact(_) => return false,
         }
 
-        let mut actual = required.resource.as_str().split('.');
+        let resource = required.resource.to_string();
+        let mut actual = resource.split('.');
+
         for segment in &self.path {
             match segment {
                 PathSegment::Rest => return actual.next().is_some(),
@@ -338,12 +344,10 @@ impl fmt::Display for ScopePattern {
             .collect::<Vec<_>>()
             .join(".");
 
-        let action = match self.action {
-            ActionSegment::Any => "*",
-            ActionSegment::Exact(action) => action.as_str(),
-        };
-
-        write!(f, "{path}:{action}")
+        match self.action {
+            ActionSegment::Any => write!(f, "{path}:*"),
+            ActionSegment::Exact(action) => write!(f, "{path}:{action}"),
+        }
     }
 }
 
@@ -425,7 +429,7 @@ mod tests {
     #[test]
     fn every_resource_round_trips() {
         for resource in Resource::ALL {
-            assert_eq!(Resource::from_path(resource.as_str()), Some(*resource));
+            assert_eq!(Resource::from_path(&resource.to_string()), Some(*resource));
         }
     }
 

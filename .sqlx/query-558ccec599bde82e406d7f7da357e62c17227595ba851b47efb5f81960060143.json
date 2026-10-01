@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE api_keys SET name = COALESCE($2, name), scopes = COALESCE($3, scopes), expires_at = COALESCE($4, expires_at) WHERE id = $1 AND revoked_at IS NULL RETURNING id, name, key_prefix, key_hash, scopes, created_at, last_used_at, expires_at, revoked_at",
+  "query": "UPDATE api_keys SET name = COALESCE($2, name), scopes = COALESCE($3, scopes), expires_at = CASE WHEN $4 THEN $5 ELSE expires_at END WHERE id = $1 AND revoked_at IS NULL RETURNING id, name, key_prefix, key_hash, scopes, created_at, last_used_at, expires_at, revoked_at",
   "describe": {
     "columns": [
       {
@@ -54,6 +54,7 @@
         "Uuid",
         "Text",
         "TextArray",
+        "Bool",
         "Timestamptz"
       ]
     },
@@ -69,5 +70,5 @@
       true
     ]
   },
-  "hash": "5a2647ff427fcb9c6e6acf05df70ea4e6a3d575674e516dfea7b79fdc1ee0b41"
+  "hash": "558ccec599bde82e406d7f7da357e62c17227595ba851b47efb5f81960060143"
 }

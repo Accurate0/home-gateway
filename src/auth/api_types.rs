@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::ExpiryChange;
+
 #[derive(Serialize, Deserialize)]
 pub struct CreateKeyPayload {
     pub name: String,
@@ -16,8 +18,8 @@ pub struct UpdateKeyPayload {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scopes: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<DateTime<Utc>>,
+    #[serde(default, skip_serializing_if = "ExpiryChange::is_keep")]
+    pub expires_at: ExpiryChange,
 }
 
 #[derive(Serialize, Deserialize)]

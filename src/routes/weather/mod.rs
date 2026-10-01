@@ -4,15 +4,15 @@ use http::StatusCode;
 use serde::Deserialize;
 
 use crate::auth::{
-    Auth,
-    scope::{Action, Resource, Scope},
+    AuthContext, MissingScope,
+    scope::{Action, Resource},
 };
 use crate::integrations::willyweather::types::Forecast;
 use crate::repo::willyweather::WillyWeatherRepoError;
 use crate::state::AppState;
 
 pub enum WeatherError {
-    Forbidden,
+    Forbidden(MissingScope),
     UnknownLocation(String),
     NotStored(String),
     Database(WillyWeatherRepoError),
@@ -21,8 +21,8 @@ pub enum WeatherError {
 impl IntoResponse for WeatherError {
     fn into_response(self) -> Response {
         match self {
-            WeatherError::Forbidden => {
-                tracing::warn!("weather forecast request missing the required scope");
+            WeatherError::Forbidden(missing) => {
+                tracing::warn!("weather forecast request missing scope {}", missing.scope);
 
                 StatusCode::FORBIDDEN.into_response()
             }
@@ -45,6 +45,12 @@ impl IntoResponse for WeatherError {
     }
 }
 
+impl From<MissingScope> for WeatherError {
+    fn from(missing: MissingScope) -> Self {
+        Self::Forbidden(missing)
+    }
+}
+
 impl From<WillyWeatherRepoError> for WeatherError {
     fn from(e: WillyWeatherRepoError) -> Self {
         Self::Database(e)
@@ -57,16 +63,11 @@ pub struct ForecastQueryParams {
 }
 
 pub async fn forecast(
-    Auth(auth): Auth,
+    auth: AuthContext,
     State(state): State<AppState>,
-    params: Query<ForecastQueryParams>,
+    Query(params): Query<ForecastQueryParams>,
 ) -> Result<Json<Forecast>, WeatherError> {
-    if auth
-        .require(&Scope::new(Resource::Weather, Action::Read))
-        .is_err()
-    {
-        return Err(WeatherError::Forbidden);
-    }
+    auth.require(Resource::Weather, Action::Read)?;
 
     let settings = &state.settings.integrations.willyweather;
     let requested = params

@@ -65,7 +65,7 @@ fn global_exporter() -> &'static InMemorySpanExporter {
 }
 
 fn request(query: &str) -> async_graphql::Request {
-    async_graphql::Request::new(query).data(AuthContext::full_access(false))
+    async_graphql::Request::new(query).data(AuthContext::full_access())
 }
 
 fn names(spans: &[SpanData]) -> Vec<String> {

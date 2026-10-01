@@ -20,6 +20,7 @@ use crate::integrations::{
     transperth::Transperth,
     willyweather::WillyWeather,
 };
+use crate::repo::ApiKeyRepo;
 use crate::settings::HttpClientKind;
 use crate::state::HandleRegistry;
 
@@ -174,7 +175,11 @@ pub async fn build(
         .insert(eink)
         .insert(workflow_manager)
         .insert(ActorHealthRegistry::new())
-        .insert(AuthManager::new(pool.clone(), oauth, &settings.auth))
+        .insert(AuthManager::new(
+            ApiKeyRepo::new(pool.clone()),
+            oauth,
+            &settings.auth,
+        ))
         .insert(willyweather)
         .insert(http_client)
         .insert(public_http_client)

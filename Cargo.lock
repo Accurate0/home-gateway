@@ -2784,6 +2784,7 @@ dependencies = [
  "snow",
  "sqlx",
  "strum 0.28.0",
+ "subtle",
  "sunrise",
  "testcontainers",
  "testcontainers-modules",

@@ -245,6 +245,7 @@ complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l api-key -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l client-id -r
+complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l no-expiry
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l json
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l base-url -r

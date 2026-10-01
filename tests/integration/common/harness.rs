@@ -11,6 +11,7 @@ use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::reddit::Reddit;
 use home_gateway::integrations::s3::S3;
 use home_gateway::integrations::willyweather::WillyWeather;
+use home_gateway::repo::ApiKeyRepo;
 use home_gateway::settings::{HttpClientKind, SettingsContainer};
 use home_gateway::state::{AppState, HandleRegistry};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -107,7 +108,11 @@ impl Harness {
                 &settings.workflow.enabled_cache,
             ))
             .insert(ActorHealthRegistry::new())
-            .insert(AuthManager::new(db.clone(), None, &settings.auth))
+            .insert(AuthManager::new(
+                ApiKeyRepo::new(db.clone()),
+                None,
+                &settings.auth,
+            ))
             .insert(
                 WillyWeather::new(
                     &settings.integrations.willyweather,

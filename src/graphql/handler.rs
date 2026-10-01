@@ -8,7 +8,7 @@ use http::StatusCode;
 use serde_json::Value;
 
 use crate::{
-    auth::{Auth, AuthManager, ClientIp, resolve_ws_auth},
+    auth::{AuthContext, AuthManager, ClientIp, Credentials, resolve_auth},
     error::AppError,
     state::AppState,
 };
@@ -22,7 +22,10 @@ fn token_from_payload(payload: &Value) -> Option<String> {
         "authorization",
     ] {
         if let Some(value) = payload.get(key).and_then(Value::as_str) {
-            return Some(value.trim().trim_start_matches("Bearer ").trim().to_owned());
+            let value = value.trim();
+            let token = value.strip_prefix("Bearer ").unwrap_or(value);
+
+            return Some(token.trim().to_owned());
         }
     }
     None
@@ -45,7 +48,7 @@ pub async fn graphql_ws_handler(
     upgrade: WebSocketUpgrade,
 ) -> Response {
     let schema = state.schema.clone();
-    let lockout = state.handles.expect::<AuthManager>().lockout().clone();
+    let lockout = state.handles.expect::<AuthManager>().lockout();
 
     if let Some(ip) = ip
         && lockout.is_locked(ip).await
@@ -59,18 +62,12 @@ pub async fn graphql_ws_handler(
             GraphQLWebSocket::new(stream, schema, protocol)
                 .on_connection_init(move |payload| async move {
                     let token = token_from_payload(&payload);
-                    let auth = match resolve_ws_auth(token.as_deref(), &state).await {
-                        Ok(auth) => auth,
-                        Err(status) => {
-                            if status == StatusCode::UNAUTHORIZED
-                                && let Some(ip) = ip
-                            {
-                                lockout.record_failure(ip).await;
-                            }
+                    let credentials = Credentials::from_token(token.as_deref());
 
-                            return Err(async_graphql::Error::new("unauthorized"));
-                        }
-                    };
+                    let auth = resolve_auth(credentials, ip, &state)
+                        .await
+                        .map_err(|_| async_graphql::Error::new("unauthorized"))?;
+
                     let mut data = Data::default();
                     data.insert(auth);
                     data.insert(state.clone());
@@ -82,7 +79,7 @@ pub async fn graphql_ws_handler(
 
 pub async fn graphql_handler(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     req: GraphQLRequest,
 ) -> Result<GraphQLResponse, AppError> {
     let request = req.into_inner().data(auth).data(state.clone());

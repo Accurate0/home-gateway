@@ -2,8 +2,8 @@ use crate::{
     actors::system::rpc,
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope},
+        AuthContext,
+        scope::{Action, Resource},
     },
     error::AppError,
     lua::LuaAuthority,
@@ -11,11 +11,8 @@ use crate::{
     state::AppState,
     variables::{Node, Vars, input::input_node},
 };
-use axum::{
-    Json,
-    extract::State,
-    response::{IntoResponse, Response},
-};
+use anyhow::Context;
+use axum::{Json, extract::State};
 use http::StatusCode;
 
 use serde::Deserialize;
@@ -29,11 +26,10 @@ pub struct WorkflowExecutePayload {
 
 pub async fn workflow_execute(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Json(payload): Json<WorkflowExecutePayload>,
-) -> Result<Response, AppError> {
-    auth.require(&Scope::new(Resource::Workflow, Action::Write))
-        .map_err(AppError::StatusCode)?;
+) -> Result<StatusCode, AppError> {
+    auth.require(Resource::Workflow, Action::Write)?;
 
     let WorkflowExecutePayload { workflow, inputs } = payload;
 
@@ -41,7 +37,7 @@ pub async fn workflow_execute(
         Ok(input) => input,
         Err(error) => {
             tracing::warn!("rejected ad-hoc workflow: {error}");
-            return Ok((StatusCode::BAD_REQUEST, error).into_response());
+            return Err(AppError::bad_request(error));
         }
     };
 
@@ -53,7 +49,7 @@ pub async fn workflow_execute(
 
     if let Some(error) = missing {
         tracing::warn!("rejected ad-hoc workflow: {error}");
-        return Ok((StatusCode::FORBIDDEN, error).into_response());
+        return Err(AppError::forbidden(error));
     }
 
     let message = WorkflowWorkerMessage::Execute {
@@ -64,12 +60,9 @@ pub async fn workflow_execute(
         traceparent: crate::tracing_context::inject_current(),
     };
 
-    if let Err(e) = rpc::cast_factory(WorkflowWorker::NAME, message) {
-        tracing::error!("error dispatching workflow: {e}");
-        return Ok(StatusCode::INTERNAL_SERVER_ERROR.into_response());
-    }
+    rpc::cast_factory(WorkflowWorker::NAME, message).context("dispatching workflow")?;
 
-    Ok(StatusCode::NO_CONTENT.into_response())
+    Ok(StatusCode::NO_CONTENT)
 }
 
 fn validate(

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum::Json;
 use http::StatusCode;
 
@@ -7,9 +8,10 @@ use crate::actors::system::push::types::{PushAction, PushActionKind};
 use crate::actors::system::push::{self, PushActor, PushNotification};
 use crate::actors::system::rpc;
 use crate::auth::{
-    Auth,
-    scope::{Action, Resource, Scope},
+    AuthContext,
+    scope::{Action, Resource},
 };
+use crate::error::AppError;
 use crate::settings::{NotificationSource, NotifyAcknowledge, NotifyCategory};
 
 #[derive(Deserialize)]
@@ -51,13 +53,11 @@ fn default_category() -> NotifyCategory {
     NotifyCategory::General
 }
 
-pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) -> StatusCode {
-    if auth
-        .require(&Scope::new(Resource::Push, Action::Write))
-        .is_err()
-    {
-        return StatusCode::FORBIDDEN;
-    }
+pub async fn notify(
+    auth: AuthContext,
+    Json(payload): Json<PushNotifyPayload>,
+) -> Result<StatusCode, AppError> {
+    auth.require(Resource::Push, Action::Write)?;
 
     let actions = payload
         .actions
@@ -89,10 +89,7 @@ pub async fn notify(Auth(auth): Auth, Json(payload): Json<PushNotifyPayload>) ->
         },
     };
 
-    if let Err(e) = rpc::cast(PushActor::NAME, message) {
-        tracing::error!("error sending to push worker: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR;
-    }
+    rpc::cast(PushActor::NAME, message).context("sending to push worker")?;
 
-    StatusCode::NO_CONTENT
+    Ok(StatusCode::NO_CONTENT)
 }

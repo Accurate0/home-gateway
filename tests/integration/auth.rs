@@ -1,5 +1,7 @@
 use chrono::TimeDelta;
-use home_gateway::auth::{AuthManager, hash_key};
+use home_gateway::auth::{AuthManager, ExpiryChange, hash_key};
+use home_gateway::repo::ApiKeyRepo;
+use home_gateway::repo::api_key::ApiKeyChanges;
 use home_gateway::settings::{AuthLockoutSettings, AuthSettings, CacheSettings};
 use pretty_assertions::assert_eq;
 use uuid::Uuid;
@@ -8,7 +10,7 @@ use crate::common::db::fresh_database;
 
 async fn manager() -> AuthManager {
     AuthManager::new(
-        fresh_database().await.pool,
+        ApiKeyRepo::new(fresh_database().await.pool),
         None,
         &AuthSettings {
             api_key_cache: CacheSettings {
@@ -77,6 +79,55 @@ async fn regenerate_swaps_the_token() {
             .is_some(),
         "new token must authenticate"
     );
+}
+
+#[tokio::test]
+async fn regenerate_of_a_revoked_key_returns_none() {
+    let mgr = manager().await;
+    let created = mgr.create("svc", &[], None).await.unwrap();
+
+    assert!(mgr.revoke(created.id).await.unwrap());
+
+    assert!(mgr.regenerate(created.id).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn update_sets_keeps_and_clears_the_expiry() {
+    let mgr = manager().await;
+    let expiry = chrono::Utc::now() + TimeDelta::days(1);
+    let created = mgr.create("svc", &[], Some(expiry)).await.unwrap();
+
+    let renamed = mgr
+        .update(
+            created.id,
+            ApiKeyChanges {
+                name: Some("renamed"),
+                scopes: None,
+                expires_at: ExpiryChange::Keep,
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(renamed.name, "renamed");
+    assert!(renamed.expires_at.is_some(), "an absent expiry is kept");
+
+    let cleared = mgr
+        .update(
+            created.id,
+            ApiKeyChanges {
+                name: None,
+                scopes: None,
+                expires_at: ExpiryChange::Clear,
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(cleared.name, "renamed");
+    assert_eq!(cleared.expires_at, None);
 }
 
 #[tokio::test]

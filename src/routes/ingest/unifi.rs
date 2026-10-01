@@ -4,28 +4,26 @@ use crate::{
     },
     actors::system::rpc,
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope},
+        AuthContext,
+        scope::{Action, Resource},
     },
+    error::AppError,
 };
+use anyhow::Context;
 use axum::Json;
 use http::StatusCode;
 
-pub async fn unifi(Auth(auth): Auth, Json(unifi_event): Json<UnifiWebhookEvent>) -> StatusCode {
-    if auth
-        .require(&Scope::new(Resource::IngestUnifi, Action::Write))
-        .is_err()
-    {
-        return StatusCode::FORBIDDEN;
-    }
+pub async fn unifi(
+    auth: AuthContext,
+    Json(unifi_event): Json<UnifiWebhookEvent>,
+) -> Result<StatusCode, AppError> {
+    auth.require(Resource::IngestUnifi, Action::Write)?;
 
-    if let Err(e) = rpc::cast(
+    rpc::cast(
         UnifiConnectedClientHandler::NAME,
         UnifiMessage::Webhook(Box::new(unifi_event)),
-    ) {
-        tracing::error!("error forwarding unifi event: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR;
-    }
+    )
+    .context("forwarding unifi event")?;
 
-    StatusCode::NO_CONTENT
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -3,13 +3,14 @@ use crate::integrations::s3::S3;
 use crate::{
     actors::eink_display::{EInkDisplayActor, EInkDisplayMessage},
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope},
+        AuthContext,
+        scope::{Action, Resource},
     },
     battery::BatteryChemistry,
     error::AppError,
     state::AppState,
 };
+use anyhow::Context;
 use axum::{
     Json,
     extract::{Query, State},
@@ -98,12 +99,11 @@ impl ImageParams {
 
 pub async fn image(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     axum::extract::Path(hash): axum::extract::Path<String>,
     Query(params): Query<ImageParams>,
 ) -> Result<bytes::Bytes, AppError> {
-    auth.require(&Scope::new(Resource::Epd, Action::Read))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::Epd, Action::Read)?;
 
     let window = params.window()?;
 
@@ -147,11 +147,10 @@ pub async fn image(
 
 pub async fn config(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Json(request): Json<EpdConfigRequest>,
 ) -> Result<Json<EpdConfig>, AppError> {
-    auth.require(&Scope::new(Resource::Epd, Action::Read))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::Epd, Action::Read)?;
 
     let display = state.devices.eink_display(&request.device_id);
     let registered = display.is_some();
@@ -300,11 +299,10 @@ fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
 
 pub async fn firmware(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Query(params): Query<DeviceParams>,
 ) -> Result<Vec<u8>, AppError> {
-    auth.require(&Scope::new(Resource::Epd, Action::Read))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::Epd, Action::Read)?;
 
     let Some(display) = state
         .handles
@@ -332,18 +330,14 @@ pub async fn firmware(
     Ok(state.handles.expect::<S3>().get_object(&key).await?)
 }
 
-pub async fn take_screenshot(Auth(auth): Auth) -> Result<StatusCode, AppError> {
-    auth.require(&Scope::new(Resource::Epd, Action::Write))
-        .map_err(AppError::StatusCode)?;
+pub async fn take_screenshot(auth: AuthContext) -> Result<StatusCode, AppError> {
+    auth.require(Resource::Epd, Action::Write)?;
 
-    match rpc::cast(
+    rpc::cast(
         EInkDisplayActor::NAME,
         EInkDisplayMessage::TakeScreenshot { device_id: None },
-    ) {
-        Ok(()) => Ok(StatusCode::CREATED),
-        Err(e) => {
-            tracing::error!("could not request screenshot: {e}");
-            Ok(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    )
+    .context("requesting screenshot")?;
+
+    Ok(StatusCode::CREATED)
 }

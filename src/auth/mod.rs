@@ -1,16 +1,26 @@
 pub mod api_types;
 pub mod client_ip;
 pub mod context;
+pub mod credentials;
+pub mod expiry_change;
+pub mod generated_key;
 pub mod lockout;
 pub mod manager;
+pub mod missing_scope;
 pub mod oauth;
 pub mod scope;
 
 pub use client_ip::{ClientIp, client_ip};
 pub use context::AuthContext;
+pub use credentials::Credentials;
+pub use expiry_change::ExpiryChange;
+pub use generated_key::GeneratedKey;
 pub use lockout::AuthLockout;
 pub use manager::AuthManager;
+pub use missing_scope::MissingScope;
 pub use oauth::OAuthValidator;
+
+use std::net::IpAddr;
 
 use axum::{
     extract::{FromRequestParts, Request, State},
@@ -18,8 +28,9 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use chrono::Utc;
-use http::{HeaderMap, StatusCode, request::Parts};
+use http::{StatusCode, request::Parts};
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 
 use crate::state::AppState;
 
@@ -37,22 +48,19 @@ async fn resolve_api_key(
     api_key: &str,
     state: &AppState,
 ) -> Result<Option<AuthContext>, StatusCode> {
-    let settings = &state.settings;
+    let legacy_key = state.settings.api_key.as_bytes();
 
-    if !settings.api_key.is_empty() && api_key == settings.api_key {
-        return Ok(Some(AuthContext::full_access(true)));
+    if !legacy_key.is_empty() && bool::from(api_key.as_bytes().ct_eq(legacy_key)) {
+        return Ok(Some(AuthContext::full_access()));
     }
 
+    let manager = state.handles.expect::<AuthManager>();
     let hashed = hash_key(api_key);
-    let key = state
-        .handles
-        .expect::<AuthManager>()
-        .lookup_by_hash(&hashed)
-        .await
-        .map_err(|e| {
-            tracing::error!("failed to look up api key: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+
+    let key = manager.lookup_by_hash(&hashed).await.map_err(|e| {
+        tracing::error!("failed to look up api key: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     if let Some(key) = key {
         if key.revoked_at.is_some() {
@@ -64,11 +72,7 @@ async fn resolve_api_key(
             return Err(StatusCode::UNAUTHORIZED);
         }
 
-        state
-            .handles
-            .expect::<AuthManager>()
-            .touch_last_used(key.id)
-            .await;
+        manager.touch_last_used(key.id).await;
 
         return Ok(Some(AuthContext::from_scopes(
             Some(key.id),
@@ -80,62 +84,21 @@ async fn resolve_api_key(
     Ok(None)
 }
 
-pub async fn resolve_ws_auth(
-    token: Option<&str>,
+async fn resolve_credentials(
+    credentials: Credentials<'_>,
     state: &AppState,
 ) -> Result<AuthContext, StatusCode> {
     if dev_bypass_enabled() {
-        return Ok(AuthContext::full_access(false));
+        return Ok(AuthContext::full_access());
     }
 
-    let token = token.map(|s| s.trim()).filter(|s| !s.is_empty());
-
-    if let Some(token) = token {
-        if let Some(auth) = resolve_api_key(token, state).await? {
-            return Ok(auth);
-        }
-        // ws sends a single token field; a JWT (has dots) is an OAuth access token.
-        if token.contains('.')
-            && let Some(result) = state
-                .handles
-                .expect::<AuthManager>()
-                .validate_oauth(token)
-                .await
-        {
-            return result;
-        }
-    }
-
-    Err(StatusCode::UNAUTHORIZED)
-}
-
-pub async fn resolve_auth(
-    headers: &HeaderMap,
-    state: &AppState,
-) -> Result<AuthContext, StatusCode> {
-    if dev_bypass_enabled() {
-        return Ok(AuthContext::full_access(false));
-    }
-
-    let api_key = headers
-        .get("X-Api-Key")
-        .and_then(|value| value.to_str().ok())
-        .map(|s| s.trim());
-
-    if let Some(api_key) = api_key
+    if let Some(api_key) = credentials.api_key
         && let Some(auth) = resolve_api_key(api_key, state).await?
     {
         return Ok(auth);
     }
 
-    let bearer = headers
-        .get(http::header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer "))
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty());
-
-    if let Some(token) = bearer
+    if let Some(token) = credentials.bearer
         && let Some(result) = state
             .handles
             .expect::<AuthManager>()
@@ -146,6 +109,27 @@ pub async fn resolve_auth(
     }
 
     Err(StatusCode::UNAUTHORIZED)
+}
+
+pub async fn resolve_auth(
+    credentials: Credentials<'_>,
+    ip: Option<IpAddr>,
+    state: &AppState,
+) -> Result<AuthContext, StatusCode> {
+    let result = resolve_credentials(credentials, state).await;
+
+    if result.as_ref().err() == Some(&StatusCode::UNAUTHORIZED)
+        && let Some(ip) = ip
+    {
+        state
+            .handles
+            .expect::<AuthManager>()
+            .lockout()
+            .record_failure(ip)
+            .await;
+    }
+
+    result
 }
 
 pub async fn auth_middleware(
@@ -162,26 +146,18 @@ pub async fn auth_middleware(
         return StatusCode::TOO_MANY_REQUESTS.into_response();
     }
 
-    match resolve_auth(req.headers(), &state).await {
+    let credentials = Credentials::from_headers(req.headers());
+
+    match resolve_auth(credentials, ip, &state).await {
         Ok(auth) => {
             req.extensions_mut().insert(auth);
             next.run(req).await
         }
-        Err(status) => {
-            if status == StatusCode::UNAUTHORIZED
-                && let Some(ip) = ip
-            {
-                lockout.record_failure(ip).await;
-            }
-
-            status.into_response()
-        }
+        Err(status) => status.into_response(),
     }
 }
 
-pub struct Auth(pub AuthContext);
-
-impl<S> FromRequestParts<S> for Auth
+impl<S> FromRequestParts<S> for AuthContext
 where
     S: Send + Sync,
 {
@@ -192,7 +168,6 @@ where
             .extensions
             .get::<AuthContext>()
             .cloned()
-            .map(Auth)
             .ok_or(StatusCode::UNAUTHORIZED)
     }
 }

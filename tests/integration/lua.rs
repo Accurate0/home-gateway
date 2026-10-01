@@ -193,7 +193,7 @@ async fn the_sandbox_is_enforced_at_runtime() {
 
     let result = execute::execute(
         &harness.state,
-        AuthContext::full_access(false),
+        AuthContext::full_access(),
         &script,
         BTreeMap::new(),
         false,
@@ -213,7 +213,7 @@ async fn an_infinite_loop_is_stopped_by_the_instruction_limit() {
 
     let error = execute::execute(
         &harness.state,
-        AuthContext::full_access(false),
+        AuthContext::full_access(),
         &script,
         BTreeMap::new(),
         false,

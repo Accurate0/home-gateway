@@ -2,13 +2,11 @@ use std::collections::BTreeMap;
 
 use axum::Json;
 use axum::extract::State;
-use axum::response::{IntoResponse, Response};
-use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::{
-    Auth,
-    scope::{Action, Resource, Scope},
+    AuthContext,
+    scope::{Action, Resource},
 };
 use crate::error::AppError;
 use crate::lua::{Script, execute};
@@ -30,19 +28,16 @@ pub struct LuaExecuteResponse {
 
 pub async fn lua_execute(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Json(payload): Json<LuaExecutePayload>,
-) -> Result<Response, AppError> {
-    auth.require(&Scope::new(Resource::Lua, Action::Write))
-        .map_err(AppError::StatusCode)?;
+) -> Result<Json<LuaExecuteResponse>, AppError> {
+    auth.require(Resource::Lua, Action::Write)?;
 
-    let script = match Script::parse(&payload.script) {
-        Ok(script) => script,
-        Err(error) => return Ok((StatusCode::BAD_REQUEST, error).into_response()),
-    };
+    let script = Script::parse(&payload.script).map_err(AppError::bad_request)?;
 
-    match execute::execute(&state, auth, &script, payload.vars, payload.dry_run).await {
-        Ok(result) => Ok(Json(LuaExecuteResponse { result }).into_response()),
-        Err(error) => Ok((StatusCode::BAD_REQUEST, error.to_string()).into_response()),
-    }
+    let result = execute::execute(&state, auth, &script, payload.vars, payload.dry_run)
+        .await
+        .map_err(|error| AppError::bad_request(error.to_string()))?;
+
+    Ok(Json(LuaExecuteResponse { result }))
 }

@@ -8,7 +8,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{MethodFilter, on};
 use uuid::Uuid;
 
-use crate::auth::Auth;
+use crate::auth::AuthContext;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaError};
 use crate::settings::workflow::HttpMethod;
 use crate::settings::{Endpoint, EndpointSettings, ParamType};
@@ -60,7 +60,7 @@ fn filter_for(method: HttpMethod) -> MethodFilter {
 }
 
 async fn serve(
-    Auth(auth): Auth,
+    auth: AuthContext,
     State(state): State<AppState>,
     Path(captures): Path<BTreeMap<String, String>>,
     Query(query): Query<BTreeMap<String, String>>,
@@ -69,7 +69,7 @@ async fn serve(
     body: String,
 ) -> Response {
     for scope in endpoint.required_scopes() {
-        if auth.require(&scope).is_err() {
+        if !auth.has(&scope) {
             tracing::info!(
                 "`{} {}` denied {scope} for {}",
                 endpoint.method,

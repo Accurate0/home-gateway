@@ -1,21 +1,45 @@
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 
+use crate::auth::MissingScope;
 use crate::integrations::mqtt::MqttError;
 use crate::integrations::woolworths::WoolworthsError;
 
 pub enum AppError {
     Error(anyhow::Error),
-    #[allow(unused)]
     StatusCode(StatusCode),
+    Rejected { status: StatusCode, message: String },
 }
 
 impl AppError {
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::Rejected {
+            status: StatusCode::BAD_REQUEST,
+            message: message.into(),
+        }
+    }
+
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::Rejected {
+            status: StatusCode::FORBIDDEN,
+            message: message.into(),
+        }
+    }
+
     pub fn message(self) -> anyhow::Error {
         match self {
             AppError::Error(e) => e,
             AppError::StatusCode(status) => anyhow::anyhow!("{status}"),
+            AppError::Rejected { status, message } => anyhow::anyhow!("{status}: {message}"),
         }
+    }
+}
+
+impl From<MissingScope> for AppError {
+    fn from(missing: MissingScope) -> Self {
+        tracing::warn!("request denied, missing scope {}", missing.scope);
+
+        Self::StatusCode(StatusCode::FORBIDDEN)
     }
 }
 
@@ -29,6 +53,7 @@ impl IntoResponse for AppError {
             AppError::StatusCode(s) => {
                 (s, s.canonical_reason().unwrap_or("").to_owned()).into_response()
             }
+            AppError::Rejected { status, message } => (status, message).into_response(),
         }
     }
 }

@@ -1,5 +1,3 @@
-use crate::auth::AuthManager;
-use crate::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use axum::{
     Json,
     extract::{Path, State},
@@ -9,10 +7,12 @@ use uuid::Uuid;
 
 use crate::{
     auth::{
-        Auth,
-        scope::{Action, Resource, Scope, ScopePattern},
+        AuthContext, AuthManager,
+        api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload},
+        scope::{Action, Resource, ScopePattern},
     },
     error::AppError,
+    repo::api_key::ApiKeyChanges,
     state::AppState,
 };
 
@@ -29,11 +29,10 @@ fn validate_scopes(scopes: &[String]) -> Result<(), AppError> {
 
 pub async fn create_key(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Json(payload): Json<CreateKeyPayload>,
 ) -> Result<Json<CreatedKey>, AppError> {
-    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::AdminKeys, Action::Write)?;
 
     validate_scopes(&payload.scopes)?;
 
@@ -48,10 +47,9 @@ pub async fn create_key(
 
 pub async fn list_keys(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    auth.require(&Scope::new(Resource::AdminKeys, Action::Read))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::AdminKeys, Action::Read)?;
 
     let keys = state.handles.expect::<AuthManager>().list().await?;
 
@@ -60,12 +58,11 @@ pub async fn list_keys(
 
 pub async fn update_key(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateKeyPayload>,
 ) -> Result<Json<ApiKeyInfo>, AppError> {
-    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::AdminKeys, Action::Write)?;
 
     if let Some(scopes) = &payload.scopes {
         validate_scopes(scopes)?;
@@ -76,9 +73,11 @@ pub async fn update_key(
         .expect::<AuthManager>()
         .update(
             id,
-            payload.name.as_deref(),
-            payload.scopes.as_deref(),
-            payload.expires_at,
+            ApiKeyChanges {
+                name: payload.name.as_deref(),
+                scopes: payload.scopes.as_deref(),
+                expires_at: payload.expires_at,
+            },
         )
         .await?;
 
@@ -90,11 +89,10 @@ pub async fn update_key(
 
 pub async fn regenerate_key(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Path(id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<CreatedKey>), AppError> {
-    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::AdminKeys, Action::Write)?;
 
     match state.handles.expect::<AuthManager>().regenerate(id).await? {
         Some(created) => Ok((StatusCode::CREATED, Json(created))),
@@ -104,15 +102,14 @@ pub async fn regenerate_key(
 
 pub async fn revoke_key(
     State(state): State<AppState>,
-    Auth(auth): Auth,
+    auth: AuthContext,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    auth.require(&Scope::new(Resource::AdminKeys, Action::Write))
-        .map_err(AppError::StatusCode)?;
+    auth.require(Resource::AdminKeys, Action::Write)?;
 
     if state.handles.expect::<AuthManager>().revoke(id).await? {
         Ok(StatusCode::NO_CONTENT)
     } else {
-        Ok(StatusCode::NOT_FOUND)
+        Err(AppError::StatusCode(StatusCode::NOT_FOUND))
     }
 }

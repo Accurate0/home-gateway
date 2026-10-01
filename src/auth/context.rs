@@ -1,25 +1,21 @@
-use http::StatusCode;
 use uuid::Uuid;
 
-use super::scope::{Scope, ScopePattern};
+use super::MissingScope;
+use super::scope::{Action, Resource, Scope, ScopePattern};
 
 #[derive(Debug, Clone)]
 pub struct AuthContext {
-    #[allow(dead_code)]
     pub key_id: Option<Uuid>,
     pub name: Option<String>,
     pub scopes: Vec<ScopePattern>,
-    #[allow(dead_code)]
-    pub legacy: bool,
 }
 
 impl AuthContext {
-    pub fn full_access(legacy: bool) -> Self {
+    pub fn full_access() -> Self {
         Self {
             key_id: None,
             name: None,
             scopes: vec![ScopePattern::parse("**:*").expect("global pattern is valid")],
-            legacy,
         }
     }
 
@@ -39,7 +35,6 @@ impl AuthContext {
             key_id,
             name,
             scopes,
-            legacy: false,
         }
     }
 
@@ -47,11 +42,13 @@ impl AuthContext {
         self.scopes.iter().any(|s| s.matches(required))
     }
 
-    pub fn require(&self, required: &Scope) -> Result<(), StatusCode> {
-        if self.has(required) {
+    pub fn require(&self, resource: Resource, action: Action) -> Result<(), MissingScope> {
+        let scope = Scope::new(resource, action);
+
+        if self.has(&scope) {
             Ok(())
         } else {
-            Err(StatusCode::FORBIDDEN)
+            Err(MissingScope { scope })
         }
     }
 }

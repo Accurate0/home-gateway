@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use futures::{SinkExt, StreamExt};
+use home_gateway::auth::ExpiryChange;
 use home_gateway::auth::api_types::{ApiKeyInfo, CreateKeyPayload, CreatedKey, UpdateKeyPayload};
 use home_gateway::cli::client::{Client, DEFAULT_BASE_URL, REQUEST_TIMEOUT};
 use home_gateway::cli::credentials;
@@ -266,6 +267,8 @@ enum KeysCommand {
         scopes: Option<Vec<String>>,
         #[arg(long)]
         expires_at: Option<DateTime<Utc>>,
+        #[arg(long, conflicts_with = "expires_at")]
+        no_expiry: bool,
     },
     Regenerate {
         id: Uuid,
@@ -1151,11 +1154,18 @@ async fn keys(client: &Client, command: &KeysCommand, as_json: bool) -> Result<(
             name,
             scopes,
             expires_at,
+            no_expiry,
         } => {
+            let expires_at = match (no_expiry, expires_at) {
+                (true, _) => ExpiryChange::Clear,
+                (false, Some(at)) => ExpiryChange::Set(*at),
+                (false, None) => ExpiryChange::Keep,
+            };
+
             let payload = UpdateKeyPayload {
                 name: name.clone(),
                 scopes: scopes.clone(),
-                expires_at: *expires_at,
+                expires_at,
             };
 
             let response = client

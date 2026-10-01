@@ -503,7 +503,7 @@ async fn graphql(
     };
 
     let auth = match &cx.authority {
-        LuaAuthority::Trusted => AuthContext::full_access(false),
+        LuaAuthority::Trusted => AuthContext::full_access(),
         LuaAuthority::Delegated(auth) => auth.as_ref().clone(),
     };
 
