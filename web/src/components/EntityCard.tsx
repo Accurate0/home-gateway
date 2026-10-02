@@ -664,23 +664,33 @@ function useEinkPreview(imageUrl: string | null | undefined, rotate: boolean) {
   return { dataUrl, status };
 }
 
-function formatTimestamp(value: string | null | undefined, now: number) {
-  if (value == null) return "—";
-  const then = Date.parse(value);
-  if (Number.isNaN(then)) return "—";
-  const absolute = new Date(then).toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+function formatRelative(then: number, now: number) {
   const future = then > now;
   const distance = future
     ? formatLastSeen(new Date(now).toISOString(), then)
-    : formatLastSeen(value, now);
-  if (!distance || distance === "now") return `${absolute} (now)`;
-  return future ? `${absolute} (in ${distance})` : `${absolute} (${distance} ago)`;
+    : formatLastSeen(new Date(then).toISOString(), now);
+  if (!distance || distance === "now") return "now";
+  return future ? `in ${distance}` : `${distance} ago`;
+}
+
+function formatClockTime(then: number, now: number) {
+  const date = new Date(then);
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  if (date.toDateString() === new Date(now).toDateString()) return time;
+  const day = date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+  return `${day}, ${time}`;
+}
+
+function parseTime(value: string | null | undefined) {
+  if (value == null) return null;
+  const then = Date.parse(value);
+  return Number.isNaN(then) ? null : then;
 }
 
 function formatClockOffset(secs: number | null | undefined) {
@@ -696,85 +706,165 @@ function formatClockOffset(secs: number | null | undefined) {
   return `${amount} ${secs > 0 ? "fast" : "slow"}`;
 }
 
-function EinkDisplayDetails({ entity, now }: { entity: Entity; now: number }) {
+function EinkChip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      title={label}
+      className="border-border bg-muted/50 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs tabular-nums"
+    >
+      <span className="text-muted-foreground">{label}</span>
+      <span>{children}</span>
+    </span>
+  );
+}
+
+function EinkDisplayChips({ entity }: { entity: Entity }) {
   const status = entity.einkStatus;
   const config = entity.config;
-  if (status == null) return null;
-
-  const battery =
-    entity.batteryVoltage == null
-      ? "—"
-      : `${fmt(entity.batteryVoltage, " V", 2)}${
-          entity.batteryPercentage == null
-            ? ""
-            : ` · ${Math.round(entity.batteryPercentage)}%`
-        }${status.isCharging ? " · charging" : ""}`;
-
-  const sections: { title: string; rows: [string, string][] }[] = [
-    {
-      title: "Clock",
-      rows: [
-        ["Last reported", formatTimestamp(status.rtcReportedAt, now)],
-        ["Offset at report", formatClockOffset(status.rtcReportedOffsetSecs)],
-        ["Last set", formatTimestamp(status.rtcSyncedAt, now)],
-        ["Drift at last set", formatClockOffset(status.rtcDriftSecs)],
-        ["Next set due", formatTimestamp(status.rtcSyncDueAt, now)],
-      ],
-    },
-    {
-      title: "Wake",
-      rows: [
-        ["Last seen", formatTimestamp(entity.lastSeen, now)],
-        ["Next wake", formatTimestamp(status.nextWakeAt, now)],
-        ["Schedule", config?.refresh ?? "—"],
-        ["Grace", status.grace ?? "—"],
-        [
-          "Sleep window",
-          config?.sleepStart && config?.sleepEnd
-            ? `${config.sleepStart} – ${config.sleepEnd}`
-            : "—",
-        ],
-      ],
-    },
-    {
-      title: "Device",
-      rows: [
-        ["Id", entity.id],
-        ["Battery", battery],
-        ["Target firmware", status.targetFirmwareVersion ?? "—"],
-        [
-          "Mode",
-          [config?.mode?.toLowerCase(), config?.view ?? config?.album]
-            .filter(Boolean)
-            .join(" · ") || "—",
-        ],
-        [
-          "Partial refreshes since full",
-          status.partialRefreshCount == null
-            ? "—"
-            : String(status.partialRefreshCount),
-        ],
-      ],
-    },
-  ];
+  const mode = [config?.mode?.toLowerCase(), config?.view ?? config?.album]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="mb-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
-      {sections.map((section) => (
-        <div key={section.title}>
-          <div className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-wide uppercase">
-            {section.title}
-          </div>
-          <dl className="space-y-1.5 text-xs">
-            {section.rows.map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="tabular-nums">{value}</dd>
-              </div>
-            ))}
-          </dl>
+    <div className="mb-4 flex flex-wrap gap-1.5">
+      <EinkChip label="Id">{entity.id}</EinkChip>
+      {entity.batteryPercentage != null && (
+        <EinkChip label="Battery">
+          {Math.round(entity.batteryPercentage)}%
+          {entity.batteryVoltage != null &&
+            ` · ${fmt(entity.batteryVoltage, " V", 2)}`}
+          {status?.isCharging ? " · charging" : ""}
+        </EinkChip>
+      )}
+      {mode && <EinkChip label="Mode">{mode}</EinkChip>}
+      {config?.refresh && (
+        <EinkChip label="Schedule">{config.refresh}</EinkChip>
+      )}
+      {status?.grace && <EinkChip label="Grace">{status.grace}</EinkChip>}
+      {config?.sleepStart && config?.sleepEnd && (
+        <EinkChip label="Sleep">
+          {config.sleepStart} – {config.sleepEnd}
+        </EinkChip>
+      )}
+      {status?.targetFirmwareVersion && (
+        <EinkChip label="Firmware">{status.targetFirmwareVersion}</EinkChip>
+      )}
+      {status?.partialRefreshCount != null && (
+        <EinkChip label="Partials">{status.partialRefreshCount}</EinkChip>
+      )}
+    </div>
+  );
+}
+
+interface EinkTimelineEvent {
+  label: string;
+  at: number;
+  current?: boolean;
+}
+
+function EinkDisplayTimeline({ entity, now }: { entity: Entity; now: number }) {
+  const status = entity.einkStatus;
+  if (status == null) return null;
+
+  const candidates: [string, number | null][] = [
+    ["Clock set", parseTime(status.rtcSyncedAt)],
+    ["Last seen", parseTime(entity.lastSeen)],
+    ["Next wake", parseTime(status.nextWakeAt)],
+    ["Next clock set", parseTime(status.rtcSyncDueAt)],
+  ];
+
+  const events = candidates
+    .flatMap(([label, at]): EinkTimelineEvent[] =>
+      at == null ? [] : [{ label, at }],
+    )
+    .concat([{ label: "Now", at: now, current: true }])
+    .sort((a, b) => a.at - b.at);
+
+  const hasClock = status.rtcReportedAt != null;
+
+  return (
+    <div className="mb-4">
+      <ol
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${events.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {events.map((event, index) => {
+          const past = event.at <= now;
+          return (
+            <li
+              key={event.label}
+              className="flex flex-col items-center gap-1.5 text-center"
+            >
+              <span
+                className={cn(
+                  "px-1 text-[11px] font-semibold tracking-wide uppercase",
+                  event.current ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {event.label}
+              </span>
+              <span
+                aria-hidden
+                className="relative flex h-4 w-full items-center justify-center"
+              >
+                <span
+                  className={cn(
+                    "bg-border absolute top-1/2 right-0 left-0 h-px",
+                    index === 0 && "left-1/2",
+                    index === events.length - 1 && "right-1/2",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "bg-popover relative size-2.5 rounded-full border-2",
+                    event.current
+                      ? "border-foreground bg-foreground ring-foreground/15 ring-4"
+                      : past
+                        ? "border-foreground/60 bg-foreground/60"
+                        : "border-muted-foreground/60",
+                  )}
+                />
+              </span>
+              <span className="px-1 text-xs tabular-nums">
+                {formatClockTime(event.at, now)}
+              </span>
+              {!event.current && (
+                <span className="text-muted-foreground -mt-1 px-1 text-[11px] tabular-nums">
+                  {formatRelative(event.at, now)}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {hasClock ? (
+        <div className="text-muted-foreground mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs tabular-nums">
+          <span>
+            Clock at last wake{" "}
+            <span className="text-foreground">
+              {formatClockOffset(status.rtcReportedOffsetSecs)}
+            </span>
+          </span>
+          <span>
+            Drift at last set{" "}
+            <span className="text-foreground">
+              {formatClockOffset(status.rtcDriftSecs)}
+            </span>
+          </span>
         </div>
-      ))}
+      ) : (
+        <div className="text-muted-foreground mt-3 text-center text-xs">
+          No clock reported yet — needs newer firmware
+        </div>
+      )}
     </div>
   );
 }
@@ -807,7 +897,6 @@ function EinkDisplayConfigDetails({
             Current display preview and configuration for {entity.name}
           </Dialog.Description>
           <div className="flex items-center gap-3">
-            <LastSeen entity={entity} now={now} />
             {actions && (
               <button
                 type="button"
@@ -821,6 +910,7 @@ function EinkDisplayConfigDetails({
             )}
           </div>
         </div>
+        <EinkDisplayChips entity={entity} />
         <div
           className={cn(
             "bg-muted border-border mx-auto mb-4 grid place-items-center overflow-hidden rounded-lg border",
@@ -841,13 +931,18 @@ function EinkDisplayConfigDetails({
             </span>
           )}
         </div>
-        <EinkDisplayDetails entity={entity} now={now} />
+        <EinkDisplayTimeline entity={entity} now={now} />
         {deviceConfig == null ? (
           <div className="text-muted-foreground text-sm">Loading config…</div>
         ) : (
-          <pre className="bg-muted text-muted-foreground overflow-x-auto rounded-lg p-3 text-xs leading-relaxed">
-            {JSON.stringify(deviceConfig, null, 2)}
-          </pre>
+          <details className="group text-xs">
+            <summary className="text-muted-foreground hover:text-foreground w-fit cursor-pointer select-none">
+              Raw config
+            </summary>
+            <pre className="bg-muted text-muted-foreground mt-2 overflow-x-auto rounded-lg p-3 leading-relaxed">
+              {JSON.stringify(deviceConfig, null, 2)}
+            </pre>
+          </details>
         )}
       </Dialog.Content>
     </Dialog.Portal>
