@@ -37,7 +37,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn at(day: u32, hour: u32, second: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 10, day, hour, 0, second).unwrap()
+        Utc.with_ymd_and_hms(2026, 10, day, hour, 0, second)
+            .unwrap()
     }
 
     fn daily() -> TimeDelta {
@@ -47,7 +48,10 @@ mod tests {
     #[test]
     fn firmware_that_reports_no_clock_is_never_synced() {
         assert_eq!(rtc_sync(None, None, at(2, 8, 0), daily()), None);
-        assert_eq!(rtc_sync(None, Some(at(1, 8, 0)), at(3, 8, 0), daily()), None);
+        assert_eq!(
+            rtc_sync(None, Some(at(1, 8, 0)), at(3, 8, 0), daily()),
+            None
+        );
     }
 
     #[test]

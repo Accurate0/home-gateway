@@ -106,7 +106,9 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
             .build(),
         eink_rtc_drift: meter
             .f64_histogram("home_gateway_eink_rtc_drift_seconds")
-            .with_description("Seconds an eink display's clock was ahead of the gateway at an rtc sync")
+            .with_description(
+                "Seconds an eink display's clock was ahead of the gateway at an rtc sync",
+            )
             .build(),
         adhoc_tasks_total: meter
             .u64_counter("home_gateway_adhoc_tasks_total")
