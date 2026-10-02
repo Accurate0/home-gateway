@@ -1,3 +1,5 @@
+pub mod config;
+pub mod decision;
 pub mod frame;
 pub mod plan;
 pub mod resolve;
@@ -5,7 +7,6 @@ pub mod source;
 pub mod sources;
 pub mod steps;
 
-mod config;
 mod store;
 
 use crate::device_registry::DeviceRegistry;

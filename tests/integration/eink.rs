@@ -1,9 +1,16 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use home_gateway::actors::eink_display::{EInkDisplayActor, EInkDisplayMessage};
 use home_gateway::eink::EinkDisplayManager;
+use home_gateway::eink::manager::source::SourceImage;
 use home_gateway::eink::panel::PACKED_FRAME_SIZE;
+use home_gateway::grpc::proto::wake_response::Refresh;
+use home_gateway::grpc::proto::{WakeRequest, WakeResponse};
 use http_body_util::BodyExt;
 use pretty_assertions::assert_eq;
+use prost::Message;
+use ractor::{Actor, ActorProcessingErr, ActorRef};
+use serial_test::serial;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -183,4 +190,395 @@ async fn the_image_route_requires_the_epd_scope() {
     .await;
 
     assert_eq!(reply.status, StatusCode::FORBIDDEN);
+}
+
+const WAKE_PATH: &str = "/v1/grpc/home_gateway.eink.v1.EinkDisplay/Wake";
+const UNKNOWN_SERVICE_PATH: &str = "/v1/grpc/home_gateway.eink.v1.Nope/Wake";
+const PANEL_ADDRESS: &str = "0000000000e1";
+const GRPC_UNIMPLEMENTED: i32 = 12;
+const GRPC_OK: i32 = 0;
+const GRPC_NOT_FOUND: i32 = 5;
+const GRPC_PERMISSION_DENIED: i32 = 7;
+const MESSAGE_FRAME: u8 = 0x00;
+const TRAILERS_FRAME: u8 = 0x80;
+
+struct StubDisplayActor;
+
+impl Actor for StubDisplayActor {
+    type Msg = EInkDisplayMessage;
+    type State = ();
+    type Arguments = ();
+
+    async fn pre_start(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        _args: Self::Arguments,
+    ) -> Result<Self::State, ActorProcessingErr> {
+        Ok(())
+    }
+
+    async fn handle(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        message: Self::Msg,
+        _state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
+        if let EInkDisplayMessage::PrepareRender { reply, .. } = message {
+            let _ = reply.send(());
+        }
+
+        Ok(())
+    }
+}
+
+async fn stub_display_actor() -> ActorRef<EInkDisplayMessage> {
+    let (actor, _) = Actor::spawn(
+        Some(EInkDisplayActor::NAME.to_owned()),
+        StubDisplayActor,
+        (),
+    )
+    .await
+    .expect("failed to spawn the stub display actor");
+
+    actor
+}
+
+async fn stop(actor: ActorRef<EInkDisplayMessage>) {
+    actor
+        .stop_and_wait(None, None)
+        .await
+        .expect("failed to stop the stub display actor");
+}
+
+struct WakeReply {
+    http: StatusCode,
+    grpc_status: Option<i32>,
+    message: Option<WakeResponse>,
+}
+
+fn grpc_status_in(trailers: &[u8]) -> Option<i32> {
+    String::from_utf8_lossy(trailers)
+        .lines()
+        .find_map(|line| line.strip_prefix("grpc-status:"))
+        .and_then(|status| status.trim().parse().ok())
+}
+
+async fn wake(harness: &Harness, key: Option<&str>, request: WakeRequest) -> WakeReply {
+    let message = request.encode_to_vec();
+
+    let mut body = vec![MESSAGE_FRAME];
+    body.extend_from_slice(&(message.len() as u32).to_be_bytes());
+    body.extend_from_slice(&message);
+
+    let mut builder = Request::builder()
+        .method("POST")
+        .uri(WAKE_PATH)
+        .header("Content-Type", "application/grpc-web+proto")
+        .header("X-Grpc-Web", "1");
+
+    if let Some(key) = key {
+        builder = builder.header("X-Api-Key", key);
+    }
+
+    let response = harness
+        .router()
+        .oneshot(builder.body(Body::from(body)).unwrap())
+        .await
+        .expect("the router should not fail");
+
+    let http = response.status();
+
+    let mut grpc_status = response
+        .headers()
+        .get("grpc-status")
+        .and_then(|status| status.to_str().ok())
+        .and_then(|status| status.parse().ok());
+
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+
+    let mut message = None;
+    let mut rest = &body[..];
+
+    while rest.len() >= 5 {
+        let len = u32::from_be_bytes([rest[1], rest[2], rest[3], rest[4]]) as usize;
+        let payload = &rest[5..5 + len];
+
+        match rest[0] {
+            MESSAGE_FRAME => message = Some(WakeResponse::decode(payload).unwrap()),
+            TRAILERS_FRAME => grpc_status = grpc_status_in(payload),
+            other => panic!("unexpected grpc-web frame flag {other:#x}"),
+        }
+
+        rest = &rest[5 + len..];
+    }
+
+    WakeReply {
+        http,
+        grpc_status,
+        message,
+    }
+}
+
+fn wake_request(device_id: &str) -> WakeRequest {
+    WakeRequest {
+        device_id: device_id.to_owned(),
+        battery_voltage: Some(4.0),
+        is_charging: false,
+        battery_chemistry: "lipo".to_owned(),
+        battery_kind: "rechargeable".to_owned(),
+        firmware_version: "v0.1.0".to_owned(),
+        previous_refresh_failed: false,
+    }
+}
+
+async fn render(harness: &Harness, image_key: &str, fill: u8) -> String {
+    let eink = manager(harness);
+
+    eink.store_render(
+        PANEL_ADDRESS,
+        "Test Panel",
+        &SourceImage {
+            image_key: image_key.to_owned(),
+            content_hash: image_key.to_owned(),
+        },
+    )
+    .await
+    .unwrap_or_else(|e| panic!("failed to store the render: {}", e.message()));
+
+    let resolved = eink
+        .resolve(PANEL_ADDRESS)
+        .await
+        .expect("the fixture panel should resolve");
+
+    let plan = eink
+        .plan(&resolved)
+        .await
+        .expect("a stored render should plan");
+
+    eink.store_packed(&plan.hash, frame(fill)).await;
+
+    plan.hash
+}
+
+async fn displayed_hash(harness: &Harness) -> Option<String> {
+    manager(harness).displayed_hash(PANEL_ADDRESS).await
+}
+
+#[tokio::test]
+#[serial]
+async fn the_first_wake_carries_the_full_frame_and_the_next_one_nothing() {
+    let harness = Harness::start().await;
+    let actor = stub_display_actor().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    let hash = render(&harness, "renders/first.png", 0x21).await;
+
+    let first = wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    assert_eq!(first.http, StatusCode::OK);
+    assert_eq!(first.grpc_status, Some(GRPC_OK));
+
+    let response = first.message.expect("a wake should answer with a message");
+
+    assert!(response.sleep_secs >= 60);
+    assert!(response.firmware.is_none());
+
+    let Some(Refresh::Full(full)) = response.refresh else {
+        panic!("the first wake should carry a full frame");
+    };
+
+    assert_eq!(full.image.len(), PACKED_FRAME_SIZE);
+    assert!(full.image.iter().all(|byte| *byte == 0x21));
+    assert_eq!(displayed_hash(&harness).await, Some(hash));
+
+    let second = wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    assert_eq!(second.grpc_status, Some(GRPC_OK));
+    assert!(
+        second.message.unwrap().refresh.is_none(),
+        "an unchanged frame must not be sent again"
+    );
+
+    stop(actor).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn a_new_render_is_sent_on_the_next_wake() {
+    let harness = Harness::start().await;
+    let actor = stub_display_actor().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    render(&harness, "renders/first.png", 0x21).await;
+    wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    let hash = render(&harness, "renders/second.png", 0x43).await;
+    let reply = wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    let Some(Refresh::Full(full)) = reply.message.unwrap().refresh else {
+        panic!("a changed render should carry a full frame");
+    };
+
+    assert!(full.image.iter().all(|byte| *byte == 0x43));
+    assert_eq!(displayed_hash(&harness).await, Some(hash));
+
+    stop(actor).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn a_failed_refresh_is_sent_the_frame_again() {
+    let harness = Harness::start().await;
+    let actor = stub_display_actor().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    render(&harness, "renders/first.png", 0x21).await;
+    wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    let reply = wake(
+        &harness,
+        Some(&key),
+        WakeRequest {
+            previous_refresh_failed: true,
+            ..wake_request(PANEL_ADDRESS)
+        },
+    )
+    .await;
+
+    assert!(
+        matches!(reply.message.unwrap().refresh, Some(Refresh::Full(_))),
+        "a display that failed to draw must get the frame again"
+    );
+
+    stop(actor).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn an_outdated_firmware_is_pointed_at_the_update() {
+    let harness = Harness::start().await;
+    let actor = stub_display_actor().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    let reply = wake(
+        &harness,
+        Some(&key),
+        WakeRequest {
+            firmware_version: "v0.0.1".to_owned(),
+            ..wake_request(PANEL_ADDRESS)
+        },
+    )
+    .await;
+
+    let response = reply.message.unwrap();
+    let firmware = response.firmware.expect("an update should be offered");
+
+    assert_eq!(firmware.version, "v0.1.0");
+    assert!(
+        firmware
+            .url
+            .ends_with(&format!("/v1/epd/firmware?device_id={PANEL_ADDRESS}"))
+    );
+    assert!(
+        response.refresh.is_none(),
+        "a display with no render yet has nothing to draw"
+    );
+
+    stop(actor).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn an_unregistered_display_is_not_found() {
+    let harness = Harness::start().await;
+    let actor = stub_display_actor().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    let reply = wake(&harness, Some(&key), wake_request("ffffffffffff")).await;
+
+    assert_eq!(reply.http, StatusCode::OK);
+    assert_eq!(reply.grpc_status, Some(GRPC_NOT_FOUND));
+    assert!(reply.message.is_none());
+
+    stop(actor).await;
+}
+
+#[tokio::test]
+async fn wake_requires_the_epd_scope() {
+    let harness = Harness::start().await;
+    let key = mint_key(&harness, &["light:read"]).await;
+
+    let reply = wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    assert_eq!(reply.grpc_status, Some(GRPC_PERMISSION_DENIED));
+    assert!(reply.message.is_none());
+}
+
+#[tokio::test]
+async fn wake_without_credentials_is_unauthorized() {
+    let harness = Harness::start().await;
+
+    let reply = wake(&harness, None, wake_request(PANEL_ADDRESS)).await;
+
+    assert_eq!(reply.http, StatusCode::UNAUTHORIZED);
+}
+
+async fn post_empty(harness: &Harness, uri: &str, key: Option<&str>) -> axum::response::Response {
+    let mut builder = Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header("Content-Type", "application/grpc-web+proto");
+
+    if let Some(key) = key {
+        builder = builder.header("X-Api-Key", key);
+    }
+
+    harness
+        .router()
+        .oneshot(builder.body(Body::empty()).unwrap())
+        .await
+        .expect("the router should not fail")
+}
+
+#[tokio::test]
+async fn the_grpc_fallback_sits_behind_auth() {
+    let harness = Harness::start().await;
+
+    let response = post_empty(&harness, UNKNOWN_SERVICE_PATH, None).await;
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert!(response.headers().get("grpc-status").is_none());
+}
+
+#[tokio::test]
+async fn an_unknown_service_under_the_grpc_prefix_is_unimplemented() {
+    let harness = Harness::start().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    let response = post_empty(&harness, UNKNOWN_SERVICE_PATH, Some(&key)).await;
+
+    let grpc_status = response
+        .headers()
+        .get("grpc-status")
+        .and_then(|status| status.to_str().ok())
+        .and_then(|status| status.parse::<i32>().ok());
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(grpc_status, Some(GRPC_UNIMPLEMENTED));
+}
+
+#[tokio::test]
+async fn the_grpc_fallback_does_not_leak_outside_its_prefix() {
+    let harness = Harness::start().await;
+
+    for uri in ["/home_gateway.eink.v1.EinkDisplay/Wake", "/v1/nope"] {
+        let response = post_empty(&harness, uri, None).await;
+
+        assert_eq!(
+            response.status(),
+            StatusCode::NOT_FOUND,
+            "`{uri}` is outside /v1/grpc and must stay a plain 404"
+        );
+        assert!(response.headers().get("grpc-status").is_none());
+    }
 }

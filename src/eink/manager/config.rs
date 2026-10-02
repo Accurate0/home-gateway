@@ -1,17 +1,16 @@
 use super::EinkDisplayManager;
+use super::decision::WakeDecision;
 use super::resolve::ResolvedDisplay;
-use crate::actors::system::cron::schedule::CronSchedule;
-use crate::eink::partial::resolve_partial_window;
 use crate::routes::epd::{DeviceReport, EpdConfig};
-use crate::settings::EinkDefaults;
-use chrono::{DateTime, TimeDelta};
-use chrono_tz::Australia::Perth;
-use chrono_tz::Tz;
 
 #[cfg(debug_assertions)]
 const HOST: &str = "http://192.168.0.149:8000/v1/epd";
 #[cfg(not(debug_assertions))]
 const HOST: &str = "https://home.anurag.sh/v1/epd";
+
+pub fn firmware_url(device_id: &str) -> String {
+    format!("{HOST}/firmware?device_id={device_id}")
+}
 
 impl EinkDisplayManager {
     #[tracing::instrument(
@@ -24,178 +23,121 @@ impl EinkDisplayManager {
         resolved: &ResolvedDisplay,
         report: DeviceReport<'_>,
     ) -> EpdConfig {
-        let now = chrono::Utc::now().with_timezone(&Perth);
+        let decision = self.wake_decision(resolved, report).await;
 
-        let refresh_secs = match resolved.sleep {
-            Some(sleep) => sleep.secs_until_end(now.time()),
-            None => drift_biased_refresh_secs(
-                &resolved.refresh,
-                resolved.grace,
-                now,
-                &self.settings.eink_display.defaults,
-            ),
-        };
-
-        let mut config = EpdConfig {
-            refresh_interval_mins: Some(refresh_secs.div_ceil(60)),
-            refresh_interval_secs: Some(refresh_secs),
-            image_url: None,
-            image_hash: None,
-            clear_screen: Some(resolved.clear_screen),
-            firmware_url: None,
-            firmware_version: None,
-            partial: None,
-        };
-
-        if resolved.sleep.is_none()
-            && Some(resolved.firmware_version.as_str()) != report.running_firmware_version
-        {
-            config.firmware_version = Some(resolved.firmware_version.clone());
-            config.firmware_url = Some(format!("{HOST}/firmware?device_id={}", resolved.device_id));
-        }
-
-        let wants_partial = resolved.partial_enabled && !resolved.clear_screen;
-
-        let previous = async {
-            match report.current_image_hash.filter(|_| wants_partial) {
-                Some(hash) => self.packed_frame(hash).await,
-                None => None,
-            }
-        };
-
-        let planned = async {
-            let plan = self.plan(resolved).await?;
-            let packed = self.ensure_packed(&plan).await?;
-
-            Some((plan, packed))
-        };
-
-        let (previous, planned) = tokio::join!(previous, planned);
-
-        let Some((plan, packed)) = planned else {
-            tracing::warn!(
-                device_id = resolved.device_id,
-                "no image to serve, skipping this cycle"
-            );
-            return config;
-        };
-
-        let partial = match resolved.clear_screen || plan.sleep.is_some() {
-            true => None,
-            false => {
-                resolve_partial_window(
-                    &self.eink,
-                    resolved,
-                    report.current_image_hash,
-                    &plan.hash,
-                    previous.as_deref(),
-                    &packed,
-                )
-                .await
-            }
-        };
-
-        let mut url = format!(
-            "{HOST}/image/{}?device_id={}",
-            plan.hash, resolved.device_id
-        );
-
-        if let Some(window) = partial {
-            url.push_str(&format!(
-                "&x={}&y={}&width={}&height={}",
-                window.x, window.y, window.width, window.height
-            ));
-        }
-
-        config.image_url = Some(url);
-        config.image_hash = Some(plan.hash);
-        config.partial = partial;
-
-        config
+        epd_config_from(&resolved.device_id, decision)
     }
 }
 
-fn drift_biased_refresh_secs(
-    refresh: &CronSchedule,
-    grace: TimeDelta,
-    now: DateTime<Tz>,
-    defaults: &EinkDefaults,
-) -> u32 {
-    let secs = match refresh.secs_until_next_from(now, grace) {
-        Ok(secs) => secs,
-        Err(e) => {
-            tracing::error!(
-                "refresh schedule `{}` has no next occurrence ({e}), retrying shortly",
-                refresh.expression()
-            );
-            return defaults.fallback_refresh_secs();
-        }
+fn epd_config_from(device_id: &str, decision: WakeDecision) -> EpdConfig {
+    let mut config = EpdConfig {
+        refresh_interval_mins: Some(decision.refresh_secs.div_ceil(60)),
+        refresh_interval_secs: Some(decision.refresh_secs),
+        image_url: None,
+        image_hash: None,
+        clear_screen: Some(decision.clear_screen),
+        firmware_url: None,
+        firmware_version: None,
+        partial: None,
     };
 
-    let bias = (grace.num_seconds().max(0) / 2) as u32;
+    if let Some(version) = decision.firmware_version {
+        config.firmware_version = Some(version);
+        config.firmware_url = Some(firmware_url(device_id));
+    }
 
-    secs.saturating_sub(bias).max(defaults.min_refresh_secs())
+    let Some(frame) = decision.frame else {
+        return config;
+    };
+
+    let mut url = format!("{HOST}/image/{}?device_id={device_id}", frame.hash);
+
+    if let Some(window) = frame.partial {
+        url.push_str(&format!(
+            "&x={}&y={}&width={}&height={}",
+            window.x, window.y, window.width, window.height
+        ));
+    }
+
+    config.image_url = Some(url);
+    config.image_hash = Some(frame.hash);
+    config.partial = frame.partial;
+
+    config
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use crate::eink::manager::decision::PlannedFrame;
+    use crate::eink::panel::PartialWindow;
     use pretty_assertions::assert_eq;
 
-    fn hourly() -> CronSchedule {
-        CronSchedule::parse("0 * * * *").unwrap()
-    }
+    const HASH: &str = "aa00000000000000000000000000000000000000000000000000000000000001";
 
-    fn defaults() -> EinkDefaults {
-        EinkDefaults {
-            reddit_limit: 25,
-            settle: TimeDelta::seconds(10),
-            fallback_refresh: TimeDelta::minutes(15),
-            min_refresh: TimeDelta::seconds(60),
+    fn decision(partial: Option<PartialWindow>) -> WakeDecision {
+        WakeDecision {
+            refresh_secs: 90,
+            firmware_version: Some("v2".to_owned()),
+            clear_screen: false,
+            frame: Some(PlannedFrame {
+                hash: HASH.to_owned(),
+                packed: bytes::Bytes::new(),
+                partial,
+            }),
         }
     }
 
-    fn perth(hour: u32, minute: u32) -> DateTime<Tz> {
-        Perth
-            .with_ymd_and_hms(2026, 8, 16, hour, minute, 0)
-            .unwrap()
+    #[test]
+    fn a_full_frame_links_the_image_and_firmware() {
+        let config = epd_config_from("panel", decision(None));
+
+        assert_eq!(config.refresh_interval_secs, Some(90));
+        assert_eq!(config.refresh_interval_mins, Some(2));
+        assert_eq!(config.image_hash.as_deref(), Some(HASH));
+        assert_eq!(
+            config.image_url,
+            Some(format!("{HOST}/image/{HASH}?device_id=panel"))
+        );
+        assert_eq!(config.firmware_url, Some(firmware_url("panel")));
+        assert_eq!(config.firmware_version.as_deref(), Some("v2"));
     }
 
     #[test]
-    fn a_wake_sleeps_to_just_before_the_next_slot() {
+    fn a_partial_frame_carries_its_window_in_the_url() {
+        let window = PartialWindow {
+            x: 16,
+            y: 8,
+            width: 64,
+            height: 32,
+        };
+
+        let config = epd_config_from("panel", decision(Some(window)));
+
         assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(10, 0), &defaults()),
-            55 * 60
+            config.image_url,
+            Some(format!(
+                "{HOST}/image/{HASH}?device_id=panel&x=16&y=8&width=64&height=32"
+            ))
         );
+        assert!(config.partial.is_some());
     }
 
     #[test]
-    fn an_early_wake_holds_the_same_phase_rather_than_compounding() {
-        assert_eq!(
-            drift_biased_refresh_secs(
-                &hourly(),
-                TimeDelta::minutes(10),
-                perth(10, 55),
-                &defaults()
-            ),
-            60 * 60
+    fn no_frame_leaves_the_image_unset() {
+        let config = epd_config_from(
+            "panel",
+            WakeDecision {
+                refresh_secs: 60,
+                firmware_version: None,
+                clear_screen: true,
+                frame: None,
+            },
         );
-    }
 
-    #[test]
-    fn a_late_wake_corrects_back_onto_the_phase() {
-        assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::minutes(10), perth(11, 2), &defaults()),
-            53 * 60
-        );
-    }
-
-    #[test]
-    fn a_zero_grace_targets_the_slot_exactly() {
-        assert_eq!(
-            drift_biased_refresh_secs(&hourly(), TimeDelta::zero(), perth(10, 30), &defaults()),
-            30 * 60
-        );
+        assert_eq!(config.image_url, None);
+        assert_eq!(config.image_hash, None);
+        assert_eq!(config.firmware_url, None);
+        assert_eq!(config.clear_screen, Some(true));
     }
 }

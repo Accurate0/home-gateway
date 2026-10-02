@@ -77,3 +77,28 @@
   roles:
     - type: media_player
       config: { name: Test Speaker }
+
+- id: display-testpanel-1
+  aliases: [test-panel]
+  state: enabled
+  room: study
+  transport:
+    type: eink_display_firmware
+    address: "0000000000e1"
+  watchdog: { timeout: 26h }
+  roles:
+    - type: eink_display_firmware
+      config:
+        name: Test Panel
+        orientation: portrait
+        refresh: "0 */12 * * *"
+        grace: 30m
+        mode:
+          name: reddit
+          subreddit: EarthPorn
+          timespan: day
+          limit: 25
+        partial:
+          state: disabled
+          max_area_pct: 45
+          max_consecutive: 12

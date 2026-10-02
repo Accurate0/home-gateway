@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::process::Command;
 
 fn main() {
@@ -16,6 +17,22 @@ fn main() {
     println!("cargo:rerun-if-env-changed=FIRMWARE_VERSION");
     println!("cargo:rerun-if-env-changed=GITHUB_SHA");
     println!("cargo:rerun-if-changed=../.git/HEAD");
+
+    compile_eink_api();
+}
+
+fn compile_eink_api() {
+    let proto_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("proto");
+    let api = proto_dir.join("eink").join("v1").join("eink_display.proto");
+
+    println!("cargo:rerun-if-changed={}", api.display());
+
+    prost_build::Config::new()
+        .bytes(["."])
+        .compile_protos(&[&api], &[&proto_dir])
+        .unwrap_or_else(|e| panic!("failed to compile {}: {e}", api.display()));
 }
 
 fn git_short_sha() -> Option<String> {

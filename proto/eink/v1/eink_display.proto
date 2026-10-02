@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package home_gateway.eink.v1;
+
+service EinkDisplay {
+  rpc Wake(WakeRequest) returns (WakeResponse);
+}
+
+message WakeRequest {
+  string device_id = 1;
+  optional float battery_voltage = 2;
+  bool is_charging = 3;
+  string battery_chemistry = 4;
+  string battery_kind = 5;
+  string firmware_version = 6;
+  bool previous_refresh_failed = 7;
+}
+
+message WakeResponse {
+  uint32 sleep_secs = 1;
+  optional FirmwareUpdate firmware = 2;
+
+  oneof refresh {
+    Clear clear = 3;
+    FullFrame full = 4;
+    PartialFrame partial = 5;
+  }
+}
+
+message FirmwareUpdate {
+  string version = 1;
+  string url = 2;
+}
+
+message Clear {}
+
+message FullFrame {
+  bytes image = 1;
+}
+
+message PartialFrame {
+  uint32 x = 1;
+  uint32 y = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  bytes image = 5;
+}

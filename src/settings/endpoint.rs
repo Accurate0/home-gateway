@@ -14,6 +14,7 @@ pub const RESERVED_PREFIXES: &[&str] = &[
     "/control",
     "/epd",
     "/graphql",
+    "/grpc",
     "/health",
     "/ingest",
     "/lua",

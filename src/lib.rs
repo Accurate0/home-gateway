@@ -14,6 +14,7 @@ pub mod error;
 pub mod event_bus;
 pub mod graphql;
 pub mod graphql_tracing;
+pub mod grpc;
 pub mod history_window;
 pub mod http;
 pub mod integrations;

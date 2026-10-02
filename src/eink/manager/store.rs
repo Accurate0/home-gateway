@@ -63,6 +63,30 @@ impl EinkDisplayManager {
         Ok(next_wake_at)
     }
 
+    pub async fn displayed_hash(&self, device_id: &str) -> Option<String> {
+        self.eink
+            .displayed_hash(device_id)
+            .await
+            .inspect_err(
+                |e| tracing::warn!(device_id = %device_id, "failed to read the displayed hash: {e}"),
+            )
+            .ok()
+            .flatten()
+    }
+
+    pub async fn store_displayed_hash(
+        &self,
+        device_id: &str,
+        name: &str,
+        displayed_hash: Option<&str>,
+    ) -> Result<(), AppError> {
+        self.eink
+            .store_displayed_hash(device_id, name, displayed_hash)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn stored_render(&self, device_id: &str) -> Option<SourceImage> {
         let row = self
             .eink

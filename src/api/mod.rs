@@ -235,6 +235,11 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         .layer(from_fn(log_request))
         .with_state(state.clone());
 
+    let grpc_routes = crate::grpc::router(state.clone())
+        .layer(from_fn_with_state(state.clone(), auth_middleware))
+        .layer(OtelAxumLayer::default())
+        .layer(from_fn(log_request));
+
     let cluster_routes = Router::new()
         .route("/health/actors", get(actor_health))
         .route(
@@ -246,7 +251,10 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         )
         .with_state(state);
 
-    Router::new().nest("/v1", api_routes).merge(cluster_routes)
+    Router::new()
+        .nest("/v1", api_routes)
+        .nest(&format!("/v1{}", crate::grpc::PREFIX), grpc_routes)
+        .merge(cluster_routes)
 }
 
 #[cfg(test)]
@@ -288,7 +296,49 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn the_grpc_metric_route_is_the_service_template() {
+        let seen: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+        let captured = seen.clone();
+
+        let grpc = Router::new()
+            .route(
+                "/home_gateway.eink.v1.EinkDisplay/{*rest}",
+                post(|| async { "ok" }),
+            )
+            .layer(from_fn(move |req: Request, next: Next| {
+                let captured = captured.clone();
+                async move {
+                    *captured.lock().unwrap() = Some(metric_route(&req));
+                    next.run(req).await
+                }
+            }));
+
+        let app = Router::new()
+            .nest(
+                "/v1",
+                Router::new().route("/health", get(|| async { "ok" })),
+            )
+            .nest(&format!("/v1{}", crate::grpc::PREFIX), grpc);
+
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/v1/grpc/home_gateway.eink.v1.EinkDisplay/Wake")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        tower::ServiceExt::oneshot(app, request).await.unwrap();
+
+        let route = seen.lock().unwrap().clone();
+
+        assert_eq!(
+            route.as_deref(),
+            Some("/v1/grpc/home_gateway.eink.v1.EinkDisplay/{*rest}")
+        );
+    }
+
     const BUILT_IN: &[&str] = &[
+        crate::grpc::PREFIX,
         "/graphql",
         "/graphql/ws",
         "/schema",

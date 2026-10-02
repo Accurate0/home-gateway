@@ -117,6 +117,38 @@ impl EinkRepo {
         Ok(row.and_then(|row| row.next_wake_at))
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.displayed_hash", err)]
+    pub async fn displayed_hash(&self, device_id: &str) -> Result<Option<String>, sqlx::Error> {
+        let row = sqlx::query!(
+            "SELECT displayed_hash FROM eink_display WHERE device_id = $1",
+            device_id
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(row.and_then(|row| row.displayed_hash))
+    }
+
+    #[tracing::instrument(skip_all, name = "db.eink.store_displayed_hash", err)]
+    pub async fn store_displayed_hash(
+        &self,
+        device_id: &str,
+        name: &str,
+        displayed_hash: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO eink_display (device_id, name, displayed_hash) VALUES ($1, $2, $3) \
+             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, displayed_hash = EXCLUDED.displayed_hash",
+            device_id,
+            name,
+            displayed_hash,
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all, name = "db.eink.stored_render", err)]
     pub async fn stored_render(
         &self,

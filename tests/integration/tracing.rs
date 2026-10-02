@@ -360,3 +360,61 @@ async fn dataloader_and_actor_internals_stay_out_of_the_trace() {
         );
     }
 }
+
+#[tokio::test]
+#[serial]
+async fn a_denied_grpc_wake_marks_its_server_span_as_errored() {
+    let harness = Harness::start().await;
+
+    let key = "tracing-test-key-without-the-epd-scope";
+
+    sqlx::query(
+        "INSERT INTO api_keys (name, key_prefix, key_hash, scopes) VALUES ($1, $2, $3, $4)",
+    )
+    .bind("tracing-test")
+    .bind(&key[..8])
+    .bind(home_gateway::auth::hash_key(key))
+    .bind(vec!["light:read".to_owned()])
+    .execute(&harness.db)
+    .await
+    .expect("failed to insert the test api key");
+
+    let router = harness.router();
+
+    let spans = spans_for(|| async move {
+        let request = axum::http::Request::builder()
+            .method("POST")
+            .uri("/v1/grpc/home_gateway.eink.v1.EinkDisplay/Wake")
+            .header("Content-Type", "application/grpc-web+proto")
+            .header("X-Grpc-Web", "1")
+            .header("X-Api-Key", key)
+            .body(axum::body::Body::from(vec![0u8; 5]))
+            .unwrap();
+
+        tower::ServiceExt::oneshot(router, request)
+            .await
+            .expect("the router should not fail");
+    })
+    .await;
+
+    let span = spans
+        .iter()
+        .find(|s| attribute(s, "rpc.grpc.status_code").is_some())
+        .unwrap_or_else(|| panic!("no span carries the grpc status; got {:?}", names(&spans)));
+
+    assert_eq!(
+        attribute(span, "rpc.grpc.status_code").as_deref(),
+        Some("7")
+    );
+    assert!(
+        span.name
+            .contains("/v1/grpc/home_gateway.eink.v1.EinkDisplay/"),
+        "the grpc status belongs on the http server span, got `{}`",
+        span.name
+    );
+    assert!(
+        matches!(span.status, opentelemetry::trace::Status::Error { .. }),
+        "a failed call must mark the server span, got {:?}",
+        span.status
+    );
+}

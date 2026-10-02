@@ -17,10 +17,10 @@ use axum::{
 };
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use tracing::Instrument;
 
 use crate::eink::EinkDisplayManager;
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
+use crate::eink::wake::{self, WakeContext, WakeReport};
 
 pub use crate::eink::panel::PartialWindow;
 
@@ -152,78 +152,30 @@ pub async fn config(
 ) -> Result<Json<EpdConfig>, AppError> {
     auth.require(Resource::Epd, Action::Read)?;
 
-    let display = state.devices.eink_display(&request.device_id);
-    let registered = display.is_some();
-    let configured_mode = display.map(|display| display.mode.name());
-    let wake_drift_secs = wake_drift_secs(
-        state.handles.expect::<EinkDisplayManager>(),
-        &request.device_id,
-    )
-    .await;
+    let eink = state.handles.expect::<EinkDisplayManager>();
 
-    tracing::info!(
-        device_id = %request.device_id,
-        registered,
-        ?configured_mode,
-        ?wake_drift_secs,
-        current_image_hash = ?request.current_image_hash,
-        battery_voltage = ?request.battery_voltage,
-        is_charging = ?request.is_charging,
-        battery_chemistry = ?request.battery_chemistry,
-        battery_kind = ?request.battery_kind,
-        firmware_version = ?request.firmware_version,
-        "epd config requested"
-    );
+    let context = WakeContext {
+        devices: &state.devices,
+        device_repo: state.repos.device(),
+        eink,
+        prepare_render_timeout: state.settings.eink_display.prepare_render_timeout(),
+    };
 
-    if registered {
-        crate::device_registry::last_seen::record(
-            &state.devices,
-            state.repos.device(),
-            &request.device_id,
-        )
-        .await;
-    } else {
-        tracing::warn!(
-            device_id = %request.device_id,
-            "epd config request from unregistered display, add it to config/devices/eink_display.yaml"
-        );
-    }
+    let report = WakeReport {
+        device_id: &request.device_id,
+        battery_voltage: request.battery_voltage,
+        is_charging: request.is_charging,
+        battery_chemistry: request.battery_chemistry,
+        battery_kind: request.battery_kind.as_deref(),
+        firmware_version: request.firmware_version.as_deref(),
+        current_image_hash: request.current_image_hash.as_deref(),
+    };
 
-    report_to_actor(&request)?;
-
-    let prepared = crate::actors::system::rpc::query(
-        EInkDisplayActor::NAME,
-        state.settings.eink_display.prepare_render_timeout(),
-        |reply| EInkDisplayMessage::PrepareRender {
-            device_id: request.device_id.clone(),
-            reply,
-        },
-    )
-    .instrument(tracing::info_span!(
-        "eink.prepare_render",
-        device_id = %request.device_id
-    ))
-    .await;
-
-    if let Err(e) = prepared {
-        tracing::warn!(
-            device_id = %request.device_id,
-            "could not prepare a fresh render ({e}), serving the last one"
-        );
-    }
-
-    let Some(resolved) = state
-        .handles
-        .expect::<EinkDisplayManager>()
-        .resolve(&request.device_id)
-        .await
-    else {
+    let Some(resolved) = wake::begin(&context, &report).await? else {
         return Err(AppError::StatusCode(StatusCode::NOT_FOUND));
     };
 
-    let config = state
-        .handles
-        .expect::<EinkDisplayManager>()
+    let config = eink
         .epd_config(
             &resolved,
             DeviceReport {
@@ -234,67 +186,10 @@ pub async fn config(
         .await;
 
     if let Some(wake_in_secs) = config.refresh_interval_secs {
-        schedule_next_render(&request.device_id, wake_in_secs)?;
+        wake::schedule_next_render(&request.device_id, wake_in_secs)?;
     }
 
     Ok(Json(config))
-}
-
-async fn wake_drift_secs(eink: &EinkDisplayManager, device_id: &str) -> Option<i64> {
-    let next_wake_at = eink
-        .stored_next_wake(device_id)
-        .await
-        .inspect_err(|_| tracing::warn!(device_id, "could not read the stored wake"))
-        .ok()
-        .flatten()?;
-
-    let drift = (chrono::Utc::now() - next_wake_at).num_seconds();
-
-    crate::metrics::record_eink_wake_drift(device_id.to_owned(), drift as f64);
-
-    Some(drift)
-}
-
-fn schedule_next_render(device_id: &str, wake_in_secs: u32) -> Result<(), AppError> {
-    rpc::cast(
-        EInkDisplayActor::NAME,
-        EInkDisplayMessage::ScheduleNextRender {
-            device_id: device_id.to_owned(),
-            wake_in_secs,
-        },
-    )?;
-
-    Ok(())
-}
-
-fn report_to_actor(request: &EpdConfigRequest) -> Result<(), AppError> {
-    rpc::cast(
-        EInkDisplayActor::NAME,
-        EInkDisplayMessage::ConfigRequest {
-            device_id: request.device_id.clone(),
-        },
-    )?;
-
-    let Some(voltage) = request.battery_voltage else {
-        tracing::warn!(
-            device_id = %request.device_id,
-            "epd config request without a battery voltage, skipping battery report"
-        );
-        return Ok(());
-    };
-
-    rpc::cast(
-        EInkDisplayActor::NAME,
-        EInkDisplayMessage::BatteryReport {
-            device_id: request.device_id.clone(),
-            battery_voltage: voltage as f64,
-            is_charging: request.is_charging,
-            battery_chemistry: request.battery_chemistry,
-            battery_kind: request.battery_kind.clone(),
-        },
-    )?;
-
-    Ok(())
 }
 
 pub async fn firmware(

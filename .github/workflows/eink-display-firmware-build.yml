@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "eink-display-firmware/**"
+      - "proto/eink/**"
       - ".github/workflows/eink-display-firmware-build.yml"
   workflow_dispatch:
 
@@ -48,6 +49,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-firmware-cargo-${{ hashFiles('eink-display-firmware/Cargo.lock') }}-
             ${{ runner.os }}-firmware-cargo-
+
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@422f3094be6a0843857aa008b499caaf6bce0da8 # v1.24.0

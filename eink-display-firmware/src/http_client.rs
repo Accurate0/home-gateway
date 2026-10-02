@@ -1,15 +1,14 @@
-use anyhow::{Context, Result};
-use embedded_svc::io::Write;
-use esp_idf_svc::http::{
-    client::{Configuration, EspHttpConnection},
-    Method,
-};
+use anyhow::Result;
+use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 use log::info;
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+use crate::grpc_web;
+use crate::proto::{WakeRequest, WakeResponse};
 
 const API_KEY: &str = env!("HOME_GATEWAY_API_KEY");
 const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
+const WAKE_PATH: &str = "/v1/grpc/home_gateway.eink.v1.EinkDisplay/Wake";
 pub const FIRMWARE_VERSION: &str = env!("FIRMWARE_VERSION");
 
 #[cfg(not(debug_assertions))]
@@ -18,43 +17,6 @@ const HOST: &str = "https://home.anurag.sh";
 const HOST: &str = "http://192.168.0.149:8000";
 
 pub type HttpClient = embedded_svc::http::client::Client<EspHttpConnection>;
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct PartialWindow {
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
-
-impl PartialWindow {
-    pub fn buffer_size(&self) -> usize {
-        (self.width / 2) as usize * self.height as usize
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EpdConfig {
-    pub refresh_interval_mins: Option<u64>,
-    pub refresh_interval_secs: Option<u64>,
-    pub image_url: Option<String>,
-    pub image_hash: Option<String>,
-    pub clear_screen: Option<bool>,
-    pub firmware_url: Option<String>,
-    pub firmware_version: Option<String>,
-    pub partial: Option<PartialWindow>,
-}
-
-#[derive(Debug, Serialize)]
-struct ConfigRequest {
-    device_id: String,
-    battery_voltage: Option<f32>,
-    is_charging: bool,
-    battery_chemistry: &'static str,
-    battery_kind: &'static str,
-    firmware_version: &'static str,
-    current_image_hash: Option<String>,
-}
 
 pub fn client() -> Result<HttpClient> {
     let config = Configuration {
@@ -89,121 +51,33 @@ fn device_id() -> String {
     id
 }
 
-pub fn fetch_config(
+pub fn wake(
     client: &mut HttpClient,
     battery_voltage: Option<f32>,
     is_charging: bool,
-    current_image_hash: Option<String>,
-) -> Result<EpdConfig> {
-    let url = format!("{HOST}/v1/epd/config");
-    info!("fetching config from {}...", url);
+    previous_refresh_failed: bool,
+) -> Result<WakeResponse> {
+    let url = format!("{HOST}{WAKE_PATH}");
+    info!("waking against {}...", url);
 
-    let payload = serde_json::to_vec(&ConfigRequest {
+    let request = WakeRequest {
         device_id: device_id(),
         battery_voltage,
         is_charging,
-        battery_chemistry: crate::battery::CHEMISTRY,
-        battery_kind: crate::battery::KIND,
-        firmware_version: FIRMWARE_VERSION,
-        current_image_hash,
-    })?;
-    let content_length = payload.len().to_string();
+        battery_chemistry: crate::battery::CHEMISTRY.to_owned(),
+        battery_kind: crate::battery::KIND.to_owned(),
+        firmware_version: FIRMWARE_VERSION.to_owned(),
+        previous_refresh_failed,
+    };
 
-    let headers = [
-        ("X-Api-Key", API_KEY),
-        ("Content-Type", "application/json"),
-        ("Content-Length", content_length.as_str()),
-    ];
-    let mut request = client.request(Method::Post, &url, &headers)?;
-    request.write_all(&payload)?;
-    request.flush()?;
-    let response = request.submit()?;
+    let response: WakeResponse = grpc_web::unary(client, &url, API_KEY, &request)?;
 
-    let status = response.status();
-    info!("response status: {}", status);
+    info!(
+        "wake answered: sleep {} secs, firmware {:?}, refresh {}",
+        response.sleep_secs,
+        response.firmware,
+        crate::refresh::describe(response.refresh.as_ref())
+    );
 
-    let mut body = Vec::new();
-    let mut buffer = [0u8; 1024];
-    let mut reader = response;
-
-    loop {
-        let n = reader
-            .read(&mut buffer)
-            .context("Failed to read response")?;
-        if n == 0 {
-            break;
-        }
-        body.extend_from_slice(&buffer[..n]);
-    }
-
-    if status != 200 {
-        log::error!(
-            "config request failed: status {} body: {}",
-            status,
-            String::from_utf8_lossy(&body)
-        );
-        anyhow::bail!("Unexpected status code: {}", status);
-    }
-
-    let config: EpdConfig = serde_json::from_slice(&body)?;
-    info!("fetched config: {:?}", config);
-
-    Ok(config)
-}
-
-pub fn fetch_image(client: &mut HttpClient, url: &str, buffer: &mut [u8]) -> Result<()> {
-    info!("fetching image from {}...", url);
-
-    let headers = vec![("X-Api-Key", API_KEY)];
-    let request = client.request(Method::Get, url, &headers)?;
-    let response = request.submit()?;
-
-    let status = response.status();
-    info!("response status: {}", status);
-
-    if status != 200 {
-        let mut body = Vec::new();
-        let mut err_buf = [0u8; 512];
-        let mut reader = response;
-        while let Ok(n) = reader.read(&mut err_buf) {
-            if n == 0 {
-                break;
-            }
-            body.extend_from_slice(&err_buf[..n]);
-        }
-        log::error!(
-            "image request failed: status {} body: {}",
-            status,
-            String::from_utf8_lossy(&body)
-        );
-        anyhow::bail!("Unexpected status code: {}", status);
-    }
-
-    let mut total_bytes = 0;
-    let mut reader = response;
-
-    loop {
-        if total_bytes >= buffer.len() {
-            break;
-        }
-        let n = reader
-            .read(&mut buffer[total_bytes..])
-            .context("Failed to read image data")?;
-        if n == 0 {
-            break;
-        }
-        total_bytes += n;
-    }
-
-    info!("fetched {} bytes of image data", total_bytes);
-
-    if total_bytes != buffer.len() {
-        anyhow::bail!(
-            "incomplete image: got {} bytes, expected {}",
-            total_bytes,
-            buffer.len()
-        );
-    }
-
-    Ok(())
+    Ok(response)
 }

@@ -9,18 +9,20 @@ use esp_idf_sys::{
 
 mod battery;
 mod driver;
+mod grpc_web;
 mod http_client;
-mod image_hash;
 mod net_cache;
 mod ota;
 mod panel_power;
+mod proto;
 mod refresh;
+mod refresh_state;
 mod watchdog;
 mod wifi;
 use driver::Gdep133c02;
-use image_hash::ImageHashStore;
 use panel_power::PanelPower;
 use refresh::Refresh;
+use refresh_state::RefreshState;
 
 use crate::driver::EPD_IMAGE_FULL_BUFFER_SIZE;
 
@@ -117,8 +119,6 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     }
 
-    let mut epd_buffer = vec![0u8; EPD_IMAGE_FULL_BUFFER_SIZE];
-
     let mut ota_attempts = match ota::AttemptTracker::new(nvs.clone()) {
         Ok(tracker) => Some(tracker),
         Err(e) => {
@@ -127,10 +127,10 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
     };
 
-    let mut image_hashes = match ImageHashStore::new(nvs.clone()) {
-        Ok(store) => Some(store),
+    let mut refresh_state = match RefreshState::new(nvs.clone()) {
+        Ok(state) => Some(state),
         Err(e) => {
-            log::warn!("failed to open image hash store: {e}");
+            log::warn!("failed to open refresh state store: {e}");
             None
         }
     };
@@ -139,33 +139,47 @@ fn run_task() -> Result<u64, anyhow::Error> {
 
     watchdog::feed();
 
-    let stored_hash = image_hashes.as_ref().and_then(|store| store.stored());
+    let previous_refresh_failed = refresh_state.as_ref().is_some_and(|state| state.pending());
 
-    log::info!("wifi connected, fetching config...");
+    if previous_refresh_failed {
+        log::warn!("the previous refresh never completed, asking for the frame again");
+    }
+
+    log::info!("wifi connected, waking...");
     let mut client = http_client::client()?;
 
-    let config = match http_client::fetch_config(
+    let response = match http_client::wake(
         &mut client,
         battery_voltage,
         is_charging,
-        stored_hash.clone(),
+        previous_refresh_failed,
     ) {
-        Ok(config) => config,
+        Ok(response) => response,
         Err(e) if wifi.cached() => {
-            log::warn!("config fetch failed on the cached lease, retrying over dhcp: {e:?}");
+            log::warn!("wake failed on the cached lease, retrying over dhcp: {e:?}");
 
             wifi::reassociate_with_dhcp(&mut wifi)?;
             client = http_client::client()?;
 
-            http_client::fetch_config(
+            http_client::wake(
                 &mut client,
                 battery_voltage,
                 is_charging,
-                stored_hash.clone(),
+                previous_refresh_failed,
             )?
         }
         Err(e) => return Err(e),
     };
+
+    let mut set_refresh_pending = |pending: bool| {
+        if let Some(state) = refresh_state.as_mut() {
+            state.set_pending(pending);
+        }
+    };
+
+    if response.refresh.is_some() {
+        set_refresh_pending(true);
+    }
 
     watchdog::feed();
 
@@ -175,8 +189,8 @@ fn run_task() -> Result<u64, anyhow::Error> {
         tracker.confirm(http_client::FIRMWARE_VERSION);
     }
 
-    if let Some(url) = &config.firmware_url {
-        let target = config.firmware_version.as_deref().unwrap_or("unknown");
+    if let Some(firmware) = &response.firmware {
+        let target = firmware.version.as_str();
 
         log::info!(
             "firmware update available: {} -> {}",
@@ -194,71 +208,28 @@ fn run_task() -> Result<u64, anyhow::Error> {
                 tracker.record_attempt(target);
             }
 
-            match ota::apply(&mut client, url) {
+            match ota::apply(&mut client, &firmware.url) {
                 Ok(_) => unsafe { esp_restart() },
                 Err(e) => log::error!("firmware update failed: {:?}", e),
             }
         }
     }
 
-    let unchanged = match (&config.image_hash, &stored_hash) {
-        (Some(hash), Some(stored)) => hash == stored,
-        _ => false,
-    };
+    let refresh_time_in_secs = match response.sleep_secs {
+        0 => DEFAULT_REFRESH_MINS * 60,
+        secs => u64::from(secs),
+    }
+    .clamp(MIN_REFRESH_SECS, MAX_REFRESH_SECS);
 
-    let refresh = if config.clear_screen == Some(true) {
-        Some(Refresh::Clear)
-    } else if unchanged {
-        log::info!("image unchanged, skipping download and refresh");
-        None
-    } else if let (Some(window), Some(url)) = (config.partial, config.image_url.as_ref()) {
-        log::info!(
-            "partial refresh requested: x={} y={} w={} h={}",
-            window.x,
-            window.y,
-            window.width,
-            window.height
-        );
-
-        let size = window.buffer_size();
-
-        if size > epd_buffer.len() {
-            log::error!("partial window {size} bytes exceeds the frame buffer");
+    let refresh = match response.refresh {
+        Some(refresh) => Refresh::from_response(refresh),
+        None => {
+            log::info!("image unchanged, skipping refresh");
             None
-        } else {
-            match http_client::fetch_image(&mut client, url, &mut epd_buffer[..size]) {
-                Ok(_) => Some(Refresh::Partial {
-                    hash: config.image_hash,
-                    window,
-                }),
-                Err(e) => {
-                    log::error!("failed to fetch partial image: {:?}", e);
-                    None
-                }
-            }
         }
-    } else if let Some(url) = config.image_url {
-        match http_client::fetch_image(&mut client, &url, &mut epd_buffer) {
-            Ok(_) => {
-                log::info!("image fetched successfully");
-                Some(Refresh::Image(config.image_hash))
-            }
-            Err(e) => {
-                log::error!("failed to fetch image: {:?}", e);
-                None
-            }
-        }
-    } else {
-        None
     };
 
     watchdog::feed();
-
-    let refresh_time_in_secs = config
-        .refresh_interval_secs
-        .or_else(|| config.refresh_interval_mins.map(|mins| mins * 60))
-        .unwrap_or(DEFAULT_REFRESH_MINS * 60)
-        .clamp(MIN_REFRESH_SECS, MAX_REFRESH_SECS);
 
     wifi.stop()?;
     drop(wifi);
@@ -297,34 +268,26 @@ fn run_task() -> Result<u64, anyhow::Error> {
         Refresh::Clear => {
             log::info!("clearing display to white");
 
+            let mut epd_buffer = vec![0u8; EPD_IMAGE_FULL_BUFFER_SIZE];
+
             display.display_color(driver::EPD_WHITE, &mut epd_buffer)?;
 
-            if let Some(store) = image_hashes.as_mut() {
-                store.clear();
-            }
+            set_refresh_pending(false);
         }
 
-        Refresh::Image(hash) => {
+        Refresh::Image(image) => {
             log::info!("rendering image to display");
 
-            display.display_buffer(&epd_buffer)?;
+            display.display_buffer(&image)?;
 
-            if let (Some(store), Some(hash)) = (image_hashes.as_mut(), hash) {
-                store.store(&hash);
-            }
+            set_refresh_pending(false);
         }
 
-        Refresh::Partial { hash, window } => {
+        Refresh::Partial { window, image } => {
             log::info!("rendering partial window to display");
 
-            let region = &epd_buffer[..window.buffer_size()];
-
-            match display.display_partial(region, window.x, window.y, window.width, window.height) {
-                Ok(_) => {
-                    if let (Some(store), Some(hash)) = (image_hashes.as_mut(), hash) {
-                        store.store(&hash);
-                    }
-                }
+            match display.display_partial(&image, window.x, window.y, window.width, window.height) {
+                Ok(_) => set_refresh_pending(false),
                 Err(e) => log::error!("partial refresh failed: {:?}", e),
             }
         }

@@ -65,6 +65,7 @@ fn main() {
     println!("cargo:rustc-env=HOME_GATEWAY_VERSION={version}");
 
     compile_esphome_api(manifest_dir);
+    compile_eink_api(manifest_dir);
 
     println!("cargo:rerun-if-env-changed=SKIP_SCHEMA_VALIDATION");
     if std::env::var_os("SKIP_SCHEMA_VALIDATION").is_some() {
@@ -97,6 +98,19 @@ fn compile_esphome_api(manifest_dir: &Path) {
     );
 
     prost_build::Config::new()
+        .compile_protos(&[&api], &[&proto_dir])
+        .unwrap_or_else(|e| panic!("failed to compile {}: {e}", api.display()));
+}
+
+fn compile_eink_api(manifest_dir: &Path) {
+    let proto_dir = manifest_dir.join("proto");
+    let api = proto_dir.join("eink").join("v1").join("eink_display.proto");
+
+    println!("cargo:rerun-if-changed={}", api.display());
+
+    tonic_prost_build::configure()
+        .build_client(false)
+        .bytes(".")
         .compile_protos(&[&api], &[&proto_dir])
         .unwrap_or_else(|e| panic!("failed to compile {}: {e}", api.display()));
 }
