@@ -27,6 +27,7 @@ pub enum EInkDisplayMessage {
     },
     ConfigRequest {
         device_id: String,
+        trace_id: Option<String>,
     },
     ScheduleNextRender {
         device_id: String,
@@ -202,7 +203,10 @@ impl Actor for EInkDisplayActor {
                     Some(chemistry),
                 );
             }
-            EInkDisplayMessage::ConfigRequest { device_id } => {
+            EInkDisplayMessage::ConfigRequest {
+                device_id,
+                trace_id,
+            } => {
                 let Some(display) = self.shared_actor_state.devices.eink_display(&device_id) else {
                     tracing::warn!(
                         "config request from unregistered eink display '{device_id}', dropping"
@@ -211,7 +215,7 @@ impl Actor for EInkDisplayActor {
                 };
 
                 self.manager()
-                    .store_seen(&device_id, &display.name)
+                    .store_seen(&device_id, &display.name, trace_id.as_deref())
                     .await
                     .map_err(AppError::message)?;
             }

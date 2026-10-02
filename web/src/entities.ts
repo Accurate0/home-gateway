@@ -53,6 +53,7 @@ export interface EinkStatus {
   rtcSyncedAt?: string | null;
   rtcDriftSecs?: number | null;
   rtcSyncDueAt?: string | null;
+  lastWakeTraceUrl?: string | null;
 }
 
 export interface Entity {

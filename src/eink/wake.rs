@@ -119,6 +119,7 @@ fn report_to_actor(report: &WakeReport<'_>) -> Result<(), RpcError> {
         EInkDisplayActor::NAME,
         EInkDisplayMessage::ConfigRequest {
             device_id: report.device_id.to_owned(),
+            trace_id: crate::tracing_context::current_trace_id(),
         },
     )?;
 

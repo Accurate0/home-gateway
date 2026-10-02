@@ -28,6 +28,22 @@ tracing:
       mqtt.ingest: 0.05
       home_assistant.ingest: 0.02
       db.intent.claim_due: 0.05
+  trace_link:
+    url: https://grafana.inf-k8s.net/explore
+    query:
+      schemaVersion: 1
+      orgId: 1
+      panes:
+        epd:
+          datasource: tempo
+          queries:
+            - refId: A
+              datasource: { type: tempo, uid: tempo }
+              queryType: traceql
+              query: "{trace_id}"
+              limit: 20
+              tableType: traces
+          range: { from: now-7d, to: now }
 
 notify:
   targets:

@@ -338,6 +338,7 @@ const EinkConfigQuery = graphql`
       rtcSyncedAt
       rtcDriftSecs
       rtcSyncDueAt
+      lastWakeTraceUrl
       config {
         grace
         lead
@@ -585,6 +586,7 @@ export default function Dashboard() {
             rtcSyncedAt: display.rtcSyncedAt,
             rtcDriftSecs: display.rtcDriftSecs,
             rtcSyncDueAt: display.rtcSyncDueAt,
+            lastWakeTraceUrl: display.lastWakeTraceUrl,
           };
           setEntities((prev) => {
             const existing = prev.get(entity.key);

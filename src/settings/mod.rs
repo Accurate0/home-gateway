@@ -51,6 +51,7 @@ pub mod restart;
 pub mod retention_parameters;
 pub mod sampling;
 pub mod sun;
+pub mod trace_link_settings;
 pub mod tracing_settings;
 pub mod vacation;
 pub mod watchdog;
@@ -268,6 +269,7 @@ impl RawSettings {
         let integrations = integrations.resolve()?;
 
         tracing_settings.sampling.validate()?;
+        tracing_settings.trace_link.validate()?;
 
         let mut seen_key_names = HashSet::new();
         for key in &auth.api_keys {
@@ -1359,6 +1361,18 @@ integrations:
 
         let (settings, registry) = SettingsContainer::build(config, Path::new("./config")).unwrap();
 
+        let trace_link = settings
+            .tracing
+            .trace_link
+            .url_for("dba919365053a45dea0fc1e68d3672dc")
+            .expect("expected the configured trace link to build");
+        assert!(trace_link.contains("schemaVersion=1"), "{trace_link}");
+        assert!(trace_link.contains("queryType"), "{trace_link}");
+        assert!(
+            trace_link.contains("dba919365053a45dea0fc1e68d3672dc"),
+            "{trace_link}"
+        );
+
         let switch_workflow = settings
             .workflows
             .values()
@@ -1732,7 +1746,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
@@ -1785,7 +1799,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
 workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
@@ -1944,7 +1958,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2000,7 +2014,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2058,7 +2072,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2272,7 +2286,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2327,7 +2341,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2381,7 +2395,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2436,7 +2450,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2490,7 +2504,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2591,7 +2605,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
@@ -2672,7 +2686,7 @@ http:
 database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
-tracing: { sampling: { default: 1.0, spans: {} } }
+tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
 watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }

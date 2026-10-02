@@ -216,6 +216,7 @@ type EinkDisplayEntity {
 	rtcReportedAt: DateTime
 	rtcReportedOffsetSecs: Float
 	rtcSyncDueAt: DateTime
+	lastWakeTraceUrl: String
 	targetFirmwareVersion: String
 	config: EinkDisplayConfig
 	deviceConfig: EpdConfig!

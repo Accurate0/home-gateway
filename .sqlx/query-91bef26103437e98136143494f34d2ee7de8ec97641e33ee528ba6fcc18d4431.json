@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT device_id, battery_voltage, is_charging, updated_at,\n                   next_wake_at, partial_refresh_count, rtc_synced_at, rtc_drift_ms,\n                   rtc_reported_at, rtc_reported_offset_ms\n            FROM eink_display\n            WHERE device_id = ANY($1)\n            ",
+  "query": "\n            SELECT device_id, battery_voltage, is_charging, updated_at,\n                   next_wake_at, partial_refresh_count, rtc_synced_at, rtc_drift_ms,\n                   rtc_reported_at, rtc_reported_offset_ms, last_wake_trace_id\n            FROM eink_display\n            WHERE device_id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
@@ -52,6 +52,11 @@
         "ordinal": 9,
         "name": "rtc_reported_offset_ms",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_wake_trace_id",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -69,8 +74,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "a00709246e6199eb1c9fe59a9930cbed29003bbb2971cefda04f197094eff5e8"
+  "hash": "91bef26103437e98136143494f34d2ee7de8ec97641e33ee528ba6fcc18d4431"
 }

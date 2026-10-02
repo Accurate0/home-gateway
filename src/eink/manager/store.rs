@@ -21,8 +21,13 @@ impl EinkDisplayManager {
         Ok(())
     }
 
-    pub async fn store_seen(&self, device_id: &str, name: &str) -> Result<(), AppError> {
-        self.eink.store_seen(device_id, name).await?;
+    pub async fn store_seen(
+        &self,
+        device_id: &str,
+        name: &str,
+        trace_id: Option<&str>,
+    ) -> Result<(), AppError> {
+        self.eink.store_seen(device_id, name, trace_id).await?;
 
         Ok(())
     }

@@ -266,6 +266,20 @@ impl EinkDisplayEntity {
             .map(|synced_at| synced_at + interval))
     }
 
+    async fn last_wake_trace_url(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<String>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        let trace_link = &ctx.data::<SettingsContainer>()?.tracing.trace_link;
+
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.last_wake_trace_id)
+            .and_then(|trace_id| trace_link.url_for(&trace_id)))
+    }
+
     async fn target_firmware_version(
         &self,
         ctx: &async_graphql::Context<'_>,

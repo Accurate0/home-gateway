@@ -23,6 +23,7 @@ pub struct EinkDisplayRow {
     pub rtc_drift_ms: Option<i64>,
     pub rtc_reported_at: Option<DateTime<Utc>>,
     pub rtc_reported_offset_ms: Option<i64>,
+    pub last_wake_trace_id: Option<String>,
 }
 
 impl EinkRepo {
@@ -53,12 +54,18 @@ impl EinkRepo {
     }
 
     #[tracing::instrument(skip_all, name = "db.eink.store_seen", err)]
-    pub async fn store_seen(&self, device_id: &str, name: &str) -> Result<(), sqlx::Error> {
+    pub async fn store_seen(
+        &self,
+        device_id: &str,
+        name: &str,
+        trace_id: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "INSERT INTO eink_display (device_id, name, updated_at) VALUES ($1, $2, now()) \
-             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, updated_at = EXCLUDED.updated_at",
+            "INSERT INTO eink_display (device_id, name, updated_at, last_wake_trace_id) VALUES ($1, $2, now(), $3) \
+             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, updated_at = EXCLUDED.updated_at, last_wake_trace_id = EXCLUDED.last_wake_trace_id",
             device_id,
             name,
+            trace_id,
         )
         .execute(&self.db)
         .await?;
@@ -277,7 +284,7 @@ impl EinkRepo {
             r#"
             SELECT device_id, battery_voltage, is_charging, updated_at,
                    next_wake_at, partial_refresh_count, rtc_synced_at, rtc_drift_ms,
-                   rtc_reported_at, rtc_reported_offset_ms
+                   rtc_reported_at, rtc_reported_offset_ms, last_wake_trace_id
             FROM eink_display
             WHERE device_id = ANY($1)
             "#,

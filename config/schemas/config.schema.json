@@ -394,10 +394,14 @@
       "properties": {
         "sampling": {
           "$ref": "#/$defs/SamplingSettings"
+        },
+        "trace_link": {
+          "$ref": "#/$defs/TraceLinkSettings"
         }
       },
       "required": [
-        "sampling"
+        "sampling",
+        "trace_link"
       ]
     },
     "SamplingSettings": {
@@ -418,6 +422,22 @@
       "required": [
         "default",
         "spans"
+      ]
+    },
+    "TraceLinkSettings": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "query": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "url",
+        "query"
       ]
     },
     "MqttSettings": {

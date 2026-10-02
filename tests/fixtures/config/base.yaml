@@ -85,6 +85,10 @@ tracing:
   sampling:
     default: 1.0
     spans: {}
+  trace_link:
+    url: https://grafana.example/explore
+    query:
+      query: "{trace_id}"
 
 integrations:
   s3:

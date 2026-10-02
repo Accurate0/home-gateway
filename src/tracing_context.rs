@@ -37,6 +37,17 @@ pub fn inject_current() -> TraceParent {
     carrier.0.remove(TRACEPARENT)
 }
 
+pub fn current_trace_id() -> Option<String> {
+    use opentelemetry::trace::TraceContextExt;
+
+    let context = Span::current().context();
+    let span = context.span();
+    let span_context = span.span_context();
+
+    (span_context.is_valid() && span_context.is_sampled())
+        .then(|| span_context.trace_id().to_string())
+}
+
 pub fn context_of(traceparent: Option<&str>) -> Option<opentelemetry::Context> {
     let traceparent = traceparent?;
 

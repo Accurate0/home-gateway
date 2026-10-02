@@ -8,6 +8,7 @@ import {
   Camera,
   DoorClosed,
   DoorOpen,
+  ExternalLink,
   Home,
   Lightbulb,
   LightbulbOff,
@@ -897,6 +898,18 @@ function EinkDisplayConfigDetails({
             Current display preview and configuration for {entity.name}
           </Dialog.Description>
           <div className="flex items-center gap-3">
+            {entity.einkStatus?.lastWakeTraceUrl && (
+              <a
+                href={entity.einkStatus.lastWakeTraceUrl}
+                target="_blank"
+                rel="noreferrer"
+                title="Open the last config call's trace in Grafana"
+                className="border-border text-muted-foreground hover:bg-muted flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium"
+              >
+                <ExternalLink className="size-3.5" strokeWidth={2} />
+                View trace
+              </a>
+            )}
             {actions && (
               <button
                 type="button"

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f66265c2e67d928c83a4b1c138b77932>>
+ * @generated SignedSource<<2d144653c9262c6342d789af3c811558>>
  * @lightSyntaxTransform
  */
 
@@ -24,6 +24,7 @@ export type DashboardEinkConfigQuery$data = {
     };
     readonly isCharging: boolean | null | undefined;
     readonly lastSeen: any | null | undefined;
+    readonly lastWakeTraceUrl: string | null | undefined;
     readonly nextWakeAt: any | null | undefined;
     readonly partialRefreshCount: number | null | undefined;
     readonly rtcDriftSecs: number | null | undefined;
@@ -167,6 +168,13 @@ v1 = [
       {
         "alias": null,
         "args": null,
+        "kind": "ScalarField",
+        "name": "lastWakeTraceUrl",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
         "concreteType": "EinkDisplayConfig",
         "kind": "LinkedField",
         "name": "config",
@@ -211,16 +219,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "6aba3c55fa43cc71f7ed2dd1b70d5871",
+    "cacheID": "3c9a8065e6e1f489167c9dbd8811854c",
     "id": null,
     "metadata": {},
     "name": "DashboardEinkConfigQuery",
     "operationKind": "query",
-    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
+    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    lastWakeTraceUrl\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3822def2b521eb363deb0017d5f29968";
+(node as any).hash = "947e18990efefff337ddf89aabb4aac7";
 
 export default node;
