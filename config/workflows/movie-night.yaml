@@ -2,21 +2,12 @@
   slug: living-room-movie-night
   group: Living Room
   tags: [living-room]
-  on: { type: jellyfin, device: Living room TV, item_type: Movie }
-  modes: [home, guest]
-  run:
-    - type: lua
-      call: movie.playback
-      returns: {}
-      args:
-        - pause_brightness: 190
-          fade_rate: 13
-
-- name: Living room movie night (Google TV Streamer)
-  slug: living-room-movie-night-google-tv-streamer
-  group: Living Room
-  tags: [living-room]
-  on: { type: jellyfin, device: Google TV Streamer, item_type: Movie }
+  on:
+    type: jellyfin
+    devices:
+      - Living room TV
+      - Google TV Streamer
+    item_type: Movie
   modes: [home, guest]
   run:
     - type: lua

@@ -467,7 +467,7 @@ impl WorkflowDispatcher {
                 TriggerMatcher::Jellyfin {
                     state,
                     user,
-                    device,
+                    devices,
                     item_type,
                 },
                 EventBusMessage::Jellyfin {
@@ -480,7 +480,7 @@ impl WorkflowDispatcher {
             ) => {
                 state.is_none_or(|state| state == *s)
                     && user.as_ref().is_none_or(|user| user == u)
-                    && device.as_ref().is_none_or(|device| device == d)
+                    && devices.as_ref().is_none_or(|devices| devices.contains(d))
                     && item_type.as_ref().is_none_or(|item_type| item_type == t)
             }
             (

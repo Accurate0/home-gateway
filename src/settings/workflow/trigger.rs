@@ -132,7 +132,7 @@ pub enum TriggerMatcher {
         #[serde(default)]
         user: Option<String>,
         #[serde(default)]
-        device: Option<String>,
+        devices: Option<Vec<String>>,
         #[serde(default)]
         item_type: Option<String>,
     },
@@ -425,12 +425,12 @@ impl TriggerMatcher {
             TriggerMatcher::Jellyfin {
                 state,
                 user,
-                device,
+                devices,
                 item_type,
             } => {
                 let subject = user
                     .clone()
-                    .or_else(|| device.clone())
+                    .or_else(|| devices.as_ref().map(|devices| devices.join(", ")))
                     .or_else(|| item_type.clone())
                     .unwrap_or_else(|| "*".to_owned());
 
