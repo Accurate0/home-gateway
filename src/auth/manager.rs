@@ -51,30 +51,64 @@ impl AuthManager {
         &self.lockout
     }
 
+    #[tracing::instrument(
+        name = "auth.validate_oauth",
+        skip_all,
+        fields(valid = tracing::field::Empty)
+    )]
     pub async fn validate_oauth(&self, token: &str) -> Option<Result<AuthContext, StatusCode>> {
         let oauth = self.oauth.as_ref()?;
 
-        Some(oauth.validate(token).await)
+        let validated = oauth.validate(token).await;
+
+        tracing::Span::current().record("valid", validated.is_ok());
+
+        Some(validated)
     }
 
+    #[tracing::instrument(
+        name = "auth.lookup_by_hash",
+        skip_all,
+        fields(cached = tracing::field::Empty, found = tracing::field::Empty),
+        err
+    )]
     pub async fn lookup_by_hash(
         &self,
         hash: &str,
     ) -> Result<Option<Arc<ApiKeyRow>>, Arc<sqlx::Error>> {
         let keys = self.keys.clone();
+        let key = hash.to_owned();
         let hash = hash.to_owned();
 
-        self.cache
-            .try_get_with(hash.clone(), async move {
+        let entry = self
+            .cache
+            .entry(key)
+            .or_try_insert_with(async move {
                 let row = keys.find_by_hash(&hash).await?;
 
-                Ok(row.map(Arc::new))
+                Ok::<_, sqlx::Error>(row.map(Arc::new))
             })
-            .await
+            .await?;
+
+        let span = tracing::Span::current();
+
+        span.record("cached", !entry.is_fresh());
+        span.record("found", entry.value().is_some());
+
+        Ok(entry.into_value())
     }
 
+    #[tracing::instrument(
+        name = "auth.touch_last_used",
+        skip_all,
+        fields(throttled = tracing::field::Empty)
+    )]
     pub async fn touch_last_used(&self, id: Uuid) {
-        if !self.touched.entry(id).or_insert(()).await.is_fresh() {
+        let fresh = self.touched.entry(id).or_insert(()).await.is_fresh();
+
+        tracing::Span::current().record("throttled", !fresh);
+
+        if !fresh {
             return;
         }
 
@@ -87,6 +121,7 @@ impl AuthManager {
         });
     }
 
+    #[tracing::instrument(name = "auth.create", skip_all, err)]
     pub async fn create(
         &self,
         name: &str,
@@ -118,10 +153,12 @@ impl AuthManager {
         })
     }
 
+    #[tracing::instrument(name = "auth.list", skip_all, err)]
     pub async fn list(&self) -> Result<Vec<ApiKeyInfo>, sqlx::Error> {
         self.keys.list().await
     }
 
+    #[tracing::instrument(name = "auth.update", skip_all, err)]
     pub async fn update(
         &self,
         id: Uuid,
@@ -136,6 +173,7 @@ impl AuthManager {
         Ok(Some(updated.info))
     }
 
+    #[tracing::instrument(name = "auth.claim", skip_all, err)]
     pub async fn claim(
         &self,
         name: &str,
@@ -151,6 +189,7 @@ impl AuthManager {
         Ok(hash.is_some())
     }
 
+    #[tracing::instrument(name = "auth.regenerate", skip_all, err)]
     pub async fn regenerate(&self, id: Uuid) -> Result<Option<CreatedKey>, sqlx::Error> {
         let generated = GeneratedKey::generate();
 
@@ -176,6 +215,7 @@ impl AuthManager {
         }))
     }
 
+    #[tracing::instrument(name = "auth.revoke", skip_all, err)]
     pub async fn revoke(&self, id: Uuid) -> Result<bool, sqlx::Error> {
         let hash = self.keys.revoke(id).await?;
 

@@ -174,10 +174,24 @@ impl Transperth {
         self.index.store(Arc::new(Some(index)));
     }
 
+    #[instrument(
+        name = "transperth.route",
+        skip_all,
+        fields(id = %id, cached = tracing::field::Empty)
+    )]
     pub async fn route(&self, id: &str) -> Option<Arc<RouteDepartures>> {
-        self.route_departures.get(id).await
+        let route = self.route_departures.get(id).await;
+
+        tracing::Span::current().record("cached", route.is_some());
+
+        route
     }
 
+    #[instrument(
+        name = "transperth.route_departures",
+        skip_all,
+        fields(cached = tracing::field::Empty)
+    )]
     pub async fn route_departures(&self) -> Vec<Arc<RouteDepartures>> {
         let mut departures = Vec::new();
 
@@ -186,6 +200,8 @@ impl Transperth {
                 departures.push(route_departures);
             }
         }
+
+        tracing::Span::current().record("cached", departures.len());
 
         departures
     }
@@ -241,6 +257,7 @@ impl Transperth {
         }))
     }
 
+    #[instrument(name = "transperth.refresh_routes", skip_all, err)]
     pub async fn refresh_routes(
         &self,
         now: DateTime<Utc>,
@@ -311,6 +328,12 @@ impl Transperth {
         Ok(())
     }
 
+    #[instrument(
+        name = "transperth.pta_timetable",
+        skip_all,
+        fields(route_group = %route_group, date = %date, cached = tracing::field::Empty),
+        err
+    )]
     async fn pta_timetable(
         &self,
         reference_key: &str,
@@ -320,8 +343,11 @@ impl Transperth {
         let key = (route_group.to_owned(), date);
 
         if let Some(timetable) = self.pta_timetables.get(&key).await {
+            tracing::Span::current().record("cached", true);
             return Ok(timetable);
         }
+
+        tracing::Span::current().record("cached", false);
 
         let timetable = Arc::new(
             realtime::fetch_timetable(&self.client, reference_key, route_group, date).await?,

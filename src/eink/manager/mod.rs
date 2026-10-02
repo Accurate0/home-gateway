@@ -89,6 +89,7 @@ impl EinkDisplayManager {
             .collect()
     }
 
+    #[tracing::instrument(name = "eink.resolve", skip_all, fields(device_id = %device_id))]
     pub async fn resolve(&self, device_id: &str) -> Option<ResolvedDisplay> {
         let display = self.devices.eink_display(device_id)?.clone();
 
@@ -128,11 +129,18 @@ impl EinkDisplayManager {
         }
     }
 
+    #[tracing::instrument(
+        name = "eink.refresh_source",
+        skip_all,
+        fields(device_id = tracing::field::Empty)
+    )]
     pub async fn refresh_source(
         &self,
         display: &ResolvedDisplay,
         screenshots: &dyn ScreenshotBackend,
     ) -> Result<Option<SourceImage>, AppError> {
+        tracing::Span::current().record("device_id", display.device_id.as_str());
+
         let Some(source) = self.source(display) else {
             return Ok(None);
         };
@@ -149,11 +157,18 @@ impl EinkDisplayManager {
         Ok(Some(image))
     }
 
+    #[tracing::instrument(
+        name = "eink.prepare_source",
+        skip_all,
+        fields(device_id = tracing::field::Empty)
+    )]
     pub async fn prepare_source(
         &self,
         display: &ResolvedDisplay,
         screenshots: &dyn ScreenshotBackend,
     ) -> Result<Prepared, AppError> {
+        tracing::Span::current().record("device_id", display.device_id.as_str());
+
         if display.sleep.is_some() {
             let device_id = display.device_id.as_str();
             tracing::info!(
@@ -305,10 +320,18 @@ impl EinkDisplayManager {
         );
     }
 
+    #[tracing::instrument(
+        name = "eink.packed_frame",
+        skip_all,
+        fields(hash = %hash, cached = tracing::field::Empty)
+    )]
     pub async fn packed_frame(&self, hash: &str) -> Option<bytes::Bytes> {
         if let Some(frame) = self.packed_frames.get(hash).await {
+            tracing::Span::current().record("cached", true);
             return Some(frame);
         }
+
+        tracing::Span::current().record("cached", false);
 
         let key = match packed_cache_key(hash) {
             Some(key) => key,

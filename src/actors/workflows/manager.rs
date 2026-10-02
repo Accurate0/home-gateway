@@ -41,26 +41,40 @@ impl WorkflowManager {
         }
     }
 
+    #[tracing::instrument(
+        name = "workflow.enabled",
+        skip_all,
+        fields(slug = %slug, cached = tracing::field::Empty, enabled = tracing::field::Empty)
+    )]
     pub async fn enabled(&self, slug: &str, config_default: bool) -> bool {
         let repo = self.repo.clone();
         let slug_owned = slug.to_owned();
         let override_value = self
             .enabled_cache
-            .try_get_with(
-                slug.to_owned(),
-                async move { repo.enabled(&slug_owned).await },
-            )
+            .entry(slug.to_owned())
+            .or_try_insert_with(async move { repo.enabled(&slug_owned).await })
             .await;
 
-        match override_value {
-            Ok(value) => value.unwrap_or(config_default),
+        let span = tracing::Span::current();
+
+        let enabled = match override_value {
+            Ok(entry) => {
+                span.record("cached", !entry.is_fresh());
+
+                entry.into_value().unwrap_or(config_default)
+            }
             Err(err) => {
                 tracing::warn!("failed to read workflow override for '{slug}': {err}");
                 config_default
             }
-        }
+        };
+
+        span.record("enabled", enabled);
+
+        enabled
     }
 
+    #[tracing::instrument(name = "workflow.enabled_overrides", skip_all)]
     pub async fn enabled_overrides(&self) -> HashMap<String, bool> {
         match self.repo.enabled_overrides().await {
             Ok(rows) => {
@@ -80,6 +94,7 @@ impl WorkflowManager {
         }
     }
 
+    #[tracing::instrument(name = "workflow.current_mode", skip_all)]
     pub async fn current_mode(&self) -> Mode {
         match self.repo.state_value(Mode::STATE_KEY).await {
             Ok(Some(value)) => Mode::parse(&value).unwrap_or_else(|| {
@@ -103,6 +118,7 @@ impl WorkflowManager {
         modes.is_empty() || modes.contains(&self.current_mode().await)
     }
 
+    #[tracing::instrument(name = "workflow.set_mode", skip_all, err)]
     pub async fn set_mode(&self, mode: Mode) -> Result<Option<Mode>, sqlx::Error> {
         let previous = self.current_mode().await;
 
@@ -117,6 +133,7 @@ impl WorkflowManager {
         Ok(Some(previous))
     }
 
+    #[tracing::instrument(name = "workflow.set_enabled", skip_all, fields(slug = %slug, enabled), err)]
     pub async fn set_enabled(&self, slug: &str, enabled: bool) -> Result<(), sqlx::Error> {
         self.repo.set_enabled(slug, enabled).await?;
 
@@ -126,6 +143,7 @@ impl WorkflowManager {
         Ok(())
     }
 
+    #[tracing::instrument(name = "workflow.record_run", skip_all, fields(slug = %run.slug))]
     pub async fn record_run(&self, run: WorkflowRun) {
         let duration_ms = i64::try_from(run.duration.as_millis()).unwrap_or(i64::MAX);
 
@@ -148,6 +166,7 @@ impl WorkflowManager {
         }
     }
 
+    #[tracing::instrument(name = "workflow.recent_runs", skip_all, err)]
     pub async fn recent_runs(
         &self,
         slug: Option<&str>,
@@ -157,6 +176,7 @@ impl WorkflowManager {
         self.repo.recent_runs(slug, event_id, limit).await
     }
 
+    #[tracing::instrument(name = "workflow.cooldown_ok", skip_all, fields(name = %name), err)]
     pub async fn cooldown_ok(
         &self,
         name: &str,
