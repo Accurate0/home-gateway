@@ -1,6 +1,7 @@
 use super::EinkDisplayManager;
 use super::source::SourceImage;
 use crate::error::AppError;
+use crate::repo::eink::WakeRecord;
 
 impl EinkDisplayManager {
     pub async fn store_render(
@@ -79,15 +80,13 @@ impl EinkDisplayManager {
             .flatten()
     }
 
-    pub async fn store_displayed_hash(
+    pub async fn store_wake(
         &self,
         device_id: &str,
         name: &str,
-        displayed_hash: Option<&str>,
+        wake: &WakeRecord<'_>,
     ) -> Result<(), AppError> {
-        self.eink
-            .store_displayed_hash(device_id, name, displayed_hash)
-            .await?;
+        self.eink.store_wake(device_id, name, wake).await?;
 
         Ok(())
     }
@@ -101,34 +100,6 @@ impl EinkDisplayManager {
             )
             .ok()
             .flatten()
-    }
-
-    pub async fn store_rtc_report(
-        &self,
-        device_id: &str,
-        name: &str,
-        reported_at: chrono::DateTime<chrono::Utc>,
-        offset_ms: i64,
-    ) -> Result<(), AppError> {
-        self.eink
-            .store_rtc_report(device_id, name, reported_at, offset_ms)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn store_rtc_sync(
-        &self,
-        device_id: &str,
-        name: &str,
-        synced_at: chrono::DateTime<chrono::Utc>,
-        drift_ms: Option<i64>,
-    ) -> Result<(), AppError> {
-        self.eink
-            .store_rtc_sync(device_id, name, synced_at, drift_ms)
-            .await?;
-
-        Ok(())
     }
 
     pub async fn stored_render(&self, device_id: &str) -> Option<SourceImage> {

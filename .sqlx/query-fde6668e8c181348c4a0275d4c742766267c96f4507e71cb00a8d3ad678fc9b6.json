@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO eink_display (device_id, name, next_wake_at, displayed_hash, rtc_reported_at, rtc_reported_offset_ms, rtc_synced_at, rtc_drift_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, next_wake_at = EXCLUDED.next_wake_at, displayed_hash = CASE WHEN $9::boolean THEN EXCLUDED.displayed_hash ELSE eink_display.displayed_hash END, rtc_reported_at = CASE WHEN $10::boolean THEN EXCLUDED.rtc_reported_at ELSE eink_display.rtc_reported_at END, rtc_reported_offset_ms = CASE WHEN $10::boolean THEN EXCLUDED.rtc_reported_offset_ms ELSE eink_display.rtc_reported_offset_ms END, rtc_synced_at = CASE WHEN $11::boolean THEN EXCLUDED.rtc_synced_at ELSE eink_display.rtc_synced_at END, rtc_drift_ms = CASE WHEN $11::boolean THEN EXCLUDED.rtc_drift_ms ELSE eink_display.rtc_drift_ms END",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Timestamptz",
+        "Int8",
+        "Timestamptz",
+        "Int8",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fde6668e8c181348c4a0275d4c742766267c96f4507e71cb00a8d3ad678fc9b6"
+}

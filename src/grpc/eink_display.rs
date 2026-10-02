@@ -15,6 +15,7 @@ use crate::eink::manager::decision::WakeDecision;
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed};
 use crate::eink::rtc::rtc_sync;
 use crate::eink::wake::{self, WakeContext, WakeReport};
+use crate::repo::eink::{RtcReportRecord, RtcSyncRecord, WakeRecord};
 use crate::routes::epd::DeviceReport;
 use crate::state::AppState;
 
@@ -116,18 +117,58 @@ impl EinkDisplayService {
             }
         };
 
-        if let Some(hash) = now_displayed {
-            eink.store_displayed_hash(device_id, &resolved.name, hash)
-                .await
-                .map_err(|e| Status::internal(e.message().to_string()))?;
-        }
+        let reported = request
+            .rtc_unix_ms
+            .and_then(chrono::DateTime::from_timestamp_millis);
 
-        wake::schedule_next_render(device_id, decision.refresh_secs)
+        let synced_at = eink.rtc_synced_at(device_id).await;
+        let now = chrono::Utc::now();
+        let interval = self.state.settings.eink_display.rtc_sync_interval;
+        let next_wake_at = wake::next_wake_at(now, decision.refresh_secs);
+        let sync = rtc_sync(reported, synced_at, now, interval);
+
+        let drift_ms = sync
+            .and_then(|sync| sync.drift)
+            .map(|drift| drift.num_milliseconds());
+
+        let record = WakeRecord {
+            next_wake_at,
+            displayed_hash: now_displayed,
+            rtc_report: reported.map(|reported_at| RtcReportRecord {
+                reported_at,
+                offset_ms: (reported_at - now).num_milliseconds(),
+            }),
+            rtc_sync: sync.map(|_| RtcSyncRecord {
+                synced_at: now,
+                drift_ms,
+            }),
+        };
+
+        eink.store_wake(device_id, &resolved.name, &record)
+            .await
+            .map_err(|e| Status::internal(e.message().to_string()))?;
+
+        wake::schedule_next_render(device_id, next_wake_at)
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        let rtc_synced = self
-            .sync_rtc(eink, device_id, &resolved.name, request.rtc_unix_ms)
-            .await;
+        let rtc_synced = sync.is_some();
+
+        if rtc_synced {
+            if let Some(drift_ms) = drift_ms {
+                crate::metrics::record_eink_rtc_drift(
+                    device_id.to_owned(),
+                    drift_ms as f64 / 1000.0,
+                );
+            }
+
+            tracing::info!(
+                device_id = %device_id,
+                ?reported,
+                ?synced_at,
+                ?drift_ms,
+                "setting the display clock"
+            );
+        }
 
         tracing::info!(
             device_id = %device_id,
@@ -149,64 +190,6 @@ impl EinkDisplayService {
             refresh: planned.refresh,
             set_rtc_unix_ms: rtc_synced.then(|| chrono::Utc::now().timestamp_millis()),
         })
-    }
-
-    async fn sync_rtc(
-        &self,
-        eink: &EinkDisplayManager,
-        device_id: &str,
-        name: &str,
-        rtc_unix_ms: Option<i64>,
-    ) -> bool {
-        let reported = rtc_unix_ms.and_then(chrono::DateTime::from_timestamp_millis);
-        let synced_at = eink.rtc_synced_at(device_id).await;
-        let now = chrono::Utc::now();
-        let interval = self.state.settings.eink_display.rtc_sync_interval;
-
-        if let Some(reported) = reported {
-            let offset_ms = (reported - now).num_milliseconds();
-
-            if let Err(e) = eink
-                .store_rtc_report(device_id, name, reported, offset_ms)
-                .await
-            {
-                tracing::warn!(
-                    device_id = %device_id,
-                    "failed to store the reported rtc: {}",
-                    e.message()
-                );
-            }
-        }
-
-        let Some(sync) = rtc_sync(reported, synced_at, now, interval) else {
-            return false;
-        };
-
-        let drift_ms = sync.drift.map(|drift| drift.num_milliseconds());
-
-        if let Err(e) = eink.store_rtc_sync(device_id, name, now, drift_ms).await {
-            tracing::warn!(
-                device_id = %device_id,
-                "failed to store the rtc sync, leaving the display clock alone: {}",
-                e.message()
-            );
-
-            return false;
-        }
-
-        if let Some(drift_ms) = drift_ms {
-            crate::metrics::record_eink_rtc_drift(device_id.to_owned(), drift_ms as f64 / 1000.0);
-        }
-
-        tracing::info!(
-            device_id = %device_id,
-            ?reported,
-            ?synced_at,
-            ?drift_ms,
-            "setting the display clock"
-        );
-
-        true
     }
 }
 

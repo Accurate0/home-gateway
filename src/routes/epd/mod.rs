@@ -186,7 +186,12 @@ pub async fn config(
         .await;
 
     if let Some(wake_in_secs) = config.refresh_interval_secs {
-        wake::schedule_next_render(&request.device_id, wake_in_secs)?;
+        let next_wake_at = wake::next_wake_at(chrono::Utc::now(), wake_in_secs);
+
+        eink.store_next_wake(&request.device_id, &resolved.name, next_wake_at)
+            .await?;
+
+        wake::schedule_next_render(&request.device_id, next_wake_at)?;
     }
 
     Ok(Json(config))

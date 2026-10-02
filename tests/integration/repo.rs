@@ -29,11 +29,10 @@ async fn an_environment_reading_lands_in_both_the_history_and_the_latest_row() {
 
     repo.record(&reading(21.5, Some(40.0))).await.unwrap();
 
-    let history_count =
-        sqlx::query_scalar!(r#"SELECT count(*) as "count!" FROM temperature_sensor"#)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let history_count: i64 = sqlx::query_scalar("SELECT count(*) FROM temperature_sensor")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
     let latest = repo.latest("study").await.unwrap().unwrap();
 
@@ -50,11 +49,10 @@ async fn a_later_environment_reading_replaces_the_latest_row_but_appends_history
     repo.record(&reading(21.5, Some(40.0))).await.unwrap();
     repo.record(&reading(23.0, None)).await.unwrap();
 
-    let history_count =
-        sqlx::query_scalar!(r#"SELECT count(*) as "count!" FROM temperature_sensor"#)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let history_count: i64 = sqlx::query_scalar("SELECT count(*) FROM temperature_sensor")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
     let latest = repo.latest("study").await.unwrap().unwrap();
 
@@ -103,7 +101,7 @@ async fn robot_vacuum_events_are_appended_per_report() {
         .await
         .unwrap();
 
-    let events = sqlx::query_scalar!(r#"SELECT count(*) as "count!" FROM robot_vacuum_events"#)
+    let events: i64 = sqlx::query_scalar("SELECT count(*) FROM robot_vacuum_events")
         .fetch_one(&pool)
         .await
         .unwrap();

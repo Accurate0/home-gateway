@@ -31,7 +31,7 @@ pub enum EInkDisplayMessage {
     },
     ScheduleNextRender {
         device_id: String,
-        wake_in_secs: u32,
+        next_wake_at: chrono::DateTime<chrono::Utc>,
     },
 }
 
@@ -221,7 +221,7 @@ impl Actor for EInkDisplayActor {
             }
             EInkDisplayMessage::ScheduleNextRender {
                 device_id,
-                wake_in_secs,
+                next_wake_at,
             } => {
                 let Some(display) = self.manager().resolve(&device_id).await else {
                     tracing::warn!(
@@ -229,14 +229,6 @@ impl Actor for EInkDisplayActor {
                     );
                     return Ok(());
                 };
-
-                let next_wake_at =
-                    chrono::Utc::now() + chrono::TimeDelta::seconds(wake_in_secs.into());
-
-                self.manager()
-                    .store_next_wake(&device_id, &display.name, next_wake_at)
-                    .await
-                    .map_err(AppError::message)?;
 
                 if display.mode != crate::settings::EinkMode::Dashboard {
                     Self::cancel_render(state, &device_id);

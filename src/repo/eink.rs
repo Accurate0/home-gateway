@@ -6,6 +6,23 @@ pub struct StoredRender {
     pub image_content_hash: Option<String>,
 }
 
+pub struct RtcReportRecord {
+    pub reported_at: DateTime<Utc>,
+    pub offset_ms: i64,
+}
+
+pub struct RtcSyncRecord {
+    pub synced_at: DateTime<Utc>,
+    pub drift_ms: Option<i64>,
+}
+
+pub struct WakeRecord<'a> {
+    pub next_wake_at: DateTime<Utc>,
+    pub displayed_hash: Option<Option<&'a str>>,
+    pub rtc_report: Option<RtcReportRecord>,
+    pub rtc_sync: Option<RtcSyncRecord>,
+}
+
 #[derive(Clone)]
 pub struct EinkRepo {
     db: Pool<Postgres>,
@@ -142,19 +159,38 @@ impl EinkRepo {
         Ok(row.and_then(|row| row.displayed_hash))
     }
 
-    #[tracing::instrument(skip_all, name = "db.eink.store_displayed_hash", err)]
-    pub async fn store_displayed_hash(
+    #[tracing::instrument(skip_all, name = "db.eink.store_wake", err)]
+    pub async fn store_wake(
         &self,
         device_id: &str,
         name: &str,
-        displayed_hash: Option<&str>,
+        wake: &WakeRecord<'_>,
     ) -> Result<(), sqlx::Error> {
+        let rtc_report = wake.rtc_report.as_ref();
+        let rtc_sync = wake.rtc_sync.as_ref();
+
         sqlx::query!(
-            "INSERT INTO eink_display (device_id, name, displayed_hash) VALUES ($1, $2, $3) \
-             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, displayed_hash = EXCLUDED.displayed_hash",
+            "INSERT INTO eink_display (device_id, name, next_wake_at, displayed_hash, rtc_reported_at, rtc_reported_offset_ms, rtc_synced_at, rtc_drift_ms) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
+             ON CONFLICT (device_id) DO UPDATE SET \
+                 name = EXCLUDED.name, \
+                 next_wake_at = EXCLUDED.next_wake_at, \
+                 displayed_hash = CASE WHEN $9::boolean THEN EXCLUDED.displayed_hash ELSE eink_display.displayed_hash END, \
+                 rtc_reported_at = CASE WHEN $10::boolean THEN EXCLUDED.rtc_reported_at ELSE eink_display.rtc_reported_at END, \
+                 rtc_reported_offset_ms = CASE WHEN $10::boolean THEN EXCLUDED.rtc_reported_offset_ms ELSE eink_display.rtc_reported_offset_ms END, \
+                 rtc_synced_at = CASE WHEN $11::boolean THEN EXCLUDED.rtc_synced_at ELSE eink_display.rtc_synced_at END, \
+                 rtc_drift_ms = CASE WHEN $11::boolean THEN EXCLUDED.rtc_drift_ms ELSE eink_display.rtc_drift_ms END",
             device_id,
             name,
-            displayed_hash,
+            wake.next_wake_at,
+            wake.displayed_hash.flatten(),
+            rtc_report.map(|report| report.reported_at),
+            rtc_report.map(|report| report.offset_ms),
+            rtc_sync.map(|sync| sync.synced_at),
+            rtc_sync.and_then(|sync| sync.drift_ms),
+            wake.displayed_hash.is_some(),
+            rtc_report.is_some(),
+            rtc_sync.is_some(),
         )
         .execute(&self.db)
         .await?;
@@ -175,50 +211,6 @@ impl EinkRepo {
         .await?;
 
         Ok(row.and_then(|row| row.rtc_synced_at))
-    }
-
-    #[tracing::instrument(skip_all, name = "db.eink.store_rtc_sync", err)]
-    pub async fn store_rtc_sync(
-        &self,
-        device_id: &str,
-        name: &str,
-        synced_at: DateTime<Utc>,
-        drift_ms: Option<i64>,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "INSERT INTO eink_display (device_id, name, rtc_synced_at, rtc_drift_ms) VALUES ($1, $2, $3, $4) \
-             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, rtc_synced_at = EXCLUDED.rtc_synced_at, rtc_drift_ms = EXCLUDED.rtc_drift_ms",
-            device_id,
-            name,
-            synced_at,
-            drift_ms,
-        )
-        .execute(&self.db)
-        .await?;
-
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, name = "db.eink.store_rtc_report", err)]
-    pub async fn store_rtc_report(
-        &self,
-        device_id: &str,
-        name: &str,
-        reported_at: DateTime<Utc>,
-        offset_ms: i64,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "INSERT INTO eink_display (device_id, name, rtc_reported_at, rtc_reported_offset_ms) VALUES ($1, $2, $3, $4) \
-             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, rtc_reported_at = EXCLUDED.rtc_reported_at, rtc_reported_offset_ms = EXCLUDED.rtc_reported_offset_ms",
-            device_id,
-            name,
-            reported_at,
-            offset_ms,
-        )
-        .execute(&self.db)
-        .await?;
-
-        Ok(())
     }
 
     #[tracing::instrument(skip_all, name = "db.eink.stored_render", err)]

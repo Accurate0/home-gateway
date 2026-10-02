@@ -89,12 +89,22 @@ pub async fn begin(
     Ok(context.eink.resolve(device_id).await)
 }
 
-pub fn schedule_next_render(device_id: &str, wake_in_secs: u32) -> Result<(), RpcError> {
+pub fn next_wake_at(
+    now: chrono::DateTime<chrono::Utc>,
+    wake_in_secs: u32,
+) -> chrono::DateTime<chrono::Utc> {
+    now + chrono::TimeDelta::seconds(wake_in_secs.into())
+}
+
+pub fn schedule_next_render(
+    device_id: &str,
+    next_wake_at: chrono::DateTime<chrono::Utc>,
+) -> Result<(), RpcError> {
     rpc::cast(
         EInkDisplayActor::NAME,
         EInkDisplayMessage::ScheduleNextRender {
             device_id: device_id.to_owned(),
-            wake_in_secs,
+            next_wake_at,
         },
     )
 }
