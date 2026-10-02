@@ -30,6 +30,20 @@ function clockTime(value: string) {
   });
 }
 
+const SHORT_TIME = new Intl.DateTimeFormat("en-AU", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Australia/Perth",
+});
+
+function shortTime(value: string) {
+  return SHORT_TIME.formatToParts(new Date(value))
+    .filter((part) => part.type === "hour" || part.type === "minute")
+    .map((part) => part.value)
+    .join(":");
+}
+
 export default function TransitFuelRow({
   routeRef,
   fuelRef,
@@ -82,8 +96,8 @@ export default function TransitFuelRow({
         </div>
 
         {rest.length > 0 && (
-          <div style={{ ...TYPE.label, marginTop: 6 }}>
-            then {rest.map((departure) => clockTime(departure.scheduledDeparture)).join(" \u00b7 ")}
+          <div style={{ ...TYPE.label, marginTop: 6, whiteSpace: "nowrap" }}>
+            then {rest.map((departure) => shortTime(departure.scheduledDeparture)).join(" \u00b7 ")}
           </div>
         )}
       </div>

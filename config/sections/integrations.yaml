@@ -88,7 +88,7 @@ transperth:
     - id: aubin-grove-to-perth
       from: Aubin Grove Stn
       to: Perth Underground Stn
-      limit: 3
+      limit: 8
   cache:
     routes:
       capacity: 32
