@@ -8,6 +8,7 @@ use esp_idf_sys::{
 };
 
 mod battery;
+mod clock;
 mod driver;
 mod grpc_web;
 mod http_client;
@@ -170,6 +171,15 @@ fn run_task() -> Result<u64, anyhow::Error> {
         }
         Err(e) => return Err(e),
     };
+
+    if let Some(server_unix_ms) = response.set_rtc_unix_ms {
+        let offset_ms = clock::now_unix_ms() - server_unix_ms;
+
+        match clock::set(server_unix_ms) {
+            Ok(_) => log::info!("rtc set from the server, it was {offset_ms} ms ahead"),
+            Err(e) => log::warn!("failed to set the rtc: {e}"),
+        }
+    }
 
     let mut set_refresh_pending = |pending: bool| {
         if let Some(state) = refresh_state.as_mut() {

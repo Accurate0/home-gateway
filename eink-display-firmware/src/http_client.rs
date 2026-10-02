@@ -68,15 +68,17 @@ pub fn wake(
         battery_kind: crate::battery::KIND.to_owned(),
         firmware_version: FIRMWARE_VERSION.to_owned(),
         previous_refresh_failed,
+        rtc_unix_ms: Some(crate::clock::now_unix_ms()),
     };
 
     let response: WakeResponse = grpc_web::unary(client, &url, API_KEY, &request)?;
 
     info!(
-        "wake answered: sleep {} secs, firmware {:?}, refresh {}",
+        "wake answered: sleep {} secs, firmware {:?}, refresh {}, set rtc {:?}",
         response.sleep_secs,
         response.firmware,
-        crate::refresh::describe(response.refresh.as_ref())
+        crate::refresh::describe(response.refresh.as_ref()),
+        response.set_rtc_unix_ms
     );
 
     Ok(response)

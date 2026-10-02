@@ -417,6 +417,7 @@ home_assistant:
 eink_display:
   firmware_version: v0.1.0
   prepare_render_timeout: 15s
+  rtc_sync_interval: 24h
   defaults:
     reddit_limit: 25
     settle: 10s

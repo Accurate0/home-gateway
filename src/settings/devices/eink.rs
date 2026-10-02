@@ -164,6 +164,9 @@ pub struct RawEinkGlobal {
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     prepare_render_timeout: TimeDelta,
+    #[serde(with = "time_delta_from_str")]
+    #[schemars(with = "String")]
+    rtc_sync_interval: TimeDelta,
     defaults: EinkDefaults,
 }
 
@@ -185,6 +188,7 @@ pub struct EinkGlobalSettings {
     pub views: HashMap<String, DashboardView>,
     pub albums: HashMap<String, Album>,
     pub prepare_render_timeout: TimeDelta,
+    pub rtc_sync_interval: TimeDelta,
     pub defaults: EinkDefaults,
 }
 
@@ -218,6 +222,7 @@ impl RawEinkGlobal {
             views,
             albums,
             prepare_render_timeout: self.prepare_render_timeout,
+            rtc_sync_interval: self.rtc_sync_interval,
             defaults: self.defaults,
         }
     }

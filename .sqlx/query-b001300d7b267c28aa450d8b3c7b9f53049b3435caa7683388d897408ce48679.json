@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO eink_display (device_id, name, rtc_synced_at, rtc_drift_ms) VALUES ($1, $2, $3, $4) ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, rtc_synced_at = EXCLUDED.rtc_synced_at, rtc_drift_ms = EXCLUDED.rtc_drift_ms",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b001300d7b267c28aa450d8b3c7b9f53049b3435caa7683388d897408ce48679"
+}

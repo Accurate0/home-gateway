@@ -87,6 +87,31 @@ impl EinkDisplayManager {
         Ok(())
     }
 
+    pub async fn rtc_synced_at(&self, device_id: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+        self.eink
+            .rtc_synced_at(device_id)
+            .await
+            .inspect_err(
+                |e| tracing::warn!(device_id = %device_id, "failed to read the last rtc sync: {e}"),
+            )
+            .ok()
+            .flatten()
+    }
+
+    pub async fn store_rtc_sync(
+        &self,
+        device_id: &str,
+        name: &str,
+        synced_at: chrono::DateTime<chrono::Utc>,
+        drift_ms: Option<i64>,
+    ) -> Result<(), AppError> {
+        self.eink
+            .store_rtc_sync(device_id, name, synced_at, drift_ms)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn stored_render(&self, device_id: &str) -> Option<SourceImage> {
         let row = self
             .eink

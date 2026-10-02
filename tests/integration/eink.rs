@@ -328,6 +328,14 @@ fn wake_request(device_id: &str) -> WakeRequest {
         battery_kind: "rechargeable".to_owned(),
         firmware_version: "v0.1.0".to_owned(),
         previous_refresh_failed: false,
+        rtc_unix_ms: None,
+    }
+}
+
+fn wake_request_at(device_id: &str, rtc_unix_ms: i64) -> WakeRequest {
+    WakeRequest {
+        rtc_unix_ms: Some(rtc_unix_ms),
+        ..wake_request(device_id)
     }
 }
 
@@ -448,6 +456,52 @@ async fn a_failed_refresh_is_sent_the_frame_again() {
     assert!(
         matches!(reply.message.unwrap().refresh, Some(Refresh::Full(_))),
         "a display that failed to draw must get the frame again"
+    );
+
+    stop(actor).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn a_display_clock_is_set_once_and_again_only_when_it_is_lost() {
+    let harness = Harness::start().await;
+    let actor = stub_display_actor().await;
+    let key = mint_key(&harness, &["epd:read"]).await;
+
+    let silent = wake(&harness, Some(&key), wake_request(PANEL_ADDRESS)).await;
+
+    assert!(
+        silent.message.unwrap().set_rtc_unix_ms.is_none(),
+        "firmware that reports no clock must not be asked to set one"
+    );
+
+    let before = chrono::Utc::now().timestamp_millis();
+    let first = wake(&harness, Some(&key), wake_request_at(PANEL_ADDRESS, 12_000)).await;
+    let server_time = first
+        .message
+        .unwrap()
+        .set_rtc_unix_ms
+        .expect("a never synced display should be given the server time");
+
+    assert!(server_time >= before);
+
+    let second = wake(
+        &harness,
+        Some(&key),
+        wake_request_at(PANEL_ADDRESS, chrono::Utc::now().timestamp_millis()),
+    )
+    .await;
+
+    assert!(
+        second.message.unwrap().set_rtc_unix_ms.is_none(),
+        "a display synced within the interval keeps its clock"
+    );
+
+    let lost = wake(&harness, Some(&key), wake_request_at(PANEL_ADDRESS, 12_000)).await;
+
+    assert!(
+        lost.message.unwrap().set_rtc_unix_ms.is_some(),
+        "a clock behind the last sync was lost and must be set again"
     );
 
     stop(actor).await;

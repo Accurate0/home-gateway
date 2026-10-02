@@ -30,6 +30,7 @@ struct Instruments {
     device_battery_percent: Gauge<f64>,
     /// Signed seconds between a display's intended wake and its actual poll.
     eink_wake_drift: Histogram<f64>,
+    eink_rtc_drift: Histogram<f64>,
     /// Ad-hoc task outcomes, labelled by task name and outcome.
     adhoc_tasks_total: Counter<u64>,
     /// Integration poll outcomes, labelled by integration name and outcome.
@@ -102,6 +103,10 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
         eink_wake_drift: meter
             .f64_histogram("home_gateway_eink_wake_drift_seconds")
             .with_description("Seconds between an eink display's intended wake and its actual poll")
+            .build(),
+        eink_rtc_drift: meter
+            .f64_histogram("home_gateway_eink_rtc_drift_seconds")
+            .with_description("Seconds an eink display's clock was ahead of the gateway at an rtc sync")
             .build(),
         adhoc_tasks_total: meter
             .u64_counter("home_gateway_adhoc_tasks_total")
@@ -325,6 +330,12 @@ pub fn record_adhoc_task(name: &'static str, outcome: &'static str) {
 pub fn record_eink_wake_drift(device_id: String, drift_secs: f64) {
     INSTRUMENTS
         .eink_wake_drift
+        .record(drift_secs, &[KeyValue::new("device_id", device_id)]);
+}
+
+pub fn record_eink_rtc_drift(device_id: String, drift_secs: f64) {
+    INSTRUMENTS
+        .eink_rtc_drift
         .record(drift_secs, &[KeyValue::new("device_id", device_id)]);
 }
 

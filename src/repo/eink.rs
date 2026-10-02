@@ -149,6 +149,43 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.rtc_synced_at", err)]
+    pub async fn rtc_synced_at(
+        &self,
+        device_id: &str,
+    ) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+        let row = sqlx::query!(
+            "SELECT rtc_synced_at FROM eink_display WHERE device_id = $1",
+            device_id
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(row.and_then(|row| row.rtc_synced_at))
+    }
+
+    #[tracing::instrument(skip_all, name = "db.eink.store_rtc_sync", err)]
+    pub async fn store_rtc_sync(
+        &self,
+        device_id: &str,
+        name: &str,
+        synced_at: DateTime<Utc>,
+        drift_ms: Option<i64>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO eink_display (device_id, name, rtc_synced_at, rtc_drift_ms) VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, rtc_synced_at = EXCLUDED.rtc_synced_at, rtc_drift_ms = EXCLUDED.rtc_drift_ms",
+            device_id,
+            name,
+            synced_at,
+            drift_ms,
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all, name = "db.eink.stored_render", err)]
     pub async fn stored_render(
         &self,

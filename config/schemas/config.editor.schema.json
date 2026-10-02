@@ -4477,6 +4477,12 @@
         "api_key_cache": {
           "$ref": "#/$defs/CacheSettings"
         },
+        "last_used_interval": {
+          "type": "string"
+        },
+        "lockout": {
+          "$ref": "#/$defs/AuthLockoutSettings"
+        },
         "api_keys": {
           "type": "array",
           "items": {
@@ -4495,7 +4501,32 @@
         }
       },
       "required": [
-        "api_key_cache"
+        "api_key_cache",
+        "last_used_interval",
+        "lockout"
+      ]
+    },
+    "AuthLockoutSettings": {
+      "type": "object",
+      "properties": {
+        "attempts": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "window": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "attempts",
+        "window",
+        "capacity"
       ]
     },
     "ApiKeySettings": {
@@ -4727,6 +4758,9 @@
         "prepare_render_timeout": {
           "type": "string"
         },
+        "rtc_sync_interval": {
+          "type": "string"
+        },
         "defaults": {
           "$ref": "#/$defs/EinkDefaults"
         }
@@ -4734,6 +4768,7 @@
       "required": [
         "firmware_version",
         "prepare_render_timeout",
+        "rtc_sync_interval",
         "defaults"
       ]
     },
@@ -4991,6 +5026,14 @@
           "format": "uint",
           "minimum": 0
         },
+        "max_delay": {
+          "type": "string"
+        },
+        "max_http_response_bytes": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
         "library": {
           "type": [
             "string",
@@ -5023,7 +5066,9 @@
       "required": [
         "timeout",
         "max_instructions",
-        "max_memory"
+        "max_memory",
+        "max_delay",
+        "max_http_response_bytes"
       ]
     },
     "EndpointSettings": {
