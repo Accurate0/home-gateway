@@ -98,6 +98,20 @@ impl EinkDisplayManager {
             .flatten()
     }
 
+    pub async fn store_rtc_report(
+        &self,
+        device_id: &str,
+        name: &str,
+        reported_at: chrono::DateTime<chrono::Utc>,
+        offset_ms: i64,
+    ) -> Result<(), AppError> {
+        self.eink
+            .store_rtc_report(device_id, name, reported_at, offset_ms)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn store_rtc_sync(
         &self,
         device_id: &str,

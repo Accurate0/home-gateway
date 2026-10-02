@@ -17,6 +17,12 @@ pub struct EinkDisplayRow {
     pub battery_voltage: Option<f64>,
     pub is_charging: Option<bool>,
     pub updated_at: DateTime<Utc>,
+    pub next_wake_at: Option<DateTime<Utc>>,
+    pub partial_refresh_count: i32,
+    pub rtc_synced_at: Option<DateTime<Utc>>,
+    pub rtc_drift_ms: Option<i64>,
+    pub rtc_reported_at: Option<DateTime<Utc>>,
+    pub rtc_reported_offset_ms: Option<i64>,
 }
 
 impl EinkRepo {
@@ -186,6 +192,28 @@ impl EinkRepo {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, name = "db.eink.store_rtc_report", err)]
+    pub async fn store_rtc_report(
+        &self,
+        device_id: &str,
+        name: &str,
+        reported_at: DateTime<Utc>,
+        offset_ms: i64,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO eink_display (device_id, name, rtc_reported_at, rtc_reported_offset_ms) VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (device_id) DO UPDATE SET name = EXCLUDED.name, rtc_reported_at = EXCLUDED.rtc_reported_at, rtc_reported_offset_ms = EXCLUDED.rtc_reported_offset_ms",
+            device_id,
+            name,
+            reported_at,
+            offset_ms,
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all, name = "db.eink.stored_render", err)]
     pub async fn stored_render(
         &self,
@@ -247,7 +275,9 @@ impl EinkRepo {
         sqlx::query_as!(
             EinkDisplayRow,
             r#"
-            SELECT device_id, battery_voltage, is_charging, updated_at
+            SELECT device_id, battery_voltage, is_charging, updated_at,
+                   next_wake_at, partial_refresh_count, rtc_synced_at, rtc_drift_ms,
+                   rtc_reported_at, rtc_reported_offset_ms
             FROM eink_display
             WHERE device_id = ANY($1)
             "#,

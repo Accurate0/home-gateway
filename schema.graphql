@@ -209,6 +209,14 @@ type EinkDisplayEntity {
 	batteryPercentage: Float
 	isCharging: Boolean
 	lastSeen: DateTime
+	nextWakeAt: DateTime
+	partialRefreshCount: Int
+	rtcSyncedAt: DateTime
+	rtcDriftSecs: Float
+	rtcReportedAt: DateTime
+	rtcReportedOffsetSecs: Float
+	rtcSyncDueAt: DateTime
+	targetFirmwareVersion: String
 	config: EinkDisplayConfig
 	deviceConfig: EpdConfig!
 	battery: DeviceBattery

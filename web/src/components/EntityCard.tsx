@@ -664,6 +664,121 @@ function useEinkPreview(imageUrl: string | null | undefined, rotate: boolean) {
   return { dataUrl, status };
 }
 
+function formatTimestamp(value: string | null | undefined, now: number) {
+  if (value == null) return "—";
+  const then = Date.parse(value);
+  if (Number.isNaN(then)) return "—";
+  const absolute = new Date(then).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const future = then > now;
+  const distance = future
+    ? formatLastSeen(new Date(now).toISOString(), then)
+    : formatLastSeen(value, now);
+  if (!distance || distance === "now") return `${absolute} (now)`;
+  return future ? `${absolute} (in ${distance})` : `${absolute} (${distance} ago)`;
+}
+
+function formatClockOffset(secs: number | null | undefined) {
+  if (secs == null) return "—";
+  const magnitude = Math.abs(secs);
+  const amount =
+    magnitude >= 3600
+      ? `${(magnitude / 3600).toFixed(1)} h`
+      : magnitude >= 60
+        ? `${(magnitude / 60).toFixed(1)} min`
+        : `${magnitude.toFixed(1)} s`;
+  if (magnitude < 0.05) return "in sync";
+  return `${amount} ${secs > 0 ? "fast" : "slow"}`;
+}
+
+function EinkDisplayDetails({ entity, now }: { entity: Entity; now: number }) {
+  const status = entity.einkStatus;
+  const config = entity.config;
+  if (status == null) return null;
+
+  const battery =
+    entity.batteryVoltage == null
+      ? "—"
+      : `${fmt(entity.batteryVoltage, " V", 2)}${
+          entity.batteryPercentage == null
+            ? ""
+            : ` · ${Math.round(entity.batteryPercentage)}%`
+        }${status.isCharging ? " · charging" : ""}`;
+
+  const sections: { title: string; rows: [string, string][] }[] = [
+    {
+      title: "Clock",
+      rows: [
+        ["Last reported", formatTimestamp(status.rtcReportedAt, now)],
+        ["Offset at report", formatClockOffset(status.rtcReportedOffsetSecs)],
+        ["Last set", formatTimestamp(status.rtcSyncedAt, now)],
+        ["Drift at last set", formatClockOffset(status.rtcDriftSecs)],
+        ["Next set due", formatTimestamp(status.rtcSyncDueAt, now)],
+      ],
+    },
+    {
+      title: "Wake",
+      rows: [
+        ["Last seen", formatTimestamp(entity.lastSeen, now)],
+        ["Next wake", formatTimestamp(status.nextWakeAt, now)],
+        ["Schedule", config?.refresh ?? "—"],
+        ["Grace", status.grace ?? "—"],
+        [
+          "Sleep window",
+          config?.sleepStart && config?.sleepEnd
+            ? `${config.sleepStart} – ${config.sleepEnd}`
+            : "—",
+        ],
+      ],
+    },
+    {
+      title: "Device",
+      rows: [
+        ["Id", entity.id],
+        ["Battery", battery],
+        ["Target firmware", status.targetFirmwareVersion ?? "—"],
+        [
+          "Mode",
+          [config?.mode?.toLowerCase(), config?.view ?? config?.album]
+            .filter(Boolean)
+            .join(" · ") || "—",
+        ],
+        [
+          "Partial refreshes since full",
+          status.partialRefreshCount == null
+            ? "—"
+            : String(status.partialRefreshCount),
+        ],
+      ],
+    },
+  ];
+
+  return (
+    <div className="mb-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
+      {sections.map((section) => (
+        <div key={section.title}>
+          <div className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-wide uppercase">
+            {section.title}
+          </div>
+          <dl className="space-y-1.5 text-xs">
+            {section.rows.map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EinkDisplayConfigDetails({
   entity,
   actions,
@@ -726,6 +841,7 @@ function EinkDisplayConfigDetails({
             </span>
           )}
         </div>
+        <EinkDisplayDetails entity={entity} now={now} />
         {deviceConfig == null ? (
           <div className="text-muted-foreground text-sm">Loading config…</div>
         ) : (

@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT device_id, battery_voltage, is_charging, updated_at,\n                   next_wake_at, partial_refresh_count, rtc_synced_at, rtc_drift_ms,\n                   rtc_reported_at, rtc_reported_offset_ms\n            FROM eink_display\n            WHERE device_id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "battery_voltage",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_charging",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "next_wake_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "partial_refresh_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "rtc_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "rtc_drift_ms",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "rtc_reported_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "rtc_reported_offset_ms",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a00709246e6199eb1c9fe59a9930cbed29003bbb2971cefda04f197094eff5e8"
+}

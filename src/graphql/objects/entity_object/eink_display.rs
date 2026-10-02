@@ -13,6 +13,7 @@ use crate::{
     history_window::clamp_since,
     routes::epd::{DeviceReport, EpdConfig},
     settings::EinkDisplaySettings,
+    settings::SettingsContainer,
     settings::{EinkMode, Orientation, RedditTimespan},
     timedelta_format::humanize,
 };
@@ -178,6 +179,105 @@ impl EinkDisplayEntity {
             .load_one(self.address.clone())
             .await?
             .map(|d| d.updated_at))
+    }
+
+    async fn next_wake_at(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.next_wake_at))
+    }
+
+    async fn partial_refresh_count(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<i32>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .map(|d| d.partial_refresh_count))
+    }
+
+    async fn rtc_synced_at(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.rtc_synced_at))
+    }
+
+    async fn rtc_drift_secs(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.rtc_drift_ms)
+            .map(|ms| ms as f64 / 1000.0))
+    }
+
+    async fn rtc_reported_at(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.rtc_reported_at))
+    }
+
+    async fn rtc_reported_offset_secs(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<f64>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.rtc_reported_offset_ms)
+            .map(|ms| ms as f64 / 1000.0))
+    }
+
+    async fn rtc_sync_due_at(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DateTime<Utc>>> {
+        let loader = ctx.data::<DataLoader<EinkDisplayDataLoader>>()?;
+        let interval = ctx
+            .data::<SettingsContainer>()?
+            .eink_display
+            .rtc_sync_interval;
+
+        Ok(loader
+            .load_one(self.address.clone())
+            .await?
+            .and_then(|d| d.rtc_synced_at)
+            .map(|synced_at| synced_at + interval))
+    }
+
+    async fn target_firmware_version(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<String>> {
+        let settings = ctx.data::<SettingsContainer>()?;
+
+        Ok(match self.kind {
+            EinkDisplayKind::EinkDisplayFirmware => {
+                Some(settings.eink_display.firmware_version.clone())
+            }
+            EinkDisplayKind::Trmnl => None,
+        })
     }
 
     async fn config(

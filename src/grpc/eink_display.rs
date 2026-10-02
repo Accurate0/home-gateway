@@ -163,6 +163,21 @@ impl EinkDisplayService {
         let now = chrono::Utc::now();
         let interval = self.state.settings.eink_display.rtc_sync_interval;
 
+        if let Some(reported) = reported {
+            let offset_ms = (reported - now).num_milliseconds();
+
+            if let Err(e) = eink
+                .store_rtc_report(device_id, name, reported, offset_ms)
+                .await
+            {
+                tracing::warn!(
+                    device_id = %device_id,
+                    "failed to store the reported rtc: {}",
+                    e.message()
+                );
+            }
+        }
+
         let Some(sync) = rtc_sync(reported, synced_at, now, interval) else {
             return false;
         };

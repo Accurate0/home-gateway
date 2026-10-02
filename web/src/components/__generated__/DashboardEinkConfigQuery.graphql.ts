@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d767049b8964954aa0c78ba9fbfe2f63>>
+ * @generated SignedSource<<f66265c2e67d928c83a4b1c138b77932>>
  * @lightSyntaxTransform
  */
 
@@ -13,11 +13,25 @@ export type DashboardEinkConfigQuery$variables = {
 };
 export type DashboardEinkConfigQuery$data = {
   readonly einkDisplay: {
+    readonly config: {
+      readonly grace: string;
+      readonly lead: string | null | undefined;
+    } | null | undefined;
     readonly deviceConfig: {
       readonly clearScreen: boolean | null | undefined;
       readonly imageUrl: string | null | undefined;
       readonly refreshIntervalMins: number | null | undefined;
     };
+    readonly isCharging: boolean | null | undefined;
+    readonly lastSeen: any | null | undefined;
+    readonly nextWakeAt: any | null | undefined;
+    readonly partialRefreshCount: number | null | undefined;
+    readonly rtcDriftSecs: number | null | undefined;
+    readonly rtcReportedAt: any | null | undefined;
+    readonly rtcReportedOffsetSecs: number | null | undefined;
+    readonly rtcSyncDueAt: any | null | undefined;
+    readonly rtcSyncedAt: any | null | undefined;
+    readonly targetFirmwareVersion: string | null | undefined;
   };
 };
 export type DashboardEinkConfigQuery = {
@@ -79,6 +93,101 @@ v1 = [
           }
         ],
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastSeen",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "nextWakeAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "partialRefreshCount",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "targetFirmwareVersion",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isCharging",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "rtcReportedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "rtcReportedOffsetSecs",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "rtcSyncedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "rtcDriftSecs",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "rtcSyncDueAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "EinkDisplayConfig",
+        "kind": "LinkedField",
+        "name": "config",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "grace",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "lead",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -102,16 +211,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "4b249140d312818864755b25180eca54",
+    "cacheID": "6aba3c55fa43cc71f7ed2dd1b70d5871",
     "id": null,
     "metadata": {},
     "name": "DashboardEinkConfigQuery",
     "operationKind": "query",
-    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n  }\n}\n"
+    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "52221abde1cca51858ab8c131d2d7fdc";
+(node as any).hash = "3822def2b521eb363deb0017d5f29968";
 
 export default node;

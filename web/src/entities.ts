@@ -41,6 +41,20 @@ export interface EinkDeviceConfig {
   clearScreen?: boolean | null;
 }
 
+export interface EinkStatus {
+  nextWakeAt?: string | null;
+  partialRefreshCount?: number | null;
+  targetFirmwareVersion?: string | null;
+  isCharging?: boolean | null;
+  grace?: string | null;
+  lead?: string | null;
+  rtcReportedAt?: string | null;
+  rtcReportedOffsetSecs?: number | null;
+  rtcSyncedAt?: string | null;
+  rtcDriftSecs?: number | null;
+  rtcSyncDueAt?: string | null;
+}
+
 export interface Entity {
   key: string;
   kind: EntityKind;
@@ -66,6 +80,7 @@ export interface Entity {
   batteryPercentage?: number | null;
   config?: EinkDisplayConfig | null;
   deviceConfig?: EinkDeviceConfig | null;
+  einkStatus?: EinkStatus | null;
   vacuumKind?: VacuumKind | null;
   einkKind?: EinkKind | null;
   status?: string | null;

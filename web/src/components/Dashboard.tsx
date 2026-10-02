@@ -328,6 +328,20 @@ const EinkConfigQuery = graphql`
         imageUrl
         clearScreen
       }
+      lastSeen
+      nextWakeAt
+      partialRefreshCount
+      targetFirmwareVersion
+      isCharging
+      rtcReportedAt
+      rtcReportedOffsetSecs
+      rtcSyncedAt
+      rtcDriftSecs
+      rtcSyncDueAt
+      config {
+        grace
+        lead
+      }
     }
   }
 `;
@@ -556,13 +570,32 @@ export default function Dashboard() {
         { fetchPolicy: "network-only" },
       ).subscribe({
         next: (response) => {
-          const deviceConfig = response.einkDisplay?.deviceConfig;
-          if (!deviceConfig) return;
+          const display = response.einkDisplay;
+          const deviceConfig = display?.deviceConfig;
+          if (!display || !deviceConfig) return;
+          const einkStatus = {
+            nextWakeAt: display.nextWakeAt,
+            partialRefreshCount: display.partialRefreshCount,
+            targetFirmwareVersion: display.targetFirmwareVersion,
+            isCharging: display.isCharging,
+            grace: display.config?.grace,
+            lead: display.config?.lead,
+            rtcReportedAt: display.rtcReportedAt,
+            rtcReportedOffsetSecs: display.rtcReportedOffsetSecs,
+            rtcSyncedAt: display.rtcSyncedAt,
+            rtcDriftSecs: display.rtcDriftSecs,
+            rtcSyncDueAt: display.rtcSyncDueAt,
+          };
           setEntities((prev) => {
             const existing = prev.get(entity.key);
             if (!existing) return prev;
             const next = new Map(prev);
-            next.set(entity.key, { ...existing, deviceConfig });
+            next.set(entity.key, {
+              ...existing,
+              deviceConfig,
+              einkStatus,
+              lastSeen: display.lastSeen ?? existing.lastSeen,
+            });
             return next;
           });
         },
