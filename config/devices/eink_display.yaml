@@ -13,7 +13,7 @@
         name: Living Room Display
         orientation: portrait
         refresh: "0 */12 * * *"
-        grace: 10m
+        grace: 30m
         mode:
           name: reddit
           subreddit: EarthPorn
