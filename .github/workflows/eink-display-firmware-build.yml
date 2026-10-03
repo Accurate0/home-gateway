@@ -54,7 +54,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@422f3094be6a0843857aa008b499caaf6bce0da8 # v1.24.0
+        uses: cargo-bins/cargo-binstall@a29e25869a42756b3be062dc4dae3e4b01bb4f38 # v1.25.0
 
       - name: Install cargo-espflash
         run: cargo binstall --no-confirm --locked cargo-espflash
