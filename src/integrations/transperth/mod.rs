@@ -4,10 +4,10 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use chrono::{DateTime, NaiveDate, TimeDelta, Timelike, Utc};
 use chrono_tz::Australia::Perth;
-use moka::future::Cache;
 use reqwest_middleware::ClientWithMiddleware;
 use tracing::instrument;
 
+use crate::cache::MemoryCache;
 use crate::http::get_traced_http_client;
 use crate::settings::{TransperthRoute, TransperthSettings};
 
@@ -105,8 +105,8 @@ pub struct Transperth {
     routes: Arc<Vec<TransperthRoute>>,
     horizon: TimeDelta,
     index: Arc<ArcSwap<Option<gtfs::TimetableIndex>>>,
-    route_departures: Cache<String, Arc<RouteDepartures>>,
-    pta_timetables: Cache<(String, NaiveDate), Arc<realtime::PtaTimetable>>,
+    route_departures: MemoryCache<String, Arc<RouteDepartures>>,
+    pta_timetables: MemoryCache<(String, NaiveDate), Arc<realtime::PtaTimetable>>,
 }
 
 impl Transperth {
@@ -142,13 +142,19 @@ impl Transperth {
             routes: Arc::new(settings.routes.clone()),
             horizon: settings.horizon,
             index: Arc::new(ArcSwap::from_pointee(None)),
-            route_departures: Cache::builder()
-                .max_capacity(settings.cache.routes.capacity)
-                .time_to_live(settings.cache.routes.ttl())
+            route_departures: MemoryCache::builder("transperth_routes")
+                .configure(|cache| {
+                    cache
+                        .max_capacity(settings.cache.routes.capacity)
+                        .time_to_live(settings.cache.routes.ttl())
+                })
                 .build(),
-            pta_timetables: Cache::builder()
-                .max_capacity(settings.cache.timetables.capacity)
-                .time_to_live(settings.cache.timetables.ttl())
+            pta_timetables: MemoryCache::builder("transperth_timetables")
+                .configure(|cache| {
+                    cache
+                        .max_capacity(settings.cache.timetables.capacity)
+                        .time_to_live(settings.cache.timetables.ttl())
+                })
                 .build(),
         })
     }

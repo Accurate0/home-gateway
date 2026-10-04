@@ -116,6 +116,7 @@ impl EinkDisplayManager {
         Some(SourceImage {
             image_key: row.image_key?,
             content_hash: row.image_content_hash.unwrap_or_default(),
+            payload: None,
         })
     }
 }

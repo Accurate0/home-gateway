@@ -1,9 +1,9 @@
-use moka::future::Cache;
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 
+use crate::cache::MemoryCache;
 use crate::mode::Mode;
 use crate::repo::WorkflowRepo;
 use crate::repo::workflow::NewWorkflowRun;
@@ -13,7 +13,7 @@ use crate::workflow_trace::StepTrace;
 #[derive(Clone)]
 pub struct WorkflowManager {
     repo: WorkflowRepo,
-    enabled_cache: Cache<String, Option<bool>>,
+    enabled_cache: MemoryCache<String, Option<bool>>,
 }
 
 pub struct WorkflowRun {
@@ -30,9 +30,12 @@ pub struct WorkflowRun {
 
 impl WorkflowManager {
     pub fn new(db: Pool<Postgres>, enabled_cache: &CacheSettings) -> Self {
-        let enabled_cache = Cache::builder()
-            .max_capacity(enabled_cache.capacity)
-            .time_to_live(enabled_cache.ttl())
+        let enabled_cache = MemoryCache::builder("workflow_enabled")
+            .configure(|cache| {
+                cache
+                    .max_capacity(enabled_cache.capacity)
+                    .time_to_live(enabled_cache.ttl())
+            })
             .build();
 
         Self {
@@ -51,8 +54,10 @@ impl WorkflowManager {
         let slug_owned = slug.to_owned();
         let override_value = self
             .enabled_cache
-            .entry(slug.to_owned())
-            .or_try_insert_with(async move { repo.enabled(&slug_owned).await })
+            .or_try_insert_with(
+                slug.to_owned(),
+                async move { repo.enabled(&slug_owned).await },
+            )
             .await;
 
         let span = tracing::Span::current();

@@ -6,19 +6,28 @@ use std::collections::HashMap;
 
 pub const CACHE_PREFIX: &str = "eink-display/cache/";
 
+pub struct CachedImage {
+    pub key: String,
+    pub payload: bytes::Bytes,
+}
+
 pub async fn cache_processed_image(
     s3: &S3,
     display: &ResolvedDisplay,
     source: Vec<u8>,
     hash: &str,
     source_label: &str,
-) -> Result<String, AppError> {
+) -> Result<CachedImage, AppError> {
     let (target_w, target_h) = display.target_dims();
     let cache_key = format!("{CACHE_PREFIX}{hash}-{}.png", display.orientation_str());
 
-    if s3.get_object_metadata(&cache_key).await?.is_some() {
+    if let Some(cached) = s3.find_object(&cache_key).await? {
         tracing::info!("image cache hit for {source_label} -> {cache_key}");
-        return Ok(cache_key);
+
+        return Ok(CachedImage {
+            key: cache_key,
+            payload: bytes::Bytes::from(cached),
+        });
     }
 
     let processed = tokio::task::spawn_blocking(move || {
@@ -41,7 +50,10 @@ pub async fn cache_processed_image(
         .await?;
     tracing::info!("image cached {source_label} -> {cache_key}");
 
-    Ok(cache_key)
+    Ok(CachedImage {
+        key: cache_key,
+        payload: bytes::Bytes::from(processed),
+    })
 }
 
 pub async fn ensure_source_hash(

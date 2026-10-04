@@ -47,12 +47,13 @@ impl ImageSource for RedditSource {
         let source = ctx.reddit.download_image(&url).await?;
         let content_hash = content_hash(&source);
 
-        let image_key =
+        let cached =
             cache_processed_image(ctx.s3, ctx.display, source, &content_hash, &url).await?;
 
         Ok(Some(SourceImage {
-            image_key,
+            image_key: cached.key,
             content_hash,
+            payload: Some(cached.payload),
         }))
     }
 }

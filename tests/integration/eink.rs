@@ -348,6 +348,7 @@ async fn render(harness: &Harness, image_key: &str, fill: u8) -> String {
         &SourceImage {
             image_key: image_key.to_owned(),
             content_hash: image_key.to_owned(),
+            payload: None,
         },
     )
     .await

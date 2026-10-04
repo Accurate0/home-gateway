@@ -9,6 +9,7 @@ pub mod steps;
 
 mod store;
 
+use crate::cache::MemoryCache;
 use crate::device_registry::DeviceRegistry;
 use crate::eink::flag::epd_flag_config;
 use crate::eink::panel::packed_cache_key;
@@ -39,7 +40,7 @@ pub struct EinkDisplayManager {
     sources: Arc<SourceRegistry>,
     sleep: Arc<SleepSource>,
     frames: Arc<FramePipeline>,
-    packed_frames: moka::future::Cache<String, bytes::Bytes>,
+    packed_frames: MemoryCache<String, bytes::Bytes>,
 }
 
 const PACKED_CACHE_BYTES: u64 = 16 * 1024 * 1024;
@@ -75,10 +76,15 @@ impl EinkDisplayManager {
             sources: Arc::new(sources),
             sleep: Arc::new(SleepSource),
             frames: Arc::new(frames),
-            packed_frames: moka::future::Cache::builder()
-                .max_capacity(PACKED_CACHE_BYTES)
-                .weigher(|_, frame: &bytes::Bytes| frame.len().try_into().unwrap_or(u32::MAX))
-                .time_to_live(PACKED_CACHE_TTL)
+            packed_frames: MemoryCache::builder("eink_packed_frames")
+                .configure(|cache| {
+                    cache
+                        .max_capacity(PACKED_CACHE_BYTES)
+                        .weigher(|_, frame: &bytes::Bytes| {
+                            frame.len().try_into().unwrap_or(u32::MAX)
+                        })
+                        .time_to_live(PACKED_CACHE_TTL)
+                })
                 .build(),
         }
     }
@@ -153,7 +159,7 @@ impl EinkDisplayManager {
         self.store_render(&display.device_id, &display.name, &image)
             .await?;
 
-        self.warm_packed(display).await;
+        self.warm_packed(display, &image).await;
 
         Ok(Some(image))
     }
@@ -190,7 +196,7 @@ impl EinkDisplayManager {
             self.store_render(&display.device_id, &display.name, image)
                 .await?;
 
-            self.warm_packed(display).await;
+            self.warm_packed(display, image).await;
         }
 
         Ok(prepared)
@@ -210,6 +216,7 @@ impl EinkDisplayManager {
                 SourceImage {
                     content_hash: image_key.clone(),
                     image_key,
+                    payload: None,
                 },
                 FrameContext {
                     crop_to: Some(display.target_dims()),
@@ -256,7 +263,11 @@ impl EinkDisplayManager {
         skip_all,
         fields(hash = %plan.hash, cached = tracing::field::Empty)
     )]
-    pub async fn ensure_packed(&self, plan: &RenderPlan) -> Option<bytes::Bytes> {
+    pub async fn ensure_packed(
+        &self,
+        plan: &RenderPlan,
+        payload: Option<bytes::Bytes>,
+    ) -> Option<bytes::Bytes> {
         if let Some(frame) = self.packed_frame(&plan.hash).await {
             tracing::Span::current().record("cached", true);
             return Some(frame);
@@ -264,7 +275,7 @@ impl EinkDisplayManager {
 
         tracing::Span::current().record("cached", false);
 
-        match self.render_packed(plan).await {
+        match self.render_packed(plan, payload).await {
             Ok(packed) => Some(self.store_packed(&plan.hash, packed).await),
             Err(e) => {
                 tracing::warn!(
@@ -282,12 +293,14 @@ impl EinkDisplayManager {
         skip_all,
         fields(device_id = %resolved.device_id)
     )]
-    pub async fn warm_packed(&self, resolved: &ResolvedDisplay) {
+    pub async fn warm_packed(&self, resolved: &ResolvedDisplay, image: &SourceImage) {
         let Some(plan) = self.plan(resolved).await else {
             return;
         };
 
-        match self.ensure_packed(&plan).await {
+        let payload = planned_payload(&plan, image);
+
+        match self.ensure_packed(&plan, payload).await {
             Some(_) => {
                 tracing::info!(hash = %plan.hash, "warmed the packed frame ahead of the wake")
             }
@@ -383,8 +396,15 @@ impl EinkDisplayManager {
         frame
     }
 
-    async fn render_packed(&self, plan: &RenderPlan) -> Result<Vec<u8>, AppError> {
-        let source = self.s3.get_object(&plan.image_key).await?;
+    async fn render_packed(
+        &self,
+        plan: &RenderPlan,
+        payload: Option<bytes::Bytes>,
+    ) -> Result<Vec<u8>, AppError> {
+        let source = match payload {
+            Some(payload) => payload,
+            None => bytes::Bytes::from(self.s3.get_object(&plan.image_key).await?),
+        };
 
         let frames = self.frames.clone();
         let frame = FrameContext {
@@ -399,5 +419,54 @@ impl EinkDisplayManager {
                 .map_err(|e| anyhow::anyhow!("join error: {e}"))??;
 
         Ok(packed)
+    }
+}
+
+fn planned_payload(plan: &RenderPlan, image: &SourceImage) -> Option<bytes::Bytes> {
+    match plan.image_key == image.image_key {
+        true => image.payload.clone(),
+        false => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn plan(image_key: &str) -> RenderPlan {
+        RenderPlan {
+            image_key: image_key.to_owned(),
+            sleep: None,
+            hash: "hash".to_owned(),
+            frame: FrameContext {
+                crop_to: None,
+                sleep_label: None,
+            },
+        }
+    }
+
+    fn image(image_key: &str) -> SourceImage {
+        SourceImage {
+            image_key: image_key.to_owned(),
+            content_hash: "content".to_owned(),
+            payload: Some(bytes::Bytes::from_static(b"png")),
+        }
+    }
+
+    #[test]
+    fn the_payload_is_used_when_the_plan_renders_that_image() {
+        assert_eq!(
+            planned_payload(&plan("cache/a.png"), &image("cache/a.png")),
+            Some(bytes::Bytes::from_static(b"png"))
+        );
+    }
+
+    #[test]
+    fn the_payload_is_ignored_when_the_plan_renders_another_image() {
+        assert_eq!(
+            planned_payload(&plan("sleep/a.png"), &image("cache/a.png")),
+            None
+        );
     }
 }

@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use crate::auth::AuthLockout;
 use crate::auth::api_types::{ApiKeyInfo, CreatedKey};
+use crate::cache::MemoryCache;
 use crate::repo::ApiKeyRepo;
 use crate::repo::api_key::{ApiKeyChanges, ApiKeyRow, NewApiKey};
 use crate::settings::AuthSettings;
 use chrono::{DateTime, Utc};
-use moka::future::Cache;
 use uuid::Uuid;
 
 use axum::http::StatusCode;
@@ -16,8 +16,8 @@ use super::{AuthContext, GeneratedKey, OAuthValidator};
 #[derive(Clone)]
 pub struct AuthManager {
     keys: ApiKeyRepo,
-    cache: Cache<String, Option<Arc<ApiKeyRow>>>,
-    touched: Cache<Uuid, ()>,
+    cache: MemoryCache<String, Option<Arc<ApiKeyRow>>>,
+    touched: MemoryCache<Uuid, ()>,
     lockout: AuthLockout,
     oauth: Option<Arc<OAuthValidator>>,
 }
@@ -28,14 +28,20 @@ impl AuthManager {
         oauth: Option<Arc<OAuthValidator>>,
         settings: &AuthSettings,
     ) -> Self {
-        let cache = Cache::builder()
-            .max_capacity(settings.api_key_cache.capacity)
-            .time_to_live(settings.api_key_cache.ttl())
+        let cache = MemoryCache::builder("api_keys")
+            .configure(|cache| {
+                cache
+                    .max_capacity(settings.api_key_cache.capacity)
+                    .time_to_live(settings.api_key_cache.ttl())
+            })
             .build();
 
-        let touched = Cache::builder()
-            .max_capacity(settings.api_key_cache.capacity)
-            .time_to_live(settings.last_used_interval())
+        let touched = MemoryCache::builder("api_key_touched")
+            .configure(|cache| {
+                cache
+                    .max_capacity(settings.api_key_cache.capacity)
+                    .time_to_live(settings.last_used_interval())
+            })
             .build();
 
         Self {
@@ -82,8 +88,7 @@ impl AuthManager {
 
         let entry = self
             .cache
-            .entry(key)
-            .or_try_insert_with(async move {
+            .or_try_insert_with(key, async move {
                 let row = keys.find_by_hash(&hash).await?;
 
                 Ok::<_, sqlx::Error>(row.map(Arc::new))
@@ -104,7 +109,7 @@ impl AuthManager {
         fields(throttled = tracing::field::Empty)
     )]
     pub async fn touch_last_used(&self, id: Uuid) {
-        let fresh = self.touched.entry(id).or_insert(()).await.is_fresh();
+        let fresh = self.touched.or_insert(id, ()).await.is_fresh();
 
         tracing::Span::current().record("throttled", !fresh);
 

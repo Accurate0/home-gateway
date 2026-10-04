@@ -65,7 +65,7 @@ pub async fn begin(
 
     report_to_actor(report)?;
 
-    let prepared = rpc::query(
+    let prepare = rpc::query(
         EInkDisplayActor::NAME,
         context.prepare_render_timeout,
         |reply| EInkDisplayMessage::PrepareRender {
@@ -76,8 +76,9 @@ pub async fn begin(
     .instrument(tracing::info_span!(
         "eink.prepare_render",
         device_id = %device_id
-    ))
-    .await;
+    ));
+
+    let (prepared, _) = tokio::join!(prepare, warm_displayed_frame(context.eink, report));
 
     if let Err(e) = prepared {
         tracing::warn!(
@@ -107,6 +108,22 @@ pub fn schedule_next_render(
             next_wake_at,
         },
     )
+}
+
+async fn warm_displayed_frame(eink: &EinkDisplayManager, report: &WakeReport<'_>) {
+    let Some(hash) = report.current_image_hash else {
+        return;
+    };
+
+    let Some(display) = eink.resolve(report.device_id).await else {
+        return;
+    };
+
+    if !display.wants_partial() {
+        return;
+    }
+
+    eink.packed_frame(hash).await;
 }
 
 async fn wake_drift_secs(eink: &EinkDisplayManager, device_id: &str) -> Option<i64> {

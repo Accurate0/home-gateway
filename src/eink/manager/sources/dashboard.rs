@@ -113,6 +113,7 @@ impl ImageSource for DashboardSource {
         Ok(Some(SourceImage {
             content_hash: content_hash(&image),
             image_key,
+            payload: Some(bytes::Bytes::from(image)),
         }))
     }
 
@@ -140,6 +141,7 @@ impl ImageSource for DashboardSource {
         Ok(Prepared::Ready(SourceImage {
             content_hash: content_hash(&image),
             image_key,
+            payload: Some(bytes::Bytes::from(image)),
         }))
     }
 }

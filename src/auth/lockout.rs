@@ -2,21 +2,23 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use moka::future::Cache;
-
+use crate::cache::MemoryCache;
 use crate::settings::AuthLockoutSettings;
 
 #[derive(Clone)]
 pub struct AuthLockout {
     attempts: u32,
-    failures: Cache<IpAddr, Arc<AtomicU32>>,
+    failures: MemoryCache<IpAddr, Arc<AtomicU32>>,
 }
 
 impl AuthLockout {
     pub fn new(settings: &AuthLockoutSettings) -> Self {
-        let failures = Cache::builder()
-            .max_capacity(settings.capacity)
-            .time_to_live(settings.window())
+        let failures = MemoryCache::builder("auth_lockout")
+            .configure(|cache| {
+                cache
+                    .max_capacity(settings.capacity)
+                    .time_to_live(settings.window())
+            })
             .build();
 
         Self {
@@ -35,8 +37,9 @@ impl AuthLockout {
     pub async fn record_failure(&self, ip: IpAddr) {
         let failures = self
             .failures
-            .get_with(ip, async { Arc::new(AtomicU32::new(0)) })
-            .await;
+            .or_insert_with(ip, async { Arc::new(AtomicU32::new(0)) })
+            .await
+            .into_value();
 
         let count = failures.fetch_add(1, Ordering::Relaxed) + 1;
 

@@ -63,6 +63,11 @@ struct Instruments {
     rest_requests_total: Counter<u64>,
     /// Wall-clock time to serve a REST request.
     rest_request_duration: Histogram<f64>,
+    cache_requests_total: Counter<u64>,
+    cache_evictions_total: Counter<u64>,
+    cache_entries: Gauge<u64>,
+    cache_weighted_size: Gauge<u64>,
+    cache_capacity: Gauge<u64>,
 }
 
 static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
@@ -220,8 +225,65 @@ static INSTRUMENTS: LazyLock<Instruments> = LazyLock::new(|| {
                 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0,
             ])
             .build(),
+        cache_requests_total: meter
+            .u64_counter("home_gateway_cache_requests_total")
+            .with_description("In-memory cache lookups by cache and outcome (hit / miss)")
+            .build(),
+        cache_evictions_total: meter
+            .u64_counter("home_gateway_cache_evictions_total")
+            .with_description("In-memory cache entries removed, by cache and cause")
+            .build(),
+        cache_entries: meter
+            .u64_gauge("home_gateway_cache_entries")
+            .with_description("Entries held by an in-memory cache as of its last access")
+            .build(),
+        cache_weighted_size: meter
+            .u64_gauge("home_gateway_cache_weighted_size")
+            .with_description("Weighted size of an in-memory cache as of its last access")
+            .build(),
+        cache_capacity: meter
+            .u64_gauge("home_gateway_cache_capacity")
+            .with_description("Configured maximum weighted size of an in-memory cache")
+            .build(),
     }
 });
+
+pub fn record_cache_request(cache: &'static str, hit: bool) {
+    let outcome = if hit { "hit" } else { "miss" };
+
+    INSTRUMENTS.cache_requests_total.add(
+        1,
+        &[
+            KeyValue::new("cache", cache),
+            KeyValue::new("outcome", outcome),
+        ],
+    );
+}
+
+pub fn record_cache_eviction(cache: &'static str, cause: &'static str) {
+    INSTRUMENTS.cache_evictions_total.add(
+        1,
+        &[KeyValue::new("cache", cache), KeyValue::new("cause", cause)],
+    );
+}
+
+pub fn record_cache_size(
+    cache: &'static str,
+    entries: u64,
+    weighted_size: u64,
+    capacity: Option<u64>,
+) {
+    let labels = [KeyValue::new("cache", cache)];
+
+    INSTRUMENTS.cache_entries.record(entries, &labels);
+    INSTRUMENTS
+        .cache_weighted_size
+        .record(weighted_size, &labels);
+
+    if let Some(capacity) = capacity {
+        INSTRUMENTS.cache_capacity.record(capacity, &labels);
+    }
+}
 
 pub fn record_rpc_error(actor: &'static str, kind: &'static str) {
     INSTRUMENTS.rpc_errors_total.add(

@@ -69,6 +69,10 @@ impl ResolvedDisplay {
         self.orientation.target_dims()
     }
 
+    pub fn wants_partial(&self) -> bool {
+        self.partial_enabled && !self.clear_screen
+    }
+
     pub fn orientation_str(&self) -> &'static str {
         self.orientation.as_str()
     }

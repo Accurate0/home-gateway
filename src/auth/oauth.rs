@@ -5,11 +5,10 @@ use jsonwebtoken::{
     Algorithm, DecodingKey, Validation, decode, decode_header,
     jwk::{AlgorithmParameters, EllipticCurve, Jwk, JwkSet},
 };
-use moka::future::Cache;
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Deserialize;
 
-use crate::{http::get_traced_http_client, settings::OAuthSettings};
+use crate::{cache::MemoryCache, http::get_traced_http_client, settings::OAuthSettings};
 
 use super::AuthContext;
 
@@ -34,9 +33,9 @@ pub struct VerifyingKey {
 pub struct OAuthValidator {
     settings: OAuthSettings,
     http: ClientWithMiddleware,
-    keys: Cache<String, Arc<VerifyingKey>>,
+    keys: MemoryCache<String, Arc<VerifyingKey>>,
     last_keys_refresh: tokio::sync::Mutex<Option<Instant>>,
-    userinfo: Cache<String, Arc<UserInfo>>,
+    userinfo: MemoryCache<String, Arc<UserInfo>>,
 }
 
 impl OAuthValidator {
@@ -44,14 +43,20 @@ impl OAuthValidator {
         settings: OAuthSettings,
         timeout: std::time::Duration,
     ) -> Result<Self, crate::http::HttpCreationError> {
-        let keys = Cache::builder()
-            .max_capacity(settings.cache.keys.capacity)
-            .time_to_live(settings.cache.keys.ttl())
+        let keys = MemoryCache::builder("oauth_keys")
+            .configure(|cache| {
+                cache
+                    .max_capacity(settings.cache.keys.capacity)
+                    .time_to_live(settings.cache.keys.ttl())
+            })
             .build();
 
-        let userinfo = Cache::builder()
-            .max_capacity(settings.cache.userinfo.capacity)
-            .time_to_live(settings.cache.userinfo.ttl())
+        let userinfo = MemoryCache::builder("oauth_userinfo")
+            .configure(|cache| {
+                cache
+                    .max_capacity(settings.cache.userinfo.capacity)
+                    .time_to_live(settings.cache.userinfo.ttl())
+            })
             .build();
 
         Ok(Self {
@@ -241,6 +246,7 @@ fn jwk_algorithm(jwk: &Jwk) -> Result<Algorithm, jsonwebtoken::errors::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::enabled_state::EnabledState;
     use std::collections::HashMap;
 
     fn validator(group_scopes: HashMap<String, Vec<String>>) -> OAuthValidator {
@@ -265,9 +271,13 @@ mod tests {
                 },
             },
             http: get_traced_http_client(std::time::Duration::from_secs(30)).unwrap(),
-            keys: Cache::builder().build(),
+            keys: MemoryCache::builder("oauth_keys")
+                .metrics(EnabledState::Disabled)
+                .build(),
             last_keys_refresh: tokio::sync::Mutex::new(None),
-            userinfo: Cache::builder().build(),
+            userinfo: MemoryCache::builder("oauth_userinfo")
+                .metrics(EnabledState::Disabled)
+                .build(),
         }
     }
 

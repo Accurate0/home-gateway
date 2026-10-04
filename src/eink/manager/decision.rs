@@ -57,7 +57,7 @@ impl EinkDisplayManager {
             frame: None,
         };
 
-        let wants_partial = resolved.partial_enabled && !resolved.clear_screen;
+        let wants_partial = resolved.wants_partial();
 
         let previous = async {
             match report.current_image_hash.filter(|_| wants_partial) {
@@ -68,7 +68,7 @@ impl EinkDisplayManager {
 
         let planned = async {
             let plan = self.plan(resolved).await?;
-            let packed = self.ensure_packed(&plan).await?;
+            let packed = self.ensure_packed(&plan, None).await?;
 
             Some((plan, packed))
         };

@@ -1238,6 +1238,226 @@
      "limit": 50
     }
    ]
+  },
+  {
+   "id": 59,
+   "type": "row",
+   "title": "Caches",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 178
+   },
+   "panels": []
+  },
+  {
+   "id": 60,
+   "type": "timeseries",
+   "title": "Cache hit ratio",
+   "description": "Share of lookups answered from memory. A cache with no lookups in the window has no series.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 179
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (cache) (rate(home_gateway_cache_requests_total_total{outcome=\"hit\"}[15m])) / (sum by (cache) (rate(home_gateway_cache_requests_total_total[15m])) > 0)",
+     "legendFormat": "{{cache}}"
+    }
+   ]
+  },
+  {
+   "id": 61,
+   "type": "timeseries",
+   "title": "Cache lookups by outcome",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 179
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (cache, outcome) (rate(home_gateway_cache_requests_total_total[15m]))",
+     "legendFormat": "{{cache}} {{outcome}}"
+    }
+   ]
+  },
+  {
+   "id": 62,
+   "type": "timeseries",
+   "title": "Cache fill",
+   "description": "Weighted size over configured capacity, as of each cache's last access. The packed frame cache is weighted in bytes, the rest in entries.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 187
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (cache) (home_gateway_cache_weighted_size) / max by (cache) (home_gateway_cache_capacity)",
+     "legendFormat": "{{cache}}"
+    }
+   ]
+  },
+  {
+   "id": 63,
+   "type": "timeseries",
+   "title": "Cache evictions by cause",
+   "description": "expired = ttl ran out, size = pushed out at capacity, explicit = invalidated, replaced = overwritten by a newer value.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 187
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (cache, cause) (increase(home_gateway_cache_evictions_total_total[15m])) > 0",
+     "legendFormat": "{{cache}} {{cause}}"
+    }
+   ]
+  },
+  {
+   "id": 64,
+   "type": "table",
+   "title": "Cache summary",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 24,
+    "x": 0,
+    "y": 195
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Hit ratio (1h)"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "percentunit"
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (cache) (home_gateway_cache_entries)",
+     "format": "table",
+     "instant": true
+    },
+    {
+     "refId": "B",
+     "expr": "max by (cache) (home_gateway_cache_weighted_size)",
+     "format": "table",
+     "instant": true
+    },
+    {
+     "refId": "C",
+     "expr": "max by (cache) (home_gateway_cache_capacity)",
+     "format": "table",
+     "instant": true
+    },
+    {
+     "refId": "D",
+     "expr": "sum by (cache) (increase(home_gateway_cache_requests_total_total{outcome=\"hit\"}[1h])) / (sum by (cache) (increase(home_gateway_cache_requests_total_total[1h])) > 0)",
+     "format": "table",
+     "instant": true
+    },
+    {
+     "refId": "E",
+     "expr": "sum by (cache) (increase(home_gateway_cache_evictions_total_total[1h]))",
+     "format": "table",
+     "instant": true
+    }
+   ],
+   "transformations": [
+    {
+     "id": "merge",
+     "options": {}
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true
+      },
+      "renameByName": {
+       "cache": "Cache",
+       "Value #A": "Entries",
+       "Value #B": "Weighted size",
+       "Value #C": "Capacity",
+       "Value #D": "Hit ratio (1h)",
+       "Value #E": "Evictions (1h)"
+      }
+     }
+    }
+   ]
   }
  ]
 }

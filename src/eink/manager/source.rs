@@ -9,6 +9,7 @@ use std::time::Duration;
 pub struct SourceImage {
     pub image_key: String,
     pub content_hash: String,
+    pub payload: Option<bytes::Bytes>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

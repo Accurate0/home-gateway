@@ -39,12 +39,13 @@ impl ImageSource for AlbumSource {
         let source = ctx.s3.get_object(&source_key).await?;
         let content_hash = ensure_source_hash(ctx.s3, &source_key, &source).await?;
 
-        let image_key =
+        let cached =
             cache_processed_image(ctx.s3, ctx.display, source, &content_hash, &source_key).await?;
 
         Ok(Some(SourceImage {
-            image_key,
+            image_key: cached.key,
             content_hash,
+            payload: Some(cached.payload),
         }))
     }
 }
