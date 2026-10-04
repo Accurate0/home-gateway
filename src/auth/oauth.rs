@@ -166,15 +166,17 @@ impl OAuthValidator {
     }
 
     async fn fetch_userinfo(&self, token: &str) -> Result<Arc<UserInfo>, StatusCode> {
-        if let Some(userinfo) = self.userinfo.get(token).await {
-            return Ok(userinfo);
-        }
+        let entry = self
+            .userinfo
+            .or_try_insert_with(token.to_owned(), async {
+                let userinfo = self.request_userinfo(token).await?;
 
-        let userinfo = Arc::new(self.request_userinfo(token).await?);
-        self.userinfo
-            .insert(token.to_owned(), userinfo.clone())
-            .await;
-        Ok(userinfo)
+                Ok::<_, StatusCode>(Arc::new(userinfo))
+            })
+            .await
+            .map_err(|status| *status)?;
+
+        Ok(entry.into_value())
     }
 
     async fn request_userinfo(&self, token: &str) -> Result<UserInfo, StatusCode> {

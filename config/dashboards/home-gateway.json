@@ -57,7 +57,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(home_gateway_mqtt_ingest_total_total[5m]))"
+     "expr": "sum(rate(home_gateway_mqtt_ingest_total[5m]))"
     }
    ]
   },
@@ -118,7 +118,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_workflows_total_total{outcome=\"success\"}[1h])) / (sum(increase(home_gateway_workflows_total_total[1h])) > 0)"
+     "expr": "sum(increase(home_gateway_workflows_total{outcome=\"success\"}[1h])) / (sum(increase(home_gateway_workflows_total[1h])) > 0)"
     }
    ]
   },
@@ -148,7 +148,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "count(sum by (integration) (increase(home_gateway_integration_polls_total_total{outcome=\"error\"}[30m])) > 0) or vector(0)"
+     "expr": "count(sum by (integration) (increase(home_gateway_integration_polls_total{outcome=\"error\"}[30m])) > 0) or vector(0)"
     }
    ]
   },
@@ -178,7 +178,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_reconciler_give_ups_total_total[6h])) or vector(0)"
+     "expr": "sum(increase(home_gateway_reconciler_give_ups_total[6h])) or vector(0)"
     }
    ]
   },
@@ -208,7 +208,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_actor_restarts_total_total[1h])) or vector(0)"
+     "expr": "sum(increase(home_gateway_actor_restarts_total[1h])) or vector(0)"
     }
    ]
   },
@@ -267,7 +267,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_workflow_steps_total_total{outcome=\"error\"}[1h])) or vector(0)"
+     "expr": "sum(increase(home_gateway_workflow_steps_total{outcome=\"error\"}[1h])) or vector(0)"
     }
    ]
   },
@@ -296,7 +296,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_device_handler_errors_total_total[1h])) or vector(0)"
+     "expr": "sum(increase(home_gateway_device_handler_errors_total[1h])) or vector(0)"
     }
    ]
   },
@@ -325,7 +325,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_db_queries_total_total{outcome=\"error\"}[1h])) or vector(0)"
+     "expr": "sum(increase(home_gateway_db_queries_total{outcome=\"error\"}[1h])) or vector(0)"
     }
    ]
   },
@@ -354,7 +354,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(increase(home_gateway_rpc_errors_total_total[1h])) or vector(0)"
+     "expr": "sum(increase(home_gateway_rpc_errors_total[1h])) or vector(0)"
     }
    ]
   },
@@ -498,7 +498,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (topic_kind) (rate(home_gateway_mqtt_ingest_total_total[5m]))",
+     "expr": "sum by (topic_kind) (rate(home_gateway_mqtt_ingest_total[5m]))",
      "legendFormat": "{{topic_kind}}"
     }
    ]
@@ -516,7 +516,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (handler) (rate(home_gateway_device_handler_errors_total_total[15m]))",
+     "expr": "sum by (handler) (rate(home_gateway_device_handler_errors_total[15m]))",
      "legendFormat": "{{handler}}"
     }
    ]
@@ -540,12 +540,12 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (kind) (rate(home_gateway_reconciler_retries_total_total[15m]))",
+     "expr": "sum by (kind) (rate(home_gateway_reconciler_retries_total[15m]))",
      "legendFormat": "retry {{kind}}"
     },
     {
      "refId": "B",
-     "expr": "sum by (kind) (rate(home_gateway_reconciler_give_ups_total_total[15m]))",
+     "expr": "sum by (kind) (rate(home_gateway_reconciler_give_ups_total[15m]))",
      "legendFormat": "give-up {{kind}}"
     }
    ]
@@ -589,7 +589,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (event_kind) (rate(home_gateway_bus_events_total_total[5m]))",
+     "expr": "sum by (event_kind) (rate(home_gateway_bus_events_total[5m]))",
      "legendFormat": "{{event_kind}}"
     }
    ]
@@ -607,7 +607,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (outcome) (rate(home_gateway_triggers_total_total[5m]))",
+     "expr": "sum by (outcome) (rate(home_gateway_triggers_total[5m]))",
      "legendFormat": "{{outcome}}"
     }
    ]
@@ -625,7 +625,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (outcome) (rate(home_gateway_workflows_total_total[5m]))",
+     "expr": "sum by (outcome) (rate(home_gateway_workflows_total[5m]))",
      "legendFormat": "{{outcome}}"
     }
    ]
@@ -666,7 +666,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total_total[5m]))",
+     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total[5m]))",
      "legendFormat": "{{step}}"
     }
    ]
@@ -684,7 +684,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total_total{outcome=\"error\"}[5m]))",
+     "expr": "sum by (step) (rate(home_gateway_workflow_steps_total{outcome=\"error\"}[5m]))",
      "legendFormat": "{{step}}"
     }
    ]
@@ -702,7 +702,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (task, outcome) (increase(home_gateway_adhoc_tasks_total_total[24h]))",
+     "expr": "sum by (task, outcome) (increase(home_gateway_adhoc_tasks_total[24h]))",
      "format": "table",
      "instant": true
     }
@@ -729,7 +729,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (integration, outcome) (rate(home_gateway_integration_polls_total_total[15m]))",
+     "expr": "sum by (integration, outcome) (rate(home_gateway_integration_polls_total[15m]))",
      "legendFormat": "{{integration}} ({{outcome}})"
     }
    ]
@@ -864,7 +864,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (operation, outcome) (rate(home_gateway_graphql_operations_total_total[15m]))",
+     "expr": "sum by (operation, outcome) (rate(home_gateway_graphql_operations_total[15m]))",
      "legendFormat": "{{operation}} {{outcome}}"
     }
    ]
@@ -900,7 +900,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "topk(10, sum by (query) (rate(home_gateway_db_queries_total_total[15m])))",
+     "expr": "topk(10, sum by (query) (rate(home_gateway_db_queries_total[15m])))",
      "legendFormat": "{{query}}"
     }
    ]
@@ -936,7 +936,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (query) (rate(home_gateway_db_queries_total_total{outcome=\"error\"}[15m])) > 0",
+     "expr": "sum by (query) (rate(home_gateway_db_queries_total{outcome=\"error\"}[15m])) > 0",
      "legendFormat": "{{query}}"
     }
    ]
@@ -954,7 +954,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (actor, kind) (rate(home_gateway_rpc_errors_total_total[15m]))",
+     "expr": "sum by (actor, kind) (rate(home_gateway_rpc_errors_total[15m]))",
      "legendFormat": "{{actor}} {{kind}}"
     }
    ]
@@ -972,7 +972,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (actor, reason) (increase(home_gateway_actor_restarts_total_total[15m]))",
+     "expr": "sum by (actor, reason) (increase(home_gateway_actor_restarts_total[15m]))",
      "legendFormat": "{{actor}} / {{reason}}"
     }
    ]
@@ -999,7 +999,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "topk(15, sum by (route) (rate(home_gateway_rest_requests_total_total[15m])))",
+     "expr": "topk(15, sum by (route) (rate(home_gateway_rest_requests_total[15m])))",
      "legendFormat": "{{route}}"
     }
    ]
@@ -1035,7 +1035,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (status) (rate(home_gateway_rest_requests_total_total[15m]))",
+     "expr": "sum by (status) (rate(home_gateway_rest_requests_total[15m]))",
      "legendFormat": "{{status}}"
     }
    ]
@@ -1053,7 +1053,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (route, status) (rate(home_gateway_rest_requests_total_total{status=~\"4..|5..\"}[15m]))",
+     "expr": "sum by (route, status) (rate(home_gateway_rest_requests_total{status=~\"4..|5..\"}[15m]))",
      "legendFormat": "{{route}} {{status}}"
     }
    ]
@@ -1168,12 +1168,12 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (status) (increase(home_gateway_rest_requests_total_total{route=~\"/v1/grpc/home_gateway.eink.v1.EinkDisplay/.*\"}[1h]))",
+     "expr": "sum by (status) (increase(home_gateway_rest_requests_total{route=~\"/v1/grpc/home_gateway.eink.v1.EinkDisplay/.*\"}[1h]))",
      "legendFormat": "grpc wake ({{status}})"
     },
     {
      "refId": "B",
-     "expr": "sum by (status) (increase(home_gateway_rest_requests_total_total{route=\"/v1/epd/config\"}[1h]))",
+     "expr": "sum by (status) (increase(home_gateway_rest_requests_total{route=\"/v1/epd/config\"}[1h]))",
      "legendFormat": "json config ({{status}})"
     }
    ]
@@ -1278,7 +1278,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (cache) (rate(home_gateway_cache_requests_total_total{outcome=\"hit\"}[15m])) / (sum by (cache) (rate(home_gateway_cache_requests_total_total[15m])) > 0)",
+     "expr": "sum by (cache) (rate(home_gateway_cache_requests_total{outcome=\"hit\"}[15m])) / (sum by (cache) (rate(home_gateway_cache_requests_total[15m])) > 0)",
      "legendFormat": "{{cache}}"
     }
    ]
@@ -1306,7 +1306,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (cache, outcome) (rate(home_gateway_cache_requests_total_total[15m]))",
+     "expr": "sum by (cache, outcome) (rate(home_gateway_cache_requests_total[15m]))",
      "legendFormat": "{{cache}} {{outcome}}"
     }
    ]
@@ -1366,7 +1366,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (cache, cause) (increase(home_gateway_cache_evictions_total_total[15m])) > 0",
+     "expr": "sum by (cache, cause) (increase(home_gateway_cache_evictions_total[15m])) > 0",
      "legendFormat": "{{cache}} {{cause}}"
     }
    ]
@@ -1425,13 +1425,13 @@
     },
     {
      "refId": "D",
-     "expr": "sum by (cache) (increase(home_gateway_cache_requests_total_total{outcome=\"hit\"}[1h])) / (sum by (cache) (increase(home_gateway_cache_requests_total_total[1h])) > 0)",
+     "expr": "sum by (cache) (increase(home_gateway_cache_requests_total{outcome=\"hit\"}[1h])) / (sum by (cache) (increase(home_gateway_cache_requests_total[1h])) > 0)",
      "format": "table",
      "instant": true
     },
     {
      "refId": "E",
-     "expr": "sum by (cache) (increase(home_gateway_cache_evictions_total_total[1h]))",
+     "expr": "sum by (cache) (increase(home_gateway_cache_evictions_total[1h]))",
      "format": "table",
      "instant": true
     }

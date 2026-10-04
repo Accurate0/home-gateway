@@ -226,6 +226,7 @@ pub fn init_metrics() -> Registry {
 
     let exporter = opentelemetry_prometheus::exporter()
         .with_registry(registry.clone())
+        .without_counter_suffixes()
         .build()
         .unwrap();
 

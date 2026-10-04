@@ -15,7 +15,7 @@ oauth:
   cache:
     keys:
       capacity: 32
-      ttl: 1h
+      ttl: 24h
     keys_refresh_cooldown: 1m
     userinfo:
       capacity: 256
