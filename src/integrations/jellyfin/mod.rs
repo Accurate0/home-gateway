@@ -65,7 +65,7 @@ impl Jellyfin {
             format!("ws://{}", self.base_url)
         };
 
-        format!("{ws}/socket?api_key={}&deviceId={DEVICE_ID}", self.api_key)
+        format!("{ws}/socket?deviceId={DEVICE_ID}")
     }
 
     #[instrument(name = "jellyfin.sessions", skip(self))]
@@ -88,7 +88,7 @@ impl Jellyfin {
             .map_err(reqwest_middleware::Error::from)?)
     }
 
-    fn auth_header(&self) -> String {
+    pub fn auth_header(&self) -> String {
         format!(
             r#"MediaBrowser Client="home-gateway", Device="home-gateway", DeviceId="{DEVICE_ID}", Version="1", Token="{}""#,
             self.api_key

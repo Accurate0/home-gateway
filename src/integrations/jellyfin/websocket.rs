@@ -4,6 +4,9 @@ use futures_util::{SinkExt, StreamExt};
 use ractor::ActorRef;
 use serde_json::{Value, json};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::HeaderValue;
+use tokio_tungstenite::tungstenite::http::header::AUTHORIZATION;
 use tokio_util::sync::CancellationToken;
 
 use super::Jellyfin;
@@ -93,7 +96,14 @@ async fn listen(
     let silence_timeout = websocket.silence_timeout();
 
     tracing::info!("connecting to jellyfin websocket");
-    let (socket, _) = tokio_tungstenite::connect_async(jellyfin.ws_url()).await?;
+    let mut request = jellyfin.ws_url().into_client_request()?;
+
+    request.headers_mut().insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&jellyfin.auth_header())?,
+    );
+
+    let (socket, _) = tokio_tungstenite::connect_async(request).await?;
     let (mut write, mut read) = socket.split();
 
     if reconnect.connected() {
@@ -190,6 +200,8 @@ mod tests {
 
     use chrono::TimeDelta;
     use tokio::net::TcpListener;
+    use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
+    use tokio_tungstenite::tungstenite::http::StatusCode;
 
     use crate::settings::enabled_state::EnabledState;
     use crate::settings::{BackoffSettings, JellyfinSettings, ReconnectSettings};
@@ -198,7 +210,33 @@ mod tests {
 
     async fn push_then_hang_up(listener: TcpListener) {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+        #[allow(clippy::result_large_err)]
+        let authorise = |request: &Request, response: Response| {
+            let token_in_header = request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.contains(r#"Token="test-key""#));
+
+            let token_in_url = request
+                .uri()
+                .query()
+                .is_some_and(|query| query.contains("test-key"));
+
+            if token_in_header && !token_in_url {
+                return Ok(response);
+            }
+
+            let mut denied = ErrorResponse::new(None);
+            *denied.status_mut() = StatusCode::FORBIDDEN;
+
+            Err(denied)
+        };
+
+        let mut socket = tokio_tungstenite::accept_hdr_async(stream, authorise)
+            .await
+            .unwrap();
 
         let start = socket.next().await.unwrap().unwrap();
         assert!(start.to_text().unwrap().contains("SessionsStart"));
