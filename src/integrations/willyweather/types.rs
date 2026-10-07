@@ -2,8 +2,10 @@ use async_graphql::SimpleObject;
 use serde::{Deserialize, Serialize};
 
 use crate::event_bus::WeatherMetric;
+use crate::lua::LuaClass;
 
-#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[lua(name = "ForecastDay", output)]
 pub struct ForecastDetails {
     pub date_time: String,
     pub code: String,
@@ -37,7 +39,8 @@ impl ForecastDetails {
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize, SimpleObject)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[lua(output)]
 pub struct ForecastHour {
     pub date_time: String,
     pub temperature: Option<f64>,
@@ -46,7 +49,8 @@ pub struct ForecastHour {
     pub wind_direction_text: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[lua(output)]
 pub struct Forecast {
     pub days: Vec<ForecastDetails>,
     pub hours: Vec<ForecastHour>,

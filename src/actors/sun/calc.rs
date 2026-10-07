@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, Utc};
 use chrono_tz::Australia::Perth;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sunrise::{Coordinates, SolarDay, SolarEvent};
 
 use crate::settings::location::LocationSettings;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SunPeriod {
     Day,

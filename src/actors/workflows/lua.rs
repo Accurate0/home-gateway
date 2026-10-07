@@ -2,12 +2,10 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use chrono::Utc;
+use mlua::{ExternalError, Function, MultiValue, Value as LuaValue};
 
-use mlua::{ExternalError, Lua, LuaSerdeExt, Table, Value as LuaValue};
-
-use crate::auth::scope::{Action, Resource, Scope};
 use crate::lua::bridge::lua_to_value;
-use crate::lua::{LuaCallContext, LuaFunction, LuaModule, LuaParam, LuaType, schema};
+use crate::lua::{Json, LuaCallContext, lua_module};
 use crate::mode::Mode;
 use crate::settings::workflow::EnableState;
 use crate::workflow_trace::{StepOutcome, StepTrace};
@@ -15,256 +13,133 @@ use crate::workflow_trace::{StepOutcome, StepTrace};
 use super::manager::WorkflowManager;
 use super::{ReusableCall, WorkflowWorker};
 
-const RUN: LuaFunction = LuaFunction {
-    name: "run",
-    params: &[
-        LuaParam {
-            name: "name",
-            ty: LuaType::String,
-        },
-        LuaParam {
-            name: "with",
-            ty: LuaType::Optional(&LuaType::Map(&LuaType::Any)),
-        },
-    ],
-    returns: None,
-    scope: Some(Scope::new(Resource::Workflow, Action::Run)),
-};
-
-const MODE: LuaFunction = LuaFunction {
-    name: "mode",
-    params: &[],
-    returns: Some(LuaType::Schema(schema::<Mode>)),
-    scope: Some(Scope::new(Resource::Workflow, Action::Read)),
-};
-
-const SET_MODE: LuaFunction = LuaFunction {
-    name: "set_mode",
-    params: &[LuaParam {
-        name: "mode",
-        ty: LuaType::Schema(schema::<Mode>),
-    }],
-    returns: None,
-    scope: Some(Scope::new(Resource::Workflow, Action::Write)),
-};
-
-const SET_ENABLED: LuaFunction = LuaFunction {
-    name: "set_enabled",
-    params: &[
-        LuaParam {
-            name: "tag",
-            ty: LuaType::String,
-        },
-        LuaParam {
-            name: "state",
-            ty: LuaType::Schema(schema::<EnableState>),
-        },
-    ],
-    returns: None,
-    scope: Some(Scope::new(Resource::Workflow, Action::Write)),
-};
-
-const RECORD_STEP: LuaFunction = LuaFunction {
-    name: "record_step",
-    params: &[
-        LuaParam {
-            name: "kind",
-            ty: LuaType::String,
-        },
-        LuaParam {
-            name: "detail",
-            ty: LuaType::Optional(&LuaType::String),
-        },
-        LuaParam {
-            name: "error",
-            ty: LuaType::Optional(&LuaType::String),
-        },
-    ],
-    returns: None,
-    scope: Some(Scope::new(Resource::Workflow, Action::Read)),
-};
-
-const STEP: LuaFunction = LuaFunction {
-    name: "step",
-    params: &[
-        LuaParam {
-            name: "kind",
-            ty: LuaType::String,
-        },
-        LuaParam {
-            name: "run",
-            ty: LuaType::Function,
-        },
-        LuaParam {
-            name: "detail",
-            ty: LuaType::Optional(&LuaType::String),
-        },
-    ],
-    returns: Some(LuaType::Any),
-    scope: Some(Scope::new(Resource::Workflow, Action::Read)),
-};
-
-const FUNCTIONS: &[LuaFunction] = &[RUN, MODE, SET_MODE, SET_ENABLED, RECORD_STEP, STEP];
-
 pub struct WorkflowLua;
 
-impl LuaModule for WorkflowLua {
-    fn namespace(&self) -> &'static str {
-        "workflow"
-    }
+#[lua_module(namespace = "workflow")]
+impl WorkflowLua {
+    #[lua(scope = Workflow::Run)]
+    async fn run(
+        cx: &LuaCallContext,
+        name: String,
+        with: Option<BTreeMap<String, LuaValue>>,
+    ) -> mlua::Result<()> {
+        let mut inputs = BTreeMap::new();
 
-    fn functions(&self) -> &'static [LuaFunction] {
-        FUNCTIONS
-    }
+        for (key, value) in with.unwrap_or_default() {
+            let value = lua_to_value(&value).ok_or_else(|| {
+                format!("input `{key}` must be a string, number or boolean").into_lua_err()
+            })?;
 
-    fn register(&self, lua: &Lua, table: &Table, cx: &LuaCallContext) -> mlua::Result<()> {
-        let run_cx = cx.clone();
-        cx.expose(table, &RUN, || {
-            lua.create_async_function(move |_, (name, with): (String, Option<Table>)| {
-                let cx = run_cx.clone();
+            inputs.insert(key, value);
+        }
 
-                async move {
-                    let mut inputs = BTreeMap::new();
+        let worker = WorkflowWorker::new(cx.state.clone());
+        let origin = cx.origin.clone();
 
-                    if let Some(with) = with {
-                        for pair in with.pairs::<String, LuaValue>() {
-                            let (key, value) = pair?;
+        let call = ReusableCall {
+            event_id: cx.event_id,
+            depth: cx.depth + 1,
+            dry_run: cx.dry_run,
+            origin_slug: &origin,
+            trace: &cx.trace,
+        };
 
-                            let value = lua_to_value(&value).ok_or_else(|| {
-                                format!("input `{key}` must be a string, number or boolean")
-                                    .into_lua_err()
-                            })?;
-
-                            inputs.insert(key, value);
-                        }
-                    }
-
-                    let worker = WorkflowWorker::new(cx.state.clone());
-                    let origin = cx.origin.clone();
-
-                    let call = ReusableCall {
-                        event_id: cx.event_id,
-                        depth: cx.depth + 1,
-                        dry_run: cx.dry_run,
-                        origin_slug: &origin,
-                        trace: &cx.trace,
-                    };
-
-                    cx.command("workflow.run", &name, || async {
-                        worker.run_reusable(call, &name, inputs).await
-                    })
-                    .await
-                }
-            })
-        })?;
-
-        let mode_cx = cx.clone();
-        cx.expose(table, &MODE, || {
-            lua.create_async_function(move |_, ()| {
-                let cx = mode_cx.clone();
-
-                async move {
-                    let mode = cx
-                        .state
-                        .handles
-                        .expect::<WorkflowManager>()
-                        .current_mode()
-                        .await;
-
-                    Ok(mode.as_str().to_owned())
-                }
-            })
-        })?;
-
-        let set_mode_cx = cx.clone();
-        cx.expose(table, &SET_MODE, || {
-            lua.create_async_function(move |lua, mode: LuaValue| {
-                let cx = set_mode_cx.clone();
-
-                async move {
-                    let mode: Mode = lua.from_value(mode)?;
-                    let worker = WorkflowWorker::new(cx.state.clone());
-
-                    cx.command("workflow.set_mode", mode.as_str(), || async {
-                        worker.run_set_mode(mode).await
-                    })
-                    .await
-                }
-            })
-        })?;
-
-        let record_step_cx = cx.clone();
-        cx.expose(table, &RECORD_STEP, || {
-            lua.create_function(
-                move |_, (kind, detail, error): (String, Option<String>, Option<String>)| {
-                    let outcome = if error.is_some() {
-                        StepOutcome::Error
-                    } else {
-                        StepOutcome::Ran
-                    };
-
-                    record_step_cx.trace.record(StepTrace {
-                        depth: record_step_cx.trace_depth(),
-                        kind,
-                        outcome,
-                        guard: None,
-                        detail,
-                        error,
-                        duration: Duration::ZERO,
-                        at: Utc::now(),
-                    });
-
-                    Ok(())
-                },
-            )
-        })?;
-
-        let step_cx = cx.clone();
-        cx.expose(table, &STEP, || {
-            lua.create_async_function(
-                move |_, (kind, run, detail): (String, mlua::Function, Option<String>)| {
-                    let cx = step_cx.clone();
-
-                    async move {
-                        let handle = cx.trace.start(cx.trace_depth(), kind, detail);
-
-                        let result = {
-                            let _nested = cx.trace.nest();
-
-                            run.call_async::<mlua::MultiValue>(()).await
-                        };
-
-                        cx.trace
-                            .finish_with(handle, result.as_ref().err().map(ToString::to_string));
-
-                        result
-                    }
-                },
-            )
-        })?;
-
-        let set_enabled_cx = cx.clone();
-        cx.expose(table, &SET_ENABLED, || {
-            lua.create_async_function(move |lua, (tag, state): (String, LuaValue)| {
-                let cx = set_enabled_cx.clone();
-
-                async move {
-                    let state: EnableState = lua.from_value(state)?;
-                    let worker = WorkflowWorker::new(cx.state.clone());
-                    let origin = cx.origin.clone();
-
-                    cx.command(
-                        "workflow.set_enabled",
-                        format!("#{tag} -> {state:?}"),
-                        || async {
-                            worker
-                                .run_set_workflows_enabled(cx.event_id, &origin, &tag, state)
-                                .await
-                        },
-                    )
-                    .await
-                }
-            })
+        cx.command(Self::RUN, &name, || async {
+            worker.run_reusable(call, &name, inputs).await
         })
+        .await
+    }
+
+    #[lua(scope = Workflow::Read)]
+    async fn mode(cx: &LuaCallContext) -> mlua::Result<Json<Mode>> {
+        let mode = cx
+            .state
+            .handles
+            .expect::<WorkflowManager>()
+            .current_mode()
+            .await;
+
+        Ok(Json(mode))
+    }
+
+    #[lua(scope = Workflow::Write)]
+    async fn set_mode(cx: &LuaCallContext, mode: Json<Mode>) -> mlua::Result<()> {
+        let mode = mode.0;
+        let worker = WorkflowWorker::new(cx.state.clone());
+
+        cx.command(Self::SET_MODE, mode.as_str(), || async {
+            worker.run_set_mode(mode).await
+        })
+        .await
+    }
+
+    #[lua(scope = Workflow::Write)]
+    async fn set_enabled(
+        cx: &LuaCallContext,
+        tag: String,
+        state: Json<EnableState>,
+    ) -> mlua::Result<()> {
+        let state = state.0;
+        let worker = WorkflowWorker::new(cx.state.clone());
+        let origin = cx.origin.clone();
+
+        cx.command(
+            Self::SET_ENABLED,
+            format!("#{tag} -> {state:?}"),
+            || async {
+                worker
+                    .run_set_workflows_enabled(cx.event_id, &origin, &tag, state)
+                    .await
+            },
+        )
+        .await
+    }
+
+    #[lua(scope = Workflow::Read)]
+    fn record_step(
+        cx: &LuaCallContext,
+        kind: String,
+        detail: Option<String>,
+        error: Option<String>,
+    ) -> mlua::Result<()> {
+        let outcome = if error.is_some() {
+            StepOutcome::Error
+        } else {
+            StepOutcome::Ran
+        };
+
+        cx.trace.record(StepTrace {
+            depth: cx.trace_depth(),
+            kind,
+            outcome,
+            guard: None,
+            detail,
+            error,
+            duration: Duration::ZERO,
+            at: Utc::now(),
+        });
+
+        Ok(())
+    }
+
+    #[lua(scope = Workflow::Read)]
+    async fn step(
+        cx: &LuaCallContext,
+        kind: String,
+        run: Function,
+        detail: Option<String>,
+    ) -> mlua::Result<MultiValue> {
+        let handle = cx.trace.start(cx.trace_depth(), kind, detail);
+
+        let result = {
+            let _nested = cx.trace.nest();
+
+            run.call_async::<MultiValue>(()).await
+        };
+
+        cx.trace
+            .finish_with(handle, result.as_ref().err().map(ToString::to_string));
+
+        result
     }
 }

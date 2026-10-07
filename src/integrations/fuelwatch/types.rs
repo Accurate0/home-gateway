@@ -1,7 +1,10 @@
 use async_graphql::SimpleObject;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+use crate::lua::LuaClass;
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[lua(output)]
 pub struct FuelSite {
     pub site_id: i32,
     pub name: String,

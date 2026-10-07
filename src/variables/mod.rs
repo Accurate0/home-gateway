@@ -13,6 +13,7 @@ mod workflow_context_variables;
 #[cfg(test)]
 mod tests;
 
+pub use home_gateway_macros::WorkflowContextVariables;
 pub use node::Node;
 pub use path::Path;
 pub use scalar_variable::ScalarVariable;
@@ -23,4 +24,3 @@ pub use var_type::VarType;
 pub use variable_field::VariableField;
 pub use vars::Vars;
 pub use workflow_context_variables::WorkflowContextVariables;
-pub use workflow_context_variables_derive::WorkflowContextVariables;

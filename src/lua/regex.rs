@@ -1,61 +1,7 @@
-use mlua::{ExternalResult, Lua, Table, Value as LuaValue};
+use mlua::{ExternalResult, Lua, Table};
 use regex::Regex;
 
-use super::{LuaCallContext, LuaFunction, LuaModule, LuaParam, LuaType};
-
-const PATTERN: LuaParam = LuaParam {
-    name: "pattern",
-    ty: LuaType::String,
-};
-
-const TEXT: LuaParam = LuaParam {
-    name: "text",
-    ty: LuaType::String,
-};
-
-const TEST: LuaFunction = LuaFunction {
-    name: "test",
-    params: &[PATTERN, TEXT],
-    returns: Some(LuaType::Boolean),
-    scope: None,
-};
-
-const MATCH: LuaFunction = LuaFunction {
-    name: "match",
-    params: &[PATTERN, TEXT],
-    returns: Some(LuaType::Optional(&LuaType::Table)),
-    scope: None,
-};
-
-const FIND_ALL: LuaFunction = LuaFunction {
-    name: "find_all",
-    params: &[PATTERN, TEXT],
-    returns: Some(LuaType::Array(&LuaType::String)),
-    scope: None,
-};
-
-const REPLACE: LuaFunction = LuaFunction {
-    name: "replace",
-    params: &[
-        PATTERN,
-        TEXT,
-        LuaParam {
-            name: "replacement",
-            ty: LuaType::String,
-        },
-    ],
-    returns: Some(LuaType::String),
-    scope: None,
-};
-
-const SPLIT: LuaFunction = LuaFunction {
-    name: "split",
-    params: &[PATTERN, TEXT],
-    returns: Some(LuaType::Array(&LuaType::String)),
-    scope: None,
-};
-
-const FUNCTIONS: &[LuaFunction] = &[TEST, MATCH, FIND_ALL, REPLACE, SPLIT];
+use super::lua_module;
 
 pub struct RegexLua;
 
@@ -63,9 +9,9 @@ fn compile(pattern: &str) -> mlua::Result<Regex> {
     Regex::new(pattern).into_lua_err()
 }
 
-fn captures(lua: &Lua, regex: &Regex, text: &str) -> mlua::Result<LuaValue> {
+fn captures(lua: &Lua, regex: &Regex, text: &str) -> mlua::Result<Option<Table>> {
     let Some(found) = regex.captures(text) else {
-        return Ok(LuaValue::Nil);
+        return Ok(None);
     };
 
     let result = lua.create_table()?;
@@ -82,85 +28,60 @@ fn captures(lua: &Lua, regex: &Regex, text: &str) -> mlua::Result<LuaValue> {
         }
     }
 
-    Ok(LuaValue::Table(result))
+    Ok(Some(result))
 }
 
-fn strings<'a>(lua: &Lua, items: impl Iterator<Item = &'a str>) -> mlua::Result<Table> {
-    let result = lua.create_table()?;
-
-    for item in items {
-        result.push(item)?;
+#[lua_module(namespace = "re")]
+impl RegexLua {
+    #[lua]
+    fn test(pattern: String, text: String) -> mlua::Result<bool> {
+        Ok(compile(&pattern)?.is_match(&text))
     }
 
-    Ok(result)
-}
-
-impl LuaModule for RegexLua {
-    fn namespace(&self) -> &'static str {
-        "re"
+    #[lua]
+    fn r#match(lua: &Lua, pattern: String, text: String) -> mlua::Result<Option<Table>> {
+        captures(lua, &compile(&pattern)?, &text)
     }
 
-    fn functions(&self) -> &'static [LuaFunction] {
-        FUNCTIONS
+    #[lua]
+    fn find_all(pattern: String, text: String) -> mlua::Result<Vec<String>> {
+        let regex = compile(&pattern)?;
+
+        Ok(regex
+            .find_iter(&text)
+            .map(|found| found.as_str().to_owned())
+            .collect())
     }
 
-    fn register(&self, lua: &Lua, table: &Table, cx: &LuaCallContext) -> mlua::Result<()> {
-        cx.expose(table, &TEST, || {
-            lua.create_function(|_, (pattern, text): (String, String)| {
-                Ok(compile(&pattern)?.is_match(&text))
-            })
-        })?;
+    #[lua]
+    fn replace(pattern: String, text: String, replacement: String) -> mlua::Result<String> {
+        Ok(compile(&pattern)?
+            .replace_all(&text, replacement.as_str())
+            .into_owned())
+    }
 
-        cx.expose(table, &MATCH, || {
-            lua.create_function(|lua, (pattern, text): (String, String)| {
-                captures(lua, &compile(&pattern)?, &text)
-            })
-        })?;
+    #[lua]
+    fn split(pattern: String, text: String) -> mlua::Result<Vec<String>> {
+        let regex = compile(&pattern)?;
 
-        cx.expose(table, &FIND_ALL, || {
-            lua.create_function(|lua, (pattern, text): (String, String)| {
-                let regex = compile(&pattern)?;
-
-                strings(lua, regex.find_iter(&text).map(|found| found.as_str()))
-            })
-        })?;
-
-        cx.expose(table, &REPLACE, || {
-            lua.create_function(
-                |_, (pattern, text, replacement): (String, String, String)| {
-                    Ok(compile(&pattern)?
-                        .replace_all(&text, replacement.as_str())
-                        .into_owned())
-                },
-            )
-        })?;
-
-        cx.expose(table, &SPLIT, || {
-            lua.create_function(|lua, (pattern, text): (String, String)| {
-                let regex = compile(&pattern)?;
-
-                strings(lua, regex.split(&text))
-            })
-        })
+        Ok(regex.split(&text).map(str::to_owned).collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use mlua::{Lua, Table, Value as LuaValue};
+    use mlua::Lua;
 
-    use super::{captures, compile, strings};
+    use super::{RegexLua, captures, compile};
 
     #[test]
     fn captures_expose_positional_and_named_groups() {
         let lua = Lua::new();
         let regex = compile(r"(?<hour>\d{2}):(\d{2})").expect("expected a valid pattern");
 
-        let LuaValue::Table(found) =
-            captures(&lua, &regex, "leaves at 07:45").expect("expected captures")
-        else {
-            panic!("expected a capture table");
-        };
+        let found = captures(&lua, &regex, "leaves at 07:45")
+            .expect("expected captures")
+            .expect("expected a capture table");
 
         assert_eq!(found.get::<String>(1).expect("whole match"), "07:45");
         assert_eq!(found.get::<String>(2).expect("hour group"), "07");
@@ -175,7 +96,7 @@ mod tests {
 
         let found = captures(&lua, &regex, "no digits").expect("expected a result");
 
-        assert!(found.is_nil());
+        assert!(found.is_none());
     }
 
     #[test]
@@ -184,15 +105,9 @@ mod tests {
     }
 
     #[test]
-    fn strings_become_a_sequence() {
-        let lua = Lua::new();
-        let regex = compile(r",\s*").expect("expected a valid pattern");
-
-        let parts: Table = strings(&lua, regex.split("a, b,c")).expect("expected a table");
-        let parts: Vec<String> = parts
-            .sequence_values::<String>()
-            .collect::<mlua::Result<_>>()
-            .expect("expected strings");
+    fn split_returns_the_parts_in_order() {
+        let parts =
+            RegexLua::split(r",\s*".to_owned(), "a, b,c".to_owned()).expect("expected the parts");
 
         assert_eq!(parts, vec!["a", "b", "c"]);
     }

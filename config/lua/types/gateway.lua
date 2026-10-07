@@ -10,6 +10,8 @@
 
 ---@alias gw.Mode "home"|"away"|"vacation"|"guest"
 
+---@alias gw.NotifyAcknowledge { remind_after: string, reminders: integer }
+
 ---@alias gw.NotifyAction { label: string, action: gw.NotifyActionKind }
 
 ---@alias gw.NotifyActionKind { workflow: string, type: "run_workflow" }|{ seconds: integer, type: "snooze" }|{ type: "dismiss" }|{ type: "acknowledge" }
@@ -28,7 +30,7 @@
 ---@field at integer
 
 ---@class gw.EnvironmentReading
----@field temperature? number
+---@field temperature number
 ---@field humidity? number
 ---@field pressure? number
 ---@field lux? number
@@ -133,10 +135,6 @@
 ---@field actions? gw.NotifyAction[]
 ---@field acknowledge? gw.NotifyAcknowledge
 
----@class gw.NotifyAcknowledge
----@field remind_after string
----@field reminders integer
-
 ---@class gw.Request
 ---@field method string
 ---@field path string
@@ -152,9 +150,9 @@
 ---@field body any
 
 ---@class gw.SolarAverages
----@field last_15_mins number
----@field last_1_hour number
----@field last_3_hours number
+---@field last_15_mins? number
+---@field last_1_hour? number
+---@field last_3_hours? number
 
 ---@class gw.TimeNow
 ---@field iso string

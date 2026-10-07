@@ -1,102 +1,45 @@
-use mlua::{Lua, Table};
+use crate::lua::{LuaCallContext, LuaClass, lua_module};
 
-use crate::auth::scope::{Action, Resource, Scope};
-use crate::lua::{LuaCallContext, LuaClass, LuaField, LuaFunction, LuaModule, LuaParam, LuaType};
-
-const TRACKED_PRICE: LuaClass = LuaClass {
-    name: "WoolworthsTrackedPrice",
-    fields: &[
-        LuaField {
-            name: "product_id",
-            ty: LuaType::Integer,
-        },
-        LuaField {
-            name: "price",
-            ty: LuaType::Optional(&LuaType::Number),
-        },
-    ],
-};
-
-const PRICE: LuaFunction = LuaFunction {
-    name: "price",
-    params: &[LuaParam {
-        name: "product_id",
-        ty: LuaType::Integer,
-    }],
-    returns: Some(LuaType::Optional(&LuaType::Number)),
-    scope: Some(Scope::new(Resource::Woolworths, Action::Read)),
-};
-
-const TRACKED: LuaFunction = LuaFunction {
-    name: "tracked",
-    params: &[],
-    returns: Some(LuaType::Array(&LuaType::Class(&TRACKED_PRICE))),
-    scope: Some(Scope::new(Resource::Woolworths, Action::Read)),
-};
-
-const FUNCTIONS: &[LuaFunction] = &[PRICE, TRACKED];
+#[derive(LuaClass)]
+#[lua(output)]
+pub struct WoolworthsTrackedPrice {
+    product_id: i64,
+    price: Option<f64>,
+}
 
 pub struct WoolworthsLua;
 
-impl LuaModule for WoolworthsLua {
-    fn namespace(&self) -> &'static str {
-        "woolworths"
+#[lua_module(namespace = "woolworths")]
+impl WoolworthsLua {
+    #[lua(scope = Woolworths::Read)]
+    async fn price(cx: &LuaCallContext, product_id: i64) -> mlua::Result<Option<f64>> {
+        let prices = cx
+            .query(Self::PRICE, || async {
+                cx.state.repos.woolworths().prices().await
+            })
+            .await?;
+
+        Ok(prices.get(&product_id).copied())
     }
 
-    fn functions(&self) -> &'static [LuaFunction] {
-        FUNCTIONS
-    }
+    #[lua(scope = Woolworths::Read)]
+    async fn tracked(cx: &LuaCallContext) -> mlua::Result<Vec<WoolworthsTrackedPrice>> {
+        let repo = cx.state.repos.woolworths();
 
-    fn register(&self, lua: &Lua, table: &Table, cx: &LuaCallContext) -> mlua::Result<()> {
-        let price_cx = cx.clone();
-        cx.expose(table, &PRICE, || {
-            lua.create_async_function(move |_, product_id: i64| {
-                let cx = price_cx.clone();
+        let tracked = cx
+            .query(Self::TRACKED, || async { repo.tracked_products().await })
+            .await?;
 
-                async move {
-                    let prices = cx
-                        .query("woolworths.price", || async {
-                            cx.state.repos.woolworths().prices().await
-                        })
-                        .await?;
+        let prices = cx
+            .query(Self::TRACKED, || async { repo.prices().await })
+            .await?;
 
-                    Ok(prices.get(&product_id).copied())
-                }
+        Ok(tracked
+            .into_iter()
+            .map(|product| WoolworthsTrackedPrice {
+                product_id: product.product_id,
+                price: prices.get(&product.product_id).copied(),
             })
-        })?;
-
-        let tracked_cx = cx.clone();
-        cx.expose(table, &TRACKED, || {
-            lua.create_async_function(move |lua, ()| {
-                let cx = tracked_cx.clone();
-
-                async move {
-                    let repo = cx.state.repos.woolworths();
-
-                    let tracked = cx
-                        .query("woolworths.tracked", || async {
-                            repo.tracked_products().await
-                        })
-                        .await?;
-
-                    let prices = cx
-                        .query("woolworths.tracked", || async { repo.prices().await })
-                        .await?;
-
-                    let result = lua.create_table()?;
-
-                    for product in tracked {
-                        let row = lua.create_table()?;
-
-                        row.set("product_id", product.product_id)?;
-                        row.set("price", prices.get(&product.product_id).copied())?;
-
-                        result.push(row)?;
-                    }
-
-                    Ok(result)
-                }
-            })
-        })
+            .collect())
     }
 }

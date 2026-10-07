@@ -2734,6 +2734,7 @@ dependencies = [
  "gcp_auth",
  "hex",
  "hmac 0.13.0",
+ "home-gateway-macros",
  "http",
  "http-body-util",
  "icalendar",
@@ -2805,9 +2806,17 @@ dependencies = [
  "url",
  "uuid",
  "wildmatch",
- "workflow-context-variables-derive",
  "yaml-include",
  "zip",
+]
+
+[[package]]
+name = "home-gateway-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -8328,15 +8337,6 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
-
-[[package]]
-name = "workflow-context-variables-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.6",
-]
 
 [[package]]
 name = "writeable"

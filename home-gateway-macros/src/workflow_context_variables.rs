@@ -1,16 +1,5 @@
-use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Field, Fields, LitStr, parse_macro_input};
-
-#[proc_macro_derive(WorkflowContextVariables, attributes(variables))]
-pub fn derive_workflow_context_variables(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    match expand(&input) {
-        Ok(tokens) => tokens.into(),
-        Err(error) => error.to_compile_error().into(),
-    }
-}
+use syn::{Data, DeriveInput, Field, Fields, LitStr};
 
 struct FieldAttributes {
     rename: Option<String>,
@@ -49,7 +38,7 @@ impl FieldAttributes {
     }
 }
 
-fn expand(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+pub fn expand(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let Data::Struct(data) = &input.data else {
         return Err(syn::Error::new_spanned(
             &input.ident,

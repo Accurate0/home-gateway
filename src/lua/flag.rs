@@ -1,36 +1,9 @@
+use std::collections::BTreeMap;
+
 use mlua::{Lua, Table, Value as LuaValue};
 use open_feature::{EvaluationContext, StructValue, Value as FlagValue};
 
-use crate::auth::scope::{Action, Resource, Scope};
-
-use super::{LuaCallContext, LuaFunction, LuaModule, LuaParam, LuaType};
-
-const NAME: LuaParam = LuaParam {
-    name: "name",
-    ty: LuaType::String,
-};
-
-const ENABLED: LuaFunction = LuaFunction {
-    name: "enabled",
-    params: &[
-        NAME,
-        LuaParam {
-            name: "default",
-            ty: LuaType::Boolean,
-        },
-    ],
-    returns: Some(LuaType::Boolean),
-    scope: Some(Scope::new(Resource::FeatureFlag, Action::Read)),
-};
-
-const GET: LuaFunction = LuaFunction {
-    name: "get",
-    params: &[NAME],
-    returns: Some(LuaType::Optional(&LuaType::Map(&LuaType::Any))),
-    scope: Some(Scope::new(Resource::FeatureFlag, Action::Read)),
-};
-
-const FUNCTIONS: &[LuaFunction] = &[ENABLED, GET];
+use super::{LuaCallContext, lua_module};
 
 pub struct FlagLua;
 
@@ -65,61 +38,49 @@ fn struct_to_lua(lua: &Lua, value: &StructValue) -> mlua::Result<Table> {
     Ok(table)
 }
 
-impl LuaModule for FlagLua {
-    fn namespace(&self) -> &'static str {
-        "flag"
+#[lua_module(namespace = "flag")]
+impl FlagLua {
+    #[lua(scope = FeatureFlag::Read)]
+    async fn enabled(cx: &LuaCallContext, name: String, default: bool) -> mlua::Result<bool> {
+        let enabled = cx
+            .state
+            .feature_flag_client
+            .is_feature_enabled(&name, default, EvaluationContext::default())
+            .await;
+
+        tracing::debug!("[{}] lua flag {name} evaluated to {enabled}", cx.event_id);
+
+        Ok(enabled)
     }
 
-    fn functions(&self) -> &'static [LuaFunction] {
-        FUNCTIONS
-    }
+    #[lua(scope = FeatureFlag::Read)]
+    async fn get(
+        cx: &LuaCallContext,
+        lua: &Lua,
+        name: String,
+    ) -> mlua::Result<Option<BTreeMap<String, LuaValue>>> {
+        let value = cx
+            .state
+            .feature_flag_client
+            .get_struct(&name, EvaluationContext::default())
+            .await;
 
-    fn register(&self, lua: &Lua, table: &Table, cx: &LuaCallContext) -> mlua::Result<()> {
-        let enabled_cx = cx.clone();
-        cx.expose(table, &ENABLED, || {
-            lua.create_async_function(move |_, (name, default): (String, bool)| {
-                let cx = enabled_cx.clone();
+        match value {
+            Ok(value) => value
+                .fields
+                .iter()
+                .map(|(key, field)| Ok((key.clone(), flag_to_lua(lua, field)?)))
+                .collect::<mlua::Result<_>>()
+                .map(Some),
+            Err(e) => {
+                tracing::warn!(
+                    "[{}] lua flag {name} could not be evaluated: {e:?}",
+                    cx.event_id
+                );
 
-                async move {
-                    let enabled = cx
-                        .state
-                        .feature_flag_client
-                        .is_feature_enabled(&name, default, EvaluationContext::default())
-                        .await;
-
-                    tracing::debug!("[{}] lua flag {name} evaluated to {enabled}", cx.event_id);
-
-                    Ok(enabled)
-                }
-            })
-        })?;
-
-        let get_cx = cx.clone();
-        cx.expose(table, &GET, || {
-            lua.create_async_function(move |lua, name: String| {
-                let cx = get_cx.clone();
-
-                async move {
-                    let value = cx
-                        .state
-                        .feature_flag_client
-                        .get_struct(&name, EvaluationContext::default())
-                        .await;
-
-                    match value {
-                        Ok(value) => Ok(LuaValue::Table(struct_to_lua(&lua, &value)?)),
-                        Err(e) => {
-                            tracing::warn!(
-                                "[{}] lua flag {name} could not be evaluated: {e:?}",
-                                cx.event_id
-                            );
-
-                            Ok(LuaValue::Nil)
-                        }
-                    }
-                }
-            })
-        })
+                Ok(None)
+            }
+        }
     }
 }
 
