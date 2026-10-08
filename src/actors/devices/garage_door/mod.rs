@@ -1,11 +1,9 @@
 pub mod command;
-mod command_outcome;
 mod command_request;
 mod garage_door_command_error;
 mod garage_door_reading;
 pub mod lua;
 
-pub use command_outcome::CommandOutcome;
 pub use command_request::CommandRequest;
 pub use garage_door_command_error::GarageDoorCommandError;
 pub use garage_door_reading::GarageDoorReading;
@@ -17,7 +15,7 @@ use uuid::Uuid;
 use crate::actors::devices::handler::DeviceHandler;
 use crate::db::GarageDoorState;
 use crate::decoding::{Decoders, DeviceRoleName};
-use crate::device_command::{self, CommandTargets, Outbound};
+use crate::device_command::{self, CommandOutcome, CommandTargets, Outbound};
 use crate::event_bus::EventBusMessage;
 use crate::integrations::notify::{Notification, notify};
 use crate::settings::workflow::GarageDoorCommand;

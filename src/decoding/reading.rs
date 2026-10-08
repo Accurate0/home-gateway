@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Deserializer};
 
-use crate::db::GarageDoorState;
+use crate::db::{AirPurifierMode, GarageDoorState};
 use crate::device_metric::MetricValue;
 use crate::settings::Metric;
 
@@ -32,7 +32,26 @@ pub struct DeviceReading {
     #[serde(default)]
     pub garage_door: Option<GarageDoorFields>,
     #[serde(default)]
+    pub air_purifier: Option<AirPurifierFields>,
+    #[serde(default)]
     pub metrics: BTreeMap<String, ReadingMetric>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AirPurifierFields {
+    #[serde(default)]
+    pub state: Option<String>,
+    #[serde(default)]
+    pub mode: Option<AirPurifierMode>,
+    #[serde(default, deserialize_with = "integer")]
+    pub speed: Option<i32>,
+    #[serde(default)]
+    pub pm25: Option<f64>,
+    #[serde(default)]
+    pub filter_life: Option<f64>,
+    #[serde(default)]
+    pub display: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

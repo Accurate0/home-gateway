@@ -1,4 +1,5 @@
 pub mod adhoc;
+pub mod air_purifier;
 pub mod api_key;
 pub mod battery;
 pub mod device;
@@ -31,6 +32,7 @@ pub mod woolworths;
 pub mod workflow;
 
 pub use adhoc::AdhocRepo;
+pub use air_purifier::AirPurifierRepo;
 pub use api_key::ApiKeyRepo;
 pub use battery::BatteryRepo;
 pub use device::DeviceRepo;

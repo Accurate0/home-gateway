@@ -1,7 +1,7 @@
 use async_graphql::{ComplexObject, ID, Json, SimpleObject, Union};
 use uuid::Uuid;
 
-use crate::db::GarageDoorState;
+use crate::db::{AirPurifierMode, GarageDoorState};
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBusMessage;
 use crate::mode::Mode;
@@ -36,6 +36,17 @@ pub struct GarageDoorUpdate {
     pub id: ID,
     pub name: String,
     pub state: GarageDoorState,
+}
+
+#[derive(SimpleObject)]
+pub struct AirPurifierUpdate {
+    pub event_id: Uuid,
+    pub id: ID,
+    pub name: String,
+    pub on: bool,
+    pub mode: Option<AirPurifierMode>,
+    pub speed: Option<i32>,
+    pub display: Option<bool>,
 }
 
 #[derive(SimpleObject)]
@@ -310,6 +321,7 @@ pub enum EventUpdate {
     Presence(PresenceUpdate),
     Door(DoorUpdate),
     GarageDoor(GarageDoorUpdate),
+    AirPurifier(AirPurifierUpdate),
     Switch(SwitchUpdate),
     Environment(EnvironmentUpdate),
     Plant(PlantUpdate),
@@ -420,6 +432,23 @@ impl EventUpdate {
                 id: ID(device_id),
                 name,
                 state,
+            }),
+            EventBusMessage::AirPurifier {
+                event_id,
+                device_id,
+                name,
+                on,
+                mode,
+                speed,
+                display,
+            } => EventUpdate::AirPurifier(AirPurifierUpdate {
+                event_id,
+                id: ID(device_id),
+                name,
+                on,
+                mode,
+                speed,
+                display,
             }),
             EventBusMessage::SwitchAction {
                 event_id,

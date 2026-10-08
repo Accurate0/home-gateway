@@ -1,6 +1,7 @@
 use async_graphql::Object;
 
 use crate::device_registry::{DeviceRegistry, IdOrAlias};
+use crate::graphql::mutations::air_purifier_mutation::AirPurifierMutation;
 use crate::graphql::mutations::eink_display_mutation::EinkDisplayMutation;
 use crate::graphql::mutations::garage_door_mutation::GarageDoorMutation;
 use crate::graphql::mutations::light_mutation::LightMutation;
@@ -58,6 +59,23 @@ impl EntitiesMutation {
         }
 
         Ok(GarageDoorMutation::new(address))
+    }
+
+    async fn air_purifier(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: IdOrAlias,
+    ) -> async_graphql::Result<AirPurifierMutation> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.lookup(&id)?.address.clone();
+
+        if registry.air_purifier(&address).is_none() {
+            return Err(async_graphql::Error::new(format!(
+                "unknown air purifier `{id}`"
+            )));
+        }
+
+        Ok(AirPurifierMutation::new(address))
     }
 
     async fn media_player(

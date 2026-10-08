@@ -7,6 +7,7 @@ use crate::graphql::mutations::push_mutation::PushMutation;
 use crate::graphql::mutations::workflows_mutation::WorkflowsMutation;
 
 pub mod adhoc_mutation;
+pub mod air_purifier_mutation;
 pub mod eink_display_mutation;
 pub mod entities_mutation;
 pub mod garage_door_mutation;

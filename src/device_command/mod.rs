@@ -1,7 +1,9 @@
+mod command_outcome;
 mod command_targets;
 mod device_command_error;
 mod outbound;
 
+pub use command_outcome::CommandOutcome;
 pub use command_targets::CommandTargets;
 pub use device_command_error::DeviceCommandError;
 pub use outbound::Outbound;
@@ -47,19 +49,21 @@ pub async fn send(
                 return Err(DeviceCommandError::ServiceForPayload(address.to_owned()));
             };
 
-            if role != DeviceRoleName::Light {
-                return Err(DeviceCommandError::Unsupported {
-                    address: address.to_owned(),
-                    transport: device.transport,
-                    role,
-                });
-            }
-
-            targets
+            let esphome_native_api = targets
                 .esphome_native_api
-                .ok_or(DeviceCommandError::EsphomeNativeApiNotConfigured)?
-                .light(address, payload)
-                .await?;
+                .ok_or(DeviceCommandError::EsphomeNativeApiNotConfigured)?;
+
+            match role {
+                DeviceRoleName::Light => esphome_native_api.light(address, payload).await?,
+                DeviceRoleName::AirPurifier => esphome_native_api.fan(address, payload).await?,
+                _ => {
+                    return Err(DeviceCommandError::Unsupported {
+                        address: address.to_owned(),
+                        transport: device.transport,
+                        role,
+                    });
+                }
+            }
         }
         Transport::HomeAssistant => {
             let Outbound::Text(service) = outbound else {

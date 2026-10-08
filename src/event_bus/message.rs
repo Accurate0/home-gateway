@@ -5,17 +5,17 @@ use super::fuel_change::FuelChange;
 use super::playback::PlaybackState;
 use super::reading::SensorReading;
 use super::variables::{
-    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
-    DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
-    GarageDoorVariables, HomeAssistantVariables, JellyfinVariables, LightVariables,
-    MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables, SolarVariables,
-    SunVariables, SwitchVariables, TransperthVariables, UnifiVariables, WeatherVariables,
-    WoolworthsVariables,
+    AirPurifierVariables, CommandFailedVariables, CronVariables, DeviceBatteryVariables,
+    DeviceConnectionVariables, DoorVariables, EnvironmentVariables, FeatureFlagVariables,
+    FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables, JellyfinVariables,
+    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
+    SolarVariables, SunVariables, SwitchVariables, TransperthVariables, UnifiVariables,
+    WeatherVariables, WoolworthsVariables,
 };
 use super::weather_reading::WeatherReading;
 use super::weather_source::WeatherSource;
 use crate::actors::sun::calc::SunTransition;
-use crate::db::GarageDoorState;
+use crate::db::{AirPurifierMode, GarageDoorState};
 use crate::mode::Mode;
 use crate::repo::intent::{DeviceKind, IntentAttributes};
 use crate::settings::IEEEAddress;
@@ -43,6 +43,15 @@ pub enum EventBusMessage {
         device_id: String,
         name: String,
         state: GarageDoorState,
+    },
+    AirPurifier {
+        event_id: Uuid,
+        device_id: String,
+        name: String,
+        on: bool,
+        mode: Option<AirPurifierMode>,
+        speed: Option<i32>,
+        display: Option<bool>,
     },
     /// A control switch / button reported an action (e.g. `single`, `on`).
     SwitchAction {
@@ -266,6 +275,7 @@ impl EventBusMessage {
             EventBusMessage::Presence { event_id, .. }
             | EventBusMessage::Door { event_id, .. }
             | EventBusMessage::GarageDoor { event_id, .. }
+            | EventBusMessage::AirPurifier { event_id, .. }
             | EventBusMessage::SwitchAction { event_id, .. }
             | EventBusMessage::Environment { event_id, .. }
             | EventBusMessage::Plant { event_id, .. }
@@ -296,6 +306,7 @@ impl EventBusMessage {
             EventBusMessage::Presence { .. } => "presence",
             EventBusMessage::Door { .. } => "door",
             EventBusMessage::GarageDoor { .. } => "garage_door",
+            EventBusMessage::AirPurifier { .. } => "air_purifier",
             EventBusMessage::SwitchAction { .. } => "switch",
             EventBusMessage::Environment { .. } => "environment",
             EventBusMessage::Plant { .. } => "plant",
@@ -324,6 +335,7 @@ impl EventBusMessage {
         "presence",
         "door",
         "garage_door",
+        "air_purifier",
         "switch",
         "environment",
         "plant",
@@ -367,6 +379,7 @@ impl EventBusMessage {
             EventBusMessage::DeviceBattery { device_id, .. }
             | EventBusMessage::DeviceConnection { device_id, .. }
             | EventBusMessage::GarageDoor { device_id, .. }
+            | EventBusMessage::AirPurifier { device_id, .. }
             | EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
             EventBusMessage::Jellyfin { user, .. } => user.clone(),
             EventBusMessage::Solar { .. } => "solar".to_string(),
@@ -405,6 +418,23 @@ impl EventBusMessage {
                 name: name.clone(),
                 state: state.to_string(),
                 open: *state != GarageDoorState::Closed,
+            }
+            .to_node(),
+            EventBusMessage::AirPurifier {
+                device_id,
+                name,
+                on,
+                mode,
+                speed,
+                display,
+                ..
+            } => AirPurifierVariables {
+                device: device_id.clone(),
+                name: name.clone(),
+                on: *on,
+                mode: mode.map(|mode| mode.to_string()),
+                speed: *speed,
+                display: *display,
             }
             .to_node(),
             EventBusMessage::SwitchAction {

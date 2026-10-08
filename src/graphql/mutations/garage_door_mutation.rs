@@ -1,7 +1,8 @@
 use async_graphql::Object;
 
-use crate::actors::devices::garage_door::{CommandOutcome, command};
+use crate::actors::devices::garage_door::command;
 use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
+use crate::device_command::CommandOutcome;
 use crate::graphql::guard::ScopeGuard;
 use crate::settings::workflow::GarageDoorCommand;
 

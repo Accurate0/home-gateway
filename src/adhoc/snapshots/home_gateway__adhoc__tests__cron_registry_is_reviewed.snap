@@ -5,6 +5,7 @@ expression: cron_manifest(&cron_registry())
 refresh_public_holidays  -
 refresh_transperth_timetable  -
 sample_light_state  -
+trim_air_purifier_events  -
 trim_derived_door_events  -
 trim_device_intent  -
 trim_device_metric  -

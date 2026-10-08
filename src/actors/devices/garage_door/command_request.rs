@@ -1,8 +1,7 @@
 use ractor::RpcReplyPort;
 
+use crate::device_command::CommandOutcome;
 use crate::settings::workflow::GarageDoorCommand;
-
-use super::command_outcome::CommandOutcome;
 
 pub struct CommandRequest {
     pub address: String,

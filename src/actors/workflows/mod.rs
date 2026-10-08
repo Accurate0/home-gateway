@@ -1,16 +1,17 @@
+use crate::actors::devices::air_purifier;
 use crate::actors::devices::garage_door;
 use crate::actors::devices::robot_vacuum;
 use crate::actors::system::push;
 use crate::actors::system::rpc;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::Scope;
-use crate::device_command::CommandTargets;
+use crate::device_command::{CommandOutcome, CommandTargets};
 use crate::http::public_client::PublicHttpClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaSource};
 use crate::settings::NotificationSource;
-use crate::settings::workflow::{GarageDoorCommand, HttpMethod, VacuumCommand};
+use crate::settings::workflow::{AirPurifierCommand, GarageDoorCommand, HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
 use crate::workflow_trace::{StepOutcome, TraceRecorder};
@@ -70,6 +71,10 @@ pub enum WorkflowError {
     NotAGarageDoor(String),
     #[error(transparent)]
     GarageDoor(#[from] garage_door::GarageDoorCommandError),
+    #[error("`{0}` is not an air purifier")]
+    NotAnAirPurifier(String),
+    #[error(transparent)]
+    AirPurifier(#[from] air_purifier::AirPurifierCommandError),
     #[error("http request to {url} returned {status}")]
     Http {
         url: String,
@@ -407,6 +412,9 @@ impl WorkflowWorker {
             Step::GarageDoor {
                 device, command, ..
             } => self.run_garage_door(device, *command).await.map(|_| ()),
+            Step::AirPurifier {
+                device, command, ..
+            } => self.run_air_purifier(device, *command).await.map(|_| ()),
             Step::Lua { .. } => unreachable!("a lua step is dispatched before this match"),
         };
 
@@ -536,7 +544,7 @@ impl WorkflowWorker {
         &self,
         device: &str,
         command: GarageDoorCommand,
-    ) -> Result<garage_door::CommandOutcome, WorkflowError> {
+    ) -> Result<CommandOutcome, WorkflowError> {
         let registry = &self.shared_actor_state.devices;
         let address = registry.address_or_self(device);
 
@@ -545,6 +553,21 @@ impl WorkflowWorker {
         }
 
         Ok(garage_door::command::send(address, command).await?)
+    }
+
+    pub async fn run_air_purifier(
+        &self,
+        device: &str,
+        command: AirPurifierCommand,
+    ) -> Result<CommandOutcome, WorkflowError> {
+        let registry = &self.shared_actor_state.devices;
+        let address = registry.address_or_self(device);
+
+        if registry.air_purifier(address).is_none() {
+            return Err(WorkflowError::NotAnAirPurifier(device.to_owned()));
+        }
+
+        Ok(air_purifier::command::send(address, command).await?)
     }
 
     /// Enable/disable every workflow carrying `tag`, skipping the workflow the

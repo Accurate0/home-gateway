@@ -711,6 +711,109 @@
         {
           "type": "object",
           "properties": {
+            "device": {
+              "type": "string"
+            },
+            "when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Condition"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "air_purifier"
+            }
+          },
+          "required": [
+            "type",
+            "device"
+          ],
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "const": "turn_on"
+                }
+              },
+              "required": [
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string",
+                  "const": "turn_off"
+                }
+              },
+              "required": [
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "$ref": "#/$defs/AirPurifierMode"
+                },
+                "command": {
+                  "type": "string",
+                  "const": "set_mode"
+                }
+              },
+              "required": [
+                "command",
+                "mode"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "speed": {
+                  "type": "integer",
+                  "format": "uint8",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "command": {
+                  "type": "string",
+                  "const": "set_speed"
+                }
+              },
+              "required": [
+                "command",
+                "speed"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "on": {
+                  "type": "boolean"
+                },
+                "command": {
+                  "type": "string",
+                  "const": "set_display"
+                }
+              },
+              "required": [
+                "command",
+                "on"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "returns": {
               "type": "object",
               "additionalProperties": {
@@ -935,6 +1038,26 @@
             "type",
             "device",
             "state"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "air_purifier"
+            }
+          },
+          "required": [
+            "type",
+            "device",
+            "on"
           ]
         },
         {
@@ -1465,6 +1588,14 @@
         "close"
       ]
     },
+    "AirPurifierMode": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "sleep",
+        "auto"
+      ]
+    },
     "TriggerMatcher": {
       "description": "Which event a trigger fires on. Mirrors the [`crate::event_bus::EventBusMessage`]\nvariants; the dispatcher matches messages against these.",
       "oneOf": [
@@ -1528,6 +1659,40 @@
             "type": {
               "type": "string",
               "const": "garage_door"
+            }
+          },
+          "required": [
+            "type",
+            "device"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "device": {
+              "type": "string"
+            },
+            "on": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirPurifierMode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "air_purifier"
             }
           },
           "required": [
@@ -1864,11 +2029,14 @@
               ],
               "default": null
             },
-            "device": {
+            "devices": {
               "type": [
-                "string",
+                "array",
                 "null"
               ],
+              "items": {
+                "type": "string"
+              },
               "default": null
             },
             "item_type": {

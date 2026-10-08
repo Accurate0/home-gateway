@@ -9,6 +9,7 @@ enum class EntityGlyph(@param:DrawableRes val drawable: Int) {
     DOOR_OPEN(R.drawable.ic_door_open),
     DOOR_CLOSED(R.drawable.ic_door_closed),
     GARAGE(R.drawable.ic_garage),
+    FAN(R.drawable.ic_fan),
     PERSON(R.drawable.ic_person),
     PERSON_AWAY(R.drawable.ic_person_away),
     THERMOMETER(R.drawable.ic_thermometer),

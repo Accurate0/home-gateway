@@ -339,6 +339,7 @@ query {
     ... on LightEntity { id name category room on }
     ... on DoorEntity { id name category room open }
     ... on GarageDoorEntity { id name category room open }
+    ... on AirPurifierEntity { id name category room on }
     ... on PresenceEntity { id name category room }
     ... on EnvironmentEntity { id name category room }
     ... on EinkDisplayEntity { id name category room }

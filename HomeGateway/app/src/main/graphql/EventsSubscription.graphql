@@ -13,6 +13,13 @@ subscription Events {
       id
       garageState: state
     }
+    ... on AirPurifierUpdate {
+      id
+      on
+      purifierMode: mode
+      purifierSpeed: speed
+      displayOn: display
+    }
     ... on PresenceUpdate {
       id
       present

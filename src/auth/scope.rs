@@ -67,6 +67,7 @@ macro_rules! scopes {
 scopes! {
     AdhocTask => "adhoc_task" [Read, Write],
     AdminKeys => "admin.keys" [Read, Write],
+    AirPurifier => "air_purifier" [Read, Write],
     Alarm => "alarm" [Read],
     Device => "device" [Read],
     Door => "door" [Read],
@@ -102,6 +103,7 @@ scopes! {
     Woolworths => "woolworths" [Read],
     Workflow => "workflow" [Read, Write, Run],
 
+    EventsAirPurifier => "events.air_purifier" [Read],
     EventsBattery => "events.battery" [Read],
     EventsCommandFailed => "events.command_failed" [Read],
     EventsCron => "events.cron" [Read],
@@ -133,6 +135,7 @@ impl Resource {
             "presence" => Self::EventsPresence,
             "door" => Self::EventsDoor,
             "garage_door" => Self::EventsGarageDoor,
+            "air_purifier" => Self::EventsAirPurifier,
             "switch" => Self::EventsSwitch,
             "environment" => Self::EventsEnvironment,
             "plant" => Self::EventsPlant,

@@ -372,6 +372,22 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "air_purifier"
+            },
+            "config": {
+              "$ref": "#/$defs/RawAirPurifierBlock"
+            }
+          },
+          "required": [
+            "type",
+            "config"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "battery"
             }
           },
@@ -792,6 +808,18 @@
             "state"
           ]
         }
+      ]
+    },
+    "RawAirPurifierBlock": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
       ]
     },
     "RawDeviceWatchdog": {

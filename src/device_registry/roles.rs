@@ -3,9 +3,9 @@ use std::collections::BTreeSet;
 use crate::decoding::ModelProfile;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
-    BatterySettings, DoorSettings, EinkDisplaySettings, EnvironmentSensorSettings,
-    GarageDoorSettings, MediaPlayerSettings, PlantSensorSettings, PresenceSettings,
-    RobotVacuumSettings, SwitchRole, TrmnlDeviceSettings,
+    AirPurifierSettings, BatterySettings, DoorSettings, EinkDisplaySettings,
+    EnvironmentSensorSettings, GarageDoorSettings, MediaPlayerSettings, PlantSensorSettings,
+    PresenceSettings, RobotVacuumSettings, SwitchRole, TrmnlDeviceSettings,
 };
 
 use super::device_config::DeviceConfig;
@@ -26,6 +26,7 @@ pub struct Roles {
     pub robot_vacuum: Option<RobotVacuumSettings>,
     pub media_player: Option<MediaPlayerSettings>,
     pub garage_door: Option<GarageDoorSettings>,
+    pub air_purifier: Option<AirPurifierSettings>,
 }
 
 pub struct RoleContext<'a> {
@@ -158,6 +159,9 @@ impl Roles {
             }
             DeviceConfig::GarageDoor(garage_door) => {
                 self.garage_door = Some(garage_door.resolve(id, address, notify)?);
+            }
+            DeviceConfig::AirPurifier(air_purifier) => {
+                self.air_purifier = Some(air_purifier.resolve(id, address));
             }
             DeviceConfig::Battery => {
                 self.battery = Some(BatterySettings {

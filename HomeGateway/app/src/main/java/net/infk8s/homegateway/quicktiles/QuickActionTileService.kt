@@ -94,8 +94,8 @@ abstract class QuickActionTileService(private val slot: Int) : TileService() {
     private fun perform(assignment: QuickTileAssignment, command: EntityCommand) {
         qsTile?.let { tile ->
             tile.state = when (command) {
-                EntityCommand.LIGHT_ON, EntityCommand.GARAGE_OPEN -> Tile.STATE_ACTIVE
-                EntityCommand.LIGHT_OFF, EntityCommand.GARAGE_CLOSE -> Tile.STATE_INACTIVE
+                EntityCommand.LIGHT_ON, EntityCommand.GARAGE_OPEN, EntityCommand.PURIFIER_ON -> Tile.STATE_ACTIVE
+                EntityCommand.LIGHT_OFF, EntityCommand.GARAGE_CLOSE, EntityCommand.PURIFIER_OFF -> Tile.STATE_INACTIVE
                 EntityCommand.MEDIA_PLAY_PAUSE ->
                     if (tile.state == Tile.STATE_ACTIVE) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
             }

@@ -5,6 +5,10 @@ pub enum EntityDomain {
     TextSensor,
     Light,
     MediaPlayer,
+    Fan,
+    Switch,
+    Number,
+    Select,
 }
 
 impl std::fmt::Display for EntityDomain {
@@ -15,6 +19,10 @@ impl std::fmt::Display for EntityDomain {
             EntityDomain::TextSensor => "text_sensor",
             EntityDomain::Light => "light",
             EntityDomain::MediaPlayer => "media_player",
+            EntityDomain::Fan => "fan",
+            EntityDomain::Switch => "switch",
+            EntityDomain::Number => "number",
+            EntityDomain::Select => "select",
         };
 
         f.write_str(name)

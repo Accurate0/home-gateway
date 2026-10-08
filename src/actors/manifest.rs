@@ -7,11 +7,11 @@ use crate::actors::alarm::AlarmActor;
 use crate::actors::devices::door_events::DoorEventsSupervisor;
 use crate::actors::devices::handler::{DeviceHandler, spawn_handler};
 use crate::actors::devices::{
-    control_switch::ControlSwitchHandler, door_sensor::DoorSensorHandler,
-    environment_sensor::EnvironmentSensorHandler, garage_door::GarageDoorHandler,
-    light::LightHandler, media_player::MediaPlayerHandler, plant_sensor::PlantSensorHandler,
-    presence_sensor::PresenceSensorHandler, robot_vacuum::RobotVacuumHandler,
-    smart_switch::SmartSwitchHandler,
+    air_purifier::AirPurifierHandler, control_switch::ControlSwitchHandler,
+    door_sensor::DoorSensorHandler, environment_sensor::EnvironmentSensorHandler,
+    garage_door::GarageDoorHandler, light::LightHandler, media_player::MediaPlayerHandler,
+    plant_sensor::PlantSensorHandler, presence_sensor::PresenceSensorHandler,
+    robot_vacuum::RobotVacuumHandler, smart_switch::SmartSwitchHandler,
 };
 use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
@@ -199,6 +199,7 @@ const DISPATCH_TARGETS: &[&str] = &[
     <MediaPlayerHandler as DeviceHandler>::NAME,
     <RobotVacuumHandler as DeviceHandler>::NAME,
     <GarageDoorHandler as DeviceHandler>::NAME,
+    <AirPurifierHandler as DeviceHandler>::NAME,
     BatteryActor::NAME,
 ];
 
@@ -213,6 +214,7 @@ pub static ACTORS: &[ActorSpec] = &[
     device!(MediaPlayerHandler),
     device!(RobotVacuumHandler, &[BatteryActor::NAME]),
     device!(GarageDoorHandler, &[PushActor::NAME]),
+    device!(AirPurifierHandler),
     plain!(AlarmActor, &[WorkflowWorker::NAME]),
     plain!(BatteryActor),
     plain!(CronActor),
@@ -288,6 +290,7 @@ pub static ACTORS: &[ActorSpec] = &[
             <EnvironmentSensorHandler as DeviceHandler>::NAME,
             <PresenceSensorHandler as DeviceHandler>::NAME,
             <GarageDoorHandler as DeviceHandler>::NAME,
+            <AirPurifierHandler as DeviceHandler>::NAME,
             DoorEventsSupervisor::NAME,
             SolarActor::NAME,
             PushActor::NAME,
@@ -689,6 +692,7 @@ mod tests {
             MediaPlayerHandler::ROLE,
             RobotVacuumHandler::ROLE,
             GarageDoorHandler::ROLE,
+            AirPurifierHandler::ROLE,
         ];
 
         let expected: HashSet<DeviceRoleName> = DeviceRoleName::iter()

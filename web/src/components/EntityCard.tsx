@@ -9,6 +9,7 @@ import {
   DoorClosed,
   DoorOpen,
   ExternalLink,
+  Fan,
   Home,
   Lightbulb,
   LightbulbOff,
@@ -35,6 +36,7 @@ import {
   formatLastSeen,
   isGarageDoorMoving,
   isPlaying,
+  type AirPurifierMode,
   type Entity,
 } from "@/entities";
 
@@ -55,6 +57,13 @@ export interface VacuumActions {
 export interface GarageDoorActions {
   onOpen: () => void;
   onClose: () => void;
+}
+
+export interface AirPurifierActions {
+  onToggle: () => void;
+  onSetMode: (mode: AirPurifierMode) => void;
+  onSetSpeed: (speed: number) => void;
+  onSetDisplay: (on: boolean) => void;
 }
 
 export interface MediaPlayerActions {
@@ -1306,11 +1315,117 @@ function GarageDoorTile({
   );
 }
 
+const AIR_PURIFIER_MODES: AirPurifierMode[] = ["AUTO", "SLEEP", "MANUAL"];
+const AIR_PURIFIER_SPEEDS = [1, 2, 3];
+
+function AirPurifierTile({
+  entity,
+  actions,
+  now,
+}: {
+  entity: Entity;
+  actions?: AirPurifierActions;
+  now: number;
+}) {
+  const on = entity.on === true;
+  const unknown = entity.on == null;
+  const displayOn = entity.displayOn;
+  const t = STATUS_TONES.present;
+  const chip = (active: boolean) =>
+    cn(
+      "flex flex-1 items-center justify-center rounded-lg border py-1.5 text-xs font-medium capitalize",
+      active
+        ? "bg-foreground text-background border-transparent"
+        : "border-border text-muted-foreground hover:bg-muted",
+    );
+  return (
+    <Tile className={cn("col-span-1 justify-between gap-3", on && t.active)}>
+      <div className="flex items-start justify-between">
+        <button
+          type="button"
+          onClick={actions?.onToggle}
+          title={on ? "Turn off" : "Turn on"}
+          className={cn(
+            "grid size-10 place-items-center rounded-xl transition-colors",
+            on ? t.iconActive : "bg-muted text-muted-foreground",
+          )}
+        >
+          <Fan className="size-5" strokeWidth={1.5} />
+        </button>
+        <div className="text-muted-foreground flex items-center gap-3 text-sm tabular-nums">
+          {entity.purifierPm25 != null && (
+            <span title="PM2.5">{Math.round(entity.purifierPm25)} µg/m³</span>
+          )}
+          <button
+            type="button"
+            onClick={() => actions?.onSetDisplay(!displayOn)}
+            disabled={displayOn == null}
+            title={displayOn ? "Turn display off" : "Turn display on"}
+            className="hover:text-foreground disabled:opacity-40"
+          >
+            {displayOn ? (
+              <Lightbulb className="size-4" strokeWidth={1.75} />
+            ) : (
+              <LightbulbOff className="size-4" strokeWidth={1.75} />
+            )}
+          </button>
+        </div>
+      </div>
+      <div>
+        <div className="leading-tight font-medium">{entity.name}</div>
+        <div className="text-muted-foreground mb-2 flex items-center gap-1 text-xs">
+          <span>{entity.id}</span>
+          <LastSeen entity={entity} now={now} />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatePill tone={unknown ? "unknown" : on ? "on" : "off"}>
+            {unknown ? "unknown" : on ? "on" : "off"}
+          </StatePill>
+          {entity.filterLife != null && (
+            <span className="text-muted-foreground text-xs tabular-nums">
+              filter {Math.round(entity.filterLife)}%
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {AIR_PURIFIER_MODES.map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => actions?.onSetMode(mode)}
+            className={chip(on && entity.purifierMode === mode)}
+          >
+            {mode.toLowerCase()}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        {AIR_PURIFIER_SPEEDS.map((speed) => (
+          <button
+            key={speed}
+            type="button"
+            onClick={() => actions?.onSetSpeed(speed)}
+            className={chip(
+              on &&
+                entity.purifierMode === "MANUAL" &&
+                entity.purifierSpeed === speed,
+            )}
+          >
+            {speed}
+          </button>
+        ))}
+      </div>
+    </Tile>
+  );
+}
+
 export default function EntityCard({
   entity,
   lightActions,
   vacuumActions,
   garageDoorActions,
+  airPurifierActions,
   mediaPlayerActions,
   einkActions,
   now,
@@ -1319,6 +1434,7 @@ export default function EntityCard({
   lightActions?: LightActions;
   vacuumActions?: VacuumActions;
   garageDoorActions?: GarageDoorActions;
+  airPurifierActions?: AirPurifierActions;
   mediaPlayerActions?: MediaPlayerActions;
   einkActions?: EinkActions;
   now: number;
@@ -1365,6 +1481,14 @@ export default function EntityCard({
     case "garageDoor":
       return (
         <GarageDoorTile entity={entity} actions={garageDoorActions} now={now} />
+      );
+    case "airPurifier":
+      return (
+        <AirPurifierTile
+          entity={entity}
+          actions={airPurifierActions}
+          now={now}
+        />
       );
     case "mediaPlayer":
       return (

@@ -64,6 +64,36 @@ mutation GarageDoorClose($id: IdOrAlias!) {
   }
 }
 
+mutation AirPurifierTurnOn($id: IdOrAlias!) {
+  airPurifier(id: $id) {
+    turnOn
+  }
+}
+
+mutation AirPurifierTurnOff($id: IdOrAlias!) {
+  airPurifier(id: $id) {
+    turnOff
+  }
+}
+
+mutation AirPurifierSetMode($id: IdOrAlias!, $mode: AirPurifierMode!) {
+  airPurifier(id: $id) {
+    setMode(mode: $mode)
+  }
+}
+
+mutation AirPurifierSetSpeed($id: IdOrAlias!, $speed: Int!) {
+  airPurifier(id: $id) {
+    setSpeed(speed: $speed)
+  }
+}
+
+mutation AirPurifierSetDisplay($id: IdOrAlias!, $on: Boolean!) {
+  airPurifier(id: $id) {
+    setDisplay(on: $on)
+  }
+}
+
 mutation EinkTakeScreenshot($id: IdOrAlias!) {
   einkDisplay(id: $id) {
     takeScreenshot

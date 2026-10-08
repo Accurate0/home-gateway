@@ -21,6 +21,7 @@ configMapGenerator:
   - name: home-gateway-config-devices
     files:
       - devices/index.yaml
+      - devices/air_purifier.yaml
       - devices/control_switch.yaml
       - devices/door.yaml
       - devices/eink_display.yaml
@@ -96,6 +97,7 @@ configMapGenerator:
   - name: home-gateway-config-lua-esphome-native-api
     files:
       - lua/models/esphome_native_api/apollo_cast_1.lua
+      - lua/models/esphome_native_api/levoit_core300s.lua
   - name: home-gateway-config-lua-tuya
     files:
       - lua/models/tuya/csh_gapnt_178.lua

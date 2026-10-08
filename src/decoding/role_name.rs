@@ -29,6 +29,7 @@ pub enum DeviceRoleName {
     RobotVacuum,
     MediaPlayer,
     GarageDoor,
+    AirPurifier,
     EinkDisplayFirmware,
     Trmnl,
 }
@@ -45,7 +46,8 @@ impl DeviceRoleName {
             | DeviceRoleName::ControlSwitch
             | DeviceRoleName::RobotVacuum
             | DeviceRoleName::MediaPlayer
-            | DeviceRoleName::GarageDoor => true,
+            | DeviceRoleName::GarageDoor
+            | DeviceRoleName::AirPurifier => true,
             DeviceRoleName::Battery
             | DeviceRoleName::EinkDisplayFirmware
             | DeviceRoleName::Trmnl => false,

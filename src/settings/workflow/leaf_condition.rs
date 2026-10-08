@@ -39,6 +39,10 @@ pub enum LeafCondition {
         device: IEEEAddress,
         state: GarageDoorState,
     },
+    AirPurifier {
+        device: IEEEAddress,
+        on: bool,
+    },
     TimeOfDay {
         #[serde(default)]
         after: Option<NaiveTime>,
@@ -100,6 +104,9 @@ impl LeafCondition {
             | LeafCondition::GarageDoor {
                 device: ieee_addr, ..
             }
+            | LeafCondition::AirPurifier {
+                device: ieee_addr, ..
+            }
             | LeafCondition::SmartSwitch { ieee_addr, .. } => {
                 validate_device(ieee_addr, devices)?;
             }
@@ -143,6 +150,12 @@ impl LeafCondition {
             }
             LeafCondition::GarageDoor { device, state } => {
                 format!("garage_door({device}) is {state}")
+            }
+            LeafCondition::AirPurifier { device, on } => {
+                format!(
+                    "air_purifier({device}) is {}",
+                    if *on { "on" } else { "off" }
+                )
             }
             LeafCondition::TimeOfDay { after, before } => match (after, before) {
                 (Some(a), Some(b)) => format!("time in [{a}, {b})"),

@@ -1,3 +1,4 @@
+pub mod air_purifier_state;
 pub mod device_battery;
 pub mod device_battery_history;
 pub mod eink_battery;

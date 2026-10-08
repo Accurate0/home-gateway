@@ -1,3 +1,4 @@
+pub mod air_purifier;
 pub mod device;
 pub mod door;
 pub mod eink;

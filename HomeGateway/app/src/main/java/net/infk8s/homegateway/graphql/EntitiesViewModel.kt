@@ -33,6 +33,7 @@ import net.infk8s.homegateway.dashboard.move
 import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.quicktiles.QuickTiles
 import net.infk8s.homegateway.widget.EntityWidgets
+import net.infk8s.homegateway.graphql.type.AirPurifierMode
 import net.infk8s.homegateway.graphql.type.EntityCategory
 import net.infk8s.homegateway.graphql.type.GarageDoorState
 
@@ -78,6 +79,21 @@ sealed interface EntityUi {
         val batteryPercentage: Double?,
     ) : EntityUi {
         override val key get() = "garage_door:$id"
+    }
+
+    data class AirPurifier(
+        override val id: String,
+        override val name: String,
+        override val room: String?,
+        override val category: EntityCategory,
+        val on: Boolean?,
+        val mode: AirPurifierMode?,
+        val speed: Int?,
+        val pm25: Double?,
+        val filterLife: Double?,
+        val displayOn: Boolean?,
+    ) : EntityUi {
+        override val key get() = "air_purifier:$id"
     }
 
     data class Presence(
@@ -488,6 +504,14 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         event.onGarageDoorUpdate != null && this is EntityUi.GarageDoor && id == event.onGarageDoorUpdate.id ->
             copy(state = event.onGarageDoorUpdate.garageState)
 
+        event.onAirPurifierUpdate != null && this is EntityUi.AirPurifier && id == event.onAirPurifierUpdate.id ->
+            copy(
+                on = event.onAirPurifierUpdate.on,
+                mode = event.onAirPurifierUpdate.purifierMode,
+                speed = event.onAirPurifierUpdate.purifierSpeed,
+                displayOn = event.onAirPurifierUpdate.displayOn,
+            )
+
         event.onPresenceUpdate != null && this is EntityUi.Presence && id == event.onPresenceUpdate.id ->
             copy(present = event.onPresenceUpdate.present)
 
@@ -524,6 +548,12 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         vacuumDock = { mutate(VacuumDockMutation(it)) },
         garageDoorOpen = { mutate(GarageDoorOpenMutation(it)) },
         garageDoorClose = { mutate(GarageDoorCloseMutation(it)) },
+        setAirPurifier = { id, on ->
+            mutate(if (on) AirPurifierTurnOnMutation(id) else AirPurifierTurnOffMutation(id))
+        },
+        setAirPurifierMode = { id, mode -> mutate(AirPurifierSetModeMutation(id, mode)) },
+        setAirPurifierSpeed = { id, speed -> mutate(AirPurifierSetSpeedMutation(id, speed)) },
+        setAirPurifierDisplay = { id, on -> mutate(AirPurifierSetDisplayMutation(id, on)) },
         takeScreenshot = { mutate(EinkTakeScreenshotMutation(it)) },
         loadEinkConfig = ::loadEinkConfig,
     )

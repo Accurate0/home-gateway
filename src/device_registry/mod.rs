@@ -22,9 +22,10 @@ use crate::event_bus::SensorMetric;
 use crate::integrations::mqtt::{MqttProtocol, TopicVars};
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
-    BatterySettings, DeviceAliases, DeviceIds, DeviceWatchdog, DoorSettings, EinkDisplaySettings,
-    EnvironmentSensorSettings, GarageDoorSettings, IEEEAddress, MediaPlayerSettings, MqttProtocols,
-    PlantSensorSettings, PresenceSettings, RobotVacuumSettings, TrmnlDeviceSettings,
+    AirPurifierSettings, BatterySettings, DeviceAliases, DeviceIds, DeviceWatchdog, DoorSettings,
+    EinkDisplaySettings, EnvironmentSensorSettings, GarageDoorSettings, IEEEAddress,
+    MediaPlayerSettings, MqttProtocols, PlantSensorSettings, PresenceSettings, RobotVacuumSettings,
+    TrmnlDeviceSettings,
 };
 
 pub use capability::Capability;
@@ -582,5 +583,13 @@ impl DeviceRegistryInner {
 
     pub fn garage_doors(&self) -> impl Iterator<Item = (&String, &GarageDoorSettings)> {
         self.each(|roles| roles.garage_door.as_ref())
+    }
+
+    pub fn air_purifier(&self, address: &str) -> Option<&AirPurifierSettings> {
+        self.roles(address)?.air_purifier.as_ref()
+    }
+
+    pub fn air_purifiers(&self) -> impl Iterator<Item = (&String, &AirPurifierSettings)> {
+        self.each(|roles| roles.air_purifier.as_ref())
     }
 }

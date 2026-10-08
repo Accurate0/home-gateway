@@ -21,9 +21,16 @@ impl Transport {
 
         match self {
             Transport::Mqtt => ![EinkDisplayFirmware, Trmnl, MediaPlayer].contains(&role),
-            Transport::EsphomeNativeApi => {
-                [Battery, Environment, Plant, Light, Presence, MediaPlayer].contains(&role)
-            }
+            Transport::EsphomeNativeApi => [
+                Battery,
+                Environment,
+                Plant,
+                Light,
+                Presence,
+                MediaPlayer,
+                AirPurifier,
+            ]
+            .contains(&role),
             Transport::HomeAssistant => [
                 Battery,
                 Door,

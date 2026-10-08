@@ -50,7 +50,7 @@ mod tests {
         .expect("workers")
     }
 
-    const ALL_HANDLERS: &str = "{ door: 1, environment: 1, plant: 1, light: 2, smart_switch: 1, presence: 1, control_switch: 1, robot_vacuum: 1, media_player: 1, garage_door: 1 }";
+    const ALL_HANDLERS: &str = "{ door: 1, environment: 1, plant: 1, light: 2, smart_switch: 1, presence: 1, control_switch: 1, robot_vacuum: 1, media_player: 1, garage_door: 1, air_purifier: 1 }";
 
     #[test]
     fn every_handled_role_resolves_its_worker_count() {

@@ -5,7 +5,8 @@ use serde::Deserialize;
 
 use super::condition::resolve_opt;
 use super::{
-    Condition, EnableState, GarageDoorCommand, HttpMethod, LightState, SwitchState, VacuumCommand,
+    AirPurifierCommand, Condition, EnableState, GarageDoorCommand, HttpMethod, LightState,
+    SwitchState, VacuumCommand,
 };
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
@@ -118,6 +119,13 @@ pub enum Step {
         #[serde(default)]
         when: Option<Condition>,
     },
+    AirPurifier {
+        device: IEEEAddress,
+        #[serde(flatten)]
+        command: AirPurifierCommand,
+        #[serde(default)]
+        when: Option<Condition>,
+    },
     Lua {
         #[serde(flatten)]
         source: LuaSource,
@@ -144,6 +152,7 @@ impl Step {
             Step::Http { .. } => "http",
             Step::RobotVacuum { .. } => "robot_vacuum",
             Step::GarageDoor { .. } => "garage_door",
+            Step::AirPurifier { .. } => "air_purifier",
             Step::Lua { .. } => "lua",
         }
     }
@@ -162,6 +171,7 @@ impl Step {
             Step::Http { .. } => (Resource::Http, Action::Write),
             Step::RobotVacuum { .. } => (Resource::RobotVacuum, Action::Write),
             Step::GarageDoor { .. } => (Resource::GarageDoor, Action::Write),
+            Step::AirPurifier { .. } => (Resource::AirPurifier, Action::Write),
             Step::Lua { .. } => (Resource::Lua, Action::Write),
             Step::Scene { .. } | Step::Delay { .. } => return None,
         };
@@ -185,6 +195,7 @@ impl Step {
             | Step::Http { when, .. }
             | Step::RobotVacuum { when, .. }
             | Step::GarageDoor { when, .. }
+            | Step::AirPurifier { when, .. }
             | Step::Lua { when, .. } => when.as_ref(),
         }
     }
@@ -220,6 +231,7 @@ impl Step {
             | Step::HomeAssistant { .. }
             | Step::RobotVacuum { .. }
             | Step::GarageDoor { .. }
+            | Step::AirPurifier { .. }
             | Step::Lua { .. } => Vec::new(),
         }
     }
@@ -294,6 +306,9 @@ impl Step {
             Step::GarageDoor {
                 device, command, ..
             } => Some(format!("garage_door({device}) -> {command}")),
+            Step::AirPurifier {
+                device, command, ..
+            } => Some(format!("air_purifier({device}) -> {command}")),
             Step::Scene { .. } | Step::RunWorkflow { .. } | Step::Lua { .. } => None,
         }
     }
@@ -310,6 +325,11 @@ impl Step {
                 ieee_addr, when, ..
             }
             | Step::GarageDoor {
+                device: ieee_addr,
+                when,
+                ..
+            }
+            | Step::AirPurifier {
                 device: ieee_addr,
                 when,
                 ..
@@ -371,6 +391,12 @@ impl Step {
                     return Err(format!("garage_door {device} is not a garage door"));
                 }
             }
+            Step::AirPurifier { device, .. } => {
+                let address = registry.address_or_self(device);
+                if registry.air_purifier(address).is_none() {
+                    return Err(format!("air_purifier {device} is not an air purifier"));
+                }
+            }
             Step::Scene { run, .. } => {
                 for step in run {
                     step.validate_capabilities(registry)?;
@@ -385,6 +411,47 @@ impl Step {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn air_purifier_steps_carry_their_command_inline() {
+        use crate::db::AirPurifierMode;
+
+        let steps: Vec<Step> = serde_yaml::from_str(
+            r#"
+- type: air_purifier
+  device: living-room-purifier
+  command: set_mode
+  mode: auto
+- type: air_purifier
+  device: living-room-purifier
+  command: set_display
+  on: false
+- type: air_purifier
+  device: living-room-purifier
+  command: turn_off
+"#,
+        )
+        .unwrap();
+
+        let commands: Vec<AirPurifierCommand> = steps
+            .iter()
+            .map(|step| match step {
+                Step::AirPurifier { command, .. } => *command,
+                other => panic!("expected air_purifier, got {}", other.kind()),
+            })
+            .collect();
+
+        assert_eq!(
+            commands,
+            [
+                AirPurifierCommand::SetMode {
+                    mode: AirPurifierMode::Auto
+                },
+                AirPurifierCommand::SetDisplay { on: false },
+                AirPurifierCommand::TurnOff,
+            ]
+        );
+    }
 
     #[test]
     fn mqtt_publish_http_and_robot_vacuum_steps_parse() {

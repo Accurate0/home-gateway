@@ -10,6 +10,7 @@ pub struct AdhocTasksSettings {
     pub refresh_public_holidays: AdhocCronTaskSettings<NoParameters>,
     pub refresh_transperth_timetable: AdhocCronTaskSettings<NoParameters>,
     pub sample_light_state: AdhocCronTaskSettings<NoParameters>,
+    pub trim_air_purifier_events: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_derived_door_events: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_device_intent: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_device_metric: AdhocCronTaskSettings<RetentionParameters>,

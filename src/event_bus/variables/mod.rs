@@ -1,3 +1,4 @@
+mod air_purifier_variables;
 mod command_failed_variables;
 mod cron_variables;
 mod device_battery_variables;
@@ -22,6 +23,7 @@ mod unifi_variables;
 mod weather_variables;
 mod woolworths_variables;
 
+pub use air_purifier_variables::AirPurifierVariables;
 pub use command_failed_variables::CommandFailedVariables;
 pub use cron_variables::CronVariables;
 pub use device_battery_variables::DeviceBatteryVariables;

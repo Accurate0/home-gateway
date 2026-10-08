@@ -21,6 +21,7 @@ use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBus;
 use crate::graphql::{
     FinalSchema, QueryRoot,
+    dataloader::air_purifier_state::AirPurifierStateDataLoader,
     dataloader::device_battery::DeviceBatteryDataLoader,
     dataloader::device_battery_history::DeviceBatteryHistoryDataLoader,
     dataloader::eink_battery::EinkDisplayDataLoader,
@@ -172,6 +173,12 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     .data(DataLoader::new(
         GarageDoorStateDataLoader {
             repo: state.repos.garage_door().clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        AirPurifierStateDataLoader {
+            repo: state.repos.air_purifier().clone(),
         },
         tokio::spawn,
     ))

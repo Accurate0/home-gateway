@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO air_purifier_events (event_id, device_id, is_on, mode, speed, pm25, filter_life, display) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool",
+        {
+          "Custom": {
+            "name": "air_purifier_mode",
+            "kind": {
+              "Enum": [
+                "manual",
+                "sleep",
+                "auto"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Float8",
+        "Float8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a291b36fb09b716b71fe925e11401617c57d4b4236f9c8a69ecfeabbdef6d8c3"
+}

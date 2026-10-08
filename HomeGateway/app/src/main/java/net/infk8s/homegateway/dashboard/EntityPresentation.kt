@@ -2,6 +2,7 @@ package net.infk8s.homegateway.dashboard
 
 import androidx.annotation.DrawableRes
 import net.infk8s.homegateway.graphql.EntityUi
+import net.infk8s.homegateway.graphql.type.AirPurifierMode
 import net.infk8s.homegateway.graphql.type.GarageDoorState
 import net.infk8s.homegateway.ui.theme.StateTone
 
@@ -12,6 +13,7 @@ fun EntityUi.activeTone(): StateTone? = when (this) {
     is EntityUi.Door -> StateTone.OPEN.takeIf { open == true }
     is EntityUi.GarageDoor -> StateTone.OPEN.takeIf { state != null && state != GarageDoorState.CLOSED }
     is EntityUi.Presence -> StateTone.PRESENT.takeIf { present == true }
+    is EntityUi.AirPurifier -> StateTone.INFO.takeIf { on == true }
     is EntityUi.Environment, is EntityUi.Plant, is EntityUi.EinkDisplay,
     is EntityUi.RobotVacuum, is EntityUi.MediaPlayer -> null
 }
@@ -32,6 +34,7 @@ fun EntityUi.glyph(): EntityGlyph = when (this) {
     is EntityUi.Light -> if (on == true) EntityGlyph.LIGHT_ON else EntityGlyph.LIGHT_OFF
     is EntityUi.Door -> if (open == true) EntityGlyph.DOOR_OPEN else EntityGlyph.DOOR_CLOSED
     is EntityUi.GarageDoor -> EntityGlyph.GARAGE
+    is EntityUi.AirPurifier -> EntityGlyph.FAN
     is EntityUi.Presence -> if (present == true) EntityGlyph.PERSON else EntityGlyph.PERSON_AWAY
     is EntityUi.Environment -> EntityGlyph.THERMOMETER
     is EntityUi.Plant -> EntityGlyph.PLANT
@@ -57,6 +60,11 @@ fun EntityUi.pill(): TilePill? = when (this) {
     is EntityUi.Light -> on.toPill("on", "off")
     is EntityUi.Door -> open.toPill("open", "closed")
     is EntityUi.Presence -> present.toPill("present", "away")
+    is EntityUi.AirPurifier -> when (on) {
+        true -> TilePill(modeLabel() ?: "on", true)
+        false -> TilePill("off", false)
+        null -> TilePill("unknown", null)
+    }
     is EntityUi.GarageDoor -> TilePill(
         state?.rawValue?.lowercase() ?: "unknown",
         state?.let { it != GarageDoorState.CLOSED },
@@ -73,7 +81,14 @@ fun EntityUi.battery(): Double? = when (this) {
     is EntityUi.RobotVacuum -> batteryPercentage
     is EntityUi.Plant -> batteryPercentage
     is EntityUi.Light, is EntityUi.Door, is EntityUi.Presence,
-    is EntityUi.Environment, is EntityUi.MediaPlayer -> null
+    is EntityUi.Environment, is EntityUi.MediaPlayer, is EntityUi.AirPurifier -> null
+}
+
+fun EntityUi.AirPurifier.modeLabel(): String? = when (mode) {
+    AirPurifierMode.MANUAL -> speed?.let { "speed $it" } ?: "manual"
+    AirPurifierMode.SLEEP -> "sleep"
+    AirPurifierMode.AUTO -> "auto"
+    else -> null
 }
 
 fun EntityUi.subtitle(): String = when (this) {
@@ -90,6 +105,8 @@ fun EntityUi.primaryCommand(): EntityCommand? = when (this) {
         GarageDoorState.CLOSED, GarageDoorState.CLOSING -> EntityCommand.GARAGE_OPEN
         else -> null
     }
+
+    is EntityUi.AirPurifier -> if (on == true) EntityCommand.PURIFIER_OFF else EntityCommand.PURIFIER_ON
 
     is EntityUi.MediaPlayer -> EntityCommand.MEDIA_PLAY_PAUSE
 
@@ -111,6 +128,11 @@ fun EntityUi.details(): String = when (this) {
         batteryPercentage?.let { add("%.0f%%".format(it)) }
     }.joinToString(" · ")
     is EntityUi.Presence -> present?.let { if (it) "Present" else "Away" } ?: "Unknown"
+    is EntityUi.AirPurifier -> buildList {
+        add(on?.let { if (it) "On" else "Off" } ?: "Unknown")
+        if (on == true) modeLabel()?.let { add(it.replaceFirstChar { c -> c.uppercase() }) }
+        pm25?.let { add("%.0f µg/m³".format(it)) }
+    }.joinToString(" · ")
     is EntityUi.Environment -> buildList {
         temperature?.let { add("%.1f°C".format(it)) }
         humidity?.let { add("%.0f%%".format(it)) }

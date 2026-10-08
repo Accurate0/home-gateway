@@ -2,6 +2,8 @@ package net.infk8s.homegateway.dashboard
 
 import com.apollographql.apollo.ApolloClient
 import com.apollographql.apollo.api.Mutation
+import net.infk8s.homegateway.graphql.AirPurifierTurnOffMutation
+import net.infk8s.homegateway.graphql.AirPurifierTurnOnMutation
 import net.infk8s.homegateway.graphql.GarageDoorCloseMutation
 import net.infk8s.homegateway.graphql.GarageDoorOpenMutation
 import net.infk8s.homegateway.graphql.LightOffMutation
@@ -13,6 +15,8 @@ enum class EntityCommand(val label: String) {
     LIGHT_OFF("Turn off"),
     GARAGE_OPEN("Open"),
     GARAGE_CLOSE("Close"),
+    PURIFIER_ON("Turn on"),
+    PURIFIER_OFF("Turn off"),
     MEDIA_PLAY_PAUSE("Play/Pause");
 
     fun mutation(id: String): Mutation<*> = when (this) {
@@ -20,6 +24,8 @@ enum class EntityCommand(val label: String) {
         LIGHT_OFF -> LightOffMutation(id)
         GARAGE_OPEN -> GarageDoorOpenMutation(id)
         GARAGE_CLOSE -> GarageDoorCloseMutation(id)
+        PURIFIER_ON -> AirPurifierTurnOnMutation(id)
+        PURIFIER_OFF -> AirPurifierTurnOffMutation(id)
         MEDIA_PLAY_PAUSE -> MediaPlayPauseMutation(id)
     }
 

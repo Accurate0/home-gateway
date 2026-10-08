@@ -35,6 +35,20 @@ fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
             batteryPercentage = onGarageDoorEntity.battery?.percentage,
         )
 
+    onAirPurifierEntity != null ->
+        EntityUi.AirPurifier(
+            id = onAirPurifierEntity.id,
+            name = onAirPurifierEntity.name,
+            room = onAirPurifierEntity.room,
+            category = onAirPurifierEntity.category,
+            on = onAirPurifierEntity.on,
+            mode = onAirPurifierEntity.purifierMode,
+            speed = onAirPurifierEntity.purifierSpeed,
+            pm25 = onAirPurifierEntity.purifierPm25,
+            filterLife = onAirPurifierEntity.filterLife,
+            displayOn = onAirPurifierEntity.displayOn,
+        )
+
     onPresenceEntity != null ->
         EntityUi.Presence(
             id = onPresenceEntity.id,

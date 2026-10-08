@@ -13,6 +13,7 @@ use chrono::{DateTime, Utc};
 use crate::graphql::dataloader::last_seen::LastSeenDataLoader;
 use crate::settings::SettingsContainer;
 
+pub mod air_purifier;
 pub mod battery;
 pub mod door;
 pub mod eink_display;
@@ -26,6 +27,7 @@ pub mod plant;
 pub mod presence;
 pub mod robot_vacuum;
 
+pub use air_purifier::AirPurifierEntity;
 pub use battery::{BatteryPoint, DeviceBattery, battery_for};
 pub use door::DoorEntity;
 pub use eink_display::EinkDisplayEntity;
@@ -122,6 +124,7 @@ pub enum Entity {
     Plant(PlantEntity),
     Door(DoorEntity),
     GarageDoor(GarageDoorEntity),
+    AirPurifier(AirPurifierEntity),
     Presence(PresenceEntity),
     EinkDisplay(EinkDisplayEntity),
     RobotVacuum(RobotVacuumEntity),

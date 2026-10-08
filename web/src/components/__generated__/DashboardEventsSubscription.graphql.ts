@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<57baec96d6b450f8cfee6342483d237b>>
+ * @generated SignedSource<<275794c5b0fead639cd950cdb7c45ca6>>
  * @lightSyntaxTransform
  */
 
@@ -8,10 +8,19 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
 export type GarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
 export type DashboardEventsSubscription$variables = Record<PropertyKey, never>;
 export type DashboardEventsSubscription$data = {
   readonly events: {
+    readonly __typename: "AirPurifierUpdate";
+    readonly displayOn: boolean | null | undefined;
+    readonly id: string;
+    readonly name: string;
+    readonly on: boolean;
+    readonly purifierMode: AirPurifierMode | null | undefined;
+    readonly purifierSpeed: number | null | undefined;
+  } | {
     readonly __typename: "DoorUpdate";
     readonly id: string;
     readonly name: string;
@@ -102,22 +111,23 @@ v3 = {
   "storageKey": null
 },
 v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "on",
+  "storageKey": null
+},
+v5 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
     (v3/*:: as any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "on",
-      "storageKey": null
-    }
+    (v4/*:: as any*/)
   ],
   "type": "LightUpdate",
   "abstractKey": null
 },
-v5 = {
+v6 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -133,7 +143,7 @@ v5 = {
   "type": "DoorUpdate",
   "abstractKey": null
 },
-v6 = {
+v7 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -149,7 +159,38 @@ v6 = {
   "type": "GarageDoorUpdate",
   "abstractKey": null
 },
-v7 = {
+v8 = {
+  "kind": "InlineFragment",
+  "selections": [
+    (v2/*:: as any*/),
+    (v3/*:: as any*/),
+    (v4/*:: as any*/),
+    {
+      "alias": "purifierMode",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "mode",
+      "storageKey": null
+    },
+    {
+      "alias": "purifierSpeed",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "speed",
+      "storageKey": null
+    },
+    {
+      "alias": "displayOn",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "display",
+      "storageKey": null
+    }
+  ],
+  "type": "AirPurifierUpdate",
+  "abstractKey": null
+},
+v9 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -165,7 +206,7 @@ v7 = {
   "type": "PresenceUpdate",
   "abstractKey": null
 },
-v8 = {
+v10 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -199,7 +240,7 @@ v8 = {
   "type": "EnvironmentUpdate",
   "abstractKey": null
 },
-v9 = {
+v11 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -215,7 +256,7 @@ v9 = {
   "type": "PlantUpdate",
   "abstractKey": null
 },
-v10 = {
+v12 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -315,7 +356,7 @@ v10 = {
   "type": "MediaPlayerUpdate",
   "abstractKey": null
 },
-v11 = [
+v13 = [
   (v2/*:: as any*/)
 ];
 return {
@@ -334,13 +375,14 @@ return {
         "plural": false,
         "selections": [
           (v1/*:: as any*/),
-          (v4/*:: as any*/),
           (v5/*:: as any*/),
           (v6/*:: as any*/),
           (v7/*:: as any*/),
           (v8/*:: as any*/),
           (v9/*:: as any*/),
-          (v10/*:: as any*/)
+          (v10/*:: as any*/),
+          (v11/*:: as any*/),
+          (v12/*:: as any*/)
         ],
         "storageKey": "events(filter:\"*\")"
       }
@@ -363,40 +405,41 @@ return {
         "plural": false,
         "selections": [
           (v1/*:: as any*/),
-          (v4/*:: as any*/),
           (v5/*:: as any*/),
           (v6/*:: as any*/),
           (v7/*:: as any*/),
           (v8/*:: as any*/),
           (v9/*:: as any*/),
           (v10/*:: as any*/),
+          (v11/*:: as any*/),
+          (v12/*:: as any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v11/*:: as any*/),
+            "selections": (v13/*:: as any*/),
             "type": "CommandFailedUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v11/*:: as any*/),
+            "selections": (v13/*:: as any*/),
             "type": "DeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v11/*:: as any*/),
+            "selections": (v13/*:: as any*/),
             "type": "DeviceConnectionUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v11/*:: as any*/),
+            "selections": (v13/*:: as any*/),
             "type": "HomeAssistantUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v11/*:: as any*/),
+            "selections": (v13/*:: as any*/),
             "type": "JellyfinUpdate",
             "abstractKey": null
           }
@@ -406,16 +449,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e34fe6280c09e6e381f80b98362c5539",
+    "cacheID": "b63e1e3c63e8a20b386b81548403ef1d",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on GarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on GarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on AirPurifierUpdate {\n      id\n      name\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      displayOn: display\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "da66a5101863ea0143dee362267d28b2";
+(node as any).hash = "984dd57ecf15677491fda595f5841d9a";
 
 export default node;

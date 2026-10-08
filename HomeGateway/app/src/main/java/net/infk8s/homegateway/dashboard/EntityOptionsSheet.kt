@@ -35,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import net.infk8s.homegateway.graphql.EntityUi
+import net.infk8s.homegateway.graphql.type.AirPurifierMode
 import net.infk8s.homegateway.graphql.type.GarageDoorState
 import net.infk8s.homegateway.ui.relative
 
@@ -75,6 +76,13 @@ fun EntityOptionsSheet(
                         onCheckedChange = { controls.setLight(entity.id, it) },
                     )
                 }
+
+                if (entity is EntityUi.AirPurifier) {
+                    Switch(
+                        checked = entity.on == true,
+                        onCheckedChange = { controls.setAirPurifier(entity.id, it) },
+                    )
+                }
             }
 
             EntityOptions(entity, controls, lightLevels)
@@ -107,6 +115,43 @@ private fun EntityOptions(entity: EntityUi, controls: EntityControls, lightLevel
                 "Close",
                 enabled = entity.state != GarageDoorState.CLOSED && entity.state != GarageDoorState.CLOSING,
             ) { controls.garageDoorClose(entity.id) }
+        }
+
+        is EntityUi.AirPurifier -> {
+            ActionRow {
+                AirPurifierMode.knownEntries.forEach { mode ->
+                    ActionButton(
+                        mode.rawValue.lowercase().replaceFirstChar { it.uppercase() },
+                        enabled = entity.on != true || entity.mode != mode,
+                    ) { controls.setAirPurifierMode(entity.id, mode) }
+                }
+            }
+
+            ActionRow {
+                AIR_PURIFIER_SPEEDS.forEach { speed ->
+                    ActionButton(
+                        "Speed $speed",
+                        enabled = entity.on != true ||
+                            entity.mode != AirPurifierMode.MANUAL ||
+                            entity.speed != speed,
+                    ) { controls.setAirPurifierSpeed(entity.id, speed) }
+                }
+            }
+
+            LabelledRow("Display", null) {
+                Switch(
+                    checked = entity.displayOn == true,
+                    enabled = entity.displayOn != null,
+                    onCheckedChange = { controls.setAirPurifierDisplay(entity.id, it) },
+                )
+            }
+
+            MetricGrid(
+                listOfNotNull(
+                    entity.pm25?.let { Metric("PM2.5", "%.0f µg/m³".format(it)) },
+                    entity.filterLife?.let { Metric("Filter life", "%.0f%%".format(it)) },
+                ),
+            )
         }
 
         is EntityUi.MediaPlayer -> ActionRow {
@@ -357,6 +402,8 @@ private const val MIREDS_WARM = 500f
 private const val BRIGHTNESS_MAX = 254f
 private const val COLOUR_MOVE_RATE = 40
 private const val DISABLED_ALPHA = 0.38f
+
+private val AIR_PURIFIER_SPEEDS = listOf(1, 2, 3)
 
 private val COLOUR_SWATCHES = listOf(
     "#ff5a5a",

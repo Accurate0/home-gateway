@@ -139,6 +139,7 @@ async fn eval_leaf(
             device,
             state: expected,
         } => eval_garage_door(state, device, *expected).await,
+        LeafCondition::AirPurifier { device, on } => eval_air_purifier(state, device, *on).await,
         LeafCondition::Presence { sensor, present } => {
             Ok(query_presence(state.devices.address_or_self(sensor), timeout).await? == *present)
         }
@@ -347,6 +348,31 @@ async fn eval_garage_door(
     };
 
     Ok(latest.state == expected)
+}
+
+async fn eval_air_purifier(
+    state: &AppState,
+    device: &str,
+    expected: bool,
+) -> Result<bool, WorkflowError> {
+    let Some(id) = state.devices.resolve_id(device) else {
+        tracing::warn!("{device} is not a registered air purifier");
+        return Ok(false);
+    };
+
+    let latest = state
+        .repos
+        .air_purifier()
+        .latest(id)
+        .await
+        .map_err(anyhow::Error::from)?;
+
+    let Some(latest) = latest else {
+        tracing::warn!("no readings for air purifier {id}");
+        return Ok(false);
+    };
+
+    Ok(latest.is_on == expected)
 }
 
 pub async fn query_light_on(ieee_addr: &str, timeout: Duration) -> Result<bool, WorkflowError> {

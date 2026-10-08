@@ -69,6 +69,18 @@ query Entities {
         percentage
       }
     }
+    ... on AirPurifierEntity {
+      category
+      id
+      name
+      room
+      on
+      purifierMode: mode
+      purifierSpeed: speed
+      purifierPm25: pm25
+      filterLife
+      displayOn: display
+    }
     ... on RobotVacuumEntity {
       category
       id

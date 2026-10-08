@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::actors::alarm::lua::AlarmLua;
+use crate::actors::devices::air_purifier::lua::AirPurifierLua;
 use crate::actors::devices::door_events::lua::DoorLua;
 use crate::actors::devices::environment_sensor::lua::EnvironmentLua;
 use crate::actors::devices::garage_door::lua::GarageDoorLua;
@@ -130,6 +131,7 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(BatteryLua)
         .insert(VacuumLua)
         .insert(GarageDoorLua)
+        .insert(AirPurifierLua)
         .insert(EnergyLua)
         .insert(WoolworthsLua)
         .insert(TransperthLua)

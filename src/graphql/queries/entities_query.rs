@@ -6,8 +6,9 @@ use crate::device_registry::{DeviceRegistry, IdOrAlias};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::device_connection_object::DeviceConnectionObject;
 use crate::graphql::objects::entity_object::{
-    DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity, GarageDoorEntity,
-    LightEntity, MediaPlayerEntity, PlantEntity, PresenceEntity, RobotVacuumEntity,
+    AirPurifierEntity, DoorEntity, EinkDisplayEntity, Entity, EntitySection, EnvironmentEntity,
+    GarageDoorEntity, LightEntity, MediaPlayerEntity, PlantEntity, PresenceEntity,
+    RobotVacuumEntity,
 };
 use crate::repo::RepoRegistry;
 
@@ -135,6 +136,15 @@ impl EntitiesQuery {
             );
         }
 
+        if auth.has(&Scope::new(Resource::AirPurifier, Action::Read)) {
+            out.extend(
+                registry
+                    .air_purifiers()
+                    .filter_map(|(address, _)| AirPurifierEntity::from_registry(registry, address))
+                    .map(Entity::AirPurifier),
+            );
+        }
+
         if auth.has(&Scope::new(Resource::MediaPlayer, Action::Read)) {
             out.extend(
                 registry
@@ -254,5 +264,17 @@ impl EntitiesQuery {
         let address = registry.lookup(&id)?.address.clone();
         GarageDoorEntity::from_registry(registry, &address)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown garage door `{id}`")))
+    }
+
+    #[graphql(guard = ScopeGuard(Scope::new(Resource::AirPurifier, Action::Read)))]
+    async fn air_purifier(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: IdOrAlias,
+    ) -> async_graphql::Result<AirPurifierEntity> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let address = registry.lookup(&id)?.address.clone();
+        AirPurifierEntity::from_registry(registry, &address)
+            .ok_or_else(|| async_graphql::Error::new(format!("unknown air purifier `{id}`")))
     }
 }

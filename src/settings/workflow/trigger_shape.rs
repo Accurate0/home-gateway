@@ -3,11 +3,12 @@ use std::collections::BTreeMap;
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::SensorMetric;
 use crate::event_bus::variables::{
-    CommandFailedVariables, CronVariables, DeviceBatteryVariables, DeviceConnectionVariables,
-    DoorVariables, EnvironmentVariables, FeatureFlagVariables, FuelWatchVariables,
-    GarageDoorVariables, HomeAssistantVariables, JellyfinVariables, LightVariables,
-    MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables, SolarVariables,
-    SunVariables, SwitchVariables, UnifiVariables, WeatherVariables, WoolworthsVariables,
+    AirPurifierVariables, CommandFailedVariables, CronVariables, DeviceBatteryVariables,
+    DeviceConnectionVariables, DoorVariables, EnvironmentVariables, FeatureFlagVariables,
+    FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables, JellyfinVariables,
+    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
+    SolarVariables, SunVariables, SwitchVariables, UnifiVariables, WeatherVariables,
+    WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
 
@@ -19,6 +20,7 @@ impl TriggerMatcher {
             TriggerMatcher::Presence { .. } => PresenceVariables::shape(),
             TriggerMatcher::Door { .. } => DoorVariables::shape(),
             TriggerMatcher::GarageDoor { .. } => GarageDoorVariables::shape(),
+            TriggerMatcher::AirPurifier { .. } => AirPurifierVariables::shape(),
             TriggerMatcher::Switch { .. } => SwitchVariables::shape(),
             TriggerMatcher::Cron { .. } => CronVariables::shape(),
             TriggerMatcher::Sun { .. } => SunVariables::shape(),

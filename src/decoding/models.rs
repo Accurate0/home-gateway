@@ -212,6 +212,7 @@ fn resolve_commands(
         DeviceRoleName::Light,
         DeviceRoleName::SmartSwitch,
         DeviceRoleName::GarageDoor,
+        DeviceRoleName::AirPurifier,
     ] {
         let name = role.to_string();
         let encodes = decoder

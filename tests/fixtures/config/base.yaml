@@ -70,6 +70,7 @@ actors:
     esphome_native_api_ingest: 1
     tuya_ingest: 1
     devices:
+      air_purifier: 1
       control_switch: 3
       door: 1
       environment: 1
@@ -463,6 +464,11 @@ adhoc:
       state: enabled
       schedule: "*/5 * * * *"
       parameters: {}
+    trim_air_purifier_events:
+      state: enabled
+      schedule: "55 3 * * *"
+      parameters:
+        retention: 4320h
     trim_derived_door_events:
       state: enabled
       schedule: "0 3 * * *"

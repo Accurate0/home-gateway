@@ -1,3 +1,4 @@
+mod air_purifier_command;
 mod combinator;
 mod compare_op;
 mod comparison;
@@ -21,6 +22,7 @@ mod triggered_workflow;
 mod vacuum_command;
 mod workflow_settings;
 
+pub use air_purifier_command::AirPurifierCommand;
 pub use combinator::Combinator;
 pub use compare_op::CompareOp;
 pub use comparison::Comparison;

@@ -29,16 +29,26 @@ const PING_REQUEST: u16 = 7;
 const PING_RESPONSE: u16 = 8;
 const LIST_ENTITIES_REQUEST: u16 = 11;
 const LIST_ENTITIES_BINARY_SENSOR: u16 = 12;
+const LIST_ENTITIES_FAN: u16 = 14;
 const LIST_ENTITIES_LIGHT: u16 = 15;
 const LIST_ENTITIES_SENSOR: u16 = 16;
+const LIST_ENTITIES_SWITCH: u16 = 17;
 const LIST_ENTITIES_TEXT_SENSOR: u16 = 18;
 const LIST_ENTITIES_DONE: u16 = 19;
 const SUBSCRIBE_STATES_REQUEST: u16 = 20;
 const BINARY_SENSOR_STATE: u16 = 21;
+const FAN_STATE: u16 = 23;
 const LIGHT_STATE: u16 = 24;
 const SENSOR_STATE: u16 = 25;
+const SWITCH_STATE: u16 = 26;
 const TEXT_SENSOR_STATE: u16 = 27;
+const FAN_COMMAND_REQUEST: u16 = 31;
 const LIGHT_COMMAND_REQUEST: u16 = 32;
+const SWITCH_COMMAND_REQUEST: u16 = 33;
+const LIST_ENTITIES_NUMBER: u16 = 49;
+const NUMBER_STATE: u16 = 50;
+const LIST_ENTITIES_SELECT: u16 = 52;
+const SELECT_STATE: u16 = 53;
 const LIST_ENTITIES_MEDIA_PLAYER: u16 = 63;
 const MEDIA_PLAYER_STATE: u16 = 64;
 const MEDIA_PLAYER_COMMAND_REQUEST: u16 = 65;
@@ -55,6 +65,7 @@ pub struct Session {
     cipher: snow::TransportState,
     entities: HashMap<u32, Entity>,
     light: Option<u32>,
+    fan: Option<u32>,
     media_player: Option<u32>,
 }
 
@@ -81,6 +92,7 @@ impl Session {
             cipher,
             entities: HashMap::new(),
             light: None,
+            fan: None,
             media_player: None,
         };
 
@@ -156,6 +168,23 @@ impl Session {
                     self.light.get_or_insert(entity.key);
                     self.register(entity.key, EntityDomain::Light, entity.object_id);
                 }
+                LIST_ENTITIES_FAN => {
+                    let entity = proto::ListEntitiesFanResponse::decode(payload.as_slice())?;
+                    self.fan.get_or_insert(entity.key);
+                    self.register(entity.key, EntityDomain::Fan, entity.object_id);
+                }
+                LIST_ENTITIES_SWITCH => {
+                    let entity = proto::ListEntitiesSwitchResponse::decode(payload.as_slice())?;
+                    self.register(entity.key, EntityDomain::Switch, entity.object_id);
+                }
+                LIST_ENTITIES_NUMBER => {
+                    let entity = proto::ListEntitiesNumberResponse::decode(payload.as_slice())?;
+                    self.register(entity.key, EntityDomain::Number, entity.object_id);
+                }
+                LIST_ENTITIES_SELECT => {
+                    let entity = proto::ListEntitiesSelectResponse::decode(payload.as_slice())?;
+                    self.register(entity.key, EntityDomain::Select, entity.object_id);
+                }
                 LIST_ENTITIES_MEDIA_PLAYER => {
                     let entity =
                         proto::ListEntitiesMediaPlayerResponse::decode(payload.as_slice())?;
@@ -180,6 +209,13 @@ impl Session {
 
     fn register(&mut self, key: u32, domain: EntityDomain, object_id: String) {
         self.entities.insert(key, Entity { domain, object_id });
+    }
+
+    fn entity_key(&self, domain: EntityDomain, object_id: &str) -> Option<u32> {
+        self.entities
+            .iter()
+            .find(|(_, entity)| entity.domain == domain && entity.object_id == object_id)
+            .map(|(key, _)| *key)
     }
 
     fn disconnect_error(&self, payload: &[u8]) -> EsphomeNativeApiError {
@@ -288,6 +324,32 @@ impl Session {
 
                 (state.key, Some(media_player_state(&state)))
             }
+            FAN_STATE => {
+                let state = proto::FanStateResponse::decode(payload)?;
+
+                (state.key, Some(fan_state(&state)))
+            }
+            SWITCH_STATE => {
+                let state = proto::SwitchStateResponse::decode(payload)?;
+
+                (state.key, Some(json!(state.state)))
+            }
+            NUMBER_STATE => {
+                let state = proto::NumberStateResponse::decode(payload)?;
+
+                (
+                    state.key,
+                    (!state.missing_state).then(|| json!(f64::from(state.state))),
+                )
+            }
+            SELECT_STATE => {
+                let state = proto::SelectStateResponse::decode(payload)?;
+
+                (
+                    state.key,
+                    (!state.missing_state).then(|| json!(state.state)),
+                )
+            }
             _ => return Ok(None),
         };
 
@@ -317,6 +379,36 @@ impl Session {
 
                 self.send(LIGHT_COMMAND_REQUEST, &light_command(key, &payload))
                     .await
+            }
+            Command::Fan(payload) => {
+                if FAN_FIELDS.iter().any(|field| payload.get(field).is_some()) {
+                    let key = self.fan.ok_or_else(|| EsphomeNativeApiError::NoEntity {
+                        address: self.address.clone(),
+                        domain: EntityDomain::Fan.to_string(),
+                    })?;
+
+                    self.send(FAN_COMMAND_REQUEST, &fan_command(key, &payload))
+                        .await?;
+                }
+
+                for (object_id, state) in switch_commands(&payload) {
+                    let key = self
+                        .entity_key(EntityDomain::Switch, &object_id)
+                        .ok_or_else(|| EsphomeNativeApiError::NoEntity {
+                            address: self.address.clone(),
+                            domain: format!("{} {object_id}", EntityDomain::Switch),
+                        })?;
+
+                    let request = proto::SwitchCommandRequest {
+                        key,
+                        state,
+                        ..Default::default()
+                    };
+
+                    self.send(SWITCH_COMMAND_REQUEST, &request).await?;
+                }
+
+                Ok(())
             }
             Command::Media(command) => {
                 let key = self
@@ -373,6 +465,51 @@ fn light_state(state: &proto::LightStateResponse) -> Value {
             ),
         },
     })
+}
+
+fn fan_state(state: &proto::FanStateResponse) -> Value {
+    json!({
+        "state": if state.state { "ON" } else { "OFF" },
+        "speed": state.speed_level,
+        "preset": (!state.preset_mode.is_empty()).then_some(&state.preset_mode),
+    })
+}
+
+const FAN_FIELDS: [&str; 3] = ["state", "speed", "preset"];
+
+fn switch_commands(payload: &Value) -> Vec<(String, bool)> {
+    let Some(switches) = payload.get("switches").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+
+    switches
+        .iter()
+        .filter_map(|(object_id, state)| Some((object_id.clone(), state.as_bool()?)))
+        .collect()
+}
+
+fn fan_command(key: u32, payload: &Value) -> proto::FanCommandRequest {
+    let mut request = proto::FanCommandRequest {
+        key,
+        ..Default::default()
+    };
+
+    if let Some(state) = payload.get("state").and_then(Value::as_str) {
+        request.has_state = true;
+        request.state = state.eq_ignore_ascii_case("on");
+    }
+
+    if let Some(speed) = payload.get("speed").and_then(Value::as_i64) {
+        request.has_speed_level = true;
+        request.speed_level = speed as i32;
+    }
+
+    if let Some(preset) = payload.get("preset").and_then(Value::as_str) {
+        request.has_preset_mode = true;
+        request.preset_mode = preset.to_owned();
+    }
+
+    request
 }
 
 fn media_player_state(state: &proto::MediaPlayerStateResponse) -> Value {
@@ -518,6 +655,52 @@ mod tests {
         assert!(request.has_rgb);
         assert_eq!(request.red, 1.0);
         assert_eq!(request.green, 0.0);
+    }
+
+    #[test]
+    fn a_fan_state_carries_its_speed_and_preset() {
+        let state = proto::FanStateResponse {
+            state: true,
+            speed_level: 2,
+            preset_mode: "Manual".to_owned(),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            fan_state(&state),
+            json!({ "state": "ON", "speed": 2, "preset": "Manual" })
+        );
+
+        assert_eq!(
+            fan_state(&proto::FanStateResponse::default()),
+            json!({ "state": "OFF", "speed": 0, "preset": null })
+        );
+    }
+
+    #[test]
+    fn a_fan_command_only_sets_what_it_was_given() {
+        let request = fan_command(9, &json!({ "state": "ON", "preset": "Auto" }));
+
+        assert_eq!(request.key, 9);
+        assert!(request.has_state && request.state);
+        assert!(request.has_preset_mode);
+        assert_eq!(request.preset_mode, "Auto");
+        assert!(!request.has_speed_level);
+
+        let request = fan_command(9, &json!({ "speed": 3 }));
+
+        assert!(!request.has_state);
+        assert!(request.has_speed_level);
+        assert_eq!(request.speed_level, 3);
+    }
+
+    #[test]
+    fn a_fan_payload_can_carry_switch_commands() {
+        assert_eq!(
+            switch_commands(&json!({ "switches": { "display": false } })),
+            vec![("display".to_owned(), false)]
+        );
+        assert!(switch_commands(&json!({ "state": "ON" })).is_empty());
     }
 
     #[test]

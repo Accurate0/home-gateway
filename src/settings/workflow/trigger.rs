@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::{Comparison, EnvMetric, LeafCondition};
 use crate::actors::sun::calc::SunTransition;
 use crate::actors::system::cron::schedule::CronSchedule;
-use crate::db::GarageDoorState;
+use crate::db::{AirPurifierMode, GarageDoorState};
 use crate::event_bus::{
     CustomEventSource, FeatureFlagState, ForecastDay, FuelChange, PlaybackState, SensorMetric,
     SolarMetric, WeatherMetric, WeatherSource,
@@ -35,6 +35,13 @@ pub enum TriggerMatcher {
         device: IEEEAddress,
         #[serde(default)]
         state: Option<GarageDoorState>,
+    },
+    AirPurifier {
+        device: IEEEAddress,
+        #[serde(default)]
+        on: Option<bool>,
+        #[serde(default)]
+        mode: Option<AirPurifierMode>,
     },
     Switch {
         #[serde(rename = "device", alias = "ieeeAddr")]
@@ -202,6 +209,7 @@ impl TriggerMatcher {
             TriggerMatcher::Presence { .. } => "presence",
             TriggerMatcher::Door { .. } => "door",
             TriggerMatcher::GarageDoor { .. } => "garage_door",
+            TriggerMatcher::AirPurifier { .. } => "air_purifier",
             TriggerMatcher::Switch { .. } => "switch",
             TriggerMatcher::Environment { .. } => "environment",
             TriggerMatcher::Plant { .. } => "plant",
@@ -245,6 +253,14 @@ impl TriggerMatcher {
             } => Some(LeafCondition::GarageDoor {
                 device: device.clone(),
                 state: *state,
+            }),
+            TriggerMatcher::AirPurifier {
+                device,
+                on: Some(on),
+                mode: None,
+            } => Some(LeafCondition::AirPurifier {
+                device: device.clone(),
+                on: *on,
             }),
             TriggerMatcher::Environment {
                 sensor,
@@ -301,6 +317,7 @@ impl TriggerMatcher {
             }),
             TriggerMatcher::HomeAssistant { state: None, .. }
             | TriggerMatcher::GarageDoor { state: None, .. }
+            | TriggerMatcher::AirPurifier { .. }
             | TriggerMatcher::Light { on: None, .. }
             | TriggerMatcher::CommandFailed { .. }
             | TriggerMatcher::FeatureFlag { .. }
@@ -336,6 +353,18 @@ impl TriggerMatcher {
                 Some(state) => format!("garage_door({device}) -> {state}"),
                 None => format!("garage_door({device})"),
             },
+            TriggerMatcher::AirPurifier { device, on, mode } => {
+                let on = match on {
+                    Some(true) => " -> on",
+                    Some(false) => " -> off",
+                    None => "",
+                };
+
+                match mode {
+                    Some(mode) => format!("air_purifier({device}){on} mode={mode}"),
+                    None => format!("air_purifier({device}){on}"),
+                }
+            }
             TriggerMatcher::Switch {
                 ieee_addr,
                 action: Some(action),
@@ -514,6 +543,9 @@ impl TriggerMatcher {
             | TriggerMatcher::Switch { ieee_addr, .. }
             | TriggerMatcher::Light { ieee_addr, .. }
             | TriggerMatcher::GarageDoor {
+                device: ieee_addr, ..
+            }
+            | TriggerMatcher::AirPurifier {
                 device: ieee_addr, ..
             } => {
                 validate_device(ieee_addr, devices)?;

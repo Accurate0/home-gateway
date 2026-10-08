@@ -1,13 +1,13 @@
 use crate::actors::system::rpc;
 use crate::{
     actors::devices::{
-        control_switch, control_switch::ControlSwitchHandler, door_sensor,
-        door_sensor::DoorSensorHandler, environment_sensor,
-        environment_sensor::EnvironmentSensorHandler, garage_door, garage_door::GarageDoorHandler,
-        light, light::LightHandler, media_player, media_player::MediaPlayerHandler, plant_sensor,
-        plant_sensor::PlantSensorHandler, presence_sensor, presence_sensor::PresenceSensorHandler,
-        robot_vacuum, robot_vacuum::RobotVacuumHandler, smart_switch,
-        smart_switch::SmartSwitchHandler,
+        air_purifier, air_purifier::AirPurifierHandler, control_switch,
+        control_switch::ControlSwitchHandler, door_sensor, door_sensor::DoorSensorHandler,
+        environment_sensor, environment_sensor::EnvironmentSensorHandler, garage_door,
+        garage_door::GarageDoorHandler, light, light::LightHandler, media_player,
+        media_player::MediaPlayerHandler, plant_sensor, plant_sensor::PlantSensorHandler,
+        presence_sensor, presence_sensor::PresenceSensorHandler, robot_vacuum,
+        robot_vacuum::RobotVacuumHandler, smart_switch, smart_switch::SmartSwitchHandler,
     },
     device_registry::DeviceRegistry,
     repo::light::LightAttributes,
@@ -491,6 +491,53 @@ impl DecodedRole for garage_door::GarageDoorReading {
 
     fn into_message(self, event_id: Uuid) -> Self::Message {
         garage_door::Message::NewEvent(garage_door::NewEvent {
+            event_id,
+            traceparent: crate::tracing_context::inject_current(),
+            reading: self,
+        })
+    }
+}
+
+impl DecodedRole for air_purifier::AirPurifierReading {
+    type Message = air_purifier::Message;
+
+    const ACTOR: &'static str = AirPurifierHandler::NAME;
+
+    fn present(reading: &DeviceReading) -> bool {
+        reading.air_purifier.is_some()
+    }
+
+    fn declared(devices: &DeviceRegistry, address: &str) -> bool {
+        devices.air_purifier(address).is_some()
+    }
+
+    fn extract(
+        device: &DecodedDevice,
+        _friendly_name: &str,
+        reading: &DeviceReading,
+    ) -> Option<Self> {
+        let address = &device.address;
+
+        let fields = reading.air_purifier.as_ref()?;
+
+        let Some(state) = fields.state.as_deref() else {
+            tracing::debug!("skipping air purifier reading for {address}: no state yet");
+            return None;
+        };
+
+        Some(air_purifier::AirPurifierReading {
+            address: address.clone(),
+            on: state.eq_ignore_ascii_case("on"),
+            mode: fields.mode,
+            speed: fields.speed,
+            pm25: fields.pm25,
+            filter_life: fields.filter_life,
+            display: fields.display,
+        })
+    }
+
+    fn into_message(self, event_id: Uuid) -> Self::Message {
+        air_purifier::Message::NewEvent(air_purifier::NewEvent {
             event_id,
             traceparent: crate::tracing_context::inject_current(),
             reading: self,

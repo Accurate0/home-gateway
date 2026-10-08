@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drop_chunks('air_purifier_events', older_than => now() - make_interval(secs => $1))::text",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drop_chunks",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "30b013dd34bd6dc0be2050db638e921dfc47c21bd7e07d245e3add03e0fef122"
+}

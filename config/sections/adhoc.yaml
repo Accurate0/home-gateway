@@ -16,6 +16,11 @@ tasks:
     state: enabled
     schedule: "*/5 * * * *"
     parameters: {}
+  trim_air_purifier_events:
+    state: enabled
+    schedule: "55 3 * * *"
+    parameters:
+      retention: 180d
   trim_derived_door_events:
     state: enabled
     schedule: "0 3 * * *"

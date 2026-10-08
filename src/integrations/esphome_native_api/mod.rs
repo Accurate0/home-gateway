@@ -59,6 +59,10 @@ impl EsphomeNativeApi {
         self.send(address, Command::Light(payload)).await
     }
 
+    pub async fn fan(&self, address: &str, payload: Value) -> Result<(), EsphomeNativeApiError> {
+        self.send(address, Command::Fan(payload)).await
+    }
+
     pub async fn media_player(
         &self,
         address: &str,

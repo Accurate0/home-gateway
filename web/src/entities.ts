@@ -18,7 +18,10 @@ export type EntityKind =
   | "einkDisplay"
   | "robotVacuum"
   | "mediaPlayer"
-  | "garageDoor";
+  | "garageDoor"
+  | "airPurifier";
+
+export type AirPurifierMode = "MANUAL" | "SLEEP" | "AUTO";
 
 export type VacuumKind = "ROBOROCK" | "VALETUDO";
 
@@ -105,6 +108,11 @@ export interface Entity {
   artworkUrl?: string | null;
   battery?: { readonly percentage?: number | null } | null;
   garageState?: string | null;
+  purifierMode?: string | null;
+  purifierSpeed?: number | null;
+  purifierPm25?: number | null;
+  filterLife?: number | null;
+  displayOn?: boolean | null;
 }
 
 const SHORT_UNITS: Record<string, string> = {
@@ -151,6 +159,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   RobotVacuumEntity: "robotVacuum",
   MediaPlayerEntity: "mediaPlayer",
   GarageDoorEntity: "garageDoor",
+  AirPurifierEntity: "airPurifier",
   LightUpdate: "light",
   DoorUpdate: "door",
   PresenceUpdate: "presence",
@@ -159,6 +168,7 @@ const TYPENAME_TO_KIND: Record<string, EntityKind> = {
   DeviceBatteryUpdate: "einkDisplay",
   MediaPlayerUpdate: "mediaPlayer",
   GarageDoorUpdate: "garageDoor",
+  AirPurifierUpdate: "airPurifier",
 };
 
 export function isGarageDoorMoving(state: string | null | undefined): boolean {

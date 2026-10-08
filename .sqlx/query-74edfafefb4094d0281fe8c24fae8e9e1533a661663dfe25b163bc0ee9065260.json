@@ -1,0 +1,81 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT device_id, is_on, mode AS \"mode: AirPurifierMode\", speed, pm25, filter_life,\n                   display, changed_at, updated_at\n            FROM latest_air_purifier_state\n            WHERE device_id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "is_on",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "mode: AirPurifierMode",
+        "type_info": {
+          "Custom": {
+            "name": "air_purifier_mode",
+            "kind": {
+              "Enum": [
+                "manual",
+                "sleep",
+                "auto"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "speed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "pm25",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "filter_life",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "display",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "changed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "74edfafefb4094d0281fe8c24fae8e9e1533a661663dfe25b163bc0ee9065260"
+}

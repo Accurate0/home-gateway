@@ -18,11 +18,17 @@ import type { DashboardVacuumStopMutation } from "./__generated__/DashboardVacuu
 import type { DashboardVacuumDockMutation } from "./__generated__/DashboardVacuumDockMutation.graphql";
 import type { DashboardGarageDoorOpenMutation } from "./__generated__/DashboardGarageDoorOpenMutation.graphql";
 import type { DashboardGarageDoorCloseMutation } from "./__generated__/DashboardGarageDoorCloseMutation.graphql";
+import type { DashboardAirPurifierTurnOnMutation } from "./__generated__/DashboardAirPurifierTurnOnMutation.graphql";
+import type { DashboardAirPurifierTurnOffMutation } from "./__generated__/DashboardAirPurifierTurnOffMutation.graphql";
+import type { DashboardAirPurifierSetModeMutation } from "./__generated__/DashboardAirPurifierSetModeMutation.graphql";
+import type { DashboardAirPurifierSetSpeedMutation } from "./__generated__/DashboardAirPurifierSetSpeedMutation.graphql";
+import type { DashboardAirPurifierSetDisplayMutation } from "./__generated__/DashboardAirPurifierSetDisplayMutation.graphql";
 import type { DashboardMediaPlayPauseMutation } from "./__generated__/DashboardMediaPlayPauseMutation.graphql";
 import type { DashboardMediaStopMutation } from "./__generated__/DashboardMediaStopMutation.graphql";
 import type { DashboardEinkConfigQuery } from "./__generated__/DashboardEinkConfigQuery.graphql";
 import type { DashboardTakeScreenshotMutation } from "./__generated__/DashboardTakeScreenshotMutation.graphql";
 import EntityCard, {
+  type AirPurifierActions,
   type EinkActions,
   type GarageDoorActions,
   type LightActions,
@@ -147,6 +153,19 @@ const EntitiesQuery = graphql`
         }
         lastSeen
       }
+      ... on AirPurifierEntity {
+        category
+        id
+        name
+        room
+        on
+        purifierMode: mode
+        purifierSpeed: speed
+        purifierPm25: pm25
+        filterLife
+        displayOn: display
+        lastSeen
+      }
       ... on RobotVacuumEntity {
         category
         id
@@ -184,6 +203,14 @@ const EventsSubscription = graphql`
         id
         name
         garageState: state
+      }
+      ... on AirPurifierUpdate {
+        id
+        name
+        on
+        purifierMode: mode
+        purifierSpeed: speed
+        displayOn: display
       }
       ... on PresenceUpdate {
         id
@@ -316,6 +343,52 @@ const GarageDoorCloseMutation = graphql`
   mutation DashboardGarageDoorCloseMutation($id: IdOrAlias!) {
     garageDoor(id: $id) {
       close
+    }
+  }
+`;
+
+const AirPurifierTurnOnMutation = graphql`
+  mutation DashboardAirPurifierTurnOnMutation($id: IdOrAlias!) {
+    airPurifier(id: $id) {
+      turnOn
+    }
+  }
+`;
+
+const AirPurifierTurnOffMutation = graphql`
+  mutation DashboardAirPurifierTurnOffMutation($id: IdOrAlias!) {
+    airPurifier(id: $id) {
+      turnOff
+    }
+  }
+`;
+
+const AirPurifierSetModeMutation = graphql`
+  mutation DashboardAirPurifierSetModeMutation(
+    $id: IdOrAlias!
+    $mode: AirPurifierMode!
+  ) {
+    airPurifier(id: $id) {
+      setMode(mode: $mode)
+    }
+  }
+`;
+
+const AirPurifierSetSpeedMutation = graphql`
+  mutation DashboardAirPurifierSetSpeedMutation($id: IdOrAlias!, $speed: Int!) {
+    airPurifier(id: $id) {
+      setSpeed(speed: $speed)
+    }
+  }
+`;
+
+const AirPurifierSetDisplayMutation = graphql`
+  mutation DashboardAirPurifierSetDisplayMutation(
+    $id: IdOrAlias!
+    $on: Boolean!
+  ) {
+    airPurifier(id: $id) {
+      setDisplay(on: $on)
     }
   }
 `;
@@ -486,6 +559,24 @@ export default function Dashboard() {
   const [commitGarageDoorClose] = useMutation<DashboardGarageDoorCloseMutation>(
     GarageDoorCloseMutation,
   );
+  const [commitAirPurifierTurnOn] =
+    useMutation<DashboardAirPurifierTurnOnMutation>(AirPurifierTurnOnMutation);
+  const [commitAirPurifierTurnOff] =
+    useMutation<DashboardAirPurifierTurnOffMutation>(
+      AirPurifierTurnOffMutation,
+    );
+  const [commitAirPurifierSetMode] =
+    useMutation<DashboardAirPurifierSetModeMutation>(
+      AirPurifierSetModeMutation,
+    );
+  const [commitAirPurifierSetSpeed] =
+    useMutation<DashboardAirPurifierSetSpeedMutation>(
+      AirPurifierSetSpeedMutation,
+    );
+  const [commitAirPurifierSetDisplay] =
+    useMutation<DashboardAirPurifierSetDisplayMutation>(
+      AirPurifierSetDisplayMutation,
+    );
   const [commitMediaPlayPause] = useMutation<DashboardMediaPlayPauseMutation>(
     MediaPlayPauseMutation,
   );
@@ -540,6 +631,19 @@ export default function Dashboard() {
   const garageDoorActionsFor = (entity: Entity): GarageDoorActions => ({
     onOpen: () => commitGarageDoorOpen({ variables: { id: entity.id } }),
     onClose: () => commitGarageDoorClose({ variables: { id: entity.id } }),
+  });
+
+  const airPurifierActionsFor = (entity: Entity): AirPurifierActions => ({
+    onToggle: () =>
+      entity.on
+        ? commitAirPurifierTurnOff({ variables: { id: entity.id } })
+        : commitAirPurifierTurnOn({ variables: { id: entity.id } }),
+    onSetMode: (mode) =>
+      commitAirPurifierSetMode({ variables: { id: entity.id, mode } }),
+    onSetSpeed: (speed) =>
+      commitAirPurifierSetSpeed({ variables: { id: entity.id, speed } }),
+    onSetDisplay: (on) =>
+      commitAirPurifierSetDisplay({ variables: { id: entity.id, on } }),
   });
 
   const mediaPlayerActionsFor = (entity: Entity): MediaPlayerActions => ({
@@ -684,6 +788,11 @@ export default function Dashboard() {
                 garageDoorActions={
                   entity.kind === "garageDoor"
                     ? garageDoorActionsFor(entity)
+                    : undefined
+                }
+                airPurifierActions={
+                  entity.kind === "airPurifier"
+                    ? airPurifierActionsFor(entity)
                     : undefined
                 }
                 mediaPlayerActions={

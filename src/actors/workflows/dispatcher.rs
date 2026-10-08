@@ -262,6 +262,19 @@ impl WorkflowDispatcher {
                     && state.is_none_or(|state| state == *s)
             }
             (
+                TriggerMatcher::AirPurifier { device, on, mode },
+                EventBusMessage::AirPurifier {
+                    device_id,
+                    on: o,
+                    mode: m,
+                    ..
+                },
+            ) => {
+                devices.resolve_id(device) == Some(device_id.as_str())
+                    && on.is_none_or(|on| on == *o)
+                    && mode.is_none_or(|mode| Some(mode) == *m)
+            }
+            (
                 TriggerMatcher::Light { ieee_addr, on },
                 EventBusMessage::Light {
                     ieee_addr: a,

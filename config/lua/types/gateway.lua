@@ -1,5 +1,9 @@
 ---@meta
 
+---@alias gw.AirPurifierCommand { command: "turn_on" }|{ command: "turn_off" }|{ mode: gw.AirPurifierMode, command: "set_mode" }|{ speed: integer, command: "set_speed" }|{ on: boolean, command: "set_display" }
+
+---@alias gw.AirPurifierMode "manual"|"sleep"|"auto"
+
 ---@alias gw.EnableState "ENABLED"|"DISABLED"|"TOGGLE"
 
 ---@alias gw.EnvMetric "temperature"|"humidity"|"pressure"|"lux"|"uv_index"
@@ -23,6 +27,16 @@
 ---@alias gw.SwitchState "ON"|"OFF"|"TOGGLE"
 
 ---@alias gw.VacuumCommand "start"|"stop"|"dock"
+
+---@class gw.AirPurifierStatus
+---@field on boolean
+---@field mode? string
+---@field speed? integer
+---@field pm25? number
+---@field filter_life? number
+---@field display? boolean
+---@field changed_at integer
+---@field updated_at integer
 
 ---@class gw.EnergyInterval
 ---@field used number
@@ -508,6 +522,19 @@ function garage_door.state(device) end
 ---@param device string
 ---@param command gw.GarageDoorCommand
 function garage_door.command(device, command) end
+
+---@class gw.api.air_purifier
+air_purifier = {}
+
+---Requires the `air_purifier:read` scope.
+---@param device string
+---@return gw.AirPurifierStatus?
+function air_purifier.state(device) end
+
+---Requires the `air_purifier:write` scope.
+---@param device string
+---@param command gw.AirPurifierCommand
+function air_purifier.command(device, command) end
 
 ---@class gw.api.energy
 energy = {}

@@ -25,6 +25,46 @@ type AdhocTaskStatus {
 	checksumDrifted: Boolean!
 }
 
+type AirPurifierEntity {
+	category: EntityCategory!
+	id: String!
+	aliases: [String!]!
+	name: String!
+	room: String
+	on: Boolean
+	mode: AirPurifierMode
+	speed: Int
+	pm25: Float
+	filterLife: Float
+	display: Boolean
+	changedAt: DateTime
+	lastSeen: DateTime
+}
+
+enum AirPurifierMode {
+	MANUAL
+	SLEEP
+	AUTO
+}
+
+type AirPurifierMutation {
+	turnOn: CommandOutcome!
+	turnOff: CommandOutcome!
+	setMode(mode: AirPurifierMode!): CommandOutcome!
+	setSpeed(speed: Int!): CommandOutcome!
+	setDisplay(on: Boolean!): CommandOutcome!
+}
+
+type AirPurifierUpdate {
+	eventId: UUID!
+	id: ID!
+	name: String!
+	on: Boolean!
+	mode: AirPurifierMode
+	speed: Int
+	display: Boolean
+}
+
 type AuthObject {
 	id: String
 	name: String
@@ -270,7 +310,7 @@ type EnergyObject {
 	gaps(input: EnergyGapsInput!): [EnergyGap!]!
 }
 
-union Entity = LightEntity | EnvironmentEntity | PlantEntity | DoorEntity | GarageDoorEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
+union Entity = LightEntity | EnvironmentEntity | PlantEntity | DoorEntity | GarageDoorEntity | AirPurifierEntity | PresenceEntity | EinkDisplayEntity | RobotVacuumEntity | MediaPlayerEntity
 
 """
 The dashboard section a device kind is displayed under. Owned by the backend
@@ -348,7 +388,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | AirPurifierUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -768,6 +808,7 @@ type MutationRoot {
 	light(id: IdOrAlias!): LightMutation!
 	robotVacuum(id: IdOrAlias!): RobotVacuumMutation!
 	garageDoor(id: IdOrAlias!): GarageDoorMutation!
+	airPurifier(id: IdOrAlias!): AirPurifierMutation!
 	mediaPlayer(id: IdOrAlias!): MediaPlayerMutation!
 	einkDisplay(id: IdOrAlias!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
@@ -957,6 +998,7 @@ type QueryRoot {
 	einkDisplay(id: IdOrAlias!): EinkDisplayEntity!
 	robotVacuum(id: IdOrAlias!): RobotVacuumEntity!
 	garageDoor(id: IdOrAlias!): GarageDoorEntity!
+	airPurifier(id: IdOrAlias!): AirPurifierEntity!
 	solar: SolarObject!
 	energy: EnergyObject!
 	weather(input: WeatherInput!): WeatherObject!

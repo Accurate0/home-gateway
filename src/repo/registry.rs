@@ -1,14 +1,16 @@
 use crate::repo::{
-    AdhocRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo, EnvironmentRepo,
-    FuelWatchRepo, GarageDoorRepo, HolidayRepo, HomeAssistantRepo, IntentRepo, JellyfinRepo,
-    LightRepo, MediaPlayerRepo, MetricRepo, PlantRepo, PushRepo, RobotVacuumRepo, SmartSwitchRepo,
-    SolarRepo, SunRepo, UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
+    AdhocRepo, AirPurifierRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo,
+    EnvironmentRepo, FuelWatchRepo, GarageDoorRepo, HolidayRepo, HomeAssistantRepo, IntentRepo,
+    JellyfinRepo, LightRepo, MediaPlayerRepo, MetricRepo, PlantRepo, PushRepo, RobotVacuumRepo,
+    SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo,
+    WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
 struct Repos {
     adhoc: AdhocRepo,
+    air_purifier: AirPurifierRepo,
     battery: BatteryRepo,
     device: DeviceRepo,
     door: DoorRepo,
@@ -47,6 +49,7 @@ impl RepoRegistry {
         Self {
             inner: Arc::new(Repos {
                 adhoc: AdhocRepo::new(db.clone()),
+                air_purifier: AirPurifierRepo::new(db.clone()),
                 battery: BatteryRepo::new(db.clone()),
                 device: DeviceRepo::new(db.clone()),
                 door: DoorRepo::new(db.clone()),
@@ -79,6 +82,10 @@ impl RepoRegistry {
 
     pub fn adhoc(&self) -> &AdhocRepo {
         &self.inner.adhoc
+    }
+
+    pub fn air_purifier(&self) -> &AirPurifierRepo {
+        &self.inner.air_purifier
     }
 
     pub fn battery(&self) -> &BatteryRepo {
