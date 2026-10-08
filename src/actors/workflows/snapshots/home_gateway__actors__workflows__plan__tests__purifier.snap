@@ -1,6 +1,5 @@
 ---
 source: src/actors/workflows/plan.rs
-assertion_line: 320
 expression: out
 ---
 # Living room purifier quiet hold  (on: air_purifier(living-room-purifier))
