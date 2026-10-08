@@ -1,5 +1,8 @@
+local purifier = gw.lib("purifier")
+
 local movie = {}
 
+local PURIFIER = "living-room-purifier"
 local FLOOR_LAMP = "floor-lamp-living-room"
 local TABLE_LAMP = "living-room-table-lamp"
 local OCCUPANCY_TAG = "living-room-occupancy"
@@ -14,6 +17,10 @@ local function lights_off()
 	workflow.step("lights_off", function()
 		workflow.run(LIGHTS_OFF)
 	end, LIGHTS_OFF)
+
+	workflow.step("purifier_quiet", function()
+		purifier.hold(PURIFIER)
+	end, PURIFIER)
 end
 
 local function paused(settings)
@@ -26,6 +33,10 @@ local function stopped(settings)
 	workflow.step("occupancy", function()
 		workflow.set_enabled(OCCUPANCY_TAG, "ENABLED")
 	end, OCCUPANCY_TAG)
+
+	workflow.step("purifier_restore", function()
+		purifier.release(PURIFIER)
+	end, PURIFIER)
 
 	workflow.step("fade_up", function()
 		if not light.is_on(FLOOR_LAMP) then

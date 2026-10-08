@@ -48,6 +48,7 @@ configMapGenerator:
       - workflows/living-room-lamp.yaml
       - workflows/movie-night.yaml
       - workflows/living-room-plant.yaml
+      - workflows/purifier.yaml
       - workflows/rain.yaml
       - workflows/small-switch.yaml
       - workflows/solar.yaml
@@ -57,6 +58,7 @@ configMapGenerator:
     files:
       - lua/lib/format.lua
       - lua/lib/lights.lua
+      - lua/lib/purifier.lua
   - name: home-gateway-config-lua-model-lib
     files:
       - lua/models/lib/esphome_light.lua
@@ -68,6 +70,7 @@ configMapGenerator:
       - lua/workflows/buttons.lua
       - lua/workflows/movie.lua
       - lua/workflows/prices.lua
+      - lua/workflows/purifier.lua
       - lua/workflows/reminders.lua
       - lua/workflows/small_switch.lua
   - name: home-gateway-config-lua-integrations

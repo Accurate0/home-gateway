@@ -1,0 +1,10 @@
+---
+source: src/actors/workflows/plan.rs
+assertion_line: 320
+expression: out
+---
+# Living room purifier quiet hold  (on: air_purifier(living-room-purifier))
+  lua: lua(call purifier.enforce) -> []
+
+# Living room purifier filter low  (on: cron(0 9 * * *))
+  lua: lua(call reminders.filter_low) -> []
