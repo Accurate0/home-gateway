@@ -36,6 +36,8 @@ type AirPurifierEntity {
 	speed: Int
 	pm25: Float
 	filterLife: Float
+	aqi: Float
+	cadr: Float
 	display: Boolean
 	changedAt: DateTime
 	lastSeen: DateTime

@@ -13,9 +13,35 @@ pub struct MetricRow {
     pub time: DateTime<Utc>,
 }
 
+pub struct LatestMetricRow {
+    pub address: String,
+    pub metric: String,
+    pub value: Option<f64>,
+    pub text_value: Option<String>,
+    pub time: DateTime<Utc>,
+}
+
 impl MetricRepo {
     pub fn new(db: Pool<Postgres>) -> Self {
         Self { db }
+    }
+
+    #[tracing::instrument(skip_all, name = "db.metric.latest_many", fields(keys = addresses.len()), err)]
+    pub async fn latest_many(
+        &self,
+        addresses: &[String],
+        metrics: &[String],
+    ) -> Result<Vec<LatestMetricRow>, sqlx::Error> {
+        sqlx::query_as!(
+            LatestMetricRow,
+            r#"SELECT address, metric, value, text_value, updated_at AS "time!"
+               FROM latest_device_metric
+               WHERE (address, metric) IN (SELECT * FROM UNNEST($1::text[], $2::text[]))"#,
+            addresses,
+            metrics,
+        )
+        .fetch_all(&self.db)
+        .await
     }
 
     #[tracing::instrument(skip_all, name = "db.metric.record", err)]

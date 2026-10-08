@@ -45,6 +45,8 @@ fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
             mode = onAirPurifierEntity.purifierMode,
             speed = onAirPurifierEntity.purifierSpeed,
             pm25 = onAirPurifierEntity.purifierPm25,
+            aqi = onAirPurifierEntity.aqi,
+            cadr = onAirPurifierEntity.cadr,
             filterLife = onAirPurifierEntity.filterLife,
             displayOn = onAirPurifierEntity.displayOn,
         )

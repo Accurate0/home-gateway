@@ -111,6 +111,8 @@ export interface Entity {
   purifierMode?: string | null;
   purifierSpeed?: number | null;
   purifierPm25?: number | null;
+  aqi?: number | null;
+  cadr?: number | null;
   filterLife?: number | null;
   displayOn?: boolean | null;
 }

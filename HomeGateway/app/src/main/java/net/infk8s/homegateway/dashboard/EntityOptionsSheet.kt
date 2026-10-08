@@ -149,6 +149,8 @@ private fun EntityOptions(entity: EntityUi, controls: EntityControls, lightLevel
             MetricGrid(
                 listOfNotNull(
                     entity.pm25?.let { Metric("PM2.5", "%.0f µg/m³".format(it)) },
+                    entity.aqi?.let { Metric("AQI", "%.0f".format(it)) },
+                    entity.cadr?.let { Metric("CADR", "%.0f m³/h".format(it)) },
                     entity.filterLife?.let { Metric("Filter life", "%.0f%%".format(it)) },
                 ),
             )

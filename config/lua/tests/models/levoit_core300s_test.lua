@@ -43,15 +43,20 @@ return {
 		test.eq(reading, {})
 	end,
 
-	["other entities land as metrics"] = function()
-		local reading = model.decode({
-			domain = "sensor",
-			object_id = "aqi",
-			payload = 1,
-			entities = { aqi = 1 },
+	["the air quality sensors land as metrics"] = function()
+		test.eq(model.decode({ domain = "sensor", object_id = "aqi", payload = 1, entities = { aqi = 1 } }), {
+			metrics = { aqi = 1 },
 		})
+		test.eq(model.decode({ domain = "sensor", object_id = "current_cadr", payload = 120, entities = {} }), {
+			metrics = { cadr = 120 },
+		})
+	end,
 
-		test.eq(reading, { metrics = { aqi = 1 } })
+	["diagnostics and unnamed entities are dropped"] = function()
+		local fan = { state = "ON", speed = 1 }
+
+		test.eq(model.decode({ domain = "sensor", object_id = "heap_free", payload = 1024, entities = {} }), {})
+		test.eq(model.decode({ domain = "fan", object_id = "", payload = fan, entities = { [""] = fan } }), {})
 	end,
 
 	["power commands only go out when they change something"] = function()

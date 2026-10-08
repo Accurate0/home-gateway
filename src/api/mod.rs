@@ -24,6 +24,7 @@ use crate::graphql::{
     dataloader::air_purifier_state::AirPurifierStateDataLoader,
     dataloader::device_battery::DeviceBatteryDataLoader,
     dataloader::device_battery_history::DeviceBatteryHistoryDataLoader,
+    dataloader::device_metric::DeviceMetricDataLoader,
     dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::forecast::ForecastDataLoader,
     dataloader::garage_door_state::GarageDoorStateDataLoader,
@@ -124,6 +125,12 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     .data(DataLoader::new(
         WorkflowRunStepsDataLoader {
             repo: state.repos.workflow().clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        DeviceMetricDataLoader {
+            repo: state.repos.metric().clone(),
         },
         tokio::spawn,
     ))

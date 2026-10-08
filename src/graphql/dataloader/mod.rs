@@ -1,6 +1,7 @@
 pub mod air_purifier_state;
 pub mod device_battery;
 pub mod device_battery_history;
+pub mod device_metric;
 pub mod eink_battery;
 pub mod forecast;
 pub mod garage_door_state;

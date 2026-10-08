@@ -6,12 +6,17 @@ use crate::device_registry::DeviceRegistry;
 use crate::graphql::dataloader::air_purifier_state::{
     AirPurifierStateDataLoader, AirPurifierStateModel,
 };
+use crate::graphql::dataloader::device_metric::{DeviceMetricDataLoader, DeviceMetricKey};
+
+const AQI_METRIC: &str = "aqi";
+const CADR_METRIC: &str = "cadr";
 
 pub struct AirPurifierEntity {
     pub id: String,
     pub name: String,
     pub room: Option<String>,
     pub aliases: Vec<String>,
+    address: String,
 }
 
 impl AirPurifierEntity {
@@ -19,6 +24,7 @@ impl AirPurifierEntity {
         let settings = registry.air_purifier(address)?;
 
         Some(Self {
+            address: address.to_owned(),
             id: settings.id.clone(),
             name: settings.name.clone(),
             room: registry.room(address).map(str::to_owned),
@@ -33,6 +39,21 @@ impl AirPurifierEntity {
         let loader = ctx.data::<DataLoader<AirPurifierStateDataLoader>>()?;
 
         Ok(loader.load_one(self.id.clone()).await?)
+    }
+
+    async fn metric(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        name: &str,
+    ) -> async_graphql::Result<Option<f64>> {
+        let loader = ctx.data::<DataLoader<DeviceMetricDataLoader>>()?;
+
+        let key = DeviceMetricKey {
+            address: self.address.clone(),
+            metric: name.to_owned(),
+        };
+
+        Ok(loader.load_one(key).await?.and_then(|row| row.value))
     }
 }
 
@@ -82,6 +103,14 @@ impl AirPurifierEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<f64>> {
         Ok(self.model(ctx).await?.and_then(|m| m.filter_life))
+    }
+
+    async fn aqi(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<f64>> {
+        self.metric(ctx, AQI_METRIC).await
+    }
+
+    async fn cadr(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<f64>> {
+        self.metric(ctx, CADR_METRIC).await
     }
 
     async fn display(

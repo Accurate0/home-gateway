@@ -24,6 +24,13 @@ local PURIFIER = {
 	[DISPLAY] = true,
 }
 
+local METRICS = {
+	aqi = "aqi",
+	current_cadr = "cadr",
+	child_lock = "child_lock",
+	filter_low = "filter_low",
+}
+
 local COMMANDS = {
 	turn_on = function(_, current)
 		if current.on == true then
@@ -92,7 +99,13 @@ return {
 
 	decode = function(input)
 		if not PURIFIER[input.object_id] then
-			return { metrics = { [input.object_id] = input.payload } }
+			local metric = METRICS[input.object_id]
+
+			if metric == nil or type(input.payload) == "table" then
+				return {}
+			end
+
+			return { metrics = { [metric] = input.payload } }
 		end
 
 		local entities = input.entities

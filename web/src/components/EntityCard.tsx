@@ -18,6 +18,7 @@ import {
   Palette,
   PersonStanding,
   Play,
+  Power,
   SlidersHorizontal,
   Square,
   Sprout,
@@ -1330,6 +1331,16 @@ function AirPurifierTile({
   const on = entity.on === true;
   const unknown = entity.on == null;
   const displayOn = entity.displayOn;
+  const sensors = [
+    { label: "PM2.5", value: entity.purifierPm25, unit: " µg/m³" },
+    { label: "AQI", value: entity.aqi, unit: "" },
+    { label: "CADR", value: entity.cadr, unit: " m³/h" },
+    { label: "Filter", value: entity.filterLife, unit: "%" },
+  ].map((sensor) => ({
+    label: sensor.label,
+    value:
+      sensor.value == null ? "—" : `${Math.round(sensor.value)}${sensor.unit}`,
+  }));
   const t = STATUS_TONES.present;
   const chip = (active: boolean) =>
     cn(
@@ -1352,24 +1363,9 @@ function AirPurifierTile({
         >
           <Fan className="size-5" strokeWidth={1.5} />
         </button>
-        <div className="text-muted-foreground flex items-center gap-3 text-sm tabular-nums">
-          {entity.purifierPm25 != null && (
-            <span title="PM2.5">{Math.round(entity.purifierPm25)} µg/m³</span>
-          )}
-          <button
-            type="button"
-            onClick={() => actions?.onSetDisplay(!displayOn)}
-            disabled={displayOn == null}
-            title={displayOn ? "Turn display off" : "Turn display on"}
-            className="hover:text-foreground disabled:opacity-40"
-          >
-            {displayOn ? (
-              <Lightbulb className="size-4" strokeWidth={1.75} />
-            ) : (
-              <LightbulbOff className="size-4" strokeWidth={1.75} />
-            )}
-          </button>
-        </div>
+        <StatePill tone={unknown ? "unknown" : on ? "on" : "off"}>
+          {unknown ? "unknown" : on ? "on" : "off"}
+        </StatePill>
       </div>
       <div>
         <div className="leading-tight font-medium">{entity.name}</div>
@@ -1377,16 +1373,32 @@ function AirPurifierTile({
           <span>{entity.id}</span>
           <LastSeen entity={entity} now={now} />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatePill tone={unknown ? "unknown" : on ? "on" : "off"}>
-            {unknown ? "unknown" : on ? "on" : "off"}
-          </StatePill>
-          {entity.filterLife != null && (
-            <span className="text-muted-foreground text-xs tabular-nums">
-              filter {Math.round(entity.filterLife)}%
-            </span>
-          )}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs tabular-nums">
+          {sensors.map((sensor) => (
+            <div key={sensor.label} className="flex justify-between gap-2">
+              <span className="text-muted-foreground">{sensor.label}</span>
+              <span className="font-medium">{sensor.value}</span>
+            </div>
+          ))}
         </div>
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={actions?.onToggle} className={chip(on)}>
+          <Power className="mr-1.5 size-3.5" strokeWidth={2} />
+          {on ? "Turn off" : "Turn on"}
+        </button>
+        <button
+          type="button"
+          onClick={() => actions?.onSetDisplay(!displayOn)}
+          className={chip(displayOn === true)}
+        >
+          {displayOn ? (
+            <Lightbulb className="mr-1.5 size-3.5" strokeWidth={2} />
+          ) : (
+            <LightbulbOff className="mr-1.5 size-3.5" strokeWidth={2} />
+          )}
+          Display
+        </button>
       </div>
       <div className="flex gap-2">
         {AIR_PURIFIER_MODES.map((mode) => (

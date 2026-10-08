@@ -90,6 +90,8 @@ sealed interface EntityUi {
         val mode: AirPurifierMode?,
         val speed: Int?,
         val pm25: Double?,
+        val aqi: Double?,
+        val cadr: Double?,
         val filterLife: Double?,
         val displayOn: Boolean?,
     ) : EntityUi {

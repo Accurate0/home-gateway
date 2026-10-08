@@ -152,44 +152,89 @@ impl Session {
                 }
                 LIST_ENTITIES_SENSOR => {
                     let entity = proto::ListEntitiesSensorResponse::decode(payload.as_slice())?;
-                    self.register(entity.key, EntityDomain::Sensor, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::Sensor,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_BINARY_SENSOR => {
                     let entity =
                         proto::ListEntitiesBinarySensorResponse::decode(payload.as_slice())?;
-                    self.register(entity.key, EntityDomain::BinarySensor, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::BinarySensor,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_TEXT_SENSOR => {
                     let entity = proto::ListEntitiesTextSensorResponse::decode(payload.as_slice())?;
-                    self.register(entity.key, EntityDomain::TextSensor, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::TextSensor,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_LIGHT => {
                     let entity = proto::ListEntitiesLightResponse::decode(payload.as_slice())?;
                     self.light.get_or_insert(entity.key);
-                    self.register(entity.key, EntityDomain::Light, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::Light,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_FAN => {
                     let entity = proto::ListEntitiesFanResponse::decode(payload.as_slice())?;
                     self.fan.get_or_insert(entity.key);
-                    self.register(entity.key, EntityDomain::Fan, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::Fan,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_SWITCH => {
                     let entity = proto::ListEntitiesSwitchResponse::decode(payload.as_slice())?;
-                    self.register(entity.key, EntityDomain::Switch, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::Switch,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_NUMBER => {
                     let entity = proto::ListEntitiesNumberResponse::decode(payload.as_slice())?;
-                    self.register(entity.key, EntityDomain::Number, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::Number,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_SELECT => {
                     let entity = proto::ListEntitiesSelectResponse::decode(payload.as_slice())?;
-                    self.register(entity.key, EntityDomain::Select, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::Select,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_MEDIA_PLAYER => {
                     let entity =
                         proto::ListEntitiesMediaPlayerResponse::decode(payload.as_slice())?;
                     self.media_player.get_or_insert(entity.key);
-                    self.register(entity.key, EntityDomain::MediaPlayer, entity.object_id);
+                    self.register(
+                        entity.key,
+                        EntityDomain::MediaPlayer,
+                        entity.object_id,
+                        &entity.name,
+                    );
                 }
                 LIST_ENTITIES_DONE => {
                     tracing::info!(
@@ -207,7 +252,13 @@ impl Session {
         }
     }
 
-    fn register(&mut self, key: u32, domain: EntityDomain, object_id: String) {
+    fn register(&mut self, key: u32, domain: EntityDomain, object_id: String, name: &str) {
+        let object_id = if object_id.is_empty() {
+            object_id_from_name(name)
+        } else {
+            object_id
+        };
+
         self.entities.insert(key, Entity { domain, object_id });
     }
 
@@ -448,6 +499,17 @@ fn with_port(address: &str, port: u16) -> String {
     format!("{address}:{port}")
 }
 
+fn object_id_from_name(name: &str) -> String {
+    name.chars()
+        .map(|character| match character.to_ascii_lowercase() {
+            ' ' => '_',
+            character if character.is_ascii_alphanumeric() => character,
+            character @ ('-' | '_') => character,
+            _ => '_',
+        })
+        .collect()
+}
+
 fn byte(value: f32) -> u8 {
     (value.clamp(0.0, 1.0) * 255.0).round() as u8
 }
@@ -622,6 +684,14 @@ mod tests {
             "apollo-cast-1-livingroom.iot:6053"
         );
         assert_eq!(with_port("10.0.2.15:6054", 6053), "10.0.2.15:6054");
+    }
+
+    #[test]
+    fn a_missing_object_id_is_derived_from_the_name_like_esphome_does() {
+        assert_eq!(object_id_from_name("Fan"), "fan");
+        assert_eq!(object_id_from_name("AQ - PM 2.5"), "aq_-_pm_2_5");
+        assert_eq!(object_id_from_name("Filter %"), "filter__");
+        assert_eq!(object_id_from_name("Child Lock"), "child_lock");
     }
 
     #[test]

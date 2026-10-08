@@ -162,6 +162,8 @@ const EntitiesQuery = graphql`
         purifierMode: mode
         purifierSpeed: speed
         purifierPm25: pm25
+        aqi
+        cadr
         filterLife
         displayOn: display
         lastSeen
