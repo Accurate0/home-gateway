@@ -16,6 +16,10 @@ subscription($filter: String!) {
     __typename
     ... on PresenceUpdate { id present }
     ... on DoorUpdate { id open }
+    ... on GarageDoorUpdate { id name state }
+    ... on AirPurifierUpdate { id name on mode speed display }
+    ... on PlantUpdate { id name soilMoisture }
+    ... on DeviceConnectionUpdate { deviceId transport connected }
     ... on LightUpdate { id on brightness colourTemperature }
     ... on EnvironmentUpdate { id readings { metric value } }
     ... on HomeAssistantUpdate { entityId state }
