@@ -71,7 +71,7 @@ return {
 	["without a hold a purifier event is left alone"] = function()
 		stub(nil)
 
-		purifier.enforce(DEVICE, { on = true, mode = "manual", speed = 3, display = true }, 6)
+		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3, display = true }, 6)
 
 		test.eq(air_purifier.command.calls, {})
 	end,
@@ -79,7 +79,7 @@ return {
 	["a change during a hold is remembered and quieted again"] = function()
 		local store = stub(nil, { since = NOW - 60, mode = "auto", display = false })
 
-		purifier.enforce(DEVICE, { on = true, mode = "manual", speed = 3, display = false }, 6)
+		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3, display = false }, 6)
 
 		test.eq(store[KEY], { since = NOW - 60, mode = "manual", speed = 3, display = false })
 		test.eq(air_purifier.command.calls, { SLEEP })
@@ -89,7 +89,7 @@ return {
 		local held = { since = NOW - 60, mode = "auto", display = true }
 		local store = stub(nil, held)
 
-		purifier.enforce(DEVICE, { on = true, mode = "sleep", display = false }, 6)
+		purifier.enforce_quiet(DEVICE, { on = true, mode = "sleep", display = false }, 6)
 
 		test.eq(store[KEY], held)
 		test.eq(air_purifier.command.calls, {})
@@ -98,7 +98,7 @@ return {
 	["a purifier turned off during a hold stays off"] = function()
 		stub(nil, { since = NOW - 60, mode = "auto" })
 
-		purifier.enforce(DEVICE, { on = false, mode = "auto", display = true }, 6)
+		purifier.enforce_quiet(DEVICE, { on = false, mode = "auto", display = true }, 6)
 
 		test.eq(air_purifier.command.calls, {})
 	end,
@@ -106,7 +106,7 @@ return {
 	["a stale hold is cleared instead of enforced"] = function()
 		local store = stub(nil, { since = NOW - 7 * 60 * 60, mode = "auto" })
 
-		purifier.enforce(DEVICE, { on = true, mode = "manual", speed = 3 }, 6)
+		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3 }, 6)
 
 		test.eq(store[KEY], nil)
 		test.eq(air_purifier.command.calls, {})

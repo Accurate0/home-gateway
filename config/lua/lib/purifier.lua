@@ -40,7 +40,7 @@ function purifier.hold(device)
 	quiet(device, current)
 end
 
-function purifier.enforce(device, current, max_hours)
+function purifier.enforce_quiet(device, current, max_hours)
 	gw.require("air_purifier:write")
 
 	local held = state.get(key(device))

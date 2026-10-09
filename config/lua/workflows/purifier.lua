@@ -2,9 +2,9 @@ local quiet = gw.lib("purifier")
 
 local purifier = {}
 
-function purifier.enforce(settings)
-	workflow.step("enforce", function()
-		quiet.enforce(settings.device, event, settings.max_hours)
+function purifier.enforce_quiet(settings)
+	workflow.step("enforce_quiet", function()
+		quiet.enforce_quiet(settings.device, event, settings.max_hours)
 	end, settings.device)
 end
 

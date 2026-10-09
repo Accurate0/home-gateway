@@ -1,13 +1,17 @@
 # yaml-language-server: $schema=../schemas/workflows.schema.json
-- name: Living room purifier quiet hold
-  slug: living-room-purifier-quiet-hold
+- name: Living room purifier enforce quiet mode and display
+  slug: living-room-purifier-enforce-quiet
   group: Living Room
   tags: [living-room, living-room-purifier]
-  on: { type: air_purifier, device: living-room-purifier }
+  on: { type: air_purifier, device: living-room-purifier, on: true }
+  when:
+    any:
+      - not: { type: var, var: 'event.mode | default("")', op: eq, value: sleep }
+      - { type: var, var: "event.display | default(false)", op: eq, value: true }
   modes: [home, away, guest]
   run:
     - type: lua
-      call: purifier.enforce
+      call: purifier.enforce_quiet
       returns: {}
       args:
         - device: living-room-purifier
