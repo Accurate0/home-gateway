@@ -18,6 +18,7 @@ use axum::{
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
+use crate::device_registry::last_seen::LastSeen;
 use crate::eink::EinkDisplayManager;
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
 use crate::eink::wake::{self, WakeContext, WakeReport};
@@ -156,7 +157,7 @@ pub async fn config(
 
     let context = WakeContext {
         devices: &state.devices,
-        device_repo: state.repos.device(),
+        last_seen: state.handles.expect::<LastSeen>(),
         eink,
         prepare_render_timeout: state.settings.eink_display.prepare_render_timeout(),
     };

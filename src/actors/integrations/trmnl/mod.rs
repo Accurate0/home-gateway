@@ -1,4 +1,5 @@
 use crate::{
+    device_registry::last_seen::LastSeen,
     integrations::trmnl::{Trmnl, types::TrmnlDevice},
     settings::TrmnlDeviceSettings,
     state::AppState,
@@ -27,12 +28,11 @@ impl TrmnlActor {
                 continue;
             };
 
-            crate::device_registry::last_seen::record(
-                &self.shared_actor_state.devices,
-                self.shared_actor_state.repos.device(),
-                address,
-            )
-            .await;
+            self.shared_actor_state
+                .handles
+                .expect::<LastSeen>()
+                .record(address)
+                .await;
 
             let Some(voltage) = device.battery_voltage else {
                 tracing::debug!(

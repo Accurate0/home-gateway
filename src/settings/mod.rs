@@ -33,6 +33,7 @@ pub mod http_client_kind;
 pub mod http_client_override;
 pub mod http_clients;
 pub mod integrations;
+pub mod last_seen;
 pub mod location;
 pub mod lua;
 pub mod mqtt;
@@ -111,6 +112,7 @@ pub use integrations::tuya::TuyaSettings;
 pub use integrations::tuya_device::TuyaDeviceSettings;
 pub use integrations::willyweather::WillyWeatherSettings;
 pub use integrations::woolworths::WoolworthsSettings;
+pub use last_seen::LastSeenSettings;
 pub use location::LocationSettings;
 pub use lua::LuaSettings;
 pub use mqtt::MqttSettings;
@@ -1749,8 +1751,8 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1802,8 +1804,8 @@ graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -1962,8 +1964,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2018,8 +2020,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2076,8 +2078,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2290,8 +2292,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2345,8 +2347,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2399,8 +2401,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2454,8 +2456,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2508,8 +2510,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2609,8 +2611,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
@@ -2690,8 +2692,8 @@ actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, wo
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
 home_assistant: { models: lua/models/home_assistant, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect_delay: 5s } }
 auth: { api_key_cache: { capacity: 1024, ttl: 1h }, last_used_interval: 1m, lockout: { attempts: 20, window: 5m, capacity: 10000 } }
-watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h }
-workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
+watchdog: { state: disabled, timeout: 30m, check_interval: 5m, realert_after: 6h, last_seen: { capacity: 1024, write_interval: 1m } }
+workflow: { workers: 12, enabled_cache: { capacity: 1024, ttl: 5m }, cooldown_cache: { capacity: 1024, ttl: 1h }, mode_cache: { capacity: 1, ttl: 1h }, condition_timeout: 10s, timers: { catch_up_within: 10m } }
 reconciler: { state: disabled, workers: 2, interval: 5s, grace: 3s, backoff: 10s, confirm_timeout: 5s, max_attempts: 3, batch_size: 64 }
 location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }

@@ -1,4 +1,5 @@
 use crate::device_registry::Transport;
+use crate::device_registry::last_seen::LastSeen;
 use crate::integrations::mqtt::{MqttClient, MqttProtocol};
 use crate::{
     decoding::DecodedDevice, integrations::zigbee2mqtt::devices::BridgeDevices, lua::LuaDecoder,
@@ -73,12 +74,11 @@ impl MqttIngest {
     }
 
     async fn record_last_seen(&self, address: &str) {
-        crate::device_registry::last_seen::record(
-            &self.shared_actor_state.devices,
-            self.shared_actor_state.repos.device(),
-            address,
-        )
-        .await;
+        self.shared_actor_state
+            .handles
+            .expect::<LastSeen>()
+            .record(address)
+            .await;
     }
 
     async fn handle_directory(&self, payload: &[u8]) -> Result<(), anyhow::Error> {

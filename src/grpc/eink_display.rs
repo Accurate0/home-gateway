@@ -9,6 +9,7 @@ use super::proto::{Clear, FirmwareUpdate, FullFrame, PartialFrame, WakeRequest, 
 use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Resource};
 use crate::battery::BatteryChemistry;
+use crate::device_registry::last_seen::LastSeen;
 use crate::eink::EinkDisplayManager;
 use crate::eink::manager::config::firmware_url;
 use crate::eink::manager::decision::WakeDecision;
@@ -72,7 +73,7 @@ impl EinkDisplayService {
 
         let context = WakeContext {
             devices: &self.state.devices,
-            device_repo: self.state.repos.device(),
+            last_seen: self.state.handles.expect::<LastSeen>(),
             eink,
             prepare_render_timeout: self.state.settings.eink_display.prepare_render_timeout(),
         };

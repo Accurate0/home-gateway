@@ -9,6 +9,7 @@ use tracing::Instrument;
 use uuid::Uuid;
 
 use crate::device_registry::Transport;
+use crate::device_registry::last_seen::LastSeen;
 use crate::integrations::esphome_native_api::StateUpdate;
 use crate::state::AppState;
 
@@ -74,12 +75,11 @@ impl EsphomeNativeApiIngest {
             return;
         };
 
-        crate::device_registry::last_seen::record(
-            devices,
-            self.shared_actor_state.repos.device(),
-            &address,
-        )
-        .await;
+        self.shared_actor_state
+            .handles
+            .expect::<LastSeen>()
+            .record(&address)
+            .await;
 
         let entities = state.entities.entry(address.clone()).or_default();
         entities.insert(object_id.clone(), payload.clone());

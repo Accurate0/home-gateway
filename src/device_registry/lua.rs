@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use mlua::{ExternalError, Lua, Value as LuaValue};
 
-use crate::device_registry::last_seen;
+use crate::device_registry::last_seen::LastSeen;
 use crate::lua::{LuaCallContext, LuaClass, lua_module};
 use crate::repo::metric::MetricRow;
 
@@ -37,7 +37,7 @@ impl DeviceLua {
 
         let found = cx
             .query(Self::LAST_SEEN, || async {
-                last_seen::lookup(&cx.state.devices, cx.state.repos.device(), &keys).await
+                cx.state.handles.expect::<LastSeen>().lookup(&keys).await
             })
             .await?;
 
@@ -51,7 +51,7 @@ impl DeviceLua {
 
         let found = cx
             .query(Self::OFFLINE, || async {
-                last_seen::lookup(&cx.state.devices, cx.state.repos.device(), &keys).await
+                cx.state.handles.expect::<LastSeen>().lookup(&keys).await
             })
             .await?;
 

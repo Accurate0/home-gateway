@@ -18,6 +18,7 @@ use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 
 use crate::auth::auth_middleware;
 use crate::device_registry::DeviceRegistry;
+use crate::device_registry::last_seen::LastSeen;
 use crate::event_bus::EventBus;
 use crate::graphql::{
     FinalSchema, QueryRoot,
@@ -136,8 +137,7 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     ))
     .data(DataLoader::new(
         LastSeenDataLoader {
-            repo: state.repos.device().clone(),
-            devices: state.devices.clone(),
+            last_seen: state.handles.expect::<LastSeen>().clone(),
         },
         tokio::spawn,
     ))

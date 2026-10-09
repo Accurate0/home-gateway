@@ -1,10 +1,12 @@
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
 use home_gateway::actors::devices::{
     door_events::DoorEventsSupervisor, door_sensor::DoorSensorHandler,
     environment_sensor::EnvironmentSensorHandler, handler::spawn_handler,
 };
 use home_gateway::actors::system::mqtt_ingest::{self, MqttIngest, spawn::spawn_mqtt_ingest};
+use home_gateway::device_registry::last_seen::LastSeen;
 use home_gateway::event_bus::{EventBusMessage, SensorReading};
 use pretty_assertions::assert_eq;
 use ractor::{
@@ -325,5 +327,50 @@ async fn an_unregistered_address_is_ignored() {
     assert!(
         ingest_actor().get_status() == ractor::ActorStatus::Running,
         "the ingest actor should survive an unknown device"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn last_seen_writes_are_throttled_while_reads_stay_current() {
+    let harness = Harness::start().await;
+    let last_seen = harness.state.handles.expect::<LastSeen>();
+    let device_key = harness
+        .state
+        .devices
+        .watchdog_key(ENVIRONMENT_ADDRESS)
+        .expect("the fixture device has a watchdog key");
+
+    let stored = || async {
+        sqlx::query_scalar::<_, DateTime<Utc>>(
+            "SELECT last_seen FROM device_last_seen WHERE device_key = $1",
+        )
+        .bind(device_key)
+        .fetch_one(&harness.db)
+        .await
+        .unwrap()
+    };
+
+    last_seen.record(ENVIRONMENT_ADDRESS).await;
+    let first_write = stored().await;
+
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    last_seen.record(ENVIRONMENT_ADDRESS).await;
+    let second_write = stored().await;
+
+    assert_eq!(
+        first_write, second_write,
+        "a second report inside the write interval should not touch the database"
+    );
+
+    let found = last_seen
+        .lookup(&[ENVIRONMENT_ADDRESS.to_owned()])
+        .await
+        .unwrap();
+
+    assert!(
+        found[ENVIRONMENT_ADDRESS] > second_write,
+        "the lookup should return the latest report, not the throttled row"
     );
 }

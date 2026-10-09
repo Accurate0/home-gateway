@@ -9,6 +9,7 @@ use tracing::Instrument;
 use uuid::Uuid;
 
 use crate::device_registry::Transport;
+use crate::device_registry::last_seen::LastSeen;
 use crate::integrations::tuya::DpsUpdate;
 use crate::state::AppState;
 
@@ -69,12 +70,11 @@ impl TuyaIngest {
             return;
         };
 
-        crate::device_registry::last_seen::record(
-            devices,
-            self.shared_actor_state.repos.device(),
-            &address,
-        )
-        .await;
+        self.shared_actor_state
+            .handles
+            .expect::<LastSeen>()
+            .record(&address)
+            .await;
 
         if dps.is_empty() {
             tracing::trace!("tuya device {address} sent no data points");

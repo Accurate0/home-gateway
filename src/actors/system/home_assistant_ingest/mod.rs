@@ -10,7 +10,8 @@ use tracing::Instrument;
 use uuid::Uuid;
 
 use crate::{
-    event_bus::EventBusMessage, lua::LuaDecoder, settings::EntitySettings, state::AppState,
+    device_registry::last_seen::LastSeen, event_bus::EventBusMessage, lua::LuaDecoder,
+    settings::EntitySettings, state::AppState,
 };
 
 use worker_state::WorkerState;
@@ -171,12 +172,11 @@ impl HomeAssistantIngest {
             return;
         };
 
-        crate::device_registry::last_seen::record(
-            devices,
-            self.shared_actor_state.repos.device(),
-            &device.address,
-        )
-        .await;
+        self.shared_actor_state
+            .handles
+            .expect::<LastSeen>()
+            .record(&device.address)
+            .await;
 
         let entity = json!({
             "entity_id": entity_id,

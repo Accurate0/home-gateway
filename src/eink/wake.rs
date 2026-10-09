@@ -8,7 +8,7 @@ use crate::actors::eink_display::{EInkDisplayActor, EInkDisplayMessage};
 use crate::actors::system::rpc::{self, RpcError};
 use crate::battery::BatteryChemistry;
 use crate::device_registry::DeviceRegistry;
-use crate::repo::DeviceRepo;
+use crate::device_registry::last_seen::LastSeen;
 
 #[derive(Debug, Clone, Copy)]
 pub struct WakeReport<'a> {
@@ -23,7 +23,7 @@ pub struct WakeReport<'a> {
 
 pub struct WakeContext<'a> {
     pub devices: &'a DeviceRegistry,
-    pub device_repo: &'a DeviceRepo,
+    pub last_seen: &'a LastSeen,
     pub eink: &'a EinkDisplayManager,
     pub prepare_render_timeout: Duration,
 }
@@ -54,8 +54,7 @@ pub async fn begin(
     );
 
     if registered {
-        crate::device_registry::last_seen::record(context.devices, context.device_repo, device_id)
-            .await;
+        context.last_seen.record(device_id).await;
     } else {
         tracing::warn!(
             device_id = %device_id,

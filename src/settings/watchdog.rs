@@ -4,6 +4,8 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use super::LastSeenSettings;
+
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct WatchdogSettings {
     pub state: EnabledState,
@@ -16,4 +18,5 @@ pub struct WatchdogSettings {
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     pub realert_after: TimeDelta,
+    pub last_seen: LastSeenSettings,
 }

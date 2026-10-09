@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::actors::health::ActorHealthRegistry;
 use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::{AuthManager, OAuthValidator};
+use crate::device_registry::last_seen::LastSeen;
 use crate::eink::EinkDisplayManager;
 use crate::http::get_traced_http_client;
 use crate::http::public_client::PublicHttpClient;
@@ -20,7 +21,7 @@ use crate::integrations::{
     transperth::Transperth,
     willyweather::WillyWeather,
 };
-use crate::repo::ApiKeyRepo;
+use crate::repo::{ApiKeyRepo, DeviceRepo};
 use crate::settings::HttpClientKind;
 use crate::state::HandleRegistry;
 
@@ -174,6 +175,11 @@ pub async fn build(
         .insert(s3)
         .insert(eink)
         .insert(workflow_manager)
+        .insert(LastSeen::new(
+            storage.devices.clone(),
+            DeviceRepo::new(pool.clone()),
+            &settings.watchdog.last_seen,
+        ))
         .insert(ActorHealthRegistry::new())
         .insert(AuthManager::new(
             ApiKeyRepo::new(pool.clone()),
@@ -207,6 +213,7 @@ crate::required_handles! {
     S3 => "s3",
     EinkDisplayManager => "eink",
     WorkflowManager => "workflows",
+    LastSeen => "last seen",
     ActorHealthRegistry => "actor health",
     AuthManager => "auth",
     WillyWeather => "willyweather",

@@ -6,12 +6,13 @@ use home_gateway::actors::root::RootMessage;
 use home_gateway::actors::workflows::manager::WorkflowManager;
 use home_gateway::api::{SchemaParts, build_router, build_schema};
 use home_gateway::auth::AuthManager;
+use home_gateway::device_registry::last_seen::LastSeen;
 use home_gateway::event_bus::{EventBus, EventBusMessage};
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::reddit::Reddit;
 use home_gateway::integrations::s3::S3;
 use home_gateway::integrations::willyweather::WillyWeather;
-use home_gateway::repo::ApiKeyRepo;
+use home_gateway::repo::{ApiKeyRepo, DeviceRepo};
 use home_gateway::settings::{HttpClientKind, SettingsContainer};
 use home_gateway::state::{AppState, HandleRegistry};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -104,6 +105,11 @@ impl Harness {
             .insert(s3)
             .insert(eink)
             .insert(WorkflowManager::new(db.clone(), &settings.workflow))
+            .insert(LastSeen::new(
+                devices.clone(),
+                DeviceRepo::new(db.clone()),
+                &settings.watchdog.last_seen,
+            ))
             .insert(ActorHealthRegistry::new())
             .insert(AuthManager::new(
                 ApiKeyRepo::new(db.clone()),

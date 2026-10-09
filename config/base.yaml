@@ -64,6 +64,9 @@ workflow:
   cooldown_cache:
     capacity: 1024
     ttl: 24h
+  mode_cache:
+    capacity: 1
+    ttl: 1h
   condition_timeout: 10s
   timers:
     catch_up_within: 10m
@@ -94,6 +97,9 @@ watchdog:
   timeout: 30m
   check_interval: 5m
   realert_after: 6h
+  last_seen:
+    capacity: 1024
+    write_interval: 1m
 
 alarm:
   poll_interval: 60s

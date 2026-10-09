@@ -4428,13 +4428,34 @@
         },
         "realert_after": {
           "type": "string"
+        },
+        "last_seen": {
+          "$ref": "#/$defs/LastSeenSettings"
         }
       },
       "required": [
         "state",
         "timeout",
         "check_interval",
-        "realert_after"
+        "realert_after",
+        "last_seen"
+      ]
+    },
+    "LastSeenSettings": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "write_interval": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "capacity",
+        "write_interval"
       ]
     },
     "WorkflowSettings": {
@@ -4451,6 +4472,9 @@
         "cooldown_cache": {
           "$ref": "#/$defs/CacheSettings"
         },
+        "mode_cache": {
+          "$ref": "#/$defs/CacheSettings"
+        },
         "condition_timeout": {
           "type": "string"
         },
@@ -4462,6 +4486,7 @@
         "workers",
         "enabled_cache",
         "cooldown_cache",
+        "mode_cache",
         "condition_timeout",
         "timers"
       ]

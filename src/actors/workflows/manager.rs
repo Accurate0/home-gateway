@@ -17,6 +17,7 @@ pub struct WorkflowManager {
     repo: WorkflowRepo,
     enabled_cache: MemoryCache<String, Option<bool>>,
     cooldown_cache: MemoryCache<String, DateTime<Utc>>,
+    mode_cache: MemoryCache<String, Mode>,
 }
 
 pub struct WorkflowRun {
@@ -37,6 +38,7 @@ impl WorkflowManager {
             repo: WorkflowRepo::new(db),
             enabled_cache: build_cache("workflow_enabled", &settings.enabled_cache),
             cooldown_cache: build_cache("workflow_cooldown", &settings.cooldown_cache),
+            mode_cache: build_cache("workflow_mode", &settings.mode_cache),
         }
     }
 
@@ -97,7 +99,11 @@ impl WorkflowManager {
 
     #[tracing::instrument(name = "workflow.current_mode", skip_all)]
     pub async fn current_mode(&self) -> Mode {
-        match self.repo.state_value(Mode::STATE_KEY).await {
+        if let Some(mode) = self.mode_cache.get(Mode::STATE_KEY).await {
+            return mode;
+        }
+
+        let mode = match self.repo.state_value(Mode::STATE_KEY).await {
             Ok(Some(value)) => Mode::parse(&value).unwrap_or_else(|| {
                 tracing::warn!(
                     "unknown stored mode `{value}`, falling back to {}",
@@ -110,9 +116,15 @@ impl WorkflowManager {
             Err(err) => {
                 tracing::warn!("failed to read the current mode: {err}");
 
-                Mode::default()
+                return Mode::default();
             }
-        }
+        };
+
+        self.mode_cache
+            .insert(Mode::STATE_KEY.to_owned(), mode)
+            .await;
+
+        mode
     }
 
     pub async fn any_mode_active(&self, modes: &[Mode]) -> bool {
@@ -130,6 +142,10 @@ impl WorkflowManager {
         self.repo
             .set_state_value(Mode::STATE_KEY, mode.as_str())
             .await?;
+
+        self.mode_cache
+            .insert(Mode::STATE_KEY.to_owned(), mode)
+            .await;
 
         Ok(Some(previous))
     }
