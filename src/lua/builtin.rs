@@ -9,6 +9,7 @@ use async_graphql::Variables;
 use async_graphql::parser::parse_query;
 use async_graphql::parser::types::{DocumentOperations, OperationType};
 
+use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::event_bus::{CustomEventSource, EventBusMessage};
@@ -597,12 +598,12 @@ async fn emit(cx: &LuaCallContext, name: String, payload: Option<Table>) -> mlua
 async fn cooldown(cx: &LuaCallContext, key: &str, seconds: i64) -> mlua::Result<bool> {
     let name = format!("lua:{key}");
     let window = TimeDelta::seconds(seconds.max(0));
-    let repo = cx.state.repos.workflow();
+    let manager = cx.state.handles.expect::<WorkflowManager>();
 
     if cx.dry_run {
         let active = cx
             .query("gw.cooldown", || async {
-                repo.cooldown_active(&name, window).await
+                manager.cooldown_active(&name, window).await
             })
             .await?;
 
@@ -617,7 +618,7 @@ async fn cooldown(cx: &LuaCallContext, key: &str, seconds: i64) -> mlua::Result<
 
     let passed = cx
         .query("gw.cooldown", || async {
-            repo.cooldown_ok(&name, window).await
+            manager.cooldown_ok(&name, window).await
         })
         .await?;
 

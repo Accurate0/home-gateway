@@ -4448,6 +4448,9 @@
         "enabled_cache": {
           "$ref": "#/$defs/CacheSettings"
         },
+        "cooldown_cache": {
+          "$ref": "#/$defs/CacheSettings"
+        },
         "condition_timeout": {
           "type": "string"
         },
@@ -4458,6 +4461,7 @@
       "required": [
         "workers",
         "enabled_cache",
+        "cooldown_cache",
         "condition_timeout",
         "timers"
       ]

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -8,12 +9,14 @@ use crate::mode::Mode;
 use crate::repo::WorkflowRepo;
 use crate::repo::workflow::NewWorkflowRun;
 use crate::settings::CacheSettings;
+use crate::settings::workflow::WorkflowSettings;
 use crate::workflow_trace::StepTrace;
 
 #[derive(Clone)]
 pub struct WorkflowManager {
     repo: WorkflowRepo,
     enabled_cache: MemoryCache<String, Option<bool>>,
+    cooldown_cache: MemoryCache<String, DateTime<Utc>>,
 }
 
 pub struct WorkflowRun {
@@ -29,18 +32,11 @@ pub struct WorkflowRun {
 }
 
 impl WorkflowManager {
-    pub fn new(db: Pool<Postgres>, enabled_cache: &CacheSettings) -> Self {
-        let enabled_cache = MemoryCache::builder("workflow_enabled")
-            .configure(|cache| {
-                cache
-                    .max_capacity(enabled_cache.capacity)
-                    .time_to_live(enabled_cache.ttl())
-            })
-            .build();
-
+    pub fn new(db: Pool<Postgres>, settings: &WorkflowSettings) -> Self {
         Self {
             repo: WorkflowRepo::new(db),
-            enabled_cache,
+            enabled_cache: build_cache("workflow_enabled", &settings.enabled_cache),
+            cooldown_cache: build_cache("workflow_cooldown", &settings.cooldown_cache),
         }
     }
 
@@ -187,6 +183,57 @@ impl WorkflowManager {
         name: &str,
         cooldown: chrono::TimeDelta,
     ) -> Result<bool, sqlx::Error> {
-        self.repo.cooldown_ok(name, cooldown).await
+        let now = Utc::now();
+
+        if let Some(last_fired) = self.cooldown_last_fired(name).await?
+            && now - last_fired < cooldown
+        {
+            return Ok(false);
+        }
+
+        self.repo.record_cooldown(name, now).await?;
+        self.cooldown_cache.insert(name.to_owned(), now).await;
+
+        Ok(true)
     }
+
+    #[tracing::instrument(name = "workflow.cooldown_active", skip_all, fields(name = %name), err)]
+    pub async fn cooldown_active(
+        &self,
+        name: &str,
+        cooldown: chrono::TimeDelta,
+    ) -> Result<bool, sqlx::Error> {
+        let last_fired = self.cooldown_last_fired(name).await?;
+
+        Ok(last_fired.is_some_and(|last_fired| Utc::now() - last_fired < cooldown))
+    }
+
+    async fn cooldown_last_fired(&self, name: &str) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+        if let Some(last_fired) = self.cooldown_cache.get(name).await {
+            return Ok(Some(last_fired));
+        }
+
+        let last_fired = self.repo.cooldown_last_fired(name).await?;
+
+        if let Some(last_fired) = last_fired {
+            self.cooldown_cache
+                .insert(name.to_owned(), last_fired)
+                .await;
+        }
+
+        Ok(last_fired)
+    }
+}
+
+fn build_cache<V>(name: &'static str, settings: &CacheSettings) -> MemoryCache<String, V>
+where
+    V: Clone + Send + Sync + 'static,
+{
+    MemoryCache::builder(name)
+        .configure(|cache| {
+            cache
+                .max_capacity(settings.capacity)
+                .time_to_live(settings.ttl())
+        })
+        .build()
 }

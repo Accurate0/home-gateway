@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
@@ -270,49 +270,35 @@ impl WorkflowRepo {
             .collect())
     }
 
-    #[tracing::instrument(skip_all, name = "db.workflow.cooldown_ok", err)]
-    pub async fn cooldown_ok(&self, name: &str, cooldown: TimeDelta) -> Result<bool, sqlx::Error> {
-        let now = Utc::now();
-
-        let last = sqlx::query!(
+    #[tracing::instrument(skip_all, name = "db.workflow.cooldown_last_fired", err)]
+    pub async fn cooldown_last_fired(
+        &self,
+        name: &str,
+    ) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+        sqlx::query_scalar!(
             "SELECT last_fired FROM trigger_cooldowns WHERE name = $1",
             name
         )
         .fetch_optional(&self.db)
-        .await?;
+        .await
+    }
 
-        if let Some(row) = last
-            && now - row.last_fired < cooldown
-        {
-            return Ok(false);
-        }
-
+    #[tracing::instrument(skip_all, name = "db.workflow.record_cooldown", err)]
+    pub async fn record_cooldown(
+        &self,
+        name: &str,
+        fired_at: DateTime<Utc>,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO trigger_cooldowns (name, last_fired) VALUES ($1, $2) \
              ON CONFLICT (name) DO UPDATE SET last_fired = EXCLUDED.last_fired",
             name,
-            now
+            fired_at
         )
         .execute(&self.db)
         .await?;
 
-        Ok(true)
-    }
-
-    #[tracing::instrument(skip_all, name = "db.workflow.cooldown_active", err)]
-    pub async fn cooldown_active(
-        &self,
-        name: &str,
-        cooldown: TimeDelta,
-    ) -> Result<bool, sqlx::Error> {
-        let last = sqlx::query_scalar!(
-            "SELECT last_fired FROM trigger_cooldowns WHERE name = $1",
-            name
-        )
-        .fetch_optional(&self.db)
-        .await?;
-
-        Ok(last.is_some_and(|last_fired| Utc::now() - last_fired < cooldown))
+        Ok(())
     }
 
     #[tracing::instrument(skip_all, name = "db.workflow.arm_timer", err)]

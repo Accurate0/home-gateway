@@ -42,7 +42,7 @@ pub async fn build(
 
     let http = &settings.http.clients;
 
-    let workflow_manager = WorkflowManager::new(pool.clone(), &settings.workflow.enabled_cache);
+    let workflow_manager = WorkflowManager::new(pool.clone(), &settings.workflow);
 
     let (mqtt_client, mqtt) = Mqtt::new(&settings.mqtt).await?;
 

@@ -103,10 +103,7 @@ impl Harness {
             .insert(test_broker.client.clone())
             .insert(s3)
             .insert(eink)
-            .insert(WorkflowManager::new(
-                db.clone(),
-                &settings.workflow.enabled_cache,
-            ))
+            .insert(WorkflowManager::new(db.clone(), &settings.workflow))
             .insert(ActorHealthRegistry::new())
             .insert(AuthManager::new(
                 ApiKeyRepo::new(db.clone()),

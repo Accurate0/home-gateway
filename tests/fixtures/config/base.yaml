@@ -374,6 +374,9 @@ workflow:
   enabled_cache:
     capacity: 1024
     ttl: 5m
+  cooldown_cache:
+    capacity: 1024
+    ttl: 1h
   condition_timeout: 10s
   timers:
     catch_up_within: 10m

@@ -11,6 +11,7 @@ use super::WorkflowTimerSettings;
 pub struct WorkflowSettings {
     pub workers: usize,
     pub enabled_cache: CacheSettings,
+    pub cooldown_cache: CacheSettings,
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     pub condition_timeout: TimeDelta,
