@@ -2,13 +2,14 @@ use tonic::{Code, Request, Response, Status};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use super::proto::eink_display_server::EinkDisplay;
-use super::proto::{FirmwareUpdate, WakeRequest, WakeResponse};
+use super::proto::wake_response::Refresh;
+use super::proto::{Clear, FirmwareUpdate, FullFrame, PartialFrame, WakeRequest, WakeResponse};
 use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Resource};
 use crate::device_registry::last_seen::LastSeen;
 use crate::eink::EinkDisplayManager;
 use crate::eink::manager::config::firmware_url;
-use crate::eink::refresh::{Outcome, image_bytes, planned_refresh};
+use crate::eink::refresh::{PlannedRefresh, planned_refresh};
 use crate::eink::rtc::rtc_sync;
 use crate::eink::wake::{self, WakeContext, WakeReport, battery_chemistry};
 use crate::repo::eink::{RtcReportRecord, RtcSyncRecord, WakeRecord};
@@ -89,12 +90,13 @@ impl EinkDisplayService {
             )
             .await;
 
-        let planned = planned_refresh(&decision, displayed.as_deref())?;
+        let planned = planned_refresh(&decision, displayed.as_deref())
+            .map_err(|e| Status::internal(e.to_string()))?;
 
-        let now_displayed = match planned.outcome {
-            Outcome::Unchanged => None,
-            Outcome::Clear => Some(None),
-            Outcome::Full | Outcome::Partial => {
+        let now_displayed = match planned {
+            PlannedRefresh::Unchanged => None,
+            PlannedRefresh::Clear => Some(None),
+            PlannedRefresh::Full { .. } | PlannedRefresh::Partial { .. } => {
                 Some(decision.frame.as_ref().map(|frame| frame.hash.as_str()))
             }
         };
@@ -154,8 +156,8 @@ impl EinkDisplayService {
 
         tracing::info!(
             device_id = %device_id,
-            outcome = %planned.outcome,
-            image_bytes = image_bytes(planned.refresh.as_ref()),
+            outcome = %planned,
+            image_bytes = planned.image_bytes(),
             sleep_secs = decision.refresh_secs,
             firmware_update = ?decision.firmware_version,
             rtc_unix_ms = ?request.rtc_unix_ms,
@@ -169,7 +171,7 @@ impl EinkDisplayService {
                 version,
                 url: firmware_url(device_id),
             }),
-            refresh: planned.refresh,
+            refresh: refresh_message(planned),
             set_rtc_unix_ms: rtc_synced.then(|| chrono::Utc::now().timestamp_millis()),
         })
     }
@@ -195,6 +197,21 @@ impl EinkDisplay for EinkDisplayService {
         }
 
         result.map(Response::new)
+    }
+}
+
+fn refresh_message(planned: PlannedRefresh) -> Option<Refresh> {
+    match planned {
+        PlannedRefresh::Unchanged => None,
+        PlannedRefresh::Clear => Some(Refresh::Clear(Clear {})),
+        PlannedRefresh::Full { image } => Some(Refresh::Full(FullFrame { image })),
+        PlannedRefresh::Partial { window, image } => Some(Refresh::Partial(PartialFrame {
+            x: window.x,
+            y: window.y,
+            width: window.width,
+            height: window.height,
+            image,
+        })),
     }
 }
 

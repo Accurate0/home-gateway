@@ -1,47 +1,46 @@
-use tonic::Status;
+use bytes::Bytes;
 
 use crate::eink::manager::decision::WakeDecision;
-use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed};
-use crate::grpc::proto::wake_response::Refresh;
-use crate::grpc::proto::{Clear, FullFrame, PartialFrame};
+use crate::eink::panel::{PACKED_FRAME_SIZE, PartialWindow, crop_packed};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
 #[strum(serialize_all = "snake_case")]
-pub enum Outcome {
+pub enum PlannedRefresh {
     Unchanged,
     Clear,
-    Full,
-    Partial,
+    Full { image: Bytes },
+    Partial { window: PartialWindow, image: Bytes },
 }
 
-pub struct PlannedRefresh {
-    pub outcome: Outcome,
-    pub refresh: Option<Refresh>,
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum RefreshError {
+    #[error("planned frame has the wrong size")]
+    WrongFrameSize,
+}
+
+impl PlannedRefresh {
+    pub fn image_bytes(&self) -> usize {
+        match self {
+            PlannedRefresh::Full { image } | PlannedRefresh::Partial { image, .. } => image.len(),
+            PlannedRefresh::Clear | PlannedRefresh::Unchanged => 0,
+        }
+    }
 }
 
 pub fn planned_refresh(
     decision: &WakeDecision,
     displayed: Option<&str>,
-) -> Result<PlannedRefresh, Status> {
+) -> Result<PlannedRefresh, RefreshError> {
     if decision.clear_screen {
-        return Ok(PlannedRefresh {
-            outcome: Outcome::Clear,
-            refresh: Some(Refresh::Clear(Clear {})),
-        });
+        return Ok(PlannedRefresh::Clear);
     }
 
     let Some(frame) = &decision.frame else {
-        return Ok(PlannedRefresh {
-            outcome: Outcome::Unchanged,
-            refresh: None,
-        });
+        return Ok(PlannedRefresh::Unchanged);
     };
 
     if displayed == Some(frame.hash.as_str()) {
-        return Ok(PlannedRefresh {
-            outcome: Outcome::Unchanged,
-            refresh: None,
-        });
+        return Ok(PlannedRefresh::Unchanged);
     }
 
     if frame.packed.len() != PACKED_FRAME_SIZE {
@@ -50,44 +49,25 @@ pub fn planned_refresh(
             len = frame.packed.len(),
             "planned frame is not {PACKED_FRAME_SIZE} bytes"
         );
-        return Err(Status::internal("planned frame has the wrong size"));
+        return Err(RefreshError::WrongFrameSize);
     }
 
     Ok(match frame.partial {
-        Some(window) => PlannedRefresh {
-            outcome: Outcome::Partial,
-            refresh: Some(Refresh::Partial(PartialFrame {
-                x: window.x,
-                y: window.y,
-                width: window.width,
-                height: window.height,
-                image: bytes::Bytes::from(crop_packed(&frame.packed, window)),
-            })),
+        Some(window) => PlannedRefresh::Partial {
+            window,
+            image: Bytes::from(crop_packed(&frame.packed, window)),
         },
-        None => PlannedRefresh {
-            outcome: Outcome::Full,
-            refresh: Some(Refresh::Full(FullFrame {
-                image: frame.packed.clone(),
-            })),
+        None => PlannedRefresh::Full {
+            image: frame.packed.clone(),
         },
     })
-}
-
-pub fn image_bytes(refresh: Option<&Refresh>) -> usize {
-    match refresh {
-        Some(Refresh::Full(frame)) => frame.image.len(),
-        Some(Refresh::Partial(frame)) => frame.image.len(),
-        Some(Refresh::Clear(_)) | None => 0,
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::eink::manager::decision::PlannedFrame;
-    use crate::eink::panel::PartialWindow;
     use pretty_assertions::assert_eq;
-    use tonic::Code;
 
     const HASH: &str = "aa00000000000000000000000000000000000000000000000000000000000001";
     const OTHER_HASH: &str = "bb00000000000000000000000000000000000000000000000000000000000002";
@@ -109,16 +89,15 @@ mod tests {
     fn a_display_already_showing_the_frame_gets_no_refresh() {
         let planned = planned_refresh(&decision(None), Some(HASH)).unwrap();
 
-        assert_eq!(planned.outcome, Outcome::Unchanged);
-        assert!(planned.refresh.is_none());
+        assert_eq!(planned, PlannedRefresh::Unchanged);
     }
 
     #[test]
     fn a_display_with_no_known_frame_gets_the_full_frame() {
         let planned = planned_refresh(&decision(None), None).unwrap();
 
-        assert_eq!(planned.outcome, Outcome::Full);
-        assert_eq!(image_bytes(planned.refresh.as_ref()), PACKED_FRAME_SIZE);
+        assert!(matches!(planned, PlannedRefresh::Full { .. }));
+        assert_eq!(planned.image_bytes(), PACKED_FRAME_SIZE);
     }
 
     #[test]
@@ -132,8 +111,8 @@ mod tests {
 
         let planned = planned_refresh(&decision(Some(window)), Some(OTHER_HASH)).unwrap();
 
-        assert_eq!(planned.outcome, Outcome::Partial);
-        assert_eq!(image_bytes(planned.refresh.as_ref()), 64 / 2 * 8);
+        assert!(matches!(planned, PlannedRefresh::Partial { window: sent, .. } if sent == window));
+        assert_eq!(planned.image_bytes(), 64 / 2 * 8);
     }
 
     #[test]
@@ -145,8 +124,7 @@ mod tests {
 
         let planned = planned_refresh(&clearing, Some(HASH)).unwrap();
 
-        assert_eq!(planned.outcome, Outcome::Clear);
-        assert!(matches!(planned.refresh, Some(Refresh::Clear(_))));
+        assert_eq!(planned, PlannedRefresh::Clear);
     }
 
     #[test]
@@ -158,7 +136,7 @@ mod tests {
 
         let planned = planned_refresh(&empty, None).unwrap();
 
-        assert_eq!(planned.outcome, Outcome::Unchanged);
+        assert_eq!(planned, PlannedRefresh::Unchanged);
     }
 
     #[test]
@@ -172,8 +150,9 @@ mod tests {
             ..decision(None)
         };
 
-        let status = planned_refresh(&truncated, None).err().unwrap();
-
-        assert_eq!(status.code(), Code::Internal);
+        assert_eq!(
+            planned_refresh(&truncated, None),
+            Err(RefreshError::WrongFrameSize)
+        );
     }
 }
