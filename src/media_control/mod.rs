@@ -1,8 +1,10 @@
 mod media_command;
 mod media_control_error;
+mod playback;
 
 pub use media_command::MediaCommand;
 pub use media_control_error::MediaControlError;
+pub use playback::PlaybackState;
 
 use serde_json::{Value, json};
 

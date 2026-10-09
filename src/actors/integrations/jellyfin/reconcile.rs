@@ -1,6 +1,6 @@
+use crate::media_control::PlaybackState;
 use std::collections::{HashMap, HashSet};
 
-use crate::event_bus::PlaybackState;
 use crate::integrations::jellyfin::types::Session;
 
 use super::edge::Edge;

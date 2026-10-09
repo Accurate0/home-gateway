@@ -2,7 +2,7 @@
 //!
 //! Mirrors the stateful domains of the `EventUpdate` subscription (light, door,
 //! presence, environment). Current state is read the same way workflow
-//! conditions read it — named-actor RPC (see [`crate::actors::workflows::conditions`])
+//! conditions read it — named-actor RPC (see [`crate::workflows::conditions`])
 //! — except environment, which reuses the existing temperature dataloader.
 
 use std::time::Duration;

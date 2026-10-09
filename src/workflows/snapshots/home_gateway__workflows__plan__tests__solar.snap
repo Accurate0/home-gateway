@@ -1,0 +1,6 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# Solar Surplus  (on: solar.avg_15m Gt 3000)
+  notify: notify(AndroidApp, general): Solar averaging ${event.avg_15m | int}W over the last 15 minutes (now ${event.current | int}W)

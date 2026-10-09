@@ -60,7 +60,7 @@ impl ReconcilerWorker {
                     LightHandlerMessage::Reapply {
                         ieee_addr: intent.address.clone(),
                         attributes: Box::new(attributes.clone()),
-                        traceparent: crate::tracing_context::inject_current(),
+                        traceparent: crate::telemetry::context::inject_current(),
                     },
                 )?;
 
@@ -87,7 +87,7 @@ impl ReconcilerWorker {
             intent.address,
             intent.attempts,
         );
-        crate::tracing_context::record_current_error("intent was never confirmed");
+        crate::telemetry::context::record_current_error("intent was never confirmed");
         crate::metrics::record_reconciler_give_up(intent.kind().as_str(), &intent.address);
 
         if let Err(e) = self

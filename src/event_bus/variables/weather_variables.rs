@@ -1,6 +1,6 @@
+use crate::weather::{ForecastDay, WeatherMetric, WeatherReading, WeatherSource};
 use std::collections::BTreeMap;
 
-use crate::event_bus::{ForecastDay, WeatherMetric, WeatherReading, WeatherSource};
 use crate::variables::{Node, Shape, Value, VarType};
 
 pub struct WeatherVariables;

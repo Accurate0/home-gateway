@@ -20,12 +20,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::device_registry::last_seen::LastSeen;
 use crate::eink::EinkDisplayManager;
+use crate::eink::keys::FIRMWARE_PREFIX;
 use crate::eink::panel::{PACKED_FRAME_SIZE, crop_packed, packed_cache_key};
 use crate::eink::wake::{self, WakeContext, WakeReport};
 
 pub use crate::eink::panel::PartialWindow;
-
-const FIRMWARE_KEY_PREFIX: &str = "eink-display/firmware/";
 
 #[derive(Debug, Serialize, Deserialize, async_graphql::SimpleObject)]
 #[graphql(rename_fields = "camelCase")]
@@ -219,7 +218,7 @@ pub async fn firmware(
     };
 
     let version = display.firmware_version;
-    let key = format!("{FIRMWARE_KEY_PREFIX}firmware_{version}.bin");
+    let key = format!("{FIRMWARE_PREFIX}firmware_{version}.bin");
 
     tracing::info!(
         device_id = %params.device_id,

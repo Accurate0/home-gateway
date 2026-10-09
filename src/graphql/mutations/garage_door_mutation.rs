@@ -4,7 +4,7 @@ use crate::actors::devices::garage_door::command;
 use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
 use crate::device_command::CommandOutcome;
 use crate::graphql::guard::ScopeGuard;
-use crate::settings::workflow::GarageDoorCommand;
+use crate::workflows::definition::GarageDoorCommand;
 
 pub struct GarageDoorMutation {
     address: String,

@@ -72,7 +72,7 @@ impl DecodedRole for door_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         door_sensor::Message::NewEvent(door_sensor::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         })
     }
@@ -134,7 +134,7 @@ impl DecodedRole for environment_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         environment_sensor::Message::NewEvent(Box::new(environment_sensor::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         }))
     }
@@ -175,7 +175,7 @@ impl DecodedRole for plant_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         plant_sensor::Message::NewEvent(plant_sensor::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         })
     }
@@ -222,7 +222,7 @@ impl DecodedRole for light::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         light::LightHandlerMessage::NewEvent(Box::new(light::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         }))
     }
@@ -271,7 +271,7 @@ impl DecodedRole for smart_switch::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         smart_switch::Message::NewEvent(smart_switch::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         })
     }
@@ -314,7 +314,7 @@ impl DecodedRole for presence_sensor::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         presence_sensor::Message::NewEvent(presence_sensor::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         })
     }
@@ -361,7 +361,7 @@ impl DecodedRole for control_switch::Entity {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         control_switch::ControlSwitchMessage::NewEvent(control_switch::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             entity: self,
         })
     }
@@ -403,7 +403,7 @@ impl DecodedRole for robot_vacuum::RobotVacuumReading {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         robot_vacuum::Message::NewEvent(robot_vacuum::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             reading: self,
         })
     }
@@ -449,7 +449,7 @@ impl DecodedRole for media_player::MediaPlayerReading {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         media_player::Message::HomeAssistant(media_player::Update {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             reading: self,
         })
     }
@@ -492,7 +492,7 @@ impl DecodedRole for garage_door::GarageDoorReading {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         garage_door::Message::NewEvent(garage_door::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             reading: self,
         })
     }
@@ -539,7 +539,7 @@ impl DecodedRole for air_purifier::AirPurifierReading {
     fn into_message(self, event_id: Uuid) -> Self::Message {
         air_purifier::Message::NewEvent(air_purifier::NewEvent {
             event_id,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             reading: self,
         })
     }

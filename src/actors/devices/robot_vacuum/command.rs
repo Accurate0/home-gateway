@@ -1,7 +1,7 @@
 use crate::decoding::DeviceRoleName;
 use crate::device_command::{self, CommandTargets, DeviceCommandError, Outbound};
 use crate::settings::RobotVacuumSettings;
-use crate::settings::workflow::VacuumCommand;
+use crate::workflows::definition::VacuumCommand;
 
 pub async fn send(
     targets: &CommandTargets<'_>,

@@ -1,4 +1,4 @@
-use crate::actors::workflows::conditions::query_door_open;
+use super::query::query_door_open;
 use crate::lua::{LuaCallContext, lua_module};
 
 pub struct DoorLua;

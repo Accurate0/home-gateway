@@ -2,10 +2,10 @@ use async_graphql::Object;
 
 use crate::actors::devices::air_purifier::command;
 use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
-use crate::db::AirPurifierMode;
 use crate::device_command::CommandOutcome;
 use crate::graphql::guard::ScopeGuard;
-use crate::settings::workflow::AirPurifierCommand;
+use crate::repo::air_purifier::AirPurifierMode;
+use crate::workflows::definition::AirPurifierCommand;
 
 pub struct AirPurifierMutation {
     address: String,

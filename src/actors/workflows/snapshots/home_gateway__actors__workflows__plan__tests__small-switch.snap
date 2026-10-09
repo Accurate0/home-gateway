@@ -1,6 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-expression: out
----
-# Small Switch  (on: switch(small-switch) any action)
-  lua: lua(call small_switch.tap) -> []

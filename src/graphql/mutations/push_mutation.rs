@@ -1,15 +1,15 @@
 use async_graphql::Object;
 use uuid::Uuid;
 
-use crate::actors::system::push::types::PushActionKind;
 use crate::actors::system::push::{PushActor, PushMessage, PushNotification};
 use crate::actors::system::rpc;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::notification_interaction_kind::NotificationInteractionKind;
 use crate::graphql::objects::send_push_notification_input::SendPushNotificationInput;
+use crate::notify::actions::PushActionKind;
+use crate::notify::interaction::NotificationInteraction;
 use crate::repo::RepoRegistry;
-use crate::repo::notification_interaction::NotificationInteraction;
 use crate::settings::{
     NotificationSource, NotifyAcknowledge, SettingsContainer, validate_acknowledge,
 };

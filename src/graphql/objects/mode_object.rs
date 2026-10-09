@@ -5,11 +5,11 @@ use chrono_tz::Australia::Perth;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
-use crate::mode::Mode;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
 use crate::timedelta_format::humanize;
 use crate::vacation::{build_days, coverage, target_at};
+use crate::workflows::mode::Mode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, async_graphql::Enum)]
 pub enum LightTarget {

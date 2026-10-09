@@ -1,4 +1,4 @@
-use crate::db::AirPurifierMode;
+use crate::repo::air_purifier::AirPurifierMode;
 
 pub struct AirPurifierReading {
     pub address: String,

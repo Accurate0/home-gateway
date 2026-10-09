@@ -4,7 +4,6 @@ use http::StatusCode;
 
 use serde::Deserialize;
 
-use crate::actors::system::push::types::{PushAction, PushActionKind};
 use crate::actors::system::push::{self, PushActor, PushNotification};
 use crate::actors::system::rpc;
 use crate::auth::{
@@ -12,6 +11,7 @@ use crate::auth::{
     scope::{Action, Resource},
 };
 use crate::error::AppError;
+use crate::notify::actions::{PushAction, PushActionKind};
 use crate::settings::{NotificationSource, NotifyAcknowledge, NotifyCategory};
 
 #[derive(Deserialize)]

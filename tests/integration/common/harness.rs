@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use home_gateway::actors::health::ActorHealthRegistry;
 use home_gateway::actors::root::RootMessage;
-use home_gateway::actors::workflows::manager::WorkflowManager;
 use home_gateway::api::{SchemaParts, build_router, build_schema};
 use home_gateway::auth::AuthManager;
 use home_gateway::device_registry::last_seen::LastSeen;
@@ -15,6 +14,7 @@ use home_gateway::integrations::willyweather::WillyWeather;
 use home_gateway::repo::{ApiKeyRepo, DeviceRepo};
 use home_gateway::settings::{HttpClientKind, SettingsContainer};
 use home_gateway::state::{AppState, HandleRegistry};
+use home_gateway::workflows::manager::WorkflowManager;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use sqlx::{Pool, Postgres};
 use tokio::sync::broadcast;
@@ -153,7 +153,7 @@ impl Harness {
             devices: devices.clone(),
             db: db.clone(),
             feature_flag_client,
-            sampling: home_gateway::tracing_setup::SamplingControl::default(),
+            sampling: home_gateway::telemetry::setup::SamplingControl::default(),
             event_bus: event_bus.clone(),
             handles,
             lua,

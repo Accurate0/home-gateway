@@ -1,7 +1,7 @@
 use async_graphql::Object;
 
 use crate::graphql::objects::mode_object::ModeObject;
-use crate::mode::Mode;
+use crate::workflows::mode::Mode;
 
 pub struct ModeStatus {
     pub active: Mode,

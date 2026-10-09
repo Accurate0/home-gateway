@@ -12,10 +12,10 @@ use ractor::Actor;
 
 use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
 use crate::actors::system::rpc;
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::event_bus::{Recipient, Subscription};
 use crate::state::AppState;
 use crate::vacation::{DayPlan, build_plan, target_at};
+use crate::workflows::manager::WorkflowManager;
 
 pub mod lua;
 pub mod subscriber;

@@ -96,7 +96,7 @@ impl TuyaIngest {
                     "failed to decode tuya data points on {address} with model {}: {e}",
                     device.profile.slug
                 );
-                crate::tracing_context::record_current_error(&e.to_string());
+                crate::telemetry::context::record_current_error(&e.to_string());
                 ingest_error(&address, "decode", &e.to_string());
 
                 return;

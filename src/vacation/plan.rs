@@ -290,8 +290,8 @@ mod tests {
     use chrono::TimeDelta;
     use pretty_assertions::assert_eq;
 
-    use crate::mode::Mode;
     use crate::settings::enabled_state::EnabledState;
+    use crate::workflows::mode::Mode;
 
     fn settings() -> VacationSettings {
         VacationSettings {

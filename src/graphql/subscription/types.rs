@@ -1,10 +1,11 @@
 use async_graphql::{ComplexObject, ID, Json, SimpleObject, Union};
 use uuid::Uuid;
 
-use crate::db::{AirPurifierMode, GarageDoorState};
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBusMessage;
-use crate::mode::Mode;
+use crate::repo::air_purifier::AirPurifierMode;
+use crate::repo::garage_door::GarageDoorState;
+use crate::workflows::mode::Mode;
 
 #[derive(SimpleObject)]
 pub struct PresenceUpdate {

@@ -145,7 +145,7 @@ fn report_to_actor(report: &WakeReport<'_>) -> Result<(), RpcError> {
         EInkDisplayActor::NAME,
         EInkDisplayMessage::ConfigRequest {
             device_id: report.device_id.to_owned(),
-            trace_id: crate::tracing_context::current_trace_id(),
+            trace_id: crate::telemetry::context::current_trace_id(),
         },
     )?;
 
@@ -167,4 +167,34 @@ fn report_to_actor(report: &WakeReport<'_>) -> Result<(), RpcError> {
             battery_kind: report.battery_kind.map(str::to_owned),
         },
     )
+}
+
+pub fn battery_chemistry(value: &str) -> Option<BatteryChemistry> {
+    if value.is_empty() {
+        return None;
+    }
+
+    let parsed: Result<BatteryChemistry, serde::de::value::Error> =
+        serde::Deserialize::deserialize(serde::de::IntoDeserializer::into_deserializer(value));
+
+    match parsed {
+        Ok(chemistry) => Some(chemistry),
+        Err(_) => {
+            tracing::warn!("unknown battery chemistry `{value}`, ignoring");
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn battery_chemistry_parses_the_firmware_names() {
+        assert_eq!(battery_chemistry("lipo"), Some(BatteryChemistry::Lipo));
+        assert_eq!(battery_chemistry("li_ion"), Some(BatteryChemistry::LiIon));
+        assert_eq!(battery_chemistry(""), None);
+        assert_eq!(battery_chemistry("plutonium"), None);
+    }
 }

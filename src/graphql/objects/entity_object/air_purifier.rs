@@ -1,12 +1,12 @@
 use async_graphql::{Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
-use crate::db::AirPurifierMode;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::dataloader::air_purifier_state::{
     AirPurifierStateDataLoader, AirPurifierStateModel,
 };
 use crate::graphql::dataloader::device_metric::{DeviceMetricDataLoader, DeviceMetricKey};
+use crate::repo::air_purifier::AirPurifierMode;
 
 const AQI_METRIC: &str = "aqi";
 const CADR_METRIC: &str = "cadr";

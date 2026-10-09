@@ -280,7 +280,7 @@ fn shape_forecast(raw: WillyWeatherForecast) -> Result<Forecast, WillyWeatherErr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event_bus::WeatherMetric;
+    use crate::weather::WeatherMetric;
 
     const FIXTURE: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

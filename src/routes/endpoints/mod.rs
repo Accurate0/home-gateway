@@ -10,10 +10,10 @@ use uuid::Uuid;
 
 use crate::auth::AuthContext;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaError};
-use crate::settings::workflow::HttpMethod;
 use crate::settings::{Endpoint, EndpointSettings, ParamType};
 use crate::state::AppState;
 use crate::variables::VarType;
+use crate::workflows::definition::HttpMethod;
 
 use super::vars::header_map;
 

@@ -1,29 +1,8 @@
 use super::{EInkActorState, EInkDisplayActor, EInkDisplayMessage};
+use crate::eink::manager::render_schedule::{RenderSchedule, render_schedule};
 use crate::eink::manager::resolve::ResolvedDisplay;
-use std::time::Duration;
-
-#[derive(Debug, PartialEq, Eq)]
-enum RenderSchedule {
-    Now,
-    After(Duration),
-}
 
 impl EInkDisplayActor {
-    fn render_schedule(
-        next_wake_at: Option<chrono::DateTime<chrono::Utc>>,
-        lead: chrono::TimeDelta,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> RenderSchedule {
-        let Some(next_wake_at) = next_wake_at else {
-            return RenderSchedule::Now;
-        };
-
-        match (next_wake_at - lead - now).to_std() {
-            Ok(delay) => RenderSchedule::After(delay),
-            Err(_) => RenderSchedule::Now,
-        }
-    }
-
     pub(super) fn cancel_render(state: &mut EInkActorState, device_id: &str) {
         if let Some(handle) = state.scheduled_renders.remove(device_id) {
             handle.abort();
@@ -56,7 +35,7 @@ impl EInkDisplayActor {
             return Ok(());
         };
 
-        match Self::render_schedule(next_wake_at, lead, chrono::Utc::now()) {
+        match render_schedule(next_wake_at, lead, chrono::Utc::now()) {
             RenderSchedule::Now => {
                 tracing::info!(
                     device_id = %device_id,
@@ -85,53 +64,5 @@ impl EInkDisplayActor {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_wake_beyond_the_lead_is_scheduled() {
-        let now = chrono::Utc::now();
-        let lead = chrono::TimeDelta::minutes(15);
-
-        assert_eq!(
-            EInkDisplayActor::render_schedule(Some(now + chrono::TimeDelta::hours(1)), lead, now),
-            RenderSchedule::After(Duration::from_secs(45 * 60))
-        );
-    }
-
-    #[test]
-    fn a_wake_inside_the_lead_renders_now() {
-        let now = chrono::Utc::now();
-        let lead = chrono::TimeDelta::minutes(15);
-
-        assert_eq!(
-            EInkDisplayActor::render_schedule(Some(now + chrono::TimeDelta::minutes(5)), lead, now),
-            RenderSchedule::Now
-        );
-    }
-
-    #[test]
-    fn a_wake_in_the_past_renders_now() {
-        let now = chrono::Utc::now();
-        let lead = chrono::TimeDelta::minutes(15);
-
-        assert_eq!(
-            EInkDisplayActor::render_schedule(Some(now - chrono::TimeDelta::days(3)), lead, now),
-            RenderSchedule::Now
-        );
-    }
-
-    #[test]
-    fn a_display_that_never_polled_renders_now() {
-        let now = chrono::Utc::now();
-
-        assert_eq!(
-            EInkDisplayActor::render_schedule(None, chrono::TimeDelta::minutes(15), now),
-            RenderSchedule::Now
-        );
     }
 }

@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+use super::keys::PACKED_CACHE_PREFIX;
+
 pub const PANEL_WIDTH: u32 = 1200;
 pub const PANEL_HEIGHT: u32 = 1600;
 const PANEL_HALF_WIDTH: u32 = PANEL_WIDTH / 2;
 const WINDOW_X_ALIGN: u32 = 4;
 pub const WINDOW_MIN_WIDTH: u32 = 16;
 
-const PACKED_CACHE_PREFIX: &str = "eink-display/packed/";
 pub const PACKED_ROW_BYTES: usize = 600;
 pub const PACKED_FRAME_HEIGHT: usize = 1600;
 pub const PACKED_FRAME_SIZE: usize = PACKED_ROW_BYTES * PACKED_FRAME_HEIGHT;

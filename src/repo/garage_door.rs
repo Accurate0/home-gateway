@@ -2,7 +2,29 @@ use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use crate::db::GarageDoorState;
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    sqlx::Type,
+    serde::Serialize,
+    serde::Deserialize,
+    async_graphql::Enum,
+    Eq,
+    Copy,
+    schemars::JsonSchema,
+    strum::Display,
+)]
+#[sqlx(type_name = "garage_door_state", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum GarageDoorState {
+    Open,
+    Opening,
+    Closed,
+    Closing,
+}
 
 #[derive(Clone)]
 pub struct GarageDoorRepo {

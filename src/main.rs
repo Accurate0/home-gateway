@@ -7,7 +7,7 @@ use home_gateway::integrations::home_assistant::HomeAssistant;
 use home_gateway::integrations::jellyfin::Jellyfin;
 use home_gateway::startup::{self, Handles, Tasks};
 use home_gateway::state::AppState;
-use home_gateway::tracing_setup::SampleRatios;
+use home_gateway::telemetry::setup::SampleRatios;
 use home_gateway::utils::handle_cancellation;
 use ractor::Actor;
 use std::time::Instant;

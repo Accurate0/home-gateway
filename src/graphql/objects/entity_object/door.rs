@@ -6,9 +6,9 @@ use crate::{
         devices::door_events::{DerivedDoorEvents, DoorEventsMessage},
         system::rpc,
     },
-    db::DoorState,
     device_registry::{Capability, DeviceRegistry},
     graphql::objects::entity_object::{last_seen_for, query_timeout},
+    repo::door::DoorState,
 };
 
 pub struct DoorEntity {

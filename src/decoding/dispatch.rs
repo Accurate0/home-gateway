@@ -68,7 +68,7 @@ pub async fn dispatch(
 
         if let Err(e) = state.repos.metric().record(&record).await {
             tracing::error!("failed to save device metric for {address}: {e}");
-            crate::tracing_context::record_current_error(&e.to_string());
+            crate::telemetry::context::record_current_error(&e.to_string());
         }
     }
 }

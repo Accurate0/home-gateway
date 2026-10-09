@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use crate::repo::notification_interaction::NotificationInteraction;
+use crate::notify::interaction::NotificationInteraction;
 
 #[derive(Clone)]
 pub struct PushRepo {

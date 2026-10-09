@@ -6,12 +6,12 @@ use mlua::{ExternalError, Function, MultiValue, Value as LuaValue};
 
 use crate::lua::bridge::lua_to_value;
 use crate::lua::{Json, LuaCallContext, lua_module};
-use crate::mode::Mode;
-use crate::settings::workflow::EnableState;
-use crate::workflow_trace::{StepOutcome, StepTrace};
+use crate::workflows::definition::EnableState;
+use crate::workflows::mode::Mode;
+use crate::workflows::trace::{StepOutcome, StepTrace};
 
-use super::manager::WorkflowManager;
 use super::{ReusableCall, WorkflowWorker};
+use crate::workflows::manager::WorkflowManager;
 
 pub struct WorkflowLua;
 

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
-use home_gateway::tracing_context::{inject_current, record_error, set_parent};
-use home_gateway::tracing_setup::{MQTT_INGEST_SPAN, SampleRatios, SamplingControl, ratio_sampler};
+use home_gateway::telemetry::context::{inject_current, record_error, set_parent};
+use home_gateway::telemetry::setup::{
+    MQTT_INGEST_SPAN, SampleRatios, SamplingControl, ratio_sampler,
+};
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -282,7 +284,7 @@ async fn the_real_extension_produces_a_named_operation_with_phase_and_field_span
         async_graphql::EmptyMutation,
         async_graphql::EmptySubscription,
     )
-    .extension(home_gateway::graphql_tracing::Tracing)
+    .extension(home_gateway::telemetry::graphql::Tracing)
     .finish();
 
     let spans = harness

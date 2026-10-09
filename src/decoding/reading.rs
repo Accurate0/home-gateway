@@ -2,8 +2,9 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Deserializer};
 
-use crate::db::{AirPurifierMode, GarageDoorState};
 use crate::device_metric::MetricValue;
+use crate::repo::air_purifier::AirPurifierMode;
+use crate::repo::garage_door::GarageDoorState;
 use crate::settings::Metric;
 
 #[derive(Debug, Default, Deserialize)]

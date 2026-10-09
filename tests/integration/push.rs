@@ -1,5 +1,5 @@
 use chrono::TimeDelta;
-use home_gateway::repo::notification_interaction::NotificationInteraction;
+use home_gateway::notify::interaction::NotificationInteraction;
 use home_gateway::repo::push::{NewPushNotification, PushRepo};
 use pretty_assertions::assert_eq;
 use uuid::Uuid;

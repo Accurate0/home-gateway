@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use super::timer_kind::TimerKind;
-use crate::workflow_trace::StepTrace;
+use crate::workflows::timer_kind::TimerKind;
+use crate::workflows::trace::StepTrace;
 
 pub struct NewWorkflowRun<'a> {
     pub slug: &'a str,

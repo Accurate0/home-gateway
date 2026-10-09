@@ -7,7 +7,7 @@ use crate::auth::scope::Scope;
 use crate::lua::LuaSource;
 use crate::variables::VarType;
 
-use super::workflow::HttpMethod;
+use crate::workflows::definition::HttpMethod;
 
 pub const RESERVED_PREFIXES: &[&str] = &[
     "/admin",

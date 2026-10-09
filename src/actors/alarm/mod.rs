@@ -93,7 +93,7 @@ impl Actor for AlarmActor {
                             .settings
                             .workflows
                             .get(workflow_name)
-                            .map(crate::settings::WorkflowDefinition::body)
+                            .map(crate::workflows::definition::WorkflowDefinition::body)
                         else {
                             tracing::warn!("alarm workflow `{workflow_name}` not configured");
                             return Ok(());
@@ -106,7 +106,7 @@ impl Actor for AlarmActor {
                             workflow,
                             vars: Vars::default(),
                             authority: LuaAuthority::Trusted,
-                            traceparent: crate::tracing_context::inject_current(),
+                            traceparent: crate::telemetry::context::inject_current(),
                         };
 
                         rpc::cast_factory(WorkflowWorker::NAME, message)?;

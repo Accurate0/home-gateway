@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use async_graphql::Object;
 use uuid::Uuid;
 
-use crate::actors::system::push::types::PushAction;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::push_notification_action_object::PushNotificationActionObject;
 use crate::graphql::objects::push_notification_interaction_object::PushNotificationInteractionObject;
 use crate::graphql::objects::push_notification_object::PushNotificationObject;
+use crate::notify::actions::PushAction;
+use crate::notify::interaction::NotificationInteraction;
 use crate::repo::RepoRegistry;
-use crate::repo::notification_interaction::NotificationInteraction;
 
 #[derive(Default)]
 pub struct PushQuery;

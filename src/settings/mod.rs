@@ -135,14 +135,13 @@ pub use sun::SunSettings;
 pub use tracing_settings::TracingSettings;
 pub use vacation::VacationSettings;
 pub use watchdog::WatchdogSettings;
-pub use workflow::{
-    ReusableWorkflow, TriggerMatcher, Workflow, WorkflowDefinition, WorkflowSettings,
-};
+pub use workflow::WorkflowSettings;
 
 use crate::auth::scope::ScopePattern;
 use crate::decoding::ModelSources;
 use crate::device_registry::{DeviceRegistry, RawDevice};
 use crate::settings::device_scope::DeviceScope;
+use crate::workflows::definition::{self as workflow_definition, WorkflowDefinition};
 
 pub type IEEEAddress = String;
 
@@ -351,8 +350,8 @@ impl RawSettings {
             let scope = if references_disabled {
                 crate::variables::Scope::default()
             } else {
-                let scope = workflow::scope::scope_for(&workflow, &registry)?;
-                workflow::scope::check_steps(body, &scope)?;
+                let scope = workflow_definition::scope::scope_for(&workflow, &registry)?;
+                workflow_definition::scope::check_steps(body, &scope)?;
 
                 scope
             };
@@ -375,7 +374,7 @@ impl RawSettings {
             .map(WorkflowDefinition::body)
             .filter(|workflow| !disabled_by_device.contains(&workflow.name))
         {
-            workflow::scope::check_calls(workflow, &scopes[&workflow.name], &resolved)?;
+            workflow_definition::scope::check_calls(workflow, &scopes[&workflow.name], &resolved)?;
 
             workflow
                 .validate_acknowledgements()
@@ -383,7 +382,7 @@ impl RawSettings {
         }
 
         if let Some(definition) = resolved.get(&alarm.workflow) {
-            let inputs = workflow::scope::callable_inputs(definition)
+            let inputs = workflow_definition::scope::callable_inputs(definition)
                 .map_err(|error| format!("alarm workflow {error}"))?;
 
             if !inputs.is_empty() {
@@ -609,6 +608,7 @@ mod tests {
     use crate::device_registry::{Capability, IdOrAlias, RawDevice};
     use crate::event_bus::SensorMetric;
     use crate::integrations::mqtt::MqttProtocol;
+    use crate::workflows::definition::TriggerMatcher;
     use std::collections::BTreeMap;
 
     fn lamp_registry() -> DeviceRegistry {
@@ -1143,7 +1143,7 @@ mod tests {
         assert!(err.to_string().contains("entity"), "{err}");
     }
 
-    fn light_step(state: &str) -> workflow::Step {
+    fn light_step(state: &str) -> workflow_definition::Step {
         serde_yaml::from_str(&format!(
             "type: light\ndevice: living-room-table-lamp\nstate: {state}\nvalue: 50\n"
         ))
@@ -1169,7 +1169,7 @@ mod tests {
         assert!(err.contains("does not support ColourTemp"), "{err}");
     }
 
-    fn switch_step(device: &str) -> workflow::Step {
+    fn switch_step(device: &str) -> workflow_definition::Step {
         serde_yaml::from_str(&format!("type: switch\ndevice: {device}\nstate: ON\n")).unwrap()
     }
 
@@ -1389,7 +1389,7 @@ integrations:
             switch_workflow
                 .run
                 .iter()
-                .all(|step| matches!(step, workflow::Step::Lua { .. })),
+                .all(|step| matches!(step, workflow_definition::Step::Lua { .. })),
             "expected the small switch to toggle through lua"
         );
         for name in ["living-room-lamps-off", "living-room-lamps-on"] {

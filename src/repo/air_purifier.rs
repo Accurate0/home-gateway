@@ -2,7 +2,28 @@ use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use crate::db::AirPurifierMode;
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    sqlx::Type,
+    serde::Serialize,
+    serde::Deserialize,
+    async_graphql::Enum,
+    Eq,
+    Copy,
+    schemars::JsonSchema,
+    strum::Display,
+)]
+#[sqlx(type_name = "air_purifier_mode", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum AirPurifierMode {
+    Manual,
+    Sleep,
+    Auto,
+}
 
 #[derive(Clone)]
 pub struct AirPurifierRepo {

@@ -3,8 +3,8 @@ use async_graphql::{ComplexObject, Json, SimpleObject};
 use chrono::{DateTime, Utc};
 
 use crate::graphql::dataloader::workflow_run_steps::WorkflowRunStepsDataLoader;
-use crate::mode::Mode;
 use crate::repo::workflow::WorkflowRunStepRow;
+use crate::workflows::mode::Mode;
 
 #[derive(SimpleObject)]
 #[graphql(complex)]

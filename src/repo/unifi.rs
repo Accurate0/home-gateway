@@ -1,6 +1,23 @@
-use crate::db::UnifiState;
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
+
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    sqlx::Type,
+    serde::Serialize,
+    serde::Deserialize,
+    async_graphql::Enum,
+    Eq,
+    Copy,
+)]
+#[sqlx(type_name = "unifi_state", rename_all = "lowercase")]
+pub enum UnifiState {
+    Connected,
+    Disconnected,
+}
 
 pub struct UnifiClientStateRow {
     pub name: String,

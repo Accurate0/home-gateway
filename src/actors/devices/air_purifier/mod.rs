@@ -16,13 +16,13 @@ use crate::decoding::{Decoders, DeviceRoleName};
 use crate::device_command::{self, CommandOutcome, CommandTargets, Outbound};
 use crate::event_bus::EventBusMessage;
 use crate::repo::air_purifier::AirPurifierRecord;
-use crate::settings::workflow::AirPurifierCommand;
 use crate::state::AppState;
+use crate::workflows::definition::AirPurifierCommand;
 
 pub struct NewEvent {
     pub event_id: Uuid,
     pub reading: AirPurifierReading,
-    pub traceparent: crate::tracing_context::TraceParent,
+    pub traceparent: crate::telemetry::context::TraceParent,
 }
 
 pub enum Message {
@@ -30,7 +30,7 @@ pub enum Message {
     Command(CommandRequest),
 }
 
-impl crate::tracing_context::TracedMessage for Message {
+impl crate::telemetry::context::TracedMessage for Message {
     fn traceparent(&self) -> Option<&str> {
         match self {
             Message::NewEvent(event) => event.traceparent.as_deref(),

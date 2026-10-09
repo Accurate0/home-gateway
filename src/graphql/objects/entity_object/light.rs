@@ -54,7 +54,7 @@ impl LightEntity {
                 rpc::query_factory(LightHandler::NAME, timeout, |reply| {
                     LightHandlerMessage::QueryState {
                         ieee_addr: self.address.clone(),
-                        traceparent: crate::tracing_context::inject_current(),
+                        traceparent: crate::telemetry::context::inject_current(),
                         reply,
                     }
                 })

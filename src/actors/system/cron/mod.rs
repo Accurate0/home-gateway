@@ -6,14 +6,13 @@
 //! runs its workflow — so a recurring schedule is just another event source,
 //! with no special-casing in the workflow machinery.
 
+use crate::workflows::definition::TriggerMatcher;
 use ractor::Actor;
 use uuid::Uuid;
 
-use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::AppState};
+use crate::{event_bus::EventBusMessage, state::AppState};
 
-use schedule::CronSchedule;
-
-pub mod schedule;
+use crate::cron::CronSchedule;
 
 pub enum CronActorMessage {
     /// A scheduled trigger came due. Carries the schedule so the actor can
@@ -45,7 +44,7 @@ impl CronActor {
             }
             Err(e) => {
                 tracing::error!("cron trigger '{name}' has no next occurrence: {e}");
-                crate::tracing_context::record_current_error(&e.to_string());
+                crate::telemetry::context::record_current_error(&e.to_string());
             }
         }
     }
@@ -65,7 +64,7 @@ impl Actor for CronActor {
         for workflow in settings
             .workflows
             .values()
-            .filter_map(crate::settings::WorkflowDefinition::triggered)
+            .filter_map(crate::workflows::definition::WorkflowDefinition::triggered)
         {
             if !workflow.enabled {
                 continue;

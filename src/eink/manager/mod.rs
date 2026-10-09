@@ -2,6 +2,7 @@ pub mod config;
 pub mod decision;
 pub mod frame;
 pub mod plan;
+pub mod render_schedule;
 pub mod resolve;
 pub mod source;
 pub mod sources;

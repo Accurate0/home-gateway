@@ -5,16 +5,16 @@ use uuid::Uuid;
 use crate::actors::system::rpc;
 use crate::actors::workflows::{WorkflowWorker, WorkflowWorkerMessage};
 
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::event_bus::{EventBus, EventBusMessage};
 use crate::graphql::guard::ScopeGuard;
 use crate::lua::LuaAuthority;
-use crate::mode::Mode;
 use crate::settings::SettingsContainer;
-use crate::settings::workflow::scope::callable_inputs;
 use crate::variables::Vars;
 use crate::variables::input::input_node;
+use crate::workflows::definition::scope::callable_inputs;
+use crate::workflows::manager::WorkflowManager;
+use crate::workflows::mode::Mode;
 
 #[derive(Default)]
 pub struct WorkflowsMutation;
@@ -90,7 +90,7 @@ impl WorkflowsMutation {
             workflow,
             vars: Vars::default().with("input", input),
             authority: LuaAuthority::Trusted,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
         };
 
         rpc::cast_factory(WorkflowWorker::NAME, message)

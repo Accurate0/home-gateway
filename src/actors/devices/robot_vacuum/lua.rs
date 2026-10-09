@@ -1,6 +1,6 @@
 use crate::actors::workflows::WorkflowWorker;
 use crate::lua::{Json, LuaCallContext, LuaClass, lua_module};
-use crate::settings::workflow::VacuumCommand;
+use crate::workflows::definition::VacuumCommand;
 
 #[derive(LuaClass)]
 #[lua(output)]

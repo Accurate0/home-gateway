@@ -5,11 +5,10 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::eink_defaults::EinkDefaults;
-use crate::actors::system::cron::schedule::CronSchedule;
+use crate::cron::CronSchedule;
+use crate::eink::keys::ALBUM_PREFIX;
 use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::{humanize, time_delta_from_str};
-
-pub const DEFAULT_ALBUM_PREFIX: &str = "eink-display/album/";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
 #[serde(rename_all = "snake_case")]
@@ -211,9 +210,7 @@ impl RawEinkGlobal {
             .albums
             .into_iter()
             .map(|(name, a)| {
-                let prefix = a
-                    .prefix
-                    .unwrap_or_else(|| format!("{DEFAULT_ALBUM_PREFIX}{name}/"));
+                let prefix = a.prefix.unwrap_or_else(|| format!("{ALBUM_PREFIX}{name}/"));
                 (name.clone(), Album { name, prefix })
             })
             .collect();
@@ -244,7 +241,7 @@ impl EinkGlobalSettings {
     pub fn default_album(&self) -> Album {
         Album {
             name: "default".to_owned(),
-            prefix: DEFAULT_ALBUM_PREFIX.to_owned(),
+            prefix: ALBUM_PREFIX.to_owned(),
         }
     }
 }

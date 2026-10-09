@@ -3,7 +3,7 @@
 //! Mirrors the janitor-bot pattern: a small module of `record_*` helpers that
 //! the dispatcher and workflow executor call, keeping instrument names and
 //! label conventions in one place. Instruments are created lazily against the
-//! global meter set up in [`crate::tracing_setup::init_metrics`], so they're
+//! global meter set up in [`crate::telemetry::setup::init_metrics`], so they're
 //! exported via the same Prometheus `/metrics` endpoint.
 
 use std::sync::LazyLock;

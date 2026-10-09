@@ -136,8 +136,8 @@ mod tests {
     fn mode_event() -> EventBusMessage {
         EventBusMessage::Mode {
             event_id: uuid::Uuid::new_v4(),
-            mode: crate::mode::Mode::Away,
-            previous: crate::mode::Mode::Home,
+            mode: crate::workflows::mode::Mode::Away,
+            previous: crate::workflows::mode::Mode::Home,
         }
     }
 

@@ -1,6 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-expression: out
----
-# Control Switch  (on: switch(control-switch) any action)
-  lua: lua(call buttons.dispatch) -> []

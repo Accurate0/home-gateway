@@ -28,7 +28,7 @@ mod tests {
     use mlua::{FromLua, IntoLua, Lua};
 
     use super::Json;
-    use crate::mode::Mode;
+    use crate::workflows::mode::Mode;
 
     #[test]
     fn a_schema_type_round_trips_as_its_serde_form() {

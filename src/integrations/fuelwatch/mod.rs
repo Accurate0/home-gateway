@@ -9,6 +9,10 @@ pub mod lua;
 pub mod types;
 pub mod variables;
 
+mod fuel_change;
+
+pub use fuel_change::FuelChange;
+
 const SITES_URL: &str = "https://www.fuelwatch.wa.gov.au/api/sites";
 const PRODUCT_UNLEADED_91: &str = "1";
 

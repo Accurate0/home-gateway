@@ -1,6 +1,5 @@
+use crate::media_control::PlaybackState;
 use serde::Deserialize;
-
-use crate::event_bus::PlaybackState;
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct Attributes {

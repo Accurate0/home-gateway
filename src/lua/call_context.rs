@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::auth::scope::{Action, Resource};
 use crate::state::AppState;
-use crate::workflow_trace::{StepOutcome, TraceRecorder};
+use crate::workflows::trace::{StepOutcome, TraceRecorder};
 
 use super::{LuaAuthority, LuaFunction};
 
@@ -144,7 +144,7 @@ impl LuaCallContext {
         let error = result.as_ref().err().map(ToString::to_string);
 
         if let Some(e) = &error {
-            crate::tracing_context::record_error(&span, e);
+            crate::telemetry::context::record_error(&span, e);
         }
 
         self.trace.finish_with(handle, error);
@@ -168,7 +168,7 @@ impl LuaCallContext {
         let error = result.as_ref().err().map(ToString::to_string);
 
         if let Some(e) = &error {
-            crate::tracing_context::record_error(&span, e);
+            crate::telemetry::context::record_error(&span, e);
         }
 
         self.trace.finish_with(handle, error);

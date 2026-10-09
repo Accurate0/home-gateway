@@ -19,14 +19,14 @@ use state::{Attributes, Prior, edges};
 pub struct Update {
     pub event_id: Uuid,
     pub reading: MediaPlayerReading,
-    pub traceparent: crate::tracing_context::TraceParent,
+    pub traceparent: crate::telemetry::context::TraceParent,
 }
 
 pub enum Message {
     HomeAssistant(Update),
 }
 
-impl crate::tracing_context::TracedMessage for Message {
+impl crate::telemetry::context::TracedMessage for Message {
     fn traceparent(&self) -> Option<&str> {
         match self {
             Message::HomeAssistant(update) => update.traceparent.as_deref(),

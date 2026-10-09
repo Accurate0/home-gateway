@@ -25,7 +25,7 @@ where
 
     let layer = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
     let subscriber = tracing_subscriber::registry()
-        .with(home_gateway::tracing_setup::telemetry_filter(
+        .with(home_gateway::telemetry::setup::telemetry_filter(
             tracing_subscriber::filter::LevelFilter::INFO,
         ))
         .with(layer);
@@ -52,7 +52,7 @@ fn global_exporter() -> &'static InMemorySpanExporter {
 
         let layer = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
         tracing_subscriber::registry()
-            .with(home_gateway::tracing_setup::telemetry_filter(
+            .with(home_gateway::telemetry::setup::telemetry_filter(
                 tracing_subscriber::filter::LevelFilter::INFO,
             ))
             .with(layer)
@@ -322,11 +322,11 @@ async fn a_failed_query_marks_its_repo_span_as_errored() {
 #[tokio::test]
 #[serial]
 async fn query_events_do_not_reach_the_console() {
-    let filter = home_gateway::tracing_setup::console_filter();
+    let filter = home_gateway::telemetry::setup::console_filter();
 
     assert!(
         !filter.would_enable(
-            home_gateway::tracing_setup::SQLX_QUERY_TARGET,
+            home_gateway::telemetry::setup::SQLX_QUERY_TARGET,
             &tracing::Level::DEBUG
         ),
         "per-query SQL would flood stdout"

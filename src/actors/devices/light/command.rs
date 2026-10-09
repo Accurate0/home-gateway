@@ -1,7 +1,7 @@
 use std::num::TryFromIntError;
 
 use crate::settings::IEEEAddress;
-use crate::settings::workflow::LightState;
+use crate::workflows::definition::LightState;
 
 use super::LightHandlerMessage;
 

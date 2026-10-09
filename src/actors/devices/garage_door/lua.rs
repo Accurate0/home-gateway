@@ -1,7 +1,7 @@
 use crate::actors::workflows::WorkflowWorker;
-use crate::db::GarageDoorState;
 use crate::lua::{Json, LuaCallContext, LuaClass, lua_module};
-use crate::settings::workflow::GarageDoorCommand;
+use crate::repo::garage_door::GarageDoorState;
+use crate::workflows::definition::GarageDoorCommand;
 
 #[derive(LuaClass)]
 #[lua(output)]

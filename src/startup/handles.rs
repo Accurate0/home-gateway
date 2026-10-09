@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::actors::health::ActorHealthRegistry;
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::{AuthManager, OAuthValidator};
 use crate::device_registry::last_seen::LastSeen;
 use crate::eink::EinkDisplayManager;
@@ -24,6 +23,7 @@ use crate::integrations::{
 use crate::repo::{ApiKeyRepo, DeviceRepo};
 use crate::settings::HttpClientKind;
 use crate::state::HandleRegistry;
+use crate::workflows::manager::WorkflowManager;
 
 use super::Storage;
 

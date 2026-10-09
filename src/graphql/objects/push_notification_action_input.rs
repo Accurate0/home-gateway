@@ -1,7 +1,7 @@
 use async_graphql::InputObject;
 
-use crate::actors::system::push::types::{PushAction, PushActionKind};
 use crate::graphql::objects::push_notification_action_kind::PushNotificationActionKind;
+use crate::notify::actions::{PushAction, PushActionKind};
 use crate::settings::SettingsContainer;
 
 #[derive(InputObject)]

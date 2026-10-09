@@ -1,11 +1,11 @@
 use ractor::RpcReplyPort;
 
 use crate::device_command::CommandOutcome;
-use crate::settings::workflow::AirPurifierCommand;
+use crate::workflows::definition::AirPurifierCommand;
 
 pub struct CommandRequest {
     pub address: String,
     pub command: AirPurifierCommand,
-    pub traceparent: crate::tracing_context::TraceParent,
+    pub traceparent: crate::telemetry::context::TraceParent,
     pub reply: RpcReplyPort<Result<CommandOutcome, String>>,
 }

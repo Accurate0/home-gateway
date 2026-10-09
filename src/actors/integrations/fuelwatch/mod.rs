@@ -1,5 +1,6 @@
+use crate::integrations::fuelwatch::FuelChange;
 use crate::{
-    event_bus::{EventBusMessage, FuelChange},
+    event_bus::EventBusMessage,
     integrations::fuelwatch::{FuelWatch, types::FuelSite},
     settings::FuelWatchSettings,
     state::AppState,
@@ -186,7 +187,7 @@ impl Actor for FuelWatchActor {
                     }
                     Err(e) => {
                         tracing::error!("error polling fuelwatch: {e}");
-                        crate::tracing_context::record_current_error(&e.to_string());
+                        crate::telemetry::context::record_current_error(&e.to_string());
                         crate::metrics::record_integration_poll(
                             "fuelwatch",
                             "error",

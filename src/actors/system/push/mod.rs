@@ -7,15 +7,15 @@ use gcp_auth::TokenProvider;
 use http::{Method, StatusCode};
 use open_feature::EvaluationContext;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use types::{FcmAndroidConfig, FcmMessage, FcmSendRequest, PushAction};
+use types::{FcmAndroidConfig, FcmMessage, FcmSendRequest};
 use uuid::Uuid;
 
-use crate::integrations::notify::flag;
+use crate::notify::actions::PushAction;
+use crate::notify::flag;
 use crate::repo::push::{NewPushNotification, PushNotificationRow};
 use crate::settings::{NotificationSource, NotifyAcknowledge, NotifyCategory};
 use crate::state::AppState;
 
-pub mod actions;
 pub mod lua;
 pub mod spawn;
 pub mod types;

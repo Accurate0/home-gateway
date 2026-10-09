@@ -150,7 +150,7 @@ impl Actor for AdhocTaskActor {
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} fired but is no longer registered");
-                        crate::tracing_context::record_current_error(&format!(
+                        crate::telemetry::context::record_current_error(&format!(
                             "adhoc cron task {name} is no longer registered"
                         ));
                     }
@@ -164,7 +164,7 @@ impl Actor for AdhocTaskActor {
                     }
                     None => {
                         tracing::error!("adhoc cron task {name} is no longer registered");
-                        crate::tracing_context::record_current_error(&format!(
+                        crate::telemetry::context::record_current_error(&format!(
                             "adhoc cron task {name} is no longer registered"
                         ));
                     }

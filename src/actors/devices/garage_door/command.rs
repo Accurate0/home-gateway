@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::actors::system::rpc;
 use crate::device_command::CommandOutcome;
-use crate::settings::workflow::GarageDoorCommand;
+use crate::workflows::definition::GarageDoorCommand;
 
 use super::command_request::CommandRequest;
 use super::garage_door_command_error::GarageDoorCommandError;
@@ -18,7 +18,7 @@ pub async fn send(
         Message::Command(CommandRequest {
             address: address.to_owned(),
             command,
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             reply,
         })
     })

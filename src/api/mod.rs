@@ -1,8 +1,8 @@
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::eink::manager::EinkDisplayManager;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
+use crate::workflows::manager::WorkflowManager;
 use async_graphql::{Schema, dataloader::DataLoader};
 use axum::{
     Router,
@@ -207,7 +207,7 @@ pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
     .data(state.event_bus.clone())
     .data(state.handles.require::<WorkflowManager>().clone())
     .data(state.repos.clone())
-    .extension(crate::graphql_tracing::Tracing)
+    .extension(crate::telemetry::graphql::Tracing)
     .limit_depth(state.settings.graphql.max_depth)
     .limit_complexity(state.settings.graphql.max_complexity)
     .finish()

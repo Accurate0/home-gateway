@@ -1,6 +1,6 @@
 use super::EinkDisplayManager;
 use super::resolve::ResolvedDisplay;
-use crate::actors::system::cron::schedule::CronSchedule;
+use crate::cron::CronSchedule;
 use crate::eink::panel::PartialWindow;
 use crate::eink::partial::resolve_partial_window;
 use crate::routes::epd::DeviceReport;

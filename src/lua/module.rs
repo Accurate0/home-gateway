@@ -17,7 +17,7 @@ mod tests {
     use super::LuaModule;
     use crate::auth::scope::{Action, Resource, Scope};
     use crate::lua::{Json, LuaCallContext, LuaClass, LuaType, lua_module};
-    use crate::mode::Mode;
+    use crate::workflows::mode::Mode;
 
     #[derive(LuaClass, Debug, PartialEq)]
     #[lua(name = "SampleReading")]

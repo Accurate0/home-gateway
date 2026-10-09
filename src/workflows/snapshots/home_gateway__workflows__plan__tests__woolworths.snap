@@ -1,0 +1,6 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# Woolworths Price Drop  (on: woolworths(*) price drop)
+  notify: notify(AndroidApp, general): ${event.name} dropped to $${event.new_price | round(2)} (was $${event.old_price | round(2)}, -$${event.drop | round(2)})

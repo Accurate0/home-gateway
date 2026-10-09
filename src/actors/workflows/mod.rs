@@ -1,29 +1,29 @@
 use crate::actors::devices::air_purifier;
 use crate::actors::devices::garage_door;
 use crate::actors::devices::robot_vacuum;
-use crate::actors::system::push;
 use crate::actors::system::rpc;
-use crate::actors::workflows::manager::WorkflowManager;
-use crate::auth::scope::Scope;
 use crate::device_command::{CommandOutcome, CommandTargets};
 use crate::http::public_client::PublicHttpClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::lua::{LuaAuthority, LuaCallContext, LuaSource};
 use crate::settings::NotificationSource;
-use crate::settings::workflow::{AirPurifierCommand, GarageDoorCommand, HttpMethod, VacuumCommand};
 use crate::templating::Template;
 use crate::variables::{Node, VarType, Vars};
-use crate::workflow_trace::{StepOutcome, TraceRecorder};
+use crate::workflows::definition::{
+    AirPurifierCommand, GarageDoorCommand, HttpMethod, VacuumCommand,
+};
+use crate::workflows::definition::{ReusableWorkflow, WorkflowDefinition};
+use crate::workflows::manager::WorkflowManager;
+use crate::workflows::trace::{StepOutcome, TraceRecorder};
+use crate::workflows::{MAX_DEPTH, WorkflowError, conditions};
 use crate::{
     actors::devices::light::{LightHandler, command::light_message},
-    actors::workflows::manager::WorkflowRun,
     event_bus::EventBusMessage,
-    integrations::notify::{Notification, notify},
-    settings::workflow::{EnableState, LightState, Step, SwitchState},
-    settings::{ReusableWorkflow, WorkflowDefinition},
+    notify::{Notification, notify},
     state::AppState,
-    timer::timed_async,
+    workflows::definition::{EnableState, LightState, Step, SwitchState},
+    workflows::manager::WorkflowRun,
 };
 use ractor::{
     ActorRef,
@@ -34,65 +34,9 @@ use std::time::Duration;
 use tracing::Instrument;
 use uuid::Uuid;
 
-pub mod conditions;
 pub mod dispatcher;
 pub mod lua;
-pub mod manager;
-pub mod plan;
 pub mod spawn;
-
-/// Maximum nesting depth for `run_workflow` expansion, guarding against
-/// workflows that (directly or transitively) reference themselves.
-const MAX_DEPTH: u8 = 8;
-
-#[derive(thiserror::Error, Debug)]
-pub enum WorkflowError {
-    #[error("actor `{0}` not found")]
-    ActorNotFound(&'static str),
-    #[error("workflow recursion depth exceeded (>{MAX_DEPTH})")]
-    DepthExceeded,
-    #[error("messaging error: {0}")]
-    Messaging(String),
-    #[error("not implemented: {0}")]
-    NotImplemented(&'static str),
-    #[error("switch `{0}` has no control path: only a switch declared `as: light` can be driven")]
-    NotAControllableSwitch(String),
-    #[error("home assistant is not configured")]
-    HomeAssistantNotConfigured,
-    #[error("template error: {0}")]
-    Template(String),
-    #[error(transparent)]
-    Lua(#[from] crate::lua::LuaError),
-    #[error("step `{step}` needs scope `{scope}`")]
-    MissingScope { step: &'static str, scope: Scope },
-    #[error("`{0}` is not a robot vacuum")]
-    NotARobotVacuum(String),
-    #[error("`{0}` is not a garage door")]
-    NotAGarageDoor(String),
-    #[error(transparent)]
-    GarageDoor(#[from] garage_door::GarageDoorCommandError),
-    #[error("`{0}` is not an air purifier")]
-    NotAnAirPurifier(String),
-    #[error(transparent)]
-    AirPurifier(#[from] air_purifier::AirPurifierCommandError),
-    #[error("http request to {url} returned {status}")]
-    Http {
-        url: String,
-        status: reqwest::StatusCode,
-    },
-    #[error("http request refused: {0}")]
-    BlockedUrl(String),
-    #[error(transparent)]
-    HttpRequest(#[from] reqwest_middleware::Error),
-    #[error(transparent)]
-    Mqtt(#[from] crate::integrations::mqtt::MqttError),
-    #[error(transparent)]
-    HomeAssistant(#[from] crate::integrations::home_assistant::HomeAssistantError),
-    #[error(transparent)]
-    VacuumCommand(#[from] crate::device_command::DeviceCommandError),
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
-}
 
 #[derive(Clone, Copy)]
 pub struct ReusableCall<'a> {
@@ -123,7 +67,7 @@ pub enum WorkflowWorkerMessage {
         workflow: ReusableWorkflow,
         vars: Vars,
         authority: LuaAuthority,
-        traceparent: crate::tracing_context::TraceParent,
+        traceparent: crate::telemetry::context::TraceParent,
     },
 }
 
@@ -361,7 +305,7 @@ impl WorkflowWorker {
                     *category,
                     format!("workflow:{}", ctx.origin_slug),
                 )
-                .with_actions(push::actions::resolve(
+                .with_actions(crate::notify::actions::resolve(
                     &self.shared_actor_state.settings.workflows,
                     actions,
                 ))
@@ -621,7 +565,10 @@ impl WorkflowWorker {
         Ok(())
     }
 
-    pub async fn run_set_mode(&self, mode: crate::mode::Mode) -> Result<(), WorkflowError> {
+    pub async fn run_set_mode(
+        &self,
+        mode: crate::workflows::mode::Mode,
+    ) -> Result<(), WorkflowError> {
         let previous = self
             .shared_actor_state
             .handles
@@ -811,7 +758,7 @@ impl Worker for WorkflowWorker {
                     otel.status_code = tracing::field::Empty,
                     otel.status_message = tracing::field::Empty,
                 );
-                crate::tracing_context::set_parent(&span, traceparent.as_deref());
+                crate::telemetry::context::set_parent(&span, traceparent.as_deref());
 
                 let result = timed_async(|| async {
                     self.execute_workflow(event_id, workflow, vars, authority)
@@ -823,7 +770,7 @@ impl Worker for WorkflowWorker {
 
                 if let Err(e) = result {
                     tracing::error!("[{event_id}] workflow execution failed: {e}");
-                    crate::tracing_context::record_error(&span, &e.to_string());
+                    crate::telemetry::context::record_error(&span, &e.to_string());
                 }
             }
         }
@@ -863,4 +810,25 @@ impl WorkerBuilder<WorkflowWorker, ()> for WorkflowWorkerBuilder {
             (),
         )
     }
+}
+
+async fn timed_async<T, F>(func: F) -> Result<T, anyhow::Error>
+where
+    F: AsyncFnOnce() -> Result<T, anyhow::Error>,
+{
+    let start = tokio::time::Instant::now();
+    let result = func().await;
+    let duration = start.elapsed();
+
+    tracing::info!(
+        "completed in {} ns / {} ms",
+        duration.as_nanos(),
+        duration.as_millis()
+    );
+
+    tracing::Span::current()
+        .record("duration", duration.as_millis())
+        .record("duration_ns", duration.as_nanos());
+
+    result
 }

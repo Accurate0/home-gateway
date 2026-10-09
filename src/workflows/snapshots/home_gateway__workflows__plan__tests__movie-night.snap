@@ -1,0 +1,6 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# Living room movie night  (on: jellyfin(Living room TV, Google TV Streamer))
+  lua: lua(call movie.playback) -> []

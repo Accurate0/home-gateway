@@ -1,10 +1,11 @@
-use crate::{db::DoorState, settings::IEEEAddress, state::AppState};
+use crate::{repo::door::DoorState, settings::IEEEAddress, state::AppState};
 use armed_door_actor::ArmedDoor;
 pub use derived_door_events_actor::DerivedDoorEvents;
 use ractor::{Actor, ActorCell, RpcReplyPort};
 use uuid::Uuid;
 
 pub mod lua;
+pub mod query;
 
 mod armed_door_actor;
 mod derived_door_events_actor;

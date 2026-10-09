@@ -1,6 +1,6 @@
-use crate::actors::workflows::conditions::{environment_metric, query_environment};
+use super::query::{environment_metric, query_environment};
 use crate::lua::{Json, LuaCallContext, LuaClass, lua_module};
-use crate::settings::workflow::EnvMetric;
+use crate::workflows::definition::EnvMetric;
 
 #[derive(LuaClass)]
 #[lua(output)]

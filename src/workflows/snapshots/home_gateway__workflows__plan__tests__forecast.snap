@@ -1,0 +1,12 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# weather-forecast  (reusable)
+  inputs: {}
+  lua: lua(call brief.morning) -> [message]
+  notify: notify(AndroidApp, general): ${lua.message}
+
+# Morning Forecast  (on: cron(0 9 * * *))
+    lua: lua(call brief.morning) -> [message]
+    notify: notify(AndroidApp, general): ${lua.message}

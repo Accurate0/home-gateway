@@ -2,14 +2,14 @@ use std::convert::Infallible;
 
 use mlua::ExternalError;
 
-use crate::integrations::notify::{Notification, notify};
 use crate::lua::{Json, LuaCallContext, LuaClass, lua_module};
+use crate::notify::{Notification, notify};
 use crate::settings::{
     NotificationSource, NotifyAcknowledge, NotifyAction, NotifyActionKind, NotifyCategory,
     NotifySource, validate_acknowledge,
 };
 
-use super::actions;
+use crate::notify::actions;
 
 #[derive(LuaClass)]
 #[lua(name = "Notification", input)]

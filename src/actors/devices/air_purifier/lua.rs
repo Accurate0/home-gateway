@@ -1,6 +1,6 @@
 use crate::actors::workflows::WorkflowWorker;
 use crate::lua::{Json, LuaCallContext, LuaClass, lua_module};
-use crate::settings::workflow::AirPurifierCommand;
+use crate::workflows::definition::AirPurifierCommand;
 
 #[derive(LuaClass)]
 #[lua(output)]

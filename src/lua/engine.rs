@@ -288,7 +288,7 @@ impl LuaEngine {
         let result = within(timeout, run).instrument(span.clone()).await;
 
         if let Err(e) = &result {
-            crate::tracing_context::record_error(&span, &e.to_string());
+            crate::telemetry::context::record_error(&span, &e.to_string());
         }
 
         record(&result, call.to_string(), started, lua.used_memory());
@@ -311,7 +311,7 @@ impl LuaEngine {
             .await;
 
         if let Err(e) = &result {
-            crate::tracing_context::record_error(&span, &e.to_string());
+            crate::telemetry::context::record_error(&span, &e.to_string());
         }
 
         record(&result, "script".to_owned(), started, lua.used_memory());

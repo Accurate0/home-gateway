@@ -1,8 +1,9 @@
+use crate::media_control::PlaybackState;
 use ractor::Actor;
 use uuid::Uuid;
 
 use crate::{
-    event_bus::{EventBusMessage, PlaybackState},
+    event_bus::EventBusMessage,
     integrations::jellyfin::{Jellyfin, types::Session},
     state::AppState,
 };

@@ -1,3 +1,4 @@
+use crate::workflows::definition::ReusableWorkflow;
 use crate::{
     actors::system::rpc,
     actors::workflows::{WorkflowWorker, WorkflowWorkerMessage},
@@ -7,9 +8,9 @@ use crate::{
     },
     error::AppError,
     lua::LuaAuthority,
-    settings::{ReusableWorkflow, workflow::scope as workflow_scope},
     state::AppState,
     variables::{Node, Vars, input::input_node},
+    workflows::definition::scope as workflow_scope,
 };
 use anyhow::Context;
 use axum::{Json, extract::State};
@@ -57,7 +58,7 @@ pub async fn workflow_execute(
         workflow,
         vars: Vars::default().with("input", input),
         authority: LuaAuthority::delegated(auth),
-        traceparent: crate::tracing_context::inject_current(),
+        traceparent: crate::telemetry::context::inject_current(),
     };
 
     rpc::cast_factory(WorkflowWorker::NAME, message).context("dispatching workflow")?;

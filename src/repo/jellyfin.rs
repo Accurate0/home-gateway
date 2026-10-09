@@ -1,5 +1,5 @@
 use crate::actors::integrations::jellyfin::playing::Playing;
-use crate::event_bus::PlaybackState;
+use crate::media_control::PlaybackState;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 

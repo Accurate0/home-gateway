@@ -1,4 +1,4 @@
-use crate::db::GarageDoorState;
+use crate::repo::garage_door::GarageDoorState;
 
 pub struct GarageDoorReading {
     pub address: String,

@@ -2,7 +2,7 @@ use chrono::{TimeDelta, Utc};
 
 use crate::lua::{Json, LuaCallContext, lua_module};
 
-use super::calc::{self, SunPeriod};
+use crate::sun::{self, SunPeriod};
 
 pub struct SunLua;
 
@@ -19,6 +19,6 @@ impl SunLua {
     }
 
     fn current(cx: &LuaCallContext) -> SunPeriod {
-        calc::current_period(cx.state.settings.location, Utc::now(), TimeDelta::zero())
+        sun::current_period(cx.state.settings.location, Utc::now(), TimeDelta::zero())
     }
 }

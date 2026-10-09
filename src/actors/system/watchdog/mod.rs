@@ -5,7 +5,7 @@ use ractor::Actor;
 use tracing::Level;
 
 use crate::{
-    integrations::notify::{Notification, notify},
+    notify::{Notification, notify},
     settings::{NotificationSource, NotifyCategory, NotifySource},
     state::AppState,
 };
@@ -135,7 +135,7 @@ impl Actor for WatchdogActor {
             WatchdogMessage::Check => {
                 if let Err(e) = self.check().await {
                     tracing::error!("watchdog check failed: {e}");
-                    crate::tracing_context::record_current_error(&e.to_string());
+                    crate::telemetry::context::record_current_error(&e.to_string());
                 }
             }
         }

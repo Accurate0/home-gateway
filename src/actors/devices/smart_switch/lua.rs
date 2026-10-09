@@ -2,10 +2,10 @@ use mlua::{ExternalError, ExternalResult};
 
 use crate::actors::devices::light::LightHandler;
 use crate::actors::devices::light::command::light_message;
+use crate::actors::devices::light::query::query_light_on;
 use crate::actors::system::rpc;
-use crate::actors::workflows::conditions::query_light_on;
 use crate::lua::{Json, LuaCallContext, lua_module};
-use crate::settings::workflow::{LightState, SwitchState};
+use crate::workflows::definition::{LightState, SwitchState};
 
 pub struct SwitchLua;
 

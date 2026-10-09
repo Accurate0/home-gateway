@@ -1,0 +1,433 @@
+#![allow(dead_code)]
+
+use crate::workflows::definition::WorkflowDefinition;
+use std::collections::HashMap;
+
+use super::MAX_DEPTH;
+use crate::workflows::definition::Step;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlannedAction {
+    pub depth: u8,
+    pub kind: &'static str,
+    pub detail: String,
+    pub guards: Vec<String>,
+}
+
+pub fn plan(workflows: &HashMap<String, WorkflowDefinition>, steps: &[Step]) -> Vec<PlannedAction> {
+    let mut out = Vec::new();
+    plan_steps(workflows, steps, 0, &[], &mut out);
+    out
+}
+
+fn plan_steps(
+    workflows: &HashMap<String, WorkflowDefinition>,
+    steps: &[Step],
+    depth: u8,
+    guards: &[String],
+    out: &mut Vec<PlannedAction>,
+) {
+    for step in steps {
+        let mut guards = guards.to_vec();
+        if let Some(when) = step.guard() {
+            guards.push(when.describe());
+        }
+
+        match step {
+            Step::Scene { run, .. } => plan_steps(workflows, run, depth, &guards, out),
+            Step::RunWorkflow { workflow, .. } => {
+                if depth >= MAX_DEPTH {
+                    out.push(marker("depth_exceeded", workflow, depth, &guards));
+                    continue;
+                }
+                match workflows.get(workflow) {
+                    None => out.push(marker("unknown_workflow", workflow, depth, &guards)),
+                    Some(wf) if !wf.body().enabled => {
+                        out.push(marker("disabled", workflow, depth, &guards))
+                    }
+                    Some(wf) => plan_steps(workflows, &wf.body().run, depth + 1, &guards, out),
+                }
+            }
+            Step::Lua {
+                source, returns, ..
+            } => out.push(PlannedAction {
+                depth,
+                kind: "lua",
+                detail: format!(
+                    "lua({}) -> [{}]",
+                    source.summary(),
+                    returns.keys().cloned().collect::<Vec<_>>().join(", ")
+                ),
+                guards,
+            }),
+            leaf => out.push(PlannedAction {
+                depth,
+                kind: leaf.kind(),
+                detail: leaf.describe_action().unwrap_or_default(),
+                guards,
+            }),
+        }
+    }
+}
+
+fn marker(kind: &'static str, name: &str, depth: u8, guards: &[String]) -> PlannedAction {
+    PlannedAction {
+        depth,
+        kind,
+        detail: name.to_string(),
+        guards: guards.to_vec(),
+    }
+}
+
+pub fn render(actions: &[PlannedAction]) -> String {
+    actions
+        .iter()
+        .map(|a| {
+            let indent = "  ".repeat(a.depth as usize);
+            let guard = if a.guards.is_empty() {
+                String::new()
+            } else {
+                format!(" [when: {}]", a.guards.join(" && "))
+            };
+            format!("{indent}{}: {}{guard}", a.kind, a.detail)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn workflow(yaml: &str) -> WorkflowDefinition {
+        serde_yaml::from_str(yaml).expect("workflow yaml")
+    }
+
+    fn workflows(yaml: &str) -> HashMap<String, WorkflowDefinition> {
+        serde_yaml::from_str(yaml).expect("workflows yaml")
+    }
+
+    fn rendered(
+        workflows: &HashMap<String, WorkflowDefinition>,
+        wf: &WorkflowDefinition,
+    ) -> String {
+        render(&plan(workflows, &wf.body().run))
+    }
+
+    fn rendered_with_header(wf: &WorkflowDefinition) -> String {
+        let mut out = String::new();
+        match wf.triggered() {
+            Some(triggered) => {
+                out.push_str(&format!("on: {}\n", triggered.on.describe()));
+
+                if let Some(when) = &triggered.when {
+                    out.push_str(&format!("when: {}\n", when.describe()));
+                }
+
+                if let Some(hold) = triggered.hold {
+                    out.push_str(&format!(
+                        "for: {}\n",
+                        crate::timedelta_format::humanize(hold)
+                    ));
+                }
+            }
+            None => out.push_str("reusable\n"),
+        }
+        out.push_str(&render(&plan(&HashMap::new(), &wf.body().run)));
+        out
+    }
+
+    #[test]
+    fn mode_trigger_and_set_mode_step() {
+        let wf = workflow(
+            r#"
+            name: vacation lights off
+            on: { type: mode, from: home, to: vacation }
+            modes: [home]
+            run:
+              - type: light
+                device: "0x1"
+                state: "OFF"
+              - type: set_mode
+                mode: away
+                when: { type: mode, is: guest }
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn held_presence_trigger() {
+        let wf = workflow(
+            r#"
+            name: hallway held
+            on: { type: presence, sensor: "0x4", present: true }
+            modes: [home]
+            for: 10m
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn simple_light() {
+        let wf = workflow(
+            r#"
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+              - type: notify
+                notify: { type: android_app }
+                category: general
+                message: "kitchen on"
+            "#,
+        );
+        insta::assert_snapshot!(rendered(&HashMap::new(), &wf));
+    }
+
+    #[test]
+    fn guarded_scene() {
+        let wf = workflow(
+            r#"
+            run:
+              - type: scene
+                when: { type: presence, sensor: hallway, present: true }
+                run:
+                  - type: light
+                    device: "0x1"
+                    state: "ON"
+                  - type: delay
+                    seconds: 5
+                  - type: light
+                    device: "0x1"
+                    state: "OFF"
+                    when: { type: door, device: "0x2", open: false }
+            "#,
+        );
+        insta::assert_snapshot!(rendered(&HashMap::new(), &wf));
+    }
+
+    #[test]
+    fn nested_run_workflow() {
+        let all = workflows(
+            r#"
+            entry:
+              run:
+                - type: light
+                  device: "0x1"
+                  state: "ON"
+                - type: run_workflow
+                  workflow: leaf
+                  with: {}
+                  when: { type: time_of_day, after: "22:00:00" }
+            leaf:
+              run:
+                - type: notify
+                  notify: { type: android_app }
+                  category: general
+                  message: "from leaf"
+            "#,
+        );
+        let entry = all.get("entry").unwrap().clone();
+        insta::assert_snapshot!(rendered(&all, &entry));
+    }
+
+    #[test]
+    fn recursion_depth_cap() {
+        let all = workflows(
+            r#"
+            loop:
+              run:
+                - type: run_workflow
+                  workflow: loop
+                  with: {}
+            "#,
+        );
+        let entry = all.get("loop").unwrap().clone();
+        insta::assert_snapshot!(rendered(&all, &entry));
+    }
+
+    fn workflow_file(path: &std::path::Path) -> Vec<WorkflowDefinition> {
+        let yaml = std::fs::read_to_string(path).expect("read workflow file");
+
+        serde_yaml::from_str(&yaml).expect("deserialize workflows")
+    }
+
+    fn all_workflows() -> HashMap<String, WorkflowDefinition> {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("config/workflows");
+
+        std::fs::read_dir(dir)
+            .expect("read workflows dir")
+            .map(|entry| entry.expect("workflow dir entry").path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "yaml"))
+            .filter(|path| path.file_stem().is_some_and(|stem| stem != "index"))
+            .flat_map(|path| workflow_file(&path))
+            .map(|wf| (wf.body().name.clone(), wf))
+            .collect()
+    }
+
+    #[rstest::rstest]
+    fn real_workflows(
+        #[files("config/workflows/*.yaml")]
+        #[exclude("index")]
+        path: std::path::PathBuf,
+    ) {
+        let file_workflows = workflow_file(&path);
+        let workflows = all_workflows();
+
+        let mut out = String::new();
+        for definition in &file_workflows {
+            let wf = definition.body();
+
+            match definition.triggered() {
+                Some(triggered) => {
+                    out.push_str(&format!(
+                        "# {}  (on: {})\n",
+                        wf.name,
+                        triggered.on.describe()
+                    ));
+
+                    if let Some(when) = &triggered.when {
+                        out.push_str(&format!("  when: {}\n", when.describe()));
+                    }
+                }
+                None => out.push_str(&format!("# {}  (reusable)\n", wf.name)),
+            }
+            if let Some(inputs) = &wf.inputs {
+                let inputs: Vec<String> = inputs
+                    .iter()
+                    .map(|(name, ty)| format!("{name}: {ty}"))
+                    .collect();
+                out.push_str(&format!("  inputs: {{{}}}\n", inputs.join(", ")));
+            }
+            let rendered = render(&plan(&workflows, &wf.run));
+            if rendered.is_empty() {
+                out.push_str("  (no actions)\n");
+            } else {
+                for line in rendered.lines() {
+                    out.push_str(&format!("  {line}\n"));
+                }
+            }
+            out.push('\n');
+        }
+
+        let stem = path.file_stem().unwrap().to_string_lossy();
+        insta::assert_snapshot!(stem.as_ref(), out);
+    }
+
+    #[test]
+    fn sun_trigger_with_presence_guard() {
+        let wf = workflow(
+            r#"
+            name: dusk lamp
+            on: { type: sun, transition: sunset }
+            modes: [home]
+            when: { type: presence, sensor: living-room-epp, present: true }
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn presence_trigger_with_sun_night_guard() {
+        let wf = workflow(
+            r#"
+            name: night lamp
+            on: { type: presence, sensor: living-room-epp, present: true }
+            modes: [home]
+            when: { type: sun, is: night }
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn sun_condition_nested_in_all() {
+        let wf = workflow(
+            r#"
+            name: combined
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+                when:
+                  all:
+                    - { type: sun, is: day }
+                    - not: { type: sun, is: night }
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn sun_trigger_and_condition_with_offset() {
+        let wf = workflow(
+            r#"
+            name: pre-dusk lamp
+            on: { type: sun, transition: sunset, offset: "-30m" }
+            modes: [home]
+            when: { type: sun, is: night, offset: "15m" }
+            run:
+              - type: light
+                device: "0x1"
+                state: "ON"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn sun_sunrise_trigger() {
+        let wf = workflow(
+            r#"
+            name: dawn off
+            on: { type: sun, transition: sunrise }
+            modes: [home]
+            run:
+              - type: light
+                device: "0x1"
+                state: "OFF"
+            "#,
+        );
+        insta::assert_snapshot!(rendered_with_header(&wf));
+    }
+
+    #[test]
+    fn unknown_and_disabled_refs() {
+        let all = workflows(
+            r#"
+            off_wf:
+              enabled: false
+              run:
+                - type: light
+                  device: "0x9"
+                  state: "ON"
+            "#,
+        );
+        let entry = workflow(
+            r#"
+            run:
+              - type: run_workflow
+                workflow: missing
+                with: {}
+              - type: run_workflow
+                workflow: off_wf
+                with: {}
+            "#,
+        );
+        insta::assert_snapshot!(rendered(&all, &entry));
+    }
+}

@@ -90,7 +90,7 @@ impl Actor for SynergyActor {
                     }
                     Err(e) => {
                         tracing::error!("error ingesting the synergy upload: {e}");
-                        crate::tracing_context::record_current_error(&e.to_string());
+                        crate::telemetry::context::record_current_error(&e.to_string());
                         crate::metrics::record_integration_poll(
                             "synergy",
                             "error",

@@ -3,6 +3,7 @@ pub mod light_command;
 pub mod light_current;
 pub mod light_encode_input;
 pub mod lua;
+pub mod query;
 
 use crate::actors::devices::handler::DeviceHandler;
 use crate::decoding::Decoders;
@@ -38,18 +39,18 @@ pub struct SetRequest {
 pub struct NewEvent {
     pub event_id: Uuid,
     pub entity: Entity,
-    pub traceparent: crate::tracing_context::TraceParent,
+    pub traceparent: crate::telemetry::context::TraceParent,
 }
 
 pub enum LightHandlerMessage {
     QueryPowerState {
         ieee_addr: IEEEAddress,
-        traceparent: crate::tracing_context::TraceParent,
+        traceparent: crate::telemetry::context::TraceParent,
         reply: RpcReplyPort<bool>,
     },
     QueryState {
         ieee_addr: IEEEAddress,
-        traceparent: crate::tracing_context::TraceParent,
+        traceparent: crate::telemetry::context::TraceParent,
         reply: RpcReplyPort<LightState>,
     },
     Set {
@@ -61,7 +62,7 @@ pub enum LightHandlerMessage {
     Reapply {
         ieee_addr: IEEEAddress,
         attributes: Box<LightAttributes>,
-        traceparent: crate::tracing_context::TraceParent,
+        traceparent: crate::telemetry::context::TraceParent,
     },
     TurnOn {
         ieee_addr: IEEEAddress,
@@ -95,7 +96,7 @@ pub enum LightHandlerMessage {
     },
 }
 
-impl crate::tracing_context::TracedMessage for LightHandlerMessage {
+impl crate::telemetry::context::TracedMessage for LightHandlerMessage {
     fn traceparent(&self) -> Option<&str> {
         match self {
             LightHandlerMessage::NewEvent(event) => event.traceparent.as_deref(),

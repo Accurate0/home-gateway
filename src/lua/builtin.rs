@@ -9,14 +9,14 @@ use async_graphql::Variables;
 use async_graphql::parser::parse_query;
 use async_graphql::parser::types::{DocumentOperations, OperationType};
 
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::event_bus::{CustomEventSource, EventBusMessage};
 use crate::http::public_client::PublicHttpClient;
 use crate::lua::bridge::lua_to_value;
 use crate::variables::Node;
-use crate::workflow_trace::{StepOutcome, StepTrace};
+use crate::workflows::manager::WorkflowManager;
+use crate::workflows::trace::{StepOutcome, StepTrace};
 use mlua::{ExternalError, ExternalResult, Lua, LuaSerdeExt, Table, Value as LuaValue};
 
 use super::signature::{LuaClass, LuaField, LuaFunction, LuaParam, LuaType};

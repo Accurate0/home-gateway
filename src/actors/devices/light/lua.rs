@@ -2,8 +2,8 @@ use mlua::ExternalResult;
 
 use crate::actors::system::rpc;
 use crate::lua::{Json, LuaCallContext, lua_module};
-use crate::settings::workflow::LightState;
-use crate::tracing_context::inject_current;
+use crate::telemetry::context::inject_current;
+use crate::workflows::definition::LightState;
 
 use super::command::light_message;
 use super::{LightHandler, LightHandlerMessage};

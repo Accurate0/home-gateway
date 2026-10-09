@@ -1,4 +1,4 @@
-use crate::actors::system::cron::schedule::CronSchedule;
+use crate::cron::CronSchedule;
 use crate::eink::flag::EpdFlagConfig;
 use crate::settings::{
     Album, DashboardView, EinkDefaults, EinkDisplaySettings, EinkGlobalSettings, EinkMode,

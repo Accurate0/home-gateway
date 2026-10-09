@@ -1,5 +1,5 @@
-use crate::db::UnifiState;
 use crate::lua::{LuaCallContext, LuaClass, lua_module};
+use crate::repo::unifi::UnifiState;
 
 #[derive(LuaClass)]
 #[lua(output)]

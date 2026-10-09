@@ -1,7 +1,7 @@
 use crate::actors::root::RootMessage;
 use crate::decoding::DeviceRoleName;
 use crate::state::AppState;
-use crate::tracing_context::TracedMessage;
+use crate::telemetry::context::TracedMessage;
 use ractor::{
     ActorProcessingErr, ActorRef,
     factory::{
@@ -16,7 +16,7 @@ pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 5;
 pub trait DeviceHandler: Send + Sync + Sized + 'static {
     const NAME: &'static str;
 
-    type Message: ractor::Message + crate::tracing_context::TracedMessage;
+    type Message: ractor::Message + crate::telemetry::context::TracedMessage;
     type State: ractor::State;
 
     const ROLE: DeviceRoleName;
@@ -74,7 +74,7 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
             otel.status_code = tracing::field::Empty,
             otel.status_message = tracing::field::Empty,
         );
-        crate::tracing_context::set_parent(&span, msg.traceparent());
+        crate::telemetry::context::set_parent(&span, msg.traceparent());
 
         let result = self
             .0
@@ -91,7 +91,7 @@ impl<T: DeviceHandler> Worker for HandlerWorker<T> {
             Err(e) => {
                 state.consecutive_failures += 1;
                 crate::metrics::record_device_handler_error(T::NAME);
-                crate::tracing_context::record_error(&span, &e.to_string());
+                crate::telemetry::context::record_error(&span, &e.to_string());
 
                 if state.consecutive_failures >= CONSECUTIVE_FAILURE_LIMIT {
                     tracing::error!(

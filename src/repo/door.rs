@@ -1,8 +1,25 @@
-use crate::db::DoorState;
 use crate::settings::IEEEAddress;
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 use uuid::Uuid;
+
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    sqlx::Type,
+    serde::Serialize,
+    serde::Deserialize,
+    async_graphql::Enum,
+    Eq,
+    Copy,
+)]
+#[sqlx(type_name = "door_state", rename_all = "lowercase")]
+pub enum DoorState {
+    Open,
+    Closed,
+}
 
 pub struct DoorReading {
     pub event_id: Uuid,

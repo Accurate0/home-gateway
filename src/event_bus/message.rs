@@ -1,8 +1,6 @@
 use uuid::Uuid;
 
 use super::feature_flag_state::FeatureFlagState;
-use super::fuel_change::FuelChange;
-use super::playback::PlaybackState;
 use super::reading::SensorReading;
 use super::variables::{
     AirPurifierVariables, CommandFailedVariables, CronVariables, DeviceBatteryVariables,
@@ -12,14 +10,16 @@ use super::variables::{
     SolarVariables, SunVariables, SwitchVariables, TransperthVariables, UnifiVariables,
     WeatherVariables, WoolworthsVariables,
 };
-use super::weather_reading::WeatherReading;
-use super::weather_source::WeatherSource;
-use crate::actors::sun::calc::SunTransition;
-use crate::db::{AirPurifierMode, GarageDoorState};
-use crate::mode::Mode;
+use crate::integrations::fuelwatch::FuelChange;
+use crate::media_control::PlaybackState;
+use crate::repo::air_purifier::AirPurifierMode;
+use crate::repo::garage_door::GarageDoorState;
 use crate::repo::intent::{DeviceKind, IntentAttributes};
 use crate::settings::IEEEAddress;
+use crate::sun::SunTransition;
 use crate::variables::{Node, WorkflowContextVariables};
+use crate::weather::{WeatherReading, WeatherSource};
+use crate::workflows::mode::Mode;
 
 /// Every event that can flow through the bus. New producers (webhooks,
 /// schedules, manual triggers, …) add a variant here; matching lives in the
@@ -239,14 +239,14 @@ pub enum EventBusMessage {
 
 #[derive(Clone, Debug)]
 pub struct BusEvent {
-    pub traceparent: crate::tracing_context::TraceParent,
+    pub traceparent: crate::telemetry::context::TraceParent,
     pub message: EventBusMessage,
 }
 
 impl BusEvent {
     pub fn current(message: EventBusMessage) -> Self {
         Self {
-            traceparent: crate::tracing_context::inject_current(),
+            traceparent: crate::telemetry::context::inject_current(),
             message,
         }
     }

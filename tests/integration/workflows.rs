@@ -8,7 +8,8 @@ use home_gateway::actors::devices::presence_sensor::{
 };
 use home_gateway::actors::workflows::{dispatcher::WorkflowDispatcher, spawn::spawn_workflows};
 use home_gateway::event_bus::EventBusMessage;
-use home_gateway::repo::{timer_kind::TimerKind, workflow::NewPendingTimer};
+use home_gateway::repo::workflow::NewPendingTimer;
+use home_gateway::workflows::timer_kind::TimerKind;
 use pretty_assertions::assert_eq;
 use ractor::{
     Actor, ActorRef,

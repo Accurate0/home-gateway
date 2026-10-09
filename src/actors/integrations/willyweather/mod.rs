@@ -1,10 +1,11 @@
+use crate::weather::{ForecastDay, WeatherMetric, WeatherReading, WeatherSource};
 use std::time::Duration;
 
 use ractor::Actor;
 use uuid::Uuid;
 
 use crate::{
-    event_bus::{EventBusMessage, ForecastDay, WeatherMetric, WeatherReading, WeatherSource},
+    event_bus::EventBusMessage,
     integrations::willyweather::{WillyWeather, types::Forecast},
     settings::WillyWeatherSettings,
     state::AppState,
@@ -130,7 +131,7 @@ impl Actor for WillyWeatherActor {
                         }
                         Err(e) => {
                             tracing::error!("error polling willyweather for {alias}: {e}");
-                            crate::tracing_context::record_current_error(&e.to_string());
+                            crate::telemetry::context::record_current_error(&e.to_string());
                             failed = true;
                         }
                     }

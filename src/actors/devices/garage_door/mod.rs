@@ -13,19 +13,19 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::actors::devices::handler::DeviceHandler;
-use crate::db::GarageDoorState;
 use crate::decoding::{Decoders, DeviceRoleName};
 use crate::device_command::{self, CommandOutcome, CommandTargets, Outbound};
 use crate::event_bus::EventBusMessage;
-use crate::integrations::notify::{Notification, notify};
-use crate::settings::workflow::GarageDoorCommand;
+use crate::notify::{Notification, notify};
+use crate::repo::garage_door::GarageDoorState;
 use crate::settings::{ArmedDoorStates, GarageDoorSettings, NotificationSource, NotifyCategory};
 use crate::state::AppState;
+use crate::workflows::definition::GarageDoorCommand;
 
 pub struct NewEvent {
     pub event_id: Uuid,
     pub reading: GarageDoorReading,
-    pub traceparent: crate::tracing_context::TraceParent,
+    pub traceparent: crate::telemetry::context::TraceParent,
 }
 
 pub enum Message {
@@ -33,7 +33,7 @@ pub enum Message {
     Command(CommandRequest),
 }
 
-impl crate::tracing_context::TracedMessage for Message {
+impl crate::telemetry::context::TracedMessage for Message {
     fn traceparent(&self) -> Option<&str> {
         match self {
             Message::NewEvent(event) => event.traceparent.as_deref(),

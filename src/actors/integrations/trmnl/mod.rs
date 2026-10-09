@@ -139,7 +139,7 @@ impl Actor for TrmnlActor {
                     }
                     Err(e) => {
                         tracing::error!("error checking trmnl batteries: {e}");
-                        crate::tracing_context::record_current_error(&e.to_string());
+                        crate::telemetry::context::record_current_error(&e.to_string());
                         crate::metrics::record_integration_poll(
                             "trmnl",
                             "error",

@@ -1,7 +1,7 @@
+use crate::weather::WeatherMetric;
 use async_graphql::SimpleObject;
 use serde::{Deserialize, Serialize};
 
-use crate::event_bus::WeatherMetric;
 use crate::lua::LuaClass;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]

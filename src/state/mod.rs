@@ -7,7 +7,7 @@ use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::lua::LuaEngine;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
-use crate::tracing_setup::SamplingControl;
+use crate::telemetry::setup::SamplingControl;
 
 pub mod handles;
 

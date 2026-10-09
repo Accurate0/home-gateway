@@ -1,6 +1,6 @@
 use async_graphql::Enum;
 
-use crate::repo::notification_interaction::NotificationInteraction;
+use crate::notify::interaction::NotificationInteraction;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug)]
 pub enum NotificationInteractionKind {

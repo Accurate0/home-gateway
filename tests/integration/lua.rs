@@ -1,3 +1,4 @@
+use home_gateway::workflows::definition::WorkflowDefinition;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -10,7 +11,6 @@ use home_gateway::actors::workflows::spawn::spawn_workflows;
 use home_gateway::actors::workflows::{WorkflowWorker, WorkflowWorkerMessage};
 use home_gateway::auth::AuthContext;
 use home_gateway::lua::{LuaAuthority, Script, execute};
-use home_gateway::settings::WorkflowDefinition;
 use home_gateway::variables::{Node, Value, Vars};
 use http_body_util::BodyExt;
 use pretty_assertions::assert_eq;

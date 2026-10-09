@@ -191,7 +191,7 @@ impl HomeAssistantIngest {
                     "failed to decode home assistant entity {entity_id} with model {}: {e}",
                     device.profile.slug
                 );
-                crate::tracing_context::record_current_error(&e.to_string());
+                crate::telemetry::context::record_current_error(&e.to_string());
                 ingest_error(entity_id, "decode", &e.to_string());
 
                 return;

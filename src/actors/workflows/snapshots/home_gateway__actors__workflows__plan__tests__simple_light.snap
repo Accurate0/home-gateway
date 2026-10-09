@@ -1,6 +1,0 @@
----
-source: src/actors/workflows/plan.rs
-expression: "rendered(&HashMap::new(), &wf)"
----
-light: light(0x1) -> On
-notify: notify(AndroidApp, general): kitchen on

@@ -1,6 +1,6 @@
 use crate::actors::system::rpc;
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::lua::{LuaCallContext, lua_module};
+use crate::workflows::manager::WorkflowManager;
 
 use super::{VacationActor, VacationMessage};
 

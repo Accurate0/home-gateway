@@ -11,15 +11,15 @@
 //! came due while the process was down is replayed once — provided it passed less
 //! than `sun.catch_up_within` ago.
 
+use crate::workflows::definition::TriggerMatcher;
 use chrono::{DateTime, TimeDelta, Utc};
 use ractor::Actor;
 use uuid::Uuid;
 
-use crate::{event_bus::EventBusMessage, settings::TriggerMatcher, state::AppState};
+use crate::{event_bus::EventBusMessage, state::AppState};
 
-use calc::SunTransition;
+use crate::sun::{self, SunTransition};
 
-pub mod calc;
 pub mod lua;
 
 pub enum SunActorMessage {
@@ -43,7 +43,7 @@ impl SunActor {
         offset: TimeDelta,
     ) {
         let location = self.shared_actor_state.settings.location;
-        let delay = calc::next_transition(location, Utc::now(), transition, offset);
+        let delay = sun::next_transition(location, Utc::now(), transition, offset);
         tracing::info!(
             "next sun {transition:?} (offset {}) in {delay:?}",
             crate::timedelta_format::humanize(offset)
@@ -95,7 +95,7 @@ impl SunActor {
         offset: TimeDelta,
     ) -> Result<(), ractor::ActorProcessingErr> {
         let now = Utc::now();
-        let previous = calc::previous_transition_at(
+        let previous = sun::previous_transition_at(
             self.shared_actor_state.settings.location,
             now,
             transition,
@@ -104,7 +104,7 @@ impl SunActor {
         let last_fired = self.last_fired(transition, offset).await?;
         let grace = self.shared_actor_state.settings.sun.catch_up_within;
 
-        if calc::should_catch_up(previous, last_fired, now, grace) {
+        if sun::should_catch_up(previous, last_fired, now, grace) {
             tracing::info!(
                 "catching up missed sun {transition:?} (offset {}) from {previous}",
                 crate::timedelta_format::humanize(offset)
@@ -137,7 +137,7 @@ impl Actor for SunActor {
             .settings
             .workflows
             .values()
-            .filter_map(crate::settings::WorkflowDefinition::triggered)
+            .filter_map(crate::workflows::definition::WorkflowDefinition::triggered)
         {
             if !workflow.enabled {
                 continue;

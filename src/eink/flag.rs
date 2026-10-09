@@ -1,5 +1,5 @@
 use crate::{
-    actors::system::cron::schedule::CronSchedule,
+    cron::CronSchedule,
     device_registry::DeviceRegistry,
     integrations::feature_flag::FeatureFlagClient,
     settings::{EinkMode, RedditTimespan},

@@ -2,9 +2,9 @@ use chrono::TimeDelta;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::mode::Mode;
 use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::time_delta_from_str;
+use crate::workflows::mode::Mode;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct VacationSettings {

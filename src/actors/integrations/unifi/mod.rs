@@ -1,5 +1,5 @@
 use crate::event_bus::EventBusMessage;
-use crate::{db::UnifiState, state::AppState};
+use crate::{repo::unifi::UnifiState, state::AppState};
 use ractor::Actor;
 use tracing::instrument;
 use types::{Parameters, UnifiWebhookEvent};

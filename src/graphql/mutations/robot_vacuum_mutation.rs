@@ -6,7 +6,7 @@ use crate::device_command::CommandTargets;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::guard::ScopeGuard;
 use crate::settings::RobotVacuumSettings;
-use crate::settings::workflow::VacuumCommand;
+use crate::workflows::definition::VacuumCommand;
 
 pub struct RobotVacuumMutation {
     settings: RobotVacuumSettings,

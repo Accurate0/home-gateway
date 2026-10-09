@@ -1,7 +1,7 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
-use crate::db::DoorState;
 use crate::event_bus::EventBusMessage;
 use crate::repo::door::DerivedDoorEvent;
+use crate::repo::door::DoorState;
 use crate::{
     settings::{DoorSettings, IEEEAddress},
     state::AppState,

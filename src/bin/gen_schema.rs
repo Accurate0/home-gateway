@@ -1,5 +1,6 @@
 use home_gateway::device_registry::RawDevice;
-use home_gateway::settings::{RawSettings, WorkflowDefinition};
+use home_gateway::settings::RawSettings;
+use home_gateway::workflows::definition::WorkflowDefinition;
 use schemars::Schema;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};

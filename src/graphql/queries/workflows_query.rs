@@ -1,11 +1,11 @@
 use async_graphql::Object;
 
-use crate::actors::workflows::manager::WorkflowManager;
 use crate::auth::scope::{Action, Resource, Scope};
 use crate::graphql::guard::ScopeGuard;
 use crate::graphql::objects::mode_status::ModeStatus;
 use crate::graphql::objects::workflow_object::{WorkflowRun, WorkflowStatus};
 use crate::settings::SettingsContainer;
+use crate::workflows::manager::WorkflowManager;
 
 #[derive(Default)]
 pub struct WorkflowsQuery;

@@ -1,11 +1,11 @@
 use async_graphql::{Object, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
-use crate::db::GarageDoorState;
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::dataloader::garage_door_state::{
     GarageDoorStateDataLoader, GarageDoorStateModel,
 };
+use crate::repo::garage_door::GarageDoorState;
 
 pub struct GarageDoorEntity {
     pub id: String,

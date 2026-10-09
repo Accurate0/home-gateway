@@ -1,7 +1,8 @@
 pub mod lua;
 
+use crate::weather::{WeatherMetric, WeatherReading, WeatherSource};
 use crate::{
-    event_bus::{EventBusMessage, WeatherMetric, WeatherReading, WeatherSource},
+    event_bus::EventBusMessage,
     integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI},
     repo::solar::SolarReading,
     state::AppState,
@@ -198,7 +199,7 @@ impl Actor for SolarActor {
                     }
                     Err(e) => {
                         tracing::error!("error polling solar data: {e}");
-                        crate::tracing_context::record_current_error(&e.to_string());
+                        crate::telemetry::context::record_current_error(&e.to_string());
                         crate::metrics::record_integration_poll(
                             "solar",
                             "error",

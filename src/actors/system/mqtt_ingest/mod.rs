@@ -57,7 +57,7 @@ impl MqttIngest {
                     device.address,
                     device.profile.slug
                 );
-                crate::tracing_context::record_current_error(&e.to_string());
+                crate::telemetry::context::record_current_error(&e.to_string());
 
                 return;
             }
@@ -309,7 +309,7 @@ impl Worker for MqttIngest {
 
         let span = tracing::info_span!(
             parent: None,
-            crate::tracing_setup::MQTT_INGEST_SPAN,
+            crate::telemetry::setup::MQTT_INGEST_SPAN,
             topic = %topic,
             topic_kind,
             otel.status_code = tracing::field::Empty,
@@ -321,7 +321,7 @@ impl Worker for MqttIngest {
             .await
         {
             tracing::error!("error while handling message: {e}");
-            crate::tracing_context::record_error(&span, &e.to_string());
+            crate::telemetry::context::record_error(&span, &e.to_string());
 
             let _errored = tracing::error_span!(
                 parent: None,

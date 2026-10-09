@@ -1,4 +1,4 @@
-use crate::actors::system::cron::schedule::CronSchedule;
+use crate::cron::CronSchedule;
 use crate::settings::enabled_state::EnabledState;
 use schemars::JsonSchema;
 use serde::Deserialize;

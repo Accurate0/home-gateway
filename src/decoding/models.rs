@@ -912,7 +912,7 @@ mod tests {
 
     #[test]
     fn the_garage_door_opener_reports_its_state_contact_and_battery() {
-        use crate::db::GarageDoorState;
+        use crate::repo::garage_door::GarageDoorState;
         use serde_json::json;
 
         let snapshot = json!({ "101": "fopen", "102": "closed", "104": 100, "105": false });

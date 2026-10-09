@@ -1,4 +1,4 @@
-use crate::actors::workflows::conditions::query_presence;
+use super::query::query_presence;
 use crate::lua::{LuaCallContext, lua_module};
 
 pub struct PresenceLua;
