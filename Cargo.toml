@@ -88,7 +88,7 @@ quick-xml = { version = "0.42.0", features = ["serialize"] }
 base64 = "0.23.0"
 sha1 = "0.11.0"
 arc-swap = "1.9.2"
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 curl = "0.4.50"
 home-gateway-macros = { path = "home-gateway-macros" }
 mlua = { version = "0.12.1", features = ["lua54", "vendored", "async", "send", "serialize"] }
