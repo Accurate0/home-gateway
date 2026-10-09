@@ -31,7 +31,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata18:/var/lib/postgresql
     command: >
       postgres
       -c shared_preload_libraries='timescaledb'
@@ -70,5 +70,5 @@ services:
         || aws --endpoint-url http://s3:9000 s3 mb s3://home-gateway-bucket
 
 volumes:
-  pgdata:
+  pgdata18:
   s3data:
