@@ -15,6 +15,7 @@ web_server:
 
 packages:
   network: !include ../common/network.yaml
+  api: !include ../common/api.yaml
 
 api:
   actions:

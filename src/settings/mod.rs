@@ -1514,14 +1514,12 @@ integrations:
         // ...but with no capabilities, so it is on/off/toggle only
         assert!(registry.capabilities(lamp).is_empty());
 
-        // an esphome light is addressable and routes by its own command topic
-        let mtr = "apollo-mtr-1-livingroom";
+        let mtr = "apollo-mtr-1-livingroom.iot";
         assert_eq!(
             registry.light(mtr).map(String::as_str),
             Some("Living Room MTR-1 RGB")
         );
-        assert_eq!(registry.esphome_light(mtr), Some("rgb_light"));
-        assert!(registry.mqtt_device(MqttProtocol::Esphome, mtr).is_some());
+        assert!(registry.mqtt_device(MqttProtocol::Esphome, mtr).is_none());
         // it has no colour temperature, so those workflow steps are rejected
         assert!(!registry.capabilities(mtr).contains(&Capability::ColourTemp));
         assert!(registry.capabilities(mtr).contains(&Capability::Rgb));
@@ -1532,18 +1530,7 @@ integrations:
         assert!(registry.presence(mtr).is_some());
         assert!(registry.environment(mtr).is_some());
 
-        assert_eq!(
-            registry.mqtt_topics_for(mtr),
-            [
-                "apollo-mtr-1-livingroom/binary_sensor/ld2450_moving_target/state",
-                "apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state",
-                "apollo-mtr-1-livingroom/binary_sensor/ld2450_still_target/state",
-                "apollo-mtr-1-livingroom/light/rgb_light/state",
-                "apollo-mtr-1-livingroom/sensor/dps310_pressure/state",
-                "apollo-mtr-1-livingroom/sensor/dps310_temperature/state",
-                "apollo-mtr-1-livingroom/sensor/ltr390_light/state",
-            ]
-        );
+        assert!(registry.mqtt_topics_for(mtr).is_empty());
 
         assert_eq!(
             registry.sensor_metrics(mtr),
@@ -1559,7 +1546,6 @@ integrations:
         let subscriptions = registry.mqtt_subscriptions();
 
         for topic in [
-            "apollo-mtr-1-livingroom/binary_sensor/ld2450_presence/state",
             "zigbee2mqtt/+",
             "zigbee2mqtt/bridge/devices",
             "esphome/discover/+",
@@ -1616,7 +1602,7 @@ integrations:
 
         assert!(
             registry
-                .mqtt_device(MqttProtocol::Zigbee, "apollo-mtr-1-livingroom")
+                .mqtt_device(MqttProtocol::Zigbee, "apollo-plt-1b-livingroom")
                 .is_none()
         );
 
@@ -1634,8 +1620,8 @@ integrations:
             Some("zigbee:door-mccgq12lm-1")
         );
         assert_eq!(
-            registry.watchdog_key("apollo-mtr-1-livingroom"),
-            Some("esphome:presence-mtr1-1")
+            registry.watchdog_key("apollo-mtr-1-livingroom.iot"),
+            Some("esphome_native_api:presence-mtr1-1")
         );
         assert_eq!(
             registry.watchdog_key("media_player.living_room_tv"),

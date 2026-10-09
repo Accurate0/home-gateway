@@ -4,8 +4,8 @@
   state: enabled
   room: living-room
   transport:
-    type: mqtt
-    address: apollo-mtr-1-livingroom
+    type: esphome_native_api
+    address: apollo-mtr-1-livingroom.iot
   model: apollo_mtr_1
   roles:
     - type: light

@@ -100,6 +100,7 @@ configMapGenerator:
   - name: home-gateway-config-lua-esphome-native-api
     files:
       - lua/models/esphome_native_api/apollo_cast_1.lua
+      - lua/models/esphome_native_api/apollo_mtr_1.lua
       - lua/models/esphome_native_api/levoit_core300s.lua
   - name: home-gateway-config-lua-tuya
     files:
