@@ -251,6 +251,47 @@ async fn temperature_readings_are_queryable_over_graphql() {
 
 #[tokio::test]
 #[serial]
+async fn battery_is_only_exposed_for_devices_with_the_battery_role() {
+    let harness = Harness::start().await;
+    let client = Client::new(&harness);
+    let key = mint_key(&harness, "test-reader", &["**:*"]).await;
+
+    sqlx::query(
+        "INSERT INTO device_battery_latest (device_id, name, kind, battery_percent)
+         VALUES ('door-test-1', 'Test Door', 'battery', 91),
+                ('presence-test-1', 'Test Motion', 'battery', 64)",
+    )
+    .execute(&harness.db)
+    .await
+    .expect("failed to seed battery readings");
+
+    let (status, body) = client
+        .graphql(
+            Some(&key),
+            r#"{
+                door(id: "test-door") { battery { kind percentage } }
+                presence(id: "test-presence") { battery { kind percentage } }
+            }"#,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "graphql errors: {body}");
+    assert_eq!(body["errors"], serde_json::Value::Null, "got {body}");
+
+    assert_eq!(
+        body["data"]["door"]["battery"],
+        serde_json::json!({ "kind": "battery", "percentage": 91.0 }),
+        "got {body}"
+    );
+    assert_eq!(
+        body["data"]["presence"]["battery"],
+        serde_json::Value::Null,
+        "got {body}"
+    );
+}
+
+#[tokio::test]
+#[serial]
 async fn an_unknown_device_reference_is_a_graphql_error() {
     let harness = Harness::start().await;
     let client = Client::new(&harness);
