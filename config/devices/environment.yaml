@@ -22,4 +22,3 @@
   roles:
     - type: environment
       config: { name: Outdoor }
-    - type: battery

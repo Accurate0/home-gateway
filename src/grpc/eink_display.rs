@@ -1,3 +1,4 @@
+use chrono::SubsecRound;
 use tonic::{Code, Request, Response, Status};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -106,7 +107,7 @@ impl EinkDisplayService {
             .and_then(chrono::DateTime::from_timestamp_millis);
 
         let synced_at = eink.rtc_synced_at(device_id).await;
-        let now = chrono::Utc::now();
+        let now = chrono::Utc::now().trunc_subsecs(3);
         let interval = self.state.settings.eink_display.rtc_sync_interval;
         let next_wake_at = wake::next_wake_at(now, decision.refresh_secs);
         let sync = rtc_sync(reported, synced_at, now, interval);

@@ -1,4 +1,5 @@
 use crate::{
+    battery::{BatteryChemistry, voltage_to_percentage},
     device_registry::last_seen::LastSeen,
     integrations::trmnl::{Trmnl, types::TrmnlDevice},
     settings::TrmnlDeviceSettings,
@@ -57,8 +58,8 @@ impl TrmnlActor {
                 name,
                 kind.to_owned(),
                 Some(voltage),
-                None,
-                None,
+                voltage_to_percentage(BatteryChemistry::Lipo, voltage),
+                Some(BatteryChemistry::Lipo),
             );
         }
 

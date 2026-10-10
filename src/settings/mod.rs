@@ -1445,18 +1445,18 @@ integrations:
 
         assert!(
             registry
-                .battery(registry.address_or_self("front-door"))
+                .battery(registry.address_or_self("fridge-trmnl"))
                 .is_some(),
-            "front-door has a battery kind"
+            "fridge-trmnl has a battery kind"
         );
-        assert!(
-            registry.battery(roborock_address).is_some(),
-            "roborock has a battery kind"
-        );
-        assert!(
-            registry.battery(valetudo_address).is_some(),
-            "valetudo has a battery kind"
-        );
+        for untracked in ["front-door", "roborock", "valetudo", "env-outdoor"] {
+            assert!(
+                registry
+                    .battery(registry.address_or_self(untracked))
+                    .is_none(),
+                "{untracked} has no battery kind"
+            );
+        }
         assert!(
             registry
                 .battery(registry.address_or_self("closet-light"))
@@ -1564,7 +1564,7 @@ integrations:
         assert_eq!(front.profile.slug, "aqara_mccgq12lm");
         let front_address = registry.address_or_self("front-door");
         assert!(
-            registry.door(front_address).is_some() && registry.battery(front_address).is_some()
+            registry.door(front_address).is_some() && registry.battery(front_address).is_none()
         );
         assert!(front.profile.roles.contains(&DeviceRoleName::Door));
         assert!(front.profile.roles.contains(&DeviceRoleName::Battery));

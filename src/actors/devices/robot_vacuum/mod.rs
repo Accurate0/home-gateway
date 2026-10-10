@@ -138,6 +138,16 @@ impl RobotVacuumHandler {
     }
 
     fn report_battery(&self, device_id: &str, level: i32) {
+        let devices = &self.shared_actor_state.devices;
+
+        if devices
+            .battery(devices.address_or_self(device_id))
+            .is_none()
+        {
+            tracing::trace!("{device_id} declares no battery role, not tracking its battery");
+            return;
+        }
+
         let name = self.device_name(device_id);
 
         BatteryActor::report(

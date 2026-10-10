@@ -16,7 +16,6 @@
         state: armed
         timeout: 3m
         notify: [android_app]
-    - type: battery
 
 - id: door-mccgq12lm-2
   aliases: [garage-door]
