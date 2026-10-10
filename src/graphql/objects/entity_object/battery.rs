@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     battery::{BatteryChemistry, voltage_to_percentage},
+    device_registry::DeviceRegistry,
     graphql::dataloader::{
         device_battery::DeviceBatteryDataLoader,
         device_battery_history::{DeviceBatteryHistoryDataLoader, MAX_HISTORY_WINDOW},
@@ -103,6 +104,15 @@ pub async fn battery_for(
     ctx: &async_graphql::Context<'_>,
     device_id: &str,
 ) -> async_graphql::Result<Option<DeviceBattery>> {
+    let registry = ctx.data::<DeviceRegistry>()?;
+
+    if registry
+        .battery(registry.address_or_self(device_id))
+        .is_none()
+    {
+        return Ok(None);
+    }
+
     let loader = ctx.data::<DataLoader<DeviceBatteryDataLoader>>()?;
 
     Ok(loader
