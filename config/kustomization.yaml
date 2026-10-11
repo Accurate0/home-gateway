@@ -45,7 +45,7 @@ configMapGenerator:
       - workflows/forecast.yaml
       - workflows/fuel.yaml
       - workflows/holidays.yaml
-      - workflows/living-room-lamp.yaml
+      - workflows/living-room-presence.yaml
       - workflows/movie-night.yaml
       - workflows/living-room-plant.yaml
       - workflows/purifier.yaml
@@ -68,6 +68,7 @@ configMapGenerator:
     files:
       - lua/workflows/brief.lua
       - lua/workflows/buttons.lua
+      - lua/workflows/living_room.lua
       - lua/workflows/movie.lua
       - lua/workflows/prices.lua
       - lua/workflows/purifier.lua

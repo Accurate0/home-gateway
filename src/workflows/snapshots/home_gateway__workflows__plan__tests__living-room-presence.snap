@@ -1,0 +1,12 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# Living room occupied  (on: presence(livingroom-motion) -> true)
+  lua: lua(call living_room.occupied) -> []
+
+# Living room vacated  (on: presence(livingroom-motion) -> false)
+  lua: lua(call living_room.vacated) -> []
+
+# Living room sunset  (on: sun -> Sunset (offset -30m))
+  lua: lua(call living_room.sunset) -> []

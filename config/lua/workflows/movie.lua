@@ -1,3 +1,4 @@
+local lights = gw.lib("lights")
 local purifier = gw.lib("purifier")
 
 local movie = {}
@@ -6,7 +7,6 @@ local PURIFIER = "living-room-purifier"
 local FLOOR_LAMP = "floor-lamp-living-room"
 local TABLE_LAMP = "living-room-table-lamp"
 local OCCUPANCY_TAG = "living-room-occupancy"
-local LIGHTS_OFF = "living-room-lamps-off"
 local TABLE_LAMP_DELAY = 5
 
 local function lights_off()
@@ -15,8 +15,8 @@ local function lights_off()
 	end, OCCUPANCY_TAG)
 
 	workflow.step("lights_off", function()
-		workflow.run(LIGHTS_OFF)
-	end, LIGHTS_OFF)
+		lights.all({ FLOOR_LAMP, TABLE_LAMP }, "OFF")
+	end)
 
 	workflow.step("purifier_quiet", function()
 		purifier.hold(PURIFIER)

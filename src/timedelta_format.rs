@@ -67,6 +67,17 @@ pub fn parse_datetime_str_with_ms(s: &str) -> anyhow::Result<TimeDelta> {
     Ok(final_time_delta)
 }
 
+pub fn parse_signed(s: &str) -> anyhow::Result<TimeDelta> {
+    let (negative, rest) = match s.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, s),
+    };
+
+    let delta = parse_datetime_str_with_ms(rest)?;
+
+    Ok(if negative { -delta } else { delta })
+}
+
 pub mod time_delta_from_str {
     use super::parse_datetime_str_with_ms;
     use chrono::TimeDelta;
@@ -148,7 +159,7 @@ pub fn humanize(delta: TimeDelta) -> String {
 }
 
 pub mod signed_time_delta_from_str {
-    use super::parse_datetime_str_with_ms;
+    use super::parse_signed;
     use chrono::TimeDelta;
     use serde::{self, Deserialize, Deserializer};
 
@@ -160,12 +171,8 @@ pub mod signed_time_delta_from_str {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let (negative, rest) = match s.strip_prefix('-') {
-            Some(rest) => (true, rest),
-            None => (false, s.as_str()),
-        };
-        let delta = parse_datetime_str_with_ms(rest).map_err(serde::de::Error::custom)?;
-        Ok(if negative { -delta } else { delta })
+
+        parse_signed(&s).map_err(serde::de::Error::custom)
     }
 }
 

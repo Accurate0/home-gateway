@@ -1392,13 +1392,6 @@ integrations:
                 .all(|step| matches!(step, workflow_definition::Step::Lua { .. })),
             "expected the small switch to toggle through lua"
         );
-        for name in ["living-room-lamps-off", "living-room-lamps-on"] {
-            assert!(
-                settings.workflows.contains_key(name),
-                "small switch toggles unknown workflow {name}"
-            );
-        }
-
         assert_eq!(
             registry.address_or_self("small-switch"),
             "0x00158d008bbe0316"

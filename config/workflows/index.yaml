@@ -3,7 +3,7 @@
 - !include closet-presence.yaml
 - !include living-room-plant.yaml
 - !include bins.yaml
-- !include living-room-lamp.yaml
+- !include living-room-presence.yaml
 - !include movie-night.yaml
 - !include purifier.yaml
 - !include alarm.yaml

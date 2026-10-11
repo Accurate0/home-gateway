@@ -1,6 +1,7 @@
 local small_switch = test.load("workflows/small_switch")
 
 local FLOOR_LAMP = "floor-lamp-living-room"
+local TABLE_LAMP = "living-room-table-lamp"
 local INDICATOR = "livingroom-motion"
 
 local function stub(action, on)
@@ -10,7 +11,6 @@ local function stub(action, on)
 		step = function(_, run)
 			return run()
 		end,
-		run = test.spy(),
 		set_enabled = test.spy(),
 	}
 
@@ -29,7 +29,8 @@ return {
 
 		small_switch.tap()
 
-		test.eq(workflow.run.calls, { { "living-room-lamps-off" } })
+		test.eq(light.set.calls[1], { FLOOR_LAMP, { state = "OFF" } })
+		test.eq(light.set.calls[2], { TABLE_LAMP, { state = "OFF" } })
 	end,
 
 	["single tap turns the lamps on while the floor lamp is off"] = function()
@@ -37,7 +38,8 @@ return {
 
 		small_switch.tap()
 
-		test.eq(workflow.run.calls, { { "living-room-lamps-on" } })
+		test.eq(light.set.calls[1], { FLOOR_LAMP, { state = "ON" } })
+		test.eq(light.set.calls[2], { TABLE_LAMP, { state = "ON" } })
 	end,
 
 	["double tap toggles the living room automations"] = function()
@@ -46,7 +48,6 @@ return {
 		small_switch.tap()
 
 		test.eq(workflow.set_enabled.calls, { { "living-room", "TOGGLE" } })
-		test.eq(workflow.run.calls, {})
 	end,
 
 	["the indicator flashes once per tap and ends where it started"] = function()
@@ -70,6 +71,8 @@ return {
 		small_switch.tap()
 
 		test.eq(light.set.calls, {
+			{ FLOOR_LAMP, { state = "ON" } },
+			{ TABLE_LAMP, { state = "ON" } },
 			{ INDICATOR, { state = "OFF" } },
 			{ INDICATOR, { state = "ON" } },
 		})
@@ -80,7 +83,6 @@ return {
 
 		small_switch.tap()
 
-		test.eq(workflow.run.calls, {})
 		test.eq(light.set.calls, {})
 	end,
 }

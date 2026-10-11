@@ -3,8 +3,8 @@ local lights = gw.lib("lights")
 local small_switch = {}
 
 local FLOOR_LAMP = "floor-lamp-living-room"
-local LAMPS_ON = "living-room-lamps-on"
-local LAMPS_OFF = "living-room-lamps-off"
+local TABLE_LAMP = "living-room-table-lamp"
+local LAMPS = { FLOOR_LAMP, TABLE_LAMP }
 local AUTOMATIONS_TAG = "living-room"
 local INDICATOR = "livingroom-motion"
 local FLASH_SECONDS = 0.25
@@ -22,10 +22,10 @@ local function toggle_lamps()
 		return lights.any_on({ FLOOR_LAMP })
 	end, FLOOR_LAMP)
 
-	local target = on and LAMPS_OFF or LAMPS_ON
+	local target = on and "OFF" or "ON"
 
 	workflow.step("toggle", function()
-		workflow.run(target)
+		lights.all(LAMPS, target)
 	end, target)
 end
 

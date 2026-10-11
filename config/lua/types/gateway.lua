@@ -381,12 +381,14 @@ function workflow.step(kind, run, detail) end
 ---@class gw.api.sun
 sun = {}
 
+---@param offset? string
 ---@return gw.SunPeriod
-function sun.period() end
+function sun.period(offset) end
 
 ---@param period gw.SunPeriod
+---@param offset? string
 ---@return boolean
-function sun.is(period) end
+function sun.is(period, offset) end
 
 ---@class gw.api.solar
 solar = {}

@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../schemas/workflows.schema.json
+- name: Living room occupied
+  slug: living-room-occupied
+  group: Living Room
+  tags: [living-room, living-room-occupancy]
+  on: { type: presence, sensor: livingroom-motion, present: true }
+  modes: [home, away, guest]
+  run:
+    - type: lua
+      call: living_room.occupied
+      returns: {}
+      args:
+        - sunset_offset: -30m
+
+- name: Living room vacated
+  slug: living-room-vacated
+  group: Living Room
+  tags: [living-room, living-room-occupancy]
+  on: { type: presence, sensor: livingroom-motion, present: false }
+  delay: 25m
+  modes: [home, away, guest]
+  run:
+    - type: lua
+      call: living_room.vacated
+      returns: {}
+      args: []
+
+- name: Living room sunset
+  slug: living-room-sunset
+  group: Living Room
+  tags: [living-room, living-room-occupancy]
+  on: { type: sun, transition: sunset, offset: -30m }
+  modes: [home, away, guest]
+  run:
+    - type: lua
+      call: living_room.sunset
+      returns: {}
+      args:
+        - fade_rate: 1
