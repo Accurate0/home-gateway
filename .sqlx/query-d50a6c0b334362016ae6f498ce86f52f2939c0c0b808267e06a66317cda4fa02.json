@@ -6,27 +6,57 @@
       {
         "ordinal": 0,
         "name": "temperature",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "latest_temperature_sensor",
+            "name": "temperature"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "humidity",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "latest_temperature_sensor",
+            "name": "humidity"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "pressure",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "latest_temperature_sensor",
+            "name": "pressure"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "lux",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "latest_temperature_sensor",
+            "name": "lux"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "uv_index",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "latest_temperature_sensor",
+            "name": "uv_index"
+          }
+        }
       }
     ],
     "parameters": {

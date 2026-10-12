@@ -18,6 +18,12 @@
               ]
             }
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "latest_garage_door_state",
+            "name": "state"
+          }
         }
       }
     ],

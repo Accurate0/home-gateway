@@ -6,7 +6,13 @@
       {
         "ordinal": 0,
         "name": "last_fired",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "trigger_cooldowns",
+            "name": "last_fired"
+          }
+        }
       }
     ],
     "parameters": {

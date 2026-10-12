@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "device_id",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "device_battery",
+            "name": "device_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "battery_voltage",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "device_battery",
+            "name": "battery_voltage"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "battery_percent",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "device_battery",
+            "name": "battery_percent"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "time",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "device_battery",
+            "name": "time"
+          }
+        }
       }
     ],
     "parameters": {

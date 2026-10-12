@@ -6,32 +6,68 @@
       {
         "ordinal": 0,
         "name": "current_kwh",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "current_kwh"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "today_kwh",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "today_kwh"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "month_kwh",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "month_kwh"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "total_kwh",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "total_kwh"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "uv_level",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "uv_level"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "temperature",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "temperature"
+          }
+        }
       }
     ],
     "parameters": {

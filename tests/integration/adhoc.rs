@@ -110,7 +110,7 @@ async fn cron_run_upserts_by_name() {
 
 const REKEY_ORDINAL: i64 = 3;
 
-async fn count(db: &Pool<Postgres>, sql: &str, key: &str) -> i64 {
+async fn count(db: &Pool<Postgres>, sql: &'static str, key: &str) -> i64 {
     sqlx::query_scalar(sql)
         .bind(key)
         .fetch_one(db)

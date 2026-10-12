@@ -6,57 +6,123 @@
       {
         "ordinal": 0,
         "name": "device_id",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "device_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "battery_voltage",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "battery_voltage"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "is_charging",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "is_charging"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "updated_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "updated_at"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "next_wake_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "next_wake_at"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "partial_refresh_count",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "partial_refresh_count"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "rtc_synced_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "rtc_synced_at"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "rtc_drift_ms",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "rtc_drift_ms"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "rtc_reported_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "rtc_reported_at"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "rtc_reported_offset_ms",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "rtc_reported_offset_ms"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "last_wake_trace_id",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "last_wake_trace_id"
+          }
+        }
       }
     ],
     "parameters": {

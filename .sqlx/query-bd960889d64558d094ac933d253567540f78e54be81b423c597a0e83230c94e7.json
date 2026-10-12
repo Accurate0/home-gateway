@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "state",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "state"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "media_title",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_title"
+          }
+        }
       }
     ],
     "parameters": {

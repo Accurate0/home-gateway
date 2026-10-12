@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "login_data",
-        "type_info": "Jsonb"
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "solar_cached_token",
+            "name": "login_data"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "created_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "solar_cached_token",
+            "name": "created_at"
+          }
+        }
       }
     ],
     "parameters": {

@@ -1,6 +1,6 @@
 use chrono::TimeDelta;
 use home_gateway::settings::DatabaseSettings;
-use sqlx::{Executor, Pool, Postgres};
+use sqlx::{AssertSqlSafe, Executor, Pool, Postgres};
 use std::time::Duration;
 use testcontainers::{
     ContainerAsync, GenericBuildableImage, GenericImage, ImageExt, ReuseDirective,
@@ -129,22 +129,23 @@ async fn server() -> &'static Server {
 
             for database in stale {
                 admin
-                    .execute(
-                        format!(r#"DROP DATABASE IF EXISTS "{database}" WITH (FORCE)"#).as_str(),
-                    )
+                    .execute(AssertSqlSafe(format!(
+                        r#"DROP DATABASE IF EXISTS "{database}" WITH (FORCE)"#
+                    )))
                     .await
                     .expect("failed to drop a stale test database");
             }
 
             admin
-                .execute(
-                    format!(r#"DROP DATABASE IF EXISTS "{TEMPLATE_DATABASE}" WITH (FORCE)"#)
-                        .as_str(),
-                )
+                .execute(AssertSqlSafe(format!(
+                    r#"DROP DATABASE IF EXISTS "{TEMPLATE_DATABASE}" WITH (FORCE)"#
+                )))
                 .await
                 .expect("failed to drop the stale template database");
             admin
-                .execute(format!(r#"CREATE DATABASE "{TEMPLATE_DATABASE}""#).as_str())
+                .execute(AssertSqlSafe(format!(
+                    r#"CREATE DATABASE "{TEMPLATE_DATABASE}""#
+                )))
                 .await
                 .expect("failed to create the template database");
             admin.close().await;
@@ -164,20 +165,16 @@ async fn server() -> &'static Server {
 
             let admin = connect_with_retry(&server.admin_url).await;
             admin
-                .execute(
-                    format!(r#"ALTER DATABASE "{TEMPLATE_DATABASE}" WITH ALLOW_CONNECTIONS false"#)
-                        .as_str(),
-                )
+                .execute(AssertSqlSafe(format!(
+                    r#"ALTER DATABASE "{TEMPLATE_DATABASE}" WITH ALLOW_CONNECTIONS false"#
+                )))
                 .await
                 .expect("failed to bar connections to the template database");
             admin
-                .execute(
-                    format!(
-                        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
-                         WHERE datname = '{TEMPLATE_DATABASE}' AND pid <> pg_backend_pid()"
-                    )
-                    .as_str(),
-                )
+                .execute(AssertSqlSafe(format!(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+                     WHERE datname = '{TEMPLATE_DATABASE}' AND pid <> pg_backend_pid()"
+                )))
                 .await
                 .expect("failed to evict the template database sessions");
             admin.close().await;
@@ -196,7 +193,7 @@ pub async fn fresh_database() -> TestDb {
     let mut last_error = None;
 
     for _ in 0..CREATE_ATTEMPTS {
-        match admin.execute(statement.as_str()).await {
+        match admin.execute(AssertSqlSafe(statement.as_str())).await {
             Ok(_) => {
                 last_error = None;
                 break;

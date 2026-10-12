@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "energy_consumption",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "energy_used",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "energy_consumption",
+            "name": "energy_used"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "solar_exported",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "energy_consumption",
+            "name": "solar_exported"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "time",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "energy_consumption",
+            "name": "time"
+          }
+        }
       }
     ],
     "parameters": {

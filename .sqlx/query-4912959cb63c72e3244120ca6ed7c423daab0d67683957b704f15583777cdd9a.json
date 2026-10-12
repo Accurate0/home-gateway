@@ -6,17 +6,35 @@
       {
         "ordinal": 0,
         "name": "raw_data",
-        "type_info": "Jsonb"
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "raw_data"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "temperature",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "temperature"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "uv_level",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "uv_level"
+          }
+        }
       }
     ],
     "parameters": {

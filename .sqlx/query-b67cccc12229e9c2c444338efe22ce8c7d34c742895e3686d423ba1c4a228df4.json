@@ -6,92 +6,200 @@
       {
         "ordinal": 0,
         "name": "device_id",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "device_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "state",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "state"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "app_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "app_name"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "source",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "source"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "media_content_type",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_content_type"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "media_title",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_title"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "media_artist",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_artist"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "media_album_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_album_name"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "media_series_title",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_series_title"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "media_season",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_season"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "media_episode",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "media_episode"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "position_seconds",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "position_seconds"
+          }
+        }
       },
       {
         "ordinal": 12,
         "name": "duration_seconds",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "duration_seconds"
+          }
+        }
       },
       {
         "ordinal": 13,
         "name": "position_updated_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "position_updated_at"
+          }
+        }
       },
       {
         "ordinal": 14,
         "name": "volume_level",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "volume_level"
+          }
+        }
       },
       {
         "ordinal": 15,
         "name": "muted",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "muted"
+          }
+        }
       },
       {
         "ordinal": 16,
         "name": "artwork_url",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "artwork_url"
+          }
+        }
       },
       {
         "ordinal": 17,
         "name": "updated_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "media_player_state",
+            "name": "updated_at"
+          }
+        }
       }
     ],
     "parameters": {

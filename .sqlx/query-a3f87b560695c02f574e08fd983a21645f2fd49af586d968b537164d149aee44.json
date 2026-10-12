@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "soil_moisture",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "plant_sensor",
+            "name": "soil_moisture"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "time",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "plant_sensor",
+            "name": "time"
+          }
+        }
       }
     ],
     "parameters": {

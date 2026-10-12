@@ -6,7 +6,8 @@
       {
         "ordinal": 0,
         "name": "name!",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": "Expression"
       },
       {
         "ordinal": 1,
@@ -21,12 +22,24 @@
               ]
             }
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "unifi_client_state",
+            "name": "state"
+          }
         }
       },
       {
         "ordinal": 2,
         "name": "time",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "unifi_client_state",
+            "name": "updated_at"
+          }
+        }
       }
     ],
     "parameters": {

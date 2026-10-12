@@ -6,27 +6,57 @@
       {
         "ordinal": 0,
         "name": "address",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "latest_device_metric",
+            "name": "address"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "metric",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "latest_device_metric",
+            "name": "metric"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "value",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "latest_device_metric",
+            "name": "value"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "text_value",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "latest_device_metric",
+            "name": "text_value"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "time!",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "latest_device_metric",
+            "name": "updated_at"
+          }
+        }
       }
     ],
     "parameters": {

@@ -6,12 +6,24 @@
       {
         "ordinal": 0,
         "name": "image_key",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "image_key"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "image_content_hash",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "image_content_hash"
+          }
+        }
       }
     ],
     "parameters": {

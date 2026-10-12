@@ -6,7 +6,13 @@
       {
         "ordinal": 0,
         "name": "today_kwh",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "today_kwh"
+          }
+        }
       }
     ],
     "parameters": {

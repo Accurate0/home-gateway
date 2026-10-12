@@ -6,52 +6,112 @@
       {
         "ordinal": 0,
         "name": "run_id",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "run_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "seq",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "seq"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "depth",
-        "type_info": "Int2"
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "depth"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "kind",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "kind"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "outcome",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "outcome"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "guard",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "guard"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "detail",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "detail"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "error",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "error"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "duration_us",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "duration_us"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "workflow_run_steps",
+            "name": "at"
+          }
+        }
       }
     ],
     "parameters": {

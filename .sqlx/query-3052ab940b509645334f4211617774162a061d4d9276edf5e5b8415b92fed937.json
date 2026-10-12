@@ -6,7 +6,13 @@
       {
         "ordinal": 0,
         "name": "rtc_synced_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "rtc_synced_at"
+          }
+        }
       }
     ],
     "parameters": {

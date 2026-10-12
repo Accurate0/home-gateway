@@ -6,7 +6,13 @@
       {
         "ordinal": 0,
         "name": "partial_refresh_count",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "eink_display",
+            "name": "partial_refresh_count"
+          }
+        }
       }
     ],
     "parameters": {

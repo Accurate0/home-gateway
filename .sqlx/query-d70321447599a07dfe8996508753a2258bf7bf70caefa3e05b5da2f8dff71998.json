@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "voltage",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "smart_switch",
+            "name": "voltage"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "power",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "smart_switch",
+            "name": "power"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "current",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "smart_switch",
+            "name": "current_f64"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "energy",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "smart_switch",
+            "name": "energy"
+          }
+        }
       }
     ],
     "parameters": {

@@ -6,77 +6,167 @@
       {
         "ordinal": 0,
         "name": "date",
-        "type_info": "Date"
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "date"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "precis_code",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "precis_code"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "precis",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "precis"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "min_temp",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "min_temp"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "max_temp",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "max_temp"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "uv_max",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "uv_max"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "rain_probability",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "rain_probability"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "rain_start_range",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "rain_start_range"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "rain_end_range",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "rain_end_range"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "rain_range_code",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "rain_range_code"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "wind_max_speed",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "wind_max_speed"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "first_light",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "first_light"
+          }
+        }
       },
       {
         "ordinal": 12,
         "name": "sunrise",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "sunrise"
+          }
+        }
       },
       {
         "ordinal": 13,
         "name": "sunset",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "sunset"
+          }
+        }
       },
       {
         "ordinal": 14,
         "name": "last_light",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "willyweather_forecast_day",
+            "name": "last_light"
+          }
+        }
       }
     ],
     "parameters": {

@@ -6,17 +6,20 @@
       {
         "ordinal": 0,
         "name": "last_15_mins",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": "Expression"
       },
       {
         "ordinal": 1,
         "name": "last_1_hour",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": "Expression"
       },
       {
         "ordinal": 2,
         "name": "last_3_hours",
-        "type_info": "Float8"
+        "type_info": "Float8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
