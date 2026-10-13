@@ -206,6 +206,35 @@ async fn the_sandbox_is_enforced_at_runtime() {
 
 #[tokio::test]
 #[serial]
+async fn a_device_without_a_lock_block_cannot_be_locked_from_lua() {
+    let harness = start().await;
+
+    let script = Script::parse(
+        "local ok, err = pcall(device_lock.lock, 'door-test-1', 60) return { ok, tostring(err) }",
+    )
+    .expect("the probe should compile");
+
+    let result = execute::execute(
+        &harness.state,
+        AuthContext::full_access(),
+        &script,
+        BTreeMap::new(),
+        false,
+    )
+    .await
+    .expect("the probe should run");
+
+    assert_eq!(result[0], serde_json::json!(false));
+    assert!(
+        result[1]
+            .as_str()
+            .is_some_and(|error| error.contains("can't be locked")),
+        "unexpected error: {result}"
+    );
+}
+
+#[tokio::test]
+#[serial]
 async fn an_infinite_loop_is_stopped_by_the_instruction_limit() {
     let harness = start().await;
 

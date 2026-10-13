@@ -18,6 +18,7 @@ use crate::actors::system::battery::lua::BatteryLua;
 use crate::actors::system::push::lua::NotifyLua;
 use crate::actors::vacation::lua::VacationLua;
 use crate::actors::workflows::lua::WorkflowLua;
+use crate::device_lock::lua::DeviceLockLua;
 use crate::device_registry::lua::DeviceLua;
 use crate::integrations::fuelwatch::lua::FuelLua;
 use crate::integrations::holidays::lua::HolidaysLua;
@@ -132,6 +133,7 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(VacuumLua)
         .insert(GarageDoorLua)
         .insert(AirPurifierLua)
+        .insert(DeviceLockLua)
         .insert(EnergyLua)
         .insert(WoolworthsLua)
         .insert(TransperthLua)

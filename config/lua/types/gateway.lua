@@ -41,6 +41,11 @@
 ---@field lock_source? string
 ---@field locked_until? integer
 
+---@class gw.DeviceLockStatus
+---@field source string
+---@field locked_at integer
+---@field expires_at? integer
+
 ---@class gw.EnergyInterval
 ---@field used number
 ---@field exported number
@@ -540,6 +545,20 @@ function air_purifier.state(device) end
 ---@param device string
 ---@param command gw.AirPurifierCommand
 function air_purifier.command(device, command) end
+
+---@class gw.api.device_lock
+device_lock = {}
+
+---@param device string
+---@return gw.DeviceLockStatus?
+function device_lock.state(device) end
+
+---@param device string
+---@param seconds? integer
+function device_lock.lock(device, seconds) end
+
+---@param device string
+function device_lock.unlock(device) end
 
 ---@class gw.api.energy
 energy = {}

@@ -1,4 +1,5 @@
 mod lock_settings;
+pub mod lua;
 
 pub use lock_settings::{LockSettings, RawLockSettings};
 
