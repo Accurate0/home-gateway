@@ -33,6 +33,7 @@ import { useEffect, useState } from "react";
 import { Dialog, Popover, Slider } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { authHeaders } from "@/relay";
+import LockControl, { type LockActions } from "./LockControl";
 import {
   formatLastSeen,
   isGarageDoorMoving,
@@ -1322,10 +1323,12 @@ const AIR_PURIFIER_SPEEDS = [1, 2, 3];
 function AirPurifierTile({
   entity,
   actions,
+  lockActions,
   now,
 }: {
   entity: Entity;
   actions?: AirPurifierActions;
+  lockActions?: LockActions;
   now: number;
 }) {
   const on = entity.on === true;
@@ -1428,6 +1431,7 @@ function AirPurifierTile({
           </button>
         ))}
       </div>
+      <LockControl entity={entity} actions={lockActions} now={now} />
     </Tile>
   );
 }
@@ -1438,6 +1442,7 @@ export default function EntityCard({
   vacuumActions,
   garageDoorActions,
   airPurifierActions,
+  lockActions,
   mediaPlayerActions,
   einkActions,
   now,
@@ -1447,6 +1452,7 @@ export default function EntityCard({
   vacuumActions?: VacuumActions;
   garageDoorActions?: GarageDoorActions;
   airPurifierActions?: AirPurifierActions;
+  lockActions?: LockActions;
   mediaPlayerActions?: MediaPlayerActions;
   einkActions?: EinkActions;
   now: number;
@@ -1499,6 +1505,7 @@ export default function EntityCard({
         <AirPurifierTile
           entity={entity}
           actions={airPurifierActions}
+          lockActions={lockActions}
           now={now}
         />
       );

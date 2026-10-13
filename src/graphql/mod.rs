@@ -1,4 +1,4 @@
-use async_graphql::{MergedObject, Schema};
+use async_graphql::{MergedObject, Schema, SchemaBuilder};
 use queries::{
     adhoc_query::AdhocQuery, auth_query::AuthQuery, energy_query::EnergyQuery,
     entities_query::EntitiesQuery, home_assistant_query::HomeAssistantQuery,
@@ -21,6 +21,8 @@ pub mod mutations;
 mod objects;
 mod queries;
 pub mod subscription;
+
+pub use objects::lockable::LockableEntity;
 
 #[derive(Default, MergedObject)]
 pub struct QueryRoot(
@@ -51,14 +53,17 @@ pub fn require<'a, T: std::any::Any + Send + Sync>(
         .ok_or_else(|| async_graphql::Error::new(format!("{name} is not configured")))
 }
 
-pub fn sdl() -> String {
+pub fn builder() -> SchemaBuilder<QueryRoot, MutationRoot, SubscriptionRoot> {
     Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         SubscriptionRoot,
     )
-    .finish()
-    .sdl()
+    .register_output_type::<LockableEntity>()
+}
+
+pub fn sdl() -> String {
+    builder().finish().sdl()
 }
 
 #[cfg(test)]

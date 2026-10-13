@@ -1,9 +1,11 @@
 use async_graphql::{ComplexObject, ID, Json, SimpleObject, Union};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBusMessage;
 use crate::repo::air_purifier::AirPurifierMode;
+use crate::repo::device_lock::DeviceLockSource;
 use crate::repo::garage_door::GarageDoorState;
 use crate::workflows::mode::Mode;
 
@@ -261,6 +263,23 @@ impl DeviceConnectionUpdate {
 
 #[derive(SimpleObject)]
 #[graphql(complex)]
+pub struct DeviceLockUpdate {
+    pub event_id: Uuid,
+    pub device_id: String,
+    pub locked: bool,
+    pub source: Option<DeviceLockSource>,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
+#[ComplexObject]
+impl DeviceLockUpdate {
+    async fn id(&self) -> ID {
+        ID(self.device_id.clone())
+    }
+}
+
+#[derive(SimpleObject)]
+#[graphql(complex)]
 pub struct JellyfinUpdate {
     pub event_id: Uuid,
     pub state: String,
@@ -335,6 +354,7 @@ pub enum EventUpdate {
     Woolworths(WoolworthsUpdate),
     DeviceBattery(DeviceBatteryUpdate),
     DeviceConnection(DeviceConnectionUpdate),
+    DeviceLock(DeviceLockUpdate),
     Jellyfin(JellyfinUpdate),
     MediaPlayer(MediaPlayerUpdate),
     Solar(SolarUpdate),
@@ -698,6 +718,19 @@ impl EventUpdate {
                 transport,
                 room,
                 connected,
+            }),
+            EventBusMessage::DeviceLock {
+                event_id,
+                device_id,
+                locked,
+                source,
+                expires_at,
+            } => EventUpdate::DeviceLock(DeviceLockUpdate {
+                event_id,
+                device_id,
+                locked,
+                source,
+                expires_at,
             }),
             EventBusMessage::Jellyfin {
                 event_id,

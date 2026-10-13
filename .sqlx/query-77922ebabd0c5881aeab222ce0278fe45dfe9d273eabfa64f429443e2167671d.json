@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM device_lock WHERE device_id = $1 AND (expires_at IS NULL OR expires_at > now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "77922ebabd0c5881aeab222ce0278fe45dfe9d273eabfa64f429443e2167671d"
+}

@@ -25,6 +25,7 @@ const RunsQuery = graphql`
 
 const OUTCOME_STYLES: Record<string, string> = {
   success: "text-emerald-600 dark:text-emerald-400 border-emerald-500/40",
+  warning: "text-orange-600 dark:text-orange-400 border-orange-500/40",
   error: "text-red-600 dark:text-red-400 border-red-500/40",
   disabled: "text-muted-foreground border-border",
 };

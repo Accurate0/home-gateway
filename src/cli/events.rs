@@ -20,6 +20,7 @@ subscription($filter: String!) {
     ... on AirPurifierUpdate { id name on mode speed display }
     ... on PlantUpdate { id name soilMoisture }
     ... on DeviceConnectionUpdate { deviceId transport connected }
+    ... on DeviceLockUpdate { deviceId locked source expiresAt }
     ... on LightUpdate { id on brightness colourTemperature }
     ... on EnvironmentUpdate { id readings { metric value } }
     ... on HomeAssistantUpdate { entityId state }

@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
+use crate::auth::scope::Resource;
 use crate::decoding::ModelProfile;
+use crate::device_lock::LockSettings;
 use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     AirPurifierSettings, BatterySettings, DoorSettings, EinkDisplaySettings,
@@ -29,6 +31,11 @@ pub struct Roles {
     pub air_purifier: Option<AirPurifierSettings>,
 }
 
+pub struct LockableRole<'a> {
+    pub resource: Resource,
+    pub settings: &'a LockSettings,
+}
+
 pub struct RoleContext<'a> {
     pub id: &'a str,
     pub address: &'a str,
@@ -38,6 +45,13 @@ pub struct RoleContext<'a> {
 }
 
 impl Roles {
+    pub fn lockable(&self) -> Option<LockableRole<'_>> {
+        self.air_purifier.as_ref().map(|settings| LockableRole {
+            resource: Resource::AirPurifier,
+            settings: &settings.lock,
+        })
+    }
+
     pub fn resolve(cx: &RoleContext, configs: Vec<DeviceConfig>) -> Result<Self, String> {
         let RoleContext { id, transport, .. } = *cx;
 

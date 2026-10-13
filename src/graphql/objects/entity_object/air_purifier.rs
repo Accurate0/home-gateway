@@ -6,6 +6,8 @@ use crate::graphql::dataloader::air_purifier_state::{
     AirPurifierStateDataLoader, AirPurifierStateModel,
 };
 use crate::graphql::dataloader::device_metric::{DeviceMetricDataLoader, DeviceMetricKey};
+use crate::graphql::objects::device_lock_object::DeviceLockObject;
+use crate::graphql::objects::lockable::Lockable;
 use crate::repo::air_purifier::AirPurifierMode;
 
 const AQI_METRIC: &str = "aqi";
@@ -57,13 +59,19 @@ impl AirPurifierEntity {
     }
 }
 
+impl Lockable for AirPurifierEntity {
+    fn device_id(&self) -> &str {
+        &self.id
+    }
+}
+
 #[Object]
 impl AirPurifierEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Environment
     }
 
-    async fn id(&self) -> &str {
+    pub async fn id(&self) -> &str {
         &self.id
     }
 
@@ -118,6 +126,13 @@ impl AirPurifierEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<bool>> {
         Ok(self.model(ctx).await?.and_then(|m| m.display))
+    }
+
+    pub async fn lock(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<DeviceLockObject>> {
+        self.lock_state(ctx).await
     }
 
     async fn changed_at(

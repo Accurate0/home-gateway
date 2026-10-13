@@ -2,7 +2,7 @@ use async_graphql::Object;
 
 use crate::actors::devices::air_purifier::command;
 use crate::auth::scope::{Action as ScopeAction, Resource, Scope};
-use crate::device_command::CommandOutcome;
+use crate::device_command::{CommandOrigin, CommandOutcome};
 use crate::graphql::guard::ScopeGuard;
 use crate::repo::air_purifier::AirPurifierMode;
 use crate::workflows::definition::AirPurifierCommand;
@@ -20,7 +20,7 @@ impl AirPurifierMutation {
         &self,
         air_purifier_command: AirPurifierCommand,
     ) -> async_graphql::Result<CommandOutcome> {
-        command::send(&self.address, air_purifier_command)
+        command::send(&self.address, air_purifier_command, CommandOrigin::User)
             .await
             .map_err(|e| async_graphql::Error::new(e.to_string()))
     }

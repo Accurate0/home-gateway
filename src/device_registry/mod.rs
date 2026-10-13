@@ -35,7 +35,7 @@ pub use device_names::is_device_id;
 pub use id_or_alias::IdOrAlias;
 pub use raw_device::RawDevice;
 pub use raw_transport::RawTransport;
-pub use roles::Roles;
+pub use roles::{LockableRole, Roles};
 pub use transport::Transport;
 pub use unknown_device::UnknownDevice;
 
@@ -583,6 +583,10 @@ impl DeviceRegistryInner {
 
     pub fn garage_doors(&self) -> impl Iterator<Item = (&String, &GarageDoorSettings)> {
         self.each(|roles| roles.garage_door.as_ref())
+    }
+
+    pub fn lockable(&self, address: &str) -> Option<LockableRole<'_>> {
+        self.roles(address)?.lockable()
     }
 
     pub fn air_purifier(&self, address: &str) -> Option<&AirPurifierSettings> {

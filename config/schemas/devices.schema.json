@@ -815,11 +815,43 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "lock": {
+          "$ref": "#/$defs/RawLockSettings"
         }
       },
       "additionalProperties": false,
       "required": [
-        "name"
+        "name",
+        "lock"
+      ]
+    },
+    "RawLockSettings": {
+      "type": "object",
+      "properties": {
+        "physical": {
+          "type": "string"
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AirPurifierField"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "physical",
+        "excluded"
+      ]
+    },
+    "AirPurifierField": {
+      "type": "string",
+      "enum": [
+        "on",
+        "mode",
+        "speed",
+        "display"
       ]
     },
     "RawDeviceWatchdog": {

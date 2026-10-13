@@ -9,4 +9,6 @@
   model: levoit_core300s
   roles:
     - type: air_purifier
-      config: { name: Living Room Purifier }
+      config:
+        name: Living Room Purifier
+        lock: { physical: 6h, excluded: [display] }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<66e832ecaab9b17e0efb523670b721d2>>
+ * @generated SignedSource<<3b247caa6fba1717f5e3fc242a6de3c0>>
  * @lightSyntaxTransform
  */
 
@@ -9,7 +9,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
-export type CommandOutcome = "SENT" | "UNCHANGED" | "%future added value";
+export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardAirPurifierSetModeMutation$variables = {
   id: string;
   mode: AirPurifierMode;

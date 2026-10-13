@@ -23,6 +23,8 @@ import type { DashboardAirPurifierTurnOffMutation } from "./__generated__/Dashbo
 import type { DashboardAirPurifierSetModeMutation } from "./__generated__/DashboardAirPurifierSetModeMutation.graphql";
 import type { DashboardAirPurifierSetSpeedMutation } from "./__generated__/DashboardAirPurifierSetSpeedMutation.graphql";
 import type { DashboardAirPurifierSetDisplayMutation } from "./__generated__/DashboardAirPurifierSetDisplayMutation.graphql";
+import type { DashboardDeviceLockMutation } from "./__generated__/DashboardDeviceLockMutation.graphql";
+import type { DashboardDeviceUnlockMutation } from "./__generated__/DashboardDeviceUnlockMutation.graphql";
 import type { DashboardMediaPlayPauseMutation } from "./__generated__/DashboardMediaPlayPauseMutation.graphql";
 import type { DashboardMediaStopMutation } from "./__generated__/DashboardMediaStopMutation.graphql";
 import type { DashboardEinkConfigQuery } from "./__generated__/DashboardEinkConfigQuery.graphql";
@@ -35,6 +37,7 @@ import EntityCard, {
   type MediaPlayerActions,
   type VacuumActions,
 } from "./EntityCard";
+import type { LockActions } from "./LockControl";
 import {
   applyReadings,
   entityKey,
@@ -168,6 +171,12 @@ const EntitiesQuery = graphql`
         displayOn: display
         lastSeen
       }
+      ... on LockableEntity {
+        lock {
+          source
+          expiresAt
+        }
+      }
       ... on RobotVacuumEntity {
         category
         id
@@ -213,6 +222,12 @@ const EventsSubscription = graphql`
         purifierMode: mode
         purifierSpeed: speed
         displayOn: display
+      }
+      ... on DeviceLockUpdate {
+        id
+        locked
+        lockSource: source
+        expiresAt
       }
       ... on PresenceUpdate {
         id
@@ -395,6 +410,25 @@ const AirPurifierSetDisplayMutation = graphql`
   }
 `;
 
+const DeviceLockMutation = graphql`
+  mutation DashboardDeviceLockMutation($id: IdOrAlias!, $durationSeconds: Int) {
+    deviceLock(id: $id) {
+      lock(durationSeconds: $durationSeconds) {
+        source
+        expiresAt
+      }
+    }
+  }
+`;
+
+const DeviceUnlockMutation = graphql`
+  mutation DashboardDeviceUnlockMutation($id: IdOrAlias!) {
+    deviceLock(id: $id) {
+      unlock
+    }
+  }
+`;
+
 const EinkConfigQuery = graphql`
   query DashboardEinkConfigQuery($id: IdOrAlias!) {
     einkDisplay(id: $id) {
@@ -467,7 +501,8 @@ function seedEntities(
   const map = new Map<string, Entity>();
   for (const e of data.entities) {
     const kind = kindOf(e.__typename);
-    if (!kind || !("id" in e)) continue;
+    const { id, name } = e;
+    if (!kind || id == null || name == null) continue;
     // RobotVacuumEntity exposes a `kind` (ROBOROCK/VALETUDO) that our EntityKind
     // `kind` shadows on spread, so lift it to `vacuumKind` before overwriting.
     const vacuumKind =
@@ -479,12 +514,14 @@ function seedEntities(
       (e.einkKind === "TRMNL" || e.einkKind === "EINK_DISPLAY_FIRMWARE")
         ? e.einkKind
         : undefined;
-    map.set(entityKey(kind, e.id), {
+    map.set(entityKey(kind, id), {
       ...e,
+      id,
+      name,
       kind,
       vacuumKind,
       einkKind,
-      key: entityKey(kind, e.id),
+      key: entityKey(kind, id),
     });
   }
   return map;
@@ -516,6 +553,25 @@ export default function Dashboard() {
       variables: {},
       onNext: (response) => {
         const update = response?.events;
+
+        if (update?.__typename === "DeviceLockUpdate") {
+          const lock =
+            update.locked && update.lockSource
+              ? { source: update.lockSource, expiresAt: update.expiresAt }
+              : null;
+
+          setEntities((prev) => {
+            const next = new Map(prev);
+            for (const [key, entity] of prev) {
+              if (entity.id === update.id && entity.lock !== undefined) {
+                next.set(key, { ...entity, lock });
+              }
+            }
+            return next;
+          });
+          return;
+        }
+
         const kind = kindOf(update?.__typename);
         if (!update || !kind || !("id" in update)) return;
 
@@ -579,6 +635,10 @@ export default function Dashboard() {
     useMutation<DashboardAirPurifierSetDisplayMutation>(
       AirPurifierSetDisplayMutation,
     );
+  const [commitDeviceLock] =
+    useMutation<DashboardDeviceLockMutation>(DeviceLockMutation);
+  const [commitDeviceUnlock] =
+    useMutation<DashboardDeviceUnlockMutation>(DeviceUnlockMutation);
   const [commitMediaPlayPause] = useMutation<DashboardMediaPlayPauseMutation>(
     MediaPlayPauseMutation,
   );
@@ -646,6 +706,12 @@ export default function Dashboard() {
       commitAirPurifierSetSpeed({ variables: { id: entity.id, speed } }),
     onSetDisplay: (on) =>
       commitAirPurifierSetDisplay({ variables: { id: entity.id, on } }),
+  });
+
+  const lockActionsFor = (entity: Entity): LockActions => ({
+    onLock: (durationSeconds) =>
+      commitDeviceLock({ variables: { id: entity.id, durationSeconds } }),
+    onUnlock: () => commitDeviceUnlock({ variables: { id: entity.id } }),
   });
 
   const mediaPlayerActionsFor = (entity: Entity): MediaPlayerActions => ({
@@ -796,6 +862,9 @@ export default function Dashboard() {
                   entity.kind === "airPurifier"
                     ? airPurifierActionsFor(entity)
                     : undefined
+                }
+                lockActions={
+                  entity.lock !== undefined ? lockActionsFor(entity) : undefined
                 }
                 mediaPlayerActions={
                   entity.kind === "mediaPlayer"

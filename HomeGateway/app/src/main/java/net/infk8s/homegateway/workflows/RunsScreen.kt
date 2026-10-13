@@ -224,6 +224,7 @@ private fun RunCard(
 private fun OutcomePill(outcome: String) {
     val color = when (outcome) {
         "success" -> StateTone.PRESENT.accent
+        "warning" -> StateTone.OPEN.accent
         "error" -> MaterialTheme.colorScheme.error
         else -> null
     }
@@ -300,7 +301,12 @@ private fun RunStep(step: RunStepUi) {
 
             step.detail?.let { TraceLine(it, maxLines = 1) }
             step.guard?.let { TraceLine("when $it") }
-            step.error?.let { TraceLine(it, color = MaterialTheme.colorScheme.error) }
+            step.error?.let {
+                TraceLine(
+                    it,
+                    color = if (step.outcome == "warning") StateTone.OPEN.accent else MaterialTheme.colorScheme.error,
+                )
+            }
         }
     }
 }
@@ -352,6 +358,7 @@ private fun TraceNote(text: String, color: Color = MaterialTheme.colorScheme.onS
 private fun stepColor(outcome: String): Color = when (outcome) {
     "ran" -> StateTone.PRESENT.accent
     "dry_run" -> StateTone.INFO.accent
+    "warning" -> StateTone.OPEN.accent
     "error" -> MaterialTheme.colorScheme.error
     "running" -> StateTone.LIGHT.accent
     "guard_skipped" -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)

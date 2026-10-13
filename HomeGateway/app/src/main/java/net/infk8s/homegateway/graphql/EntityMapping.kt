@@ -49,6 +49,7 @@ fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
             cadr = onAirPurifierEntity.cadr,
             filterLife = onAirPurifierEntity.filterLife,
             displayOn = onAirPurifierEntity.displayOn,
+            lock = onLockableEntity?.lock?.let { DeviceLockUi(it.source, parseInstant(it.expiresAt)) },
         )
 
     onPresenceEntity != null ->

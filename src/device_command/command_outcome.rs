@@ -3,4 +3,5 @@
 pub enum CommandOutcome {
     Sent,
     Unchanged,
+    Locked,
 }

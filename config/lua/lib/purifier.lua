@@ -59,6 +59,13 @@ function purifier.enforce_quiet(device, current, max_hours)
 		return
 	end
 
+	local status = air_purifier.state(device)
+
+	if status ~= nil and status.locked then
+		gw.log(device .. " is locked, leaving it as it was set")
+		return
+	end
+
 	local changed = false
 
 	if current.mode ~= nil and current.mode ~= QUIET_MODE then

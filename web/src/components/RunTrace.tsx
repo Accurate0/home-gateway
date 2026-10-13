@@ -25,6 +25,7 @@ const STEP_DOT: Record<string, string> = {
   ran: "bg-emerald-500",
   dry_run: "bg-sky-500",
   guard_skipped: "bg-muted-foreground/40",
+  warning: "bg-orange-500",
   error: "bg-red-500",
   running: "bg-amber-500",
 };
@@ -33,6 +34,7 @@ const STEP_LABEL: Record<string, string> = {
   ran: "ran",
   dry_run: "dry run",
   guard_skipped: "skipped",
+  warning: "warning",
   error: "error",
   running: "unfinished",
 };
@@ -114,7 +116,14 @@ export default function RunTrace({
                   </p>
                 )}
                 {step.error && (
-                  <p className="font-mono text-xs break-words text-red-600 dark:text-red-400">
+                  <p
+                    className={cn(
+                      "font-mono text-xs break-words",
+                      step.outcome === "warning"
+                        ? "text-orange-600 dark:text-orange-400"
+                        : "text-red-600 dark:text-red-400",
+                    )}
+                  >
                     {step.error}
                   </p>
                 )}

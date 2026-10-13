@@ -51,10 +51,35 @@ impl TraceRecorder {
 
     pub fn finish(&self, handle: StepHandle, outcome: StepOutcome, error: Option<String>) {
         if let Some(step) = self.lock().get_mut(handle.index) {
+            step.duration = handle.started.elapsed();
+
+            if step.outcome == StepOutcome::Warning && outcome == StepOutcome::Ran {
+                return;
+            }
+
             step.outcome = outcome;
             step.error = error;
-            step.duration = handle.started.elapsed();
         }
+    }
+
+    pub fn warn(&self, message: impl Into<String>) {
+        let mut steps = self.lock();
+
+        let running = steps
+            .iter_mut()
+            .rev()
+            .find(|step| step.outcome == StepOutcome::Running);
+
+        if let Some(step) = running {
+            step.outcome = StepOutcome::Warning;
+            step.error = Some(message.into());
+        }
+    }
+
+    pub fn has_warnings(&self) -> bool {
+        self.lock()
+            .iter()
+            .any(|step| step.outcome == StepOutcome::Warning)
     }
 
     pub fn finish_with(&self, handle: StepHandle, error: Option<String>) {
@@ -155,6 +180,36 @@ mod tests {
                 ("notify", StepOutcome::Error, None, Some("boom")),
             ]
         );
+    }
+
+    #[test]
+    fn a_warning_survives_the_step_finishing_cleanly() {
+        let recorder = TraceRecorder::default();
+
+        let outer = recorder.start(0, "lua", None);
+        let inner = recorder.start(1, "air_purifier.command", None);
+        recorder.warn("purifier is locked");
+        recorder.finish(inner, StepOutcome::Ran, None);
+        recorder.finish(outer, StepOutcome::Ran, None);
+
+        let steps = recorder.steps();
+
+        assert_eq!(steps[0].outcome, StepOutcome::Ran);
+        assert_eq!(steps[1].outcome, StepOutcome::Warning);
+        assert_eq!(steps[1].error.as_deref(), Some("purifier is locked"));
+        assert!(recorder.has_warnings());
+    }
+
+    #[test]
+    fn an_error_replaces_a_warning() {
+        let recorder = TraceRecorder::default();
+
+        let step = recorder.start(0, "air_purifier", None);
+        recorder.warn("purifier is locked");
+        recorder.finish(step, StepOutcome::Error, Some("boom".to_owned()));
+
+        assert_eq!(recorder.steps()[0].outcome, StepOutcome::Error);
+        assert!(!recorder.has_warnings());
     }
 
     #[test]

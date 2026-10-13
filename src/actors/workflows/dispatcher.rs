@@ -350,6 +350,17 @@ impl WorkflowDispatcher {
                     && connected.is_none_or(|want| want == *is_connected)
             }
             (
+                TriggerMatcher::DeviceLock { device, locked },
+                EventBusMessage::DeviceLock {
+                    device_id,
+                    locked: is_locked,
+                    ..
+                },
+            ) => {
+                device.as_ref().is_none_or(|want| want == device_id)
+                    && locked.is_none_or(|want| want == *is_locked)
+            }
+            (
                 TriggerMatcher::Jellyfin {
                     state,
                     user,

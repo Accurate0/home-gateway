@@ -25,7 +25,7 @@ type AdhocTaskStatus {
 	checksumDrifted: Boolean!
 }
 
-type AirPurifierEntity {
+type AirPurifierEntity implements LockableEntity {
 	category: EntityCategory!
 	id: String!
 	aliases: [String!]!
@@ -39,6 +39,7 @@ type AirPurifierEntity {
 	aqi: Float
 	cadr: Float
 	display: Boolean
+	lock: DeviceLock
 	changedAt: DateTime
 	lastSeen: DateTime
 }
@@ -125,6 +126,7 @@ type CommandFailedUpdate {
 enum CommandOutcome {
 	SENT
 	UNCHANGED
+	LOCKED
 }
 
 type CronUpdate {
@@ -191,6 +193,31 @@ type DeviceConnectionUpdate {
 	transport: String!
 	room: String
 	connected: Boolean!
+	id: ID!
+}
+
+type DeviceLock {
+	source: DeviceLockSource!
+	lockedAt: DateTime!
+	expiresAt: DateTime
+}
+
+type DeviceLockMutation {
+	lock(durationSeconds: Int): DeviceLock!
+	unlock: Boolean!
+}
+
+enum DeviceLockSource {
+	PHYSICAL
+	MANUAL
+}
+
+type DeviceLockUpdate {
+	eventId: UUID!
+	deviceId: String!
+	locked: Boolean!
+	source: DeviceLockSource
+	expiresAt: DateTime
 	id: ID!
 }
 
@@ -390,7 +417,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | AirPurifierUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | AirPurifierUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | DeviceLockUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -674,6 +701,11 @@ type LightUpdate {
 	colour: String
 }
 
+interface LockableEntity {
+	id: String!
+	lock: DeviceLock
+}
+
 type LuaAliasObject {
 	name: String!
 	type: String!
@@ -811,6 +843,7 @@ type MutationRoot {
 	robotVacuum(id: IdOrAlias!): RobotVacuumMutation!
 	garageDoor(id: IdOrAlias!): GarageDoorMutation!
 	airPurifier(id: IdOrAlias!): AirPurifierMutation!
+	deviceLock(id: IdOrAlias!): DeviceLockMutation!
 	mediaPlayer(id: IdOrAlias!): MediaPlayerMutation!
 	einkDisplay(id: IdOrAlias!): EinkDisplayMutation!
 	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!

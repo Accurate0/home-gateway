@@ -4,6 +4,9 @@ pub mod sweeper;
 use ractor::factory::{Job, WorkerBuilder, WorkerId};
 use uuid::Uuid;
 
+use crate::actors::devices::air_purifier::{
+    AirPurifierHandler, Message as AirPurifierMessage, Reapply,
+};
 use crate::actors::devices::light::{LightHandler, LightHandlerMessage};
 use crate::actors::system::rpc;
 use crate::event_bus::EventBusMessage;
@@ -62,6 +65,20 @@ impl ReconcilerWorker {
                         attributes: Box::new(attributes.clone()),
                         traceparent: crate::telemetry::context::inject_current(),
                     },
+                )?;
+
+                Ok(())
+            }
+            IntentAttributes::AirPurifier(attributes) => {
+                crate::metrics::record_reconciler_retry(intent.kind().as_str());
+
+                rpc::cast_factory(
+                    AirPurifierHandler::NAME,
+                    AirPurifierMessage::Reapply(Reapply {
+                        address: intent.address.clone(),
+                        attributes: *attributes,
+                        traceparent: crate::telemetry::context::inject_current(),
+                    }),
                 )?;
 
                 Ok(())

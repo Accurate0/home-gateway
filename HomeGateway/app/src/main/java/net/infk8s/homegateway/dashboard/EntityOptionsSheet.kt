@@ -33,7 +33,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import java.time.Instant
 import kotlin.math.roundToInt
+import net.infk8s.homegateway.graphql.DeviceLockUi
 import net.infk8s.homegateway.graphql.EntityUi
 import net.infk8s.homegateway.graphql.type.AirPurifierMode
 import net.infk8s.homegateway.graphql.type.GarageDoorState
@@ -145,6 +147,12 @@ private fun EntityOptions(entity: EntityUi, controls: EntityControls, lightLevel
                     onCheckedChange = { controls.setAirPurifierDisplay(entity.id, it) },
                 )
             }
+
+            LockRow(
+                lock = entity.lock,
+                onLock = { controls.lockDevice(entity.id, it) },
+                onUnlock = { controls.unlockDevice(entity.id) },
+            )
 
             MetricGrid(
                 listOfNotNull(
@@ -382,6 +390,30 @@ private fun LabelledSlider(label: String, value: String, slider: @Composable () 
 }
 
 @Composable
+private fun LockRow(lock: DeviceLockUi?, onLock: (Int?) -> Unit, onUnlock: () -> Unit) {
+    val now = remember(lock) { Instant.now() }
+    val active = lock?.takeIf { it.activeAt(now) }
+
+    if (active == null) {
+        LabelledRow("Lock", "Workflows can change this") {
+            ActionRow {
+                LOCK_DURATIONS.forEach { duration ->
+                    ActionButton(duration.label) { onLock(duration.seconds) }
+                }
+            }
+        }
+
+        return
+    }
+
+    LabelledRow("Lock", "${active.sourceLabel()} · ${active.remaining(now)}") {
+        ActionRow {
+            ActionButton("Unlock", onClick = onUnlock)
+        }
+    }
+}
+
+@Composable
 private fun ActionRow(content: @Composable RowScope.() -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
@@ -398,6 +430,16 @@ private fun RowScope.ActionButton(label: String, enabled: Boolean = true, onClic
 }
 
 private data class Metric(val label: String, val value: String)
+
+private data class LockDuration(val label: String, val seconds: Int?)
+
+private const val HOUR_SECONDS = 60 * 60
+
+private val LOCK_DURATIONS = listOf(
+    LockDuration("1 hour", HOUR_SECONDS),
+    LockDuration("6 hours", 6 * HOUR_SECONDS),
+    LockDuration("Hold", null),
+)
 
 private const val MIREDS_COOL = 153f
 private const val MIREDS_WARM = 500f

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d1ab319ab878a3d13d965f4180725f71>>
+ * @generated SignedSource<<8facea9648c240391265c3566e94c370>>
  * @lightSyntaxTransform
  */
 
@@ -8,7 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CommandOutcome = "SENT" | "UNCHANGED" | "%future added value";
+export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardGarageDoorOpenMutation$variables = {
   id: string;
 };

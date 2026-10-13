@@ -115,6 +115,37 @@ export interface Entity {
   cadr?: number | null;
   filterLife?: number | null;
   displayOn?: boolean | null;
+  lock?: DeviceLock | null;
+}
+
+export interface DeviceLock {
+  readonly source: string;
+  readonly expiresAt?: string | null;
+}
+
+export function activeLock(
+  entity: Entity,
+  now: number = Date.now(),
+): DeviceLock | null {
+  const lock = entity.lock;
+  if (!lock) return null;
+  if (lock.expiresAt == null) return lock;
+  const expires = Date.parse(lock.expiresAt);
+  return Number.isNaN(expires) || expires > now ? lock : null;
+}
+
+export function formatLockRemaining(
+  lock: DeviceLock,
+  now: number = Date.now(),
+): string {
+  if (lock.expiresAt == null) return "until unlocked";
+  const minutes = Math.max(
+    0,
+    Math.ceil((Date.parse(lock.expiresAt) - now) / 60_000),
+  );
+  const hours = Math.floor(minutes / 60);
+  if (hours === 0) return `${minutes}m left`;
+  return `${hours}h ${minutes % 60}m left`;
 }
 
 const SHORT_UNITS: Record<string, string> = {

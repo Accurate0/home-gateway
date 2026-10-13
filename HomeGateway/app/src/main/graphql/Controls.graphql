@@ -94,6 +94,21 @@ mutation AirPurifierSetDisplay($id: IdOrAlias!, $on: Boolean!) {
   }
 }
 
+mutation DeviceLock($id: IdOrAlias!, $durationSeconds: Int) {
+  deviceLock(id: $id) {
+    lock(durationSeconds: $durationSeconds) {
+      source
+      expiresAt
+    }
+  }
+}
+
+mutation DeviceUnlock($id: IdOrAlias!) {
+  deviceLock(id: $id) {
+    unlock
+  }
+}
+
 mutation EinkTakeScreenshot($id: IdOrAlias!) {
   einkDisplay(id: $id) {
     takeScreenshot

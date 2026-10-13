@@ -37,6 +37,9 @@
 ---@field display? boolean
 ---@field changed_at integer
 ---@field updated_at integer
+---@field locked boolean
+---@field lock_source? string
+---@field locked_until? integer
 
 ---@class gw.EnergyInterval
 ---@field used number

@@ -12,7 +12,8 @@ use crate::device_command::{self, CommandTargets, DeviceCommandError, Outbound};
 use crate::{
     device_registry::Capability,
     event_bus::EventBusMessage,
-    repo::intent::{DeviceKind, DeviceReport, IntentAttributes, IntentStatus},
+    intent,
+    repo::intent::{DeviceReport, IntentAttributes},
     repo::light::{HistorySource, LightAttributes, LightSample, LightState},
     settings::IEEEAddress,
     state::AppState,
@@ -204,7 +205,13 @@ async fn record_light_state(
         }
     }
 
-    settle_confirmed_intents(shared_actor_state, &ieee_addr, &state).await;
+    intent::observe(
+        shared_actor_state.repos.intent(),
+        &ieee_addr,
+        previous.as_ref().map(DeviceReport::Light).as_ref(),
+        &DeviceReport::Light(&state),
+    )
+    .await;
 
     shared_actor_state
         .event_bus
@@ -218,43 +225,6 @@ async fn record_light_state(
         });
 
     Ok(state)
-}
-
-async fn settle_confirmed_intents(
-    shared_actor_state: &AppState,
-    ieee_addr: &str,
-    state: &LightState,
-) {
-    let repo = shared_actor_state.repos.intent();
-
-    let pending = match repo.pending_for(DeviceKind::Light, ieee_addr).await {
-        Ok(pending) => pending,
-        Err(e) => {
-            tracing::warn!("failed to read pending intents for {ieee_addr}: {e}");
-            return;
-        }
-    };
-
-    let report = DeviceReport::Light(state);
-
-    let confirmed: Vec<i64> = pending
-        .iter()
-        .filter(|intent| intent.relative || intent.attributes.satisfied_by(&report))
-        .map(|intent| intent.id)
-        .collect();
-
-    if confirmed.is_empty() {
-        return;
-    }
-
-    tracing::info!(
-        "confirmed {} intent(s) for {ieee_addr} from device report",
-        confirmed.len()
-    );
-
-    if let Err(e) = repo.settle(&confirmed, IntentStatus::Confirmed).await {
-        tracing::warn!("failed to settle intents for {ieee_addr}: {e}");
-    }
 }
 
 impl LightHandler {

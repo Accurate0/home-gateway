@@ -1,8 +1,10 @@
+mod command_origin;
 mod command_outcome;
 mod command_targets;
 mod device_command_error;
 mod outbound;
 
+pub use command_origin::CommandOrigin;
 pub use command_outcome::CommandOutcome;
 pub use command_targets::CommandTargets;
 pub use device_command_error::DeviceCommandError;

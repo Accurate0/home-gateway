@@ -2,7 +2,7 @@ use crate::actors::devices::air_purifier;
 use crate::actors::devices::garage_door;
 use crate::actors::devices::robot_vacuum;
 use crate::actors::system::rpc;
-use crate::device_command::{CommandOutcome, CommandTargets};
+use crate::device_command::{CommandOrigin, CommandOutcome, CommandTargets};
 use crate::http::public_client::PublicHttpClient;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
@@ -137,7 +137,11 @@ impl WorkflowWorker {
             self.run_steps(ctx, &workflow.run).await
         };
         let elapsed = start.elapsed();
-        let outcome = if result.is_ok() { "success" } else { "error" };
+        let outcome = match &result {
+            Err(_) => "error",
+            Ok(_) if trace.has_warnings() => "warning",
+            Ok(_) => "success",
+        };
         crate::metrics::record_workflow(outcome, elapsed);
         self.shared_actor_state
             .handles
@@ -358,7 +362,10 @@ impl WorkflowWorker {
             } => self.run_garage_door(device, *command).await.map(|_| ()),
             Step::AirPurifier {
                 device, command, ..
-            } => self.run_air_purifier(device, *command).await.map(|_| ()),
+            } => self
+                .run_air_purifier(device, *command)
+                .await
+                .map(|outcome| Self::warn_if_locked(ctx.trace, device, outcome)),
             Step::Lua { .. } => unreachable!("a lua step is dispatched before this match"),
         };
 
@@ -511,7 +518,19 @@ impl WorkflowWorker {
             return Err(WorkflowError::NotAnAirPurifier(device.to_owned()));
         }
 
-        Ok(air_purifier::command::send(address, command).await?)
+        Ok(air_purifier::command::send(address, command, CommandOrigin::Workflow).await?)
+    }
+
+    pub fn warn_if_locked(trace: &TraceRecorder, device: &str, outcome: CommandOutcome) {
+        match outcome {
+            CommandOutcome::Locked => {
+                tracing::warn!("{device} is locked, command skipped");
+                trace.warn(format!("{device} is locked, command skipped"));
+            }
+            CommandOutcome::Sent | CommandOutcome::Unchanged => {
+                tracing::trace!("{device} command {outcome}");
+            }
+        }
     }
 
     /// Enable/disable every workflow carrying `tag`, skipping the workflow the

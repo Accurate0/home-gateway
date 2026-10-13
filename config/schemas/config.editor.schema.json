@@ -1644,11 +1644,43 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "lock": {
+          "$ref": "#/$defs/RawLockSettings"
         }
       },
       "additionalProperties": false,
       "required": [
-        "name"
+        "name",
+        "lock"
+      ]
+    },
+    "RawLockSettings": {
+      "type": "object",
+      "properties": {
+        "physical": {
+          "type": "string"
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AirPurifierField"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "physical",
+        "excluded"
+      ]
+    },
+    "AirPurifierField": {
+      "type": "string",
+      "enum": [
+        "on",
+        "mode",
+        "speed",
+        "display"
       ]
     },
     "RawDeviceWatchdog": {
@@ -3658,6 +3690,32 @@
         {
           "type": "object",
           "properties": {
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "locked": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "device_lock"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "state": {
               "anyOf": [
                 {
@@ -3975,7 +4033,8 @@
       "type": "string",
       "enum": [
         "light",
-        "smart_switch"
+        "smart_switch",
+        "air_purifier"
       ]
     },
     "FeatureFlagState": {

@@ -135,6 +135,12 @@ pub enum TriggerMatcher {
         #[serde(default)]
         connected: Option<bool>,
     },
+    DeviceLock {
+        #[serde(default)]
+        device: Option<String>,
+        #[serde(default)]
+        locked: Option<bool>,
+    },
     Jellyfin {
         #[serde(default)]
         state: Option<PlaybackState>,
@@ -223,6 +229,7 @@ impl TriggerMatcher {
             TriggerMatcher::FuelWatch { .. } => "fuelwatch",
             TriggerMatcher::DeviceBattery { .. } => "device_battery",
             TriggerMatcher::DeviceConnection { .. } => "device_connection",
+            TriggerMatcher::DeviceLock { .. } => "device_lock",
             TriggerMatcher::Jellyfin { .. } => "jellyfin",
             TriggerMatcher::MediaPlayer { .. } => "media_player",
             TriggerMatcher::Solar { .. } => "solar",
@@ -331,6 +338,7 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
+            | TriggerMatcher::DeviceLock { .. }
             | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Custom { .. }
@@ -451,6 +459,15 @@ impl TriggerMatcher {
                     Some(true) => format!("device_connection({device}) -> connected"),
                     Some(false) => format!("device_connection({device}) -> disconnected"),
                     None => format!("device_connection({device})"),
+                }
+            }
+            TriggerMatcher::DeviceLock { device, locked } => {
+                let device = device.clone().unwrap_or_else(|| "*".to_owned());
+
+                match locked {
+                    Some(true) => format!("device_lock({device}) -> locked"),
+                    Some(false) => format!("device_lock({device}) -> unlocked"),
+                    None => format!("device_lock({device})"),
                 }
             }
             TriggerMatcher::Jellyfin {
@@ -579,6 +596,7 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
+            | TriggerMatcher::DeviceLock { .. }
             | TriggerMatcher::Jellyfin { .. }
             | TriggerMatcher::MediaPlayer { .. }
             | TriggerMatcher::Solar { .. }

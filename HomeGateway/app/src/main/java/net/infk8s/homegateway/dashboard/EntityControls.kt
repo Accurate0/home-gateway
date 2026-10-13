@@ -22,6 +22,8 @@ data class EntityControls(
     val setAirPurifierMode: (String, AirPurifierMode) -> Unit,
     val setAirPurifierSpeed: (String, Int) -> Unit,
     val setAirPurifierDisplay: (String, Boolean) -> Unit,
+    val lockDevice: (String, Int?) -> Unit,
+    val unlockDevice: (String) -> Unit,
     val takeScreenshot: (String) -> Unit,
     val loadEinkConfig: suspend (String) -> EinkConfigUi?,
 )

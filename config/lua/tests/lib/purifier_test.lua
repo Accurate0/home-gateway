@@ -85,6 +85,16 @@ return {
 		test.eq(air_purifier.command.calls, { SLEEP })
 	end,
 
+	["a change on a locked purifier is left as it was set"] = function()
+		local held = { since = NOW - 60, mode = "auto", display = false }
+		local store = stub({ on = true, mode = "manual", speed = 3, display = false, locked = true }, held)
+
+		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3, display = false }, 6)
+
+		test.eq(store[KEY], held)
+		test.eq(air_purifier.command.calls, {})
+	end,
+
 	["the event from its own quieting changes nothing"] = function()
 		local held = { since = NOW - 60, mode = "auto", display = true }
 		local store = stub(nil, held)

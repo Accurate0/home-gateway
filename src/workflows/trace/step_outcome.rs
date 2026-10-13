@@ -6,6 +6,7 @@ pub enum StepOutcome {
     Ran,
     GuardSkipped,
     DryRun,
+    Warning,
     Error,
 }
 
@@ -16,6 +17,7 @@ impl fmt::Display for StepOutcome {
             StepOutcome::Ran => "ran",
             StepOutcome::GuardSkipped => "guard_skipped",
             StepOutcome::DryRun => "dry_run",
+            StepOutcome::Warning => "warning",
             StepOutcome::Error => "error",
         };
 

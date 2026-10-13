@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<275794c5b0fead639cd950cdb7c45ca6>>
+ * @generated SignedSource<<0bffbe82ec52f80ba7fdd8004966b2b9>>
  * @lightSyntaxTransform
  */
 
@@ -9,6 +9,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
+export type DeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
 export type GarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
 export type DashboardEventsSubscription$variables = Record<PropertyKey, never>;
 export type DashboardEventsSubscription$data = {
@@ -20,6 +21,12 @@ export type DashboardEventsSubscription$data = {
     readonly on: boolean;
     readonly purifierMode: AirPurifierMode | null | undefined;
     readonly purifierSpeed: number | null | undefined;
+  } | {
+    readonly __typename: "DeviceLockUpdate";
+    readonly expiresAt: any | null | undefined;
+    readonly id: string;
+    readonly lockSource: DeviceLockSource | null | undefined;
+    readonly locked: boolean;
   } | {
     readonly __typename: "DoorUpdate";
     readonly id: string;
@@ -194,6 +201,35 @@ v9 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "locked",
+      "storageKey": null
+    },
+    {
+      "alias": "lockSource",
+      "args": null,
+      "kind": "ScalarField",
+      "name": "source",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "expiresAt",
+      "storageKey": null
+    }
+  ],
+  "type": "DeviceLockUpdate",
+  "abstractKey": null
+},
+v10 = {
+  "kind": "InlineFragment",
+  "selections": [
+    (v2/*:: as any*/),
     (v3/*:: as any*/),
     {
       "alias": null,
@@ -206,7 +242,7 @@ v9 = {
   "type": "PresenceUpdate",
   "abstractKey": null
 },
-v10 = {
+v11 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -240,7 +276,7 @@ v10 = {
   "type": "EnvironmentUpdate",
   "abstractKey": null
 },
-v11 = {
+v12 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -256,7 +292,7 @@ v11 = {
   "type": "PlantUpdate",
   "abstractKey": null
 },
-v12 = {
+v13 = {
   "kind": "InlineFragment",
   "selections": [
     (v2/*:: as any*/),
@@ -356,7 +392,7 @@ v12 = {
   "type": "MediaPlayerUpdate",
   "abstractKey": null
 },
-v13 = [
+v14 = [
   (v2/*:: as any*/)
 ];
 return {
@@ -382,7 +418,8 @@ return {
           (v9/*:: as any*/),
           (v10/*:: as any*/),
           (v11/*:: as any*/),
-          (v12/*:: as any*/)
+          (v12/*:: as any*/),
+          (v13/*:: as any*/)
         ],
         "storageKey": "events(filter:\"*\")"
       }
@@ -413,33 +450,34 @@ return {
           (v10/*:: as any*/),
           (v11/*:: as any*/),
           (v12/*:: as any*/),
+          (v13/*:: as any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v13/*:: as any*/),
+            "selections": (v14/*:: as any*/),
             "type": "CommandFailedUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v13/*:: as any*/),
+            "selections": (v14/*:: as any*/),
             "type": "DeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v13/*:: as any*/),
+            "selections": (v14/*:: as any*/),
             "type": "DeviceConnectionUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v13/*:: as any*/),
+            "selections": (v14/*:: as any*/),
             "type": "HomeAssistantUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v13/*:: as any*/),
+            "selections": (v14/*:: as any*/),
             "type": "JellyfinUpdate",
             "abstractKey": null
           }
@@ -449,16 +487,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "b63e1e3c63e8a20b386b81548403ef1d",
+    "cacheID": "3ca5105f6b2b76a3e77b6134c35971ac",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on GarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on AirPurifierUpdate {\n      id\n      name\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      displayOn: display\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on GarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on AirPurifierUpdate {\n      id\n      name\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      displayOn: display\n    }\n    ... on DeviceLockUpdate {\n      id\n      locked\n      lockSource: source\n      expiresAt\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "984dd57ecf15677491fda595f5841d9a";
+(node as any).hash = "e032ca958b0f2f340fe27e86cfb9f2fb";
 
 export default node;

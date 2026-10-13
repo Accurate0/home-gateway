@@ -25,6 +25,72 @@ pub enum AirPurifierMode {
     Auto,
 }
 
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Deserialize,
+    schemars::JsonSchema,
+    strum::IntoStaticStr,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum AirPurifierField {
+    On,
+    Mode,
+    Speed,
+    Display,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AirPurifierState {
+    pub on: bool,
+    pub mode: Option<AirPurifierMode>,
+    pub speed: Option<i32>,
+    pub display: Option<bool>,
+}
+
+impl AirPurifierState {
+    pub fn changed_from(&self, previous: &AirPurifierState) -> Vec<&'static str> {
+        let mut changed = Vec::new();
+
+        if self.on != previous.on {
+            changed.push(AirPurifierField::On.into());
+        }
+
+        if self.mode != previous.mode {
+            changed.push(AirPurifierField::Mode.into());
+        }
+
+        if self.speed != previous.speed && self.speed_is_set() {
+            changed.push(AirPurifierField::Speed.into());
+        }
+
+        if self.display != previous.display {
+            changed.push(AirPurifierField::Display.into());
+        }
+
+        changed
+    }
+
+    pub fn speed_is_set(&self) -> bool {
+        self.on && self.mode == Some(AirPurifierMode::Manual)
+    }
+}
+
+impl From<&AirPurifierStateRow> for AirPurifierState {
+    fn from(row: &AirPurifierStateRow) -> Self {
+        Self {
+            on: row.is_on,
+            mode: row.mode,
+            speed: row.speed,
+            display: row.display,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct AirPurifierRepo {
     db: Pool<Postgres>,

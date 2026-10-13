@@ -1,6 +1,7 @@
 package net.infk8s.homegateway.dashboard
 
 import androidx.annotation.DrawableRes
+import java.time.Instant
 import net.infk8s.homegateway.graphql.EntityUi
 import net.infk8s.homegateway.graphql.type.AirPurifierMode
 import net.infk8s.homegateway.graphql.type.GarageDoorState
@@ -132,6 +133,7 @@ fun EntityUi.details(): String = when (this) {
         add(on?.let { if (it) "On" else "Off" } ?: "Unknown")
         if (on == true) modeLabel()?.let { add(it.replaceFirstChar { c -> c.uppercase() }) }
         pm25?.let { add("%.0f µg/m³".format(it)) }
+        if (lock?.activeAt(Instant.now()) == true) add("Locked")
     }.joinToString(" · ")
     is EntityUi.Environment -> buildList {
         temperature?.let { add("%.1f°C".format(it)) }

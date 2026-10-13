@@ -1,18 +1,20 @@
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use super::feature_flag_state::FeatureFlagState;
 use super::reading::SensorReading;
 use super::variables::{
     AirPurifierVariables, CommandFailedVariables, CronVariables, DeviceBatteryVariables,
-    DeviceConnectionVariables, DoorVariables, EnvironmentVariables, FeatureFlagVariables,
-    FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables, JellyfinVariables,
-    LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables, PresenceVariables,
-    SolarVariables, SunVariables, SwitchVariables, TransperthVariables, UnifiVariables,
-    WeatherVariables, WoolworthsVariables,
+    DeviceConnectionVariables, DeviceLockVariables, DoorVariables, EnvironmentVariables,
+    FeatureFlagVariables, FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables,
+    JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
+    PresenceVariables, SolarVariables, SunVariables, SwitchVariables, TransperthVariables,
+    UnifiVariables, WeatherVariables, WoolworthsVariables,
 };
 use crate::integrations::fuelwatch::FuelChange;
 use crate::media_control::PlaybackState;
 use crate::repo::air_purifier::AirPurifierMode;
+use crate::repo::device_lock::DeviceLockSource;
 use crate::repo::garage_door::GarageDoorState;
 use crate::repo::intent::{DeviceKind, IntentAttributes};
 use crate::settings::IEEEAddress;
@@ -140,6 +142,13 @@ pub enum EventBusMessage {
         transport: String,
         room: Option<String>,
         connected: bool,
+    },
+    DeviceLock {
+        event_id: Uuid,
+        device_id: String,
+        locked: bool,
+        source: Option<DeviceLockSource>,
+        expires_at: Option<DateTime<Utc>>,
     },
     Jellyfin {
         event_id: Uuid,
@@ -288,6 +297,7 @@ impl EventBusMessage {
             | EventBusMessage::Woolworths { event_id, .. }
             | EventBusMessage::DeviceBattery { event_id, .. }
             | EventBusMessage::DeviceConnection { event_id, .. }
+            | EventBusMessage::DeviceLock { event_id, .. }
             | EventBusMessage::Jellyfin { event_id, .. }
             | EventBusMessage::MediaPlayer { event_id, .. }
             | EventBusMessage::Solar { event_id, .. }
@@ -319,6 +329,7 @@ impl EventBusMessage {
             EventBusMessage::Woolworths { .. } => "woolworths",
             EventBusMessage::DeviceBattery { .. } => "device_battery",
             EventBusMessage::DeviceConnection { .. } => "device_connection",
+            EventBusMessage::DeviceLock { .. } => "device_lock",
             EventBusMessage::Jellyfin { .. } => "jellyfin",
             EventBusMessage::MediaPlayer { .. } => "media_player",
             EventBusMessage::Solar { .. } => "solar",
@@ -348,6 +359,7 @@ impl EventBusMessage {
         "woolworths",
         "device_battery",
         "device_connection",
+        "device_lock",
         "jellyfin",
         "media_player",
         "solar",
@@ -378,6 +390,7 @@ impl EventBusMessage {
             EventBusMessage::Woolworths { product_id, .. } => product_id.to_string(),
             EventBusMessage::DeviceBattery { device_id, .. }
             | EventBusMessage::DeviceConnection { device_id, .. }
+            | EventBusMessage::DeviceLock { device_id, .. }
             | EventBusMessage::GarageDoor { device_id, .. }
             | EventBusMessage::AirPurifier { device_id, .. }
             | EventBusMessage::MediaPlayer { device_id, .. } => device_id.clone(),
@@ -509,6 +522,19 @@ impl EventBusMessage {
                 transport: transport.clone(),
                 room: room.clone(),
                 connected: *connected,
+            }
+            .to_node(),
+            EventBusMessage::DeviceLock {
+                device_id,
+                locked,
+                source,
+                expires_at,
+                ..
+            } => DeviceLockVariables {
+                device_id: device_id.clone(),
+                locked: *locked,
+                source: source.map(|source| source.to_string()),
+                expires_at: expires_at.map(|expires_at| expires_at.timestamp()),
             }
             .to_node(),
             EventBusMessage::Jellyfin {

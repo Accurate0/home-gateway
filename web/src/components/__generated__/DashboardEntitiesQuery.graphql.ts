@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2350dd93acbd19ca5c17bb5e9b712177>>
+ * @generated SignedSource<<5d94538388856d186e8f09f5644f3ab2>>
  * @lightSyntaxTransform
  */
 
@@ -10,6 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
 export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PM_25" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "VOC_INDEX" | "%future added value";
+export type DeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
 export type EinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
 export type EinkMode = "ALBUM" | "DASHBOARD" | "REDDIT" | "%future added value";
 export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PLANTS" | "PRESENCE" | "VACUUMS" | "%future added value";
@@ -19,34 +20,20 @@ export type RobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
 export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
 export type DashboardEntitiesQuery$data = {
   readonly entities: ReadonlyArray<{
-    readonly __typename: "AirPurifierEntity";
-    readonly aqi: number | null | undefined;
-    readonly cadr: number | null | undefined;
-    readonly category: EntityCategory;
-    readonly displayOn: boolean | null | undefined;
-    readonly filterLife: number | null | undefined;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly on: boolean | null | undefined;
-    readonly purifierMode: AirPurifierMode | null | undefined;
-    readonly purifierPm25: number | null | undefined;
-    readonly purifierSpeed: number | null | undefined;
-    readonly room: string | null | undefined;
-  } | {
-    readonly __typename: "DoorEntity";
-    readonly category: EntityCategory;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly open: boolean | null | undefined;
-    readonly room: string | null | undefined;
-  } | {
-    readonly __typename: "EinkDisplayEntity";
-    readonly batteryPercentage: number | null | undefined;
-    readonly batteryVoltage: number | null | undefined;
-    readonly category: EntityCategory;
-    readonly config: {
+    readonly __typename: string;
+    readonly appName?: string | null | undefined;
+    readonly aqi?: number | null | undefined;
+    readonly artworkUrl?: string | null | undefined;
+    readonly battery?: {
+      readonly percentage: number | null | undefined;
+    } | null | undefined;
+    readonly batteryPercentage?: number | null | undefined;
+    readonly batteryVoltage?: number | null | undefined;
+    readonly cadr?: number | null | undefined;
+    readonly capabilities?: ReadonlyArray<Capability>;
+    readonly category?: EntityCategory;
+    readonly cleanCount?: number | null | undefined;
+    readonly config?: {
       readonly album: string | null | undefined;
       readonly mode: EinkMode;
       readonly orientation: Orientation;
@@ -56,104 +43,50 @@ export type DashboardEntitiesQuery$data = {
       readonly sleepStart: string | null | undefined;
       readonly view: string | null | undefined;
     } | null | undefined;
-    readonly einkKind: EinkDisplayKind;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly room: string | null | undefined;
-  } | {
-    readonly __typename: "EnvironmentEntity";
-    readonly capabilities: ReadonlyArray<Capability>;
-    readonly category: EntityCategory;
-    readonly humidity: number | null | undefined;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly lux: number | null | undefined;
-    readonly name: string;
-    readonly pm25: number | null | undefined;
-    readonly pressure: number | null | undefined;
-    readonly room: string | null | undefined;
-    readonly temperature: number | null | undefined;
-    readonly time: any | null | undefined;
-    readonly uvIndex: number | null | undefined;
-    readonly vocIndex: number | null | undefined;
-  } | {
-    readonly __typename: "GarageDoorEntity";
-    readonly battery: {
-      readonly percentage: number | null | undefined;
+    readonly currentCleanArea?: number | null | undefined;
+    readonly currentRoom?: string | null | undefined;
+    readonly displayOn?: boolean | null | undefined;
+    readonly durationSeconds?: number | null | undefined;
+    readonly einkKind?: EinkDisplayKind;
+    readonly episode?: number | null | undefined;
+    readonly fanSpeed?: string | null | undefined;
+    readonly filterLife?: number | null | undefined;
+    readonly garageState?: GarageDoorState | null | undefined;
+    readonly humidity?: number | null | undefined;
+    readonly id?: string;
+    readonly kind?: RobotVacuumKind;
+    readonly lastSeen?: any | null | undefined;
+    readonly lock?: {
+      readonly expiresAt: any | null | undefined;
+      readonly source: DeviceLockSource;
     } | null | undefined;
-    readonly category: EntityCategory;
-    readonly garageState: GarageDoorState | null | undefined;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly room: string | null | undefined;
-  } | {
-    readonly __typename: "LightEntity";
-    readonly capabilities: ReadonlyArray<Capability>;
-    readonly category: EntityCategory;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly on: boolean | null | undefined;
-    readonly room: string | null | undefined;
-  } | {
-    readonly __typename: "MediaPlayerEntity";
-    readonly appName: string | null | undefined;
-    readonly artworkUrl: string | null | undefined;
-    readonly category: EntityCategory;
-    readonly durationSeconds: number | null | undefined;
-    readonly episode: number | null | undefined;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly mediaArtist: string | null | undefined;
-    readonly mediaSeriesTitle: string | null | undefined;
-    readonly mediaTitle: string | null | undefined;
-    readonly muted: boolean | null | undefined;
-    readonly name: string;
-    readonly positionSeconds: number | null | undefined;
-    readonly progress: number | null | undefined;
-    readonly room: string | null | undefined;
-    readonly season: number | null | undefined;
-    readonly source: string | null | undefined;
-    readonly state: string | null | undefined;
-    readonly volumeLevel: number | null | undefined;
-  } | {
-    readonly __typename: "PlantEntity";
-    readonly category: EntityCategory;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly room: string | null | undefined;
-    readonly soilMoisture: number | null | undefined;
-    readonly time: any | null | undefined;
-  } | {
-    readonly __typename: "PresenceEntity";
-    readonly category: EntityCategory;
-    readonly id: string;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly present: boolean | null | undefined;
-    readonly room: string | null | undefined;
-  } | {
-    readonly __typename: "RobotVacuumEntity";
-    readonly batteryPercentage: number | null | undefined;
-    readonly capabilities: ReadonlyArray<Capability>;
-    readonly category: EntityCategory;
-    readonly cleanCount: number | null | undefined;
-    readonly currentCleanArea: number | null | undefined;
-    readonly currentRoom: string | null | undefined;
-    readonly fanSpeed: string | null | undefined;
-    readonly id: string;
-    readonly kind: RobotVacuumKind;
-    readonly lastSeen: any | null | undefined;
-    readonly name: string;
-    readonly room: string | null | undefined;
-    readonly status: string | null | undefined;
-  } | {
-    // This will never be '%other', but we need some
-    // value in case none of the concrete values match.
-    readonly __typename: "%other";
+    readonly lux?: number | null | undefined;
+    readonly mediaArtist?: string | null | undefined;
+    readonly mediaSeriesTitle?: string | null | undefined;
+    readonly mediaTitle?: string | null | undefined;
+    readonly muted?: boolean | null | undefined;
+    readonly name?: string;
+    readonly on?: boolean | null | undefined;
+    readonly open?: boolean | null | undefined;
+    readonly pm25?: number | null | undefined;
+    readonly positionSeconds?: number | null | undefined;
+    readonly present?: boolean | null | undefined;
+    readonly pressure?: number | null | undefined;
+    readonly progress?: number | null | undefined;
+    readonly purifierMode?: AirPurifierMode | null | undefined;
+    readonly purifierPm25?: number | null | undefined;
+    readonly purifierSpeed?: number | null | undefined;
+    readonly room?: string | null | undefined;
+    readonly season?: number | null | undefined;
+    readonly soilMoisture?: number | null | undefined;
+    readonly source?: string | null | undefined;
+    readonly state?: string | null | undefined;
+    readonly status?: string | null | undefined;
+    readonly temperature?: number | null | undefined;
+    readonly time?: any | null | undefined;
+    readonly uvIndex?: number | null | undefined;
+    readonly vocIndex?: number | null | undefined;
+    readonly volumeLevel?: number | null | undefined;
   }>;
   readonly entitySections: ReadonlyArray<{
     readonly category: EntityCategory;
@@ -229,7 +162,14 @@ v8 = {
   "name": "batteryPercentage",
   "storageKey": null
 },
-v9 = [
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "source",
+  "storageKey": null
+},
+v10 = [
   {
     "alias": null,
     "args": null,
@@ -514,13 +454,7 @@ v9 = [
             "name": "appName",
             "storageKey": null
           },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "source",
-            "storageKey": null
-          },
+          (v9/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -705,6 +639,32 @@ v9 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "DeviceLock",
+            "kind": "LinkedField",
+            "name": "lock",
+            "plural": false,
+            "selections": [
+              (v9/*:: as any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "expiresAt",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "type": "LockableEntity",
+        "abstractKey": "__isLockableEntity"
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
           (v0/*:: as any*/),
           (v1/*:: as any*/),
           (v2/*:: as any*/),
@@ -768,7 +728,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "DashboardEntitiesQuery",
-    "selections": (v9/*:: as any*/),
+    "selections": (v10/*:: as any*/),
     "type": "QueryRoot",
     "abstractKey": null
   },
@@ -777,19 +737,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "DashboardEntitiesQuery",
-    "selections": (v9/*:: as any*/)
+    "selections": (v10/*:: as any*/)
   },
   "params": {
-    "cacheID": "1831461c2643efa161524a40198b0409",
+    "cacheID": "fa35684bf45861ef3c77e339be2d612c",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      pm25\n      vocIndex\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on PlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on GarageDoorEntity {\n      category\n      id\n      name\n      room\n      garageState: state\n      battery {\n        percentage\n      }\n      lastSeen\n    }\n    ... on AirPurifierEntity {\n      category\n      id\n      name\n      room\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      purifierPm25: pm25\n      aqi\n      cadr\n      filterLife\n      displayOn: display\n      lastSeen\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      pm25\n      vocIndex\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on PlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        album\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on GarageDoorEntity {\n      category\n      id\n      name\n      room\n      garageState: state\n      battery {\n        percentage\n      }\n      lastSeen\n    }\n    ... on AirPurifierEntity {\n      category\n      id\n      name\n      room\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      purifierPm25: pm25\n      aqi\n      cadr\n      filterLife\n      displayOn: display\n      lastSeen\n    }\n    ... on LockableEntity {\n      __isLockableEntity: __typename\n      lock {\n        source\n        expiresAt\n      }\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c51d9becd68c7e1e2ff177109f66f5c4";
+(node as any).hash = "a07e9b97b5a326e5f2c9fe3fbdf4c5a2";
 
 export default node;

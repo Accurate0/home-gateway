@@ -1,7 +1,10 @@
-use async_graphql::Object;
+use async_graphql::{Guard, Object};
 
+use crate::auth::scope::{Action, Scope};
 use crate::device_registry::{DeviceRegistry, IdOrAlias};
+use crate::graphql::guard::ScopeGuard;
 use crate::graphql::mutations::air_purifier_mutation::AirPurifierMutation;
+use crate::graphql::mutations::device_lock_mutation::DeviceLockMutation;
 use crate::graphql::mutations::eink_display_mutation::EinkDisplayMutation;
 use crate::graphql::mutations::garage_door_mutation::GarageDoorMutation;
 use crate::graphql::mutations::light_mutation::LightMutation;
@@ -76,6 +79,25 @@ impl EntitiesMutation {
         }
 
         Ok(AirPurifierMutation::new(address))
+    }
+
+    async fn device_lock(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        id: IdOrAlias,
+    ) -> async_graphql::Result<DeviceLockMutation> {
+        let registry = ctx.data::<DeviceRegistry>()?;
+        let device = registry.lookup(&id)?;
+
+        let Some(lockable) = registry.lockable(&device.address) else {
+            return Err(async_graphql::Error::new(format!("`{id}` can't be locked")));
+        };
+
+        ScopeGuard(Scope::new(lockable.resource, Action::Write))
+            .check(ctx)
+            .await?;
+
+        Ok(DeviceLockMutation::new(device.id.clone()))
     }
 
     async fn media_player(

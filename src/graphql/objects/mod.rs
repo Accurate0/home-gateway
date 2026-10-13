@@ -1,6 +1,7 @@
 pub mod adhoc_object;
 pub mod auth_object;
 pub mod device_connection_object;
+pub mod device_lock_object;
 pub mod energy_object;
 pub mod entity_object;
 pub mod fuelwatch_object;
@@ -8,6 +9,7 @@ pub mod home_assistant_object;
 pub mod id_or_alias;
 pub mod jellyfin_object;
 pub mod jellyfin_session_object;
+pub mod lockable;
 pub mod lua_api_object;
 pub mod mode_object;
 pub mod mode_status;

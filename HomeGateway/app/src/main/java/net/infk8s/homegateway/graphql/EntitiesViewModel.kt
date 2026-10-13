@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.apollographql.apollo.api.Mutation
+import com.apollographql.apollo.api.Optional
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +33,7 @@ import net.infk8s.homegateway.dashboard.LightLevels
 import net.infk8s.homegateway.dashboard.move
 import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.quicktiles.QuickTiles
+import net.infk8s.homegateway.ui.parseInstant
 import net.infk8s.homegateway.widget.EntityWidgets
 import net.infk8s.homegateway.graphql.type.AirPurifierMode
 import net.infk8s.homegateway.graphql.type.EntityCategory
@@ -94,6 +96,7 @@ sealed interface EntityUi {
         val cadr: Double?,
         val filterLife: Double?,
         val displayOn: Boolean?,
+        val lock: DeviceLockUi?,
     ) : EntityUi {
         override val key get() = "air_purifier:$id"
     }
@@ -514,6 +517,13 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
                 displayOn = event.onAirPurifierUpdate.displayOn,
             )
 
+        event.onDeviceLockUpdate != null && this is EntityUi.AirPurifier && id == event.onDeviceLockUpdate.id ->
+            copy(
+                lock = event.onDeviceLockUpdate.source
+                    ?.takeIf { event.onDeviceLockUpdate.locked }
+                    ?.let { DeviceLockUi(it, parseInstant(event.onDeviceLockUpdate.expiresAt)) },
+            )
+
         event.onPresenceUpdate != null && this is EntityUi.Presence && id == event.onPresenceUpdate.id ->
             copy(present = event.onPresenceUpdate.present)
 
@@ -556,6 +566,10 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         setAirPurifierMode = { id, mode -> mutate(AirPurifierSetModeMutation(id, mode)) },
         setAirPurifierSpeed = { id, speed -> mutate(AirPurifierSetSpeedMutation(id, speed)) },
         setAirPurifierDisplay = { id, on -> mutate(AirPurifierSetDisplayMutation(id, on)) },
+        lockDevice = { id, durationSeconds ->
+            mutate(DeviceLockMutation(id, Optional.presentIfNotNull(durationSeconds)))
+        },
+        unlockDevice = { mutate(DeviceUnlockMutation(it)) },
         takeScreenshot = { mutate(EinkTakeScreenshotMutation(it)) },
         loadEinkConfig = ::loadEinkConfig,
     )

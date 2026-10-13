@@ -83,6 +83,12 @@ query Entities {
       filterLife
       displayOn: display
     }
+    ... on LockableEntity {
+      lock {
+        source
+        expiresAt
+      }
+    }
     ... on RobotVacuumEntity {
       category
       id

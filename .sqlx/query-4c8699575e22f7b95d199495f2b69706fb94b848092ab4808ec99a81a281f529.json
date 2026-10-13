@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO device_lock (device_id, source, locked_at, expires_at)\n            VALUES ($1, $2, now(), $3)\n            ON CONFLICT (device_id) DO UPDATE SET\n              source = EXCLUDED.source,\n              locked_at = EXCLUDED.locked_at,\n              expires_at = EXCLUDED.expires_at\n            WHERE device_lock.expires_at IS NOT NULL\n              AND device_lock.expires_at < EXCLUDED.expires_at\n            RETURNING device_id, source AS \"source: DeviceLockSource\", locked_at, expires_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "device_lock",
+            "name": "device_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "source: DeviceLockSource",
+        "type_info": {
+          "Custom": {
+            "name": "device_lock_source",
+            "kind": {
+              "Enum": [
+                "physical",
+                "manual"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "device_lock",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "locked_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "device_lock",
+            "name": "locked_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "device_lock",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        {
+          "Custom": {
+            "name": "device_lock_source",
+            "kind": {
+              "Enum": [
+                "physical",
+                "manual"
+              ]
+            }
+          }
+        },
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4c8699575e22f7b95d199495f2b69706fb94b848092ab4808ec99a81a281f529"
+}

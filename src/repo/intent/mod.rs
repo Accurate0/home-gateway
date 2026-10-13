@@ -1,9 +1,11 @@
+pub mod air_purifier_attributes;
 pub mod types;
 
 use chrono::TimeDelta;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
+pub use air_purifier_attributes::AirPurifierAttributes;
 pub use types::{
     DeviceIntent, DeviceKind, DeviceReport, IntentAttributes, IntentStatus, PowerState,
     SwitchAttributes,
@@ -158,6 +160,24 @@ impl IntentRepo {
                 })
             })
             .collect())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.intent.supersede_pending", err)]
+    pub async fn supersede_pending(
+        &self,
+        kind: DeviceKind,
+        address: &str,
+    ) -> Result<u64, sqlx::Error> {
+        let superseded = sqlx::query!(
+            "UPDATE device_intent SET status = 'superseded', settled_at = now() \
+             WHERE kind = $1 AND address = $2 AND status = 'pending'",
+            kind.as_str(),
+            address,
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(superseded.rows_affected())
     }
 
     #[tracing::instrument(skip_all, name = "db.intent.settle", err)]

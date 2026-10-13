@@ -20,6 +20,12 @@ subscription Events {
       purifierSpeed: speed
       displayOn: display
     }
+    ... on DeviceLockUpdate {
+      id
+      locked
+      source
+      expiresAt
+    }
     ... on PresenceUpdate {
       id
       present

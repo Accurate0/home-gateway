@@ -1,9 +1,9 @@
 use crate::repo::{
-    AdhocRepo, AirPurifierRepo, BatteryRepo, DeviceRepo, DoorRepo, EinkRepo, EnergyRepo,
-    EnvironmentRepo, FuelWatchRepo, GarageDoorRepo, HolidayRepo, HomeAssistantRepo, IntentRepo,
-    JellyfinRepo, LightRepo, MediaPlayerRepo, MetricRepo, PlantRepo, PushRepo, RobotVacuumRepo,
-    SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo, WatchdogRepo, WillyWeatherRepo, WoolworthsRepo,
-    WorkflowRepo,
+    AdhocRepo, AirPurifierRepo, BatteryRepo, DeviceLockRepo, DeviceRepo, DoorRepo, EinkRepo,
+    EnergyRepo, EnvironmentRepo, FuelWatchRepo, GarageDoorRepo, HolidayRepo, HomeAssistantRepo,
+    IntentRepo, JellyfinRepo, LightRepo, MediaPlayerRepo, MetricRepo, PlantRepo, PushRepo,
+    RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo, WatchdogRepo,
+    WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
@@ -13,6 +13,7 @@ struct Repos {
     air_purifier: AirPurifierRepo,
     battery: BatteryRepo,
     device: DeviceRepo,
+    device_lock: DeviceLockRepo,
     door: DoorRepo,
     eink: EinkRepo,
     energy: EnergyRepo,
@@ -52,6 +53,7 @@ impl RepoRegistry {
                 air_purifier: AirPurifierRepo::new(db.clone()),
                 battery: BatteryRepo::new(db.clone()),
                 device: DeviceRepo::new(db.clone()),
+                device_lock: DeviceLockRepo::new(db.clone()),
                 door: DoorRepo::new(db.clone()),
                 eink: EinkRepo::new(db.clone()),
                 energy: EnergyRepo::new(db.clone()),
@@ -94,6 +96,10 @@ impl RepoRegistry {
 
     pub fn device(&self) -> &DeviceRepo {
         &self.inner.device
+    }
+
+    pub fn device_lock(&self) -> &DeviceLockRepo {
+        &self.inner.device_lock
     }
 
     pub fn door(&self) -> &DoorRepo {

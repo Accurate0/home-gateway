@@ -1,5 +1,7 @@
 use crate::actors::workflows::WorkflowWorker;
 use crate::lua::{Json, LuaCallContext, LuaClass, lua_module};
+use crate::repo::device_lock::DeviceLock;
+use crate::workflows::WorkflowError;
 use crate::workflows::definition::AirPurifierCommand;
 
 #[derive(LuaClass)]
@@ -13,6 +15,9 @@ pub struct AirPurifierStatus {
     display: Option<bool>,
     changed_at: i64,
     updated_at: i64,
+    locked: bool,
+    lock_source: Option<String>,
+    locked_until: Option<i64>,
 }
 
 pub struct AirPurifierLua;
@@ -25,9 +30,12 @@ impl AirPurifierLua {
             return Ok(None);
         };
 
-        let row = cx
+        let (row, lock) = cx
             .query(Self::STATE, || async {
-                cx.state.repos.air_purifier().latest(&id).await
+                let row = cx.state.repos.air_purifier().latest(&id).await?;
+                let lock = cx.state.repos.device_lock().active(&id).await?;
+
+                Ok::<_, sqlx::Error>((row, lock))
             })
             .await?;
 
@@ -40,6 +48,12 @@ impl AirPurifierLua {
             display: row.display,
             changed_at: row.changed_at.timestamp(),
             updated_at: row.updated_at.timestamp(),
+            locked: lock.is_some(),
+            lock_source: lock.as_ref().map(|lock| lock.source.to_string()),
+            locked_until: lock
+                .as_ref()
+                .and_then(|lock: &DeviceLock| lock.expires_at)
+                .map(|expires_at| expires_at.timestamp()),
         }))
     }
 
@@ -53,7 +67,11 @@ impl AirPurifierLua {
         let worker = WorkflowWorker::new(cx.state.clone());
 
         cx.command(Self::COMMAND, format!("{device} {command}"), || async {
-            worker.run_air_purifier(&device, command).await
+            let outcome = worker.run_air_purifier(&device, command).await?;
+
+            WorkflowWorker::warn_if_locked(&cx.trace, &device, outcome);
+
+            Ok::<_, WorkflowError>(outcome)
         })
         .await
     }

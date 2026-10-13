@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c1f592ffd7261dd60a71985b8ad39c9b>>
+ * @generated SignedSource<<592e4d9abc55d28566c08ee1d3f18041>>
  * @lightSyntaxTransform
  */
 
@@ -148,6 +148,12 @@ return {
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
+            "type": "DeviceLockUpdate",
+            "abstractKey": null
+          },
+          {
+            "kind": "InlineFragment",
+            "selections": (v4/*:: as any*/),
             "type": "DoorUpdate",
             "abstractKey": null
           },
@@ -199,12 +205,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "49ea86368e1b4a44e57246598b007404",
+    "cacheID": "e65750b9de9a2fec45c7b751faaab9a7",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageSubscription",
     "operationKind": "subscription",
-    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on AirPurifierUpdate {\n      id\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on GarageDoorUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PlantUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on AirPurifierUpdate {\n      id\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on DeviceLockUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on GarageDoorUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PlantUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();

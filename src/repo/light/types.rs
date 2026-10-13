@@ -87,4 +87,50 @@ impl LightAttributes {
 
         on_matches && brightness_matches && colour_temp_matches && colour_matches
     }
+
+    pub fn explains(&self, field: &str, state: &LightState) -> bool {
+        match field {
+            LightState::STATE => match self.state.as_deref() {
+                Some(want) => state.on == (want == "ON"),
+                None => state.on && !self.is_empty(),
+            },
+            LightState::BRIGHTNESS => {
+                self.brightness.is_some() && self.brightness == state.brightness
+            }
+            LightState::COLOUR_TEMP => {
+                self.colour_temp.is_some() && self.colour_temp == state.colour_temp
+            }
+            LightState::COLOUR => self.colour.is_some() && self.colour == state.colour,
+            _ => false,
+        }
+    }
+}
+
+impl LightState {
+    pub const STATE: &str = "state";
+    pub const BRIGHTNESS: &str = "brightness";
+    pub const COLOUR_TEMP: &str = "colour_temp";
+    pub const COLOUR: &str = "colour";
+
+    pub fn changed_from(&self, previous: &LightState) -> Vec<&'static str> {
+        let mut changed = Vec::new();
+
+        if self.on != previous.on {
+            changed.push(Self::STATE);
+        }
+
+        if self.brightness != previous.brightness {
+            changed.push(Self::BRIGHTNESS);
+        }
+
+        if self.colour_temp != previous.colour_temp {
+            changed.push(Self::COLOUR_TEMP);
+        }
+
+        if self.colour != previous.colour {
+            changed.push(Self::COLOUR);
+        }
+
+        changed
+    }
 }

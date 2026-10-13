@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<61862385c2249e9e843b10e1b823925a>>
+ * @generated SignedSource<<f0e3fce3779755ad278739bc35c6597e>>
  * @lightSyntaxTransform
  */
 
@@ -8,7 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CommandOutcome = "SENT" | "UNCHANGED" | "%future added value";
+export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardAirPurifierTurnOnMutation$variables = {
   id: string;
 };

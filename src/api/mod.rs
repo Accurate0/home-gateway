@@ -3,7 +3,7 @@ use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
 use crate::workflows::manager::WorkflowManager;
-use async_graphql::{Schema, dataloader::DataLoader};
+use async_graphql::dataloader::DataLoader;
 use axum::{
     Router,
     extract::Request,
@@ -21,10 +21,11 @@ use crate::device_registry::DeviceRegistry;
 use crate::device_registry::last_seen::LastSeen;
 use crate::event_bus::EventBus;
 use crate::graphql::{
-    FinalSchema, QueryRoot,
+    self, FinalSchema,
     dataloader::air_purifier_state::AirPurifierStateDataLoader,
     dataloader::device_battery::DeviceBatteryDataLoader,
     dataloader::device_battery_history::DeviceBatteryHistoryDataLoader,
+    dataloader::device_lock::DeviceLockDataLoader,
     dataloader::device_metric::DeviceMetricDataLoader,
     dataloader::eink_battery::EinkDisplayDataLoader,
     dataloader::forecast::ForecastDataLoader,
@@ -37,8 +38,6 @@ use crate::graphql::{
     dataloader::temperature::LatestTemperatureDataLoader,
     dataloader::workflow_run_steps::WorkflowRunStepsDataLoader,
     handler::{graphiql, graphql_handler, graphql_ws_handler},
-    mutations::MutationRoot,
-    subscription::SubscriptionRoot,
 };
 use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::repo::RepoRegistry;
@@ -106,111 +105,113 @@ pub struct SchemaParts<'a> {
 }
 
 pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
-    Schema::build(
-        QueryRoot::default(),
-        MutationRoot::default(),
-        SubscriptionRoot,
-    )
-    .data(DataLoader::new(
-        LatestTemperatureDataLoader {
-            repo: state.repos.environment().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        LatestPlantDataLoader {
-            repo: state.repos.plant().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        WorkflowRunStepsDataLoader {
-            repo: state.repos.workflow().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        DeviceMetricDataLoader {
-            repo: state.repos.metric().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        LastSeenDataLoader {
-            last_seen: state.handles.expect::<LastSeen>().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        EinkDisplayDataLoader {
-            repo: state.repos.eink().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        DeviceBatteryDataLoader {
-            repo: state.repos.battery().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        DeviceBatteryHistoryDataLoader {
-            repo: state.repos.battery().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        HomeAssistantStateDataLoader {
-            repo: state.repos.home_assistant().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        MediaPlayerStateDataLoader {
-            repo: state.repos.media_player().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        RobotVacuumStateDataLoader {
-            repo: state.repos.robot_vacuum().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        GarageDoorStateDataLoader {
-            repo: state.repos.garage_door().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        AirPurifierStateDataLoader {
-            repo: state.repos.air_purifier().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        ForecastDataLoader {
-            repo: state.repos.willyweather().clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(state.handles.get::<HomeAssistant>().cloned())
-    .data(state.handles.require::<EinkDisplayManager>().clone())
-    .data(state.handles.require::<S3>().clone())
-    .data(state.handles.clone())
-    .data(state.handles.require::<MqttClient>().clone())
-    .data(state.db.clone())
-    .data(state.settings.clone())
-    .data(state.devices.clone())
-    .data(state.feature_flag_client.clone())
-    .data(state.event_bus.clone())
-    .data(state.handles.require::<WorkflowManager>().clone())
-    .data(state.repos.clone())
-    .extension(crate::telemetry::graphql::Tracing)
-    .limit_depth(state.settings.graphql.max_depth)
-    .limit_complexity(state.settings.graphql.max_complexity)
-    .finish()
+    graphql::builder()
+        .data(DataLoader::new(
+            LatestTemperatureDataLoader {
+                repo: state.repos.environment().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            LatestPlantDataLoader {
+                repo: state.repos.plant().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            WorkflowRunStepsDataLoader {
+                repo: state.repos.workflow().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            DeviceMetricDataLoader {
+                repo: state.repos.metric().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            LastSeenDataLoader {
+                last_seen: state.handles.expect::<LastSeen>().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            EinkDisplayDataLoader {
+                repo: state.repos.eink().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            DeviceBatteryDataLoader {
+                repo: state.repos.battery().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            DeviceBatteryHistoryDataLoader {
+                repo: state.repos.battery().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            HomeAssistantStateDataLoader {
+                repo: state.repos.home_assistant().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            MediaPlayerStateDataLoader {
+                repo: state.repos.media_player().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            RobotVacuumStateDataLoader {
+                repo: state.repos.robot_vacuum().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            GarageDoorStateDataLoader {
+                repo: state.repos.garage_door().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            AirPurifierStateDataLoader {
+                repo: state.repos.air_purifier().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            DeviceLockDataLoader {
+                repo: state.repos.device_lock().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(DataLoader::new(
+            ForecastDataLoader {
+                repo: state.repos.willyweather().clone(),
+            },
+            tokio::spawn,
+        ))
+        .data(state.handles.get::<HomeAssistant>().cloned())
+        .data(state.handles.require::<EinkDisplayManager>().clone())
+        .data(state.handles.require::<S3>().clone())
+        .data(state.handles.clone())
+        .data(state.handles.require::<MqttClient>().clone())
+        .data(state.db.clone())
+        .data(state.settings.clone())
+        .data(state.devices.clone())
+        .data(state.feature_flag_client.clone())
+        .data(state.event_bus.clone())
+        .data(state.handles.require::<WorkflowManager>().clone())
+        .data(state.repos.clone())
+        .extension(crate::telemetry::graphql::Tracing)
+        .limit_depth(state.settings.graphql.max_depth)
+        .limit_complexity(state.settings.graphql.max_complexity)
+        .finish()
 }
 
 pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {

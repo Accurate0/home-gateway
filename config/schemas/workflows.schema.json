@@ -2012,6 +2012,32 @@
         {
           "type": "object",
           "properties": {
+            "device": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "locked": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "device_lock"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "state": {
               "anyOf": [
                 {
@@ -2333,7 +2359,8 @@
       "type": "string",
       "enum": [
         "light",
-        "smart_switch"
+        "smart_switch",
+        "air_purifier"
       ]
     },
     "FeatureFlagState": {
