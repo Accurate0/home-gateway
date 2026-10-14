@@ -20,7 +20,8 @@ use crate::workflows::definition::{
 use crate::workflows::manager::WorkflowManager;
 use crate::workflows::timer_kind::TimerKind;
 use crate::workflows::triggers::{
-    EdgeLatches, PendingLatch, event_node, latch_for, solar_fires, unifi_matches, weather_fires,
+    EdgeLatches, PendingLatch, event_node, latch_for, pm25_fires, solar_fires, unifi_matches,
+    weather_fires,
 };
 use chrono::Utc;
 use std::time::Duration;
@@ -123,17 +124,40 @@ impl WorkflowDispatcher {
                     && state.is_none_or(|state| state == *s)
             }
             (
-                TriggerMatcher::AirPurifier { device, on, mode },
+                TriggerMatcher::AirPurifier {
+                    device,
+                    on,
+                    mode,
+                    pm25,
+                },
                 EventBusMessage::AirPurifier {
                     device_id,
                     on: o,
                     mode: m,
+                    pm25: p,
+                    state_changed,
                     ..
                 },
             ) => {
-                devices.resolve_id(device) == Some(device_id.as_str())
+                let state_matches = devices.resolve_id(device) == Some(device_id.as_str())
                     && on.is_none_or(|on| on == *o)
-                    && mode.is_none_or(|mode| Some(mode) == *m)
+                    && mode.is_none_or(|mode| Some(mode) == *m);
+
+                if !state_matches {
+                    return false;
+                }
+
+                match pm25 {
+                    Some(cmp) => pm25_fires(
+                        &workflow.name,
+                        device_id,
+                        cmp,
+                        *p,
+                        &mut state.latches.last_satisfied,
+                        pending,
+                    ),
+                    None => *state_changed,
+                }
             }
             (
                 TriggerMatcher::Light { ieee_addr, on },

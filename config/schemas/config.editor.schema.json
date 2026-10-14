@@ -3368,6 +3368,16 @@
               ],
               "default": null
             },
+            "pm25": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Comparison"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": {
               "type": "string",
               "const": "air_purifier"
@@ -3992,6 +4002,23 @@
             "type"
           ]
         }
+      ]
+    },
+    "Comparison": {
+      "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+      "type": "object",
+      "properties": {
+        "op": {
+          "$ref": "#/$defs/CompareOp"
+        },
+        "value": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "op",
+        "value"
       ]
     },
     "SensorMetric": {

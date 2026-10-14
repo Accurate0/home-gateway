@@ -1,5 +1,5 @@
-use async_graphql::{Object, dataloader::DataLoader};
-use chrono::{DateTime, Utc};
+use async_graphql::{Object, SimpleObject, dataloader::DataLoader};
+use chrono::{DateTime, TimeDelta, Utc};
 
 use crate::device_registry::DeviceRegistry;
 use crate::graphql::dataloader::air_purifier_state::{
@@ -8,10 +8,22 @@ use crate::graphql::dataloader::air_purifier_state::{
 use crate::graphql::dataloader::device_metric::{DeviceMetricDataLoader, DeviceMetricKey};
 use crate::graphql::objects::device_lock_object::DeviceLockObject;
 use crate::graphql::objects::lockable::Lockable;
+use crate::history_window::clamp_since;
+use crate::repo::RepoRegistry;
 use crate::repo::air_purifier::AirPurifierMode;
 
 const AQI_METRIC: &str = "aqi";
 const CADR_METRIC: &str = "cadr";
+const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(90);
+
+#[derive(SimpleObject)]
+#[graphql(rename_fields = "camelCase")]
+pub struct AirPurifierPoint {
+    pub on: bool,
+    pub mode: Option<AirPurifierMode>,
+    pub pm25: Option<f64>,
+    pub time: DateTime<Utc>,
+}
 
 pub struct AirPurifierEntity {
     pub id: String,
@@ -147,5 +159,27 @@ impl AirPurifierEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<DateTime<Utc>>> {
         Ok(self.model(ctx).await?.map(|m| m.updated_at))
+    }
+
+    async fn history(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        since: DateTime<Utc>,
+    ) -> async_graphql::Result<Vec<AirPurifierPoint>> {
+        let repos = ctx.data::<RepoRegistry>()?;
+        let since = clamp_since(since, Utc::now(), MAX_HISTORY_WINDOW);
+
+        Ok(repos
+            .air_purifier()
+            .history(&self.id, since)
+            .await?
+            .into_iter()
+            .map(|point| AirPurifierPoint {
+                on: point.is_on,
+                mode: point.mode,
+                pm25: point.pm25,
+                time: point.time,
+            })
+            .collect())
     }
 }

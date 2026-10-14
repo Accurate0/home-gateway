@@ -109,6 +109,13 @@ pub struct AirPurifierStateRow {
     pub updated_at: DateTime<Utc>,
 }
 
+pub struct AirPurifierPoint {
+    pub is_on: bool,
+    pub mode: Option<AirPurifierMode>,
+    pub pm25: Option<f64>,
+    pub time: DateTime<Utc>,
+}
+
 pub struct AirPurifierRecord<'a> {
     pub event_id: Uuid,
     pub device_id: &'a str,
@@ -226,6 +233,27 @@ impl AirPurifierRepo {
             WHERE device_id = ANY($1)
             "#,
             keys
+        )
+        .fetch_all(&self.db)
+        .await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.air_purifier.history", err)]
+    pub async fn history(
+        &self,
+        device_id: &str,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<AirPurifierPoint>, sqlx::Error> {
+        sqlx::query_as!(
+            AirPurifierPoint,
+            r#"
+            SELECT is_on, mode AS "mode: AirPurifierMode", pm25, "time"
+            FROM air_purifier_events
+            WHERE device_id = $1 AND "time" >= $2
+            ORDER BY "time"
+            "#,
+            device_id,
+            since
         )
         .fetch_all(&self.db)
         .await

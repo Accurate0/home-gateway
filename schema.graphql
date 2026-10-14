@@ -38,6 +38,7 @@ type AirPurifierEntity implements LockableEntity {
 	lock: DeviceLock
 	changedAt: DateTime
 	lastSeen: DateTime
+	history(since: DateTime!): [AirPurifierPoint!]!
 }
 
 enum AirPurifierMode {
@@ -54,6 +55,13 @@ type AirPurifierMutation {
 	setDisplay(on: Boolean!): CommandOutcome!
 }
 
+type AirPurifierPoint {
+	on: Boolean!
+	mode: AirPurifierMode
+	pm25: Float
+	time: DateTime!
+}
+
 type AirPurifierUpdate {
 	eventId: UUID!
 	id: ID!
@@ -62,6 +70,7 @@ type AirPurifierUpdate {
 	mode: AirPurifierMode
 	speed: Int
 	display: Boolean
+	pm25: Float
 }
 
 type AuthObject {

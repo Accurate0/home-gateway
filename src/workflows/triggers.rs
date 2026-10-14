@@ -46,6 +46,11 @@ pub fn latch_for(workflow: &Workflow, subject_entity: &str) -> Option<PendingLat
             subject_entity.to_owned(),
             metric.clone(),
         ))),
+        TriggerMatcher::AirPurifier { pm25: Some(_), .. } => Some(PendingLatch::Sensor((
+            workflow.name.clone(),
+            subject_entity.to_owned(),
+            SensorMetric::Pm25,
+        ))),
         TriggerMatcher::Solar { metric, .. } => {
             Some(PendingLatch::Solar((workflow.name.clone(), *metric)))
         }
@@ -154,6 +159,34 @@ pub fn solar_fires(
     }
 
     *pending = Some(PendingLatch::Solar(key));
+
+    true
+}
+
+pub fn pm25_fires(
+    name: &str,
+    device_id: &str,
+    cmp: &crate::workflows::definition::Comparison,
+    pm25: Option<f64>,
+    last_satisfied: &mut HashMap<(String, String, SensorMetric), bool>,
+    pending: &mut Option<PendingLatch>,
+) -> bool {
+    let Some(pm25) = pm25 else {
+        return false;
+    };
+
+    let key = (name.to_owned(), device_id.to_owned(), SensorMetric::Pm25);
+
+    if !cmp.matches(pm25) {
+        last_satisfied.insert(key, false);
+        return false;
+    }
+
+    if last_satisfied.get(&key).copied().unwrap_or(false) {
+        return false;
+    }
+
+    *pending = Some(PendingLatch::Sensor(key));
 
     true
 }
@@ -527,5 +560,76 @@ run: []
             &mut last,
             &mut None,
         ));
+    }
+
+    #[test]
+    fn pm25_fires_on_the_rising_edge_only() {
+        let cmp = Comparison {
+            op: CompareOp::Gte,
+            value: 14.0,
+        };
+        let mut last = HashMap::new();
+
+        let fires = |pm25: Option<f64>, last: &mut HashMap<_, _>| {
+            let mut pending = None;
+            let fired = pm25_fires(
+                "pm25",
+                "purifier-core300s-1",
+                &cmp,
+                pm25,
+                last,
+                &mut pending,
+            );
+
+            if let Some(PendingLatch::Sensor(key)) = pending {
+                last.insert(key, true);
+            }
+
+            fired
+        };
+
+        assert!(!fires(Some(5.0), &mut last), "below the threshold");
+        assert!(fires(Some(14.0), &mut last), "reaches the threshold");
+        assert!(!fires(Some(20.0), &mut last), "no re-fire while past");
+        assert!(!fires(None, &mut last), "a report without pm2.5");
+        assert!(
+            !fires(Some(20.0), &mut last),
+            "still latched after a missing reading"
+        );
+        assert!(!fires(Some(8.0), &mut last), "drops back");
+        assert!(fires(Some(15.0), &mut last), "re-arms");
+    }
+
+    #[test]
+    fn a_held_pm25_trigger_latches_on_the_event_device() {
+        let dusty = workflow(
+            r#"
+name: dusty
+on: { type: air_purifier, device: living-room-purifier, pm25: { op: gte, value: 14 } }
+for: 5m
+modes: [home]
+run: []
+"#,
+        );
+
+        assert!(matches!(
+            latch_for(&dusty, "purifier-core300s-1"),
+            Some(PendingLatch::Sensor((name, device, SensorMetric::Pm25)))
+                if name == "dusty" && device == "purifier-core300s-1"
+        ));
+    }
+
+    #[test]
+    fn a_purifier_state_trigger_has_no_edge_to_latch() {
+        let on = workflow(
+            r#"
+name: on
+on: { type: air_purifier, device: living-room-purifier, on: true }
+modes: [home]
+run: []
+"#,
+        );
+
+        assert!(latch_for(&on, "purifier-core300s-1").is_none());
     }
 }

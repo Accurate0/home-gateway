@@ -44,6 +44,8 @@ pub enum TriggerMatcher {
         on: Option<bool>,
         #[serde(default)]
         mode: Option<AirPurifierMode>,
+        #[serde(default)]
+        pm25: Option<Comparison>,
     },
     Switch {
         #[serde(rename = "device", alias = "ieeeAddr")]
@@ -267,6 +269,7 @@ impl TriggerMatcher {
                 device,
                 on: Some(on),
                 mode: None,
+                pm25: None,
             } => Some(LeafCondition::AirPurifier {
                 device: device.clone(),
                 on: *on,
@@ -363,17 +366,29 @@ impl TriggerMatcher {
                 Some(state) => format!("garage_door({device}) -> {state}"),
                 None => format!("garage_door({device})"),
             },
-            TriggerMatcher::AirPurifier { device, on, mode } => {
+            TriggerMatcher::AirPurifier {
+                device,
+                on,
+                mode,
+                pm25,
+            } => {
                 let on = match on {
                     Some(true) => " -> on",
                     Some(false) => " -> off",
                     None => "",
                 };
 
-                match mode {
-                    Some(mode) => format!("air_purifier({device}){on} mode={mode}"),
-                    None => format!("air_purifier({device}){on}"),
-                }
+                let mode = match mode {
+                    Some(mode) => format!(" mode={mode}"),
+                    None => String::new(),
+                };
+
+                let pm25 = match pm25 {
+                    Some(cmp) => format!(" pm25 {:?} {}", cmp.op, cmp.value),
+                    None => String::new(),
+                };
+
+                format!("air_purifier({device}){on}{mode}{pm25}")
             }
             TriggerMatcher::Switch {
                 ieee_addr,

@@ -54,6 +54,8 @@ pub enum EventBusMessage {
         mode: Option<AirPurifierMode>,
         speed: Option<i32>,
         display: Option<bool>,
+        pm25: Option<f64>,
+        state_changed: bool,
     },
     /// A control switch / button reported an action (e.g. `single`, `on`).
     SwitchAction {
@@ -440,6 +442,7 @@ impl EventBusMessage {
                 mode,
                 speed,
                 display,
+                pm25,
                 ..
             } => AirPurifierVariables {
                 device: device_id.clone(),
@@ -448,6 +451,7 @@ impl EventBusMessage {
                 mode: mode.map(|mode| mode.to_string()),
                 speed: *speed,
                 display: *display,
+                pm25: *pm25,
             }
             .to_node(),
             EventBusMessage::SwitchAction {

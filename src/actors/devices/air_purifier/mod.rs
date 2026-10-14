@@ -349,20 +349,29 @@ impl AirPurifierHandler {
         )
         .await;
 
-        let unchanged = previous.as_ref().is_some_and(|row| {
+        let state_changed = !previous.as_ref().is_some_and(|row| {
             row.is_on == on && row.mode == mode && row.speed == speed && row.display == display
         });
 
-        if unchanged {
+        let previous_pm25 = previous.as_ref().and_then(|row| row.pm25);
+        let pm25_changed = pm25.is_some() && pm25 != previous_pm25;
+
+        if !state_changed && !pm25_changed {
             tracing::trace!("air purifier {} is unchanged", settings.id);
             return Ok(());
         }
 
-        tracing::info!(
-            "air purifier {} is {} (mode {mode:?}, speed {speed:?})",
-            settings.id,
-            if on { "on" } else { "off" }
-        );
+        let pm25 = pm25.or(previous_pm25);
+
+        if state_changed {
+            tracing::info!(
+                "air purifier {} is {} (mode {mode:?}, speed {speed:?})",
+                settings.id,
+                if on { "on" } else { "off" }
+            );
+        } else {
+            tracing::debug!("air purifier {} pm2.5 is {pm25:?}", settings.id);
+        }
 
         self.shared_actor_state
             .event_bus
@@ -374,6 +383,8 @@ impl AirPurifierHandler {
                 mode,
                 speed,
                 display,
+                pm25,
+                state_changed,
             });
 
         Ok(())

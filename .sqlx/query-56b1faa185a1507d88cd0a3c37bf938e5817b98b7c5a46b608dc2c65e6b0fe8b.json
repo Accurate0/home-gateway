@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT is_on, mode AS \"mode: AirPurifierMode\", pm25, \"time\"\n            FROM air_purifier_events\n            WHERE device_id = $1 AND \"time\" >= $2\n            ORDER BY \"time\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_on",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "air_purifier_events",
+            "name": "is_on"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "mode: AirPurifierMode",
+        "type_info": {
+          "Custom": {
+            "name": "air_purifier_mode",
+            "kind": {
+              "Enum": [
+                "manual",
+                "sleep",
+                "auto"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "air_purifier_events",
+            "name": "mode"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "pm25",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "air_purifier_events",
+            "name": "pm25"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "time",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "air_purifier_events",
+            "name": "time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "56b1faa185a1507d88cd0a3c37bf938e5817b98b7c5a46b608dc2c65e6b0fe8b"
+}

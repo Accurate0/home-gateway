@@ -8,4 +8,5 @@ pub struct AirPurifierVariables {
     pub mode: Option<String>,
     pub speed: Option<i32>,
     pub display: Option<bool>,
+    pub pm25: Option<f64>,
 }

@@ -61,6 +61,8 @@ enum Command {
     Eink(EinkCommand),
     #[command(subcommand)]
     Synergy(SynergyCommand),
+    #[command(subcommand)]
+    Purifier(PurifierCommand),
     Weather {
         location: String,
     },
@@ -121,6 +123,15 @@ enum SynergyCommand {
         since: i64,
         #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, default_value = "30m")]
         interval: i64,
+    },
+}
+
+#[derive(Subcommand)]
+enum PurifierCommand {
+    History {
+        device: String,
+        #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, default_value = "24h")]
+        since: i64,
     },
 }
 
@@ -414,6 +425,9 @@ async fn run(cli: &Cli) -> Result<()> {
             report(&data, cli.json, "screenshot requested")
         }
         Command::Synergy(command) => synergy(&client, command, cli.json).await,
+        Command::Purifier(PurifierCommand::History { device, since }) => {
+            purifier_history(&client, device, *since, cli.json).await
+        }
         Command::Weather { location } => weather(&client, location, cli.json).await,
         Command::Solar => solar(&client, cli.json).await,
         Command::Energy { since } => energy(&client, *since, cli.json).await,
@@ -678,6 +692,42 @@ async fn energy(client: &Client, since: i64, as_json: bool) -> Result<()> {
     }
 
     println!("total used {used:.2}, exported {exported:.2}");
+    Ok(())
+}
+
+async fn purifier_history(client: &Client, device: &str, since: i64, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            "query($id: IdOrAlias!, $since: DateTime!) { airPurifier(id: $id) { history(since: $since) { time on mode pm25 } } }",
+            json!({ "id": device, "since": since_timestamp(since) }),
+        )
+        .await?;
+
+    let history = &data["airPurifier"]["history"];
+
+    if as_json {
+        return print_json(history);
+    }
+
+    for row in history.as_array().cloned().unwrap_or_default() {
+        let power = if row["on"].as_bool() == Some(true) {
+            "on"
+        } else {
+            "off"
+        };
+
+        let pm25 = match row["pm25"].as_f64() {
+            Some(pm25) => format!("{pm25:.0}"),
+            None => "-".to_owned(),
+        };
+
+        println!(
+            "{:<32} {power:<4} {:<7} pm2.5 {pm25:>4}",
+            text(&row, "time"),
+            text(&row, "mode").to_lowercase()
+        );
+    }
+
     Ok(())
 }
 

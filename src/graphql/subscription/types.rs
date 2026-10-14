@@ -50,6 +50,7 @@ pub struct AirPurifierUpdate {
     pub mode: Option<AirPurifierMode>,
     pub speed: Option<i32>,
     pub display: Option<bool>,
+    pub pm25: Option<f64>,
 }
 
 #[derive(SimpleObject)]
@@ -462,6 +463,8 @@ impl EventUpdate {
                 mode,
                 speed,
                 display,
+                pm25,
+                ..
             } => EventUpdate::AirPurifier(AirPurifierUpdate {
                 event_id,
                 id: ID(device_id),
@@ -470,6 +473,7 @@ impl EventUpdate {
                 mode,
                 speed,
                 display,
+                pm25,
             }),
             EventBusMessage::SwitchAction {
                 event_id,
