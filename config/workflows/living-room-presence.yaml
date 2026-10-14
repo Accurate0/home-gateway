@@ -37,3 +37,4 @@
       returns: {}
       args:
         - fade_rate: 1
+          vacancy: 25m

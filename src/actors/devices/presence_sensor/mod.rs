@@ -3,6 +3,8 @@ pub mod query;
 
 use std::collections::HashMap;
 
+use chrono::{DateTime, TimeDelta, Utc};
+
 use crate::actors::devices::handler::DeviceHandler;
 use crate::{event_bus::EventBusMessage, state::AppState};
 use ractor::RpcReplyPort;
@@ -29,6 +31,12 @@ pub enum Message {
         traceparent: crate::telemetry::context::TraceParent,
         reply: RpcReplyPort<Option<bool>>,
     },
+    QuerySeenWithin {
+        sensor: String,
+        window: TimeDelta,
+        traceparent: crate::telemetry::context::TraceParent,
+        reply: RpcReplyPort<Option<bool>>,
+    },
 }
 
 impl crate::telemetry::context::TracedMessage for Message {
@@ -36,6 +44,7 @@ impl crate::telemetry::context::TracedMessage for Message {
         match self {
             Message::NewEvent(event) => event.traceparent.as_deref(),
             Message::QueryLatest { traceparent, .. } => traceparent.as_deref(),
+            Message::QuerySeenWithin { traceparent, .. } => traceparent.as_deref(),
         }
     }
 
@@ -43,6 +52,7 @@ impl crate::telemetry::context::TracedMessage for Message {
         match self {
             Message::NewEvent(event) => Some(&event.entity.address),
             Message::QueryLatest { sensor, .. } => Some(sensor),
+            Message::QuerySeenWithin { sensor, .. } => Some(sensor),
         }
     }
 }
@@ -51,6 +61,21 @@ impl crate::telemetry::context::TracedMessage for Message {
 pub struct PresenceSensorState {
     pub last_presence: HashMap<String, bool>,
     pub sensors: HashMap<String, HashMap<String, bool>>,
+    pub absent_since: HashMap<String, DateTime<Utc>>,
+}
+
+impl PresenceSensorState {
+    fn seen_within(&self, sensor: &str, window: TimeDelta, now: DateTime<Utc>) -> Option<bool> {
+        let present = *self.last_presence.get(sensor)?;
+
+        let seen = present
+            || self
+                .absent_since
+                .get(sensor)
+                .is_some_and(|since| now - *since <= window);
+
+        Some(seen)
+    }
 }
 
 pub struct PresenceSensorHandler {
@@ -67,18 +92,14 @@ impl PresenceSensorHandler {
         presence: bool,
         state: &mut PresenceSensorState,
     ) -> Result<(), anyhow::Error> {
-        let mut was_state_changed = true;
-        state
-            .last_presence
-            .entry(key.clone())
-            .and_modify(|prev| {
-                if *prev != presence {
-                    *prev = presence;
-                } else {
-                    was_state_changed = false;
-                }
-            })
-            .or_insert(presence);
+        let previous = state.last_presence.insert(key.clone(), presence);
+        let was_state_changed = previous != Some(presence);
+
+        if presence {
+            state.absent_since.remove(&key);
+        } else if previous == Some(true) {
+            state.absent_since.insert(key.clone(), Utc::now());
+        }
 
         // edge-detected here so triggers receive discrete transitions, not every
         // sensor ping
@@ -103,6 +124,14 @@ impl PresenceSensorHandler {
         match message {
             Message::QueryLatest { sensor, reply, .. } => {
                 reply.send(state.last_presence.get(&sensor).copied())?;
+            }
+            Message::QuerySeenWithin {
+                sensor,
+                window,
+                reply,
+                ..
+            } => {
+                reply.send(state.seen_within(&sensor, window, Utc::now()))?;
             }
             Message::NewEvent(event) => {
                 let Entity {
@@ -147,5 +176,75 @@ impl DeviceHandler for PresenceSensorHandler {
 
     async fn handle(&self, message: Self::Message, state: &mut Self::State) -> anyhow::Result<()> {
         Self::handle(self, message, state).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const WINDOW: TimeDelta = TimeDelta::minutes(25);
+
+    fn state(
+        present: bool,
+        absent_for: Option<TimeDelta>,
+        now: DateTime<Utc>,
+    ) -> PresenceSensorState {
+        let mut state = PresenceSensorState::default();
+        state.last_presence.insert("sensor".to_owned(), present);
+
+        if let Some(absent_for) = absent_for {
+            state
+                .absent_since
+                .insert("sensor".to_owned(), now - absent_for);
+        }
+
+        state
+    }
+
+    #[test]
+    fn present_sensor_is_seen() {
+        let now = Utc::now();
+
+        assert_eq!(
+            state(true, None, now).seen_within("sensor", WINDOW, now),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn recently_vacated_sensor_is_seen() {
+        let now = Utc::now();
+        let state = state(false, Some(TimeDelta::minutes(1)), now);
+
+        assert_eq!(state.seen_within("sensor", WINDOW, now), Some(true));
+    }
+
+    #[test]
+    fn long_vacated_sensor_is_not_seen() {
+        let now = Utc::now();
+        let state = state(false, Some(TimeDelta::minutes(30)), now);
+
+        assert_eq!(state.seen_within("sensor", WINDOW, now), Some(false));
+    }
+
+    #[test]
+    fn sensor_never_present_is_not_seen() {
+        let now = Utc::now();
+
+        assert_eq!(
+            state(false, None, now).seen_within("sensor", WINDOW, now),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn unknown_sensor_has_no_answer() {
+        let now = Utc::now();
+
+        assert_eq!(
+            PresenceSensorState::default().seen_within("sensor", WINDOW, now),
+            None
+        );
     }
 }

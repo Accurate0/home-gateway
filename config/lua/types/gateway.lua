@@ -314,6 +314,12 @@ presence = {}
 ---@return boolean
 function presence.at(device) end
 
+---Requires the `presence:read` scope.
+---@param device string
+---@param window string
+---@return boolean
+function presence.seen_within(device, window) end
+
 ---@class gw.api.door
 door = {}
 

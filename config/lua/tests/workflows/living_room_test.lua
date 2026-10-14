@@ -31,9 +31,9 @@ local function stub(options)
 	}
 
 	presence = {
-		at = function()
+		seen_within = test.spy(function()
 			return options.present == true
-		end,
+		end),
 	}
 
 	light = {
@@ -109,8 +109,9 @@ return {
 	["sunset fades the floor lamp up and turns the table lamp on while occupied"] = function()
 		stub({ present = true })
 
-		living_room.sunset({ fade_rate = 1 })
+		living_room.sunset({ fade_rate = 1, vacancy = "25m" })
 
+		test.eq(presence.seen_within.calls, { { "livingroom-motion", "25m" } })
 		test.eq(light.set.calls, {
 			{ FLOOR_LAMP, { state = "SET_BRIGHTNESS", value = 1 } },
 			{ FLOOR_LAMP, { state = "INCREASE_BRIGHTNESS", value = 1 } },
@@ -122,7 +123,7 @@ return {
 	["sunset leaves lit lamps alone"] = function()
 		stub({ present = true, lit = { [FLOOR_LAMP] = true, [TABLE_LAMP] = true } })
 
-		living_room.sunset({ fade_rate = 1 })
+		living_room.sunset({ fade_rate = 1, vacancy = "25m" })
 
 		test.eq(light.set.calls, {})
 	end,
@@ -130,7 +131,7 @@ return {
 	["sunset does nothing in an empty room"] = function()
 		stub({ present = false })
 
-		living_room.sunset({ fade_rate = 1 })
+		living_room.sunset({ fade_rate = 1, vacancy = "25m" })
 
 		test.eq(light.set.calls, {})
 	end,

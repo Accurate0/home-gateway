@@ -45,7 +45,7 @@ function living_room.vacated()
 end
 
 function living_room.sunset(settings)
-	if not presence.at(SENSOR) then
+	if not presence.seen_within(SENSOR, settings.vacancy) then
 		gw.log("nobody in the living room at sunset")
 		return
 	end
