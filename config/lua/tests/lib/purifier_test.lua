@@ -1,30 +1,13 @@
 local purifier = test.load("lib/purifier")
 
 local DEVICE = "living-room-purifier"
-local KEY = "purifier_quiet:" .. DEVICE
-local NOW = 1000000
+local FOUR_HOURS = 4 * 60 * 60
 
-local function stub(current, held)
-	local store = { [KEY] = held }
+local SLEEP = { DEVICE, { command = "set_mode", mode = "sleep" } }
+local DISPLAY_OFF = { DEVICE, { command = "set_display", on = false } }
+local AUTO = { DEVICE, { command = "set_mode", mode = "auto" } }
 
-	state = {
-		get = function(key)
-			return store[key]
-		end,
-		set = function(key, value)
-			store[key] = value
-		end,
-		clear = function(key)
-			store[key] = nil
-		end,
-	}
-
-	time = {
-		now = function()
-			return { epoch = NOW }
-		end,
-	}
-
+local function stub(current, lock)
 	air_purifier = {
 		state = function()
 			return current
@@ -32,125 +15,95 @@ local function stub(current, held)
 		command = test.spy(),
 	}
 
-	return store
+	device_lock = {
+		state = function()
+			return lock
+		end,
+		lock = test.spy(),
+		unlock = test.spy(),
+	}
 end
-
-local SLEEP = { DEVICE, { command = "set_mode", mode = "sleep" } }
-local DISPLAY_OFF = { DEVICE, { command = "set_display", on = false } }
 
 ---@type LuaTestSuite
 return {
-	["a hold remembers what was wanted and quiets a running purifier"] = function()
-		local store = stub({ on = true, mode = "manual", speed = 3, display = true })
+	["quiet sets a running purifier to sleep with the display off, then locks it"] = function()
+		stub({ on = true, mode = "auto", display = true })
 
-		purifier.hold(DEVICE)
+		purifier.quiet(DEVICE, 4)
 
-		test.eq(store[KEY], { since = NOW, mode = "manual", speed = 3, display = true })
 		test.eq(air_purifier.command.calls, { SLEEP, DISPLAY_OFF })
+		test.eq(device_lock.lock.calls, { { DEVICE, FOUR_HOURS } })
 	end,
 
-	["a hold never turns the purifier on"] = function()
-		local store = stub({ on = false, mode = "auto", display = true })
+	["quiet skips commands a purifier already satisfies"] = function()
+		stub({ on = true, mode = "sleep", display = false })
 
-		purifier.hold(DEVICE)
-
-		test.eq(store[KEY].mode, "auto")
-		test.eq(air_purifier.command.calls, {})
-	end,
-
-	["a second hold keeps the first wanted settings"] = function()
-		local held = { since = NOW - 60, mode = "auto", display = true }
-		local store = stub({ on = true, mode = "sleep", display = false }, held)
-
-		purifier.hold(DEVICE)
-
-		test.eq(store[KEY], held)
-		test.eq(air_purifier.command.calls, {})
-	end,
-
-	["without a hold a purifier event is left alone"] = function()
-		stub(nil)
-
-		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3, display = true }, 6)
+		purifier.quiet(DEVICE, 4)
 
 		test.eq(air_purifier.command.calls, {})
+		test.eq(device_lock.lock.calls, { { DEVICE, FOUR_HOURS } })
 	end,
 
-	["a change during a hold is remembered and quieted again"] = function()
-		local store = stub(nil, { since = NOW - 60, mode = "auto", display = false })
+	["quiet never turns the purifier on but still locks it"] = function()
+		stub({ on = false, mode = "auto", display = true })
 
-		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3, display = false }, 6)
-
-		test.eq(store[KEY], { since = NOW - 60, mode = "manual", speed = 3, display = false })
-		test.eq(air_purifier.command.calls, { SLEEP })
-	end,
-
-	["a change on a locked purifier is left as it was set"] = function()
-		local held = { since = NOW - 60, mode = "auto", display = false }
-		local store = stub({ on = true, mode = "manual", speed = 3, display = false, locked = true }, held)
-
-		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3, display = false }, 6)
-
-		test.eq(store[KEY], held)
-		test.eq(air_purifier.command.calls, {})
-	end,
-
-	["the event from its own quieting changes nothing"] = function()
-		local held = { since = NOW - 60, mode = "auto", display = true }
-		local store = stub(nil, held)
-
-		purifier.enforce_quiet(DEVICE, { on = true, mode = "sleep", display = false }, 6)
-
-		test.eq(store[KEY], held)
-		test.eq(air_purifier.command.calls, {})
-	end,
-
-	["a purifier turned off during a hold stays off"] = function()
-		stub(nil, { since = NOW - 60, mode = "auto" })
-
-		purifier.enforce_quiet(DEVICE, { on = false, mode = "auto", display = true }, 6)
+		purifier.quiet(DEVICE, 4)
 
 		test.eq(air_purifier.command.calls, {})
+		test.eq(device_lock.lock.calls, { { DEVICE, FOUR_HOURS } })
 	end,
 
-	["a stale hold is cleared instead of enforced"] = function()
-		local store = stub(nil, { since = NOW - 7 * 60 * 60, mode = "auto" })
+	["quiet leaves an existing manual lock and its expiry alone"] = function()
+		stub({ on = true, mode = "sleep", display = false }, { source = "manual" })
 
-		purifier.enforce_quiet(DEVICE, { on = true, mode = "manual", speed = 3 }, 6)
+		purifier.quiet(DEVICE, 4)
 
-		test.eq(store[KEY], nil)
 		test.eq(air_purifier.command.calls, {})
+		test.eq(device_lock.lock.calls, {})
 	end,
 
-	["a release restores a manual speed and the display"] = function()
-		local store = stub(
-			{ on = true, mode = "sleep", display = false },
-			{ since = NOW - 60, mode = "manual", speed = 3, display = true }
-		)
+	["quiet respects a physical lock"] = function()
+		stub({ on = true, mode = "manual", display = true }, { source = "physical" })
+
+		purifier.quiet(DEVICE, 4)
+
+		test.eq(air_purifier.command.calls, {})
+		test.eq(device_lock.lock.calls, {})
+	end,
+
+	["release unlocks a manual lock and puts a running purifier back on auto"] = function()
+		stub({ on = true, mode = "sleep", display = false }, { source = "manual" })
 
 		purifier.release(DEVICE)
 
-		test.eq(store[KEY], nil)
-		test.eq(air_purifier.command.calls, {
-			{ DEVICE, { command = "set_speed", speed = 3 } },
-			{ DEVICE, { command = "set_display", on = true } },
-		})
+		test.eq(device_lock.unlock.calls, { { DEVICE } })
+		test.eq(air_purifier.command.calls, { AUTO })
 	end,
 
-	["a release restores a mode and leaves a dark display dark"] = function()
-		stub({ on = true, mode = "sleep", display = false }, { since = NOW - 60, mode = "auto", display = false })
+	["release unlocks but leaves a stopped purifier off"] = function()
+		stub({ on = false, mode = "sleep" }, { source = "manual" })
 
 		purifier.release(DEVICE)
 
-		test.eq(air_purifier.command.calls, { { DEVICE, { command = "set_mode", mode = "auto" } } })
+		test.eq(device_lock.unlock.calls, { { DEVICE } })
+		test.eq(air_purifier.command.calls, {})
 	end,
 
-	["a release does nothing to a purifier that is off"] = function()
-		local store = stub({ on = false, mode = "sleep" }, { since = NOW - 60, mode = "auto", display = true })
+	["release keeps a physical lock"] = function()
+		stub({ on = true, mode = "manual", display = true }, { source = "physical" })
 
 		purifier.release(DEVICE)
 
-		test.eq(store[KEY], nil)
+		test.eq(device_lock.unlock.calls, {})
+		test.eq(air_purifier.command.calls, {})
+	end,
+
+	["release does nothing when unlocked"] = function()
+		stub({ on = true, mode = "auto" })
+
+		purifier.release(DEVICE)
+
+		test.eq(device_lock.unlock.calls, {})
 		test.eq(air_purifier.command.calls, {})
 	end,
 }

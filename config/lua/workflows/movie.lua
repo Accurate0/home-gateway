@@ -9,7 +9,7 @@ local TABLE_LAMP = "living-room-table-lamp"
 local OCCUPANCY_TAG = "living-room-occupancy"
 local TABLE_LAMP_DELAY = 5
 
-local function lights_off()
+local function lights_off(settings)
 	workflow.step("occupancy", function()
 		workflow.set_enabled(OCCUPANCY_TAG, "DISABLED")
 	end, OCCUPANCY_TAG)
@@ -19,7 +19,7 @@ local function lights_off()
 	end)
 
 	workflow.step("purifier_quiet", function()
-		purifier.hold(PURIFIER)
+		purifier.quiet(PURIFIER, settings.purifier_lock_hours)
 	end, PURIFIER)
 end
 

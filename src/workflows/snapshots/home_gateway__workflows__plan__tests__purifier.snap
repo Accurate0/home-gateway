@@ -2,10 +2,6 @@
 source: src/workflows/plan.rs
 expression: out
 ---
-# Living room purifier enforce quiet mode and display  (on: air_purifier(living-room-purifier) -> on)
-  when: any[not(event.mode | default("") Eq "sleep"), event.display | default(false) Eq true]
-  lua: lua(call purifier.enforce_quiet) -> []
-
 # Living room purifier on high PM2.5  (on: air_purifier(living-room-purifier) pm25 Gte 14)
   lua: lua(call purifier.auto) -> []
 

@@ -16,3 +16,4 @@
       args:
         - pause_brightness: 190
           fade_rate: 13
+          purifier_lock_hours: 4
