@@ -27,7 +27,10 @@ tracing:
     spans:
       mqtt.ingest: 0.05
       home_assistant.ingest: 0.02
+      esphome_native_api.ingest: 0.05
       db.intent.claim_due: 0.05
+      reconciler.sweep: 0.05
+      graphql.DashboardEventsSubscription: 0.1
   trace_link:
     url: https://grafana.inf-k8s.net/explore
     query:
