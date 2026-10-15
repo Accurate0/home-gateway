@@ -137,67 +137,49 @@ impl AirPurifierRepo {
         &self,
         record: &AirPurifierRecord<'_>,
     ) -> Result<Option<AirPurifierStateRow>, sqlx::Error> {
-        let mut tx = self.db.begin().await?;
-
-        let previous = sqlx::query_as!(
+        sqlx::query_as!(
             AirPurifierStateRow,
             r#"
-            SELECT device_id, is_on, mode AS "mode: AirPurifierMode", speed, pm25, filter_life,
-                   display, changed_at, updated_at
-            FROM latest_air_purifier_state
-            WHERE device_id = $1
-            FOR UPDATE
+            WITH event AS (
+                INSERT INTO air_purifier_events (event_id, device_id, is_on, mode, speed, pm25, filter_life, display)
+                VALUES ($8, $1, $2, $3, $4, $5, $6, $7)
+            ),
+            latest AS (
+                INSERT INTO latest_air_purifier_state (device_id, is_on, mode, speed, pm25, filter_life, display)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (device_id) DO UPDATE SET
+                    changed_at = CASE
+                        WHEN latest_air_purifier_state.is_on = EXCLUDED.is_on
+                            AND latest_air_purifier_state.mode IS NOT DISTINCT FROM COALESCE(EXCLUDED.mode, latest_air_purifier_state.mode)
+                            AND latest_air_purifier_state.speed IS NOT DISTINCT FROM COALESCE(EXCLUDED.speed, latest_air_purifier_state.speed)
+                        THEN latest_air_purifier_state.changed_at ELSE now() END,
+                    is_on = EXCLUDED.is_on,
+                    mode = COALESCE(EXCLUDED.mode, latest_air_purifier_state.mode),
+                    speed = COALESCE(EXCLUDED.speed, latest_air_purifier_state.speed),
+                    pm25 = COALESCE(EXCLUDED.pm25, latest_air_purifier_state.pm25),
+                    filter_life = COALESCE(EXCLUDED.filter_life, latest_air_purifier_state.filter_life),
+                    display = COALESCE(EXCLUDED.display, latest_air_purifier_state.display),
+                    updated_at = now()
+                RETURNING old.device_id, old.is_on, old.mode, old.speed, old.pm25, old.filter_life,
+                          old.display, old.changed_at, old.updated_at
+            )
+            SELECT device_id AS "device_id!", is_on AS "is_on!", mode AS "mode: AirPurifierMode",
+                   speed, pm25, filter_life, display, changed_at AS "changed_at!",
+                   updated_at AS "updated_at!"
+            FROM latest
+            WHERE device_id IS NOT NULL
             "#,
             record.device_id,
-        )
-        .fetch_optional(&mut *tx)
-        .await?;
-
-        sqlx::query!(
-            "INSERT INTO air_purifier_events (event_id, device_id, is_on, mode, speed, pm25, filter_life, display) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            record.is_on,
+            record.mode as Option<AirPurifierMode>,
+            record.speed,
+            record.pm25,
+            record.filter_life,
+            record.display,
             record.event_id,
-            record.device_id,
-            record.is_on,
-            record.mode as Option<AirPurifierMode>,
-            record.speed,
-            record.pm25,
-            record.filter_life,
-            record.display,
         )
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query!(
-            "INSERT INTO latest_air_purifier_state (device_id, is_on, mode, speed, pm25, filter_life, display) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7) \
-             ON CONFLICT (device_id) DO UPDATE SET \
-               changed_at = CASE \
-                 WHEN latest_air_purifier_state.is_on = EXCLUDED.is_on \
-                   AND latest_air_purifier_state.mode IS NOT DISTINCT FROM COALESCE(EXCLUDED.mode, latest_air_purifier_state.mode) \
-                   AND latest_air_purifier_state.speed IS NOT DISTINCT FROM COALESCE(EXCLUDED.speed, latest_air_purifier_state.speed) \
-                 THEN latest_air_purifier_state.changed_at ELSE now() END, \
-               is_on = EXCLUDED.is_on, \
-               mode = COALESCE(EXCLUDED.mode, latest_air_purifier_state.mode), \
-               speed = COALESCE(EXCLUDED.speed, latest_air_purifier_state.speed), \
-               pm25 = COALESCE(EXCLUDED.pm25, latest_air_purifier_state.pm25), \
-               filter_life = COALESCE(EXCLUDED.filter_life, latest_air_purifier_state.filter_life), \
-               display = COALESCE(EXCLUDED.display, latest_air_purifier_state.display), \
-               updated_at = now()",
-            record.device_id,
-            record.is_on,
-            record.mode as Option<AirPurifierMode>,
-            record.speed,
-            record.pm25,
-            record.filter_life,
-            record.display,
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
-
-        Ok(previous)
+        .fetch_optional(&self.db)
+        .await
     }
 
     #[tracing::instrument(skip_all, name = "db.air_purifier.latest", err)]

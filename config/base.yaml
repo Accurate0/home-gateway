@@ -12,8 +12,9 @@ eink_display: !include sections/eink_display.yaml
 endpoints: !include sections/endpoints.yaml
 
 database:
-  min_connections: 0
+  min_connections: 2
   max_connections: 10
+  test_before_acquire: false
   slow_statement_threshold: 6s
 
 graphql:
@@ -63,13 +64,13 @@ workflow:
   workers: 12
   enabled_cache:
     capacity: 1024
-    ttl: 1h
+    ttl: 24h
   cooldown_cache:
     capacity: 1024
     ttl: 24h
   mode_cache:
     capacity: 1
-    ttl: 1h
+    ttl: 24h
   condition_timeout: 10s
   timers:
     catch_up_within: 10m

@@ -53,19 +53,12 @@ impl IntentRepo {
         let kind = attributes.kind();
         let payload = serde_json::to_value(attributes).unwrap_or(serde_json::Value::Null);
 
-        let mut tx = self.db.begin().await?;
-
-        sqlx::query!(
-            "UPDATE device_intent SET status = 'superseded', settled_at = now() \
-             WHERE kind = $1 AND address = $2 AND status = 'pending'",
-            kind.as_str(),
-            address,
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        let id = sqlx::query_scalar!(
-            "INSERT INTO device_intent (kind, address, attributes, relative, status, event_id) \
+        sqlx::query_scalar!(
+            "WITH superseded AS ( \
+                 UPDATE device_intent SET status = 'superseded', settled_at = now() \
+                 WHERE kind = $1 AND address = $2 AND status = 'pending' \
+             ) \
+             INSERT INTO device_intent (kind, address, attributes, relative, status, event_id) \
              VALUES ($1, $2, $3, $4, 'pending', $5) RETURNING id",
             kind.as_str(),
             address,
@@ -73,12 +66,8 @@ impl IntentRepo {
             relative,
             event_id,
         )
-        .fetch_one(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
-
-        Ok(id)
+        .fetch_one(&self.db)
+        .await
     }
 
     #[tracing::instrument(skip_all, name = "db.intent.claim_due", err)]

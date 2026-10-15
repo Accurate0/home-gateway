@@ -1,3 +1,4 @@
+use crate::cache::MemoryCache;
 use crate::http::{HttpCreationError, wrap_client_in_middleware_no_tracing};
 use crate::repo::SolarRepo;
 use crate::settings::SolarSettings;
@@ -24,6 +25,7 @@ const GET_POWERSTATION_DETAILS_URL: &str =
 const BOOTSTRAP_TOKEN: &str = "eyJ1aWQiOiIiLCJ0aW1lc3RhbXAiOjAsInRva2VuIjoiIiwiY2xpZW50Ijoid2ViIiwidmVyc2lvbiI6IiIsImxhbmd1YWdlIjoiZW4ifQ==";
 
 const TOKEN_MAX_AGE_MINUTES: i64 = 5;
+const TOKEN_MAX_AGE: Duration = Duration::from_secs(TOKEN_MAX_AGE_MINUTES as u64 * 60);
 
 #[derive(thiserror::Error, Debug)]
 pub enum GoodWeSemsAPIError {
@@ -46,6 +48,7 @@ pub struct GoodWeSemsAPI {
     password: String,
     powerstation_id: String,
     http: reqwest_middleware::ClientWithMiddleware,
+    token: MemoryCache<(), LoginData>,
 }
 
 impl GoodWeSemsAPI {
@@ -83,6 +86,9 @@ impl GoodWeSemsAPI {
             password: password.to_owned(),
             powerstation_id: powerstation_id.to_owned(),
             http: client,
+            token: MemoryCache::builder("goodwe_token")
+                .configure(|cache| cache.max_capacity(1).time_to_live(TOKEN_MAX_AGE))
+                .build(),
         })
     }
 
@@ -138,6 +144,10 @@ impl GoodWeSemsAPI {
 
     #[instrument(name = "goodwe.get_new_or_cached_login_data", skip(self))]
     pub async fn get_new_or_cached_login_data(&self) -> Result<LoginData, GoodWeSemsAPIError> {
+        if let Some(login_data) = self.token.get(&()).await {
+            return Ok(login_data);
+        }
+
         let latest = SolarRepo::new(self.db.clone()).cached_token().await?;
 
         let Some(latest) = latest else {
@@ -169,6 +179,8 @@ impl GoodWeSemsAPI {
             .await?;
 
         tracing::info!("saved goodwe login data");
+
+        self.token.insert((), response.data.clone()).await;
 
         Ok(response.data)
     }

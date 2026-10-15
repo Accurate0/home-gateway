@@ -8,6 +8,7 @@ use std::time::Duration;
 pub struct DatabaseSettings {
     pub min_connections: u32,
     pub max_connections: u32,
+    pub test_before_acquire: bool,
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     pub slow_statement_threshold: TimeDelta,

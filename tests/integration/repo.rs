@@ -1,3 +1,5 @@
+use home_gateway::repo::AirPurifierRepo;
+use home_gateway::repo::air_purifier::{AirPurifierMode, AirPurifierRecord};
 use home_gateway::repo::environment::{EnvironmentReading, EnvironmentRepo};
 use home_gateway::repo::robot_vacuum::RobotVacuumRepo;
 use pretty_assertions::assert_eq;
@@ -59,6 +61,53 @@ async fn a_later_environment_reading_replaces_the_latest_row_but_appends_history
     assert_eq!(history_count, 2);
     assert_eq!(latest.temperature, 23.0);
     assert_eq!(latest.humidity, None);
+}
+
+fn air_purifier_record(is_on: bool, speed: Option<i32>) -> AirPurifierRecord<'static> {
+    AirPurifierRecord {
+        event_id: Uuid::new_v4(),
+        device_id: "purifier-core300s-1",
+        is_on,
+        mode: Some(AirPurifierMode::Manual),
+        speed,
+        pm25: Some(4.0),
+        filter_life: None,
+        display: None,
+    }
+}
+
+#[tokio::test]
+async fn an_air_purifier_record_returns_the_state_it_replaced() {
+    let pool = fresh_database().await.pool;
+    let repo = AirPurifierRepo::new(pool.clone());
+
+    let first = repo
+        .record(&air_purifier_record(true, Some(2)))
+        .await
+        .unwrap();
+    let second = repo
+        .record(&air_purifier_record(false, None))
+        .await
+        .unwrap()
+        .unwrap();
+
+    let history_count: i64 = sqlx::query_scalar("SELECT count(*) FROM air_purifier_events")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+    let speed: Option<i32> =
+        sqlx::query_scalar("SELECT speed FROM latest_air_purifier_state WHERE device_id = $1")
+            .bind("purifier-core300s-1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    assert!(first.is_none());
+    assert!(second.is_on);
+    assert_eq!(second.speed, Some(2));
+    assert_eq!(history_count, 2);
+    assert_eq!(speed, Some(2));
 }
 
 #[tokio::test]

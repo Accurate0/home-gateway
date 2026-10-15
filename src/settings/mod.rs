@@ -1725,7 +1725,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -1778,7 +1778,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -1937,7 +1937,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -1993,7 +1993,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2051,7 +2051,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2265,7 +2265,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2320,7 +2320,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2374,7 +2374,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2429,7 +2429,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2483,7 +2483,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2584,7 +2584,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }
@@ -2665,7 +2665,7 @@ mqtt:
 http:
   listen_address: "[::]:8000"
   clients: { default: { timeout: 30s } }
-database: { min_connections: 0, max_connections: 10, slow_statement_threshold: 6s }
+database: { min_connections: 0, max_connections: 10, test_before_acquire: false, slow_statement_threshold: 6s }
 graphql: { max_depth: 20, max_complexity: 5000, query_timeout: 10s }
 actors: { restart: { backoff_base: 1s, backoff_max: 60s, healthy_after: 5m }, workers: { mqtt_ingest: 5, home_assistant_ingest: 1, esphome_native_api_ingest: 1, tuya_ingest: 1, devices: { air_purifier: 1, control_switch: 3, door: 1, environment: 1, garage_door: 1, light: 1, media_player: 1, plant: 1, presence: 1, robot_vacuum: 2, smart_switch: 3 } } }
 tracing: { sampling: { default: 1.0, spans: {} }, trace_link: { url: "https://grafana.example/explore", query: { query: "{trace_id}" } } }

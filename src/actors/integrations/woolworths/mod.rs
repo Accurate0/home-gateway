@@ -79,6 +79,15 @@ impl Actor for WoolworthsActor {
                     }
                 };
 
+                if let Err(e) = self.woolworths.start_session().await {
+                    crate::metrics::record_integration_poll(
+                        "woolworths",
+                        "error",
+                        started.elapsed(),
+                    );
+                    return Err(e.into());
+                }
+
                 let mut tracked_map = HashMap::new();
                 let mut had_error = false;
                 for product_group in tracked_products {

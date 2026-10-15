@@ -20,6 +20,7 @@ const CREATE_ATTEMPTS: u32 = 50;
 const DATABASE: DatabaseSettings = DatabaseSettings {
     min_connections: 0,
     max_connections: 10,
+    test_before_acquire: false,
     slow_statement_threshold: TimeDelta::seconds(6),
 };
 

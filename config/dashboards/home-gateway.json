@@ -1346,7 +1346,7 @@
    "id": 63,
    "type": "timeseries",
    "title": "Cache evictions by cause",
-   "description": "expired = ttl ran out, size = pushed out at capacity, explicit = invalidated, replaced = overwritten by a newer value.",
+   "description": "expired = ttl ran out, size = pushed out at capacity, explicit = invalidated.",
    "datasource": {
     "type": "prometheus",
     "uid": "${datasource}"

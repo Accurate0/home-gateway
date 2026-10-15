@@ -67,17 +67,22 @@ impl Woolworths {
             .map_err(WoolworthsError::from)
     }
 
-    #[instrument(name = "woolworths.get_product", skip(self))]
-    pub async fn get_product(
-        &self,
-        product_id: i64,
-    ) -> Result<WoolworthsProductResponse, WoolworthsError> {
+    #[instrument(name = "woolworths.start_session", skip(self))]
+    pub async fn start_session(&self) -> Result<(), WoolworthsError> {
         self.client
             .get(Self::BASE_URL)
             .with_extension(crate::http::UrlTemplate("/"))
             .send()
             .await?;
 
+        Ok(())
+    }
+
+    #[instrument(name = "woolworths.get_product", skip(self))]
+    pub async fn get_product(
+        &self,
+        product_id: i64,
+    ) -> Result<WoolworthsProductResponse, WoolworthsError> {
         let product_url = format!("{}/{}/{}", Self::BASE_URL, Self::PRODUCT_SUFFIX, product_id);
         tracing::info!("fetching woolworths product: {product_id}");
         let resp = self

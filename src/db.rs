@@ -15,6 +15,7 @@ pub async fn connect(
     let pool = PgPoolOptions::new()
         .min_connections(settings.min_connections)
         .max_connections(settings.max_connections)
+        .test_before_acquire(settings.test_before_acquire)
         .connect_with(options)
         .await?;
 

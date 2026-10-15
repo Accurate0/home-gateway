@@ -131,6 +131,9 @@
           "format": "uint32",
           "minimum": 0
         },
+        "test_before_acquire": {
+          "type": "boolean"
+        },
         "slow_statement_threshold": {
           "type": "string"
         }
@@ -138,6 +141,7 @@
       "required": [
         "min_connections",
         "max_connections",
+        "test_before_acquire",
         "slow_statement_threshold"
       ]
     },

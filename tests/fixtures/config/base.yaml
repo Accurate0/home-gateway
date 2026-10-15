@@ -46,6 +46,7 @@ mqtt:
 database:
   min_connections: 0
   max_connections: 10
+  test_before_acquire: false
   slow_statement_threshold: 6s
 
 http:

@@ -47,7 +47,9 @@ where
         let inner = if self.metrics.is_enabled() {
             self.inner
                 .eviction_listener(move |_, _, cause| {
-                    record_cache_eviction(name, removal_cause(cause));
+                    if let Some(cause) = removal_cause(cause) {
+                        record_cache_eviction(name, cause);
+                    }
                 })
                 .build()
         } else {
@@ -62,11 +64,11 @@ where
     }
 }
 
-fn removal_cause(cause: RemovalCause) -> &'static str {
+fn removal_cause(cause: RemovalCause) -> Option<&'static str> {
     match cause {
-        RemovalCause::Expired => "expired",
-        RemovalCause::Explicit => "explicit",
-        RemovalCause::Replaced => "replaced",
-        RemovalCause::Size => "size",
+        RemovalCause::Expired => Some("expired"),
+        RemovalCause::Explicit => Some("explicit"),
+        RemovalCause::Replaced => None,
+        RemovalCause::Size => Some("size"),
     }
 }

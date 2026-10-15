@@ -56,28 +56,13 @@ impl EnvironmentRepo {
     #[tracing::instrument(skip_all, name = "db.environment.record", err)]
     pub async fn record(&self, reading: &EnvironmentReading) -> Result<(), sqlx::Error> {
         let now = Utc::now();
-        let mut tx = self.db.begin().await?;
 
         sqlx::query!(
-            "INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-            reading.event_id,
-            reading.id,
-            reading.friendly_name,
-            reading.ieee_addr,
-            reading.temperature,
-            reading.battery,
-            reading.humidity,
-            reading.pressure,
-            reading.pm25,
-            reading.voc_index,
-            reading.lux,
-            reading.uv_index,
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query!(
-            r#"INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            r#"WITH event AS (
+                INSERT INTO temperature_sensor (event_id, id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index)
+                VALUES ($13, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            )
+            INSERT INTO latest_temperature_sensor (entity_id, name, ieee_addr, temperature, battery, humidity, pressure, pm25, voc_index, lux, uv_index, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             ON CONFLICT (entity_id)
             DO UPDATE SET
                 name = EXCLUDED.name,
@@ -104,11 +89,12 @@ impl EnvironmentRepo {
             reading.lux,
             reading.uv_index,
             now,
+            reading.event_id,
         )
-        .execute(&mut *tx)
+        .execute(&self.db)
         .await?;
 
-        tx.commit().await
+        Ok(())
     }
 
     #[tracing::instrument(skip_all, name = "db.environment.latest", err)]
