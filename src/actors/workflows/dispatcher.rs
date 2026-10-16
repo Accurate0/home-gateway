@@ -10,6 +10,7 @@
 
 use crate::actors::system::rpc;
 use crate::integrations::solar::SolarMetric;
+use crate::integrations::unraid::types::UnraidUpdate;
 use crate::lua::LuaAuthority;
 use crate::repo::workflow::{NewPendingTimer, PendingTimerRow};
 use crate::variables::Vars;
@@ -23,7 +24,6 @@ use crate::workflows::triggers::{
     EdgeLatches, PendingLatch, UnraidLatchKey, event_node, latch_for, pm25_fires, solar_fires,
     unifi_matches, unraid_fires, weather_fires,
 };
-use crate::integrations::unraid::types::UnraidUpdate;
 use chrono::Utc;
 use std::time::Duration;
 use uuid::Uuid;
@@ -354,7 +354,9 @@ impl WorkflowDispatcher {
                     subject,
                     update:
                         UnraidUpdate::Changed {
-                            change: c, state: s, ..
+                            change: c,
+                            state: s,
+                            ..
                         },
                     ..
                 },

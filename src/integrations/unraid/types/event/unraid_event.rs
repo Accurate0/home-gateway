@@ -32,7 +32,10 @@ impl UnraidEvent {
             }
 
             for disk in &current.disks {
-                let Some(before) = previous.disks.iter().find(|before| before.name == disk.name)
+                let Some(before) = previous
+                    .disks
+                    .iter()
+                    .find(|before| before.name == disk.name)
                 else {
                     continue;
                 };
@@ -196,9 +199,21 @@ mod tests {
         assert_eq!(
             changes(&UnraidEvent::between(Some(&previous), &current)),
             vec![
-                ("array".to_owned(), UnraidChange::ArrayState, "stopped".to_owned()),
-                ("array".to_owned(), UnraidChange::ParityCheck, "running".to_owned()),
-                ("disk1".to_owned(), UnraidChange::DiskStatus, "disk_dsbl".to_owned()),
+                (
+                    "array".to_owned(),
+                    UnraidChange::ArrayState,
+                    "stopped".to_owned()
+                ),
+                (
+                    "array".to_owned(),
+                    UnraidChange::ParityCheck,
+                    "running".to_owned()
+                ),
+                (
+                    "disk1".to_owned(),
+                    UnraidChange::DiskStatus,
+                    "disk_dsbl".to_owned()
+                ),
                 ("disk1".to_owned(), UnraidChange::DiskErrors, "3".to_owned()),
             ]
         );

@@ -8,8 +8,7 @@ use crate::event_bus::variables::{
     FeatureFlagVariables, FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables,
     JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
     PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
-    UnraidVariables,
-    WeatherVariables, WoolworthsVariables,
+    UnraidVariables, WeatherVariables, WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
 

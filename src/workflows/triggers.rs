@@ -1,6 +1,6 @@
 use crate::integrations::solar::SolarMetric;
-use crate::weather::{ForecastDay, WeatherMetric, WeatherReading, WeatherSource};
 use crate::integrations::unraid::types::UnraidMetric;
+use crate::weather::{ForecastDay, WeatherMetric, WeatherReading, WeatherSource};
 use crate::workflows::definition::{Comparison, TriggerMatcher, Workflow};
 use std::collections::HashMap;
 
@@ -701,7 +701,10 @@ run: []
 
         assert!(fires("disk1", 52.0), "expected the crossing to fire");
         assert!(!fires("disk1", 55.0), "expected no re-fire while past");
-        assert!(fires("disk2", 50.0), "expected another disk to latch on its own");
+        assert!(
+            fires("disk2", 50.0),
+            "expected another disk to latch on its own"
+        );
         assert!(!fires("disk1", 40.0), "expected no fire on the drop");
         assert!(fires("disk1", 51.0), "expected a re-arm and re-fire");
     }

@@ -90,7 +90,14 @@ impl UnraidLua {
     async fn disks(cx: &LuaCallContext) -> mlua::Result<Vec<UnraidDiskInfo>> {
         Ok(Self::latest(cx, Self::DISKS)
             .await?
-            .map(|stored| stored.snapshot.disks.iter().map(UnraidDiskInfo::from).collect())
+            .map(|stored| {
+                stored
+                    .snapshot
+                    .disks
+                    .iter()
+                    .map(UnraidDiskInfo::from)
+                    .collect()
+            })
             .unwrap_or_default())
     }
 

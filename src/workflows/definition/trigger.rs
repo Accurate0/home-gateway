@@ -1,6 +1,6 @@
 use crate::integrations::fuelwatch::FuelChange;
-use crate::integrations::unraid::types::{UnraidChange, UnraidMetric};
 use crate::integrations::solar::SolarMetric;
+use crate::integrations::unraid::types::{UnraidChange, UnraidMetric};
 use crate::media_control::PlaybackState;
 use crate::weather::{ForecastDay, WeatherMetric, WeatherSource};
 use std::collections::BTreeMap;

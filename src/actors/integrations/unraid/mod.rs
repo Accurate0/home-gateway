@@ -28,7 +28,11 @@ impl UnraidActor {
     async fn poll(&self, state: &mut UnraidActorState) -> Result<(), ractor::ActorProcessingErr> {
         let snapshot = self.unraid.snapshot().await?;
 
-        self.shared_actor_state.repos.unraid().record(&snapshot).await?;
+        self.shared_actor_state
+            .repos
+            .unraid()
+            .record(&snapshot)
+            .await?;
 
         let events = UnraidEvent::between(state.previous.as_ref(), &snapshot);
 

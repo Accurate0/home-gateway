@@ -54,7 +54,6 @@ impl DoorEventsSupervisor {
 
         Ok(())
     }
-
 }
 
 impl Actor for DoorEventsSupervisor {

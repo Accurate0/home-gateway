@@ -180,7 +180,14 @@ mod tests {
     fn the_query_asks_for_the_array_and_every_disk_group() {
         let query = ArrayQuery::build(()).query;
 
-        for field in ["parityCheckStatus", "parities", "disks", "caches", "fsUsed", "numErrors"] {
+        for field in [
+            "parityCheckStatus",
+            "parities",
+            "disks",
+            "caches",
+            "fsUsed",
+            "numErrors",
+        ] {
             assert!(query.contains(field), "missing {field} in {query}");
         }
     }
@@ -212,8 +219,22 @@ mod tests {
         let disks = snapshot().disks;
 
         assert_eq!(disks.len(), 4);
-        assert_eq!(disks.iter().find(|disk| disk.name == "disk2").unwrap().temperature, None);
-        assert_eq!(disks.iter().find(|disk| disk.name == "parity").unwrap().usage_percent(), None);
+        assert_eq!(
+            disks
+                .iter()
+                .find(|disk| disk.name == "disk2")
+                .unwrap()
+                .temperature,
+            None
+        );
+        assert_eq!(
+            disks
+                .iter()
+                .find(|disk| disk.name == "parity")
+                .unwrap()
+                .usage_percent(),
+            None
+        );
     }
 
     #[test]

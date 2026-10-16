@@ -42,7 +42,10 @@ pub struct Unraid {
 }
 
 impl Unraid {
-    pub fn new(settings: &UnraidSettings, timeout: std::time::Duration) -> Result<Self, UnraidError> {
+    pub fn new(
+        settings: &UnraidSettings,
+        timeout: std::time::Duration,
+    ) -> Result<Self, UnraidError> {
         let base_url = settings.url.trim().trim_end_matches('/');
 
         let api_key = settings
