@@ -15,5 +15,6 @@ pub mod transperth_cache;
 pub mod trmnl;
 pub mod tuya;
 pub mod tuya_device;
+pub mod unraid;
 pub mod willyweather;
 pub mod woolworths;

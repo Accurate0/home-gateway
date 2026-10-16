@@ -45,7 +45,7 @@
     - type: lua
       returns: {}
       script: |
-        workflow.run("Test lua recursion", {})
+        workflow.run("test-lua-recursion", {})
 
 - name: Test traced lua
   slug: test-traced-lua

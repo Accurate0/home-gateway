@@ -21,6 +21,7 @@ use crate::actors::workflows::lua::WorkflowLua;
 use crate::device_lock::lua::DeviceLockLua;
 use crate::device_registry::lua::DeviceLua;
 use crate::integrations::fuelwatch::lua::FuelLua;
+use crate::integrations::unraid::lua::UnraidLua;
 use crate::integrations::holidays::lua::HolidaysLua;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::home_assistant::lua::HomeAssistantLua;
@@ -146,6 +147,7 @@ pub fn registry(home_assistant: bool) -> LuaApiRegistry {
         .insert(S3Lua)
         .insert(WeatherLua)
         .insert(FuelLua)
+        .insert(UnraidLua)
         .insert_optional(home_assistant.then_some(HomeAssistantLua))
         .build()
 }

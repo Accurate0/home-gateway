@@ -3,7 +3,6 @@ use std::collections::BTreeSet;
 use crate::auth::scope::Resource;
 use crate::decoding::ModelProfile;
 use crate::device_lock::LockSettings;
-use crate::settings::notify::NotifyTargets;
 use crate::settings::{
     AirPurifierSettings, BatterySettings, DoorSettings, EinkDisplaySettings,
     EnvironmentSensorSettings, GarageDoorSettings, MediaPlayerSettings, PlantSensorSettings,
@@ -41,7 +40,6 @@ pub struct RoleContext<'a> {
     pub address: &'a str,
     pub transport: Transport,
     pub profile: Option<&'a ModelProfile>,
-    pub notify: &'a NotifyTargets,
 }
 
 impl Roles {
@@ -95,16 +93,11 @@ impl Roles {
     }
 
     fn fill(&mut self, cx: &RoleContext, config: DeviceConfig) -> Result<(), String> {
-        let RoleContext {
-            id,
-            address,
-            notify,
-            ..
-        } = *cx;
+        let RoleContext { id, address, .. } = *cx;
 
         match config {
             DeviceConfig::Door(door) => {
-                self.door = Some(door.resolve(id, notify)?);
+                self.door = Some(door.resolve(id));
             }
             DeviceConfig::Presence(presence) => {
                 self.presence = Some(PresenceSettings {
@@ -172,7 +165,7 @@ impl Roles {
                 self.media_player = Some(media_player.resolve(id, address));
             }
             DeviceConfig::GarageDoor(garage_door) => {
-                self.garage_door = Some(garage_door.resolve(id, address, notify)?);
+                self.garage_door = Some(garage_door.resolve(id, address));
             }
             DeviceConfig::AirPurifier(air_purifier) => {
                 self.air_purifier = Some(air_purifier.resolve(id, address));

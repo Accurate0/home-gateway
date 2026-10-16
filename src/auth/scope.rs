@@ -98,6 +98,7 @@ scopes! {
     Switch => "switch" [Read, Write],
     Transperth => "transperth" [Read],
     Unifi => "unifi" [Read],
+    Unraid => "unraid" [Read],
     Vacation => "vacation" [Read, Write],
     Weather => "weather" [Read],
     Woolworths => "woolworths" [Read],
@@ -126,6 +127,7 @@ scopes! {
     EventsSwitch => "events.switch" [Read],
     EventsTransperth => "events.transperth" [Read],
     EventsUnifi => "events.unifi" [Read],
+    EventsUnraid => "events.unraid" [Read],
     EventsWeather => "events.weather" [Read],
     EventsWoolworths => "events.woolworths" [Read],
 }
@@ -143,6 +145,7 @@ impl Resource {
             "cron" => Self::EventsCron,
             "light" => Self::EventsLight,
             "unifi" => Self::EventsUnifi,
+            "unraid" => Self::EventsUnraid,
             "sun" => Self::EventsSun,
             "mode" => Self::EventsMode,
             "home_assistant" => Self::EventsHomeAssistant,

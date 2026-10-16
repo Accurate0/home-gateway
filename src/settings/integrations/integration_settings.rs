@@ -8,6 +8,7 @@ use super::synergy::SynergySettings;
 use super::transperth::TransperthSettings;
 use super::trmnl::TrmnlSettings;
 use super::tuya::TuyaSettings;
+use super::unraid::UnraidSettings;
 use super::willyweather::WillyWeatherSettings;
 use super::woolworths::WoolworthsSettings;
 
@@ -25,4 +26,5 @@ pub struct IntegrationSettings {
     pub synergy: SynergySettings,
     pub transperth: TransperthSettings,
     pub tuya: TuyaSettings,
+    pub unraid: UnraidSettings,
 }

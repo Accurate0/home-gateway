@@ -66,6 +66,7 @@ fn main() {
 
     compile_esphome_api(manifest_dir);
     compile_eink_api(manifest_dir);
+    register_unraid_schema(manifest_dir);
 
     println!("cargo:rerun-if-env-changed=SKIP_SCHEMA_VALIDATION");
     if std::env::var_os("SKIP_SCHEMA_VALIDATION").is_some() {
@@ -113,6 +114,22 @@ fn compile_eink_api(manifest_dir: &Path) {
         .bytes(".")
         .compile_protos(&[&api], &[&proto_dir])
         .unwrap_or_else(|e| panic!("failed to compile {}: {e}", api.display()));
+}
+
+fn register_unraid_schema(manifest_dir: &Path) {
+    let schema = manifest_dir
+        .join("src")
+        .join("integrations")
+        .join("unraid")
+        .join("schema.graphql");
+
+    println!("cargo:rerun-if-changed={}", schema.display());
+
+    cynic_codegen::register_schema("unraid")
+        .from_sdl_file(&schema)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", schema.display()))
+        .as_default()
+        .unwrap_or_else(|e| panic!("failed to register {}: {e}", schema.display()));
 }
 
 fn validate_schema(config_dir: &Path, mut value: serde_json::Value) {

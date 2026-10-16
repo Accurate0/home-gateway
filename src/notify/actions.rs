@@ -81,7 +81,7 @@ mod tests {
 
         defined
             .into_iter()
-            .map(|workflow| (workflow.body().name.clone(), workflow))
+            .map(|workflow| (workflow.body().slug.clone(), workflow))
             .collect()
     }
 
@@ -120,7 +120,7 @@ mod tests {
             &[action(
                 "Run",
                 NotifyActionKind::RunWorkflow {
-                    workflow: "Close The Door".to_owned(),
+                    workflow: "close-the-door".to_owned(),
                 },
             )],
         );

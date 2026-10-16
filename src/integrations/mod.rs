@@ -12,6 +12,7 @@ pub mod solar;
 pub mod transperth;
 pub mod trmnl;
 pub mod tuya;
+pub mod unraid;
 pub mod willyweather;
 pub mod woolworths;
 pub mod zigbee2mqtt;

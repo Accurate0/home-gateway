@@ -29,6 +29,7 @@ subscription($filter: String!) {
     ... on JellyfinUpdate { user state itemName seriesName }
     ... on WeatherUpdate { source readings { metric day value } }
     ... on FuelWatchUpdate { name change oldPrice newPrice }
+    ... on UnraidUpdate { subject change state previous metric value }
     ... on TransperthUpdate { routeId departures nextHeadsign nextMinutesAway }
     ... on SwitchUpdate { device action }
     ... on ModeUpdate { mode previous }

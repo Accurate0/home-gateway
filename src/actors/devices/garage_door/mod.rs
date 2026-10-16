@@ -8,7 +8,6 @@ pub use command_request::CommandRequest;
 pub use garage_door_command_error::GarageDoorCommandError;
 pub use garage_door_reading::GarageDoorReading;
 
-use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -16,9 +15,6 @@ use crate::actors::devices::handler::DeviceHandler;
 use crate::decoding::{Decoders, DeviceRoleName};
 use crate::device_command::{self, CommandOutcome, CommandTargets, Outbound};
 use crate::event_bus::EventBusMessage;
-use crate::notify::{Notification, notify};
-use crate::repo::garage_door::GarageDoorState;
-use crate::settings::{ArmedDoorStates, GarageDoorSettings, NotificationSource, NotifyCategory};
 use crate::state::AppState;
 use crate::workflows::definition::GarageDoorCommand;
 
@@ -182,72 +178,7 @@ impl GarageDoorHandler {
                 state,
             });
 
-        let left_closed = previous.is_none_or(|previous| previous == GarageDoorState::Closed)
-            && state != GarageDoorState::Closed;
-
-        if left_closed {
-            self.arm(settings);
-        }
-
         Ok(())
-    }
-
-    fn arm(&self, settings: &GarageDoorSettings) {
-        let timeout = match settings.armed {
-            ArmedDoorStates::Armed { timeout } => timeout,
-            ArmedDoorStates::Unarmed => {
-                tracing::debug!("garage door {} is unarmed", settings.id);
-                return;
-            }
-        };
-
-        let Ok(delay) = timeout.to_std() else {
-            tracing::error!("garage door {} has a negative arming timeout", settings.id);
-            return;
-        };
-
-        let repos = self.shared_actor_state.repos.clone();
-        let settings = settings.clone();
-        let opened_at = Utc::now();
-
-        tokio::spawn(async move {
-            tokio::time::sleep(delay).await;
-
-            let repo = repos.garage_door();
-
-            let closed = match repo.closed_since(&settings.id, opened_at).await {
-                Ok(closed) => closed,
-                Err(e) => {
-                    tracing::error!("failed to check garage door {}: {e}", settings.id);
-                    return;
-                }
-            };
-
-            let open = match repo.latest(&settings.id).await {
-                Ok(latest) => latest.is_some_and(|row| row.state != GarageDoorState::Closed),
-                Err(e) => {
-                    tracing::error!("failed to load garage door {}: {e}", settings.id);
-                    return;
-                }
-            };
-
-            if closed || !open {
-                tracing::debug!("garage door {} closed within its timeout", settings.id);
-                return;
-            }
-
-            tracing::info!("garage door {} has been left open", settings.id);
-
-            notify(
-                &settings.notify,
-                Notification::new(
-                    NotificationSource::GarageDoorLeftOpen,
-                    format!("{} has been left open.", settings.name),
-                    NotifyCategory::Door,
-                    format!("garage_door:{}", settings.id),
-                ),
-            );
-        });
     }
 }
 

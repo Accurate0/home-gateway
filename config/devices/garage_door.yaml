@@ -11,7 +11,4 @@
     - type: garage_door
       config:
         name: Garage Door
-        state: armed
-        timeout: 15m
-        notify: [android_app]
     - type: battery

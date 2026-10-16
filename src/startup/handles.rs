@@ -18,6 +18,7 @@ use crate::integrations::{
     s3::S3,
     solar::goodwe::GoodWeSemsAPI,
     transperth::Transperth,
+    unraid::Unraid,
     willyweather::WillyWeather,
 };
 use crate::repo::{ApiKeyRepo, DeviceRepo};
@@ -113,6 +114,18 @@ pub async fn build(
         })
         .transpose()?;
 
+    let unraid = integrations
+        .unraid
+        .state
+        .is_enabled()
+        .then(|| {
+            Unraid::new(
+                &integrations.unraid,
+                http.timeout_for(HttpClientKind::Unraid),
+            )
+        })
+        .transpose()?;
+
     let goodwe = if integrations.solar.state.is_enabled() {
         GoodWeSemsAPI::new(
             pool.clone(),
@@ -195,6 +208,7 @@ pub async fn build(
         .insert_optional(tuya)
         .insert_optional(transperth)
         .insert_optional(fuelwatch)
+        .insert_optional(unraid)
         .insert_optional(goodwe)
         .build();
 

@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"time\", status, temperature, fs_used_kb, fs_size_kb, errors, spinning\n            FROM unraid_disk_events\n            WHERE disk = $1 AND \"time\" >= $2\n            ORDER BY \"time\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "temperature",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "temperature"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "fs_used_kb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "fs_used_kb"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "fs_size_kb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "fs_size_kb"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "errors",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "errors"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "spinning",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "spinning"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7d90f7d2980bdf437d7eed0240518c53b88403b8e79d1a9ef2f3619a09c68c66"
+}

@@ -25,6 +25,8 @@ clients:
     timeout: 30s
   trmnl:
     timeout: 30s
+  unraid:
+    timeout: 30s
   willyweather:
     timeout: 30s
   woolworths:

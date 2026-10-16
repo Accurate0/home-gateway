@@ -402,74 +402,10 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "notify": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/NotifyRef"
-          }
         }
       },
       "required": [
         "name"
-      ],
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "timeout": {
-              "type": "string"
-            },
-            "state": {
-              "type": "string",
-              "const": "armed"
-            }
-          },
-          "required": [
-            "state",
-            "timeout"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "const": "unarmed"
-            }
-          },
-          "required": [
-            "state"
-          ]
-        }
-      ]
-    },
-    "NotifyRef": {
-      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify.targets:`, or an inline source.",
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/NotifySource"
-        }
-      ]
-    },
-    "NotifySource": {
-      "oneOf": [
-        {
-          "description": "Push notification to all registered HomeGateway Android devices.",
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "android_app"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        }
       ]
     },
     "RawPresenceBlock": {
@@ -768,46 +704,10 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "notify": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/NotifyRef"
-          }
         }
       },
       "required": [
         "name"
-      ],
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "timeout": {
-              "type": "string"
-            },
-            "state": {
-              "type": "string",
-              "const": "armed"
-            }
-          },
-          "required": [
-            "state",
-            "timeout"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "const": "unarmed"
-            }
-          },
-          "required": [
-            "state"
-          ]
-        }
       ]
     },
     "RawAirPurifierBlock": {
@@ -871,6 +771,34 @@
           }
         }
       }
+    },
+    "NotifyRef": {
+      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify.targets:`, or an inline source.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/NotifySource"
+        }
+      ]
+    },
+    "NotifySource": {
+      "oneOf": [
+        {
+          "description": "Push notification to all registered HomeGateway Android devices.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "android_app"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
     }
   }
 }

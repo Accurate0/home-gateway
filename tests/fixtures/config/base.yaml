@@ -165,6 +165,10 @@ integrations:
     cache:
       routes: { capacity: 32, ttl: 1h }
       timetables: { capacity: 16, ttl: 6h }
+  unraid:
+    state: disabled
+    url: http://unraid.test
+    refresh: 1m
 
 notify:
   targets:
@@ -534,6 +538,11 @@ adhoc:
       schedule: "20 3 * * *"
       parameters:
         retention: 4320h
+    trim_unraid_events:
+      state: enabled
+      schedule: "15 3 * * *"
+      parameters:
+        retention: 8760h
     trim_workflow_runs:
       state: enabled
       schedule: "45 3 * * *"

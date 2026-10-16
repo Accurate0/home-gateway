@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"time\", kilobytes_used, kilobytes_total, parity_status, parity_progress\n            FROM unraid_array_events\n            WHERE \"time\" >= $1\n            ORDER BY \"time\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kilobytes_used",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "kilobytes_used"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kilobytes_total",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "kilobytes_total"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "parity_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "parity_status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "parity_progress",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "parity_progress"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6474974fe95449dd8549e3260678d5c313e0a2e89ecc5c8010c3665f954130ce"
+}

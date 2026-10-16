@@ -29,8 +29,7 @@ impl WorkflowsMutation {
         enabled: bool,
     ) -> async_graphql::Result<bool> {
         let settings = ctx.data::<SettingsContainer>()?;
-        let known = settings.workflows.values().any(|w| w.body().slug == slug);
-        if !known {
+        if !settings.workflows.contains_key(&slug) {
             return Err(async_graphql::Error::new(format!(
                 "unknown workflow slug: {slug}"
             )));
@@ -72,8 +71,7 @@ impl WorkflowsMutation {
         let settings = ctx.data::<SettingsContainer>()?;
         let definition = settings
             .workflows
-            .values()
-            .find(|w| w.body().slug == slug)
+            .get(&slug)
             .ok_or_else(|| async_graphql::Error::new(format!("unknown workflow slug: {slug}")))?;
 
         let declared = callable_inputs(definition).map_err(async_graphql::Error::new)?;

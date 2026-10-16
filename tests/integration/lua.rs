@@ -37,14 +37,14 @@ async fn start() -> Harness {
     harness
 }
 
-fn run_workflow(harness: &Harness, name: &str, input: Node) {
+fn run_workflow(harness: &Harness, slug: &str, input: Node) {
     let workflow = harness
         .state
         .settings
         .workflows
-        .get(name)
+        .get(slug)
         .map(WorkflowDefinition::body)
-        .unwrap_or_else(|| panic!("the fixture config should declare `{name}`"))
+        .unwrap_or_else(|| panic!("the fixture config should declare `{slug}`"))
         .clone();
 
     rpc::cast_factory(
@@ -109,7 +109,7 @@ async fn error_for(harness: &Harness, slug: &str) -> Option<String> {
 async fn a_lua_step_drives_a_device_and_publishes_its_returns_to_later_steps() {
     let harness = start().await;
 
-    run_workflow(&harness, "Test lua step", Node::empty());
+    run_workflow(&harness, "test-lua-step", Node::empty());
 
     let lamp = harness.recorder.expect_publish(LAMP_TOPIC).await;
     assert_eq!(lamp, serde_json::json!({ "state": "ON" }));
@@ -125,7 +125,7 @@ async fn a_lua_guard_gates_its_step() {
 
     let mut allowed = Node::empty();
     allowed.insert("go", Node::Value(Some(Value::Bool(true))));
-    run_workflow(&harness, "Test lua guard", allowed);
+    run_workflow(&harness, "test-lua-guard", allowed);
 
     let passed = harness.recorder.expect_publish("test/lua/guard").await;
     assert_eq!(passed, serde_json::json!({ "passed": true }));
@@ -138,7 +138,7 @@ async fn a_failing_lua_guard_skips_its_step() {
 
     let mut denied = Node::empty();
     denied.insert("go", Node::Value(Some(Value::Bool(false))));
-    run_workflow(&harness, "Test lua guard", denied);
+    run_workflow(&harness, "test-lua-guard", denied);
 
     wait_for(DB_TIMEOUT, "the guarded workflow to finish", || async {
         (runs_for(&harness, "test-lua-guard").await > 0).then_some(())
@@ -153,7 +153,7 @@ async fn a_failing_lua_guard_skips_its_step() {
 async fn a_dry_run_workflow_suppresses_every_lua_side_effect() {
     let harness = start().await;
 
-    run_workflow(&harness, "Test lua dry run", Node::empty());
+    run_workflow(&harness, "test-lua-dry-run", Node::empty());
 
     wait_for(DB_TIMEOUT, "the dry-run workflow to finish", || async {
         (runs_for(&harness, "test-lua-dry-run").await > 0).then_some(())
@@ -171,7 +171,7 @@ async fn a_dry_run_workflow_suppresses_every_lua_side_effect() {
 async fn a_self_referential_lua_script_is_stopped_by_the_depth_guard() {
     let harness = start().await;
 
-    run_workflow(&harness, "Test lua recursion", Node::empty());
+    run_workflow(&harness, "test-lua-recursion", Node::empty());
 
     let error = error_for(&harness, "test-lua-recursion")
         .await
@@ -560,7 +560,7 @@ async fn a_run_records_its_step_trace_including_lua_annotations() {
 
     let mut input = Node::empty();
     input.insert("go", Node::Value(Some(Value::Bool(false))));
-    run_workflow(&harness, "Test traced lua", input);
+    run_workflow(&harness, "test-traced-lua", input);
 
     let run_id = wait_for(DB_TIMEOUT, "a traced workflow run", || async {
         sqlx::query_scalar::<_, i64>("SELECT id FROM workflow_runs WHERE slug = $1")

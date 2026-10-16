@@ -1,0 +1,15 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# Unraid Disk Hot  (on: unraid(*).disk_temperature Gte 50)
+  notify: notify(AndroidApp, general): Unraid ${event.subject} is at ${event.value}°C
+
+# Unraid Disk Filling Up  (on: unraid(*).disk_usage Gte 90)
+  notify: notify(AndroidApp, general): Unraid ${event.subject} is over 90% full
+
+# Unraid Disk Status Changed  (on: unraid(*) disk_status)
+  notify: notify(AndroidApp, general): Unraid ${event.subject} went from ${event.previous} to ${event.state}
+
+# Unraid Disk Errors  (on: unraid(*) disk_errors)
+  notify: notify(AndroidApp, general): Unraid ${event.subject} now has ${event.state} errors

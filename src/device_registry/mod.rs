@@ -120,7 +120,6 @@ impl DeviceRegistry {
                     address: &address,
                     transport: transport_kind,
                     profile: profile.as_deref(),
-                    notify,
                 },
                 roles,
             )?;

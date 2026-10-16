@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT disk, kind, status, temperature, size_kb,\n                   fs_size_kb, fs_free_kb, fs_used_kb, errors, spinning\n            FROM unraid_disk_events\n            WHERE \"time\" = $1\n            ORDER BY disk\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "disk",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "disk"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "temperature",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "temperature"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "size_kb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "size_kb"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "fs_size_kb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "fs_size_kb"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "fs_free_kb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "fs_free_kb"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "fs_used_kb",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "fs_used_kb"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "errors",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "errors"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "spinning",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "unraid_disk_events",
+            "name": "spinning"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "bd2e149bed3d5e9d4164e1f70738d55977cca045947581fe3712170258e02def"
+}

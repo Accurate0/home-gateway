@@ -199,6 +199,9 @@
         "trmnl": {
           "$ref": "#/$defs/HttpClientOverride"
         },
+        "unraid": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
         "willyweather": {
           "$ref": "#/$defs/HttpClientOverride"
         },
@@ -1075,57 +1078,10 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "notify": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/NotifyRef"
-          }
         }
       },
       "required": [
         "name"
-      ],
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "timeout": {
-              "type": "string"
-            },
-            "state": {
-              "type": "string",
-              "const": "armed"
-            }
-          },
-          "required": [
-            "state",
-            "timeout"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "const": "unarmed"
-            }
-          },
-          "required": [
-            "state"
-          ]
-        }
-      ]
-    },
-    "NotifyRef": {
-      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify.targets:`, or an inline source.",
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/NotifySource"
-        }
       ]
     },
     "RawPresenceBlock": {
@@ -1424,46 +1380,10 @@
       "properties": {
         "name": {
           "type": "string"
-        },
-        "notify": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/NotifyRef"
-          }
         }
       },
       "required": [
         "name"
-      ],
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "timeout": {
-              "type": "string"
-            },
-            "state": {
-              "type": "string",
-              "const": "armed"
-            }
-          },
-          "required": [
-            "state",
-            "timeout"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "state": {
-              "type": "string",
-              "const": "unarmed"
-            }
-          },
-          "required": [
-            "state"
-          ]
-        }
       ]
     },
     "RawAirPurifierBlock": {
@@ -1527,6 +1447,17 @@
           }
         }
       }
+    },
+    "NotifyRef": {
+      "description": "A reference to a notify destination: either the name of a target declared\nunder `notify.targets:`, or an inline source.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/NotifySource"
+        }
+      ]
     },
     "WorkflowDefinition": {
       "anyOf": [
@@ -3463,6 +3394,69 @@
           ]
         },
         {
+          "type": "object",
+          "properties": {
+            "change": {
+              "$ref": "#/$defs/UnraidChange"
+            },
+            "disk": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "state": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "unraid"
+            }
+          },
+          "required": [
+            "type",
+            "change"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "metric": {
+              "$ref": "#/$defs/UnraidMetric"
+            },
+            "disk": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "unraid_metric"
+            }
+          },
+          "required": [
+            "type",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
           "description": "Fires when a poll-transport device reports its battery voltage on\ncheck-in. Optionally gate on a specific `device_id`, device `kind`,\nand/or a `below` voltage threshold for low-battery alerts.",
           "type": "object",
           "properties": {
@@ -3868,6 +3862,23 @@
         "cheapest"
       ]
     },
+    "UnraidChange": {
+      "type": "string",
+      "enum": [
+        "array_state",
+        "disk_status",
+        "disk_errors",
+        "parity_check"
+      ]
+    },
+    "UnraidMetric": {
+      "type": "string",
+      "enum": [
+        "disk_temperature",
+        "disk_usage",
+        "array_usage"
+      ]
+    },
     "PlaybackState": {
       "type": "string",
       "enum": [
@@ -3992,6 +4003,9 @@
         },
         "tuya": {
           "$ref": "#/$defs/TuyaSettings"
+        },
+        "unraid": {
+          "$ref": "#/$defs/UnraidSettings"
         }
       },
       "required": [
@@ -4006,7 +4020,8 @@
         "solar",
         "synergy",
         "transperth",
-        "tuya"
+        "tuya",
+        "unraid"
       ]
     },
     "S3Settings": {
@@ -4502,6 +4517,32 @@
       "additionalProperties": false,
       "required": [
         "host"
+      ]
+    },
+    "UnraidSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "url": {
+          "type": "string"
+        },
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "refresh": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "url",
+        "refresh"
       ]
     },
     "WatchdogSettings": {
@@ -5061,6 +5102,9 @@
         "trim_temperature_sensor": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         },
+        "trim_unraid_events": {
+          "$ref": "#/$defs/AdhocCronTaskSettings2"
+        },
         "trim_workflow_runs": {
           "$ref": "#/$defs/AdhocCronTaskSettings2"
         }
@@ -5082,6 +5126,7 @@
         "trim_robot_vacuum_events",
         "trim_smart_switch",
         "trim_temperature_sensor",
+        "trim_unraid_events",
         "trim_workflow_runs"
       ]
     },

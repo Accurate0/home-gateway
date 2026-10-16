@@ -1,6 +1,7 @@
 use crate::integrations::solar::SolarMetric;
 use crate::weather::{ForecastDay, WeatherMetric, WeatherReading, WeatherSource};
-use crate::workflows::definition::{TriggerMatcher, Workflow};
+use crate::integrations::unraid::types::UnraidMetric;
+use crate::workflows::definition::{Comparison, TriggerMatcher, Workflow};
 use std::collections::HashMap;
 
 use crate::event_bus::variables::SolarVariables;
@@ -9,6 +10,13 @@ use crate::integrations::solar::types::SolarCurrentStatisticsAverages;
 use crate::variables::{Node, WorkflowContextVariables};
 
 pub type WeatherKey = (String, WeatherSource, WeatherMetric, Option<ForecastDay>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UnraidLatchKey {
+    pub slug: String,
+    pub subject: String,
+    pub metric: UnraidMetric,
+}
 
 #[derive(Default)]
 pub struct EdgeLatches {
@@ -20,6 +28,7 @@ pub struct EdgeLatches {
     /// counterpart to `last_satisfied` (there is only one plant, so no subject).
     pub last_solar_satisfied: HashMap<(String, SolarMetric), bool>,
     pub last_weather_satisfied: HashMap<WeatherKey, bool>,
+    pub last_unraid_satisfied: HashMap<UnraidLatchKey, bool>,
 }
 
 impl EdgeLatches {
@@ -34,6 +43,9 @@ impl EdgeLatches {
             Some(PendingLatch::Weather(key)) => {
                 self.last_weather_satisfied.insert(key, true);
             }
+            Some(PendingLatch::Unraid(key)) => {
+                self.last_unraid_satisfied.insert(key, true);
+            }
             None => {}
         }
     }
@@ -42,17 +54,17 @@ impl EdgeLatches {
 pub fn latch_for(workflow: &Workflow, subject_entity: &str) -> Option<PendingLatch> {
     match &workflow.on {
         TriggerMatcher::Environment { metric, .. } => Some(PendingLatch::Sensor((
-            workflow.name.clone(),
+            workflow.slug.clone(),
             subject_entity.to_owned(),
             metric.clone(),
         ))),
         TriggerMatcher::AirPurifier { pm25: Some(_), .. } => Some(PendingLatch::Sensor((
-            workflow.name.clone(),
+            workflow.slug.clone(),
             subject_entity.to_owned(),
             SensorMetric::Pm25,
         ))),
         TriggerMatcher::Solar { metric, .. } => {
-            Some(PendingLatch::Solar((workflow.name.clone(), *metric)))
+            Some(PendingLatch::Solar((workflow.slug.clone(), *metric)))
         }
         TriggerMatcher::Weather {
             source,
@@ -60,11 +72,16 @@ pub fn latch_for(workflow: &Workflow, subject_entity: &str) -> Option<PendingLat
             day,
             ..
         } => Some(PendingLatch::Weather((
-            workflow.name.clone(),
+            workflow.slug.clone(),
             *source,
             *metric,
             *day,
         ))),
+        TriggerMatcher::UnraidMetric { metric, .. } => Some(PendingLatch::Unraid(UnraidLatchKey {
+            slug: workflow.slug.clone(),
+            subject: subject_entity.to_owned(),
+            metric: *metric,
+        })),
         _ => None,
     }
 }
@@ -85,11 +102,33 @@ pub enum PendingLatch {
     Sensor((String, String, SensorMetric)),
     Solar((String, SolarMetric)),
     Weather(WeatherKey),
+    Unraid(UnraidLatchKey),
+}
+
+pub fn unraid_fires(
+    key: UnraidLatchKey,
+    cmp: &Comparison,
+    value: f64,
+    last_satisfied: &mut HashMap<UnraidLatchKey, bool>,
+    pending: &mut Option<PendingLatch>,
+) -> bool {
+    if !cmp.matches(value) {
+        last_satisfied.insert(key, false);
+        return false;
+    }
+
+    if last_satisfied.get(&key).copied().unwrap_or(false) {
+        return false;
+    }
+
+    *pending = Some(PendingLatch::Unraid(key));
+
+    true
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn weather_fires(
-    name: &str,
+    slug: &str,
     source: WeatherSource,
     metric: WeatherMetric,
     day: Option<ForecastDay>,
@@ -106,7 +145,7 @@ pub fn weather_fires(
     };
 
     let satisfied = cmp.matches(reading.value);
-    let key = (name.to_owned(), source, metric, day);
+    let key = (slug.to_owned(), source, metric, day);
 
     if !satisfied {
         last_satisfied.insert(key, false);
@@ -127,7 +166,7 @@ pub fn weather_fires(
 /// the edge state untouched), compare it, and gate on the rising edge so a value
 /// sitting past the threshold only fires once.
 pub fn solar_fires(
-    name: &str,
+    slug: &str,
     metric: SolarMetric,
     cmp: &crate::workflows::definition::Comparison,
     current_wh: f64,
@@ -147,7 +186,7 @@ pub fn solar_fires(
     };
 
     let satisfied = cmp.matches(value);
-    let key = (name.to_owned(), metric);
+    let key = (slug.to_owned(), metric);
 
     if !satisfied {
         last_satisfied.insert(key, false);
@@ -164,7 +203,7 @@ pub fn solar_fires(
 }
 
 pub fn pm25_fires(
-    name: &str,
+    slug: &str,
     device_id: &str,
     cmp: &crate::workflows::definition::Comparison,
     pm25: Option<f64>,
@@ -175,7 +214,7 @@ pub fn pm25_fires(
         return false;
     };
 
-    let key = (name.to_owned(), device_id.to_owned(), SensorMetric::Pm25);
+    let key = (slug.to_owned(), device_id.to_owned(), SensorMetric::Pm25);
 
     if !cmp.matches(pm25) {
         last_satisfied.insert(key, false);
@@ -319,7 +358,8 @@ mod tests {
     fn a_held_threshold_latches_the_edge_it_fired_on() {
         let hot = workflow(
             r#"
-name: hot
+name: Hot
+slug: hot
 on: { type: weather, source: bom, metric: temperature, op: gt, value: 35 }
 for: 1h
 modes: [home]
@@ -345,7 +385,8 @@ run: []
     fn a_held_environment_trigger_latches_on_the_event_sensor() {
         let damp = workflow(
             r#"
-name: damp
+name: Damp
+slug: damp
 on: { type: environment, sensor: bathroom, metric: humidity, op: gt, value: 80 }
 for: 10m
 modes: [home]
@@ -355,8 +396,8 @@ run: []
 
         assert!(matches!(
             latch_for(&damp, "0xabc"),
-            Some(PendingLatch::Sensor((name, sensor, SensorMetric::Humidity)))
-                if name == "damp" && sensor == "0xabc"
+            Some(PendingLatch::Sensor((slug, sensor, SensorMetric::Humidity)))
+                if slug == "damp" && sensor == "0xabc"
         ));
     }
 
@@ -604,7 +645,8 @@ run: []
     fn a_held_pm25_trigger_latches_on_the_event_device() {
         let dusty = workflow(
             r#"
-name: dusty
+name: Dusty
+slug: dusty
 on: { type: air_purifier, device: living-room-purifier, pm25: { op: gte, value: 14 } }
 for: 5m
 modes: [home]
@@ -614,8 +656,8 @@ run: []
 
         assert!(matches!(
             latch_for(&dusty, "purifier-core300s-1"),
-            Some(PendingLatch::Sensor((name, device, SensorMetric::Pm25)))
-                if name == "dusty" && device == "purifier-core300s-1"
+            Some(PendingLatch::Sensor((slug, device, SensorMetric::Pm25)))
+                if slug == "dusty" && device == "purifier-core300s-1"
         ));
     }
 
@@ -631,5 +673,57 @@ run: []
         );
 
         assert!(latch_for(&on, "purifier-core300s-1").is_none());
+    }
+
+    #[test]
+    fn an_unraid_disk_metric_fires_once_per_crossing_and_per_disk() {
+        let cmp = Comparison {
+            op: CompareOp::Gte,
+            value: 50.0,
+        };
+        let mut last = HashMap::new();
+
+        let mut fires = |disk: &str, value: f64| {
+            let mut pending = None;
+            let key = UnraidLatchKey {
+                slug: "hot-disk".to_owned(),
+                subject: disk.to_owned(),
+                metric: UnraidMetric::DiskTemperature,
+            };
+            let fired = unraid_fires(key, &cmp, value, &mut last, &mut pending);
+
+            if let Some(PendingLatch::Unraid(key)) = pending {
+                last.insert(key, true);
+            }
+
+            fired
+        };
+
+        assert!(fires("disk1", 52.0), "expected the crossing to fire");
+        assert!(!fires("disk1", 55.0), "expected no re-fire while past");
+        assert!(fires("disk2", 50.0), "expected another disk to latch on its own");
+        assert!(!fires("disk1", 40.0), "expected no fire on the drop");
+        assert!(fires("disk1", 51.0), "expected a re-arm and re-fire");
+    }
+
+    #[test]
+    fn an_unraid_metric_trigger_latches_by_disk() {
+        let on = workflow(
+            r#"
+name: Disk filling up
+slug: disk-filling-up
+on: { type: unraid_metric, metric: disk_usage, op: gte, value: 90 }
+modes: [home]
+run: []
+"#,
+        );
+
+        let Some(PendingLatch::Unraid(key)) = latch_for(&on, "disk3") else {
+            panic!("expected an unraid latch");
+        };
+
+        assert_eq!(key.slug, "disk-filling-up");
+        assert_eq!(key.subject, "disk3");
+        assert_eq!(key.metric, UnraidMetric::DiskUsage);
     }
 }

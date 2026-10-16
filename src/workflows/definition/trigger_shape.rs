@@ -8,6 +8,7 @@ use crate::event_bus::variables::{
     FeatureFlagVariables, FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables,
     JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
     PresenceVariables, SolarVariables, SunVariables, SwitchVariables, UnifiVariables,
+    UnraidVariables,
     WeatherVariables, WoolworthsVariables,
 };
 use crate::variables::{Shape, VarType, WorkflowContextVariables};
@@ -28,6 +29,24 @@ impl TriggerMatcher {
             TriggerMatcher::HomeAssistant { .. } => HomeAssistantVariables::shape(),
             TriggerMatcher::Woolworths { .. } => WoolworthsVariables::shape(),
             TriggerMatcher::FuelWatch { .. } => FuelWatchVariables::shape(),
+            TriggerMatcher::Unraid { .. } => {
+                let mut shape = UnraidVariables::shape();
+
+                for field in ["change", "state", "previous"] {
+                    shape.require(&[field]);
+                }
+
+                shape
+            }
+            TriggerMatcher::UnraidMetric { .. } => {
+                let mut shape = UnraidVariables::shape();
+
+                for field in ["metric", "value"] {
+                    shape.require(&[field]);
+                }
+
+                shape
+            }
             TriggerMatcher::DeviceBattery { .. } => DeviceBatteryVariables::shape(),
             TriggerMatcher::DeviceConnection { .. } => DeviceConnectionVariables::shape(),
             TriggerMatcher::DeviceLock { .. } => DeviceLockVariables::shape(),

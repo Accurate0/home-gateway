@@ -1,0 +1,13 @@
+---
+source: src/workflows/plan.rs
+expression: out
+---
+# Front Door Left Open  (on: door(front-door) -> open)
+  notify: notify(AndroidApp, door): Front Door has been left open.
+
+# Garage Door Left Open  (on: garage_door(garage) -> open)
+  notify: notify(AndroidApp, door): Garage Door has been left open. [Close]
+
+# Close Garage Door  (reusable)
+  inputs: {}
+  garage_door: garage_door(garage) -> close

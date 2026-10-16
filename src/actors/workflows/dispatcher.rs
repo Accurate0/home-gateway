@@ -20,9 +20,10 @@ use crate::workflows::definition::{
 use crate::workflows::manager::WorkflowManager;
 use crate::workflows::timer_kind::TimerKind;
 use crate::workflows::triggers::{
-    EdgeLatches, PendingLatch, event_node, latch_for, pm25_fires, solar_fires, unifi_matches,
-    weather_fires,
+    EdgeLatches, PendingLatch, UnraidLatchKey, event_node, latch_for, pm25_fires, solar_fires,
+    unifi_matches, unraid_fires, weather_fires,
 };
+use crate::integrations::unraid::types::UnraidUpdate;
 use chrono::Utc;
 use std::time::Duration;
 use uuid::Uuid;
@@ -149,7 +150,7 @@ impl WorkflowDispatcher {
 
                 match pm25 {
                     Some(cmp) => pm25_fires(
-                        &workflow.name,
+                        &workflow.slug,
                         device_id,
                         cmp,
                         *p,
@@ -216,7 +217,7 @@ impl WorkflowDispatcher {
                     return false;
                 };
                 let satisfied = cmp.matches(reading.value());
-                let key = (workflow.name.clone(), s.clone(), reading.metric());
+                let key = (workflow.slug.clone(), s.clone(), reading.metric());
 
                 if !satisfied {
                     state.latches.last_satisfied.insert(key, false);
@@ -250,7 +251,7 @@ impl WorkflowDispatcher {
                 }
 
                 let satisfied = cmp.matches(*soil_moisture);
-                let key = (workflow.name.clone(), s.clone(), SensorMetric::SoilMoisture);
+                let key = (workflow.slug.clone(), s.clone(), SensorMetric::SoilMoisture);
 
                 if !satisfied {
                     state.latches.last_satisfied.insert(key, false);
@@ -272,7 +273,7 @@ impl WorkflowDispatcher {
                 true
             }
             (TriggerMatcher::Cron { .. }, EventBusMessage::Cron { name, .. }) => {
-                &workflow.name == name
+                &workflow.slug == name
             }
             (
                 TriggerMatcher::Custom { name, source, .. },
@@ -342,6 +343,47 @@ impl WorkflowDispatcher {
                     && site_id.is_none_or(|s| s == *id)
                     && below.is_none_or(|b| *new_price < b)
                     && min_drop.is_none_or(|min| old_price - new_price >= min)
+            }
+            (
+                TriggerMatcher::Unraid {
+                    change,
+                    disk,
+                    state: wanted,
+                },
+                EventBusMessage::Unraid {
+                    subject,
+                    update:
+                        UnraidUpdate::Changed {
+                            change: c, state: s, ..
+                        },
+                    ..
+                },
+            ) => {
+                change == c
+                    && disk.as_ref().is_none_or(|disk| disk == subject)
+                    && wanted.as_ref().is_none_or(|wanted| wanted == s)
+            }
+            (
+                TriggerMatcher::UnraidMetric { metric, disk, cmp },
+                EventBusMessage::Unraid {
+                    subject,
+                    update: UnraidUpdate::Reading { metric: m, value },
+                    ..
+                },
+            ) => {
+                metric == m
+                    && disk.as_ref().is_none_or(|disk| disk == subject)
+                    && unraid_fires(
+                        UnraidLatchKey {
+                            slug: workflow.slug.clone(),
+                            subject: subject.clone(),
+                            metric: *metric,
+                        },
+                        cmp,
+                        *value,
+                        &mut state.latches.last_unraid_satisfied,
+                        pending,
+                    )
             }
             (
                 TriggerMatcher::DeviceBattery {
@@ -421,7 +463,7 @@ impl WorkflowDispatcher {
             }
             (TriggerMatcher::Solar { metric, cmp }, EventBusMessage::Solar { current_wh, .. }) => {
                 solar_fires(
-                    &workflow.name,
+                    &workflow.slug,
                     *metric,
                     cmp,
                     *current_wh,
@@ -445,7 +487,7 @@ impl WorkflowDispatcher {
             ) => {
                 source == s
                     && weather_fires(
-                        &workflow.name,
+                        &workflow.slug,
                         *source,
                         *metric,
                         *day,
@@ -552,8 +594,8 @@ impl WorkflowDispatcher {
             .await
         {
             Ok(cancelled) => {
-                for name in cancelled {
-                    tracing::info!("[{event_id}] cancelled pending delayed trigger '{name}'");
+                for slug in cancelled {
+                    tracing::info!("[{event_id}] cancelled pending delayed trigger '{slug}'");
                 }
             }
             Err(e) => {
@@ -670,7 +712,7 @@ impl WorkflowDispatcher {
         }
 
         if let Some(cooldown) = workflow.cooldown
-            && !self.cooldown_ok(&workflow.name, cooldown).await?
+            && !self.cooldown_ok(&workflow.slug, cooldown).await?
         {
             tracing::info!(
                 "[{event_id}] trigger '{}' within cooldown, skipping",
@@ -796,7 +838,7 @@ impl WorkflowDispatcher {
             .repos
             .workflow()
             .arm_timer(NewPendingTimer {
-                workflow: &workflow.name,
+                workflow: &workflow.slug,
                 kind,
                 subject_kind: &subject.0,
                 subject_entity: &subject.1,
@@ -838,7 +880,7 @@ impl WorkflowDispatcher {
             .shared_actor_state
             .repos
             .workflow()
-            .cancel_timer(&workflow.name, TimerKind::Hold, &subject.0, &subject.1)
+            .cancel_timer(&workflow.slug, TimerKind::Hold, &subject.0, &subject.1)
             .await;
 
         match cancelled {
@@ -978,7 +1020,7 @@ impl WorkflowDispatcher {
         }
 
         if let Some(cooldown) = workflow.cooldown
-            && !self.cooldown_ok(&workflow.name, cooldown).await?
+            && !self.cooldown_ok(&workflow.slug, cooldown).await?
         {
             tracing::info!(
                 "[{event_id}] trigger '{}' held but is within cooldown, skipping",
@@ -1051,14 +1093,14 @@ impl WorkflowDispatcher {
     /// `trigger_cooldowns` table so the window survives restarts.
     async fn cooldown_ok(
         &self,
-        name: &str,
+        slug: &str,
         cooldown: chrono::TimeDelta,
     ) -> Result<bool, ActorProcessingErr> {
         let ok = self
             .shared_actor_state
             .handles
             .expect::<WorkflowManager>()
-            .cooldown_ok(name, cooldown)
+            .cooldown_ok(slug, cooldown)
             .await?;
 
         Ok(ok)

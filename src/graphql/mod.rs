@@ -10,6 +10,7 @@ use crate::graphql::queries::fuelwatch_query::FuelWatchQuery;
 use crate::graphql::queries::lua_query::LuaQuery;
 use crate::graphql::queries::push_query::PushQuery;
 use crate::graphql::queries::transperth_query::TransperthQuery;
+use crate::graphql::queries::unraid_query::UnraidQuery;
 use crate::graphql::queries::woolworths_query::WoolworthsQuery;
 use crate::graphql::queries::workflows_query::WorkflowsQuery;
 use crate::graphql::subscription::SubscriptionRoot;
@@ -35,6 +36,7 @@ pub struct QueryRoot(
     WoolworthsQuery,
     TransperthQuery,
     FuelWatchQuery,
+    UnraidQuery,
     WorkflowsQuery,
     JellyfinQuery,
     AdhocQuery,

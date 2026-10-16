@@ -17,7 +17,7 @@ use crate::actors::eink_display::EInkDisplayActor;
 use crate::actors::integrations::{
     fuelwatch::FuelWatchActor, jellyfin::JellyfinActor, solar::SolarActor, synergy::SynergyActor,
     transperth::TransperthActor, trmnl::TrmnlActor, unifi::UnifiConnectedClientHandler,
-    willyweather::WillyWeatherActor, woolworths::WoolworthsActor,
+    unraid::UnraidActor, willyweather::WillyWeatherActor, woolworths::WoolworthsActor,
 };
 use crate::actors::root::RootMessage;
 use crate::actors::sun::SunActor;
@@ -44,6 +44,7 @@ use crate::integrations::solar::{goodwe::GoodWeSemsAPI, weather::WeatherAPI};
 use crate::integrations::transperth::Transperth;
 use crate::integrations::trmnl::Trmnl;
 use crate::integrations::tuya::Tuya;
+use crate::integrations::unraid::Unraid;
 use crate::integrations::willyweather::WillyWeather;
 use crate::integrations::woolworths::Woolworths;
 use crate::settings::SettingsContainer;
@@ -583,6 +584,40 @@ pub static ACTORS: &[ActorSpec] = &[
         },
     },
     ActorSpec {
+        name: UnraidActor::NAME,
+        autostart: true,
+        optional: false,
+        requires: &[
+            Requirement::Setting {
+                label: "integrations.unraid.state",
+                present: |settings| settings.integrations.unraid.state.is_enabled(),
+            },
+            Requirement::Handle {
+                label: "unraid",
+                present: |handles| handles.contains::<Unraid>(),
+            },
+        ],
+        depends_on: &[],
+        spawn: |root, shared_actor_state| {
+            Box::pin(async move {
+                let unraid = shared_actor_state.handles.expect::<Unraid>().clone();
+                let settings = shared_actor_state.settings.integrations.unraid.clone();
+
+                root.spawn_linked(
+                    Some(UnraidActor::NAME.to_owned()),
+                    UnraidActor {
+                        shared_actor_state,
+                        unraid,
+                    },
+                    settings,
+                )
+                .await?;
+
+                Ok(Spawned::Started)
+            })
+        },
+    },
+    ActorSpec {
         name: WoolworthsActor::NAME,
         autostart: true,
         optional: false,
@@ -725,6 +760,7 @@ mod tests {
                 TrmnlActor::NAME,
                 FuelWatchActor::NAME,
                 WillyWeatherActor::NAME,
+                UnraidActor::NAME,
                 WoolworthsActor::NAME,
                 SolarActor::NAME,
             ]

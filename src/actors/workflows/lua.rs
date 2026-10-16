@@ -20,7 +20,7 @@ impl WorkflowLua {
     #[lua(scope = Workflow::Run)]
     async fn run(
         cx: &LuaCallContext,
-        name: String,
+        slug: String,
         with: Option<BTreeMap<String, LuaValue>>,
     ) -> mlua::Result<()> {
         let mut inputs = BTreeMap::new();
@@ -44,8 +44,8 @@ impl WorkflowLua {
             trace: &cx.trace,
         };
 
-        cx.command(Self::RUN, &name, || async {
-            worker.run_reusable(call, &name, inputs).await
+        cx.command(Self::RUN, &slug, || async {
+            worker.run_reusable(call, &slug, inputs).await
         })
         .await
     }

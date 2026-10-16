@@ -6,10 +6,6 @@ pub enum NotificationSource {
     WatchdogStale,
     #[strum(to_string = "watchdog.recovered")]
     WatchdogRecovered,
-    #[strum(to_string = "door.left_open")]
-    DoorLeftOpen,
-    #[strum(to_string = "garage_door.left_open")]
-    GarageDoorLeftOpen,
     #[strum(to_string = "workflow.notify.{slug}")]
     Workflow { slug: String },
     #[strum(to_string = "lua.notify.{origin}")]
@@ -33,10 +29,6 @@ mod tests {
         assert_eq!(
             NotificationSource::WatchdogRecovered.to_string(),
             "watchdog.recovered"
-        );
-        assert_eq!(
-            NotificationSource::DoorLeftOpen.to_string(),
-            "door.left_open"
         );
         assert_eq!(
             NotificationSource::Workflow {

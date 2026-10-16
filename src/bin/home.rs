@@ -80,6 +80,11 @@ enum Command {
         #[arg(long)]
         limit: Option<i64>,
     },
+    Unraid {
+        disk: Option<String>,
+        #[arg(long, value_name = "DURATION", value_parser = parse_remind_after, default_value = "24h")]
+        since: i64,
+    },
     Events {
         #[arg(default_value = "*")]
         filter: String,
@@ -433,6 +438,10 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Energy { since } => energy(&client, *since, cli.json).await,
         Command::Transperth { route } => transperth(&client, route.as_deref(), cli.json).await,
         Command::Fuel { postcode, limit } => fuel(&client, *postcode, *limit, cli.json).await,
+        Command::Unraid { disk, since } => match disk {
+            Some(disk) => unraid_disk(&client, disk, *since, cli.json).await,
+            None => unraid(&client, cli.json).await,
+        },
         Command::Events { filter } => events::tail(&client, filter, cli.json).await,
         Command::Curl(args) => curl(&client, args),
     }
@@ -834,6 +843,117 @@ async fn fuel(
             text(&site, "brand"),
             text(&site, "name"),
             text(&site, "suburb")
+        );
+    }
+
+    Ok(())
+}
+
+fn optional_number(value: &Value, key: &str, suffix: &str) -> String {
+    value[key]
+        .as_f64()
+        .map(|number| format!("{number:.0}{suffix}"))
+        .unwrap_or_else(|| "-".to_owned())
+}
+
+async fn unraid(client: &Client, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            r#"
+            query {
+              unraid {
+                recordedAt
+                array { state usagePercent kilobytesUsed kilobytesTotal parityStatus parityProgress }
+                disks { name kind status temperature usagePercent errors spinning }
+              }
+            }
+            "#,
+            json!({}),
+        )
+        .await?;
+
+    let unraid = &data["unraid"];
+
+    if as_json {
+        return print_json(unraid);
+    }
+
+    if unraid.is_null() {
+        println!("no unraid snapshot recorded yet");
+        return Ok(());
+    }
+
+    let array = &unraid["array"];
+    let terabytes = |key: &str| array[key].as_f64().unwrap_or_default() / 1_000_000_000.0;
+
+    println!(
+        "array {}  {:.1}/{:.1} TB ({})  parity {} {}",
+        text(array, "state"),
+        terabytes("kilobytesUsed"),
+        terabytes("kilobytesTotal"),
+        optional_number(array, "usagePercent", "%"),
+        text(array, "parityStatus"),
+        optional_number(array, "parityProgress", "%"),
+    );
+    println!("recorded {}", text(unraid, "recordedAt"));
+    println!();
+
+    for disk in unraid["disks"].as_array().cloned().unwrap_or_default() {
+        let spinning = match disk["spinning"].as_bool() {
+            Some(true) => "spinning",
+            Some(false) => "standby",
+            None => "-",
+        };
+
+        println!(
+            "{:<10} {:<7} {:<10} {:>5} {:>5} {:>6} errors  {spinning}",
+            text(&disk, "name"),
+            text(&disk, "kind"),
+            text(&disk, "status"),
+            optional_number(&disk, "temperature", "°C"),
+            optional_number(&disk, "usagePercent", "%"),
+            optional_number(&disk, "errors", ""),
+        );
+    }
+
+    Ok(())
+}
+
+async fn unraid_disk(client: &Client, disk: &str, since: i64, as_json: bool) -> Result<()> {
+    let data = client
+        .graphql(
+            r#"
+            query($disk: String!, $since: DateTime!) {
+              unraid {
+                disk(name: $disk) {
+                  name
+                  history(since: $since) { time status temperature usagePercent errors spinning }
+                }
+              }
+            }
+            "#,
+            json!({ "disk": disk, "since": since_timestamp(since) }),
+        )
+        .await?;
+
+    let disk_data = &data["unraid"]["disk"];
+
+    if as_json {
+        return print_json(disk_data);
+    }
+
+    if disk_data.is_null() {
+        anyhow::bail!("unraid has no disk named `{disk}`");
+    }
+
+    for point in disk_data["history"].as_array().cloned().unwrap_or_default() {
+        println!(
+            "{:<32} {:<10} {:>5} {:>5} {:>6} errors",
+            text(&point, "time"),
+            text(&point, "status"),
+            optional_number(&point, "temperature", "°C"),
+            optional_number(&point, "usagePercent", "%"),
+            optional_number(&point, "errors", ""),
         );
     }
 

@@ -13,9 +13,6 @@
     - type: door
       config:
         name: Front Door
-        state: armed
-        timeout: 3m
-        notify: [android_app]
 
 - id: door-mccgq12lm-2
   aliases: [garage-door]
@@ -29,6 +26,4 @@
     - type: door
       config:
         name: Garage Door
-        state: unarmed
-        notify: [android_app]
     - type: battery

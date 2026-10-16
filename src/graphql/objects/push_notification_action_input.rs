@@ -24,7 +24,7 @@ impl PushNotificationActionInput {
                     )
                 })?;
 
-                if !settings.workflows.values().any(|w| w.body().slug == slug) {
+                if !settings.workflows.contains_key(&slug) {
                     return Err(format!("unknown workflow slug: {slug}"));
                 }
 

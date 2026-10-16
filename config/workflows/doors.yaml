@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../schemas/workflows.schema.json
+- name: Front Door Left Open
+  slug: front-door-left-open
+  group: Alerts
+  on: { type: door, device: front-door, open: true }
+  for: 3m
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: door
+      message: "Front Door has been left open."
+
+- name: Garage Door Left Open
+  slug: garage-door-left-open
+  group: Alerts
+  on: { type: garage_door, device: garage, state: open }
+  for: 15m
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: door
+      message: "Garage Door has been left open."
+      actions:
+        - { label: Close, action: { type: run_workflow, workflow: close-garage-door } }
+
+- name: Close Garage Door
+  slug: close-garage-door
+  group: Alerts
+  inputs: {}
+  run:
+    - type: garage_door
+      device: garage
+      command: close

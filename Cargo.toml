@@ -25,6 +25,7 @@ async-graphql-axum = "7.2.1"
 bytes = "1.12.1"
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.15.27", features = ["yaml"] }
+cynic = "3.14.0"
 itertools = "0.15.0"
 gcp_auth = "0.12"
 log = "0.4.34"
@@ -108,6 +109,7 @@ yaml-include = "0.8"
 jsonschema = { version = "0.58", default-features = false }
 prost-build = "0.14"
 tonic-prost-build = "0.14"
+cynic-codegen = "3.14.0"
 
 [[test]]
 name = "integration"

@@ -93,26 +93,6 @@ impl GarageDoorRepo {
         Ok(previous)
     }
 
-    #[tracing::instrument(skip_all, name = "db.garage_door.closed_since", err)]
-    pub async fn closed_since(
-        &self,
-        device_id: &str,
-        since: DateTime<Utc>,
-    ) -> Result<bool, sqlx::Error> {
-        let closed = sqlx::query_scalar!(
-            r#"SELECT EXISTS (
-                 SELECT 1 FROM garage_door_events
-                 WHERE device_id = $1 AND state = 'closed' AND "time" > $2
-               ) AS "closed!""#,
-            device_id,
-            since,
-        )
-        .fetch_one(&self.db)
-        .await?;
-
-        Ok(closed)
-    }
-
     #[tracing::instrument(skip_all, name = "db.garage_door.latest", err)]
     pub async fn latest(&self, device_id: &str) -> Result<Option<GarageDoorStateRow>, sqlx::Error> {
         sqlx::query_as!(

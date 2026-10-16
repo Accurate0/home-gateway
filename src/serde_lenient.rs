@@ -30,3 +30,19 @@ where
 {
     Ok(opt_f64(deserializer)?.map(|n| n as i32))
 }
+
+pub fn opt_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = match Option::<NumberOrString>::deserialize(deserializer)? {
+        Some(NumberOrString::Str(s)) => match s.trim().parse::<i64>() {
+            Ok(n) => return Ok(Some(n)),
+            Err(_) => s.trim().parse::<f64>().ok(),
+        },
+        Some(NumberOrString::Num(n)) => Some(n),
+        None => None,
+    };
+
+    Ok(value.filter(|n| n.is_finite()).map(|n| n as i64))
+}

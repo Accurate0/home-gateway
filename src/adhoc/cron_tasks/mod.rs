@@ -15,6 +15,7 @@ pub mod trim_light_history;
 pub mod trim_robot_vacuum_events;
 pub mod trim_smart_switch;
 pub mod trim_temperature_sensor;
+pub mod trim_unraid_events;
 pub mod trim_workflow_runs;
 
 pub fn all() -> Vec<&'static dyn AnyAdhocCronTask> {
@@ -34,6 +35,7 @@ pub fn all() -> Vec<&'static dyn AnyAdhocCronTask> {
         &trim_robot_vacuum_events::TrimRobotVacuumEvents,
         &trim_smart_switch::TrimSmartSwitch,
         &trim_temperature_sensor::TrimTemperatureSensor,
+        &trim_unraid_events::TrimUnraidEvents,
         &trim_workflow_runs::TrimWorkflowRuns,
     ]
 }

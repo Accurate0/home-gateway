@@ -96,3 +96,8 @@ transperth:
     timetables:
       capacity: 16
       ttl: 6h
+
+unraid:
+  state: enabled
+  url: http://unraid.internal
+  refresh: 30m

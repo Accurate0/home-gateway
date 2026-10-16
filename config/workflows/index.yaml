@@ -15,3 +15,5 @@
 - !include holidays.yaml
 - !include eink-battery.yaml
 - !include unifi-offline.yaml
+- !include doors.yaml
+- !include unraid.yaml

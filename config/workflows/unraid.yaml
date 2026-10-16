@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../schemas/workflows.schema.json
+- name: Unraid Disk Hot
+  slug: unraid-disk-hot
+  group: Alerts
+  on: { type: unraid_metric, metric: disk_temperature, op: gte, value: 50 }
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "Unraid ${event.subject} is at ${event.value}°C"
+
+- name: Unraid Disk Filling Up
+  slug: unraid-disk-filling-up
+  group: Alerts
+  on: { type: unraid_metric, metric: disk_usage, op: gte, value: 90 }
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "Unraid ${event.subject} is over 90% full"
+
+- name: Unraid Disk Status Changed
+  slug: unraid-disk-status-changed
+  group: Alerts
+  on: { type: unraid, change: disk_status }
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "Unraid ${event.subject} went from ${event.previous} to ${event.state}"
+
+- name: Unraid Disk Errors
+  slug: unraid-disk-errors
+  group: Alerts
+  on: { type: unraid, change: disk_errors }
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      message: "Unraid ${event.subject} now has ${event.state} errors"

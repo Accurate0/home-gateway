@@ -426,7 +426,7 @@ type EpdConfig {
 	partial: PartialWindow
 }
 
-union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | AirPurifierUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | DeviceLockUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
+union EventUpdate = PresenceUpdate | DoorUpdate | GarageDoorUpdate | AirPurifierUpdate | SwitchUpdate | EnvironmentUpdate | PlantUpdate | CronUpdate | SunUpdate | LightUpdate | UnifiUpdate | ModeUpdate | HomeAssistantUpdate | WoolworthsUpdate | DeviceBatteryUpdate | DeviceConnectionUpdate | DeviceLockUpdate | JellyfinUpdate | MediaPlayerUpdate | SolarUpdate | WeatherUpdate | FuelWatchUpdate | UnraidUpdate | TransperthUpdate | CommandFailedUpdate | CustomUpdate
 
 type Forecast {
 	days: [ForecastDetails!]!
@@ -1049,6 +1049,7 @@ type QueryRoot {
 	woolworths: WoolworthsObject!
 	transperth: TransperthObject!
 	fuelwatch(postcode: Int): FuelWatchObject!
+	unraid: Unraid
 	workflows: [WorkflowStatus!]!
 	mode: ModeStatus!
 	workflowRuns(slug: String, eventId: UUID, limit: Int): [WorkflowRun!]!
@@ -1214,6 +1215,72 @@ type UnifiUpdate {
 	macAddress: String!
 	client: String!
 	connected: Boolean!
+}
+
+type Unraid {
+	recordedAt: DateTime!
+	array: UnraidArray!
+	disks: [UnraidDisk!]!
+	disk(name: String!): UnraidDisk
+}
+
+type UnraidArray {
+	state: String!
+	usagePercent: Float
+	kilobytesFree: Int!
+	kilobytesUsed: Int!
+	kilobytesTotal: Int!
+	parityStatus: String!
+	parityProgress: Int
+	parityErrors: Int
+	parityRunning: Boolean!
+	history(since: DateTime!): [UnraidArrayPoint!]!
+}
+
+type UnraidArrayPoint {
+	time: DateTime!
+	kilobytesUsed: Int!
+	kilobytesTotal: Int!
+	usagePercent: Float
+	parityStatus: String!
+	parityProgress: Int
+}
+
+type UnraidDisk {
+	name: String!
+	kind: String!
+	status: String
+	temperature: Int
+	usagePercent: Float
+	sizeKb: Int
+	fsSizeKb: Int
+	fsFreeKb: Int
+	fsUsedKb: Int
+	errors: Int
+	spinning: Boolean
+	history(since: DateTime!): [UnraidDiskPoint!]!
+}
+
+type UnraidDiskPoint {
+	time: DateTime!
+	status: String
+	temperature: Int
+	fsUsedKb: Int
+	fsSizeKb: Int
+	usagePercent: Float
+	errors: Int
+	spinning: Boolean
+}
+
+type UnraidUpdate {
+	eventId: UUID!
+	subject: String!
+	kind: String
+	change: String
+	state: String
+	previous: String
+	metric: String
+	value: Float
 }
 
 type VacationAction {

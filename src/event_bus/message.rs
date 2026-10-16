@@ -9,9 +9,10 @@ use super::variables::{
     FeatureFlagVariables, FuelWatchVariables, GarageDoorVariables, HomeAssistantVariables,
     JellyfinVariables, LightVariables, MediaPlayerVariables, ModeVariables, PlantVariables,
     PresenceVariables, SolarVariables, SunVariables, SwitchVariables, TransperthVariables,
-    UnifiVariables, WeatherVariables, WoolworthsVariables,
+    UnifiVariables, UnraidVariables, WeatherVariables, WoolworthsVariables,
 };
 use crate::integrations::fuelwatch::FuelChange;
+use crate::integrations::unraid::types::{DiskKind, UnraidUpdate};
 use crate::media_control::PlaybackState;
 use crate::repo::air_purifier::AirPurifierMode;
 use crate::repo::device_lock::DeviceLockSource;
@@ -216,6 +217,12 @@ pub enum EventBusMessage {
         old_price: f64,
         new_price: f64,
     },
+    Unraid {
+        event_id: Uuid,
+        subject: String,
+        kind: Option<DiskKind>,
+        update: UnraidUpdate,
+    },
     Transperth {
         event_id: Uuid,
         route_id: String,
@@ -305,6 +312,7 @@ impl EventBusMessage {
             | EventBusMessage::Solar { event_id, .. }
             | EventBusMessage::Weather { event_id, .. }
             | EventBusMessage::FuelWatch { event_id, .. }
+            | EventBusMessage::Unraid { event_id, .. }
             | EventBusMessage::Transperth { event_id, .. }
             | EventBusMessage::CommandFailed { event_id, .. }
             | EventBusMessage::FeatureFlag { event_id, .. }
@@ -337,6 +345,7 @@ impl EventBusMessage {
             EventBusMessage::Solar { .. } => "solar",
             EventBusMessage::Weather { .. } => "weather",
             EventBusMessage::FuelWatch { .. } => "fuelwatch",
+            EventBusMessage::Unraid { .. } => "unraid",
             EventBusMessage::Transperth { .. } => "transperth",
             EventBusMessage::CommandFailed { .. } => "command_failed",
             EventBusMessage::FeatureFlag { .. } => "feature_flag",
@@ -367,6 +376,7 @@ impl EventBusMessage {
         "solar",
         "weather",
         "fuelwatch",
+        "unraid",
         "transperth",
         "command_failed",
         "feature_flag",
@@ -400,6 +410,7 @@ impl EventBusMessage {
             EventBusMessage::Solar { .. } => "solar".to_string(),
             EventBusMessage::Weather { source, .. } => source.as_str().to_owned(),
             EventBusMessage::FuelWatch { site_id, .. } => site_id.to_string(),
+            EventBusMessage::Unraid { subject, .. } => subject.clone(),
             EventBusMessage::Transperth { route_id, .. } => route_id.clone(),
             EventBusMessage::CommandFailed { address, .. } => address.clone(),
             EventBusMessage::FeatureFlag { state, .. } => state.to_string(),
@@ -658,6 +669,12 @@ impl EventBusMessage {
                 next_delay_minutes: *next_delay_minutes,
             }
             .to_node(),
+            EventBusMessage::Unraid {
+                subject,
+                kind,
+                update,
+                ..
+            } => UnraidVariables::new(subject, *kind, update).to_node(),
             EventBusMessage::Custom {
                 source,
                 name,

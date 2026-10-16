@@ -10,8 +10,6 @@
     - type: door
       config:
         name: Test Door
-        state: unarmed
-        notify: [android_app]
     - type: battery
 
 - id: env-test-1

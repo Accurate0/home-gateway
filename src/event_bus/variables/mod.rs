@@ -21,6 +21,7 @@ mod sun_variables;
 mod switch_variables;
 mod transperth_variables;
 mod unifi_variables;
+mod unraid_variables;
 mod weather_variables;
 mod woolworths_variables;
 
@@ -47,5 +48,6 @@ pub use sun_variables::SunVariables;
 pub use switch_variables::SwitchVariables;
 pub use transperth_variables::TransperthVariables;
 pub use unifi_variables::UnifiVariables;
+pub use unraid_variables::UnraidVariables;
 pub use weather_variables::WeatherVariables;
 pub use woolworths_variables::WoolworthsVariables;

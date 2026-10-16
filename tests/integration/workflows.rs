@@ -109,7 +109,7 @@ async fn arm_overdue_delay(harness: &Harness, overdue: TimeDelta) {
         .repos
         .workflow()
         .arm_timer(NewPendingTimer {
-            workflow: "Test lamp on when door opens",
+            workflow: "test-door-opens-lamp-on",
             kind: TimerKind::Delay,
             subject_kind: "door",
             subject_entity: DOOR_ADDRESS,

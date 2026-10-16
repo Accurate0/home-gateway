@@ -197,6 +197,29 @@
 ---@field connected boolean
 ---@field since integer
 
+---@class gw.UnraidArrayInfo
+---@field state string
+---@field usage_percent? number
+---@field kilobytes_free integer
+---@field kilobytes_used integer
+---@field kilobytes_total integer
+---@field parity_status string
+---@field parity_progress? integer
+---@field parity_errors? integer
+---@field parity_running boolean
+---@field recorded_at integer
+
+---@class gw.UnraidDiskInfo
+---@field name string
+---@field kind string
+---@field status? string
+---@field temperature? integer
+---@field usage_percent? number
+---@field fs_used_kb? integer
+---@field fs_size_kb? integer
+---@field errors? integer
+---@field spinning? boolean
+
 ---@class gw.VacuumState
 ---@field state? string
 ---@field battery? integer
@@ -362,9 +385,9 @@ function mqtt.publish(topic, payload, retain) end
 workflow = {}
 
 ---Requires the `workflow:run` scope.
----@param name string
+---@param slug string
 ---@param with? table<string, any>
-function workflow.run(name, with) end
+function workflow.run(slug, with) end
 
 ---Requires the `workflow:read` scope.
 ---@return gw.Mode
@@ -719,6 +742,22 @@ fuel = {}
 ---@param limit? integer
 ---@return gw.FuelSite[]
 function fuel.cheapest(postcode, limit) end
+
+---@class gw.api.unraid
+unraid = {}
+
+---Requires the `unraid:read` scope.
+---@return gw.UnraidArrayInfo?
+function unraid.array() end
+
+---Requires the `unraid:read` scope.
+---@return gw.UnraidDiskInfo[]
+function unraid.disks() end
+
+---Requires the `unraid:read` scope.
+---@param name string
+---@return gw.UnraidDiskInfo?
+function unraid.disk(name) end
 
 ---@class gw.api.home_assistant
 home_assistant = {}

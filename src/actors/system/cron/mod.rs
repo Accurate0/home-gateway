@@ -70,7 +70,7 @@ impl Actor for CronActor {
                 continue;
             }
             if let TriggerMatcher::Cron { schedule } = &workflow.on {
-                Self::schedule_next(&myself, workflow.name.clone(), schedule.as_ref().clone());
+                Self::schedule_next(&myself, workflow.slug.clone(), schedule.as_ref().clone());
             }
         }
 

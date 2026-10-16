@@ -1,4 +1,5 @@
 use crate::integrations::fuelwatch::FuelChange;
+use crate::integrations::unraid::types::{UnraidChange, UnraidMetric};
 use crate::integrations::solar::SolarMetric;
 use crate::media_control::PlaybackState;
 use crate::weather::{ForecastDay, WeatherMetric, WeatherSource};
@@ -117,6 +118,20 @@ pub enum TriggerMatcher {
         #[serde(default)]
         min_drop: Option<f64>,
     },
+    Unraid {
+        change: UnraidChange,
+        #[serde(default)]
+        disk: Option<String>,
+        #[serde(default)]
+        state: Option<String>,
+    },
+    UnraidMetric {
+        metric: UnraidMetric,
+        #[serde(default)]
+        disk: Option<String>,
+        #[serde(flatten)]
+        cmp: Comparison,
+    },
     /// Fires when a poll-transport device reports its battery voltage on
     /// check-in. Optionally gate on a specific `device_id`, device `kind`,
     /// and/or a `below` voltage threshold for low-battery alerts.
@@ -229,6 +244,7 @@ impl TriggerMatcher {
             TriggerMatcher::HomeAssistant { .. } => "home_assistant",
             TriggerMatcher::Woolworths { .. } => "woolworths",
             TriggerMatcher::FuelWatch { .. } => "fuelwatch",
+            TriggerMatcher::Unraid { .. } | TriggerMatcher::UnraidMetric { .. } => "unraid",
             TriggerMatcher::DeviceBattery { .. } => "device_battery",
             TriggerMatcher::DeviceConnection { .. } => "device_connection",
             TriggerMatcher::DeviceLock { .. } => "device_lock",
@@ -339,6 +355,8 @@ impl TriggerMatcher {
             | TriggerMatcher::Mode { .. }
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::FuelWatch { .. }
+            | TriggerMatcher::Unraid { .. }
+            | TriggerMatcher::UnraidMetric { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
             | TriggerMatcher::DeviceLock { .. }
@@ -452,6 +470,23 @@ impl TriggerMatcher {
                 }
 
                 out
+            }
+            TriggerMatcher::Unraid {
+                change,
+                disk,
+                state,
+            } => {
+                let disk = disk.as_deref().unwrap_or("*");
+
+                match state {
+                    Some(state) => format!("unraid({disk}) {change} -> {state}"),
+                    None => format!("unraid({disk}) {change}"),
+                }
+            }
+            TriggerMatcher::UnraidMetric { metric, disk, cmp } => {
+                let disk = disk.as_deref().unwrap_or("*");
+
+                format!("unraid({disk}).{metric} {:?} {}", cmp.op, cmp.value)
             }
             TriggerMatcher::DeviceBattery {
                 device_id,
@@ -609,6 +644,8 @@ impl TriggerMatcher {
             | TriggerMatcher::HomeAssistant { .. }
             | TriggerMatcher::Woolworths { .. }
             | TriggerMatcher::FuelWatch { .. }
+            | TriggerMatcher::Unraid { .. }
+            | TriggerMatcher::UnraidMetric { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
             | TriggerMatcher::DeviceLock { .. }

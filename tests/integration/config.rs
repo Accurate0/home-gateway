@@ -102,7 +102,7 @@ fn unknown_mqtt_model_is_rejected() {
   model: not_a_real_model
   roles:
     - type: door
-      config: { name: Broken, state: unarmed, notify: [android_app] }
+      config: { name: Broken }
 "#,
     );
 

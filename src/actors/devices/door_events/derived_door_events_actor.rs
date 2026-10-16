@@ -167,7 +167,6 @@ impl Actor for DerivedDoorEvents {
                         .await?
                     }
                 },
-                DoorEventsType::Trigger => {}
             }
         };
 

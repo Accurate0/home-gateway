@@ -5,5 +5,6 @@ pub mod synergy;
 pub mod transperth;
 pub mod trmnl;
 pub mod unifi;
+pub mod unraid;
 pub mod willyweather;
 pub mod woolworths;

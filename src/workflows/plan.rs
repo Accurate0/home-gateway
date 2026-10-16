@@ -267,7 +267,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|ext| ext == "yaml"))
             .filter(|path| path.file_stem().is_some_and(|stem| stem != "index"))
             .flat_map(|path| workflow_file(&path))
-            .map(|wf| (wf.body().name.clone(), wf))
+            .map(|wf| (wf.body().slug.clone(), wf))
             .collect()
     }
 

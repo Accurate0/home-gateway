@@ -1,0 +1,122 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"time\", state, kilobytes_free, kilobytes_used, kilobytes_total,\n                   parity_status, parity_progress, parity_errors, parity_running\n            FROM unraid_array_events\n            ORDER BY \"time\" DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "state",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kilobytes_free",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "kilobytes_free"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "kilobytes_used",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "kilobytes_used"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "kilobytes_total",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "kilobytes_total"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "parity_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "parity_status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "parity_progress",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "parity_progress"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "parity_errors",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "parity_errors"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "parity_running",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "unraid_array_events",
+            "name": "parity_running"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "fd6f725005f1829e883d359a29ce9b651a859cbb9a11f510070421b40d55ea62"
+}

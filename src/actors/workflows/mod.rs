@@ -609,13 +609,13 @@ impl WorkflowWorker {
         Ok(())
     }
 
-    /// Expand a `run_workflow` step: look the named workflow up in settings and
+    /// Expand a `run_workflow` step: look the workflow up by slug in settings and
     /// run its steps with an incremented depth. `MAX_DEPTH` bounds transitive
     /// self-reference so a workflow cycle can't recurse forever.
     async fn run_named_workflow(
         &self,
         ctx: WorkflowContext<'_>,
-        name: &str,
+        slug: &str,
         with: &BTreeMap<String, Template>,
     ) -> Result<(), WorkflowError> {
         let mut inputs = BTreeMap::new();
@@ -635,27 +635,27 @@ impl WorkflowWorker {
             trace: ctx.trace,
         };
 
-        self.run_reusable(call, name, inputs).await
+        self.run_reusable(call, slug, inputs).await
     }
 
     pub async fn run_reusable(
         &self,
         ctx: ReusableCall<'_>,
-        name: &str,
+        slug: &str,
         inputs: BTreeMap<String, crate::variables::Value>,
     ) -> Result<(), WorkflowError> {
         if ctx.depth >= MAX_DEPTH {
             tracing::error!(
-                "[{}] workflow recursion depth exceeded at `{name}`",
+                "[{}] workflow recursion depth exceeded at `{slug}`",
                 ctx.event_id
             );
             return Err(WorkflowError::DepthExceeded);
         }
 
         let settings = self.shared_actor_state.settings.clone();
-        let Some(workflow) = settings.workflows.get(name).map(WorkflowDefinition::body) else {
+        let Some(workflow) = settings.workflows.get(slug).map(WorkflowDefinition::body) else {
             tracing::warn!(
-                "[{}] run_workflow references unknown workflow `{name}`",
+                "[{}] run_workflow references unknown workflow `{slug}`",
                 ctx.event_id
             );
             return Ok(());
@@ -668,7 +668,7 @@ impl WorkflowWorker {
             .enabled(&workflow.slug, workflow.enabled)
             .await
         {
-            tracing::info!("[{}] skipping disabled workflow `{name}`", ctx.event_id);
+            tracing::info!("[{}] skipping disabled workflow `{slug}`", ctx.event_id);
             return Ok(());
         }
 
@@ -676,12 +676,12 @@ impl WorkflowWorker {
 
         for (key, ty) in workflow.inputs.iter().flatten() {
             let given = inputs.get(key).cloned().ok_or_else(|| {
-                WorkflowError::Template(format!("run_workflow `{name}` is missing input `{key}`"))
+                WorkflowError::Template(format!("run_workflow `{slug}` is missing input `{key}`"))
             })?;
 
             let value = given.coerce(*ty).ok_or_else(|| {
                 WorkflowError::Template(format!(
-                    "run_workflow `{name}` input `{key}` is not a {ty}"
+                    "run_workflow `{slug}` input `{key}` is not a {ty}"
                 ))
             })?;
 

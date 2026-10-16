@@ -2,7 +2,7 @@ use crate::repo::{
     AdhocRepo, AirPurifierRepo, BatteryRepo, DeviceLockRepo, DeviceRepo, DoorRepo, EinkRepo,
     EnergyRepo, EnvironmentRepo, FuelWatchRepo, GarageDoorRepo, HolidayRepo, HomeAssistantRepo,
     IntentRepo, JellyfinRepo, LightRepo, MediaPlayerRepo, MetricRepo, PlantRepo, PushRepo,
-    RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo, WatchdogRepo,
+    RobotVacuumRepo, SmartSwitchRepo, SolarRepo, SunRepo, UnifiRepo, UnraidRepo, WatchdogRepo,
     WillyWeatherRepo, WoolworthsRepo, WorkflowRepo,
 };
 use sqlx::{Pool, Postgres};
@@ -24,6 +24,7 @@ struct Repos {
     jellyfin: JellyfinRepo,
     solar: SolarRepo,
     unifi: UnifiRepo,
+    unraid: UnraidRepo,
     woolworths: WoolworthsRepo,
     environment: EnvironmentRepo,
     intent: IntentRepo,
@@ -64,6 +65,7 @@ impl RepoRegistry {
                 jellyfin: JellyfinRepo::new(db.clone()),
                 solar: SolarRepo::new(db.clone()),
                 unifi: UnifiRepo::new(db.clone()),
+                unraid: UnraidRepo::new(db.clone()),
                 woolworths: WoolworthsRepo::new(db.clone()),
                 environment: EnvironmentRepo::new(db.clone()),
                 intent: IntentRepo::new(db.clone()),
@@ -128,6 +130,10 @@ impl RepoRegistry {
 
     pub fn unifi(&self) -> &UnifiRepo {
         &self.inner.unifi
+    }
+
+    pub fn unraid(&self) -> &UnraidRepo {
+        &self.inner.unraid
     }
 
     pub fn woolworths(&self) -> &WoolworthsRepo {

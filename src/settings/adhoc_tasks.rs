@@ -22,5 +22,6 @@ pub struct AdhocTasksSettings {
     pub trim_robot_vacuum_events: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_smart_switch: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_temperature_sensor: AdhocCronTaskSettings<RetentionParameters>,
+    pub trim_unraid_events: AdhocCronTaskSettings<RetentionParameters>,
     pub trim_workflow_runs: AdhocCronTaskSettings<RetentionParameters>,
 }

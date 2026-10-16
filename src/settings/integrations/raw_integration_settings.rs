@@ -14,6 +14,7 @@ use super::synergy::SynergySettings;
 use super::transperth::{RawTransperthSettings, TransperthSettings};
 use super::trmnl::TrmnlSettings;
 use super::tuya::TuyaSettings;
+use super::unraid::UnraidSettings;
 use super::willyweather::WillyWeatherSettings;
 use super::woolworths::WoolworthsSettings;
 
@@ -35,6 +36,7 @@ pub struct RawIntegrationSettings {
     synergy: SynergySettings,
     transperth: RawTransperthSettings,
     pub(crate) tuya: TuyaSettings,
+    unraid: UnraidSettings,
 }
 
 impl RawIntegrationSettings {
@@ -52,6 +54,7 @@ impl RawIntegrationSettings {
             synergy,
             transperth,
             tuya,
+            unraid,
         } = self;
 
         validate_esphome(&esphome)?;
@@ -59,6 +62,7 @@ impl RawIntegrationSettings {
         validate_holidays(&holidays)?;
         validate_jellyfin(&jellyfin)?;
         validate_willyweather(&willyweather)?;
+        validate_unraid(&unraid)?;
 
         let transperth = transperth.resolve()?;
 
@@ -79,8 +83,32 @@ impl RawIntegrationSettings {
             synergy,
             transperth,
             tuya,
+            unraid,
         })
     }
+}
+
+fn validate_unraid(unraid: &UnraidSettings) -> Result<(), String> {
+    if !unraid.state.is_enabled() {
+        return Ok(());
+    }
+
+    if unraid.url.trim().is_empty() {
+        return Err("integrations.unraid.url must not be empty".to_owned());
+    }
+
+    if missing(unraid.api_key.as_deref()) {
+        return Err(
+            "integrations.unraid.api_key is required (set INTEGRATIONS__UNRAID__API_KEY)"
+                .to_owned(),
+        );
+    }
+
+    if unraid.refresh <= chrono::TimeDelta::zero() {
+        return Err("integrations.unraid.refresh must be positive".to_owned());
+    }
+
+    Ok(())
 }
 
 fn validate_tuya(tuya: &TuyaSettings) -> Result<(), String> {

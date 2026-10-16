@@ -1958,6 +1958,69 @@
           ]
         },
         {
+          "type": "object",
+          "properties": {
+            "change": {
+              "$ref": "#/$defs/UnraidChange"
+            },
+            "disk": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "state": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "type": {
+              "type": "string",
+              "const": "unraid"
+            }
+          },
+          "required": [
+            "type",
+            "change"
+          ]
+        },
+        {
+          "description": "A scalar comparison: `{ op: gt, value: 30 }`. Flattened into the\n[`super::LeafCondition::Environment`] variant.",
+          "type": "object",
+          "properties": {
+            "metric": {
+              "$ref": "#/$defs/UnraidMetric"
+            },
+            "disk": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "op": {
+              "$ref": "#/$defs/CompareOp"
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "unraid_metric"
+            }
+          },
+          "required": [
+            "type",
+            "metric",
+            "op",
+            "value"
+          ]
+        },
+        {
           "description": "Fires when a poll-transport device reports its battery voltage on\ncheck-in. Optionally gate on a specific `device_id`, device `kind`,\nand/or a `below` voltage threshold for low-battery alerts.",
           "type": "object",
           "properties": {
@@ -2365,6 +2428,23 @@
         "tomorrow_lower",
         "tomorrow_higher",
         "cheapest"
+      ]
+    },
+    "UnraidChange": {
+      "type": "string",
+      "enum": [
+        "array_state",
+        "disk_status",
+        "disk_errors",
+        "parity_check"
+      ]
+    },
+    "UnraidMetric": {
+      "type": "string",
+      "enum": [
+        "disk_temperature",
+        "disk_usage",
+        "array_usage"
       ]
     },
     "PlaybackState": {

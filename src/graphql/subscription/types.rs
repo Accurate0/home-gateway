@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBusMessage;
+use crate::event_bus::variables::UnraidVariables;
 use crate::repo::air_purifier::AirPurifierMode;
 use crate::repo::device_lock::DeviceLockSource;
 use crate::repo::garage_door::GarageDoorState;
@@ -184,6 +185,19 @@ pub struct WeatherUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "UnraidUpdate")]
+pub struct UnraidEventUpdate {
+    pub event_id: Uuid,
+    pub subject: String,
+    pub kind: Option<String>,
+    pub change: Option<String>,
+    pub state: Option<String>,
+    pub previous: Option<String>,
+    pub metric: Option<String>,
+    pub value: Option<f64>,
+}
+
+#[derive(SimpleObject)]
 pub struct FuelWatchUpdate {
     pub event_id: Uuid,
     pub change: String,
@@ -361,6 +375,7 @@ pub enum EventUpdate {
     Solar(SolarUpdate),
     Weather(WeatherUpdate),
     FuelWatch(FuelWatchUpdate),
+    Unraid(UnraidEventUpdate),
     Transperth(TransperthUpdate),
     CommandFailed(CommandFailedUpdate),
     Custom(CustomUpdate),
@@ -382,6 +397,33 @@ impl EventUpdate {
 
         let update = match msg {
             EventBusMessage::FeatureFlag { .. } => return None,
+            EventBusMessage::Unraid {
+                event_id,
+                subject,
+                kind,
+                update,
+            } => {
+                let UnraidVariables {
+                    subject,
+                    kind,
+                    change,
+                    state,
+                    previous,
+                    metric,
+                    value,
+                } = UnraidVariables::new(&subject, kind, &update);
+
+                EventUpdate::Unraid(UnraidEventUpdate {
+                    event_id,
+                    subject,
+                    kind,
+                    change,
+                    state,
+                    previous,
+                    metric,
+                    value,
+                })
+            }
             EventBusMessage::Custom {
                 event_id,
                 source,

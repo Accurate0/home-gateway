@@ -30,6 +30,8 @@ pub struct HttpClientsSettings {
     #[serde(default)]
     pub trmnl: HttpClientOverride,
     #[serde(default)]
+    pub unraid: HttpClientOverride,
+    #[serde(default)]
     pub willyweather: HttpClientOverride,
     #[serde(default)]
     pub woolworths: HttpClientOverride,
@@ -53,6 +55,7 @@ impl HttpClientsSettings {
             HttpClientKind::Reddit => self.reddit,
             HttpClientKind::Transperth => self.transperth,
             HttpClientKind::Trmnl => self.trmnl,
+            HttpClientKind::Unraid => self.unraid,
             HttpClientKind::WillyWeather => self.willyweather,
             HttpClientKind::Woolworths => self.woolworths,
         };

@@ -86,16 +86,16 @@ impl Actor for AlarmActor {
                         now.timestamp_millis() >= (alarm_time - offset).timestamp_millis();
 
                     if should_trigger {
-                        let workflow_name = &self.shared_actor_state.settings.alarm.workflow;
-                        tracing::info!("triggering `{workflow_name}` workflow");
+                        let workflow_slug = &self.shared_actor_state.settings.alarm.workflow;
+                        tracing::info!("triggering `{workflow_slug}` workflow");
                         let Some(workflow) = self
                             .shared_actor_state
                             .settings
                             .workflows
-                            .get(workflow_name)
+                            .get(workflow_slug)
                             .map(crate::workflows::definition::WorkflowDefinition::body)
                         else {
-                            tracing::warn!("alarm workflow `{workflow_name}` not configured");
+                            tracing::warn!("alarm workflow `{workflow_slug}` not configured");
                             return Ok(());
                         };
                         let workflow = workflow.clone();
