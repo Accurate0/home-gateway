@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, TimeDelta, Utc};
 
 use crate::actors::devices::handler::DeviceHandler;
+use crate::actors::system::rpc;
 use crate::{event_bus::EventBusMessage, state::AppState};
 use ractor::RpcReplyPort;
 use uuid::Uuid;
@@ -123,7 +124,7 @@ impl PresenceSensorHandler {
     ) -> Result<(), anyhow::Error> {
         match message {
             Message::QueryLatest { sensor, reply, .. } => {
-                reply.send(state.last_presence.get(&sensor).copied())?;
+                rpc::reply(reply, state.last_presence.get(&sensor).copied());
             }
             Message::QuerySeenWithin {
                 sensor,
@@ -131,7 +132,7 @@ impl PresenceSensorHandler {
                 reply,
                 ..
             } => {
-                reply.send(state.seen_within(&sensor, window, Utc::now()))?;
+                rpc::reply(reply, state.seen_within(&sensor, window, Utc::now()));
             }
             Message::NewEvent(event) => {
                 let Entity {

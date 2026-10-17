@@ -1,4 +1,5 @@
 use super::{DoorEvents, DoorEventsMessage, DoorEventsType};
+use crate::actors::system::rpc;
 use crate::event_bus::EventBusMessage;
 use crate::repo::door::DerivedDoorEvent;
 use crate::repo::door::DoorState;
@@ -91,7 +92,7 @@ impl Actor for DerivedDoorEvents {
         let message = match message {
             DoorEventsMessage::Event(event) => event,
             DoorEventsMessage::QueryState { ieee_addr, reply } => {
-                reply.send(state.map.get(&ieee_addr).copied())?;
+                rpc::reply(reply, state.map.get(&ieee_addr).copied());
                 return Ok(());
             }
         };

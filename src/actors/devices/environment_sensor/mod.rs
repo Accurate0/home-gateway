@@ -2,6 +2,7 @@ pub mod lua;
 pub mod query;
 
 use crate::actors::devices::handler::DeviceHandler;
+use crate::actors::system::rpc;
 use crate::repo::environment::EnvironmentReading;
 use crate::{
     event_bus::{EventBusMessage, SensorReading},
@@ -92,7 +93,7 @@ impl EnvironmentSensorHandler {
                         uv_index: r.uv_index,
                     });
 
-                reply.send(reading)?;
+                rpc::reply(reply, reading);
                 return Ok(());
             }
             Message::NewEvent(event) => {

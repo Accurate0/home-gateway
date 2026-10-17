@@ -1,5 +1,6 @@
 pub mod lua;
 
+use crate::actors::system::rpc;
 use crate::weather::{WeatherMetric, WeatherReading, WeatherSource};
 use crate::{
     event_bus::EventBusMessage,
@@ -181,7 +182,7 @@ impl Actor for SolarActor {
     ) -> Result<(), ractor::ActorProcessingErr> {
         match message {
             SolarMessage::LatestWeather { reply } => {
-                reply.send(state.clone())?;
+                rpc::reply(reply, state.clone());
             }
             SolarMessage::Poll => {
                 let started = std::time::Instant::now();

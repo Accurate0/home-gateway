@@ -22,6 +22,12 @@ pub enum RpcError {
     Messaging(String),
 }
 
+pub fn reply<T>(port: RpcReplyPort<T>, value: T) {
+    if port.send(value).is_err() {
+        tracing::debug!("the caller stopped waiting before the reply was sent");
+    }
+}
+
 /// Send a request-reply message to a named actor and await the reply.
 ///
 /// `make_msg` receives the reply port and returns the message to send, e.g.
@@ -123,4 +129,26 @@ where
     });
 
     cast(name, job)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_reply_reaches_a_waiting_caller() {
+        let (tx, rx) = oneshot();
+
+        reply(RpcReplyPort::from(tx), 7);
+
+        assert_eq!(rx.await.unwrap(), 7);
+    }
+
+    #[test]
+    fn a_reply_to_a_caller_that_gave_up_is_not_an_error() {
+        let (tx, rx) = oneshot::<i32>();
+        drop(rx);
+
+        reply(RpcReplyPort::from(tx), 7);
+    }
 }

@@ -6,6 +6,7 @@ pub mod lua;
 pub mod query;
 
 use crate::actors::devices::handler::DeviceHandler;
+use crate::actors::system::rpc;
 use crate::decoding::Decoders;
 use crate::decoding::{CapabilityRange, DeviceRoleName};
 use crate::device_command::{self, CommandTargets, DeviceCommandError, Outbound};
@@ -460,14 +461,14 @@ impl LightHandler {
             } => {
                 let state = self.apply_set(decoders, &ieee_addr, *request).await?;
 
-                reply.send(state)?;
+                rpc::reply(reply, state);
             }
             LightHandlerMessage::QueryState {
                 ieee_addr, reply, ..
             } => {
                 let state = self.stored_state(&ieee_addr).await?;
 
-                reply.send(state)?;
+                rpc::reply(reply, state);
             }
             LightHandlerMessage::QueryPowerState {
                 ieee_addr, reply, ..
@@ -480,7 +481,7 @@ impl LightHandler {
                     .await?
                     .unwrap_or(false);
 
-                reply.send(is_on)?;
+                rpc::reply(reply, is_on);
             }
         }
 
