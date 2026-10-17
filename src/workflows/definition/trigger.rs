@@ -1,6 +1,6 @@
 use crate::integrations::fuelwatch::FuelChange;
 use crate::integrations::solar::SolarMetric;
-use crate::integrations::unraid::types::{UnraidChange, UnraidMetric};
+use crate::integrations::unraid::types::{UnraidChange, UnraidImportance, UnraidMetric};
 use crate::media_control::PlaybackState;
 use crate::weather::{ForecastDay, WeatherMetric, WeatherSource};
 use std::collections::BTreeMap;
@@ -132,6 +132,10 @@ pub enum TriggerMatcher {
         #[serde(flatten)]
         cmp: Comparison,
     },
+    UnraidNotification {
+        #[serde(default)]
+        importance: Option<Vec<UnraidImportance>>,
+    },
     /// Fires when a poll-transport device reports its battery voltage on
     /// check-in. Optionally gate on a specific `device_id`, device `kind`,
     /// and/or a `below` voltage threshold for low-battery alerts.
@@ -244,7 +248,9 @@ impl TriggerMatcher {
             TriggerMatcher::HomeAssistant { .. } => "home_assistant",
             TriggerMatcher::Woolworths { .. } => "woolworths",
             TriggerMatcher::FuelWatch { .. } => "fuelwatch",
-            TriggerMatcher::Unraid { .. } | TriggerMatcher::UnraidMetric { .. } => "unraid",
+            TriggerMatcher::Unraid { .. }
+            | TriggerMatcher::UnraidMetric { .. }
+            | TriggerMatcher::UnraidNotification { .. } => "unraid",
             TriggerMatcher::DeviceBattery { .. } => "device_battery",
             TriggerMatcher::DeviceConnection { .. } => "device_connection",
             TriggerMatcher::DeviceLock { .. } => "device_lock",
@@ -357,6 +363,7 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::Unraid { .. }
             | TriggerMatcher::UnraidMetric { .. }
+            | TriggerMatcher::UnraidNotification { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
             | TriggerMatcher::DeviceLock { .. }
@@ -488,6 +495,18 @@ impl TriggerMatcher {
 
                 format!("unraid({disk}).{metric} {:?} {}", cmp.op, cmp.value)
             }
+            TriggerMatcher::UnraidNotification { importance } => match importance {
+                Some(importance) => {
+                    let importance = importance
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join("|");
+
+                    format!("unraid notification({importance})")
+                }
+                None => "unraid notification".to_owned(),
+            },
             TriggerMatcher::DeviceBattery {
                 device_id,
                 kind,
@@ -646,6 +665,7 @@ impl TriggerMatcher {
             | TriggerMatcher::FuelWatch { .. }
             | TriggerMatcher::Unraid { .. }
             | TriggerMatcher::UnraidMetric { .. }
+            | TriggerMatcher::UnraidNotification { .. }
             | TriggerMatcher::DeviceBattery { .. }
             | TriggerMatcher::DeviceConnection { .. }
             | TriggerMatcher::DeviceLock { .. }

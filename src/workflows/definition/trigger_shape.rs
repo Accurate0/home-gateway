@@ -46,6 +46,15 @@ impl TriggerMatcher {
 
                 shape
             }
+            TriggerMatcher::UnraidNotification { .. } => {
+                let mut shape = UnraidVariables::shape();
+
+                for field in ["importance", "title", "description"] {
+                    shape.require(&[field]);
+                }
+
+                shape
+            }
             TriggerMatcher::DeviceBattery { .. } => DeviceBatteryVariables::shape(),
             TriggerMatcher::DeviceConnection { .. } => DeviceConnectionVariables::shape(),
             TriggerMatcher::DeviceLock { .. } => DeviceLockVariables::shape(),

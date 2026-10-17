@@ -108,6 +108,21 @@ fn validate_unraid(unraid: &UnraidSettings) -> Result<(), String> {
         return Err("integrations.unraid.refresh must be positive".to_owned());
     }
 
+    if unraid.notification_backfill == 0 {
+        return Err("integrations.unraid.notification_backfill must be positive".to_owned());
+    }
+
+    if unraid.websocket.keep_alive <= chrono::TimeDelta::zero() {
+        return Err("integrations.unraid.websocket.keep_alive must be positive".to_owned());
+    }
+
+    if unraid.websocket.silence_timeout <= unraid.websocket.keep_alive {
+        return Err(
+            "integrations.unraid.websocket.silence_timeout must be longer than keep_alive"
+                .to_owned(),
+        );
+    }
+
     Ok(())
 }
 

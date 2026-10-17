@@ -11,5 +11,8 @@ expression: out
 # Unraid Disk Status Changed  (on: unraid(*) disk_status)
   notify: notify(AndroidApp, general): Unraid ${event.subject} went from ${event.previous} to ${event.state}
 
+# Unraid Notification  (on: unraid notification)
+  notify: notify(AndroidApp, general): ${event.subject}: ${event.description}
+
 # Unraid Disk Errors  (on: unraid(*) disk_errors)
   notify: notify(AndroidApp, general): Unraid ${event.subject} now has ${event.state} errors

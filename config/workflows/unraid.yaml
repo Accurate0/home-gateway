@@ -32,6 +32,18 @@
       category: general
       message: "Unraid ${event.subject} went from ${event.previous} to ${event.state}"
 
+- name: Unraid Notification
+  slug: unraid-notification
+  group: Alerts
+  on: { type: unraid_notification }
+  modes: [home, away, vacation, guest]
+  run:
+    - type: notify
+      notify: { type: android_app }
+      category: general
+      title: "${event.title}"
+      message: "${event.subject}: ${event.description}"
+
 - name: Unraid Disk Errors
   slug: unraid-disk-errors
   group: Alerts

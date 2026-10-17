@@ -366,6 +366,15 @@ impl WorkflowDispatcher {
                     && wanted.as_ref().is_none_or(|wanted| wanted == s)
             }
             (
+                TriggerMatcher::UnraidNotification { importance },
+                EventBusMessage::Unraid {
+                    update: UnraidUpdate::Notification { importance: i, .. },
+                    ..
+                },
+            ) => importance
+                .as_ref()
+                .is_none_or(|importance| importance.contains(i)),
+            (
                 TriggerMatcher::UnraidMetric { metric, disk, cmp },
                 EventBusMessage::Unraid {
                     subject,

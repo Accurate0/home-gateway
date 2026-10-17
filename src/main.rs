@@ -5,6 +5,7 @@ use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
 use home_gateway::integrations::home_assistant::HomeAssistant;
 use home_gateway::integrations::jellyfin::Jellyfin;
+use home_gateway::integrations::unraid::Unraid;
 use home_gateway::startup::{self, Handles, Tasks};
 use home_gateway::state::AppState;
 use home_gateway::telemetry::setup::SampleRatios;
@@ -84,6 +85,9 @@ async fn main() -> anyhow::Result<()> {
     let tuya = state.settings.integrations.tuya.clone();
     let jellyfin = state.handles.get::<Jellyfin>().cloned();
     let jellyfin_websocket = state.settings.integrations.jellyfin.websocket;
+    let unraid = state.handles.get::<Unraid>().cloned();
+    let unraid_settings = state.settings.integrations.unraid.clone();
+    let unraid_repo = state.repos.unraid().clone();
 
     let eink = state.handles.expect::<EinkDisplayManager>().clone();
 
@@ -102,6 +106,9 @@ async fn main() -> anyhow::Result<()> {
             tuya_devices,
             jellyfin,
             jellyfin_websocket,
+            unraid,
+            unraid_settings,
+            unraid_repo,
             devices,
             cancellation_token,
             feature_flag_client,

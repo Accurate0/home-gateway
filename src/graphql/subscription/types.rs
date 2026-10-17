@@ -195,6 +195,10 @@ pub struct UnraidEventUpdate {
     pub previous: Option<String>,
     pub metric: Option<String>,
     pub value: Option<f64>,
+    pub importance: Option<String>,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub link: Option<String>,
 }
 
 #[derive(SimpleObject)]
@@ -411,6 +415,10 @@ impl EventUpdate {
                     previous,
                     metric,
                     value,
+                    importance,
+                    title,
+                    description,
+                    link,
                 } = UnraidVariables::new(&subject, kind, &update);
 
                 EventUpdate::Unraid(UnraidEventUpdate {
@@ -422,6 +430,10 @@ impl EventUpdate {
                     previous,
                     metric,
                     value,
+                    importance,
+                    title,
+                    description,
+                    link,
                 })
             }
             EventBusMessage::Custom {

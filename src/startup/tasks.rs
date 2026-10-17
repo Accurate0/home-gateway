@@ -17,8 +17,11 @@ use crate::integrations::home_assistant::{self, HomeAssistant};
 use crate::integrations::jellyfin::{self, Jellyfin};
 use crate::integrations::mqtt::Mqtt;
 use crate::integrations::tuya::{self, TuyaDevice};
+use crate::integrations::unraid::{self, Unraid};
+use crate::repo::UnraidRepo;
 use crate::settings::{
     EsphomeSettings, HomeAssistantWebsocketSettings, JellyfinWebsocketSettings, TuyaSettings,
+    UnraidSettings,
 };
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(30);
@@ -34,6 +37,9 @@ pub struct Tasks {
     pub tuya_devices: Vec<TuyaDevice>,
     pub jellyfin: Option<Jellyfin>,
     pub jellyfin_websocket: JellyfinWebsocketSettings,
+    pub unraid: Option<Unraid>,
+    pub unraid_settings: UnraidSettings,
+    pub unraid_repo: UnraidRepo,
     pub devices: DeviceRegistry,
     pub cancellation_token: CancellationToken,
     pub feature_flag_client: FeatureFlagClient,
@@ -56,6 +62,9 @@ pub async fn run(listen_addr: SocketAddr, tasks: Tasks) -> anyhow::Result<()> {
         tuya_devices,
         jellyfin,
         jellyfin_websocket,
+        unraid,
+        unraid_settings,
+        unraid_repo,
         devices,
         cancellation_token,
         feature_flag_client,
@@ -112,6 +121,22 @@ pub async fn run(listen_addr: SocketAddr, tasks: Tasks) -> anyhow::Result<()> {
                 jellyfin,
                 jellyfin_websocket,
                 jellyfin_cancellation_token,
+            )
+            .await;
+            Ok::<(), MainError>(())
+        });
+    }
+
+    if let Some(unraid) = unraid {
+        let unraid_cancellation_token = cancellation_token.child_token();
+        let event_bus = event_bus.clone();
+        task_set.spawn(async move {
+            unraid::watch::process_events(
+                unraid,
+                unraid_settings,
+                unraid_repo,
+                event_bus,
+                unraid_cancellation_token,
             )
             .await;
             Ok::<(), MainError>(())

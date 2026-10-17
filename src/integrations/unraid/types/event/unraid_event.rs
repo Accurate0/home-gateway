@@ -1,5 +1,5 @@
 use super::{UnraidChange, UnraidMetric, UnraidUpdate};
-use crate::integrations::unraid::types::{DiskKind, UnraidSnapshot};
+use crate::integrations::unraid::types::{DiskKind, UnraidNotification, UnraidSnapshot};
 
 pub const ARRAY_SUBJECT: &str = "array";
 
@@ -104,6 +104,19 @@ impl UnraidEvent {
         events
     }
 
+    pub fn notification(notification: UnraidNotification) -> Self {
+        Self {
+            subject: notification.subject,
+            kind: None,
+            update: UnraidUpdate::Notification {
+                importance: notification.importance,
+                title: notification.title,
+                description: notification.description,
+                link: notification.link,
+            },
+        }
+    }
+
     fn array(update: UnraidUpdate) -> Self {
         Self {
             subject: ARRAY_SUBJECT.to_owned(),
@@ -154,7 +167,7 @@ mod tests {
                 UnraidUpdate::Changed { change, state, .. } => {
                     Some((event.subject.clone(), *change, state.clone()))
                 }
-                UnraidUpdate::Reading { .. } => None,
+                UnraidUpdate::Reading { .. } | UnraidUpdate::Notification { .. } => None,
             })
             .collect()
     }
@@ -166,7 +179,7 @@ mod tests {
                 UnraidUpdate::Reading { metric, value } => {
                     Some((event.subject.clone(), *metric, *value))
                 }
-                UnraidUpdate::Changed { .. } => None,
+                UnraidUpdate::Changed { .. } | UnraidUpdate::Notification { .. } => None,
             })
             .collect()
     }

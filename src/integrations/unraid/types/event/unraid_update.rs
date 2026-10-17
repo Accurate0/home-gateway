@@ -1,4 +1,5 @@
 use super::{UnraidChange, UnraidMetric};
+use crate::integrations::unraid::types::UnraidImportance;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnraidUpdate {
@@ -10,5 +11,11 @@ pub enum UnraidUpdate {
     Reading {
         metric: UnraidMetric,
         value: f64,
+    },
+    Notification {
+        importance: UnraidImportance,
+        title: String,
+        description: String,
+        link: Option<String>,
     },
 }

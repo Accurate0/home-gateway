@@ -1,10 +1,14 @@
+use std::collections::HashMap;
+
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::UnraidError;
 use super::schema;
 use super::types::{
-    ArraySnapshot, ArrayState, DiskKind, DiskSnapshot, DiskStatus, ParityStatus, UnraidSnapshot,
+    ArraySnapshot, ArrayState, DiskKind, DiskSerials, DiskSnapshot, DiskStatus, DiskTemperature,
+    NotificationImportance, ParityStatus, SensorType, UnraidNotification, UnraidPoll,
+    UnraidSnapshot,
 };
 use crate::serde_lenient::opt_i64;
 
@@ -12,6 +16,92 @@ use crate::serde_lenient::opt_i64;
 #[cynic(graphql_type = "Query")]
 pub struct ArrayQuery {
     pub array: UnraidArray,
+    pub disks: Vec<PhysicalDisk>,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+#[cynic(graphql_type = "Disk")]
+pub struct PhysicalDisk {
+    pub device: String,
+    pub serial_num: String,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+#[cynic(graphql_type = "Subscription")]
+pub struct TemperatureSubscription {
+    pub system_metrics_temperature: Option<TemperatureMetrics>,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+pub struct TemperatureMetrics {
+    pub sensors: Vec<TemperatureSensor>,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+pub struct TemperatureSensor {
+    pub id: PrefixedId,
+    #[cynic(rename = "type")]
+    pub kind: SensorType,
+    pub current: TemperatureReading,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+pub struct TemperatureReading {
+    pub value: f64,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+#[cynic(graphql_type = "Subscription")]
+pub struct NotificationSubscription {
+    pub notification_added: Notification,
+}
+
+#[derive(cynic::QueryVariables, Debug)]
+pub struct UnreadNotificationsVariables {
+    pub limit: i32,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+#[cynic(graphql_type = "Query", variables = "UnreadNotificationsVariables")]
+pub struct UnreadNotificationsQuery {
+    pub notifications: UnreadNotifications,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+#[cynic(
+    graphql_type = "Notifications",
+    variables = "UnreadNotificationsVariables"
+)]
+pub struct UnreadNotifications {
+    #[arguments(filter: { type: "UNREAD", offset: 0, limit: $limit })]
+    pub list: Vec<Notification>,
+}
+
+#[derive(Debug, cynic::QueryFragment)]
+pub struct Notification {
+    pub id: PrefixedId,
+    pub title: String,
+    pub subject: String,
+    pub description: String,
+    pub importance: NotificationImportance,
+    pub link: Option<String>,
+}
+
+#[derive(Debug, Clone, cynic::Scalar)]
+#[cynic(graphql_type = "PrefixedID")]
+pub struct PrefixedId(pub String);
+
+impl From<Notification> for UnraidNotification {
+    fn from(notification: Notification) -> Self {
+        Self {
+            id: notification.id.0,
+            title: notification.title,
+            subject: notification.subject,
+            description: notification.description,
+            importance: notification.importance.into(),
+            link: notification.link.filter(|link| !link.trim().is_empty()),
+        }
+    }
 }
 
 #[derive(Debug, cynic::QueryFragment)]
@@ -47,6 +137,7 @@ pub struct ParityCheck {
 #[derive(Debug, cynic::QueryFragment)]
 pub struct ArrayDisk {
     pub name: Option<String>,
+    pub device: Option<String>,
     #[cynic(rename = "type")]
     pub kind: DiskKind,
     pub status: Option<DiskStatus>,
@@ -137,11 +228,65 @@ impl TryFrom<UnraidArray> for UnraidSnapshot {
     }
 }
 
+impl TryFrom<ArrayQuery> for UnraidPoll {
+    type Error = UnraidError;
+
+    fn try_from(query: ArrayQuery) -> Result<Self, Self::Error> {
+        let ArrayQuery { array, disks } = query;
+
+        let names = array
+            .parities
+            .iter()
+            .chain(&array.disks)
+            .chain(&array.caches)
+            .filter_map(|disk| Some((disk.device.clone()?, disk.name.clone()?)))
+            .collect::<HashMap<_, _>>();
+
+        let serials = disks
+            .into_iter()
+            .filter(|disk| !disk.serial_num.trim().is_empty())
+            .filter_map(|disk| {
+                let name = names.get(&disk.device)?.clone();
+
+                Some((disk.serial_num, name))
+            })
+            .collect();
+
+        Ok(UnraidPoll {
+            snapshot: array.try_into()?,
+            serials: DiskSerials::new(serials),
+        })
+    }
+}
+
+impl TemperatureMetrics {
+    pub fn disk_temperatures(self) -> Vec<DiskTemperature> {
+        self.sensors
+            .into_iter()
+            .filter(|sensor| matches!(sensor.kind, SensorType::Disk | SensorType::Nvme))
+            .map(|sensor| {
+                let id = sensor.id.0;
+
+                let serial = match id.split_once(':') {
+                    Some((_, serial)) => serial.to_owned(),
+                    None => id,
+                };
+
+                DiskTemperature {
+                    serial,
+                    celsius: sensor.current.value.round() as i32,
+                }
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use cynic::{GraphQlResponse, QueryBuilder};
+    use cynic::{GraphQlResponse, QueryBuilder, SubscriptionBuilder};
 
     use super::*;
+    use crate::integrations::unraid::types::UnraidImportance;
 
     const RESPONSE: &str = r#"{
       "data": {
@@ -150,19 +295,142 @@ mod tests {
           "capacity": { "kilobytes": { "free": "4000000000", "used": "6000000000", "total": "10000000000" } },
           "parityCheckStatus": { "status": "COMPLETED", "progress": 100, "errors": 0, "running": false },
           "parities": [
-            { "name": "parity", "type": "PARITY", "status": "DISK_OK", "temp": 34, "size": "11718885324", "fsSize": null, "fsFree": null, "fsUsed": null, "numErrors": 0, "isSpinning": true }
+            { "name": "parity", "device": "sdb", "type": "PARITY", "status": "DISK_OK", "temp": 34, "size": "11718885324", "fsSize": null, "fsFree": null, "fsUsed": null, "numErrors": 0, "isSpinning": true }
           ],
           "disks": [
-            { "name": "disk1", "type": "DATA", "status": "DISK_OK", "temp": 38, "size": 11718885324, "fsSize": "11718885324", "fsFree": "1171888532", "fsUsed": "10546996792", "numErrors": "2", "isSpinning": true },
-            { "name": "disk2", "type": "DATA", "status": "DISK_OK", "temp": null, "size": 3907018532, "fsSize": 3907018532, "fsFree": 2000000000, "fsUsed": 1907018532, "numErrors": 0, "isSpinning": false }
+            { "name": "disk1", "device": "sda", "type": "DATA", "status": "DISK_OK", "temp": 38, "size": 11718885324, "fsSize": "11718885324", "fsFree": "1171888532", "fsUsed": "10546996792", "numErrors": "2", "isSpinning": true },
+            { "name": "disk2", "device": null, "type": "DATA", "status": "DISK_OK", "temp": null, "size": 3907018532, "fsSize": 3907018532, "fsFree": 2000000000, "fsUsed": 1907018532, "numErrors": 0, "isSpinning": false }
           ],
           "caches": [
-            { "name": "cache", "type": "CACHE", "status": "DISK_OK", "temp": 41, "size": 976762584, "fsSize": 976762584, "fsFree": 500000000, "fsUsed": 476762584, "numErrors": 0, "isSpinning": true },
-            { "name": null, "type": "CACHE", "status": null, "temp": null, "size": null, "fsSize": null, "fsFree": null, "fsUsed": null, "numErrors": null, "isSpinning": null }
+            { "name": "cache", "device": "nvme0n1", "type": "CACHE", "status": "DISK_OK", "temp": 41, "size": 976762584, "fsSize": 976762584, "fsFree": 500000000, "fsUsed": 476762584, "numErrors": 0, "isSpinning": true },
+            { "name": null, "device": null, "type": "CACHE", "status": null, "temp": null, "size": null, "fsSize": null, "fsFree": null, "fsUsed": null, "numErrors": null, "isSpinning": null }
+          ]
+        },
+        "disks": [
+          { "device": "sda", "serialNum": "WD-WX72A70242TP" },
+          { "device": "sdb", "serialNum": "ZW6464KJ" },
+          { "device": "sdc", "serialNum": "" },
+          { "device": "sdz", "serialNum": "UNASSIGNED" }
+        ]
+      }
+    }"#;
+
+    const TEMPERATURES: &str = r#"{
+      "data": {
+        "systemMetricsTemperature": {
+          "sensors": [
+            { "id": "disk:WD-WX72A70242TP", "type": "DISK", "current": { "value": 30 } },
+            { "id": "disk:ZW6464KJ", "type": "DISK", "current": { "value": 28.6 } },
+            { "id": "cpu:package", "type": "CPU_PACKAGE", "current": { "value": 55 } }
           ]
         }
       }
     }"#;
+
+    #[test]
+    fn the_poll_maps_serials_to_array_disk_names() {
+        let response: GraphQlResponse<ArrayQuery> = serde_json::from_str(RESPONSE).unwrap();
+        let poll = UnraidPoll::try_from(response.data.unwrap()).unwrap();
+
+        assert_eq!(poll.serials.name("WD-WX72A70242TP"), Some("disk1"));
+        assert_eq!(poll.serials.name("ZW6464KJ"), Some("parity"));
+        assert_eq!(poll.serials.name("UNASSIGNED"), None);
+        assert_eq!(poll.serials.serial("cache"), None);
+        assert_eq!(poll.snapshot.disks.len(), 4);
+    }
+
+    #[test]
+    fn disk_sensors_become_temperatures_by_serial() {
+        let response: GraphQlResponse<TemperatureSubscription> =
+            serde_json::from_str(TEMPERATURES).unwrap();
+
+        let temperatures = response
+            .data
+            .unwrap()
+            .system_metrics_temperature
+            .unwrap()
+            .disk_temperatures();
+
+        assert_eq!(
+            temperatures,
+            vec![
+                DiskTemperature {
+                    serial: "WD-WX72A70242TP".to_owned(),
+                    celsius: 30,
+                },
+                DiskTemperature {
+                    serial: "ZW6464KJ".to_owned(),
+                    celsius: 29,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn an_added_notification_parses() {
+        let response: GraphQlResponse<NotificationSubscription> = serde_json::from_str(
+            r#"{
+              "data": {
+                "notificationAdded": {
+                  "id": "abc:1760000000.notify",
+                  "title": "Unraid Parity check",
+                  "subject": "Notice [TOWER] - Parity check finished (0 errors)",
+                  "description": "Duration: 6 hours, 2 minutes",
+                  "importance": "INFO",
+                  "link": ""
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let notification = UnraidNotification::from(response.data.unwrap().notification_added);
+
+        assert_eq!(notification.importance, UnraidImportance::Info);
+        assert_eq!(notification.title, "Unraid Parity check");
+        assert_eq!(notification.link, None);
+    }
+
+    #[test]
+    fn the_backfill_lists_unread_notifications() {
+        let operation = UnreadNotificationsQuery::build(UnreadNotificationsVariables { limit: 50 });
+
+        assert!(operation.query.contains("UNREAD"), "{}", operation.query);
+        assert!(operation.query.contains("$limit"), "{}", operation.query);
+
+        let response: GraphQlResponse<UnreadNotificationsQuery> = serde_json::from_str(
+            r#"{
+              "data": {
+                "notifications": {
+                  "list": [
+                    { "id": "n2", "title": "Unraid Status", "subject": "Array started", "description": "", "importance": "ALERT", "link": "/Main" }
+                  ]
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let list = response.data.unwrap().notifications.list;
+
+        assert_eq!(list.len(), 1);
+        assert_eq!(
+            UnraidNotification::from(list.into_iter().next().unwrap()).importance,
+            UnraidImportance::Alert
+        );
+    }
+
+    #[test]
+    fn the_subscription_asks_for_sensor_ids_and_values() {
+        let subscription = TemperatureSubscription::build(());
+        let query = subscription.query();
+
+        assert!(query.starts_with("subscription"), "{query}");
+
+        for field in ["systemMetricsTemperature", "sensors", "id", "type", "value"] {
+            assert!(query.contains(field), "missing {field} in {query}");
+        }
+    }
 
     fn snapshot() -> UnraidSnapshot {
         let response: GraphQlResponse<ArrayQuery> =

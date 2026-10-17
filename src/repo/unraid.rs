@@ -3,7 +3,9 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Postgres};
 
-use crate::integrations::unraid::types::{ArraySnapshot, DiskSnapshot, UnraidSnapshot};
+use crate::integrations::unraid::types::{
+    ArraySnapshot, DiskSnapshot, UnraidNotification, UnraidSnapshot,
+};
 
 #[derive(Clone)]
 pub struct UnraidRepo {
@@ -274,5 +276,45 @@ impl UnraidRepo {
         )
         .fetch_all(&self.db)
         .await
+    }
+
+    #[tracing::instrument(skip_all, name = "db.unraid.record_notification", fields(id = %notification.id), err)]
+    pub async fn record_notification(
+        &self,
+        notification: &UnraidNotification,
+        forwarded: bool,
+    ) -> Result<bool, sqlx::Error> {
+        let inserted = sqlx::query_scalar!(
+            r#"
+            INSERT INTO unraid_notification (
+                id, title, subject, description, importance, link, forwarded
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO NOTHING
+            RETURNING id
+            "#,
+            notification.id,
+            notification.title,
+            notification.subject,
+            notification.description,
+            notification.importance.to_string(),
+            notification.link,
+            forwarded,
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(inserted.is_some())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.unraid.has_notifications", err)]
+    pub async fn has_notifications(&self) -> Result<bool, sqlx::Error> {
+        let exists = sqlx::query_scalar!(
+            r#"SELECT EXISTS (SELECT 1 FROM unraid_notification) AS "exists!""#
+        )
+        .fetch_one(&self.db)
+        .await?;
+
+        Ok(exists)
     }
 }

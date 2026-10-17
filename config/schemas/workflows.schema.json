@@ -2021,6 +2021,27 @@
           ]
         },
         {
+          "type": "object",
+          "properties": {
+            "importance": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/$defs/UnraidImportance"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "unraid_notification"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
           "description": "Fires when a poll-transport device reports its battery voltage on\ncheck-in. Optionally gate on a specific `device_id`, device `kind`,\nand/or a `below` voltage threshold for low-battery alerts.",
           "type": "object",
           "properties": {
@@ -2445,6 +2466,14 @@
         "disk_temperature",
         "disk_usage",
         "array_usage"
+      ]
+    },
+    "UnraidImportance": {
+      "type": "string",
+      "enum": [
+        "alert",
+        "warning",
+        "info"
       ]
     },
     "PlaybackState": {

@@ -16,5 +16,6 @@ pub mod trmnl;
 pub mod tuya;
 pub mod tuya_device;
 pub mod unraid;
+pub mod unraid_websocket;
 pub mod willyweather;
 pub mod woolworths;

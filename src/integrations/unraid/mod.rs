@@ -1,5 +1,7 @@
-use cynic::{GraphQlResponse, QueryBuilder};
+use cynic::{GraphQlResponse, Operation, QueryBuilder};
 use reqwest_middleware::ClientWithMiddleware;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use tracing::instrument;
 
 use crate::http::{UrlTemplate, get_traced_http_client};
@@ -8,9 +10,11 @@ use crate::settings::UnraidSettings;
 pub mod lua;
 mod query;
 pub mod types;
+pub mod watch;
+mod websocket;
 
-use query::ArrayQuery;
-use types::UnraidSnapshot;
+use query::{ArrayQuery, UnreadNotificationsQuery, UnreadNotificationsVariables};
+use types::{UnraidNotification, UnraidPoll};
 
 #[cynic::schema("unraid")]
 mod schema {}
@@ -65,14 +69,55 @@ impl Unraid {
         })
     }
 
+    pub fn ws_url(&self) -> String {
+        match self.url.split_once("://") {
+            Some(("https", rest)) => format!("wss://{rest}"),
+            Some((_, rest)) => format!("ws://{rest}"),
+            None => format!("ws://{}", self.url),
+        }
+    }
+
+    pub fn api_key(&self) -> &str {
+        &self.api_key
+    }
+
     #[instrument(name = "unraid.snapshot", skip(self))]
-    pub async fn snapshot(&self) -> Result<UnraidSnapshot, UnraidError> {
+    pub async fn snapshot(&self) -> Result<UnraidPoll, UnraidError> {
+        self.post::<ArrayQuery, _>(&ArrayQuery::build(()))
+            .await?
+            .try_into()
+    }
+
+    #[instrument(name = "unraid.unread_notifications", skip(self))]
+    pub async fn unread_notifications(
+        &self,
+        limit: i32,
+    ) -> Result<Vec<UnraidNotification>, UnraidError> {
+        let operation = UnreadNotificationsQuery::build(UnreadNotificationsVariables { limit });
+
+        let notifications = self
+            .post::<UnreadNotificationsQuery, _>(&operation)
+            .await?
+            .notifications
+            .list
+            .into_iter()
+            .map(UnraidNotification::from)
+            .collect();
+
+        Ok(notifications)
+    }
+
+    async fn post<T, V>(&self, operation: &Operation<T, V>) -> Result<T, UnraidError>
+    where
+        T: DeserializeOwned,
+        V: Serialize,
+    {
         let response = self
             .client
             .post(&self.url)
             .with_extension(UrlTemplate("/graphql"))
             .header("x-api-key", &self.api_key)
-            .json(&ArrayQuery::build(()))
+            .json(operation)
             .send()
             .await?;
 
@@ -84,27 +129,31 @@ impl Unraid {
             return Err(UnraidError::Status { status, body });
         }
 
-        let response: GraphQlResponse<ArrayQuery> = response
+        let response: GraphQlResponse<T> = response
             .json()
             .await
             .map_err(reqwest_middleware::Error::from)?;
 
-        let errors = response
-            .errors
-            .unwrap_or_default()
-            .into_iter()
-            .map(|error| error.message)
-            .collect::<Vec<_>>()
-            .join("; ");
-
-        let Some(data) = response.data else {
-            return Err(UnraidError::NoData(errors));
-        };
-
-        if !errors.is_empty() {
-            tracing::warn!("unraid answered with partial errors: {errors}");
-        }
-
-        data.array.try_into()
+        response_data(response)
     }
+}
+
+fn response_data<T>(response: GraphQlResponse<T>) -> Result<T, UnraidError> {
+    let errors = response
+        .errors
+        .unwrap_or_default()
+        .into_iter()
+        .map(|error| error.message)
+        .collect::<Vec<_>>()
+        .join("; ");
+
+    let Some(data) = response.data else {
+        return Err(UnraidError::NoData(errors));
+    };
+
+    if !errors.is_empty() {
+        tracing::warn!("unraid answered with partial errors: {errors}");
+    }
+
+    Ok(data)
 }

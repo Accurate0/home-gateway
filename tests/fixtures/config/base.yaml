@@ -169,6 +169,14 @@ integrations:
     state: disabled
     url: http://unraid.test
     refresh: 1m
+    notification_backfill: 50
+    websocket:
+      keep_alive: 30s
+      silence_timeout: 90s
+      reconnect:
+        min: 1s
+        max: 60s
+        log_attempts: 3
 
 notify:
   targets:
