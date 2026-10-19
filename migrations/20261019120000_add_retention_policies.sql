@@ -1,0 +1,13 @@
+SELECT add_retention_policy('air_purifier_events', INTERVAL '180 days');
+SELECT add_retention_policy('derived_door_events', INTERVAL '365 days');
+SELECT add_retention_policy('device_metric', INTERVAL '180 days');
+SELECT add_retention_policy('door_sensor', INTERVAL '365 days');
+SELECT add_retention_policy('garage_door_events', INTERVAL '365 days');
+SELECT add_retention_policy('home_assistant_events', INTERVAL '90 days');
+SELECT add_retention_policy('jellyfin_playback_events', INTERVAL '180 days');
+SELECT add_retention_policy('light_history', INTERVAL '90 days');
+SELECT add_retention_policy('robot_vacuum_events', INTERVAL '180 days');
+SELECT add_retention_policy('smart_switch', INTERVAL '180 days');
+SELECT add_retention_policy('temperature_sensor', INTERVAL '180 days');
+SELECT add_retention_policy('unraid_array_events', INTERVAL '365 days');
+SELECT add_retention_policy('unraid_disk_events', INTERVAL '365 days');

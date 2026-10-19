@@ -5,17 +5,5 @@ expression: cron_manifest(&cron_registry())
 refresh_public_holidays  -
 refresh_transperth_timetable  -
 sample_light_state  -
-trim_air_purifier_events  -
-trim_derived_door_events  -
 trim_device_intent  -
-trim_device_metric  -
-trim_door_sensor  -
-trim_garage_door_events  -
-trim_home_assistant_events  -
-trim_jellyfin_playback_events  -
-trim_light_history  -
-trim_robot_vacuum_events  -
-trim_smart_switch  -
-trim_temperature_sensor  -
-trim_unraid_events  -
 trim_workflow_runs  -
