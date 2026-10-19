@@ -96,7 +96,7 @@ mlua = { version = "0.12.2", features = ["lua54", "vendored", "async", "send", "
 icalendar = { version = "0.17.14", features = ["parser"] }
 wildmatch = "2.6.1"
 strum = { version = "0.28.0", features = ["derive"] }
-rustyline = "18"
+rustyline = "19"
 prost = "0.14"
 snow = "0.10"
 tonic-prost = "0.14"
