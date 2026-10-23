@@ -125,7 +125,13 @@ async fn listen(
         .headers_mut()
         .insert(SEC_WEBSOCKET_PROTOCOL, HeaderValue::from_static(PROTOCOL));
 
-    let (socket, _) = tokio_tungstenite::connect_async(request).await?;
+    let (socket, _) = tokio_tungstenite::connect_async_tls_with_config(
+        request,
+        None,
+        false,
+        unraid.ws_connector(),
+    )
+    .await?;
     let (mut write, mut read) = socket.split();
 
     write
@@ -343,6 +349,7 @@ mod tests {
             &UnraidSettings {
                 state: EnabledState::Enabled,
                 url: format!("http://127.0.0.1:{port}"),
+                certificate_verification: EnabledState::Enabled,
                 api_key: Some("test-key".to_owned()),
                 refresh: TimeDelta::minutes(30),
                 websocket: websocket(),

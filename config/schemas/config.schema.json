@@ -4557,6 +4557,9 @@
         "url": {
           "type": "string"
         },
+        "certificate_verification": {
+          "$ref": "#/$defs/EnabledState"
+        },
         "api_key": {
           "type": [
             "string",
@@ -4580,6 +4583,7 @@
       "required": [
         "state",
         "url",
+        "certificate_verification",
         "refresh",
         "websocket",
         "notification_backfill"

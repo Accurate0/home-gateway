@@ -1,11 +1,14 @@
 use cynic::{GraphQlResponse, Operation, QueryBuilder};
-use reqwest_middleware::ClientWithMiddleware;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_tracing::TracingMiddleware;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use tokio_tungstenite::Connector;
 use tracing::instrument;
 
-use crate::http::{UrlTemplate, get_traced_http_client};
+use crate::http::{HttpCreationError, TimeTrace, UrlTemplate};
 use crate::settings::UnraidSettings;
+use crate::tls::unverified_client_config;
 
 pub mod lua;
 mod query;
@@ -36,6 +39,8 @@ pub enum UnraidError {
     Unexpected { field: &'static str, value: String },
     #[error("integrations.unraid.api_key is missing")]
     MissingApiKey,
+    #[error(transparent)]
+    Tls(#[from] rustls::Error),
 }
 
 #[derive(Clone)]
@@ -43,6 +48,7 @@ pub struct Unraid {
     url: String,
     api_key: String,
     client: ClientWithMiddleware,
+    ws_connector: Option<Connector>,
 }
 
 impl Unraid {
@@ -62,11 +68,36 @@ impl Unraid {
 
         tracing::info!("unraid integration enabled ({base_url})");
 
+        let verify_certificates = settings.certificate_verification.is_enabled();
+
+        if !verify_certificates {
+            tracing::warn!("unraid certificate verification is disabled");
+        }
+
+        let client = reqwest::ClientBuilder::new()
+            .timeout(timeout)
+            .tls_danger_accept_invalid_certs(!verify_certificates)
+            .build()
+            .map_err(HttpCreationError::from)?;
+
+        let ws_connector = if verify_certificates {
+            None
+        } else {
+            Some(Connector::Rustls(unverified_client_config()?))
+        };
+
         Ok(Self {
             url: format!("{base_url}/graphql"),
             api_key,
-            client: get_traced_http_client(timeout)?,
+            client: ClientBuilder::new(client)
+                .with(TracingMiddleware::<TimeTrace>::new())
+                .build(),
+            ws_connector,
         })
+    }
+
+    pub fn ws_connector(&self) -> Option<Connector> {
+        self.ws_connector.clone()
     }
 
     pub fn ws_url(&self) -> String {

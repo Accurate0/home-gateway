@@ -99,7 +99,8 @@ transperth:
 
 unraid:
   state: enabled
-  url: http://unraid.internal
+  url: https://unraid.internal
+  certificate_verification: disabled
   refresh: 30m
   notification_backfill: 50
   websocket:

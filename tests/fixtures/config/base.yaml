@@ -168,6 +168,7 @@ integrations:
   unraid:
     state: disabled
     url: http://unraid.test
+    certificate_verification: enabled
     refresh: 1m
     notification_backfill: 50
     websocket:

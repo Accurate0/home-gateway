@@ -36,6 +36,7 @@ pub mod sun;
 pub mod telemetry;
 pub mod templating;
 pub mod timedelta_format;
+pub mod tls;
 pub mod utils;
 pub mod vacation;
 pub mod variables;

@@ -10,6 +10,7 @@ use std::time::Duration;
 pub struct UnraidSettings {
     pub state: EnabledState,
     pub url: String,
+    pub certificate_verification: EnabledState,
     #[serde(default)]
     pub api_key: Option<String>,
     #[serde(with = "time_delta_from_str")]
