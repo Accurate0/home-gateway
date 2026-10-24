@@ -16,6 +16,7 @@ use crate::eink::flag::epd_flag_config;
 use crate::eink::panel::packed_cache_key;
 use crate::error::AppError;
 use crate::integrations::feature_flag::FeatureFlagClient;
+use crate::integrations::immich::Immich;
 use crate::integrations::reddit::Reddit;
 use crate::integrations::s3::S3;
 use crate::settings::SettingsContainer;
@@ -25,7 +26,7 @@ use resolve::ResolvedDisplay;
 use source::{
     ImageSource, Prepared, ScreenshotBackend, SourceContext, SourceImage, SourceRegistry,
 };
-use sources::{AlbumSource, DashboardSource, RedditSource, SleepSource};
+use sources::{AlbumSource, DashboardSource, ImmichSource, RedditSource, SleepSource};
 use std::sync::Arc;
 use steps::{CropCover, FloydSteinbergPacked, RotateToPortrait, SleepLabel};
 
@@ -38,6 +39,7 @@ pub struct EinkDisplayManager {
     devices: DeviceRegistry,
     settings: SettingsContainer,
     reddit: Reddit,
+    immich: Option<Immich>,
     sources: Arc<SourceRegistry>,
     sleep: Arc<SleepSource>,
     frames: Arc<FramePipeline>,
@@ -55,11 +57,13 @@ impl EinkDisplayManager {
         devices: DeviceRegistry,
         settings: SettingsContainer,
         reddit: Reddit,
+        immich: Option<Immich>,
     ) -> Self {
         let sources = SourceRegistry::new()
             .register(DashboardSource::default())
             .register(AlbumSource)
-            .register(RedditSource);
+            .register(RedditSource)
+            .register(ImmichSource);
 
         let frames = FramePipeline::new(FloydSteinbergPacked)
             .register(CropCover)
@@ -74,6 +78,7 @@ impl EinkDisplayManager {
             devices,
             settings,
             reddit,
+            immich,
             sources: Arc::new(sources),
             sleep: Arc::new(SleepSource),
             frames: Arc::new(frames),
@@ -133,6 +138,7 @@ impl EinkDisplayManager {
             eink: &self.eink,
             s3: &self.s3,
             reddit: &self.reddit,
+            immich: self.immich.as_ref(),
             screenshots,
         }
     }

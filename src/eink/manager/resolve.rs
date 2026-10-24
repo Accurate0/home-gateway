@@ -20,6 +20,7 @@ pub struct ResolvedDisplay {
     pub view: Option<DashboardView>,
     pub album: Album,
     pub feed: Option<RedditFeed>,
+    pub immich_album: Option<String>,
     pub sleep: Option<SleepWindow>,
     pub lead: Option<chrono::TimeDelta>,
     pub settle: Duration,
@@ -48,6 +49,10 @@ impl ResolvedDisplay {
             view: view(flag, global, display).cloned(),
             album: album(flag, global, display),
             feed: feed(flag, display, &global.defaults),
+            immich_album: flag
+                .immich_album
+                .clone()
+                .or_else(|| display.mode.immich_album().map(str::to_owned)),
             sleep: active_sleep(display, flag.force_sleep, device_id),
             lead: display.mode.lead(),
             settle: display

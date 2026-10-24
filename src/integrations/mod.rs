@@ -4,6 +4,7 @@ pub mod feature_flag;
 pub mod fuelwatch;
 pub mod holidays;
 pub mod home_assistant;
+pub mod immich;
 pub mod jellyfin;
 pub mod mqtt;
 pub mod reddit;

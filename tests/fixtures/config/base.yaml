@@ -120,6 +120,10 @@ integrations:
   holidays:
     url: http://127.0.0.1:9/holidays.ics
     regions: [Western Australia]
+  immich:
+    state: disabled
+    url: http://127.0.0.1:9
+    candidates: 10
   jellyfin:
     state: disabled
     url: http://127.0.0.1:9

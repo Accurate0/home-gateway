@@ -6,6 +6,7 @@ use serde::Deserialize;
 use super::esphome::EsphomeSettings;
 use super::fuelwatch::FuelWatchSettings;
 use super::holidays::HolidaySettings;
+use super::immich::ImmichSettings;
 use super::integration_settings::IntegrationSettings;
 use super::jellyfin::JellyfinSettings;
 use super::s3::S3Settings;
@@ -27,6 +28,7 @@ pub struct RawIntegrationSettings {
     s3: S3Settings,
     pub(crate) esphome: EsphomeSettings,
     holidays: HolidaySettings,
+    immich: ImmichSettings,
     jellyfin: JellyfinSettings,
     woolworths: WoolworthsSettings,
     trmnl: TrmnlSettings,
@@ -45,6 +47,7 @@ impl RawIntegrationSettings {
             s3,
             esphome,
             holidays,
+            immich,
             jellyfin,
             woolworths,
             trmnl,
@@ -60,6 +63,7 @@ impl RawIntegrationSettings {
         validate_esphome(&esphome)?;
         validate_tuya(&tuya)?;
         validate_holidays(&holidays)?;
+        validate_immich(&immich)?;
         validate_jellyfin(&jellyfin)?;
         validate_willyweather(&willyweather)?;
         validate_unraid(&unraid)?;
@@ -74,6 +78,7 @@ impl RawIntegrationSettings {
             s3,
             esphome,
             holidays,
+            immich,
             jellyfin,
             woolworths,
             trmnl,
@@ -86,6 +91,29 @@ impl RawIntegrationSettings {
             unraid,
         })
     }
+}
+
+fn validate_immich(immich: &ImmichSettings) -> Result<(), String> {
+    if !immich.state.is_enabled() {
+        return Ok(());
+    }
+
+    if immich.url.trim().is_empty() {
+        return Err("integrations.immich.url must not be empty".to_owned());
+    }
+
+    if missing(immich.api_key.as_deref()) {
+        return Err(
+            "integrations.immich.api_key is required (set INTEGRATIONS__IMMICH__API_KEY)"
+                .to_owned(),
+        );
+    }
+
+    if immich.candidates == 0 {
+        return Err("integrations.immich.candidates must be at least 1".to_owned());
+    }
+
+    Ok(())
 }
 
 fn validate_unraid(unraid: &UnraidSettings) -> Result<(), String> {

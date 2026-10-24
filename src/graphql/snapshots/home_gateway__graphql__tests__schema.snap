@@ -267,6 +267,7 @@ type EinkDisplayConfig {
 	mode: EinkMode!
 	view: String
 	album: String
+	immichAlbum: String
 	subreddit: String
 	timespan: RedditTimespan
 	limit: Int
@@ -319,6 +320,7 @@ enum EinkMode {
 	DASHBOARD
 	ALBUM
 	REDDIT
+	IMMICH
 }
 
 type EnergyConsumption {

@@ -361,6 +361,9 @@
         "home_assistant": {
           "$ref": "#/$defs/HttpClientOverride"
         },
+        "immich": {
+          "$ref": "#/$defs/HttpClientOverride"
+        },
         "jellyfin": {
           "$ref": "#/$defs/HttpClientOverride"
         },
@@ -1455,6 +1458,22 @@
             "subreddit",
             "timespan",
             "limit"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "album": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string",
+              "const": "immich"
+            }
+          },
+          "required": [
+            "name",
+            "album"
           ]
         }
       ]
@@ -4183,6 +4202,9 @@
         "holidays": {
           "$ref": "#/$defs/HolidaySettings"
         },
+        "immich": {
+          "$ref": "#/$defs/ImmichSettings"
+        },
         "jellyfin": {
           "$ref": "#/$defs/JellyfinSettings"
         },
@@ -4218,6 +4240,7 @@
         "s3",
         "esphome",
         "holidays",
+        "immich",
         "jellyfin",
         "woolworths",
         "trmnl",
@@ -4331,6 +4354,34 @@
       "required": [
         "url",
         "regions"
+      ]
+    },
+    "ImmichSettings": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/EnabledState"
+        },
+        "url": {
+          "type": "string"
+        },
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "candidates": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state",
+        "url",
+        "candidates"
       ]
     },
     "JellyfinSettings": {

@@ -32,6 +32,11 @@ holidays:
   url: https://calendar.google.com/calendar/ical/en-gb.australian%23holiday%40group.v.calendar.google.com/public/basic.ics
   regions: [Western Australia]
 
+immich:
+  state: enabled
+  url: http://immich-server.immich.svc.cluster.local
+  candidates: 10
+
 jellyfin:
   state: enabled
   url: http://jellyfin.media.internal

@@ -16,6 +16,7 @@ pub enum EinkMode {
     Dashboard,
     Album,
     Reddit,
+    Immich,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
@@ -38,6 +39,9 @@ pub enum EinkModeConfig {
     Reddit {
         feed: RedditFeed,
     },
+    Immich {
+        album: String,
+    },
 }
 
 impl EinkModeConfig {
@@ -46,41 +50,61 @@ impl EinkModeConfig {
             EinkModeConfig::Dashboard { .. } => EinkMode::Dashboard,
             EinkModeConfig::Album { .. } => EinkMode::Album,
             EinkModeConfig::Reddit { .. } => EinkMode::Reddit,
+            EinkModeConfig::Immich { .. } => EinkMode::Immich,
         }
     }
 
     pub fn view(&self) -> Option<&str> {
         match self {
             EinkModeConfig::Dashboard { view, .. } => view.as_deref(),
-            EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
+            EinkModeConfig::Album { .. }
+            | EinkModeConfig::Reddit { .. }
+            | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn settle(&self) -> Option<TimeDelta> {
         match self {
             EinkModeConfig::Dashboard { settle, .. } => Some(*settle),
-            EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
+            EinkModeConfig::Album { .. }
+            | EinkModeConfig::Reddit { .. }
+            | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn lead(&self) -> Option<TimeDelta> {
         match self {
             EinkModeConfig::Dashboard { lead, .. } => Some(*lead),
-            EinkModeConfig::Album { .. } | EinkModeConfig::Reddit { .. } => None,
+            EinkModeConfig::Album { .. }
+            | EinkModeConfig::Reddit { .. }
+            | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn album(&self) -> Option<&str> {
         match self {
             EinkModeConfig::Album { album } => album.as_deref(),
-            EinkModeConfig::Dashboard { .. } | EinkModeConfig::Reddit { .. } => None,
+            EinkModeConfig::Dashboard { .. }
+            | EinkModeConfig::Reddit { .. }
+            | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn feed(&self) -> Option<&RedditFeed> {
         match self {
             EinkModeConfig::Reddit { feed } => Some(feed),
-            EinkModeConfig::Dashboard { .. } | EinkModeConfig::Album { .. } => None,
+            EinkModeConfig::Dashboard { .. }
+            | EinkModeConfig::Album { .. }
+            | EinkModeConfig::Immich { .. } => None,
+        }
+    }
+
+    pub fn immich_album(&self) -> Option<&str> {
+        match self {
+            EinkModeConfig::Immich { album } => Some(album),
+            EinkModeConfig::Dashboard { .. }
+            | EinkModeConfig::Album { .. }
+            | EinkModeConfig::Reddit { .. } => None,
         }
     }
 }
@@ -268,6 +292,9 @@ pub enum RawEinkMode {
         timespan: RedditTimespan,
         limit: u32,
     },
+    Immich {
+        album: String,
+    },
 }
 
 impl RawEinkMode {
@@ -288,6 +315,7 @@ impl RawEinkMode {
                     limit,
                 },
             },
+            RawEinkMode::Immich { album } => EinkModeConfig::Immich { album },
         }
     }
 }
@@ -627,5 +655,27 @@ mod tests {
         let block = display_block(&mode, "20m", true);
 
         assert!(block.resolve("hallway-epd").is_ok());
+    }
+
+    #[test]
+    fn an_immich_mode_resolves_its_album() {
+        let mode = "mode:\n  name: immich\n  album: Family\n".to_owned();
+        let display = display_block(&mode, "20m", true)
+            .resolve("hallway-epd")
+            .unwrap();
+
+        assert_eq!(display.mode.name(), EinkMode::Immich);
+        assert_eq!(display.mode.immich_album(), Some("Family"));
+        assert_eq!(display.mode.album(), None);
+    }
+
+    #[test]
+    fn an_immich_mode_without_an_album_is_rejected() {
+        let mode = "mode:\n  name: immich\n";
+        let block = serde_yaml::from_str::<RawEinkDisplayBlock>(&format!(
+            "name: Hallway Display\nrefresh: \"0 * * * *\"\ngrace: 5m\n{mode}{PARTIAL}"
+        ));
+
+        assert!(block.is_err());
     }
 }

@@ -1,5 +1,6 @@
 use super::resolve::ResolvedDisplay;
 use crate::error::AppError;
+use crate::integrations::immich::Immich;
 use crate::integrations::reddit::Reddit;
 use crate::integrations::s3::S3;
 use crate::settings::EinkMode;
@@ -35,6 +36,7 @@ pub struct SourceContext<'a> {
     pub eink: &'a crate::repo::EinkRepo,
     pub s3: &'a S3,
     pub reddit: &'a Reddit,
+    pub immich: Option<&'a Immich>,
     pub screenshots: &'a dyn ScreenshotBackend,
 }
 
@@ -89,20 +91,26 @@ impl Default for SourceRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eink::manager::sources::{AlbumSource, DashboardSource, RedditSource};
+    use crate::eink::manager::sources::{AlbumSource, DashboardSource, ImmichSource, RedditSource};
 
     fn registry() -> SourceRegistry {
         SourceRegistry::new()
             .register(DashboardSource::default())
             .register(AlbumSource)
             .register(RedditSource)
+            .register(ImmichSource)
     }
 
     #[test]
     fn every_mode_has_a_registered_source() {
         let registry = registry();
 
-        for mode in [EinkMode::Dashboard, EinkMode::Album, EinkMode::Reddit] {
+        for mode in [
+            EinkMode::Dashboard,
+            EinkMode::Album,
+            EinkMode::Reddit,
+            EinkMode::Immich,
+        ] {
             assert_eq!(
                 registry.select(mode).map(|source| source.mode()),
                 Some(mode)

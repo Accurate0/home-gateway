@@ -2,6 +2,7 @@ use crate::eink::image::{center_crop_cover, content_type_for};
 use crate::eink::manager::resolve::ResolvedDisplay;
 use crate::error::AppError;
 use crate::integrations::s3::S3;
+use image::ImageDecoder;
 use std::collections::HashMap;
 
 pub const CACHE_PREFIX: &str = "eink-display/cache/";
@@ -31,7 +32,15 @@ pub async fn cache_processed_image(
     }
 
     let processed = tokio::task::spawn_blocking(move || {
-        let img = image::load_from_memory(&source)?.to_rgb8();
+        let mut decoder = image::ImageReader::new(std::io::Cursor::new(&source))
+            .with_guessed_format()?
+            .into_decoder()?;
+        let orientation = decoder.orientation()?;
+
+        let mut decoded = image::DynamicImage::from_decoder(decoder)?;
+        decoded.apply_orientation(orientation);
+
+        let img = decoded.to_rgb8();
         let cropped = center_crop_cover(&img, target_w, target_h);
 
         let mut out = Vec::new();

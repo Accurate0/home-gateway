@@ -117,6 +117,7 @@ const EntitiesQuery = graphql`
           mode
           view
           album
+          immichAlbum
           orientation
           refresh
           settle

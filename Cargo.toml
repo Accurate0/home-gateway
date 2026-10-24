@@ -60,6 +60,7 @@ reqwest-tracing = { version = "0.7.1", features = ["opentelemetry_0_32"] }
 regex = "1.13.1"
 chromiumoxide = "0.9.1"
 image = "0.25.10"
+libheif-rs = { version = "3.0.0", features = ["image", "embedded-libheif"] }
 imageproc = "0.27.0"
 ab_glyph = "0.2.32"
 futures.workspace = true

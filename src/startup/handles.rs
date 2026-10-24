@@ -12,6 +12,7 @@ use crate::integrations::{
     feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
     home_assistant::HomeAssistant,
+    immich::Immich,
     jellyfin::Jellyfin,
     mqtt::{Mqtt, MqttClient},
     reddit::Reddit,
@@ -56,6 +57,20 @@ pub async fn build(
         integrations.s3.endpoint.clone(),
     )?;
 
+    libheif_rs::integration::image::register_all_decoding_hooks();
+
+    let immich = integrations
+        .immich
+        .state
+        .is_enabled()
+        .then(|| {
+            Immich::new(
+                &integrations.immich,
+                http.timeout_for(HttpClientKind::Immich),
+            )
+        })
+        .transpose()?;
+
     let eink = EinkDisplayManager::new(
         pool.clone(),
         s3.clone(),
@@ -63,6 +78,7 @@ pub async fn build(
         storage.devices.clone(),
         settings.clone(),
         Reddit::new(http.timeout_for(HttpClientKind::Reddit)),
+        immich,
     );
 
     let home_assistant = HomeAssistant::from_settings(

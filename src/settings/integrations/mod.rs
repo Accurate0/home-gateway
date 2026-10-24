@@ -3,6 +3,7 @@ pub mod fuelwatch;
 pub mod holidays;
 pub mod home_assistant;
 pub mod home_assistant_websocket;
+pub mod immich;
 pub mod integration_settings;
 pub mod jellyfin;
 pub mod jellyfin_websocket;

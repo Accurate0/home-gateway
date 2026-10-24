@@ -31,6 +31,7 @@ export interface EinkDisplayConfig {
   mode: string;
   view?: string | null;
   album?: string | null;
+  immichAlbum?: string | null;
   orientation: string;
   refresh?: string | null;
   settle?: string | null;

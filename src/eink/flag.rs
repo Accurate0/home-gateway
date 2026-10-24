@@ -16,6 +16,7 @@ pub struct EpdFlagConfig {
     pub mode: Option<EinkMode>,
     pub dashboard_view: Option<String>,
     pub album: Option<String>,
+    pub immich_album: Option<String>,
     pub subreddit: Option<String>,
     pub timespan: Option<RedditTimespan>,
     pub limit: Option<u32>,
@@ -55,6 +56,7 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
                 "dashboard" => Some(EinkMode::Dashboard),
                 "album" => Some(EinkMode::Album),
                 "reddit" => Some(EinkMode::Reddit),
+                "immich" => Some(EinkMode::Immich),
                 other => {
                     tracing::warn!("unknown epd mode `{other}` in flag, ignoring");
                     None
@@ -62,6 +64,7 @@ impl From<open_feature::StructValue> for EpdFlagConfig {
             }),
             dashboard_view: string_field("dashboard_view"),
             album: string_field("album"),
+            immich_album: string_field("immich_album"),
             subreddit: string_field("subreddit"),
             timespan: string_field("timespan").and_then(|s| match s.as_str() {
                 "hour" => Some(RedditTimespan::Hour),

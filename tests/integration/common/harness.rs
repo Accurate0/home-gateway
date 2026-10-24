@@ -96,6 +96,7 @@ impl Harness {
             devices.clone(),
             settings.clone(),
             Reddit::new(settings.http.clients.timeout_for(HttpClientKind::Reddit)),
+            None,
         );
 
         let event_bus = EventBus::default();

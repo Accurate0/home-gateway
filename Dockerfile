@@ -4,7 +4,7 @@ ARG HOME_GATEWAY_API_SECRET
 FROM lukemathwalker/cargo-chef:0.1.77-rust-1.97.1-slim-bookworm@sha256:29c639ee436bf338c513d262c48ecbc7e3ade3170bf67df3f5dbf562a54ead43 AS chef
 ARG BINARY_NAME
 
-RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc libc6-dev nasm protobuf-compiler libprotobuf-dev
+RUN apt-get update -y && apt-get install -y pkg-config libssl-dev cmake gcc g++ libc6-dev nasm protobuf-compiler libprotobuf-dev libde265-dev
 
 WORKDIR /app/${BINARY_NAME}-build
 
@@ -29,7 +29,7 @@ RUN cargo build --locked --release --bin ${BINARY_NAME} -p ${BINARY_NAME} && \
 FROM debian:bookworm-slim AS final
 ARG BINARY_NAME
 
-RUN apt-get update -y && apt-get install -y libssl-dev ca-certificates
+RUN apt-get update -y && apt-get install -y libssl-dev ca-certificates libde265-0
 RUN update-ca-certificates
 RUN adduser \
     --disabled-password \

@@ -603,6 +603,22 @@
             "timespan",
             "limit"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "album": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string",
+              "const": "immich"
+            }
+          },
+          "required": [
+            "name",
+            "album"
+          ]
         }
       ]
     },

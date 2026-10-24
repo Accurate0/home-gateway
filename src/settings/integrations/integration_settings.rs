@@ -1,6 +1,7 @@
 use super::esphome::EsphomeSettings;
 use super::fuelwatch::FuelWatchSettings;
 use super::holidays::HolidaySettings;
+use super::immich::ImmichSettings;
 use super::jellyfin::JellyfinSettings;
 use super::s3::S3Settings;
 use super::solar::SolarSettings;
@@ -17,6 +18,7 @@ pub struct IntegrationSettings {
     pub s3: S3Settings,
     pub esphome: EsphomeSettings,
     pub holidays: HolidaySettings,
+    pub immich: ImmichSettings,
     pub jellyfin: JellyfinSettings,
     pub woolworths: WoolworthsSettings,
     pub trmnl: TrmnlSettings,
