@@ -1,5 +1,5 @@
 # Build context is the repository root (pnpm workspace).
-FROM node:24-slim AS builder
+FROM node:24.22.1-slim AS builder
 RUN corepack enable
 WORKDIR /app
 
