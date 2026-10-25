@@ -16,7 +16,7 @@
         grace: 30m
         mode:
           name: immich
-          album: "Display pictures"
+          album: "Living room display"
         partial:
           state: disabled
           max_area_pct: 45
