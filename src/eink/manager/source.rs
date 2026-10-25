@@ -124,7 +124,9 @@ mod tests {
             .register(RedditSource);
 
         assert_eq!(
-            registry.select(EinkMode::Reddit).map(|source| source.name()),
+            registry
+                .select(EinkMode::Reddit)
+                .map(|source| source.name()),
             Some("reddit")
         );
     }
