@@ -15,7 +15,6 @@
       - transmission
       - media-apps
       - homeassistant
-      - home-gateway-web
       - pbs
       - pve
       - Raspberry Pi
