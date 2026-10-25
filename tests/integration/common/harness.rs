@@ -92,7 +92,6 @@ impl Harness {
         let eink = home_gateway::eink::EinkDisplayManager::new(
             db.clone(),
             s3.clone(),
-            feature_flag_client.clone(),
             devices.clone(),
             settings.clone(),
             Reddit::new(settings.http.clients.timeout_for(HttpClientKind::Reddit)),

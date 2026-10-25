@@ -262,7 +262,6 @@ type DoorUpdate {
 type EinkDisplayConfig {
 	mode: EinkMode!
 	view: String
-	album: String
 	immichAlbum: String
 	subreddit: String
 	timespan: RedditTimespan
@@ -314,7 +313,6 @@ type EinkDisplayMutation {
 
 enum EinkMode {
 	DASHBOARD
-	ALBUM
 	REDDIT
 	IMMICH
 }
@@ -418,7 +416,6 @@ type EpdConfig {
 	refreshIntervalSecs: Int
 	imageUrl: String
 	imageHash: String
-	clearScreen: Boolean
 	firmwareUrl: String
 	firmwareVersion: String
 	partial: PartialWindow

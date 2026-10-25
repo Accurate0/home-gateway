@@ -91,12 +91,11 @@ impl Default for SourceRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eink::manager::sources::{AlbumSource, DashboardSource, ImmichSource, RedditSource};
+    use crate::eink::manager::sources::{DashboardSource, ImmichSource, RedditSource};
 
     fn registry() -> SourceRegistry {
         SourceRegistry::new()
             .register(DashboardSource::default())
-            .register(AlbumSource)
             .register(RedditSource)
             .register(ImmichSource)
     }
@@ -105,12 +104,7 @@ mod tests {
     fn every_mode_has_a_registered_source() {
         let registry = registry();
 
-        for mode in [
-            EinkMode::Dashboard,
-            EinkMode::Album,
-            EinkMode::Reddit,
-            EinkMode::Immich,
-        ] {
+        for mode in [EinkMode::Dashboard, EinkMode::Reddit, EinkMode::Immich] {
             assert_eq!(
                 registry.select(mode).map(|source| source.mode()),
                 Some(mode)
@@ -126,12 +120,12 @@ mod tests {
     #[test]
     fn the_first_registration_for_a_mode_wins() {
         let registry = SourceRegistry::new()
-            .register(AlbumSource)
-            .register(AlbumSource);
+            .register(RedditSource)
+            .register(RedditSource);
 
         assert_eq!(
-            registry.select(EinkMode::Album).map(|source| source.name()),
-            Some("album")
+            registry.select(EinkMode::Reddit).map(|source| source.name()),
+            Some("reddit")
         );
     }
 }

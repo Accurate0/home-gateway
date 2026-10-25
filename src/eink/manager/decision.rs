@@ -20,7 +20,6 @@ pub struct PlannedFrame {
 pub struct WakeDecision {
     pub refresh_secs: u32,
     pub firmware_version: Option<String>,
-    pub clear_screen: bool,
     pub frame: Option<PlannedFrame>,
 }
 
@@ -53,11 +52,10 @@ impl EinkDisplayManager {
         let mut decision = WakeDecision {
             refresh_secs,
             firmware_version: wants_firmware.then(|| resolved.firmware_version.clone()),
-            clear_screen: resolved.clear_screen,
             frame: None,
         };
 
-        let wants_partial = resolved.wants_partial();
+        let wants_partial = resolved.partial.enabled;
 
         let previous = async {
             match report.current_image_hash.filter(|_| wants_partial) {
@@ -83,7 +81,7 @@ impl EinkDisplayManager {
             return decision;
         };
 
-        let partial = match resolved.clear_screen || plan.sleep.is_some() {
+        let partial = match plan.sleep.is_some() {
             true => None,
             false => {
                 resolve_partial_window(
@@ -142,7 +140,6 @@ mod tests {
 
     fn defaults() -> EinkDefaults {
         EinkDefaults {
-            reddit_limit: 25,
             settle: TimeDelta::seconds(10),
             fallback_refresh: TimeDelta::minutes(15),
             min_refresh: TimeDelta::seconds(60),

@@ -19,7 +19,7 @@ pub async fn resolve_partial_window(
 
     let policy = display.partial;
 
-    if !display.partial_enabled {
+    if !policy.enabled {
         return None;
     }
 

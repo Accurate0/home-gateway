@@ -3,7 +3,6 @@ firmware_version: v0.1.0-06033e3
 prepare_render_timeout: 15s
 rtc_sync_interval: 24h
 defaults:
-  reddit_limit: 25
   settle: 10s
   fallback_refresh: 15m
   min_refresh: 60s
@@ -12,8 +11,3 @@ views:
     query: view=home
   weather:
     query: view=weather
-albums:
-  world:
-    prefix: eink-display/album/world/
-  cats:
-    prefix: eink-display/album/cats/

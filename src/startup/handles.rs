@@ -9,7 +9,6 @@ use crate::http::public_client::PublicHttpClient;
 use crate::integrations::esphome_native_api::{EsphomeNativeApi, Node};
 use crate::integrations::tuya::{Tuya, TuyaDevice};
 use crate::integrations::{
-    feature_flag::FeatureFlagClient,
     fuelwatch::FuelWatch,
     home_assistant::HomeAssistant,
     immich::Immich,
@@ -36,10 +35,7 @@ pub struct Handles {
     pub tuya_devices: Vec<TuyaDevice>,
 }
 
-pub async fn build(
-    storage: &Storage,
-    feature_flag_client: &FeatureFlagClient,
-) -> anyhow::Result<Handles> {
+pub async fn build(storage: &Storage) -> anyhow::Result<Handles> {
     let settings = &storage.settings;
     let pool = &storage.pool;
 
@@ -74,7 +70,6 @@ pub async fn build(
     let eink = EinkDisplayManager::new(
         pool.clone(),
         s3.clone(),
-        feature_flag_client.clone(),
         storage.devices.clone(),
         settings.clone(),
         Reddit::new(http.timeout_for(HttpClientKind::Reddit)),

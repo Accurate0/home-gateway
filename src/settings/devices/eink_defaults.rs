@@ -6,7 +6,6 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
 pub struct EinkDefaults {
-    pub reddit_limit: u32,
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     pub settle: TimeDelta,

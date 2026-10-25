@@ -29,7 +29,6 @@ pub enum EinkDisplayKind {
 pub struct EinkDisplayConfig {
     mode: EinkMode,
     view: Option<String>,
-    album: Option<String>,
     immich_album: Option<String>,
     subreddit: Option<String>,
     timespan: Option<RedditTimespan>,
@@ -48,7 +47,6 @@ impl From<&EinkDisplaySettings> for EinkDisplayConfig {
         Self {
             mode: settings.mode.name(),
             view: settings.mode.view().map(|v| v.to_owned()),
-            album: settings.mode.album().map(|a| a.to_owned()),
             immich_album: settings.mode.immich_album().map(|a| a.to_owned()),
             subreddit: settings.mode.feed().map(|f| f.subreddit.clone()),
             timespan: settings.mode.feed().map(|f| f.timespan),

@@ -1,13 +1,10 @@
 use crate::cron::CronSchedule;
-use crate::eink::flag::EpdFlagConfig;
 use crate::settings::{
-    Album, DashboardView, EinkDefaults, EinkDisplaySettings, EinkGlobalSettings, EinkMode,
-    Orientation, PartialRefresh, RedditFeed, RedditTimespan, SleepWindow,
+    DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, Orientation, PartialRefresh,
+    RedditFeed, SleepWindow,
 };
 use chrono_tz::Australia::Perth;
 use std::time::Duration;
-
-const DEFAULT_REDDIT_TIMESPAN: RedditTimespan = RedditTimespan::Day;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedDisplay {
@@ -18,15 +15,12 @@ pub struct ResolvedDisplay {
     pub grace: chrono::TimeDelta,
     pub orientation: Orientation,
     pub view: Option<DashboardView>,
-    pub album: Album,
     pub feed: Option<RedditFeed>,
     pub immich_album: Option<String>,
     pub sleep: Option<SleepWindow>,
     pub lead: Option<chrono::TimeDelta>,
     pub settle: Duration,
     pub partial: PartialRefresh,
-    pub partial_enabled: bool,
-    pub clear_screen: bool,
     pub firmware_version: String,
 }
 
@@ -35,25 +29,18 @@ impl ResolvedDisplay {
         device_id: &str,
         display: &EinkDisplaySettings,
         global: &EinkGlobalSettings,
-        flag: &EpdFlagConfig,
     ) -> Self {
-        let mode = flag.mode.unwrap_or_else(|| display.mode.name());
-
         Self {
             device_id: device_id.to_owned(),
             name: display.name.clone(),
-            mode,
-            refresh: refresh(flag, display),
+            mode: display.mode.name(),
+            refresh: display.refresh.clone(),
             grace: display.grace,
             orientation: display.orientation,
-            view: view(flag, global, display).cloned(),
-            album: album(flag, global, display),
-            feed: feed(flag, display, &global.defaults),
-            immich_album: flag
-                .immich_album
-                .clone()
-                .or_else(|| display.mode.immich_album().map(str::to_owned)),
-            sleep: active_sleep(display, flag.force_sleep, device_id),
+            view: view(global, display).cloned(),
+            feed: display.mode.feed().cloned(),
+            immich_album: display.mode.immich_album().map(str::to_owned),
+            sleep: active_sleep(display, device_id),
             lead: display.mode.lead(),
             settle: display
                 .mode
@@ -61,21 +48,12 @@ impl ResolvedDisplay {
                 .and_then(|settle| settle.to_std().ok())
                 .unwrap_or_else(|| global.defaults.settle()),
             partial: display.partial,
-            partial_enabled: flag.partial_refresh.unwrap_or(display.partial.enabled),
-            clear_screen: flag.clear_screen,
-            firmware_version: flag
-                .firmware_version
-                .clone()
-                .unwrap_or_else(|| global.firmware_version.clone()),
+            firmware_version: global.firmware_version.clone(),
         }
     }
 
     pub fn target_dims(&self) -> (u32, u32) {
         self.orientation.target_dims()
-    }
-
-    pub fn wants_partial(&self) -> bool {
-        self.partial_enabled && !self.clear_screen
     }
 
     pub fn orientation_str(&self) -> &'static str {
@@ -88,83 +66,20 @@ impl ResolvedDisplay {
     }
 }
 
-pub fn refresh(flag: &EpdFlagConfig, display: &EinkDisplaySettings) -> CronSchedule {
-    flag.refresh
-        .clone()
-        .unwrap_or_else(|| display.refresh.clone())
-}
-
 fn view<'a>(
-    flag: &EpdFlagConfig,
     global: &'a EinkGlobalSettings,
     display: &EinkDisplaySettings,
 ) -> Option<&'a DashboardView> {
-    let name = flag
-        .dashboard_view
-        .clone()
-        .or_else(|| display.mode.view().map(str::to_owned))?;
+    let name = display.mode.view()?;
 
-    global.view(&name).or_else(|| {
+    global.view(name).or_else(|| {
         tracing::warn!("dashboard view `{name}` not configured, ignoring");
         None
     })
 }
 
-fn album(
-    flag: &EpdFlagConfig,
-    global: &EinkGlobalSettings,
-    display: &EinkDisplaySettings,
-) -> Album {
-    let name = flag
-        .album
-        .clone()
-        .or_else(|| display.mode.album().map(str::to_owned));
-
-    let Some(name) = name else {
-        return global.default_album();
-    };
-
-    global.album(&name).cloned().unwrap_or_else(|| {
-        tracing::warn!("album `{name}` not configured, using default prefix");
-        global.default_album()
-    })
-}
-
-fn feed(
-    flag: &EpdFlagConfig,
-    display: &EinkDisplaySettings,
-    defaults: &EinkDefaults,
-) -> Option<RedditFeed> {
-    let configured = display.mode.feed();
-
-    let subreddit = flag
-        .subreddit
-        .clone()
-        .or_else(|| configured.map(|feed| feed.subreddit.clone()))?;
-
-    Some(RedditFeed {
-        subreddit,
-        timespan: flag
-            .timespan
-            .or_else(|| configured.map(|feed| feed.timespan))
-            .unwrap_or(DEFAULT_REDDIT_TIMESPAN),
-        limit: flag
-            .limit
-            .or_else(|| configured.map(|feed| feed.limit))
-            .unwrap_or(defaults.reddit_limit),
-    })
-}
-
-fn active_sleep(
-    display: &EinkDisplaySettings,
-    force_sleep: bool,
-    device_id: &str,
-) -> Option<SleepWindow> {
+fn active_sleep(display: &EinkDisplaySettings, device_id: &str) -> Option<SleepWindow> {
     let sleep = display.sleep?;
-
-    if force_sleep {
-        return Some(sleep);
-    }
 
     let now = chrono::Utc::now().with_timezone(&Perth).time();
 
@@ -182,140 +97,4 @@ fn active_sleep(
     }
 
     Some(sleep)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::settings::EinkModeConfig;
-    use pretty_assertions::assert_eq;
-
-    const HOURLY: &str = "0 * * * *";
-
-    fn defaults() -> EinkDefaults {
-        EinkDefaults {
-            reddit_limit: 25,
-            settle: chrono::TimeDelta::seconds(10),
-            fallback_refresh: chrono::TimeDelta::minutes(15),
-            min_refresh: chrono::TimeDelta::seconds(60),
-        }
-    }
-
-    fn display_with_refresh(refresh: &str) -> EinkDisplaySettings {
-        EinkDisplaySettings {
-            name: "Test Display".to_owned(),
-            mode: EinkModeConfig::Dashboard {
-                view: None,
-                settle: chrono::TimeDelta::seconds(10),
-                lead: chrono::TimeDelta::minutes(15),
-            },
-            orientation: Orientation::Portrait,
-            refresh: CronSchedule::parse(refresh).unwrap(),
-            grace: chrono::TimeDelta::minutes(10),
-            sleep: None,
-            partial: PartialRefresh {
-                enabled: false,
-                max_area_pct: 30,
-                max_consecutive: 5,
-            },
-        }
-    }
-
-    fn display_with_feed(feed: RedditFeed) -> EinkDisplaySettings {
-        EinkDisplaySettings {
-            mode: EinkModeConfig::Reddit { feed },
-            ..display_with_refresh(HOURLY)
-        }
-    }
-
-    #[test]
-    fn reddit_feed_falls_back_to_the_display() {
-        let configured = RedditFeed {
-            subreddit: "EarthPorn".to_owned(),
-            timespan: RedditTimespan::Week,
-            limit: 40,
-        };
-
-        assert_eq!(
-            feed(
-                &EpdFlagConfig::default(),
-                &display_with_feed(configured.clone()),
-                &defaults()
-            ),
-            Some(configured)
-        );
-    }
-
-    #[test]
-    fn reddit_feed_prefers_the_flag_per_field() {
-        let flag = EpdFlagConfig {
-            subreddit: Some("ImaginaryLandscapes".to_owned()),
-            timespan: Some(RedditTimespan::Day),
-            ..EpdFlagConfig::default()
-        };
-        let display = display_with_feed(RedditFeed {
-            subreddit: "EarthPorn".to_owned(),
-            timespan: RedditTimespan::Week,
-            limit: 40,
-        });
-
-        assert_eq!(
-            feed(&flag, &display, &defaults()),
-            Some(RedditFeed {
-                subreddit: "ImaginaryLandscapes".to_owned(),
-                timespan: RedditTimespan::Day,
-                limit: 40,
-            })
-        );
-    }
-
-    #[test]
-    fn reddit_feed_without_a_subreddit_is_skipped() {
-        assert_eq!(
-            feed(
-                &EpdFlagConfig::default(),
-                &display_with_refresh(HOURLY),
-                &defaults()
-            ),
-            None
-        );
-    }
-
-    #[test]
-    fn reddit_feed_from_the_flag_alone_uses_defaults() {
-        let flag = EpdFlagConfig {
-            subreddit: Some("EarthPorn".to_owned()),
-            ..EpdFlagConfig::default()
-        };
-
-        assert_eq!(
-            feed(&flag, &display_with_refresh(HOURLY), &defaults()),
-            Some(RedditFeed {
-                subreddit: "EarthPorn".to_owned(),
-                timespan: DEFAULT_REDDIT_TIMESPAN,
-                limit: defaults().reddit_limit,
-            })
-        );
-    }
-
-    #[test]
-    fn refresh_prefers_the_flag() {
-        let flag = EpdFlagConfig {
-            refresh: Some(CronSchedule::parse("*/5 * * * *").unwrap()),
-            ..EpdFlagConfig::default()
-        };
-
-        assert_eq!(
-            refresh(&flag, &display_with_refresh(HOURLY)).expression(),
-            "*/5 * * * *"
-        );
-    }
-
-    #[test]
-    fn refresh_falls_back_to_the_display() {
-        assert_eq!(
-            refresh(&EpdFlagConfig::default(), &display_with_refresh(HOURLY)).expression(),
-            HOURLY
-        );
-    }
 }

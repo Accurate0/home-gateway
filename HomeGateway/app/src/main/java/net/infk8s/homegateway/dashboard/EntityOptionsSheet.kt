@@ -340,7 +340,6 @@ private fun EinkConfig(entity: EntityUi.EinkDisplay, controls: EntityControls) {
     MetricGrid(
         listOfNotNull(
             loaded.refreshIntervalMins?.let { Metric("Refresh interval", "$it min") },
-            loaded.clearScreen?.let { Metric("Clear screen", if (it) "Yes" else "No") },
             loaded.imageUrl?.let { Metric("Image", it) },
         ),
     )

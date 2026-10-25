@@ -451,7 +451,6 @@ eink_display:
   prepare_render_timeout: 15s
   rtc_sync_interval: 24h
   defaults:
-    reddit_limit: 25
     settle: 10s
     fallback_refresh: 15m
     min_refresh: 60s
@@ -460,11 +459,6 @@ eink_display:
       query: view=home
     weather:
       query: view=weather
-  albums:
-    world:
-      prefix: eink-display/album/world/
-    cats:
-      prefix: eink-display/album/cats/
   palette:
     black: { r: 0, g: 0, b: 0 }
     white: { r: 255, g: 255, b: 255 }

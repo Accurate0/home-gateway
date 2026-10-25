@@ -739,7 +739,7 @@ function EinkChip({
 function EinkDisplayChips({ entity }: { entity: Entity }) {
   const status = entity.einkStatus;
   const config = entity.config;
-  const mode = [config?.mode?.toLowerCase(), config?.view ?? config?.album ?? config?.immichAlbum]
+  const mode = [config?.mode?.toLowerCase(), config?.view ?? config?.immichAlbum]
     .filter(Boolean)
     .join(" · ");
 

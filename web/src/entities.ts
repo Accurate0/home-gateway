@@ -30,7 +30,6 @@ export type EinkKind = "TRMNL" | "EINK_DISPLAY_FIRMWARE";
 export interface EinkDisplayConfig {
   mode: string;
   view?: string | null;
-  album?: string | null;
   immichAlbum?: string | null;
   orientation: string;
   refresh?: string | null;
@@ -42,7 +41,6 @@ export interface EinkDisplayConfig {
 export interface EinkDeviceConfig {
   refreshIntervalMins?: number | null;
   imageUrl?: string | null;
-  clearScreen?: boolean | null;
 }
 
 export interface EinkStatus {

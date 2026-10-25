@@ -1418,25 +1418,6 @@
         {
           "type": "object",
           "properties": {
-            "album": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null
-            },
-            "name": {
-              "type": "string",
-              "const": "album"
-            }
-          },
-          "required": [
-            "name"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
             "subreddit": {
               "type": "string"
             },
@@ -5245,12 +5226,6 @@
             "$ref": "#/$defs/RawDashboardView"
           }
         },
-        "albums": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/RawAlbum"
-          }
-        },
         "prepare_render_timeout": {
           "type": "string"
         },
@@ -5280,26 +5255,9 @@
         }
       }
     },
-    "RawAlbum": {
-      "type": "object",
-      "properties": {
-        "prefix": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
-        }
-      }
-    },
     "EinkDefaults": {
       "type": "object",
       "properties": {
-        "reddit_limit": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
-        },
         "settle": {
           "type": "string"
         },
@@ -5311,7 +5269,6 @@
         }
       },
       "required": [
-        "reddit_limit",
         "settle",
         "fallback_refresh",
         "min_refresh"

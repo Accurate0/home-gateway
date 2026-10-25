@@ -1,4 +1,3 @@
-pub mod flag;
 pub mod image;
 pub mod keys;
 pub mod manager;

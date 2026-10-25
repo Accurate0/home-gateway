@@ -7,7 +7,6 @@ use crate::eink::panel::{PACKED_FRAME_SIZE, PartialWindow, crop_packed};
 #[strum(serialize_all = "snake_case")]
 pub enum PlannedRefresh {
     Unchanged,
-    Clear,
     Full { image: Bytes },
     Partial { window: PartialWindow, image: Bytes },
 }
@@ -22,7 +21,7 @@ impl PlannedRefresh {
     pub fn image_bytes(&self) -> usize {
         match self {
             PlannedRefresh::Full { image } | PlannedRefresh::Partial { image, .. } => image.len(),
-            PlannedRefresh::Clear | PlannedRefresh::Unchanged => 0,
+            PlannedRefresh::Unchanged => 0,
         }
     }
 }
@@ -31,10 +30,6 @@ pub fn planned_refresh(
     decision: &WakeDecision,
     displayed: Option<&str>,
 ) -> Result<PlannedRefresh, RefreshError> {
-    if decision.clear_screen {
-        return Ok(PlannedRefresh::Clear);
-    }
-
     let Some(frame) = &decision.frame else {
         return Ok(PlannedRefresh::Unchanged);
     };
@@ -76,7 +71,6 @@ mod tests {
         WakeDecision {
             refresh_secs: 900,
             firmware_version: None,
-            clear_screen: false,
             frame: Some(PlannedFrame {
                 hash: HASH.to_owned(),
                 packed: bytes::Bytes::from(vec![0x11; PACKED_FRAME_SIZE]),
@@ -113,18 +107,6 @@ mod tests {
 
         assert!(matches!(planned, PlannedRefresh::Partial { window: sent, .. } if sent == window));
         assert_eq!(planned.image_bytes(), 64 / 2 * 8);
-    }
-
-    #[test]
-    fn clear_screen_wins_over_the_frame() {
-        let clearing = WakeDecision {
-            clear_screen: true,
-            ..decision(None)
-        };
-
-        let planned = planned_refresh(&clearing, Some(HASH)).unwrap();
-
-        assert_eq!(planned, PlannedRefresh::Clear);
     }
 
     #[test]

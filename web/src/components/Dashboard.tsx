@@ -116,7 +116,6 @@ const EntitiesQuery = graphql`
         config {
           mode
           view
-          album
           immichAlbum
           orientation
           refresh
@@ -436,7 +435,6 @@ const EinkConfigQuery = graphql`
       deviceConfig {
         refreshIntervalMins
         imageUrl
-        clearScreen
       }
       lastSeen
       nextWakeAt

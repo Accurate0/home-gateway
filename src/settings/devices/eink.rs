@@ -6,7 +6,6 @@ use serde::Deserialize;
 
 use super::eink_defaults::EinkDefaults;
 use crate::cron::CronSchedule;
-use crate::eink::keys::ALBUM_PREFIX;
 use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::{humanize, time_delta_from_str};
 
@@ -14,7 +13,6 @@ use crate::timedelta_format::{humanize, time_delta_from_str};
 #[serde(rename_all = "snake_case")]
 pub enum EinkMode {
     Dashboard,
-    Album,
     Reddit,
     Immich,
 }
@@ -33,9 +31,6 @@ pub enum EinkModeConfig {
         settle: TimeDelta,
         lead: TimeDelta,
     },
-    Album {
-        album: Option<String>,
-    },
     Reddit {
         feed: RedditFeed,
     },
@@ -48,7 +43,6 @@ impl EinkModeConfig {
     pub fn name(&self) -> EinkMode {
         match self {
             EinkModeConfig::Dashboard { .. } => EinkMode::Dashboard,
-            EinkModeConfig::Album { .. } => EinkMode::Album,
             EinkModeConfig::Reddit { .. } => EinkMode::Reddit,
             EinkModeConfig::Immich { .. } => EinkMode::Immich,
         }
@@ -57,54 +51,35 @@ impl EinkModeConfig {
     pub fn view(&self) -> Option<&str> {
         match self {
             EinkModeConfig::Dashboard { view, .. } => view.as_deref(),
-            EinkModeConfig::Album { .. }
-            | EinkModeConfig::Reddit { .. }
-            | EinkModeConfig::Immich { .. } => None,
+            EinkModeConfig::Reddit { .. } | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn settle(&self) -> Option<TimeDelta> {
         match self {
             EinkModeConfig::Dashboard { settle, .. } => Some(*settle),
-            EinkModeConfig::Album { .. }
-            | EinkModeConfig::Reddit { .. }
-            | EinkModeConfig::Immich { .. } => None,
+            EinkModeConfig::Reddit { .. } | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn lead(&self) -> Option<TimeDelta> {
         match self {
             EinkModeConfig::Dashboard { lead, .. } => Some(*lead),
-            EinkModeConfig::Album { .. }
-            | EinkModeConfig::Reddit { .. }
-            | EinkModeConfig::Immich { .. } => None,
-        }
-    }
-
-    pub fn album(&self) -> Option<&str> {
-        match self {
-            EinkModeConfig::Album { album } => album.as_deref(),
-            EinkModeConfig::Dashboard { .. }
-            | EinkModeConfig::Reddit { .. }
-            | EinkModeConfig::Immich { .. } => None,
+            EinkModeConfig::Reddit { .. } | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn feed(&self) -> Option<&RedditFeed> {
         match self {
             EinkModeConfig::Reddit { feed } => Some(feed),
-            EinkModeConfig::Dashboard { .. }
-            | EinkModeConfig::Album { .. }
-            | EinkModeConfig::Immich { .. } => None,
+            EinkModeConfig::Dashboard { .. } | EinkModeConfig::Immich { .. } => None,
         }
     }
 
     pub fn immich_album(&self) -> Option<&str> {
         match self {
             EinkModeConfig::Immich { album } => Some(album),
-            EinkModeConfig::Dashboard { .. }
-            | EinkModeConfig::Album { .. }
-            | EinkModeConfig::Reddit { .. } => None,
+            EinkModeConfig::Dashboard { .. } | EinkModeConfig::Reddit { .. } => None,
         }
     }
 }
@@ -129,12 +104,6 @@ impl Orientation {
 pub struct DashboardView {
     pub name: String,
     pub query: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Album {
-    pub name: String,
-    pub prefix: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
@@ -182,8 +151,6 @@ pub struct RawEinkGlobal {
     firmware_version: String,
     #[serde(default)]
     views: HashMap<String, RawDashboardView>,
-    #[serde(default)]
-    albums: HashMap<String, RawAlbum>,
     #[serde(with = "time_delta_from_str")]
     #[schemars(with = "String")]
     prepare_render_timeout: TimeDelta,
@@ -199,17 +166,10 @@ struct RawDashboardView {
     query: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
-struct RawAlbum {
-    #[serde(default)]
-    prefix: Option<String>,
-}
-
 #[derive(Debug, Clone)]
 pub struct EinkGlobalSettings {
     pub firmware_version: String,
     pub views: HashMap<String, DashboardView>,
-    pub albums: HashMap<String, Album>,
     pub prepare_render_timeout: TimeDelta,
     pub rtc_sync_interval: TimeDelta,
     pub defaults: EinkDefaults,
@@ -230,18 +190,9 @@ impl RawEinkGlobal {
                 )
             })
             .collect();
-        let albums = self
-            .albums
-            .into_iter()
-            .map(|(name, a)| {
-                let prefix = a.prefix.unwrap_or_else(|| format!("{ALBUM_PREFIX}{name}/"));
-                (name.clone(), Album { name, prefix })
-            })
-            .collect();
         EinkGlobalSettings {
             firmware_version: self.firmware_version,
             views,
-            albums,
             prepare_render_timeout: self.prepare_render_timeout,
             rtc_sync_interval: self.rtc_sync_interval,
             defaults: self.defaults,
@@ -257,17 +208,6 @@ impl EinkGlobalSettings {
     pub fn view(&self, name: &str) -> Option<&DashboardView> {
         self.views.get(name)
     }
-
-    pub fn album(&self, name: &str) -> Option<&Album> {
-        self.albums.get(name)
-    }
-
-    pub fn default_album(&self) -> Album {
-        Album {
-            name: "default".to_owned(),
-            prefix: ALBUM_PREFIX.to_owned(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -282,10 +222,6 @@ pub enum RawEinkMode {
         #[serde(with = "time_delta_from_str")]
         #[schemars(with = "String")]
         lead: TimeDelta,
-    },
-    Album {
-        #[serde(default)]
-        album: Option<String>,
     },
     Reddit {
         subreddit: String,
@@ -303,7 +239,6 @@ impl RawEinkMode {
             RawEinkMode::Dashboard { view, settle, lead } => {
                 EinkModeConfig::Dashboard { view, settle, lead }
             }
-            RawEinkMode::Album { album } => EinkModeConfig::Album { album },
             RawEinkMode::Reddit {
                 subreddit,
                 timespan,
@@ -651,7 +586,7 @@ mod tests {
 
     #[test]
     fn a_mode_without_a_lead_skips_the_comparison() {
-        let mode = "mode:\n  name: album\n  album: landscapes\n".to_owned();
+        let mode = "mode:\n  name: immich\n  album: landscapes\n".to_owned();
         let block = display_block(&mode, "20m", true);
 
         assert!(block.resolve("hallway-epd").is_ok());
@@ -666,7 +601,6 @@ mod tests {
 
         assert_eq!(display.mode.name(), EinkMode::Immich);
         assert_eq!(display.mode.immich_album(), Some("Family"));
-        assert_eq!(display.mode.album(), None);
     }
 
     #[test]

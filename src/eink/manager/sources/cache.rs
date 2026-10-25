@@ -1,4 +1,4 @@
-use crate::eink::image::{center_crop_cover, content_type_for};
+use crate::eink::image::center_crop_cover;
 use crate::eink::manager::resolve::ResolvedDisplay;
 use crate::error::AppError;
 use crate::integrations::s3::S3;
@@ -63,29 +63,4 @@ pub async fn cache_processed_image(
         key: cache_key,
         payload: bytes::Bytes::from(processed),
     })
-}
-
-pub async fn ensure_source_hash(
-    s3: &S3,
-    source_key: &str,
-    source: &[u8],
-) -> Result<String, AppError> {
-    if let Some(hash) = s3
-        .get_object_metadata(source_key)
-        .await?
-        .and_then(|mut metadata| metadata.remove("hash"))
-    {
-        return Ok(hash);
-    }
-
-    let hash = crate::eink::image::content_hash(source);
-
-    let mut metadata = HashMap::new();
-    metadata.insert("hash".to_owned(), hash.clone());
-
-    s3.put_object_with_metadata(source_key, source, content_type_for(source_key), &metadata)
-        .await?;
-    tracing::info!("backfilled hash metadata on {source_key}");
-
-    Ok(hash)
 }

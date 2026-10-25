@@ -4,7 +4,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use super::proto::eink_display_server::EinkDisplay;
 use super::proto::wake_response::Refresh;
-use super::proto::{Clear, FirmwareUpdate, FullFrame, PartialFrame, WakeRequest, WakeResponse};
+use super::proto::{FirmwareUpdate, FullFrame, PartialFrame, WakeRequest, WakeResponse};
 use crate::auth::AuthContext;
 use crate::auth::scope::{Action, Resource};
 use crate::device_registry::last_seen::LastSeen;
@@ -96,7 +96,6 @@ impl EinkDisplayService {
 
         let now_displayed = match planned {
             PlannedRefresh::Unchanged => None,
-            PlannedRefresh::Clear => Some(None),
             PlannedRefresh::Full { .. } | PlannedRefresh::Partial { .. } => {
                 Some(decision.frame.as_ref().map(|frame| frame.hash.as_str()))
             }
@@ -204,7 +203,6 @@ impl EinkDisplay for EinkDisplayService {
 fn refresh_message(planned: PlannedRefresh) -> Option<Refresh> {
     match planned {
         PlannedRefresh::Unchanged => None,
-        PlannedRefresh::Clear => Some(Refresh::Clear(Clear {})),
         PlannedRefresh::Full { image } => Some(Refresh::Full(FullFrame { image })),
         PlannedRefresh::Partial { window, image } => Some(Refresh::Partial(PartialFrame {
             x: window.x,

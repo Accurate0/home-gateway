@@ -581,7 +581,7 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         }
 
         response.data?.einkDisplay?.deviceConfig?.let { config ->
-            EinkConfigUi(config.refreshIntervalMins, config.imageUrl, config.clearScreen)
+            EinkConfigUi(config.refreshIntervalMins, config.imageUrl)
         }
     } catch (e: CancellationException) {
         throw e

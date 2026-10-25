@@ -12,10 +12,8 @@ mod store;
 
 use crate::cache::MemoryCache;
 use crate::device_registry::DeviceRegistry;
-use crate::eink::flag::epd_flag_config;
 use crate::eink::panel::packed_cache_key;
 use crate::error::AppError;
-use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::integrations::immich::Immich;
 use crate::integrations::reddit::Reddit;
 use crate::integrations::s3::S3;
@@ -26,7 +24,7 @@ use resolve::ResolvedDisplay;
 use source::{
     ImageSource, Prepared, ScreenshotBackend, SourceContext, SourceImage, SourceRegistry,
 };
-use sources::{AlbumSource, DashboardSource, ImmichSource, RedditSource, SleepSource};
+use sources::{DashboardSource, ImmichSource, RedditSource, SleepSource};
 use std::sync::Arc;
 use steps::{CropCover, FloydSteinbergPacked, RotateToPortrait, SleepLabel};
 
@@ -35,7 +33,6 @@ pub struct EinkDisplayManager {
     db: sqlx::Pool<sqlx::Postgres>,
     eink: crate::repo::EinkRepo,
     s3: S3,
-    feature_flag_client: FeatureFlagClient,
     devices: DeviceRegistry,
     settings: SettingsContainer,
     reddit: Reddit,
@@ -53,7 +50,6 @@ impl EinkDisplayManager {
     pub fn new(
         db: sqlx::Pool<sqlx::Postgres>,
         s3: S3,
-        feature_flag_client: FeatureFlagClient,
         devices: DeviceRegistry,
         settings: SettingsContainer,
         reddit: Reddit,
@@ -61,7 +57,6 @@ impl EinkDisplayManager {
     ) -> Self {
         let sources = SourceRegistry::new()
             .register(DashboardSource::default())
-            .register(AlbumSource)
             .register(RedditSource)
             .register(ImmichSource);
 
@@ -74,7 +69,6 @@ impl EinkDisplayManager {
             eink: crate::repo::EinkRepo::new(db.clone()),
             db,
             s3,
-            feature_flag_client,
             devices,
             settings,
             reddit,
@@ -104,15 +98,12 @@ impl EinkDisplayManager {
 
     #[tracing::instrument(name = "eink.resolve", skip_all, fields(device_id = %device_id))]
     pub async fn resolve(&self, device_id: &str) -> Option<ResolvedDisplay> {
-        let display = self.devices.eink_display(device_id)?.clone();
-
-        let flag = epd_flag_config(&self.feature_flag_client, &self.devices, device_id).await;
+        let display = self.devices.eink_display(device_id)?;
 
         Some(ResolvedDisplay::resolve(
             device_id,
-            &display,
+            display,
             &self.settings.eink_display,
-            &flag,
         ))
     }
 
@@ -248,11 +239,7 @@ impl EinkDisplayManager {
             }
         };
 
-        let mut parts = vec![
-            image.image_key.clone(),
-            image.content_hash.clone(),
-            display.clear_screen.to_string(),
-        ];
+        let mut parts = vec![image.image_key.clone(), image.content_hash.clone()];
         parts.extend(self.frames.fingerprint(&frame));
 
         let hash = render_hash(&parts.iter().map(String::as_str).collect::<Vec<_>>());

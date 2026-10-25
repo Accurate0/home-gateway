@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
         mqtt,
         esphome_nodes,
         tuya_devices,
-    } = startup::handles::build(&storage, &feature_flag_client).await?;
+    } = startup::handles::build(&storage).await?;
 
     let listen_addr = storage.settings.http.listen_address;
     let devices = storage.devices.clone();

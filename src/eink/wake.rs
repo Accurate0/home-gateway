@@ -118,7 +118,7 @@ async fn warm_displayed_frame(eink: &EinkDisplayManager, report: &WakeReport<'_>
         return;
     };
 
-    if !display.wants_partial() {
+    if !display.partial.enabled {
         return;
     }
 

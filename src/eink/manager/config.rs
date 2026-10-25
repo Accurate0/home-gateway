@@ -35,7 +35,6 @@ fn epd_config_from(device_id: &str, decision: WakeDecision) -> EpdConfig {
         refresh_interval_secs: Some(decision.refresh_secs),
         image_url: None,
         image_hash: None,
-        clear_screen: Some(decision.clear_screen),
         firmware_url: None,
         firmware_version: None,
         partial: None,
@@ -79,7 +78,6 @@ mod tests {
         WakeDecision {
             refresh_secs: 90,
             firmware_version: Some("v2".to_owned()),
-            clear_screen: false,
             frame: Some(PlannedFrame {
                 hash: HASH.to_owned(),
                 packed: bytes::Bytes::new(),
@@ -130,7 +128,6 @@ mod tests {
             WakeDecision {
                 refresh_secs: 60,
                 firmware_version: None,
-                clear_screen: true,
                 frame: None,
             },
         );
@@ -138,6 +135,5 @@ mod tests {
         assert_eq!(config.image_url, None);
         assert_eq!(config.image_hash, None);
         assert_eq!(config.firmware_url, None);
-        assert_eq!(config.clear_screen, Some(true));
     }
 }

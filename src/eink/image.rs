@@ -6,19 +6,6 @@ pub fn content_hash(bytes: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
-pub fn content_type_for(key: &str) -> Option<&'static str> {
-    let lower = key.to_ascii_lowercase();
-    if lower.ends_with(".png") {
-        Some("image/png")
-    } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
-        Some("image/jpeg")
-    } else if lower.ends_with(".webp") {
-        Some("image/webp")
-    } else {
-        None
-    }
-}
-
 pub fn center_crop_cover(img: &image::RgbImage, target_w: u32, target_h: u32) -> image::RgbImage {
     let (w, h) = img.dimensions();
     let scale = (target_w as f32 / w as f32).max(target_h as f32 / h as f32);

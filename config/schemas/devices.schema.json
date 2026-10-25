@@ -562,25 +562,6 @@
         {
           "type": "object",
           "properties": {
-            "album": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null
-            },
-            "name": {
-              "type": "string",
-              "const": "album"
-            }
-          },
-          "required": [
-            "name"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
             "subreddit": {
               "type": "string"
             },

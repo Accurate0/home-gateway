@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2d144653c9262c6342d789af3c811558>>
+ * @generated SignedSource<<4b764f1aca7673d16564e0c431162db5>>
  * @lightSyntaxTransform
  */
 
@@ -18,7 +18,6 @@ export type DashboardEinkConfigQuery$data = {
       readonly lead: string | null | undefined;
     } | null | undefined;
     readonly deviceConfig: {
-      readonly clearScreen: boolean | null | undefined;
       readonly imageUrl: string | null | undefined;
       readonly refreshIntervalMins: number | null | undefined;
     };
@@ -83,13 +82,6 @@ v1 = [
             "args": null,
             "kind": "ScalarField",
             "name": "imageUrl",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "clearScreen",
             "storageKey": null
           }
         ],
@@ -219,16 +211,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "3c9a8065e6e1f489167c9dbd8811854c",
+    "cacheID": "deb890b9b678bc7b5bf5fcb66e16f69d",
     "id": null,
     "metadata": {},
     "name": "DashboardEinkConfigQuery",
     "operationKind": "query",
-    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n      clearScreen\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    lastWakeTraceUrl\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
+    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    lastWakeTraceUrl\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "947e18990efefff337ddf89aabb4aac7";
+(node as any).hash = "d9289ca0d9c32a36d22829f97014a222";
 
 export default node;

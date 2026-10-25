@@ -72,8 +72,8 @@ pub use devices::air_purifier::{AirPurifierSettings, RawAirPurifierBlock};
 pub use devices::device::{BatterySettings, DeviceWatchdog, RawDeviceWatchdog};
 pub use devices::door::DoorSettings;
 pub use devices::eink::{
-    Album, DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig,
-    Orientation, PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan, SleepWindow,
+    DashboardView, EinkDisplaySettings, EinkGlobalSettings, EinkMode, EinkModeConfig, Orientation,
+    PartialRefresh, RawEinkDisplayBlock, RedditFeed, RedditTimespan, SleepWindow,
 };
 pub use devices::eink_defaults::EinkDefaults;
 pub use devices::environment::{EnvironmentSensorSettings, Metric, RawEnvironmentBlock};
@@ -1779,7 +1779,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
   api_key_cache: { capacity: 1024, ttl: 1h }
@@ -1832,7 +1832,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 auth:
   api_key_cache: { capacity: 1024, ttl: 1h }
@@ -1996,7 +1996,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -2052,7 +2052,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -2110,7 +2110,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 "#;
 
@@ -2324,7 +2324,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -2379,7 +2379,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -2433,7 +2433,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -2488,7 +2488,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 workflows:
@@ -2548,12 +2548,9 @@ eink_display:
   firmware_version: v0.1.0
   prepare_render_timeout: 15s
   rtc_sync_interval: 24h
-  defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s }
+  defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s }
   views:
     home: { query: "view=home" }
-  albums:
-    family: { prefix: "eink-display/album/family/" }
-    art: {}
 devices:
 -
   - id: display-epd-1
@@ -2574,8 +2571,10 @@ devices:
             max_area_pct: 25
             max_consecutive: 8
           mode:
-            name: album
-            album: family
+            name: dashboard
+            view: home
+            settle: 10s
+            lead: 15m
 "#,
         )
         .unwrap();
@@ -2583,26 +2582,18 @@ devices:
         let (settings, registry) = raw.resolve(&ModelSources::default()).unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
-        assert_eq!(display.mode.name(), crate::settings::EinkMode::Album);
+        assert_eq!(display.mode.name(), crate::settings::EinkMode::Dashboard);
         assert!(display.partial.enabled);
         assert_eq!(display.partial.max_area_pct, 25);
         assert_eq!(display.partial.max_consecutive, 8);
         assert_eq!(display.target_dims(), (1600, 1200));
         assert_eq!(display.orientation_str(), "landscape");
-        assert_eq!(display.mode.album(), Some("family"));
+        assert_eq!(display.mode.view(), Some("home"));
 
         let global = &settings.eink_display;
         assert_eq!(
             global.view("home").unwrap().query.as_deref(),
             Some("view=home")
-        );
-        assert_eq!(
-            global.album("family").unwrap().prefix,
-            "eink-display/album/family/"
-        );
-        assert_eq!(
-            global.album("art").unwrap().prefix,
-            "eink-display/album/art/"
         );
     }
 
@@ -2643,7 +2634,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
@@ -2683,7 +2674,6 @@ devices:
         assert_eq!(feed.subreddit, "EarthPorn");
         assert_eq!(feed.timespan, crate::settings::RedditTimespan::Week);
         assert_eq!(feed.limit, 40);
-        assert_eq!(display.mode.album(), None);
         assert_eq!(display.mode.view(), None);
     }
 
@@ -2724,7 +2714,7 @@ location: { latitude: 0.0, longitude: 0.0 }
 sun: { catch_up_within: 2h }
 integrations: { s3: { bucket: b, region: r }, esphome: { state: disabled, models: lua/models/esphome_native_api, port: 6053, keep_alive: 20s, silence_timeout: 90s, reconnect: { min: 5s, max: 5m, log_attempts: 3 } }, holidays: { url: x, regions: [Western Australia] }, immich: { state: disabled, url: x, candidates: 10 }, jellyfin: { state: disabled, url: x, poll_interval: 30s, websocket: { keep_alive: 30s, silence_timeout: 60s, sessions_interval: 1500ms, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, woolworths: { state: disabled, refresh: 1h }, trmnl: { state: disabled, refresh: 3h, base_url: x }, willyweather: { state: enabled, api_key: x, refresh: 1h, days: 7, default_location: perth, locations: { perth: "14576" } }, fuelwatch: { state: disabled, postcode: 6000, refresh: 1h }, solar: { state: disabled, refresh: 1m }, synergy: { parser: synergy.parse }, tuya: { state: disabled, models: lua/models/tuya, port: 6668, heartbeat: 10s, silence_timeout: 30s, reconnect: { min: 5s, max: 5m, log_attempts: 3 }, devices: {} }, unraid: { state: disabled, url: x, certificate_verification: enabled, refresh: 1m, notification_backfill: 50, websocket: { keep_alive: 30s, silence_timeout: 90s, reconnect: { min: 1s, max: 60s, log_attempts: 3 } } }, transperth: { state: disabled, refresh_peak: 3m, refresh_off_peak: 15m, horizon: 2h, routes: [], cache: { routes: { capacity: 1, ttl: 1h }, timetables: { capacity: 1, ttl: 1h } } } }
 adhoc: { recheck_interval: 15m, task_timeout: 5m, cron_jitter: 60s, batch_size: 10000, tasks: { refresh_public_holidays: { state: enabled, schedule: "0 4 1 * *", parameters: {} }, refresh_transperth_timetable: { state: enabled, schedule: "20 3 * * *", parameters: {} }, sample_light_state: { state: enabled, schedule: "*/5 * * * *", parameters: {} }, trim_device_intent: { state: enabled, schedule: "50 3 * * *", parameters: { retention: 336h } }, trim_workflow_runs: { state: enabled, schedule: "45 3 * * *", parameters: { retention: 2160h } } } }
-eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { reddit_limit: 25, settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
+eink_display: { firmware_version: v0.1.0, prepare_render_timeout: 15s, rtc_sync_interval: 24h, defaults: { settle: 10s, fallback_refresh: 15m, min_refresh: 60s } }
 vacation: { state: enabled, modes: [vacation], window: 672h, jitter: 12m, min_observations: 8, seed: 1 }
 
 devices:
@@ -2753,16 +2743,12 @@ devices:
         )
         .unwrap();
 
-        let (settings, registry) = raw.resolve(&ModelSources::default()).unwrap();
+        let (_, registry) = raw.resolve(&ModelSources::default()).unwrap();
         let display = registry.eink_display("abc123").expect("display resolved");
 
         assert_eq!(display.mode.name(), crate::settings::EinkMode::Dashboard);
         assert_eq!(display.target_dims(), (1200, 1600));
         assert!(display.mode.view().is_none());
-        assert_eq!(
-            settings.eink_display.default_album().prefix,
-            "eink-display/album/"
-        );
     }
 
     #[test]

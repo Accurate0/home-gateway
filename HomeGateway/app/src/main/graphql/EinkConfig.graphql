@@ -3,7 +3,6 @@ query EinkConfig($id: IdOrAlias!) {
     deviceConfig {
       refreshIntervalMins
       imageUrl
-      clearScreen
     }
   }
 }
