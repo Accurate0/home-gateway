@@ -124,6 +124,7 @@ integrations:
     state: disabled
     url: http://127.0.0.1:9
     candidates: 10
+    history: 10
   jellyfin:
     state: disabled
     url: http://127.0.0.1:9

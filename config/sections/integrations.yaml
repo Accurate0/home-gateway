@@ -36,6 +36,7 @@ immich:
   state: enabled
   url: http://immich-server.immich.svc.cluster.local
   candidates: 10
+  history: 10
 
 jellyfin:
   state: enabled

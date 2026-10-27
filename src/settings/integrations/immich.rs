@@ -9,4 +9,5 @@ pub struct ImmichSettings {
     #[serde(default)]
     pub api_key: Option<String>,
     pub candidates: u32,
+    pub history: usize,
 }

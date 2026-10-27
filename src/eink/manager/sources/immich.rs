@@ -45,13 +45,24 @@ impl ImageSource for ImmichSource {
 
         let album_id = immich.album_id(album).await?;
         let assets = immich.random_assets(&album_id, immich.candidates()).await?;
+        let recent = ctx
+            .eink
+            .recent_immich_assets(&ctx.display.device_id)
+            .await?;
 
-        let Some(asset) = pick(&assets, ctx.display.orientation) else {
+        let Some(asset) = pick(&assets, ctx.display.orientation, &recent) else {
             tracing::warn!("immich album `{album}` has no decodable images, skipping render");
             return Ok(None);
         };
 
         tracing::info!("selected immich asset {} from album `{album}`", asset.id);
+
+        ctx.eink
+            .store_recent_immich_assets(
+                &ctx.display.device_id,
+                &remember(&recent, &asset.id, immich.history()),
+            )
+            .await?;
 
         let source = immich.download_original(&asset.id).await?;
         let content_hash = content_hash(&source);
@@ -68,7 +79,11 @@ impl ImageSource for ImmichSource {
     }
 }
 
-fn pick(assets: &[ImmichAsset], orientation: Orientation) -> Option<&ImmichAsset> {
+fn pick<'a>(
+    assets: &'a [ImmichAsset],
+    orientation: Orientation,
+    recent: &[String],
+) -> Option<&'a ImmichAsset> {
     let decodable = assets
         .iter()
         .filter(|asset| {
@@ -85,12 +100,35 @@ fn pick(assets: &[ImmichAsset], orientation: Orientation) -> Option<&ImmichAsset
         .filter(|asset| matches_orientation(asset, orientation))
         .collect::<Vec<_>>();
 
-    let mut rng = rand::rng();
+    let pool = if matching.is_empty() {
+        decodable
+    } else {
+        matching
+    };
 
-    matching
-        .choose(&mut rng)
-        .or_else(|| decodable.choose(&mut rng))
+    let fresh = pool
+        .iter()
         .copied()
+        .filter(|asset| !recent.contains(&asset.id))
+        .collect::<Vec<_>>();
+
+    fresh.choose(&mut rand::rng()).copied().or_else(|| {
+        pool.into_iter()
+            .max_by_key(|asset| recent.iter().position(|id| *id == asset.id))
+    })
+}
+
+fn remember(recent: &[String], asset_id: &str, history: usize) -> Vec<String> {
+    std::iter::once(asset_id)
+        .chain(
+            recent
+                .iter()
+                .map(String::as_str)
+                .filter(|id| *id != asset_id),
+        )
+        .take(history)
+        .map(str::to_owned)
+        .collect()
 }
 
 fn matches_orientation(asset: &ImmichAsset, orientation: Orientation) -> bool {
@@ -131,11 +169,11 @@ mod tests {
 
         for _ in 0..20 {
             assert_eq!(
-                pick(&assets, Orientation::Portrait).map(|a| a.id.as_str()),
+                pick(&assets, Orientation::Portrait, &[]).map(|a| a.id.as_str()),
                 Some("tall")
             );
             assert_eq!(
-                pick(&assets, Orientation::Landscape).map(|a| a.id.as_str()),
+                pick(&assets, Orientation::Landscape, &[]).map(|a| a.id.as_str()),
                 Some("wide")
             );
         }
@@ -148,7 +186,7 @@ mod tests {
             asset("unknown", "image/png", None, "1"),
         ];
 
-        assert!(pick(&assets, Orientation::Portrait).is_some());
+        assert!(pick(&assets, Orientation::Portrait, &[]).is_some());
     }
 
     #[test]
@@ -162,6 +200,45 @@ mod tests {
             },
         ];
 
-        assert!(pick(&assets, Orientation::Portrait).is_none());
+        assert!(pick(&assets, Orientation::Portrait, &[]).is_none());
+    }
+
+    #[test]
+    fn recently_shown_assets_are_skipped() {
+        let assets = [
+            asset("one", "image/jpeg", Some((3000.0, 4000.0)), "1"),
+            asset("two", "image/jpeg", Some((3000.0, 4000.0)), "1"),
+        ];
+        let recent = ["one".to_owned()];
+
+        for _ in 0..20 {
+            assert_eq!(
+                pick(&assets, Orientation::Portrait, &recent).map(|a| a.id.as_str()),
+                Some("two")
+            );
+        }
+    }
+
+    #[test]
+    fn the_least_recently_shown_asset_is_used_when_all_are_recent() {
+        let assets = [
+            asset("one", "image/jpeg", Some((3000.0, 4000.0)), "1"),
+            asset("two", "image/jpeg", Some((3000.0, 4000.0)), "1"),
+        ];
+        let recent = ["one".to_owned(), "two".to_owned()];
+
+        assert_eq!(
+            pick(&assets, Orientation::Portrait, &recent).map(|a| a.id.as_str()),
+            Some("two")
+        );
+    }
+
+    #[test]
+    fn remember_prepends_dedupes_and_truncates() {
+        let recent = ["a".to_owned(), "b".to_owned(), "c".to_owned()];
+
+        assert_eq!(remember(&recent, "b", 3), ["b", "a", "c"]);
+        assert_eq!(remember(&recent, "d", 3), ["d", "a", "b"]);
+        assert_eq!(remember(&recent, "d", 0), Vec::<String>::new());
     }
 }

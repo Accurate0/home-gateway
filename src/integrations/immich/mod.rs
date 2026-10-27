@@ -35,6 +35,7 @@ pub struct Immich {
     base_url: String,
     api_key: String,
     candidates: u32,
+    history: usize,
     client: ClientWithMiddleware,
 }
 
@@ -61,12 +62,17 @@ impl Immich {
             base_url,
             api_key,
             candidates: settings.candidates,
+            history: settings.history,
             client: get_traced_http_client(timeout)?,
         })
     }
 
     pub fn candidates(&self) -> u32 {
         self.candidates
+    }
+
+    pub fn history(&self) -> usize {
+        self.history
     }
 
     #[instrument(name = "immich.album_id", skip(self))]

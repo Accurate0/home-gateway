@@ -23,6 +23,10 @@ pub struct WakeRecord<'a> {
     pub rtc_sync: Option<RtcSyncRecord>,
 }
 
+fn recent_immich_assets_key(device_id: &str) -> String {
+    format!("eink:immich_recent:{device_id}")
+}
+
 #[derive(Clone)]
 pub struct EinkRepo {
     db: Pool<Postgres>,
@@ -229,6 +233,40 @@ impl EinkRepo {
             image_key: row.image_key,
             image_content_hash: row.image_content_hash,
         }))
+    }
+
+    #[tracing::instrument(skip_all, name = "db.eink.recent_immich_assets", err)]
+    pub async fn recent_immich_assets(&self, device_id: &str) -> Result<Vec<String>, sqlx::Error> {
+        let key = recent_immich_assets_key(device_id);
+        let value = sqlx::query_scalar!("SELECT value FROM state WHERE key = $1", key)
+            .fetch_optional(&self.db)
+            .await?;
+
+        Ok(value
+            .and_then(|value| serde_json::from_str(&value).ok())
+            .unwrap_or_default())
+    }
+
+    #[tracing::instrument(skip_all, name = "db.eink.store_recent_immich_assets", err)]
+    pub async fn store_recent_immich_assets(
+        &self,
+        device_id: &str,
+        asset_ids: &[String],
+    ) -> Result<(), sqlx::Error> {
+        let key = recent_immich_assets_key(device_id);
+        let value =
+            serde_json::to_string(asset_ids).map_err(|err| sqlx::Error::Encode(err.into()))?;
+
+        sqlx::query!(
+            "INSERT INTO state (key, value) VALUES ($1, $2) \
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+            key,
+            value
+        )
+        .execute(&self.db)
+        .await?;
+
+        Ok(())
     }
 
     #[tracing::instrument(skip_all, name = "db.eink.partial_refresh_count", err)]
