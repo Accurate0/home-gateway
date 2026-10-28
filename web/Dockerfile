@@ -1,6 +1,6 @@
 # Build context is the repository root (pnpm workspace).
 FROM node:26.12.1-slim AS builder
-RUN corepack enable
+RUN npm install -g corepack@0.36.0 && corepack enable
 WORKDIR /app
 
 # Workspace manifests first for better layer caching.
