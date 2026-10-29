@@ -49,9 +49,13 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new(base_url: &str, api_key: Option<String>) -> Result<Self, ClientError> {
+    pub async fn new(
+        base_url: &str,
+        api_key: Option<String>,
+        token: Option<String>,
+    ) -> Result<Self, ClientError> {
         let http = crate::http::get_traced_http_client(REQUEST_TIMEOUT)?;
-        let auth = resolve_auth(&http, api_key).await?;
+        let auth = resolve_auth(&http, api_key, token).await?;
 
         Ok(Self {
             base_url: base_url.trim_end_matches('/').to_owned(),
@@ -189,12 +193,17 @@ pub fn extract_data(payload: Value) -> Result<Value, ClientError> {
 async fn resolve_auth(
     http: &ClientWithMiddleware,
     api_key: Option<String>,
+    token: Option<String>,
 ) -> Result<Auth, ClientError> {
     if let Some(api_key) = api_key
         .map(|k| k.trim().to_owned())
         .filter(|k| !k.is_empty())
     {
         return Ok(Auth::ApiKey(api_key));
+    }
+
+    if let Some(token) = token.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()) {
+        return Ok(Auth::Bearer(token));
     }
 
     let stored = credentials::load()?.ok_or(ClientError::NotAuthenticated)?;

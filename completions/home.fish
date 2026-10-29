@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_home_global_optspecs
-    string join \n base-url= api-key= issuer= client-id= json h/help V/version
+    string join \n base-url= api-key= token= issuer= client-id= json h/help V/version
 end
 
 function __fish_home_needs_command
@@ -26,6 +26,7 @@ end
 
 complete -c home -n "__fish_home_needs_command" -l base-url -r
 complete -c home -n "__fish_home_needs_command" -l api-key -r
+complete -c home -n "__fish_home_needs_command" -l token -r
 complete -c home -n "__fish_home_needs_command" -l issuer -r
 complete -c home -n "__fish_home_needs_command" -l client-id -r
 complete -c home -n "__fish_home_needs_command" -l json
@@ -57,18 +58,21 @@ complete -c home -n "__fish_home_needs_command" -f -a "completions"
 complete -c home -n "__fish_home_needs_command" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand login" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand login" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand login" -l token -r
 complete -c home -n "__fish_home_using_subcommand login" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand login" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand login" -l json
 complete -c home -n "__fish_home_using_subcommand login" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand logout" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand logout" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand logout" -l token -r
 complete -c home -n "__fish_home_using_subcommand logout" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand logout" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand logout" -l json
 complete -c home -n "__fish_home_using_subcommand logout" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand whoami" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand whoami" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand whoami" -l token -r
 complete -c home -n "__fish_home_using_subcommand whoami" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand whoami" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand whoami" -l json
@@ -82,12 +86,14 @@ vacuums\t''
 media\t''"
 complete -c home -n "__fish_home_using_subcommand ls" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand ls" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand ls" -l token -r
 complete -c home -n "__fish_home_using_subcommand ls" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand ls" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand ls" -l json
 complete -c home -n "__fish_home_using_subcommand ls" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -l token -r
 complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -l json
@@ -99,18 +105,21 @@ complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_sub
 complete -c home -n "__fish_home_using_subcommand light; and not __fish_seen_subcommand_from on off toggle set help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -l token -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -l json
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from on" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -l token -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -l json
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from off" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from toggle" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from toggle" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from toggle" -l token -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from toggle" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from toggle" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from toggle" -l json
@@ -120,6 +129,7 @@ complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcomm
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l colour -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l token -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from set" -l on
@@ -133,6 +143,7 @@ complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcomm
 complete -c home -n "__fish_home_using_subcommand light; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -l json
@@ -146,6 +157,7 @@ complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_
 complete -c home -n "__fish_home_using_subcommand workflow; and not __fish_seen_subcommand_from list run exec enable disable runs help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from list" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from list" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from list" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from list" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from list" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from list" -l json
@@ -153,6 +165,7 @@ complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l input -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from run" -l json
@@ -160,18 +173,21 @@ complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l input -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -l json
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from exec" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -l json
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from enable" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from disable" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from disable" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from disable" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from disable" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from disable" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from disable" -l json
@@ -180,6 +196,7 @@ complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l limit -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l token -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from runs" -l json
@@ -193,6 +210,7 @@ complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand workflow; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -l token -r
 complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -l json
@@ -202,12 +220,14 @@ complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand mode; and not __fish_seen_subcommand_from show set help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -l token -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -l json
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from show" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from set" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from set" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from set" -l token -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from set" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from set" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from set" -l json
@@ -217,6 +237,7 @@ complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand mode; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subcommand_from create list update regenerate revoke help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subcommand_from create list update regenerate revoke help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subcommand_from create list update regenerate revoke help" -l token -r
 complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subcommand_from create list update regenerate revoke help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subcommand_from create list update regenerate revoke help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subcommand_from create list update regenerate revoke help" -l json
@@ -230,12 +251,14 @@ complete -c home -n "__fish_home_using_subcommand keys; and not __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l expires-at -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l token -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -l json
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from create" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from list" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from list" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from list" -l token -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from list" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from list" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from list" -l json
@@ -245,6 +268,7 @@ complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l expires-at -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l token -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -l no-expiry
@@ -252,12 +276,14 @@ complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from update" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l token -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -l json
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from regenerate" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from revoke" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from revoke" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from revoke" -l token -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from revoke" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from revoke" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from revoke" -l json
@@ -270,6 +296,7 @@ complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand keys; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l token -r
 complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand lua; and not __fish_seen_subcommand_from run repl help" -l json
@@ -281,6 +308,7 @@ complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcomman
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l var -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l token -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -l dry-run
@@ -288,6 +316,7 @@ complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcomman
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from run" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l token -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from repl" -l dry-run
@@ -298,6 +327,7 @@ complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcomman
 complete -c home -n "__fish_home_using_subcommand lua; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l token -r
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand push; and not __fish_seen_subcommand_from send list help" -l json
@@ -316,6 +346,7 @@ complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l reminders -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l token -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from send" -l json
@@ -323,6 +354,7 @@ complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l limit -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l token -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from list" -l json
@@ -332,6 +364,7 @@ complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand push; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -l token -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -l json
@@ -343,24 +376,28 @@ complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_sub
 complete -c home -n "__fish_home_using_subcommand adhoc; and not __fish_seen_subcommand_from list cron run-pending run help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -l token -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -l json
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from list" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -l token -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -l json
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from cron" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -l token -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -l json
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run-pending" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run" -l token -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from run" -l json
@@ -372,6 +409,7 @@ complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcomm
 complete -c home -n "__fish_home_using_subcommand adhoc; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -l token -r
 complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -l json
@@ -380,6 +418,7 @@ complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand eink; and not __fish_seen_subcommand_from screenshot help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -l token -r
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from screenshot" -l json
@@ -388,6 +427,7 @@ complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcomma
 complete -c home -n "__fish_home_using_subcommand eink; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l token -r
 complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -l json
@@ -397,6 +437,7 @@ complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_s
 complete -c home -n "__fish_home_using_subcommand synergy; and not __fish_seen_subcommand_from upload gaps help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l token -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from upload" -l json
@@ -405,6 +446,7 @@ complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subco
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l interval -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l token -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from gaps" -l json
@@ -414,6 +456,7 @@ complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subco
 complete -c home -n "__fish_home_using_subcommand synergy; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_subcommand_from history help" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_subcommand_from history help" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_subcommand_from history help" -l token -r
 complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_subcommand_from history help" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_subcommand_from history help" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_subcommand_from history help" -l json
@@ -423,6 +466,7 @@ complete -c home -n "__fish_home_using_subcommand purifier; and not __fish_seen_
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l since -r
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l token -r
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from history" -l json
@@ -431,12 +475,14 @@ complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subc
 complete -c home -n "__fish_home_using_subcommand purifier; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c home -n "__fish_home_using_subcommand weather" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand weather" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand weather" -l token -r
 complete -c home -n "__fish_home_using_subcommand weather" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand weather" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand weather" -l json
 complete -c home -n "__fish_home_using_subcommand weather" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand solar" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand solar" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand solar" -l token -r
 complete -c home -n "__fish_home_using_subcommand solar" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand solar" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand solar" -l json
@@ -444,12 +490,14 @@ complete -c home -n "__fish_home_using_subcommand solar" -s h -l help -d 'Print 
 complete -c home -n "__fish_home_using_subcommand energy" -l since -r
 complete -c home -n "__fish_home_using_subcommand energy" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand energy" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand energy" -l token -r
 complete -c home -n "__fish_home_using_subcommand energy" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand energy" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand energy" -l json
 complete -c home -n "__fish_home_using_subcommand energy" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand transperth" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand transperth" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand transperth" -l token -r
 complete -c home -n "__fish_home_using_subcommand transperth" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand transperth" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand transperth" -l json
@@ -458,6 +506,7 @@ complete -c home -n "__fish_home_using_subcommand fuel" -l postcode -r
 complete -c home -n "__fish_home_using_subcommand fuel" -l limit -r
 complete -c home -n "__fish_home_using_subcommand fuel" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand fuel" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand fuel" -l token -r
 complete -c home -n "__fish_home_using_subcommand fuel" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand fuel" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand fuel" -l json
@@ -465,24 +514,28 @@ complete -c home -n "__fish_home_using_subcommand fuel" -s h -l help -d 'Print h
 complete -c home -n "__fish_home_using_subcommand unraid" -l since -r
 complete -c home -n "__fish_home_using_subcommand unraid" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand unraid" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand unraid" -l token -r
 complete -c home -n "__fish_home_using_subcommand unraid" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand unraid" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand unraid" -l json
 complete -c home -n "__fish_home_using_subcommand unraid" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand events" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand events" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand events" -l token -r
 complete -c home -n "__fish_home_using_subcommand events" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand events" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand events" -l json
 complete -c home -n "__fish_home_using_subcommand events" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand curl" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand curl" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand curl" -l token -r
 complete -c home -n "__fish_home_using_subcommand curl" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand curl" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand curl" -l json
 complete -c home -n "__fish_home_using_subcommand curl" -s h -l help -d 'Print help'
 complete -c home -n "__fish_home_using_subcommand completions" -l base-url -r
 complete -c home -n "__fish_home_using_subcommand completions" -l api-key -r
+complete -c home -n "__fish_home_using_subcommand completions" -l token -r
 complete -c home -n "__fish_home_using_subcommand completions" -l issuer -r
 complete -c home -n "__fish_home_using_subcommand completions" -l client-id -r
 complete -c home -n "__fish_home_using_subcommand completions" -l json

@@ -27,6 +27,8 @@ struct Cli {
     base_url: String,
     #[arg(long, env = "HG_API_KEY", global = true)]
     api_key: Option<String>,
+    #[arg(long, env = "HG_TOKEN", hide_env_values = true, global = true)]
+    token: Option<String>,
     #[arg(long, env = "HG_ISSUER", default_value = DEFAULT_ISSUER, global = true)]
     issuer: String,
     #[arg(long, env = "HG_CLIENT_ID", default_value = DEFAULT_CLIENT_ID, global = true)]
@@ -389,7 +391,7 @@ async fn login(cli: &Cli) -> Result<()> {
 
     println!("credentials written to {}", path.display());
 
-    let client = Client::new(&cli.base_url, None).await?;
+    let client = Client::new(&cli.base_url, None, None).await?;
     let data = client.graphql(WHOAMI_QUERY, json!({})).await?;
     print_whoami(&data["auth"], cli.json)
 }
@@ -405,7 +407,7 @@ fn logout() -> Result<()> {
 }
 
 async fn run(cli: &Cli) -> Result<()> {
-    let client = Client::new(&cli.base_url, cli.api_key.clone()).await?;
+    let client = Client::new(&cli.base_url, cli.api_key.clone(), cli.token.clone()).await?;
 
     match &cli.command {
         Command::Login | Command::Logout | Command::Completions { .. } => {
