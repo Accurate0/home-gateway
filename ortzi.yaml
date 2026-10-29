@@ -1,6 +1,6 @@
 package:
   name: home
-  version: 0.1.0
+  version: 0.1.1
   description: control the home gateway
 auth:
   client_id: home-gateway
