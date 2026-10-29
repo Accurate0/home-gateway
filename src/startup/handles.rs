@@ -53,6 +53,7 @@ pub async fn build(storage: &Storage) -> anyhow::Result<Handles> {
         integrations.s3.endpoint.clone(),
     )?;
 
+    #[cfg(feature = "heif")]
     libheif_rs::integration::image::register_all_decoding_hooks();
 
     let immich = integrations

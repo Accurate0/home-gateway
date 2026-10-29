@@ -8,3 +8,5 @@ auth:
 build:
   cargo:
     package: home-gateway
+    bin: home
+    no_default_features: true
