@@ -91,7 +91,6 @@ base64 = "0.23.1"
 sha1 = "0.11.0"
 arc-swap = "1.9.2"
 zip = { version = "9.0.2", default-features = false, features = ["deflate"] }
-curl = "0.4.51"
 home-gateway-macros = { path = "home-gateway-macros" }
 mlua = { version = "0.12.2", features = ["lua54", "vendored", "async", "send", "serialize"] }
 icalendar = { version = "0.17.14", features = ["parser"] }
