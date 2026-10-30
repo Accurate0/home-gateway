@@ -369,6 +369,7 @@ query {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    clap_complete::CompleteEnv::with_factory(Cli::command).complete();
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
     let cli = Cli::parse();
