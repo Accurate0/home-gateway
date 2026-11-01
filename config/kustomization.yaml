@@ -60,7 +60,6 @@ configMapGenerator:
     files:
       - lua/lib/format.lua
       - lua/lib/lights.lua
-      - lua/lib/purifier.lua
   - name: home-gateway-config-lua-model-lib
     files:
       - lua/models/lib/esphome_light.lua

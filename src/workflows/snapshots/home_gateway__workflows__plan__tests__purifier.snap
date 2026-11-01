@@ -2,8 +2,15 @@
 source: src/workflows/plan.rs
 expression: out
 ---
-# Living room purifier on high PM2.5  (on: air_purifier(living-room-purifier) pm25 Gte 14)
+# Bedroom purifier night  (on: cron(30 21 * * *))
+  lua: lua(call purifier.night) -> []
+
+# Bedroom purifier morning  (on: cron(0 7 * * *))
+  lua: lua(call purifier.morning) -> []
+
+# Bedroom purifier on high PM2.5  (on: air_purifier(bedroom-purifier) pm25 Gte 14)
+  when: time in [07:00:00, 21:30:00)
   lua: lua(call purifier.auto) -> []
 
-# Living room purifier filter low  (on: cron(0 9 * * *))
+# Bedroom purifier filter low  (on: cron(0 9 * * *))
   lua: lua(call reminders.filter_low) -> []

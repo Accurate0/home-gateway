@@ -6,7 +6,6 @@ local SENSOR = "livingroom-motion"
 local FLOOR_LAMP = "floor-lamp-living-room"
 local TABLE_LAMP = "living-room-table-lamp"
 local LAMPS = { FLOOR_LAMP, TABLE_LAMP }
-local PURIFIER = "living-room-purifier"
 
 function living_room.occupied(settings)
 	if sun.is("night", settings.sunset_offset) then
@@ -14,34 +13,12 @@ function living_room.occupied(settings)
 			lights.all(LAMPS, "ON")
 		end)
 	end
-
-	workflow.step("purifier_on", function()
-		local current = air_purifier.state(PURIFIER)
-
-		if current ~= nil and current.on == true then
-			gw.log(PURIFIER .. " is already on")
-			return
-		end
-
-		air_purifier.command(PURIFIER, { command = "set_mode", mode = "auto" })
-	end, PURIFIER)
 end
 
 function living_room.vacated()
 	workflow.step("lamps_off", function()
 		lights.all(LAMPS, "OFF")
 	end)
-
-	workflow.step("purifier_off", function()
-		local current = air_purifier.state(PURIFIER)
-
-		if current == nil or current.on ~= true then
-			gw.log(PURIFIER .. " is already off")
-			return
-		end
-
-		air_purifier.command(PURIFIER, { command = "turn_off" })
-	end, PURIFIER)
 end
 
 function living_room.sunset(settings)

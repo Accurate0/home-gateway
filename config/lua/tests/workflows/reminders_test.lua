@@ -1,6 +1,6 @@
 local reminders = test.load("workflows/reminders")
 
-local SETTINGS = { device = "living-room-purifier", name = "Living Room Purifier", below = 10 }
+local SETTINGS = { device = "bedroom-purifier", name = "Bedroom Purifier", below = 10 }
 
 local function stub(state)
 	workflow = {
@@ -28,10 +28,10 @@ return {
 		test.eq(notify.send.calls, {
 			{
 				{
-					title = "Living Room Purifier",
-					message = "Living Room Purifier filter is at 8%, time to replace it",
+					title = "Bedroom Purifier",
+					message = "Bedroom Purifier filter is at 8%, time to replace it",
 					category = "general",
-					tag = "filter_low:living-room-purifier",
+					tag = "filter_low:bedroom-purifier",
 				},
 			},
 		})
