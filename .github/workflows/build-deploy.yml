@@ -56,7 +56,8 @@ jobs:
     with:
       service-name: home-gateway
       images: ghcr.io/accurate0/home-gateway
-      manifests-path: projects/home-gateway/manifests
+      manifests-path: projects/home-gateway
+      values-file: projects/home-gateway/image.values.yaml
       tag: ${{ github.sha }}
     secrets:
       FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
