@@ -33,7 +33,7 @@ tracing:
       reconciler.sweep: 0.05
       graphql.DashboardEventsSubscription: 0.1
   trace_link:
-    url: https://grafana.inf-k8s.net/explore
+    url: https://grafana.ortzi.cloud/explore
     query:
       schemaVersion: 1
       orgId: 1
