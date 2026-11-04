@@ -6,12 +6,6 @@ pub struct SolarRepo {
     db: Pool<Postgres>,
 }
 
-pub struct LatestSolarRow {
-    pub raw_data: serde_json::Value,
-    pub temperature: Option<f64>,
-    pub uv_level: Option<f64>,
-}
-
 pub struct SolarReading {
     pub current_kwh: f64,
     pub today_kwh: f64,
@@ -119,16 +113,6 @@ impl SolarRepo {
         .await?;
 
         Ok(row.map(|row| row.today_kwh))
-    }
-
-    #[tracing::instrument(skip_all, name = "db.solar.latest", err)]
-    pub async fn latest(&self) -> Result<Option<LatestSolarRow>, sqlx::Error> {
-        sqlx::query_as!(
-            LatestSolarRow,
-            "SELECT raw_data, temperature, uv_level FROM solar_data_tsdb ORDER BY time DESC LIMIT 1"
-        )
-        .fetch_optional(&self.db)
-        .await
     }
 
     #[tracing::instrument(skip_all, name = "db.solar.buckets_since", err)]

@@ -66,21 +66,15 @@ impl SolarActor {
     }
 
     async fn poll(&self) -> Result<Vec<WeatherReading>, ractor::ActorProcessingErr> {
-        let solar = async {
-            let login_data = self.goodwe.get_new_or_cached_login_data().await?;
-
-            self.goodwe.get_solar_data(login_data).await
-        };
-
         let (solar_data, uv_level, temperature) = tokio::join!(
-            solar,
+            self.goodwe.get_solar_data(),
             self.weather.get_uv_level(WeatherAPI::PERTH_NAME),
             self.cached_temperature(),
         );
 
         let solar_data = solar_data?;
 
-        let current_kwh = solar_data.data.kpi.pac;
+        let current_kwh = solar_data.current_w;
         let raw_data = serde_json::to_value(&solar_data)?;
 
         tracing::debug!("fetched solar data: {current_kwh}");
@@ -100,9 +94,9 @@ impl SolarActor {
             .solar()
             .append_reading(SolarReading {
                 current_kwh,
-                today_kwh: solar_data.data.kpi.power,
-                month_kwh: solar_data.data.kpi.month_generation,
-                total_kwh: solar_data.data.kpi.total_power,
+                today_kwh: solar_data.today_kwh,
+                month_kwh: solar_data.month_kwh,
+                total_kwh: solar_data.total_kwh,
                 raw_data,
                 uv_level,
                 temperature,

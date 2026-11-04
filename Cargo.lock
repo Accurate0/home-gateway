@@ -2783,6 +2783,7 @@ dependencies = [
  "libheif-rs",
  "libtest-mimic",
  "log",
+ "md-5",
  "mlua",
  "moka",
  "open-feature",
