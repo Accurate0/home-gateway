@@ -5,3 +5,4 @@ expression: manifest(&registry())
 1  convert_api_key_scopes  -  locked  8411a19873b2cea94a71672202dbe2908ca1d0b58ab6b667d27946cb644a0a24
 2  backfill_solar_kpis  -  locked  9eff80becb728112a90c67468dad4e4e5bc6559a86de5af35ce4c474294edf6d
 3  rekey_device_ids  -  unlocked  357072a5bfd759590ceef13b2b800e7dcd1500b442fd33f66a001880736b513e
+4  backfill_semsplus_solar  -  locked  2e0532eb5a50056011dd1c8beaade878628baa05c82b6fc3c4fe43287b1c6461

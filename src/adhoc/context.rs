@@ -3,6 +3,7 @@ use sqlx::{Pool, Postgres, Transaction};
 use crate::device_registry::DeviceRegistry;
 use crate::integrations::home_assistant::HomeAssistant;
 use crate::integrations::s3::S3;
+use crate::integrations::solar::goodwe::GoodWeSemsAPI;
 use crate::repo::RepoRegistry;
 use crate::settings::SettingsContainer;
 use crate::state::AppState;
@@ -15,6 +16,7 @@ pub struct AdhocTaskContext<'a> {
     pub settings: &'a SettingsContainer,
     pub s3: &'a S3,
     pub home_assistant: Option<&'a HomeAssistant>,
+    pub goodwe: Option<&'a GoodWeSemsAPI>,
 }
 
 impl<'a> AdhocTaskContext<'a> {
@@ -27,6 +29,7 @@ impl<'a> AdhocTaskContext<'a> {
             settings: &state.settings,
             s3: state.handles.expect::<S3>(),
             home_assistant: state.handles.get::<HomeAssistant>(),
+            goodwe: state.handles.get::<GoodWeSemsAPI>(),
         }
     }
 

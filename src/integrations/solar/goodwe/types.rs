@@ -88,6 +88,49 @@ pub struct StationFlow {
     pub rest: serde_json::Map<String, Value>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MetricTimeSeries {
+    #[serde(default)]
+    pub x_axis: Vec<MetricTime>,
+    #[serde(default)]
+    pub y_axis: Vec<MetricSeries>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MetricTime {
+    pub x_axi: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MetricSeries {
+    pub code: String,
+    #[serde(default)]
+    pub data: Vec<Option<f64>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Statistics {
+    #[serde(default)]
+    pub data_list: Vec<StatisticsItem>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatisticsItem {
+    pub item: String,
+    #[serde(default)]
+    pub statistics_list: Vec<StatisticsValue>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StatisticsValue {
+    pub date: String,
+    pub val: Value,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SolarData {
     pub current_w: f64,

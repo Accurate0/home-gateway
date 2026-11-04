@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT time FROM solar_data_tsdb WHERE time > $1 AND raw_data ? 'data' ORDER BY time",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "405c5f813c08a0a1e88323f2d661d76942ef94f3d977271c76151afc457ff898"
+}

@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE solar_data_tsdb AS s SET current_kwh = v.current_kwh, today_kwh = v.today_kwh, month_kwh = v.month_kwh, total_kwh = v.total_kwh, raw_data = $6 FROM unnest($1::timestamptz[], $2::float8[], $3::float8[], $4::float8[], $5::float8[]) AS v(time, current_kwh, today_kwh, month_kwh, total_kwh) WHERE s.time = v.time",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TimestamptzArray",
+        "Float8Array",
+        "Float8Array",
+        "Float8Array",
+        "Float8Array",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e66246536a65541512465393d22101a5c91230535201ff97fab13eddfbd009cc"
+}

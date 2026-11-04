@@ -4,6 +4,7 @@ use crate::repo::SolarRepo;
 use crate::settings::SolarSettings;
 use axum::http::{HeaderMap, HeaderValue};
 use base64::{Engine, prelude::BASE64_STANDARD};
+use chrono::{NaiveDate, NaiveDateTime};
 use md5::Md5;
 use reqwest::{
     Method,
@@ -12,11 +13,12 @@ use reqwest::{
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 use sqlx::{Pool, Postgres};
+use std::collections::BTreeMap;
 use std::time::Duration;
 use tracing::instrument;
 use types::{
-    DeviceStatus, Envelope, LoginData, LoginRequest, SolarData, StationFlow, TelecountingGroup,
-    numeric,
+    DeviceStatus, Envelope, LoginData, LoginRequest, MetricTimeSeries, SolarData, StationFlow,
+    Statistics, TelecountingGroup, numeric,
 };
 
 pub mod types;
@@ -30,6 +32,9 @@ const BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Appl
 const DEVICE_STATUS_PATH: &str = "/sems-plant/api/stations/device/all-status";
 const STATION_FLOW_PATH: &str = "/sems-plant/api/stations/flow";
 const TELECOUNTING_TEMPLATE: &str = "/sems-plant/api/equipments/{serial_number}/telecounting";
+const METRIC_TIME_SERIES_TEMPLATE: &str =
+    "/sems-plant/api/portal/equipments/{serial_number}/metricTimeSeriesData";
+const STATISTICS_PATH: &str = "/sems-plant/api/stations/statistics";
 
 const EXPIRED_TOKEN_CODES: [&str; 2] = ["100002", "C0602"];
 
@@ -126,14 +131,110 @@ impl GoodWeSemsAPI {
 
     #[instrument(name = "goodwe.get_solar_data", skip(self))]
     pub async fn get_solar_data(&self) -> Result<SolarData, GoodWeSemsAPIError> {
+        self.authenticated(|login| async move { self.fetch_solar_data(&login).await })
+            .await
+    }
+
+    #[instrument(name = "goodwe.power_curve", skip(self))]
+    pub async fn power_curve(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<(NaiveDateTime, f64)>, GoodWeSemsAPIError> {
+        self.authenticated(|login| async move {
+            let serial_number = self.inverter_serial_number(&login).await?;
+
+            let series = self
+                .request::<MetricTimeSeries>(
+                    &login,
+                    Method::POST,
+                    "power curve",
+                    &METRIC_TIME_SERIES_TEMPLATE.replace("{serial_number}", &serial_number),
+                    METRIC_TIME_SERIES_TEMPLATE,
+                    Some(serde_json::json!({
+                        "sn": serial_number,
+                        "stationId": self.powerstation_id,
+                        "deviceType": "INVERTER",
+                        "metricCode": ["pAc"],
+                        "startDateTime": format!("{date} 00:00:00"),
+                        "endDateTime": format!("{date} 23:59:59"),
+                    })),
+                )
+                .await?;
+
+            let power = series
+                .y_axis
+                .into_iter()
+                .find(|series| series.code == "pAc")
+                .ok_or(GoodWeSemsAPIError::MissingField("power curve pAc"))?;
+
+            Ok(series
+                .x_axis
+                .iter()
+                .zip(power.data)
+                .filter_map(|(point, kw)| {
+                    let at =
+                        NaiveDateTime::parse_from_str(&point.x_axi, "%Y-%m-%d %H:%M:%S").ok()?;
+
+                    Some((at, kw?))
+                })
+                .collect())
+        })
+        .await
+    }
+
+    #[instrument(name = "goodwe.daily_production", skip(self))]
+    pub async fn daily_production(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Result<BTreeMap<NaiveDate, f64>, GoodWeSemsAPIError> {
+        self.authenticated(|login| async move {
+            let statistics = self
+                .request::<Statistics>(
+                    &login,
+                    Method::POST,
+                    "statistics",
+                    STATISTICS_PATH,
+                    STATISTICS_PATH,
+                    Some(serde_json::json!({
+                        "stationId": self.powerstation_id,
+                        "isReport": false,
+                        "items": ["proSystemTotalStats"],
+                        "dimension": "day",
+                        "startTime": format!("{start} 00:00:00"),
+                        "endTime": format!("{end} 23:59:59"),
+                    })),
+                )
+                .await?;
+
+            Ok(statistics
+                .data_list
+                .into_iter()
+                .filter(|item| item.item == "proSystemTotalStats")
+                .flat_map(|item| item.statistics_list)
+                .filter_map(|day| {
+                    Some((
+                        NaiveDate::parse_from_str(&day.date, "%Y-%m-%d").ok()?,
+                        numeric(&day.val)?,
+                    ))
+                })
+                .collect())
+        })
+        .await
+    }
+
+    async fn authenticated<T, F, Fut>(&self, call: F) -> Result<T, GoodWeSemsAPIError>
+    where
+        F: Fn(LoginData) -> Fut,
+        Fut: Future<Output = Result<T, GoodWeSemsAPIError>>,
+    {
         let login = self.get_new_or_cached_login_data().await?;
 
-        match self.fetch_solar_data(&login).await {
+        match call(login).await {
             Err(e) if e.is_expired_token() => {
                 tracing::info!("goodwe token was rejected, logging in again: {e}");
                 self.token.invalidate(&()).await;
-                let login = self.login_and_save().await?;
-                self.fetch_solar_data(&login).await
+                call(self.login_and_save().await?).await
             }
             result => result,
         }
@@ -225,19 +326,34 @@ impl GoodWeSemsAPI {
         path: &str,
         template: &'static str,
     ) -> Result<T, GoodWeSemsAPIError> {
-        let request = self
+        self.request(login, Method::GET, operation, path, template, None)
+            .await
+    }
+
+    async fn request<T: DeserializeOwned>(
+        &self,
+        login: &LoginData,
+        method: Method,
+        operation: &'static str,
+        path: &str,
+        template: &'static str,
+        body: Option<serde_json::Value>,
+    ) -> Result<T, GoodWeSemsAPIError> {
+        let mut request = self
             .http
-            .request(
-                Method::GET,
-                format!("{}{path}", login.api.trim_end_matches('/')),
-            )
+            .request(method, format!("{}{path}", login.api.trim_end_matches('/')))
             .with_extension(crate::http::UrlTemplate(template))
             .header(
                 "token",
                 HeaderValue::from_str(&serde_json::to_string(login)?)?,
             )
-            .header("X-Signature", signature(&login.uid, &login.token))
-            .build()?;
+            .header("X-Signature", signature(&login.uid, &login.token));
+
+        if let Some(body) = body {
+            request = request.json(&body);
+        }
+
+        let request = request.build()?;
 
         let envelope = self
             .http

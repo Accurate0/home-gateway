@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT max(time) FROM solar_data_tsdb WHERE raw_data ? 'data' AND current_kwh > 0",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "max",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "89f3f199e2b2bbf78d56c5e50d6f46118cffd14d737369bab85f6764d2ea3b12"
+}
