@@ -263,19 +263,19 @@ endpoints:
     - path: /test/graphql
       method: GET
       script: |
-        local data = gw.graphql("query { workflows { slug } }")
+        local data = gw.graphql("query { homeWorkflows { slug } }")
 
-        return { count = #data.workflows }
+        return { count = #data.homeWorkflows }
 
     - path: /test/mutation
       method: GET
       script: |
-        return gw.graphql("mutation { executeLua(script: \"return 1\") }")
+        return gw.graphql("mutation { homeExecuteLua(script: \"return 1\") }")
 
     - path: /test/subscription
       method: GET
       script: |
-        return gw.graphql("subscription { events { kind } }")
+        return gw.graphql("subscription { homeEvents { kind } }")
 
     - path: /test/light
       method: GET

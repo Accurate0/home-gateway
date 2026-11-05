@@ -526,7 +526,7 @@ async fn the_graphql_mutation_executes_a_script() {
     let key = mint_key(&harness, &["lua:write"]).await;
 
     let body = serde_json::json!({
-        "query": "mutation { executeLua(script: \"return 6 * 7\") }",
+        "query": "mutation { homeExecuteLua(script: \"return 6 * 7\") }",
     })
     .to_string();
 

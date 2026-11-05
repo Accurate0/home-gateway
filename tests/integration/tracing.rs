@@ -126,18 +126,20 @@ async fn a_graphql_query_produces_one_span_per_top_level_field() {
 
     let field_spans: Vec<_> = names
         .iter()
-        .filter(|n| n.starts_with("graphql.QueryRoot."))
+        .filter(|n| n.starts_with("graphql.Query."))
         .collect();
     assert_eq!(
         field_spans,
-        vec!["graphql.QueryRoot.environment"],
+        vec!["graphql.Query.homeEnvironment"],
         "exactly one span for the one top-level field: {names:?}"
     );
 
     let nested: Vec<_> = names
         .iter()
         .filter(|n| {
-            n.starts_with("graphql.EnvironmentEntity.") || n.starts_with('[') || n.contains("].")
+            n.starts_with("graphql.HomeEnvironmentEntity.")
+                || n.starts_with('[')
+                || n.contains("].")
         })
         .collect();
     assert!(
@@ -174,7 +176,10 @@ async fn the_parse_span_records_the_operation_and_its_top_level_fields() {
         attribute(parse, "operation").as_deref(),
         Some("DashboardEntities")
     );
-    assert_eq!(attribute(parse, "fields").as_deref(), Some("environment"));
+    assert_eq!(
+        attribute(parse, "fields").as_deref(),
+        Some("homeEnvironment")
+    );
 }
 
 #[tokio::test]

@@ -185,7 +185,7 @@ async fn a_valid_api_key_is_accepted() {
     let (status, body) = client.graphql(Some(&key), "{ __typename }").await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["data"]["__typename"], "QueryRoot");
+    assert_eq!(body["data"]["__typename"], "Query");
 }
 
 #[tokio::test]
@@ -358,7 +358,7 @@ async fn a_dry_run_is_traced_and_queryable_over_graphql() {
         .to_owned();
 
     let query = format!(
-        r#"{{ workflowRuns(eventId: "{event_id}") {{ dryRun steps {{ depth kind outcome detail }} }} }}"#
+        r#"{{ homeWorkflowRuns(eventId: "{event_id}") {{ dryRun steps {{ depth kind outcome detail }} }} }}"#
     );
 
     let run = crate::common::wait_for(
