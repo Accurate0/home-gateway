@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3701de64b13eaaa80ac5977e06aec370>>
+ * @generated SignedSource<<03862329eadf68ce856bcf945fc5dcd6>>
  * @lightSyntaxTransform
  */
 
@@ -62,7 +62,7 @@ return {
     "metadata": null,
     "name": "DashboardMediaStopMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

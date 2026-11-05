@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4b764f1aca7673d16564e0c431162db5>>
+ * @generated SignedSource<<c6606012069d361022692d655580bf19>>
  * @lightSyntaxTransform
  */
 
@@ -200,7 +200,7 @@ return {
     "metadata": null,
     "name": "DashboardEinkConfigQuery",
     "selections": (v1/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

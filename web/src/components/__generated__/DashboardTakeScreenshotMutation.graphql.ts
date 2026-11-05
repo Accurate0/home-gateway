@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ea9c86b2159d67cf2aaddadc782fb3cf>>
+ * @generated SignedSource<<7bce2eb09f3dde25e19c17ac8e9d2939>>
  * @lightSyntaxTransform
  */
 
@@ -62,7 +62,7 @@ return {
     "metadata": null,
     "name": "DashboardTakeScreenshotMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d90eb079154ae70b1c8667cdf8f7cd18>>
+ * @generated SignedSource<<ccd262f04a7e537a78ba469ecc734bc9>>
  * @lightSyntaxTransform
  */
 
@@ -729,7 +729,7 @@ return {
     "metadata": null,
     "name": "DashboardEntitiesQuery",
     "selections": (v10/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

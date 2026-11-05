@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c2601340304f121df0984d8f728dcd9c>>
+ * @generated SignedSource<<c2ae62e67cb17a486116fee8d5e96606>>
  * @lightSyntaxTransform
  */
 
@@ -242,7 +242,7 @@ return {
     "metadata": null,
     "name": "BatteryPageQuery",
     "selections": (v2/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

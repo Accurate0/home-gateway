@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<592e4d9abc55d28566c08ee1d3f18041>>
+ * @generated SignedSource<<9997d283290d9615040358e683e52213>>
  * @lightSyntaxTransform
  */
 
@@ -102,7 +102,7 @@ return {
         "storageKey": "events(filter:\"home_assistant:*\")"
       }
     ],
-    "type": "SubscriptionRoot",
+    "type": "Subscription",
     "abstractKey": null
   },
   "kind": "Request",

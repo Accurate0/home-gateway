@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c309da3bb954ddca419fd46426b71cd9>>
+ * @generated SignedSource<<972cb21813b54b45c3c07d30a5df58a1>>
  * @lightSyntaxTransform
  */
 
@@ -75,7 +75,7 @@ return {
     "metadata": null,
     "name": "DashboardAirPurifierSetDisplayMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

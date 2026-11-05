@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0bffbe82ec52f80ba7fdd8004966b2b9>>
+ * @generated SignedSource<<f4579f838cb2b8749036b6dffca60768>>
  * @lightSyntaxTransform
  */
 
@@ -424,7 +424,7 @@ return {
         "storageKey": "events(filter:\"*\")"
       }
     ],
-    "type": "SubscriptionRoot",
+    "type": "Subscription",
     "abstractKey": null
   },
   "kind": "Request",

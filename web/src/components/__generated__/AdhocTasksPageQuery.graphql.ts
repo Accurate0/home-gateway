@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b53eab08089971649f26ba2d3580ab4b>>
+ * @generated SignedSource<<9a3803611df8f78812e64adefc066584>>
  * @lightSyntaxTransform
  */
 
@@ -168,7 +168,7 @@ return {
     "metadata": null,
     "name": "AdhocTasksPageQuery",
     "selections": (v4/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

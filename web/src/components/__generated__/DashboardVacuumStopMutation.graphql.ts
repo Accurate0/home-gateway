@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bbcaac1ad811cdffdd7af4cf29de079e>>
+ * @generated SignedSource<<769c286335f3a428b211cc7034614fe3>>
  * @lightSyntaxTransform
  */
 
@@ -62,7 +62,7 @@ return {
     "metadata": null,
     "name": "DashboardVacuumStopMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

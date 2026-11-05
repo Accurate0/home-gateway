@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<55a6b4ad3c3c2f40045ea846af023418>>
+ * @generated SignedSource<<07ebad70d223a7d42b0f409dd7e0aea9>>
  * @lightSyntaxTransform
  */
 
@@ -62,7 +62,7 @@ return {
     "metadata": null,
     "name": "DashboardMediaPlayPauseMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

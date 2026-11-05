@@ -853,7 +853,7 @@ type ModeUpdate {
 	previous: Mode!
 }
 
-type MutationRoot {
+type Mutation {
 	light(id: IdOrAlias!): LightMutation!
 	robotVacuum(id: IdOrAlias!): RobotVacuumMutation!
 	garageDoor(id: IdOrAlias!): GarageDoorMutation!
@@ -1025,7 +1025,7 @@ type PushNotificationInteraction {
 	at: DateTime!
 }
 
-type QueryRoot {
+type Query {
 	auth: AuthObject!
 	homeAssistant: HomeAssistantObject!
 	"""
@@ -1173,7 +1173,7 @@ type SolarUpdate {
 	currentWh: Float!
 }
 
-type SubscriptionRoot {
+type Subscription {
 	events(filter: String! = "*"): EventUpdate!
 }
 
@@ -1436,7 +1436,7 @@ Provides a scalar specification URL for specifying the behavior of custom scalar
 """
 directive @specifiedBy(url: String!) on SCALAR
 schema {
-	query: QueryRoot
-	mutation: MutationRoot
-	subscription: SubscriptionRoot
+	query: Query
+	mutation: Mutation
+	subscription: Subscription
 }

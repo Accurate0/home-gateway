@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8c9271bbbeaa725608b05a5a800b2fa7>>
+ * @generated SignedSource<<915918061a2ca64f13bbf4e581890db7>>
  * @lightSyntaxTransform
  */
 
@@ -92,7 +92,7 @@ return {
     "metadata": null,
     "name": "HomeAssistantPageQuery",
     "selections": (v0/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

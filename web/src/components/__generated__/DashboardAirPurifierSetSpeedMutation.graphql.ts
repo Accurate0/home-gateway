@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<10d7671d2b807449585e95dce078d70f>>
+ * @generated SignedSource<<e47c574ab435098179ac4e1a1f4ca1db>>
  * @lightSyntaxTransform
  */
 
@@ -75,7 +75,7 @@ return {
     "metadata": null,
     "name": "DashboardAirPurifierSetSpeedMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

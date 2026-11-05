@@ -20,6 +20,7 @@ pub mod robot_vacuum_mutation;
 pub mod workflows_mutation;
 
 #[derive(Default, MergedObject)]
+#[graphql(name = "Mutation")]
 pub struct MutationRoot(
     EntitiesMutation,
     WorkflowsMutation,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e3eabfc8f9a564faa52cb61dc2696e8a>>
+ * @generated SignedSource<<3cfa1726e23b98c50a21dda0e415a546>>
  * @lightSyntaxTransform
  */
 
@@ -147,7 +147,7 @@ return {
     "metadata": null,
     "name": "RunTraceQuery",
     "selections": (v1/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

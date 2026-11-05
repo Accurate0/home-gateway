@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a14a57a85b097b88d2f67bda49286959>>
+ * @generated SignedSource<<e14de0acd1b3a39537499d123772aadf>>
  * @lightSyntaxTransform
  */
 
@@ -80,7 +80,7 @@ return {
     "metadata": null,
     "name": "DashboardSetBrightnessMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

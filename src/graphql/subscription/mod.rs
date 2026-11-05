@@ -14,7 +14,7 @@ use types::EventUpdate;
 #[derive(Default)]
 pub struct SubscriptionRoot;
 
-#[Subscription]
+#[Subscription(name = "Subscription")]
 impl SubscriptionRoot {
     async fn events(
         &self,

@@ -26,6 +26,7 @@ pub mod subscription;
 pub use objects::lockable::LockableEntity;
 
 #[derive(Default, MergedObject)]
+#[graphql(name = "Query")]
 pub struct QueryRoot(
     AuthQuery,
     HomeAssistantQuery,
@@ -63,6 +64,7 @@ pub fn builder() -> SchemaBuilder<QueryRoot, MutationRoot, SubscriptionRoot> {
     )
     .register_output_type::<LockableEntity>()
     .enable_federation()
+    .enable_subscription_in_federation()
 }
 
 pub fn sdl() -> String {

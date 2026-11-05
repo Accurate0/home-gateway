@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8facea9648c240391265c3566e94c370>>
+ * @generated SignedSource<<92d56fae08b2f1fec0a84006db3ecc1c>>
  * @lightSyntaxTransform
  */
 
@@ -63,7 +63,7 @@ return {
     "metadata": null,
     "name": "DashboardGarageDoorOpenMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

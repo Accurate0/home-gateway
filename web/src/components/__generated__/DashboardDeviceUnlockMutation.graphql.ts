@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<032c74888f784b60467366e40e6e566d>>
+ * @generated SignedSource<<ace4c671d3cc23fd86a6e6b9136b4451>>
  * @lightSyntaxTransform
  */
 
@@ -62,7 +62,7 @@ return {
     "metadata": null,
     "name": "DashboardDeviceUnlockMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

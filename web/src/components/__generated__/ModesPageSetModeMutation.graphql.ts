@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<59e92d03a55a1ec7d5489cb5faff63fc>>
+ * @generated SignedSource<<e587d9abf09b36fb0e9838d76e705a36>>
  * @lightSyntaxTransform
  */
 
@@ -50,7 +50,7 @@ return {
     "metadata": null,
     "name": "ModesPageSetModeMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

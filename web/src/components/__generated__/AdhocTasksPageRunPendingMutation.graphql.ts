@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<eb42b198aaa5dbb854278435ed78b0a6>>
+ * @generated SignedSource<<462c1a67022a6273b61fc72f632f8273>>
  * @lightSyntaxTransform
  */
 
@@ -34,7 +34,7 @@ return {
     "metadata": null,
     "name": "AdhocTasksPageRunPendingMutation",
     "selections": (v0/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

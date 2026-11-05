@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dffdf98cc268a8facfcc253e6e52513b>>
+ * @generated SignedSource<<eec9fd4dead2249f09dd0bdc58afafad>>
  * @lightSyntaxTransform
  */
 
@@ -49,7 +49,7 @@ return {
     "metadata": null,
     "name": "AdhocTasksPageRunCronMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

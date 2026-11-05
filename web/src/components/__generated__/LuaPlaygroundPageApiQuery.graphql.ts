@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f2fc2085f55ec9c57307abd5e2850bb9>>
+ * @generated SignedSource<<58fc213ccc84944b17b7b240f5b9594c>>
  * @lightSyntaxTransform
  */
 
@@ -221,7 +221,7 @@ return {
     "metadata": null,
     "name": "LuaPlaygroundPageApiQuery",
     "selections": (v4/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

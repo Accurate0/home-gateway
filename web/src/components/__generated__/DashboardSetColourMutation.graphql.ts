@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<596141acb3dca4dfc6d2d0bbd9c7ad6e>>
+ * @generated SignedSource<<c38dfb6761aa87420b72feed016a94e1>>
  * @lightSyntaxTransform
  */
 
@@ -81,7 +81,7 @@ return {
     "metadata": null,
     "name": "DashboardSetColourMutation",
     "selections": (v2/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

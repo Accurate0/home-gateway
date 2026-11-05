@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cab34c5b4cf195d83fb20020a6112a0d>>
+ * @generated SignedSource<<cd0f3711c9d8334abd8b6f4b4a60707b>>
  * @lightSyntaxTransform
  */
 
@@ -117,7 +117,7 @@ return {
     "metadata": null,
     "name": "RunsPageQuery",
     "selections": (v0/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0649e9aa328ffdabf55f2484504fcd98>>
+ * @generated SignedSource<<081704832c1a94000d6e4f5dc8ff9f50>>
  * @lightSyntaxTransform
  */
 
@@ -112,7 +112,7 @@ return {
     "metadata": null,
     "name": "WorkflowsPageQuery",
     "selections": (v0/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d0e7be19447d72d2374243c8e0ab0d31>>
+ * @generated SignedSource<<b3e0cf5e5f45cf9ddcb52581330d4feb>>
  * @lightSyntaxTransform
  */
 
@@ -61,7 +61,7 @@ return {
     "metadata": null,
     "name": "WorkflowsPageSetEnabledMutation",
     "selections": (v2/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

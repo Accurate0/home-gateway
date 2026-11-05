@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fc1524e8ffb1e69d0a530b2db1fd6940>>
+ * @generated SignedSource<<7a08fe2e31c995ba1db53491c8bb9f28>>
  * @lightSyntaxTransform
  */
 
@@ -216,7 +216,7 @@ return {
         "storageKey": null
       }
     ],
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

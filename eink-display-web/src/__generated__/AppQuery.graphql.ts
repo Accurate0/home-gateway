@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4cc9e9beea43f09beaa6591e2e6df523>>
+ * @generated SignedSource<<3462845e677c38c378c03306d6278731>>
  * @lightSyntaxTransform
  */
 
@@ -336,7 +336,7 @@ return {
       (v9/*:: as any*/),
       (v10/*:: as any*/)
     ],
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

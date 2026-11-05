@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<048d7276530b47e3a2221be53f5e2c42>>
+ * @generated SignedSource<<4de5824230d004c2cff476be779aa52d>>
  * @lightSyntaxTransform
  */
 
@@ -61,7 +61,7 @@ return {
     "metadata": null,
     "name": "LuaPlaygroundPageExecuteMutation",
     "selections": (v2/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",

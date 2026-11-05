@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b7f7716bee7bb9781ba4308121fcd534>>
+ * @generated SignedSource<<568368f637f5cf868bf927ce94540818>>
  * @lightSyntaxTransform
  */
 
@@ -132,7 +132,7 @@ return {
     "metadata": null,
     "name": "PlantsPageQuery",
     "selections": (v3/*:: as any*/),
-    "type": "QueryRoot",
+    "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",

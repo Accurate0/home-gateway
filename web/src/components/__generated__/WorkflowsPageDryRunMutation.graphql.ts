@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8b50ba1b9c7a20ff749d2ff567f22d71>>
+ * @generated SignedSource<<0c1b90e86d23305da5dfe16194f62b15>>
  * @lightSyntaxTransform
  */
 
@@ -54,7 +54,7 @@ return {
     "metadata": null,
     "name": "WorkflowsPageDryRunMutation",
     "selections": (v1/*:: as any*/),
-    "type": "MutationRoot",
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
