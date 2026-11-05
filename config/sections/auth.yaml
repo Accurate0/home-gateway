@@ -12,6 +12,11 @@ oauth:
   jwks_url: https://idm.anurag.sh/oauth2/openid/home-gateway/public_key.jwk
   userinfo_url: https://idm.anurag.sh/oauth2/openid/home-gateway/userinfo
   audience: home-gateway
+  additional_providers:
+    - issuer: https://idm.anurag.sh/oauth2/openid/graph
+      jwks_url: https://idm.anurag.sh/oauth2/openid/graph/public_key.jwk
+      userinfo_url: https://idm.anurag.sh/oauth2/openid/graph/userinfo
+      audience: graph
   cache:
     keys:
       capacity: 32

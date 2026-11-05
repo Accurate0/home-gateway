@@ -8,13 +8,40 @@ use jsonwebtoken::{
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Deserialize;
 
-use crate::{cache::MemoryCache, http::get_traced_http_client, settings::OAuthSettings};
+use crate::{
+    cache::MemoryCache,
+    http::get_traced_http_client,
+    settings::{OAuthProviderSettings, OAuthSettings},
+};
 
 use super::AuthContext;
 
 #[derive(Debug, Deserialize)]
 struct Claims {
     sub: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UnverifiedClaims {
+    iss: String,
+}
+
+struct Provider {
+    settings: OAuthProviderSettings,
+    last_keys_refresh: tokio::sync::Mutex<Option<Instant>>,
+}
+
+impl Provider {
+    fn new(settings: OAuthProviderSettings) -> Self {
+        Self {
+            settings,
+            last_keys_refresh: tokio::sync::Mutex::new(None),
+        }
+    }
+
+    fn key_id(&self, kid: &str) -> String {
+        format!("{}#{kid}", self.settings.issuer)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,9 +59,9 @@ pub struct VerifyingKey {
 
 pub struct OAuthValidator {
     settings: OAuthSettings,
+    providers: Vec<Provider>,
     http: ClientWithMiddleware,
     keys: MemoryCache<String, Arc<VerifyingKey>>,
-    last_keys_refresh: tokio::sync::Mutex<Option<Instant>>,
     userinfo: MemoryCache<String, Arc<UserInfo>>,
 }
 
@@ -60,18 +87,38 @@ impl OAuthValidator {
             .build();
 
         Ok(Self {
+            providers: settings
+                .providers()
+                .into_iter()
+                .map(Provider::new)
+                .collect(),
             settings,
             http: get_traced_http_client(timeout)?,
             keys,
-            last_keys_refresh: tokio::sync::Mutex::new(None),
             userinfo,
         })
     }
 
-    async fn refresh_jwks(&self) -> Result<(), StatusCode> {
+    fn provider_for(&self, token: &str) -> Result<&Provider, StatusCode> {
+        let claims: UnverifiedClaims = jsonwebtoken::dangerous::insecure_decode_claims(token)
+            .map_err(|e| {
+                tracing::error!("invalid jwt claims: {e}");
+                StatusCode::UNAUTHORIZED
+            })?;
+
+        self.providers
+            .iter()
+            .find(|p| p.settings.issuer == claims.iss)
+            .ok_or_else(|| {
+                tracing::warn!("jwt from untrusted issuer {}", claims.iss);
+                StatusCode::UNAUTHORIZED
+            })
+    }
+
+    async fn refresh_jwks(&self, provider: &Provider) -> Result<(), StatusCode> {
         let set: JwkSet = self
             .http
-            .get(&self.settings.jwks_url)
+            .get(&provider.settings.jwks_url)
             .send()
             .await
             .map_err(|e| {
@@ -88,7 +135,7 @@ impl OAuthValidator {
         for jwk in &set.keys {
             if let Some(kid) = jwk.common.key_id.clone() {
                 match decoding_key(jwk) {
-                    Ok(key) => self.keys.insert(kid, Arc::new(key)).await,
+                    Ok(key) => self.keys.insert(provider.key_id(&kid), Arc::new(key)).await,
                     Err(e) => tracing::warn!("ignoring unusable jwk {kid}: {e}"),
                 }
             }
@@ -97,14 +144,20 @@ impl OAuthValidator {
         Ok(())
     }
 
-    async fn key_for(&self, kid: &str) -> Result<Arc<VerifyingKey>, StatusCode> {
-        if let Some(key) = self.keys.get(kid).await {
+    async fn key_for(
+        &self,
+        provider: &Provider,
+        kid: &str,
+    ) -> Result<Arc<VerifyingKey>, StatusCode> {
+        let id = provider.key_id(kid);
+
+        if let Some(key) = self.keys.get(&id).await {
             return Ok(key);
         }
 
-        let mut last_refresh = self.last_keys_refresh.lock().await;
+        let mut last_refresh = provider.last_keys_refresh.lock().await;
 
-        if let Some(key) = self.keys.get(kid).await {
+        if let Some(key) = self.keys.get(&id).await {
             return Ok(key);
         }
 
@@ -116,10 +169,10 @@ impl OAuthValidator {
         }
 
         *last_refresh = Some(Instant::now());
-        self.refresh_jwks().await?;
+        self.refresh_jwks(provider).await?;
         drop(last_refresh);
 
-        self.keys.get(kid).await.ok_or_else(|| {
+        self.keys.get(&id).await.ok_or_else(|| {
             tracing::warn!("no jwks key for kid {kid}");
             StatusCode::UNAUTHORIZED
         })
@@ -131,7 +184,8 @@ impl OAuthValidator {
             StatusCode::UNAUTHORIZED
         })?;
         let kid = header.kid.ok_or(StatusCode::UNAUTHORIZED)?;
-        let key = self.key_for(&kid).await?;
+        let provider = self.provider_for(token)?;
+        let key = self.key_for(provider, &kid).await?;
 
         if header.alg != key.alg {
             tracing::warn!(
@@ -143,8 +197,8 @@ impl OAuthValidator {
         }
 
         let mut validation = Validation::new(key.alg);
-        validation.set_issuer(&[&self.settings.issuer]);
-        validation.set_audience(&[&self.settings.audience]);
+        validation.set_issuer(&[&provider.settings.issuer]);
+        validation.set_audience(&[&provider.settings.audience]);
 
         let claims = decode::<Claims>(token, &key.key, &validation)
             .map_err(|e| {
@@ -153,7 +207,7 @@ impl OAuthValidator {
             })?
             .claims;
 
-        let userinfo = self.fetch_userinfo(token).await?;
+        let userinfo = self.fetch_userinfo(provider, token).await?;
 
         let scopes = self.scopes_for(&userinfo);
         if scopes.is_empty() {
@@ -165,11 +219,15 @@ impl OAuthValidator {
         Ok(AuthContext::from_scopes(None, name, &scopes))
     }
 
-    async fn fetch_userinfo(&self, token: &str) -> Result<Arc<UserInfo>, StatusCode> {
+    async fn fetch_userinfo(
+        &self,
+        provider: &Provider,
+        token: &str,
+    ) -> Result<Arc<UserInfo>, StatusCode> {
         let entry = self
             .userinfo
             .or_try_insert_with(token.to_owned(), async {
-                let userinfo = self.request_userinfo(token).await?;
+                let userinfo = self.request_userinfo(provider, token).await?;
 
                 Ok::<_, StatusCode>(Arc::new(userinfo))
             })
@@ -179,9 +237,13 @@ impl OAuthValidator {
         Ok(entry.into_value())
     }
 
-    async fn request_userinfo(&self, token: &str) -> Result<UserInfo, StatusCode> {
+    async fn request_userinfo(
+        &self,
+        provider: &Provider,
+        token: &str,
+    ) -> Result<UserInfo, StatusCode> {
         self.http
-            .get(&self.settings.userinfo_url)
+            .get(&provider.settings.userinfo_url)
             .bearer_auth(token)
             .send()
             .await
@@ -251,32 +313,48 @@ mod tests {
     use crate::settings::enabled_state::EnabledState;
     use std::collections::HashMap;
 
-    fn validator(group_scopes: HashMap<String, Vec<String>>) -> OAuthValidator {
-        OAuthValidator {
-            settings: OAuthSettings {
-                issuer: "iss".into(),
-                jwks_url: "http://jwks".into(),
-                userinfo_url: "http://userinfo".into(),
-                audience: "home-gateway".into(),
-                groups_claim: "groups".into(),
-                group_scopes,
-                cache: crate::settings::OAuthCacheSettings {
-                    keys: crate::settings::CacheSettings {
-                        capacity: 32,
-                        ttl: chrono::TimeDelta::hours(1),
-                    },
-                    keys_refresh_cooldown: chrono::TimeDelta::minutes(1),
-                    userinfo: crate::settings::CacheSettings {
-                        capacity: 256,
-                        ttl: chrono::TimeDelta::minutes(15),
-                    },
+    fn settings(group_scopes: HashMap<String, Vec<String>>) -> OAuthSettings {
+        OAuthSettings {
+            issuer: "iss".into(),
+            jwks_url: "http://jwks".into(),
+            userinfo_url: "http://userinfo".into(),
+            audience: "home-gateway".into(),
+            additional_providers: vec![OAuthProviderSettings {
+                issuer: "graph-iss".into(),
+                jwks_url: "http://graph/jwks".into(),
+                userinfo_url: "http://graph/userinfo".into(),
+                audience: "graph".into(),
+            }],
+            groups_claim: "groups".into(),
+            group_scopes,
+            cache: crate::settings::OAuthCacheSettings {
+                keys: crate::settings::CacheSettings {
+                    capacity: 32,
+                    ttl: chrono::TimeDelta::hours(1),
+                },
+                keys_refresh_cooldown: chrono::TimeDelta::minutes(1),
+                userinfo: crate::settings::CacheSettings {
+                    capacity: 256,
+                    ttl: chrono::TimeDelta::minutes(15),
                 },
             },
+        }
+    }
+
+    fn validator(group_scopes: HashMap<String, Vec<String>>) -> OAuthValidator {
+        let settings = settings(group_scopes);
+
+        OAuthValidator {
+            providers: settings
+                .providers()
+                .into_iter()
+                .map(Provider::new)
+                .collect(),
+            settings,
             http: get_traced_http_client(std::time::Duration::from_secs(30)).unwrap(),
             keys: MemoryCache::builder("oauth_keys")
                 .metrics(EnabledState::Disabled)
                 .build(),
-            last_keys_refresh: tokio::sync::Mutex::new(None),
             userinfo: MemoryCache::builder("oauth_userinfo")
                 .metrics(EnabledState::Disabled)
                 .build(),
@@ -325,6 +403,46 @@ mod tests {
             vec!["**:*".to_owned()],
         )]));
         assert!(v.scopes_for(&userinfo(&["nobody@idm"])).is_empty());
+    }
+
+    fn token(claims: serde_json::Value) -> String {
+        use base64::Engine;
+
+        let encode = |v: serde_json::Value| {
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(v.to_string())
+        };
+
+        format!(
+            "{}.{}.sig",
+            encode(serde_json::json!({ "alg": "ES256", "kid": "k" })),
+            encode(claims)
+        )
+    }
+
+    #[test]
+    fn token_is_routed_to_its_issuer() {
+        let v = validator(HashMap::new());
+
+        let primary = v
+            .provider_for(&token(serde_json::json!({ "iss": "iss" })))
+            .unwrap();
+        assert_eq!(primary.settings.audience, "home-gateway");
+
+        let graph = v
+            .provider_for(&token(serde_json::json!({ "iss": "graph-iss" })))
+            .unwrap();
+        assert_eq!(graph.settings.audience, "graph");
+        assert_eq!(graph.key_id("k"), "graph-iss#k");
+    }
+
+    #[test]
+    fn untrusted_issuer_is_rejected() {
+        let v = validator(HashMap::new());
+
+        assert!(matches!(
+            v.provider_for(&token(serde_json::json!({ "iss": "elsewhere" }))),
+            Err(StatusCode::UNAUTHORIZED)
+        ));
     }
 
     fn jwk(value: serde_json::Value) -> Jwk {

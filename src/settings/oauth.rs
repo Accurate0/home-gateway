@@ -18,9 +18,32 @@ pub struct OAuthSettings {
     pub jwks_url: String,
     pub userinfo_url: String,
     pub audience: String,
+    #[serde(default)]
+    pub additional_providers: Vec<OAuthProviderSettings>,
     #[serde(default = "default_groups_claim")]
     pub groups_claim: String,
     /// group SPN -> granted scope patterns (`resource.path:action`).
     pub group_scopes: HashMap<String, Vec<String>>,
     pub cache: OAuthCacheSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+pub struct OAuthProviderSettings {
+    pub issuer: String,
+    pub jwks_url: String,
+    pub userinfo_url: String,
+    pub audience: String,
+}
+
+impl OAuthSettings {
+    pub fn providers(&self) -> Vec<OAuthProviderSettings> {
+        std::iter::once(OAuthProviderSettings {
+            issuer: self.issuer.clone(),
+            jwks_url: self.jwks_url.clone(),
+            userinfo_url: self.userinfo_url.clone(),
+            audience: self.audience.clone(),
+        })
+        .chain(self.additional_providers.iter().cloned())
+        .collect()
+    }
 }

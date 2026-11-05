@@ -128,7 +128,7 @@ pub use notify::{
 pub use notify_android::NotifyAndroidSettings;
 pub use notify_filter::NotifyFilter;
 pub use notify_source::NotificationSource;
-pub use oauth::OAuthSettings;
+pub use oauth::{OAuthProviderSettings, OAuthSettings};
 pub use oauth_cache::OAuthCacheSettings;
 pub use reconciler::ReconcilerSettings;
 pub use reconnect::ReconnectSettings;
