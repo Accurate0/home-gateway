@@ -77,6 +77,10 @@ type AirPurifierUpdate {
 	pm25: Float
 }
 
+type Artist {
+	name: String!
+}
+
 type AuthObject {
 	id: String
 	name: String
@@ -551,6 +555,10 @@ type HomeAssistantUpdate {
 
 scalar IdOrAlias
 
+type Item {
+	uri: String!
+}
+
 """
 A scalar that can represent any JSON value.
 """
@@ -764,6 +772,9 @@ type MediaPlayerEntity {
 	appName: String
 	source: String
 	mediaContentType: String
+	mediaContentId: String
+	spotifyItem: Item
+	spotifyArtist: Artist
 	mediaTitle: String
 	mediaArtist: String
 	mediaAlbumName: String
@@ -1057,6 +1068,7 @@ type QueryRoot {
 	adhocTasks: [AdhocTaskStatus!]!
 	pushNotifications(limit: Int): [PushNotification!]!
 	luaApi: LuaApiObject!
+	_service: _Service!
 }
 
 enum RedditTimespan {
@@ -1403,6 +1415,16 @@ type WorkflowStatus {
 	dryRun: Boolean!
 	reusable: Boolean!
 	modes: [Mode!]!
+}
+
+"""
+The `_Any` scalar is used to pass representations of entities from external
+services into the root `_entities` field for execution.
+"""
+scalar _Any
+
+type _Service {
+	sdl: String
 }
 
 """

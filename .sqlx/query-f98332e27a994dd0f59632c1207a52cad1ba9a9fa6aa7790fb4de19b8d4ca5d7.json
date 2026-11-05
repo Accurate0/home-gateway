@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT device_id, state, app_name, source, media_content_type, media_title,\n                   media_artist, media_album_name, media_series_title, media_season, media_episode,\n                   position_seconds, duration_seconds, position_updated_at, volume_level, muted,\n                   artwork_url, updated_at\n            FROM media_player_state\n            WHERE device_id = ANY($1)\n            ",
+  "query": "\n            SELECT device_id, state, app_name, source, media_content_type,\n                   attributes->>'media_content_id' AS media_content_id, media_title,\n                   media_artist, media_album_name, media_series_title, media_season, media_episode,\n                   position_seconds, duration_seconds, position_updated_at, volume_level, muted,\n                   artwork_url, updated_at\n            FROM media_player_state\n            WHERE device_id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
@@ -60,6 +60,12 @@
       },
       {
         "ordinal": 5,
+        "name": "media_content_id",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
         "name": "media_title",
         "type_info": "Text",
         "origin": {
@@ -70,7 +76,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "media_artist",
         "type_info": "Text",
         "origin": {
@@ -81,7 +87,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "media_album_name",
         "type_info": "Text",
         "origin": {
@@ -92,7 +98,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "media_series_title",
         "type_info": "Text",
         "origin": {
@@ -103,7 +109,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "media_season",
         "type_info": "Int4",
         "origin": {
@@ -114,7 +120,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "media_episode",
         "type_info": "Int4",
         "origin": {
@@ -125,7 +131,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "position_seconds",
         "type_info": "Float8",
         "origin": {
@@ -136,7 +142,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "duration_seconds",
         "type_info": "Float8",
         "origin": {
@@ -147,7 +153,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "position_updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -158,7 +164,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "volume_level",
         "type_info": "Float8",
         "origin": {
@@ -169,7 +175,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "muted",
         "type_info": "Bool",
         "origin": {
@@ -180,7 +186,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "artwork_url",
         "type_info": "Text",
         "origin": {
@@ -191,7 +197,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -213,6 +219,7 @@
       true,
       true,
       true,
+      null,
       true,
       true,
       true,
@@ -228,5 +235,5 @@
       false
     ]
   },
-  "hash": "b67cccc12229e9c2c444338efe22ce8c7d34c742895e3686d423ba1c4a228df4"
+  "hash": "f98332e27a994dd0f59632c1207a52cad1ba9a9fa6aa7790fb4de19b8d4ca5d7"
 }

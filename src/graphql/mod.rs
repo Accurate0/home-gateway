@@ -1,4 +1,4 @@
-use async_graphql::{MergedObject, Schema, SchemaBuilder};
+use async_graphql::{MergedObject, SDLExportOptions, Schema, SchemaBuilder};
 use queries::{
     adhoc_query::AdhocQuery, auth_query::AuthQuery, energy_query::EnergyQuery,
     entities_query::EntitiesQuery, home_assistant_query::HomeAssistantQuery,
@@ -62,10 +62,17 @@ pub fn builder() -> SchemaBuilder<QueryRoot, MutationRoot, SubscriptionRoot> {
         SubscriptionRoot,
     )
     .register_output_type::<LockableEntity>()
+    .enable_federation()
 }
 
 pub fn sdl() -> String {
     builder().finish().sdl()
+}
+
+pub fn subgraph_sdl() -> String {
+    builder()
+        .finish()
+        .sdl_with_options(SDLExportOptions::new().federation())
 }
 
 #[cfg(test)]
@@ -83,6 +90,20 @@ mod tests {
 
         if current != sdl {
             std::fs::write(&path, &sdl).expect("write schema.graphql");
+        }
+    }
+
+    #[test]
+    fn subgraph_is_reviewed() {
+        let sdl = subgraph_sdl();
+
+        insta::assert_snapshot!("subgraph", &sdl);
+
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("subgraph.graphql");
+        let current = std::fs::read_to_string(&path).unwrap_or_default();
+
+        if current != sdl {
+            std::fs::write(&path, &sdl).expect("write subgraph.graphql");
         }
     }
 }

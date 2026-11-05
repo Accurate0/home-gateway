@@ -24,6 +24,7 @@ pub struct MediaPlayerStateRow {
     pub app_name: Option<String>,
     pub source: Option<String>,
     pub media_content_type: Option<String>,
+    pub media_content_id: Option<String>,
     pub media_title: Option<String>,
     pub media_artist: Option<String>,
     pub media_album_name: Option<String>,
@@ -124,7 +125,8 @@ impl MediaPlayerRepo {
         sqlx::query_as!(
             MediaPlayerStateRow,
             r#"
-            SELECT device_id, state, app_name, source, media_content_type, media_title,
+            SELECT device_id, state, app_name, source, media_content_type,
+                   attributes->>'media_content_id' AS media_content_id, media_title,
                    media_artist, media_album_name, media_series_title, media_season, media_episode,
                    position_seconds, duration_seconds, position_updated_at, volume_level, muted,
                    artwork_url, updated_at

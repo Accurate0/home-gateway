@@ -5,6 +5,7 @@ use crate::device_registry::DeviceRegistry;
 use crate::graphql::dataloader::media_player_state::{
     MediaPlayerStateDataLoader, MediaPlayerStateModel,
 };
+use crate::graphql::objects::spotify_object::{SpotifyArtist, SpotifyItem};
 
 pub struct MediaPlayerEntity {
     pub id: String,
@@ -90,6 +91,37 @@ impl MediaPlayerEntity {
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<String>> {
         Ok(self.model(ctx).await?.and_then(|m| m.media_content_type))
+    }
+
+    async fn media_content_id(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<String>> {
+        Ok(self.model(ctx).await?.and_then(|m| m.media_content_id))
+    }
+
+    async fn spotify_item(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<SpotifyItem>> {
+        Ok(self
+            .model(ctx)
+            .await?
+            .and_then(|m| m.media_content_id)
+            .filter(|id| id.starts_with("spotify:"))
+            .map(|uri| SpotifyItem { uri }))
+    }
+
+    async fn spotify_artist(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<Option<SpotifyArtist>> {
+        Ok(self
+            .model(ctx)
+            .await?
+            .and_then(|m| m.media_artist)
+            .filter(|name| !name.is_empty())
+            .map(|name| SpotifyArtist { name }))
     }
 
     async fn media_title(

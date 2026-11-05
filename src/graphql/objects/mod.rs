@@ -22,6 +22,7 @@ pub mod push_notification_interaction_object;
 pub mod push_notification_object;
 pub mod send_push_notification_input;
 pub mod solar_object;
+pub mod spotify_object;
 pub mod transperth_object;
 pub mod unraid_array_object;
 pub mod unraid_array_point;
