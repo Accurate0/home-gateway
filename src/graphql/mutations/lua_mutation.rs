@@ -11,6 +11,7 @@ use crate::state::AppState;
 #[derive(Default)]
 pub struct LuaMutation;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl LuaMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Lua, Action::Write)))]

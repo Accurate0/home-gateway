@@ -1,5 +1,5 @@
 use home_gateway::actors::root::RootSupervisor;
-use home_gateway::api::{SchemaParts, build_router, build_schema};
+use home_gateway::api::{SchemaParts, build_router, build_schema, build_schema_v2};
 use home_gateway::eink::EinkDisplayManager;
 use home_gateway::event_bus::EventBus;
 use home_gateway::integrations::feature_flag::FeatureFlagClient;
@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
 
     let event_bus = EventBus::default();
 
-    let schema = build_schema(&SchemaParts {
+    let parts = SchemaParts {
         db: &storage.pool,
         repos: &storage.repos,
         settings: &storage.settings,
@@ -52,7 +52,9 @@ async fn main() -> anyhow::Result<()> {
         event_bus: &event_bus,
         feature_flag_client: &feature_flag_client,
         handles: &registry,
-    });
+    };
+    let schema = build_schema(&parts);
+    let schema_v2 = build_schema_v2(&parts);
 
     let state = AppState {
         repos: storage.repos,
@@ -65,6 +67,7 @@ async fn main() -> anyhow::Result<()> {
         handles: registry,
         lua,
         schema,
+        schema_v2,
     };
 
     let (root_supervisor, root_supervisor_handle) = Actor::spawn(

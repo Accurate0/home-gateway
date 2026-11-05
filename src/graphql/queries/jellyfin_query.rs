@@ -6,6 +6,7 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct JellyfinQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl JellyfinQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Jellyfin, Action::Read)))]

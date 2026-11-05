@@ -15,6 +15,7 @@ use crate::repo::RepoRegistry;
 #[derive(Default)]
 pub struct EntitiesQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl EntitiesQuery {
     /// Every configured entity and its current state. Entity types the caller

@@ -17,6 +17,7 @@ use crate::settings::{
 #[derive(Default)]
 pub struct PushMutation;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl PushMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Push, Action::Write)))]

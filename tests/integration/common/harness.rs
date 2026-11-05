@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use home_gateway::actors::health::ActorHealthRegistry;
 use home_gateway::actors::root::RootMessage;
-use home_gateway::api::{SchemaParts, build_router, build_schema};
+use home_gateway::api::{SchemaParts, build_router, build_schema, build_schema_v2};
 use home_gateway::auth::AuthManager;
 use home_gateway::device_registry::last_seen::LastSeen;
 use home_gateway::event_bus::{EventBus, EventBusMessage};
@@ -137,7 +137,7 @@ impl Harness {
 
         let repos = home_gateway::repo::RepoRegistry::new(db.clone());
 
-        let schema = build_schema(&SchemaParts {
+        let parts = SchemaParts {
             db: &db,
             repos: &repos,
             settings: &settings,
@@ -145,7 +145,9 @@ impl Harness {
             event_bus: &event_bus,
             feature_flag_client: &feature_flag_client,
             handles: &handles,
-        });
+        };
+        let schema = build_schema(&parts);
+        let schema_v2 = build_schema_v2(&parts);
 
         let state = AppState {
             repos,
@@ -158,6 +160,7 @@ impl Harness {
             handles,
             lua,
             schema,
+            schema_v2,
         };
 
         let (root, _) = Actor::spawn(None, TestRoot, ())

@@ -19,6 +19,7 @@ use crate::workflows::mode::Mode;
 #[derive(Default)]
 pub struct WorkflowsMutation;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl WorkflowsMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]

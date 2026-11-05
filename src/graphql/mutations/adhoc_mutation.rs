@@ -9,6 +9,7 @@ use crate::graphql::guard::ScopeGuard;
 #[derive(Default)]
 pub struct AdhocMutation;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl AdhocMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Write)))]

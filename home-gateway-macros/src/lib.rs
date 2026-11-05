@@ -1,5 +1,6 @@
 mod lua_class;
 mod lua_module;
+mod prefixed;
 mod workflow_context_variables;
 
 use proc_macro::TokenStream;
@@ -30,6 +31,16 @@ pub fn lua_module(arguments: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemImpl);
 
     match lua_module::expand(arguments.into(), input) {
+        Ok(tokens) => tokens.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_attribute]
+pub fn prefixed(arguments: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemImpl);
+
+    match prefixed::expand(arguments.into(), input) {
         Ok(tokens) => tokens.into(),
         Err(error) => error.to_compile_error().into(),
     }

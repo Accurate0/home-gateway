@@ -6,6 +6,7 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct HomeAssistantQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl HomeAssistantQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::HomeAssistant, Action::Read)))]

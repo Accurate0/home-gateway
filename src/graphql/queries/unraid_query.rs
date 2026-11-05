@@ -8,6 +8,7 @@ use crate::repo::RepoRegistry;
 #[derive(Default)]
 pub struct UnraidQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl UnraidQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Unraid, Action::Read)))]

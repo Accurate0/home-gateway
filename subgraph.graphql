@@ -854,21 +854,21 @@ type ModeUpdate {
 }
 
 type Mutation {
-	light(id: IdOrAlias!): LightMutation!
-	robotVacuum(id: IdOrAlias!): RobotVacuumMutation!
-	garageDoor(id: IdOrAlias!): GarageDoorMutation!
-	airPurifier(id: IdOrAlias!): AirPurifierMutation!
-	deviceLock(id: IdOrAlias!): DeviceLockMutation!
-	mediaPlayer(id: IdOrAlias!): MediaPlayerMutation!
-	einkDisplay(id: IdOrAlias!): EinkDisplayMutation!
-	setWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
-	setMode(mode: Mode!): Mode!
-	runWorkflow(slug: String!, inputs: JSON, dryRun: Boolean): UUID!
-	runPendingAdhocTasks: Boolean!
-	runAdhocCronTask(name: String!): Boolean!
-	sendPushNotification(input: SendPushNotificationInput!): Boolean!
-	recordNotificationInteraction(id: UUID!, kind: NotificationInteractionKind!): Boolean!
-	executeLua(script: String!, vars: JSON, dryRun: Boolean): JSON!
+	homeLight(id: IdOrAlias!): LightMutation!
+	homeRobotVacuum(id: IdOrAlias!): RobotVacuumMutation!
+	homeGarageDoor(id: IdOrAlias!): GarageDoorMutation!
+	homeAirPurifier(id: IdOrAlias!): AirPurifierMutation!
+	homeDeviceLock(id: IdOrAlias!): DeviceLockMutation!
+	homeMediaPlayer(id: IdOrAlias!): MediaPlayerMutation!
+	homeEinkDisplay(id: IdOrAlias!): EinkDisplayMutation!
+	homeSetWorkflowEnabled(slug: String!, enabled: Boolean!): Boolean!
+	homeSetMode(mode: Mode!): Mode!
+	homeRunWorkflow(slug: String!, inputs: JSON, dryRun: Boolean): UUID!
+	homeRunPendingAdhocTasks: Boolean!
+	homeRunAdhocCronTask(name: String!): Boolean!
+	homeSendPushNotification(input: SendPushNotificationInput!): Boolean!
+	homeRecordNotificationInteraction(id: UUID!, kind: NotificationInteractionKind!): Boolean!
+	homeExecuteLua(script: String!, vars: JSON, dryRun: Boolean): JSON!
 }
 
 """
@@ -1025,9 +1025,12 @@ type PushNotificationInteraction {
 	at: DateTime!
 }
 
+"""
+The supergraph's query root: every v1 root field prefixed with `home`.
+"""
 type Query {
-	auth: AuthObject!
-	homeAssistant: HomeAssistantObject!
+	homeAuth: AuthObject!
+	homeHomeAssistant: HomeAssistantObject!
 	"""
 	Every configured entity and its current state. Entity types the caller
 	lacks a `graphql:<type>:read` scope for are silently omitted — this query
@@ -1036,34 +1039,34 @@ type Query {
 	a device kind is a backend concern — the frontend renders whatever order
 	and titles this returns.
 	"""
-	entitySections: [EntitySection!]!
-	deviceConnections: [DeviceConnection!]!
-	entities: [Entity!]!
-	mediaPlayer(id: IdOrAlias!): MediaPlayerEntity!
-	light(id: IdOrAlias!): LightEntity!
-	door(id: IdOrAlias!): DoorEntity!
-	presence(id: IdOrAlias!): PresenceEntity!
-	environment(id: IdOrAlias!): EnvironmentEntity!
-	plant(id: IdOrAlias!): PlantEntity!
-	einkDisplay(id: IdOrAlias!): EinkDisplayEntity!
-	robotVacuum(id: IdOrAlias!): RobotVacuumEntity!
-	garageDoor(id: IdOrAlias!): GarageDoorEntity!
-	airPurifier(id: IdOrAlias!): AirPurifierEntity!
-	solar: SolarObject!
-	energy: EnergyObject!
-	weather(input: WeatherInput!): WeatherObject!
-	woolworths: WoolworthsObject!
-	transperth: TransperthObject!
-	fuelwatch(postcode: Int): FuelWatchObject!
-	unraid: Unraid
-	workflows: [WorkflowStatus!]!
-	mode: ModeStatus!
-	workflowRuns(slug: String, eventId: UUID, limit: Int): [WorkflowRun!]!
-	jellyfin: JellyfinObject!
-	adhocCronTasks: [AdhocCronTaskStatus!]!
-	adhocTasks: [AdhocTaskStatus!]!
-	pushNotifications(limit: Int): [PushNotification!]!
-	luaApi: LuaApiObject!
+	homeEntitySections: [EntitySection!]!
+	homeDeviceConnections: [DeviceConnection!]!
+	homeEntities: [Entity!]!
+	homeMediaPlayer(id: IdOrAlias!): MediaPlayerEntity!
+	homeLight(id: IdOrAlias!): LightEntity!
+	homeDoor(id: IdOrAlias!): DoorEntity!
+	homePresence(id: IdOrAlias!): PresenceEntity!
+	homeEnvironment(id: IdOrAlias!): EnvironmentEntity!
+	homePlant(id: IdOrAlias!): PlantEntity!
+	homeEinkDisplay(id: IdOrAlias!): EinkDisplayEntity!
+	homeRobotVacuum(id: IdOrAlias!): RobotVacuumEntity!
+	homeGarageDoor(id: IdOrAlias!): GarageDoorEntity!
+	homeAirPurifier(id: IdOrAlias!): AirPurifierEntity!
+	homeSolar: SolarObject!
+	homeEnergy: EnergyObject!
+	homeWeather(input: WeatherInput!): WeatherObject!
+	homeWoolworths: WoolworthsObject!
+	homeTransperth: TransperthObject!
+	homeFuelwatch(postcode: Int): FuelWatchObject!
+	homeUnraid: Unraid
+	homeWorkflows: [WorkflowStatus!]!
+	homeMode: ModeStatus!
+	homeWorkflowRuns(slug: String, eventId: UUID, limit: Int): [WorkflowRun!]!
+	homeJellyfin: JellyfinObject!
+	homeAdhocCronTasks: [AdhocCronTaskStatus!]!
+	homeAdhocTasks: [AdhocTaskStatus!]!
+	homePushNotifications(limit: Int): [PushNotification!]!
+	homeLuaApi: LuaApiObject!
 }
 
 enum RedditTimespan {
@@ -1173,7 +1176,7 @@ type SolarUpdate {
 }
 
 type Subscription {
-	events(filter: String! = "*"): EventUpdate!
+	homeEvents(filter: String! = "*"): EventUpdate!
 }
 
 type SunUpdate {

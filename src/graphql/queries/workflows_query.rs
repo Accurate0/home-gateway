@@ -10,6 +10,7 @@ use crate::workflows::manager::WorkflowManager;
 #[derive(Default)]
 pub struct WorkflowsQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl WorkflowsQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]

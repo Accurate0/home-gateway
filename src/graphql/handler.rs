@@ -1,4 +1,6 @@
-use async_graphql::{Data, http::ALL_WEBSOCKET_PROTOCOLS, http::GraphiQLSource};
+use async_graphql::{
+    Data, ObjectType, Schema, SubscriptionType, http::ALL_WEBSOCKET_PROTOCOLS, http::GraphiQLSource,
+};
 use async_graphql_axum::{GraphQLProtocol, GraphQLRequest, GraphQLResponse, GraphQLWebSocket};
 use axum::{
     extract::{State, WebSocketUpgrade},
@@ -32,10 +34,18 @@ fn token_from_payload(payload: &Value) -> Option<String> {
 }
 
 pub async fn graphiql() -> impl IntoResponse {
+    graphiql_for("/v1")
+}
+
+pub async fn graphiql_v2() -> impl IntoResponse {
+    graphiql_for("/v2")
+}
+
+fn graphiql_for(version: &str) -> Response {
     axum::response::Html(
         GraphiQLSource::build()
-            .endpoint("/v1/graphql")
-            .subscription_endpoint("/v1/graphql/ws")
+            .endpoint(&format!("{version}/graphql"))
+            .subscription_endpoint(&format!("{version}/graphql/ws"))
             .finish(),
     )
     .into_response()
@@ -43,11 +53,36 @@ pub async fn graphiql() -> impl IntoResponse {
 
 pub async fn graphql_ws_handler(
     State(state): State<AppState>,
-    ClientIp(ip): ClientIp,
+    ip: ClientIp,
     protocol: GraphQLProtocol,
     upgrade: WebSocketUpgrade,
 ) -> Response {
     let schema = state.schema.clone();
+    serve_ws(schema, state, ip, protocol, upgrade).await
+}
+
+pub async fn graphql_v2_ws_handler(
+    State(state): State<AppState>,
+    ip: ClientIp,
+    protocol: GraphQLProtocol,
+    upgrade: WebSocketUpgrade,
+) -> Response {
+    let schema = state.schema_v2.clone();
+    serve_ws(schema, state, ip, protocol, upgrade).await
+}
+
+async fn serve_ws<Q, M, S>(
+    schema: Schema<Q, M, S>,
+    state: AppState,
+    ClientIp(ip): ClientIp,
+    protocol: GraphQLProtocol,
+    upgrade: WebSocketUpgrade,
+) -> Response
+where
+    Q: ObjectType + 'static,
+    M: ObjectType + 'static,
+    S: SubscriptionType + 'static,
+{
     let lockout = state.handles.expect::<AuthManager>().lockout();
 
     if let Some(ip) = ip
@@ -85,4 +120,14 @@ pub async fn graphql_handler(
     let request = req.into_inner().data(auth).data(state.clone());
 
     Ok(state.schema.execute(request).await.into())
+}
+
+pub async fn graphql_v2_handler(
+    State(state): State<AppState>,
+    auth: AuthContext,
+    req: GraphQLRequest,
+) -> Result<GraphQLResponse, AppError> {
+    let request = req.into_inner().data(auth).data(state.clone());
+
+    Ok(state.schema_v2.execute(request).await.into())
 }

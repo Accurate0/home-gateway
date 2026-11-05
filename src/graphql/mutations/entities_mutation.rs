@@ -14,6 +14,7 @@ use crate::graphql::mutations::robot_vacuum_mutation::RobotVacuumMutation;
 #[derive(Default)]
 pub struct EntitiesMutation;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl EntitiesMutation {
     async fn light(

@@ -10,6 +10,7 @@ use crate::state::AppState;
 #[derive(Default)]
 pub struct LuaQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl LuaQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Lua, Action::Read)))]

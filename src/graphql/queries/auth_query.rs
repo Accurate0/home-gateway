@@ -5,6 +5,7 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct AuthQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl AuthQuery {
     async fn auth(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<AuthObject> {

@@ -4,6 +4,7 @@ use crate::integrations::mqtt::MqttClient;
 use crate::integrations::s3::S3;
 use crate::workflows::manager::WorkflowManager;
 use async_graphql::dataloader::DataLoader;
+use async_graphql::{ObjectType, Schema, SchemaBuilder, SubscriptionType};
 use axum::{
     Router,
     extract::Request,
@@ -21,7 +22,7 @@ use crate::device_registry::DeviceRegistry;
 use crate::device_registry::last_seen::LastSeen;
 use crate::event_bus::EventBus;
 use crate::graphql::{
-    self, FinalSchema,
+    self, FinalSchema, FinalSchemaV2,
     dataloader::air_purifier_state::AirPurifierStateDataLoader,
     dataloader::device_battery::DeviceBatteryDataLoader,
     dataloader::device_battery_history::DeviceBatteryHistoryDataLoader,
@@ -37,7 +38,10 @@ use crate::graphql::{
     dataloader::robot_vacuum_state::RobotVacuumStateDataLoader,
     dataloader::temperature::LatestTemperatureDataLoader,
     dataloader::workflow_run_steps::WorkflowRunStepsDataLoader,
-    handler::{graphiql, graphql_handler, graphql_ws_handler},
+    handler::{
+        graphiql, graphiql_v2, graphql_handler, graphql_v2_handler, graphql_v2_ws_handler,
+        graphql_ws_handler,
+    },
 };
 use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::repo::RepoRegistry;
@@ -105,7 +109,20 @@ pub struct SchemaParts<'a> {
 }
 
 pub fn build_schema(state: &SchemaParts<'_>) -> FinalSchema {
-    graphql::builder()
+    with_data(graphql::builder(), state)
+}
+
+pub fn build_schema_v2(state: &SchemaParts<'_>) -> FinalSchemaV2 {
+    with_data(graphql::builder_v2(), state)
+}
+
+fn with_data<Q, M, S>(builder: SchemaBuilder<Q, M, S>, state: &SchemaParts<'_>) -> Schema<Q, M, S>
+where
+    Q: ObjectType + 'static,
+    M: ObjectType + 'static,
+    S: SubscriptionType + 'static,
+{
+    builder
         .data(DataLoader::new(
             LatestTemperatureDataLoader {
                 repo: state.repos.environment().clone(),
@@ -246,7 +263,16 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
         .layer(OtelAxumLayer::default())
         .route("/graphql/ws", get(graphql_ws_handler))
         .route("/health", get(health))
-        .layer(cors)
+        .layer(cors.clone())
+        .layer(from_fn(log_request))
+        .with_state(state.clone());
+
+    let v2_routes = Router::new()
+        .route("/graphql", get(graphiql_v2).post(graphql_v2_handler))
+        .route_layer(from_fn_with_state(state.clone(), auth_middleware))
+        .layer(OtelAxumLayer::default())
+        .route("/graphql/ws", get(graphql_v2_ws_handler))
+        .layer(cors.clone())
         .layer(from_fn(log_request))
         .with_state(state.clone());
 
@@ -268,6 +294,7 @@ pub fn build_router(state: AppState, metrics_registry: Registry) -> Router {
 
     Router::new()
         .nest("/v1", api_routes)
+        .nest("/v2", v2_routes)
         .nest(&format!("/v1{}", crate::grpc::PREFIX), grpc_routes)
         .merge(cluster_routes)
 }

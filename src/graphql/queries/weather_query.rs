@@ -11,6 +11,7 @@ pub struct WeatherInput {
 #[derive(Default)]
 pub struct WeatherQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl WeatherQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Weather, Action::Read)))]

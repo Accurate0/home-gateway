@@ -1,10 +1,10 @@
 use async_graphql::MergedObject;
 
-use crate::graphql::mutations::adhoc_mutation::AdhocMutation;
-use crate::graphql::mutations::entities_mutation::EntitiesMutation;
-use crate::graphql::mutations::lua_mutation::LuaMutation;
-use crate::graphql::mutations::push_mutation::PushMutation;
-use crate::graphql::mutations::workflows_mutation::WorkflowsMutation;
+use crate::graphql::mutations::adhoc_mutation::{AdhocMutation, AdhocMutationV2};
+use crate::graphql::mutations::entities_mutation::{EntitiesMutation, EntitiesMutationV2};
+use crate::graphql::mutations::lua_mutation::{LuaMutation, LuaMutationV2};
+use crate::graphql::mutations::push_mutation::{PushMutation, PushMutationV2};
+use crate::graphql::mutations::workflows_mutation::{WorkflowsMutation, WorkflowsMutationV2};
 
 pub mod adhoc_mutation;
 pub mod air_purifier_mutation;
@@ -27,4 +27,14 @@ pub struct MutationRoot(
     AdhocMutation,
     PushMutation,
     LuaMutation,
+);
+
+#[derive(Default, MergedObject)]
+#[graphql(name = "Mutation")]
+pub struct MutationRootV2(
+    EntitiesMutationV2,
+    WorkflowsMutationV2,
+    AdhocMutationV2,
+    PushMutationV2,
+    LuaMutationV2,
 );

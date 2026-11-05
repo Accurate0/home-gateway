@@ -14,6 +14,7 @@ use types::EventUpdate;
 #[derive(Default)]
 pub struct SubscriptionRoot;
 
+#[home_gateway_macros::prefixed("home")]
 #[Subscription(name = "Subscription")]
 impl SubscriptionRoot {
     async fn events(

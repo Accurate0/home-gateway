@@ -13,6 +13,7 @@ use crate::settings::SettingsContainer;
 #[derive(Default)]
 pub struct AdhocQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl AdhocQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Read)))]

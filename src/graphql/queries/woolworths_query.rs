@@ -6,6 +6,7 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct WoolworthsQuery;
 
+#[home_gateway_macros::prefixed("home")]
 #[Object]
 impl WoolworthsQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Woolworths, Action::Read)))]
