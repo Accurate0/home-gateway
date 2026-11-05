@@ -25,11 +25,10 @@ fn actions(actions: &serde_json::Value) -> Vec<PushNotificationActionObject> {
     }
 }
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomePushQuery")]
 impl PushQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Push, Action::Read)))]
-    async fn push_notifications(
+    async fn home_push_notifications(
         &self,
         ctx: &async_graphql::Context<'_>,
         limit: Option<i64>,

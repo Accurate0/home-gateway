@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const HistoryQuery = graphql`
   query HomeAssistantPageQuery {
-    homeAssistant {
+    homeHomeAssistant {
       entities {
         id
         eventId
@@ -22,9 +22,9 @@ const HistoryQuery = graphql`
 
 const UpdatesSubscription = graphql`
   subscription HomeAssistantPageSubscription {
-    events(filter: "home_assistant:*") {
+    homeEvents(filter: "home_assistant:*") {
       __typename
-      ... on HomeAssistantUpdate {
+      ... on HomeHomeAssistantUpdate {
         id
         eventId
         state
@@ -81,7 +81,7 @@ export default function HomeAssistantPage() {
     ).subscribe({
       next: (data) => {
         setLatest((prev) =>
-          data.homeAssistant.entities.reduce(
+          data.homeHomeAssistant.entities.reduce(
             (acc, e) =>
               upsert(acc, {
                 entityId: e.entityId,
@@ -101,8 +101,8 @@ export default function HomeAssistantPage() {
       subscription: UpdatesSubscription,
       variables: {},
       onNext: (response) => {
-        const update = response?.events;
-        if (!update || update.__typename !== "HomeAssistantUpdate") return;
+        const update = response?.homeEvents;
+        if (!update || update.__typename !== "HomeHomeAssistantUpdate") return;
         setLatest((prev) =>
           upsert(prev, {
             entityId: update.entityId,

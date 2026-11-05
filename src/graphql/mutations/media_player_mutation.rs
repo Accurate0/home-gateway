@@ -35,7 +35,7 @@ impl MediaPlayerMutation {
     }
 }
 
-#[Object]
+#[Object(name = "HomeMediaPlayerMutation")]
 impl MediaPlayerMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Write)))]
     async fn play(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {

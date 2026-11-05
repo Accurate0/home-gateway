@@ -1,5 +1,5 @@
 query JellyfinSessions {
-  jellyfin {
+  homeJellyfin {
     nowPlaying {
       sessionId
       user
@@ -19,9 +19,9 @@ query JellyfinSessions {
 }
 
 subscription JellyfinUpdates {
-  events(filter: "jellyfin:*") {
+  homeEvents(filter: "jellyfin:*") {
     __typename
-    ... on JellyfinUpdate {
+    ... on HomeJellyfinUpdate {
       state
       sessionId
       user

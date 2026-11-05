@@ -19,11 +19,10 @@ use crate::workflows::mode::Mode;
 #[derive(Default)]
 pub struct WorkflowsMutation;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeWorkflowsMutation")]
 impl WorkflowsMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]
-    async fn set_workflow_enabled(
+    async fn home_set_workflow_enabled(
         &self,
         ctx: &async_graphql::Context<'_>,
         slug: String,
@@ -42,7 +41,7 @@ impl WorkflowsMutation {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Write)))]
-    async fn set_mode(
+    async fn home_set_mode(
         &self,
         ctx: &async_graphql::Context<'_>,
         mode: Mode,
@@ -62,7 +61,7 @@ impl WorkflowsMutation {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Run)))]
-    async fn run_workflow(
+    async fn home_run_workflow(
         &self,
         ctx: &async_graphql::Context<'_>,
         slug: String,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9a3803611df8f78812e64adefc066584>>
+ * @generated SignedSource<<57a23cb714e5acbf2be47e2eabf458b5>>
  * @lightSyntaxTransform
  */
 
@@ -10,7 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type AdhocTasksPageQuery$variables = Record<PropertyKey, never>;
 export type AdhocTasksPageQuery$data = {
-  readonly adhocCronTasks: ReadonlyArray<{
+  readonly homeAdhocCronTasks: ReadonlyArray<{
     readonly durationMs: number | null | undefined;
     readonly flag: string | null | undefined;
     readonly id: string;
@@ -21,7 +21,7 @@ export type AdhocTasksPageQuery$data = {
     readonly rowsAffected: number | null | undefined;
     readonly schedule: string;
   }>;
-  readonly adhocTasks: ReadonlyArray<{
+  readonly homeAdhocTasks: ReadonlyArray<{
     readonly checksumDrifted: boolean;
     readonly completedAt: any | null | undefined;
     readonly durationMs: number | null | undefined;
@@ -70,9 +70,9 @@ v4 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "AdhocCronTaskStatus",
+    "concreteType": "HomeAdhocCronTaskStatus",
     "kind": "LinkedField",
-    "name": "adhocCronTasks",
+    "name": "homeAdhocCronTasks",
     "plural": true,
     "selections": [
       (v0/*:: as any*/),
@@ -120,9 +120,9 @@ v4 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "AdhocTaskStatus",
+    "concreteType": "HomeAdhocTaskStatus",
     "kind": "LinkedField",
-    "name": "adhocTasks",
+    "name": "homeAdhocTasks",
     "plural": true,
     "selections": [
       (v0/*:: as any*/),
@@ -179,16 +179,16 @@ return {
     "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "fd84fb275e71b4d0c62e628652505738",
+    "cacheID": "cfde91d2c1792f1dfdab1d9a2d95de0e",
     "id": null,
     "metadata": {},
     "name": "AdhocTasksPageQuery",
     "operationKind": "query",
-    "text": "query AdhocTasksPageQuery {\n  adhocCronTasks {\n    id\n    name\n    schedule\n    flag\n    nextRunAt\n    lastRunAt\n    durationMs\n    rowsAffected\n    outcome\n  }\n  adhocTasks {\n    id\n    ordinal\n    name\n    flag\n    completedAt\n    durationMs\n    pending\n    checksumDrifted\n  }\n}\n"
+    "text": "query AdhocTasksPageQuery {\n  homeAdhocCronTasks {\n    id\n    name\n    schedule\n    flag\n    nextRunAt\n    lastRunAt\n    durationMs\n    rowsAffected\n    outcome\n  }\n  homeAdhocTasks {\n    id\n    ordinal\n    name\n    flag\n    completedAt\n    durationMs\n    pending\n    checksumDrifted\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b4038c669359beb488fb853d43fddb2c";
+(node as any).hash = "eb3e48a4a7ce229c1daece16bc5569a3";
 
 export default node;

@@ -6,11 +6,13 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct SolarQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeSolarQuery")]
 impl SolarQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Solar, Action::Read)))]
-    async fn solar(&self, _ctx: &async_graphql::Context<'_>) -> async_graphql::Result<SolarObject> {
+    async fn home_solar(
+        &self,
+        _ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<SolarObject> {
         Ok(SolarObject {})
     }
 }

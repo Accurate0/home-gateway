@@ -32,14 +32,14 @@ class JellyfinViewModel(application: Application) : AndroidViewModel(application
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load Jellyfin sessions")
 
         sessions.clear()
-        data.jellyfin.nowPlaying.forEach { sessions[it.sessionId] = it.toUi() }
+        data.homeJellyfin.nowPlaying.forEach { sessions[it.sessionId] = it.toUi() }
         publish()
     }
 
     private suspend fun listen() {
         apollo.subscription(JellyfinUpdatesSubscription()).toFlow()
             .collect { response ->
-                val update = response.data?.events?.onJellyfinUpdate ?: return@collect
+                val update = response.data?.homeEvents?.onHomeJellyfinUpdate ?: return@collect
 
                 if (update.state == STOPPED) {
                     sessions.remove(update.sessionId)
@@ -71,7 +71,7 @@ class JellyfinViewModel(application: Application) : AndroidViewModel(application
         paused = paused,
     )
 
-    private fun JellyfinUpdatesSubscription.OnJellyfinUpdate.toUi() = JellyfinSessionUi(
+    private fun JellyfinUpdatesSubscription.OnHomeJellyfinUpdate.toUi() = JellyfinSessionUi(
         sessionId = sessionId,
         user = user,
         device = device,

@@ -10,11 +10,10 @@ use crate::workflows::manager::WorkflowManager;
 #[derive(Default)]
 pub struct WorkflowsQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeWorkflowsQuery")]
 impl WorkflowsQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
-    async fn workflows(
+    async fn home_workflows(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<WorkflowStatus>> {
@@ -51,7 +50,10 @@ impl WorkflowsQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
-    async fn mode(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<ModeStatus> {
+    async fn home_mode(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<ModeStatus> {
         let manager = crate::graphql::require::<WorkflowManager>(ctx, "workflows")?;
 
         Ok(ModeStatus {
@@ -60,7 +62,7 @@ impl WorkflowsQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Workflow, Action::Read)))]
-    async fn workflow_runs(
+    async fn home_workflow_runs(
         &self,
         ctx: &async_graphql::Context<'_>,
         slug: Option<String>,

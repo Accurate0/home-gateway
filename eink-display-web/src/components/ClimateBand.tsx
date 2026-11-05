@@ -5,7 +5,7 @@ import { fromToday } from "../lib/time";
 import { COLUMN_W, HAIRLINE, ROW, TYPE, uvInk } from "../theme";
 
 const TodayFragment = graphql`
-  fragment ClimateBand_weather on WeatherObject {
+  fragment ClimateBand_weather on HomeWeatherObject {
     forecast {
       days {
         dateTime

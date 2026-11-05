@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b3e0cf5e5f45cf9ddcb52581330d4feb>>
+ * @generated SignedSource<<e936153e6386051453c41fbfac38d309>>
  * @lightSyntaxTransform
  */
 
@@ -13,7 +13,7 @@ export type WorkflowsPageSetEnabledMutation$variables = {
   slug: string;
 };
 export type WorkflowsPageSetEnabledMutation$data = {
-  readonly setWorkflowEnabled: boolean;
+  readonly homeSetWorkflowEnabled: boolean;
 };
 export type WorkflowsPageSetEnabledMutation = {
   response: WorkflowsPageSetEnabledMutation$data;
@@ -47,7 +47,7 @@ v2 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "setWorkflowEnabled",
+    "name": "homeSetWorkflowEnabled",
     "storageKey": null
   }
 ];
@@ -75,16 +75,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "334c2181b1b8b36ac69b06871aa7e83e",
+    "cacheID": "81c522fb6151e7d844afce64fab8a483",
     "id": null,
     "metadata": {},
     "name": "WorkflowsPageSetEnabledMutation",
     "operationKind": "mutation",
-    "text": "mutation WorkflowsPageSetEnabledMutation(\n  $slug: String!\n  $enabled: Boolean!\n) {\n  setWorkflowEnabled(slug: $slug, enabled: $enabled)\n}\n"
+    "text": "mutation WorkflowsPageSetEnabledMutation(\n  $slug: String!\n  $enabled: Boolean!\n) {\n  homeSetWorkflowEnabled(slug: $slug, enabled: $enabled)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "aa0c03f0fa8b468559f46b64c2b19bca";
+(node as any).hash = "bb64f6d7830f343439b00220e94dd175";
 
 export default node;

@@ -50,7 +50,7 @@ import net.infk8s.homegateway.dashboard.SectionNameDialog
 import net.infk8s.homegateway.dashboard.SectionOrderSheet
 import net.infk8s.homegateway.graphql.EntitiesUiState
 import net.infk8s.homegateway.graphql.EntitiesViewModel
-import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
+import net.infk8s.homegateway.graphql.type.HomeNotificationInteractionKind
 import net.infk8s.homegateway.modes.ModesScreen
 import net.infk8s.homegateway.modes.ModesViewModel
 import net.infk8s.homegateway.notifications.NotificationInteractions
@@ -524,7 +524,7 @@ class MainActivity : ComponentActivity() {
         selectedTab = AppTab.NOTIFICATIONS
 
         lifecycleScope.launch {
-            NotificationInteractions.record(gateway.apollo, notificationId, NotificationInteractionKind.OPENED)
+            NotificationInteractions.record(gateway.apollo, notificationId, HomeNotificationInteractionKind.OPENED)
         }
     }
 

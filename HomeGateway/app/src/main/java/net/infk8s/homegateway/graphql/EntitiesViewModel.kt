@@ -35,16 +35,16 @@ import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.quicktiles.QuickTiles
 import net.infk8s.homegateway.ui.parseInstant
 import net.infk8s.homegateway.widget.EntityWidgets
-import net.infk8s.homegateway.graphql.type.AirPurifierMode
-import net.infk8s.homegateway.graphql.type.EntityCategory
-import net.infk8s.homegateway.graphql.type.GarageDoorState
+import net.infk8s.homegateway.graphql.type.HomeAirPurifierMode
+import net.infk8s.homegateway.graphql.type.HomeEntityCategory
+import net.infk8s.homegateway.graphql.type.HomeGarageDoorState
 
 /// A single entity rendered in the list, with just the state we display.
 sealed interface EntityUi {
     val id: String
     val name: String
     val room: String?
-    val category: EntityCategory
+    val category: HomeEntityCategory
     val key: String
 
     // Live-state fields are nullable: the API returns null (plus a field error)
@@ -53,7 +53,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val on: Boolean?,
         val dimmable: Boolean,
         val tunable: Boolean,
@@ -66,7 +66,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val open: Boolean?,
     ) : EntityUi {
         override val key get() = "door:$id"
@@ -76,8 +76,8 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
-        val state: GarageDoorState?,
+        override val category: HomeEntityCategory,
+        val state: HomeGarageDoorState?,
         val batteryPercentage: Double?,
     ) : EntityUi {
         override val key get() = "garage_door:$id"
@@ -87,9 +87,9 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val on: Boolean?,
-        val mode: AirPurifierMode?,
+        val mode: HomeAirPurifierMode?,
         val speed: Int?,
         val pm25: Double?,
         val aqi: Double?,
@@ -105,7 +105,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val present: Boolean?,
     ) : EntityUi {
         override val key get() = "presence:$id"
@@ -115,7 +115,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val temperature: Double?,
         val humidity: Double?,
         val pressure: Double?,
@@ -132,7 +132,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val soilMoisture: Double?,
         val batteryPercentage: Double?,
     ) : EntityUi {
@@ -143,7 +143,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val batteryPercentage: Double?,
         val isCharging: Boolean?,
     ) : EntityUi {
@@ -154,7 +154,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val status: String?,
         val batteryPercentage: Double?,
         val currentRoom: String?,
@@ -166,7 +166,7 @@ sealed interface EntityUi {
         override val id: String,
         override val name: String,
         override val room: String?,
-        override val category: EntityCategory,
+        override val category: HomeEntityCategory,
         val playing: Boolean,
         val appName: String?,
         val mediaTitle: String?,
@@ -176,7 +176,7 @@ sealed interface EntityUi {
     }
 }
 
-data class CategoryUi(val category: EntityCategory, val title: String)
+data class CategoryUi(val category: HomeEntityCategory, val title: String)
 
 data class EntitySectionUi(
     val key: String,
@@ -439,7 +439,7 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
     private suspend fun loadConnections() {
         try {
             val response = apollo.query(DeviceConnectionsQuery()).execute()
-            val connections = response.data?.deviceConnections
+            val connections = response.data?.homeDeviceConnections
             if (connections == null) {
                 Log.w("EntitiesViewModel", "deviceConnections returned errors: ${response.errors}")
                 return
@@ -470,20 +470,20 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         // off, and reconnects with a fresh snapshot rather than resuming stale deltas.
         apollo.subscription(EventsSubscription()).toFlow()
             .collect { response ->
-                val event = response.data?.events ?: return@collect
+                val event = response.data?.homeEvents ?: return@collect
                 applyEvent(event)
             }
     }
 
-    private fun applyEvent(event: EventsSubscription.Events) {
-        event.onDeviceConnectionUpdate?.let { update ->
+    private fun applyEvent(event: EventsSubscription.HomeEvents) {
+        event.onHomeDeviceConnectionUpdate?.let { update ->
             offline.value = if (update.connected) offline.value - update.deviceId else offline.value + update.deviceId
             return
         }
 
         val current = snapshot.value as? EntitiesSnapshot.Loaded ?: return
 
-        event.onCommandFailedUpdate?.let { failure ->
+        event.onHomeCommandFailedUpdate?.let { failure ->
             val name = current.entities.firstOrNull { it.id == failure.id }?.name ?: failure.id
             _commandFailures.tryEmit("$name didn't respond to a ${failure.kind} command after ${failure.attempts} attempts")
             return
@@ -499,46 +499,46 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
         refreshSurfaces()
     }
 
-    private fun EntityUi.applyEvent(event: EventsSubscription.Events): EntityUi = when {
-        event.onLightUpdate != null && this is EntityUi.Light && id == event.onLightUpdate.id ->
-            copy(on = event.onLightUpdate.on)
+    private fun EntityUi.applyEvent(event: EventsSubscription.HomeEvents): EntityUi = when {
+        event.onHomeLightUpdate != null && this is EntityUi.Light && id == event.onHomeLightUpdate.id ->
+            copy(on = event.onHomeLightUpdate.on)
 
-        event.onDoorUpdate != null && this is EntityUi.Door && id == event.onDoorUpdate.id ->
-            copy(open = event.onDoorUpdate.open)
+        event.onHomeDoorUpdate != null && this is EntityUi.Door && id == event.onHomeDoorUpdate.id ->
+            copy(open = event.onHomeDoorUpdate.open)
 
-        event.onGarageDoorUpdate != null && this is EntityUi.GarageDoor && id == event.onGarageDoorUpdate.id ->
-            copy(state = event.onGarageDoorUpdate.garageState)
+        event.onHomeGarageDoorUpdate != null && this is EntityUi.GarageDoor && id == event.onHomeGarageDoorUpdate.id ->
+            copy(state = event.onHomeGarageDoorUpdate.garageState)
 
-        event.onAirPurifierUpdate != null && this is EntityUi.AirPurifier && id == event.onAirPurifierUpdate.id ->
+        event.onHomeAirPurifierUpdate != null && this is EntityUi.AirPurifier && id == event.onHomeAirPurifierUpdate.id ->
             copy(
-                on = event.onAirPurifierUpdate.on,
-                mode = event.onAirPurifierUpdate.purifierMode,
-                speed = event.onAirPurifierUpdate.purifierSpeed,
-                displayOn = event.onAirPurifierUpdate.displayOn,
+                on = event.onHomeAirPurifierUpdate.on,
+                mode = event.onHomeAirPurifierUpdate.purifierMode,
+                speed = event.onHomeAirPurifierUpdate.purifierSpeed,
+                displayOn = event.onHomeAirPurifierUpdate.displayOn,
             )
 
-        event.onDeviceLockUpdate != null && this is EntityUi.AirPurifier && id == event.onDeviceLockUpdate.id ->
+        event.onHomeDeviceLockUpdate != null && this is EntityUi.AirPurifier && id == event.onHomeDeviceLockUpdate.id ->
             copy(
-                lock = event.onDeviceLockUpdate.source
-                    ?.takeIf { event.onDeviceLockUpdate.locked }
-                    ?.let { DeviceLockUi(it, parseInstant(event.onDeviceLockUpdate.expiresAt)) },
+                lock = event.onHomeDeviceLockUpdate.source
+                    ?.takeIf { event.onHomeDeviceLockUpdate.locked }
+                    ?.let { DeviceLockUi(it, parseInstant(event.onHomeDeviceLockUpdate.expiresAt)) },
             )
 
-        event.onPresenceUpdate != null && this is EntityUi.Presence && id == event.onPresenceUpdate.id ->
-            copy(present = event.onPresenceUpdate.present)
+        event.onHomePresenceUpdate != null && this is EntityUi.Presence && id == event.onHomePresenceUpdate.id ->
+            copy(present = event.onHomePresenceUpdate.present)
 
-        event.onEnvironmentUpdate != null && this is EntityUi.Environment && id == event.onEnvironmentUpdate.id ->
-            applyReadings(event.onEnvironmentUpdate.readings)
+        event.onHomeEnvironmentUpdate != null && this is EntityUi.Environment && id == event.onHomeEnvironmentUpdate.id ->
+            applyReadings(event.onHomeEnvironmentUpdate.readings)
 
-        event.onPlantUpdate != null && this is EntityUi.Plant && id == event.onPlantUpdate.id ->
-            copy(soilMoisture = event.onPlantUpdate.soilMoisture)
+        event.onHomePlantUpdate != null && this is EntityUi.Plant && id == event.onHomePlantUpdate.id ->
+            copy(soilMoisture = event.onHomePlantUpdate.soilMoisture)
 
-        event.onMediaPlayerUpdate != null && this is EntityUi.MediaPlayer && id == event.onMediaPlayerUpdate.id ->
+        event.onHomeMediaPlayerUpdate != null && this is EntityUi.MediaPlayer && id == event.onHomeMediaPlayerUpdate.id ->
             copy(
-                playing = event.onMediaPlayerUpdate.state in PLAYING_STATES,
-                appName = event.onMediaPlayerUpdate.appName,
-                mediaTitle = event.onMediaPlayerUpdate.mediaTitle,
-                mediaSeriesTitle = event.onMediaPlayerUpdate.mediaSeriesTitle,
+                playing = event.onHomeMediaPlayerUpdate.state in PLAYING_STATES,
+                appName = event.onHomeMediaPlayerUpdate.appName,
+                mediaTitle = event.onHomeMediaPlayerUpdate.mediaTitle,
+                mediaSeriesTitle = event.onHomeMediaPlayerUpdate.mediaSeriesTitle,
             )
 
         else -> this
@@ -580,7 +580,7 @@ class EntitiesViewModel(application: Application) : AndroidViewModel(application
             Log.w("EntitiesViewModel", "einkConfig($id) returned errors: ${response.errors}")
         }
 
-        response.data?.einkDisplay?.deviceConfig?.let { config ->
+        response.data?.homeEinkDisplay?.deviceConfig?.let { config ->
             EinkConfigUi(config.refreshIntervalMins, config.imageUrl)
         }
     } catch (e: CancellationException) {

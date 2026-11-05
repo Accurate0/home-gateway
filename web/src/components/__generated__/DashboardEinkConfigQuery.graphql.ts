@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c6606012069d361022692d655580bf19>>
+ * @generated SignedSource<<14e048692ff6479773c9bbcb77f1ec11>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type DashboardEinkConfigQuery$variables = {
   id: string;
 };
 export type DashboardEinkConfigQuery$data = {
-  readonly einkDisplay: {
+  readonly homeEinkDisplay: {
     readonly config: {
       readonly grace: string;
       readonly lead: string | null | undefined;
@@ -57,15 +57,15 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "EinkDisplayEntity",
+    "concreteType": "HomeEinkDisplayEntity",
     "kind": "LinkedField",
-    "name": "einkDisplay",
+    "name": "homeEinkDisplay",
     "plural": false,
     "selections": [
       {
         "alias": null,
         "args": null,
-        "concreteType": "EpdConfig",
+        "concreteType": "HomeEpdConfig",
         "kind": "LinkedField",
         "name": "deviceConfig",
         "plural": false,
@@ -167,7 +167,7 @@ v1 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "EinkDisplayConfig",
+        "concreteType": "HomeEinkDisplayConfig",
         "kind": "LinkedField",
         "name": "config",
         "plural": false,
@@ -211,16 +211,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "deb890b9b678bc7b5bf5fcb66e16f69d",
+    "cacheID": "89d916933e6a78d111c77168973f2025",
     "id": null,
     "metadata": {},
     "name": "DashboardEinkConfigQuery",
     "operationKind": "query",
-    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    lastWakeTraceUrl\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
+    "text": "query DashboardEinkConfigQuery(\n  $id: IdOrAlias!\n) {\n  homeEinkDisplay(id: $id) {\n    deviceConfig {\n      refreshIntervalMins\n      imageUrl\n    }\n    lastSeen\n    nextWakeAt\n    partialRefreshCount\n    targetFirmwareVersion\n    isCharging\n    rtcReportedAt\n    rtcReportedOffsetSecs\n    rtcSyncedAt\n    rtcDriftSecs\n    rtcSyncDueAt\n    lastWakeTraceUrl\n    config {\n      grace\n      lead\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d9289ca0d9c32a36d22829f97014a222";
+(node as any).hash = "d040e96c3f6581c91faf96117d303e06";
 
 export default node;

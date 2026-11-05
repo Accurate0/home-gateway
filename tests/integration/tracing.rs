@@ -106,7 +106,7 @@ async fn a_graphql_query_produces_one_span_per_top_level_field() {
         let response = schema
             .execute(request(
                 r#"query DashboardEntities {
-                    environment(id: "test-environment") { id name temperature humidity }
+                    homeEnvironment(id: "test-environment") { id name temperature humidity }
                 }"#,
             ))
             .await;
@@ -158,7 +158,7 @@ async fn the_parse_span_records_the_operation_and_its_top_level_fields() {
         schema
             .execute(request(
                 r#"query DashboardEntities {
-                    environment(id: "test-environment") { id temperature }
+                    homeEnvironment(id: "test-environment") { id temperature }
                 }"#,
             ))
             .await;
@@ -345,7 +345,7 @@ async fn dataloader_and_actor_internals_stay_out_of_the_trace() {
     let spans = spans_for(|| async move {
         schema
             .execute(request(
-                r#"{ environment(id: "test-environment") { id temperature } }"#,
+                r#"{ homeEnvironment(id: "test-environment") { id temperature } }"#,
             ))
             .await;
     })

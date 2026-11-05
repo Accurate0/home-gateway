@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c2ae62e67cb17a486116fee8d5e96606>>
+ * @generated SignedSource<<7fcc2fd4bfee779f69f300a1b32b3c2f>>
  * @lightSyntaxTransform
  */
 
@@ -12,8 +12,8 @@ export type BatteryPageQuery$variables = {
   since: any;
 };
 export type BatteryPageQuery$data = {
-  readonly entities: ReadonlyArray<{
-    readonly __typename: "DoorEntity";
+  readonly homeEntities: ReadonlyArray<{
+    readonly __typename: "HomeDoorEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -24,7 +24,7 @@ export type BatteryPageQuery$data = {
     readonly name: string;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "EinkDisplayEntity";
+    readonly __typename: "HomeEinkDisplayEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -35,7 +35,7 @@ export type BatteryPageQuery$data = {
     readonly name: string;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "EnvironmentEntity";
+    readonly __typename: "HomeEnvironmentEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -46,7 +46,7 @@ export type BatteryPageQuery$data = {
     readonly name: string;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "GarageDoorEntity";
+    readonly __typename: "HomeGarageDoorEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -57,7 +57,7 @@ export type BatteryPageQuery$data = {
     readonly name: string;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "LightEntity";
+    readonly __typename: "HomeLightEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -68,7 +68,7 @@ export type BatteryPageQuery$data = {
     readonly name: string;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "PresenceEntity";
+    readonly __typename: "HomePresenceEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -79,7 +79,7 @@ export type BatteryPageQuery$data = {
     readonly name: string;
     readonly room: string | null | undefined;
   } | {
-    readonly __typename: "RobotVacuumEntity";
+    readonly __typename: "HomeRobotVacuumEntity";
     readonly battery: {
       readonly history: ReadonlyArray<{
         readonly batteryPercentage: number | null | undefined;
@@ -133,7 +133,7 @@ v1 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "DeviceBattery",
+    "concreteType": "HomeDeviceBattery",
     "kind": "LinkedField",
     "name": "battery",
     "plural": false,
@@ -147,7 +147,7 @@ v1 = [
             "variableName": "since"
           }
         ],
-        "concreteType": "BatteryPoint",
+        "concreteType": "HomeBatteryPoint",
         "kind": "LinkedField",
         "name": "history",
         "plural": true,
@@ -179,7 +179,7 @@ v2 = [
     "args": null,
     "concreteType": null,
     "kind": "LinkedField",
-    "name": "entities",
+    "name": "homeEntities",
     "plural": true,
     "selections": [
       {
@@ -192,43 +192,43 @@ v2 = [
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "LightEntity",
+        "type": "HomeLightEntity",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "DoorEntity",
+        "type": "HomeDoorEntity",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "PresenceEntity",
+        "type": "HomePresenceEntity",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "EnvironmentEntity",
+        "type": "HomeEnvironmentEntity",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "EinkDisplayEntity",
+        "type": "HomeEinkDisplayEntity",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "RobotVacuumEntity",
+        "type": "HomeRobotVacuumEntity",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": (v1/*:: as any*/),
-        "type": "GarageDoorEntity",
+        "type": "HomeGarageDoorEntity",
         "abstractKey": null
       }
     ],
@@ -253,16 +253,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "ad640a28910c71d0df1230cfa99767a9",
+    "cacheID": "c18c8a1ea4f4424daf04d2062fac082a",
     "id": null,
     "metadata": {},
     "name": "BatteryPageQuery",
     "operationKind": "query",
-    "text": "query BatteryPageQuery(\n  $since: DateTime!\n) {\n  entities {\n    __typename\n    ... on LightEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on DoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on PresenceEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on EnvironmentEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on EinkDisplayEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on RobotVacuumEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on GarageDoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query BatteryPageQuery(\n  $since: DateTime!\n) {\n  homeEntities {\n    __typename\n    ... on HomeLightEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on HomeDoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on HomePresenceEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on HomeEnvironmentEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on HomeEinkDisplayEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on HomeRobotVacuumEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n    ... on HomeGarageDoorEntity {\n      id\n      name\n      room\n      battery {\n        history(since: $since) {\n          time\n          batteryPercentage\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "08a5e8f9d8c694871315c9127431bc9a";
+(node as any).hash = "96bb3738f9c1fe89b27cc7f91939a8cd";
 
 export default node;

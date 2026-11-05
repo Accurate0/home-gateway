@@ -34,7 +34,7 @@ impl FuelWatchObject {
     }
 }
 
-#[Object]
+#[Object(name = "HomeFuelWatchObject")]
 impl FuelWatchObject {
     async fn cheapest(
         &self,

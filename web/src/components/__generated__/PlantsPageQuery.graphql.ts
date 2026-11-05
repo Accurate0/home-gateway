@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<568368f637f5cf868bf927ce94540818>>
+ * @generated SignedSource<<26b44f60ec5d816dde00c46597296d16>>
  * @lightSyntaxTransform
  */
 
@@ -12,8 +12,8 @@ export type PlantsPageQuery$variables = {
   since: any;
 };
 export type PlantsPageQuery$data = {
-  readonly entities: ReadonlyArray<{
-    readonly __typename: "PlantEntity";
+  readonly homeEntities: ReadonlyArray<{
+    readonly __typename: "HomePlantEntity";
     readonly history: ReadonlyArray<{
       readonly soilMoisture: number;
       readonly time: any;
@@ -62,7 +62,7 @@ v3 = [
     "args": null,
     "concreteType": null,
     "kind": "LinkedField",
-    "name": "entities",
+    "name": "homeEntities",
     "plural": true,
     "selections": [
       {
@@ -107,7 +107,7 @@ v3 = [
                 "variableName": "since"
               }
             ],
-            "concreteType": "PlantPoint",
+            "concreteType": "HomePlantPoint",
             "kind": "LinkedField",
             "name": "history",
             "plural": true,
@@ -118,7 +118,7 @@ v3 = [
             "storageKey": null
           }
         ],
-        "type": "PlantEntity",
+        "type": "HomePlantEntity",
         "abstractKey": null
       }
     ],
@@ -143,16 +143,16 @@ return {
     "selections": (v3/*:: as any*/)
   },
   "params": {
-    "cacheID": "cd4deb9767dd66fef12ba70292ffabb9",
+    "cacheID": "be0bb0d8eb09a91409894c5d6841c42b",
     "id": null,
     "metadata": {},
     "name": "PlantsPageQuery",
     "operationKind": "query",
-    "text": "query PlantsPageQuery(\n  $since: DateTime!\n) {\n  entities {\n    __typename\n    ... on PlantEntity {\n      id\n      name\n      room\n      soilMoisture\n      time\n      history(since: $since) {\n        time\n        soilMoisture\n      }\n    }\n  }\n}\n"
+    "text": "query PlantsPageQuery(\n  $since: DateTime!\n) {\n  homeEntities {\n    __typename\n    ... on HomePlantEntity {\n      id\n      name\n      room\n      soilMoisture\n      time\n      history(since: $since) {\n        time\n        soilMoisture\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0ff05058ffb46c15f7e831dc32106bd2";
+(node as any).hash = "bd64efc306a9934436c3a3791b97b6cb";
 
 export default node;

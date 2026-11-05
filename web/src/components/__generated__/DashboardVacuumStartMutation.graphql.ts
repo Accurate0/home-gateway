@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<852d907187e9bc6d3fb57f8a482ca108>>
+ * @generated SignedSource<<09fb04026f2c052191828300a37e34a8>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type DashboardVacuumStartMutation$variables = {
   id: string;
 };
 export type DashboardVacuumStartMutation$data = {
-  readonly robotVacuum: {
+  readonly homeRobotVacuum: {
     readonly start: boolean;
   };
 };
@@ -39,9 +39,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "RobotVacuumMutation",
+    "concreteType": "HomeRobotVacuumMutation",
     "kind": "LinkedField",
-    "name": "robotVacuum",
+    "name": "homeRobotVacuum",
     "plural": false,
     "selections": [
       {
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "67cdd8ceec75496ebebe5c1db8d18f40",
+    "cacheID": "7af1291494734fe60a3635bf96d07e86",
     "id": null,
     "metadata": {},
     "name": "DashboardVacuumStartMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardVacuumStartMutation(\n  $id: IdOrAlias!\n) {\n  robotVacuum(id: $id) {\n    start\n  }\n}\n"
+    "text": "mutation DashboardVacuumStartMutation(\n  $id: IdOrAlias!\n) {\n  homeRobotVacuum(id: $id) {\n    start\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "76a5823910d109c08b2d96bb1fabdeb9";
+(node as any).hash = "9d1664a7620dedfc829ca41f8cec4f20";
 
 export default node;

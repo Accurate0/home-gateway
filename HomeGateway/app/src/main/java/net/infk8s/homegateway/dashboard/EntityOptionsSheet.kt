@@ -37,8 +37,8 @@ import java.time.Instant
 import kotlin.math.roundToInt
 import net.infk8s.homegateway.graphql.DeviceLockUi
 import net.infk8s.homegateway.graphql.EntityUi
-import net.infk8s.homegateway.graphql.type.AirPurifierMode
-import net.infk8s.homegateway.graphql.type.GarageDoorState
+import net.infk8s.homegateway.graphql.type.HomeAirPurifierMode
+import net.infk8s.homegateway.graphql.type.HomeGarageDoorState
 import net.infk8s.homegateway.ui.relative
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,17 +111,17 @@ private fun EntityOptions(entity: EntityUi, controls: EntityControls, lightLevel
         is EntityUi.GarageDoor -> ActionRow {
             ActionButton(
                 "Open",
-                enabled = entity.state != GarageDoorState.OPEN && entity.state != GarageDoorState.OPENING,
+                enabled = entity.state != HomeGarageDoorState.OPEN && entity.state != HomeGarageDoorState.OPENING,
             ) { controls.garageDoorOpen(entity.id) }
             ActionButton(
                 "Close",
-                enabled = entity.state != GarageDoorState.CLOSED && entity.state != GarageDoorState.CLOSING,
+                enabled = entity.state != HomeGarageDoorState.CLOSED && entity.state != HomeGarageDoorState.CLOSING,
             ) { controls.garageDoorClose(entity.id) }
         }
 
         is EntityUi.AirPurifier -> {
             ActionRow {
-                AirPurifierMode.knownEntries.forEach { mode ->
+                HomeAirPurifierMode.knownEntries.forEach { mode ->
                     ActionButton(
                         mode.rawValue.lowercase().replaceFirstChar { it.uppercase() },
                         enabled = entity.on != true || entity.mode != mode,
@@ -134,7 +134,7 @@ private fun EntityOptions(entity: EntityUi, controls: EntityControls, lightLevel
                     ActionButton(
                         "Speed $speed",
                         enabled = entity.on != true ||
-                            entity.mode != AirPurifierMode.MANUAL ||
+                            entity.mode != HomeAirPurifierMode.MANUAL ||
                             entity.speed != speed,
                     ) { controls.setAirPurifierSpeed(entity.id, speed) }
                 }

@@ -5,6 +5,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeHomeAssistantEvent")]
 #[graphql(complex)]
 pub struct HomeAssistantEvent {
     pub event_id: Uuid,
@@ -22,7 +23,7 @@ impl HomeAssistantEvent {
 
 pub struct HomeAssistantObject {}
 
-#[Object]
+#[Object(name = "HomeHomeAssistantObject")]
 impl HomeAssistantObject {
     async fn entities(
         &self,

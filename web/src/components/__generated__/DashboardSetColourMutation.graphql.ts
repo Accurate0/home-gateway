@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c38dfb6761aa87420b72feed016a94e1>>
+ * @generated SignedSource<<ba97659dd9550b2ff75134514debb587>>
  * @lightSyntaxTransform
  */
 
@@ -13,7 +13,7 @@ export type DashboardSetColourMutation$variables = {
   id: string;
 };
 export type DashboardSetColourMutation$data = {
-  readonly light: {
+  readonly homeLight: {
     readonly setColour: boolean;
   };
 };
@@ -43,9 +43,9 @@ v2 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "LightMutation",
+    "concreteType": "HomeLightMutation",
     "kind": "LinkedField",
-    "name": "light",
+    "name": "homeLight",
     "plural": false,
     "selections": [
       {
@@ -95,16 +95,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "822ce5c881f3464658db5e210c75bbb8",
+    "cacheID": "242c4889c6440bd33714d4be8540f605",
     "id": null,
     "metadata": {},
     "name": "DashboardSetColourMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardSetColourMutation(\n  $id: IdOrAlias!\n  $hex: String!\n) {\n  light(id: $id) {\n    setColour(input: {hex: $hex})\n  }\n}\n"
+    "text": "mutation DashboardSetColourMutation(\n  $id: IdOrAlias!\n  $hex: String!\n) {\n  homeLight(id: $id) {\n    setColour(input: {hex: $hex})\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d1462043134ce783301108bc6f3f828d";
+(node as any).hash = "39febe866cf0e51c7e0dcabea23d2958";
 
 export default node;

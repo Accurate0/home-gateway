@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<170fd8dc8afb782fc1b0698ddf4a30d1>>
+ * @generated SignedSource<<16e47c18a2d1aaba08032de8ebf80f22>>
  * @lightSyntaxTransform
  */
 
@@ -13,7 +13,7 @@ export type DashboardColourMoveMutation$variables = {
   value: number;
 };
 export type DashboardColourMoveMutation$data = {
-  readonly light: {
+  readonly homeLight: {
     readonly colourTemperatureMove: boolean;
   };
 };
@@ -45,9 +45,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "LightMutation",
+    "concreteType": "HomeLightMutation",
     "kind": "LinkedField",
-    "name": "light",
+    "name": "homeLight",
     "plural": false,
     "selections": [
       {
@@ -91,16 +91,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "070b9582822adb88a022d070f9482fd9",
+    "cacheID": "2eded0e6acad0afd1fa0c31218231d5c",
     "id": null,
     "metadata": {},
     "name": "DashboardColourMoveMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardColourMoveMutation(\n  $id: IdOrAlias!\n  $value: Int!\n) {\n  light(id: $id) {\n    colourTemperatureMove(input: {value: $value})\n  }\n}\n"
+    "text": "mutation DashboardColourMoveMutation(\n  $id: IdOrAlias!\n  $value: Int!\n) {\n  homeLight(id: $id) {\n    colourTemperatureMove(input: {value: $value})\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ce410f1aa3ca4130801c630dc4c97640";
+(node as any).hash = "34cb5a366156b079fdebd6e5939e92c2";
 
 export default node;

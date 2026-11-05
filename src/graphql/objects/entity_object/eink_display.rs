@@ -19,12 +19,14 @@ use crate::{
 };
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
+#[graphql(name = "HomeEinkDisplayKind")]
 pub enum EinkDisplayKind {
     Trmnl,
     EinkDisplayFirmware,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeEinkDisplayConfig")]
 #[graphql(rename_fields = "camelCase")]
 pub struct EinkDisplayConfig {
     mode: EinkMode,
@@ -104,7 +106,7 @@ impl EinkDisplayEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeEinkDisplayEntity")]
 impl EinkDisplayEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Displays

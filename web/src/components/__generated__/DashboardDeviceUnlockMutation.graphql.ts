@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ace4c671d3cc23fd86a6e6b9136b4451>>
+ * @generated SignedSource<<7cee43462656755d28954dd154b558f0>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type DashboardDeviceUnlockMutation$variables = {
   id: string;
 };
 export type DashboardDeviceUnlockMutation$data = {
-  readonly deviceLock: {
+  readonly homeDeviceLock: {
     readonly unlock: boolean;
   };
 };
@@ -39,9 +39,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "DeviceLockMutation",
+    "concreteType": "HomeDeviceLockMutation",
     "kind": "LinkedField",
-    "name": "deviceLock",
+    "name": "homeDeviceLock",
     "plural": false,
     "selections": [
       {
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "dff0e65e7e4257f1adf477bf3db1bc32",
+    "cacheID": "8af63f57131d2470d1896ecb448eb5ee",
     "id": null,
     "metadata": {},
     "name": "DashboardDeviceUnlockMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardDeviceUnlockMutation(\n  $id: IdOrAlias!\n) {\n  deviceLock(id: $id) {\n    unlock\n  }\n}\n"
+    "text": "mutation DashboardDeviceUnlockMutation(\n  $id: IdOrAlias!\n) {\n  homeDeviceLock(id: $id) {\n    unlock\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "56fc1286cfadc31d3afeffac70b22acd";
+(node as any).hash = "7c8bab02fe3465dd55b96edf148b26bc";
 
 export default node;

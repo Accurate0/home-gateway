@@ -18,8 +18,8 @@ class PlantsViewModel(application: Application) : HistoryViewModel(application) 
         val data = response.data
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load plants")
 
-        return data.entities
-            .mapNotNull { it.onPlantEntity }
+        return data.homeEntities
+            .mapNotNull { it.onHomePlantEntity }
             .map { plant ->
                 val points = historyPoints(plant.history, { it.time }, { it.soilMoisture })
 

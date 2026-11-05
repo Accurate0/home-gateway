@@ -4,7 +4,7 @@ use chrono::TimeDelta;
 use crate::settings::NotifyAcknowledge;
 
 #[derive(InputObject)]
-#[graphql(name = "PushNotificationAcknowledgeInput")]
+#[graphql(name = "HomePushNotificationAcknowledgeInput")]
 pub struct PushNotificationAcknowledgeInput {
     pub remind_after_seconds: i64,
     pub reminders: i32,

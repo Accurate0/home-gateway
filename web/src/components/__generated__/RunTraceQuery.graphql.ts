@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3cfa1726e23b98c50a21dda0e415a546>>
+ * @generated SignedSource<<31f890a0d17655afc866bdc772f99bc9>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type RunTraceQuery$variables = {
   eventId: any;
 };
 export type RunTraceQuery$data = {
-  readonly workflowRuns: ReadonlyArray<{
+  readonly homeWorkflowRuns: ReadonlyArray<{
     readonly id: string;
     readonly steps: ReadonlyArray<{
       readonly depth: number;
@@ -50,9 +50,9 @@ v1 = [
         "variableName": "eventId"
       }
     ],
-    "concreteType": "WorkflowRun",
+    "concreteType": "HomeWorkflowRun",
     "kind": "LinkedField",
-    "name": "workflowRuns",
+    "name": "homeWorkflowRuns",
     "plural": true,
     "selections": [
       {
@@ -72,7 +72,7 @@ v1 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "WorkflowRunStep",
+        "concreteType": "HomeWorkflowRunStep",
         "kind": "LinkedField",
         "name": "steps",
         "plural": true,
@@ -158,16 +158,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "72d0eec7760b9f64e2fa18d4a4863fac",
+    "cacheID": "3705ee799a9e9b0aa21aac2de37ba7d8",
     "id": null,
     "metadata": {},
     "name": "RunTraceQuery",
     "operationKind": "query",
-    "text": "query RunTraceQuery(\n  $eventId: UUID!\n) {\n  workflowRuns(eventId: $eventId) {\n    id\n    trigger\n    steps {\n      seq\n      depth\n      kind\n      outcome\n      guard\n      detail\n      error\n      durationUs\n    }\n  }\n}\n"
+    "text": "query RunTraceQuery(\n  $eventId: UUID!\n) {\n  homeWorkflowRuns(eventId: $eventId) {\n    id\n    trigger\n    steps {\n      seq\n      depth\n      kind\n      outcome\n      guard\n      detail\n      error\n      durationUs\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e9d4d29f15c92a3b07fccf31a3a0e796";
+(node as any).hash = "63671c2ca50aab870b3616443bdea1ba";
 
 export default node;

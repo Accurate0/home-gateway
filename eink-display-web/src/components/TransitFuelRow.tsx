@@ -5,7 +5,7 @@ import type { FuelPrice_fuel$key } from "./__generated__/FuelPrice_fuel.graphql"
 import { HAIRLINE, INK, RED, ROW, TYPE } from "../theme";
 
 const RouteFragment = graphql`
-  fragment TransitFuelRow_route on RouteDeparturesObject {
+  fragment TransitFuelRow_route on HomeRouteDeparturesObject {
     origin
     destination
     departures {

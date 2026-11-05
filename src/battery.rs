@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, async_graphql::Enum, sqlx::Type,
 )]
+#[graphql(name = "HomeBatteryChemistry")]
 #[serde(rename_all = "snake_case")]
 #[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
 #[sqlx(type_name = "text", rename_all = "snake_case")]

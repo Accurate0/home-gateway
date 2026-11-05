@@ -14,6 +14,7 @@ use crate::{
 const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(90);
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomePlantPoint")]
 #[graphql(rename_fields = "camelCase")]
 pub struct PlantPoint {
     pub soil_moisture: f64,
@@ -57,7 +58,7 @@ impl PlantEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomePlantEntity")]
 impl PlantEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Plants

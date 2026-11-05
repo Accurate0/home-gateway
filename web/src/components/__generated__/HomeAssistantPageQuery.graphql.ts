@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<915918061a2ca64f13bbf4e581890db7>>
+ * @generated SignedSource<<883eb96725b454ec5e1029144796a2a4>>
  * @lightSyntaxTransform
  */
 
@@ -10,7 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type HomeAssistantPageQuery$variables = Record<PropertyKey, never>;
 export type HomeAssistantPageQuery$data = {
-  readonly homeAssistant: {
+  readonly homeHomeAssistant: {
     readonly entities: ReadonlyArray<{
       readonly entityId: string;
       readonly eventId: any;
@@ -30,15 +30,15 @@ var v0 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "HomeAssistantObject",
+    "concreteType": "HomeHomeAssistantObject",
     "kind": "LinkedField",
-    "name": "homeAssistant",
+    "name": "homeHomeAssistant",
     "plural": false,
     "selections": [
       {
         "alias": null,
         "args": null,
-        "concreteType": "HomeAssistantEvent",
+        "concreteType": "HomeHomeAssistantEvent",
         "kind": "LinkedField",
         "name": "entities",
         "plural": true,
@@ -103,16 +103,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "5f027317b9aa6d8f3c2dffef86176a15",
+    "cacheID": "f86f10e839d0017d30409997df6bcc07",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageQuery",
     "operationKind": "query",
-    "text": "query HomeAssistantPageQuery {\n  homeAssistant {\n    entities {\n      id\n      eventId\n      entityId\n      state\n      time\n    }\n  }\n}\n"
+    "text": "query HomeAssistantPageQuery {\n  homeHomeAssistant {\n    entities {\n      id\n      eventId\n      entityId\n      state\n      time\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9bf17dc61fa0afbd79998fac4ddea39a";
+(node as any).hash = "e6fc7240b3a42ae45c86a909f5876073";
 
 export default node;

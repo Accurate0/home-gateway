@@ -48,13 +48,13 @@ import {
 
 const EntitiesQuery = graphql`
   query DashboardEntitiesQuery {
-    entitySections {
+    homeEntitySections {
       category
       title
     }
-    entities {
+    homeEntities {
       __typename
-      ... on LightEntity {
+      ... on HomeLightEntity {
         category
         id
         name
@@ -63,7 +63,7 @@ const EntitiesQuery = graphql`
         on
         lastSeen
       }
-      ... on DoorEntity {
+      ... on HomeDoorEntity {
         category
         id
         name
@@ -71,7 +71,7 @@ const EntitiesQuery = graphql`
         open
         lastSeen
       }
-      ... on PresenceEntity {
+      ... on HomePresenceEntity {
         category
         id
         name
@@ -79,7 +79,7 @@ const EntitiesQuery = graphql`
         present
         lastSeen
       }
-      ... on EnvironmentEntity {
+      ... on HomeEnvironmentEntity {
         category
         id
         name
@@ -95,7 +95,7 @@ const EntitiesQuery = graphql`
         time
         lastSeen
       }
-      ... on PlantEntity {
+      ... on HomePlantEntity {
         category
         id
         name
@@ -104,7 +104,7 @@ const EntitiesQuery = graphql`
         time
         lastSeen
       }
-      ... on EinkDisplayEntity {
+      ... on HomeEinkDisplayEntity {
         category
         id
         name
@@ -124,7 +124,7 @@ const EntitiesQuery = graphql`
           sleepEnd
         }
       }
-      ... on MediaPlayerEntity {
+      ... on HomeMediaPlayerEntity {
         category
         id
         name
@@ -145,7 +145,7 @@ const EntitiesQuery = graphql`
         artworkUrl
         lastSeen
       }
-      ... on GarageDoorEntity {
+      ... on HomeGarageDoorEntity {
         category
         id
         name
@@ -156,7 +156,7 @@ const EntitiesQuery = graphql`
         }
         lastSeen
       }
-      ... on AirPurifierEntity {
+      ... on HomeAirPurifierEntity {
         category
         id
         name
@@ -171,13 +171,13 @@ const EntitiesQuery = graphql`
         displayOn: display
         lastSeen
       }
-      ... on LockableEntity {
+      ... on HomeLockableEntity {
         lock {
           source
           expiresAt
         }
       }
-      ... on RobotVacuumEntity {
+      ... on HomeRobotVacuumEntity {
         category
         id
         name
@@ -198,24 +198,24 @@ const EntitiesQuery = graphql`
 
 const EventsSubscription = graphql`
   subscription DashboardEventsSubscription {
-    events(filter: "*") {
+    homeEvents(filter: "*") {
       __typename
-      ... on LightUpdate {
+      ... on HomeLightUpdate {
         id
         name
         on
       }
-      ... on DoorUpdate {
+      ... on HomeDoorUpdate {
         id
         name
         open
       }
-      ... on GarageDoorUpdate {
+      ... on HomeGarageDoorUpdate {
         id
         name
         garageState: state
       }
-      ... on AirPurifierUpdate {
+      ... on HomeAirPurifierUpdate {
         id
         name
         on
@@ -223,18 +223,18 @@ const EventsSubscription = graphql`
         purifierSpeed: speed
         displayOn: display
       }
-      ... on DeviceLockUpdate {
+      ... on HomeDeviceLockUpdate {
         id
         locked
         lockSource: source
         expiresAt
       }
-      ... on PresenceUpdate {
+      ... on HomePresenceUpdate {
         id
         name
         present
       }
-      ... on EnvironmentUpdate {
+      ... on HomeEnvironmentUpdate {
         id
         name
         readings {
@@ -242,12 +242,12 @@ const EventsSubscription = graphql`
           value
         }
       }
-      ... on PlantUpdate {
+      ... on HomePlantUpdate {
         id
         name
         soilMoisture
       }
-      ... on MediaPlayerUpdate {
+      ... on HomeMediaPlayerUpdate {
         id
         name
         room
@@ -270,7 +270,7 @@ const EventsSubscription = graphql`
 
 const SetOnMutation = graphql`
   mutation DashboardSetOnMutation($id: IdOrAlias!) {
-    light(id: $id) {
+    homeLight(id: $id) {
       on
     }
   }
@@ -278,7 +278,7 @@ const SetOnMutation = graphql`
 
 const SetOffMutation = graphql`
   mutation DashboardSetOffMutation($id: IdOrAlias!) {
-    light(id: $id) {
+    homeLight(id: $id) {
       off
     }
   }
@@ -286,7 +286,7 @@ const SetOffMutation = graphql`
 
 const SetBrightnessMutation = graphql`
   mutation DashboardSetBrightnessMutation($id: IdOrAlias!, $value: Int!) {
-    light(id: $id) {
+    homeLight(id: $id) {
       setBrightness(input: { value: $value })
     }
   }
@@ -294,7 +294,7 @@ const SetBrightnessMutation = graphql`
 
 const ColourMoveMutation = graphql`
   mutation DashboardColourMoveMutation($id: IdOrAlias!, $value: Int!) {
-    light(id: $id) {
+    homeLight(id: $id) {
       colourTemperatureMove(input: { value: $value })
     }
   }
@@ -302,7 +302,7 @@ const ColourMoveMutation = graphql`
 
 const SetColourMutation = graphql`
   mutation DashboardSetColourMutation($id: IdOrAlias!, $hex: String!) {
-    light(id: $id) {
+    homeLight(id: $id) {
       setColour(input: { hex: $hex })
     }
   }
@@ -310,7 +310,7 @@ const SetColourMutation = graphql`
 
 const MediaPlayPauseMutation = graphql`
   mutation DashboardMediaPlayPauseMutation($id: IdOrAlias!) {
-    mediaPlayer(id: $id) {
+    homeMediaPlayer(id: $id) {
       playPause
     }
   }
@@ -318,7 +318,7 @@ const MediaPlayPauseMutation = graphql`
 
 const MediaStopMutation = graphql`
   mutation DashboardMediaStopMutation($id: IdOrAlias!) {
-    mediaPlayer(id: $id) {
+    homeMediaPlayer(id: $id) {
       stop
     }
   }
@@ -326,7 +326,7 @@ const MediaStopMutation = graphql`
 
 const VacuumStartMutation = graphql`
   mutation DashboardVacuumStartMutation($id: IdOrAlias!) {
-    robotVacuum(id: $id) {
+    homeRobotVacuum(id: $id) {
       start
     }
   }
@@ -334,7 +334,7 @@ const VacuumStartMutation = graphql`
 
 const VacuumStopMutation = graphql`
   mutation DashboardVacuumStopMutation($id: IdOrAlias!) {
-    robotVacuum(id: $id) {
+    homeRobotVacuum(id: $id) {
       stop
     }
   }
@@ -342,7 +342,7 @@ const VacuumStopMutation = graphql`
 
 const VacuumDockMutation = graphql`
   mutation DashboardVacuumDockMutation($id: IdOrAlias!) {
-    robotVacuum(id: $id) {
+    homeRobotVacuum(id: $id) {
       dock
     }
   }
@@ -350,7 +350,7 @@ const VacuumDockMutation = graphql`
 
 const GarageDoorOpenMutation = graphql`
   mutation DashboardGarageDoorOpenMutation($id: IdOrAlias!) {
-    garageDoor(id: $id) {
+    homeGarageDoor(id: $id) {
       open
     }
   }
@@ -358,7 +358,7 @@ const GarageDoorOpenMutation = graphql`
 
 const GarageDoorCloseMutation = graphql`
   mutation DashboardGarageDoorCloseMutation($id: IdOrAlias!) {
-    garageDoor(id: $id) {
+    homeGarageDoor(id: $id) {
       close
     }
   }
@@ -366,7 +366,7 @@ const GarageDoorCloseMutation = graphql`
 
 const AirPurifierTurnOnMutation = graphql`
   mutation DashboardAirPurifierTurnOnMutation($id: IdOrAlias!) {
-    airPurifier(id: $id) {
+    homeAirPurifier(id: $id) {
       turnOn
     }
   }
@@ -374,7 +374,7 @@ const AirPurifierTurnOnMutation = graphql`
 
 const AirPurifierTurnOffMutation = graphql`
   mutation DashboardAirPurifierTurnOffMutation($id: IdOrAlias!) {
-    airPurifier(id: $id) {
+    homeAirPurifier(id: $id) {
       turnOff
     }
   }
@@ -383,9 +383,9 @@ const AirPurifierTurnOffMutation = graphql`
 const AirPurifierSetModeMutation = graphql`
   mutation DashboardAirPurifierSetModeMutation(
     $id: IdOrAlias!
-    $mode: AirPurifierMode!
+    $mode: HomeAirPurifierMode!
   ) {
-    airPurifier(id: $id) {
+    homeAirPurifier(id: $id) {
       setMode(mode: $mode)
     }
   }
@@ -393,7 +393,7 @@ const AirPurifierSetModeMutation = graphql`
 
 const AirPurifierSetSpeedMutation = graphql`
   mutation DashboardAirPurifierSetSpeedMutation($id: IdOrAlias!, $speed: Int!) {
-    airPurifier(id: $id) {
+    homeAirPurifier(id: $id) {
       setSpeed(speed: $speed)
     }
   }
@@ -404,7 +404,7 @@ const AirPurifierSetDisplayMutation = graphql`
     $id: IdOrAlias!
     $on: Boolean!
   ) {
-    airPurifier(id: $id) {
+    homeAirPurifier(id: $id) {
       setDisplay(on: $on)
     }
   }
@@ -412,7 +412,7 @@ const AirPurifierSetDisplayMutation = graphql`
 
 const DeviceLockMutation = graphql`
   mutation DashboardDeviceLockMutation($id: IdOrAlias!, $durationSeconds: Int) {
-    deviceLock(id: $id) {
+    homeDeviceLock(id: $id) {
       lock(durationSeconds: $durationSeconds) {
         source
         expiresAt
@@ -423,7 +423,7 @@ const DeviceLockMutation = graphql`
 
 const DeviceUnlockMutation = graphql`
   mutation DashboardDeviceUnlockMutation($id: IdOrAlias!) {
-    deviceLock(id: $id) {
+    homeDeviceLock(id: $id) {
       unlock
     }
   }
@@ -431,7 +431,7 @@ const DeviceUnlockMutation = graphql`
 
 const EinkConfigQuery = graphql`
   query DashboardEinkConfigQuery($id: IdOrAlias!) {
-    einkDisplay(id: $id) {
+    homeEinkDisplay(id: $id) {
       deviceConfig {
         refreshIntervalMins
         imageUrl
@@ -457,7 +457,7 @@ const EinkConfigQuery = graphql`
 
 const TakeScreenshotMutation = graphql`
   mutation DashboardTakeScreenshotMutation($id: IdOrAlias!) {
-    einkDisplay(id: $id) {
+    homeEinkDisplay(id: $id) {
       takeScreenshot
     }
   }
@@ -498,7 +498,7 @@ function seedEntities(
   data: DashboardEntitiesQuery["response"],
 ): Map<string, Entity> {
   const map = new Map<string, Entity>();
-  for (const e of data.entities) {
+  for (const e of data.homeEntities) {
     const kind = kindOf(e.__typename);
     const { id, name } = e;
     if (!kind || id == null || name == null) continue;
@@ -551,9 +551,9 @@ export default function Dashboard() {
       subscription: EventsSubscription,
       variables: {},
       onNext: (response) => {
-        const update = response?.events;
+        const update = response?.homeEvents;
 
-        if (update?.__typename === "DeviceLockUpdate") {
+        if (update?.__typename === "HomeDeviceLockUpdate") {
           const lock =
             update.locked && update.lockSource
               ? { source: update.lockSource, expiresAt: update.expiresAt }
@@ -742,7 +742,7 @@ export default function Dashboard() {
         { fetchPolicy: "network-only" },
       ).subscribe({
         next: (response) => {
-          const display = response.einkDisplay;
+          const display = response.homeEinkDisplay;
           const deviceConfig = display?.deviceConfig;
           if (!display || !deviceConfig) return;
           const einkStatus = {
@@ -793,7 +793,7 @@ export default function Dashboard() {
     }
 
     const result: [string, Entity[]][] = [];
-    for (const { category, title } of data.entitySections) {
+    for (const { category, title } of data.homeEntitySections) {
       const list = groups.get(category);
       if (list && list.length > 0) result.push([title, list]);
     }
@@ -802,7 +802,7 @@ export default function Dashboard() {
       result.push([UNASSIGNED, uncategorised]);
     }
     return result;
-  }, [entities, groupBy, data.entitySections]);
+  }, [entities, groupBy, data.homeEntitySections]);
 
   return (
     <div>

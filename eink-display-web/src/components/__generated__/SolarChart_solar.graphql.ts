@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a6233c7fa210234c7dfe8146c61c7066>>
+ * @generated SignedSource<<e1d9c6a112f9541ebe47449e7355c45d>>
  * @lightSyntaxTransform
  */
 
@@ -50,7 +50,7 @@ const node: ReaderFragment = {
           "name": "input"
         }
       ],
-      "concreteType": "GenerationHistory",
+      "concreteType": "HomeGenerationHistory",
       "kind": "LinkedField",
       "name": "history",
       "plural": true,
@@ -87,10 +87,10 @@ const node: ReaderFragment = {
       "storageKey": null
     }
   ],
-  "type": "SolarObject",
+  "type": "HomeSolarObject",
   "abstractKey": null
 };
 
-(node as any).hash = "b6a054d519af220261b92a7e2a386f0e";
+(node as any).hash = "7c7e88650b8705d6f5e1056e55fca8e4";
 
 export default node;

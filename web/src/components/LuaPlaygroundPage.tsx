@@ -31,7 +31,7 @@ import type { LuaPlaygroundPageExecuteMutation } from "./__generated__/LuaPlaygr
 
 const ApiQuery = graphql`
   query LuaPlaygroundPageApiQuery {
-    luaApi {
+    homeLuaApi {
       definitions
       globals {
         name
@@ -79,7 +79,7 @@ const ApiQuery = graphql`
 
 const ExecuteMutation = graphql`
   mutation LuaPlaygroundPageExecuteMutation($script: String!, $dryRun: Boolean) {
-    executeLua(script: $script, dryRun: $dryRun)
+    homeExecuteLua(script: $script, dryRun: $dryRun)
   }
 `;
 
@@ -115,7 +115,7 @@ export default function LuaPlaygroundPage() {
       ApiQuery,
       {},
     ).subscribe({
-      next: (data) => setIndex(indexLuaApi(data.luaApi)),
+      next: (data) => setIndex(indexLuaApi(data.homeLuaApi)),
       error: (error: Error) => setApiError(error.message),
     });
 
@@ -147,7 +147,7 @@ export default function LuaPlaygroundPage() {
           return;
         }
 
-        finish(true, JSON.stringify(response.executeLua, null, 2));
+        finish(true, JSON.stringify(response.homeExecuteLua, null, 2));
       },
       onError: (error) => finish(false, error.message),
     });

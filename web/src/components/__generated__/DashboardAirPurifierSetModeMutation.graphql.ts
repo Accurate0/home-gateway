@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e3b097743db2ebf3f03a1fd3ef793585>>
+ * @generated SignedSource<<6d3f9f7413c8b380a3fd3e467cbfc807>>
  * @lightSyntaxTransform
  */
 
@@ -8,15 +8,15 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
-export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
+export type HomeAirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
+export type HomeCommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardAirPurifierSetModeMutation$variables = {
   id: string;
-  mode: AirPurifierMode;
+  mode: HomeAirPurifierMode;
 };
 export type DashboardAirPurifierSetModeMutation$data = {
-  readonly airPurifier: {
-    readonly setMode: CommandOutcome;
+  readonly homeAirPurifier: {
+    readonly setMode: HomeCommandOutcome;
   };
 };
 export type DashboardAirPurifierSetModeMutation = {
@@ -47,9 +47,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "AirPurifierMutation",
+    "concreteType": "HomeAirPurifierMutation",
     "kind": "LinkedField",
-    "name": "airPurifier",
+    "name": "homeAirPurifier",
     "plural": false,
     "selections": [
       {
@@ -87,16 +87,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "628df5b95a243e98ed86bf13cf72c0a7",
+    "cacheID": "787002babbf5926364d8d7e2735e2830",
     "id": null,
     "metadata": {},
     "name": "DashboardAirPurifierSetModeMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardAirPurifierSetModeMutation(\n  $id: IdOrAlias!\n  $mode: AirPurifierMode!\n) {\n  airPurifier(id: $id) {\n    setMode(mode: $mode)\n  }\n}\n"
+    "text": "mutation DashboardAirPurifierSetModeMutation(\n  $id: IdOrAlias!\n  $mode: HomeAirPurifierMode!\n) {\n  homeAirPurifier(id: $id) {\n    setMode(mode: $mode)\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3d1ca04470cf1fa5b0aecd33b92ec84b";
+(node as any).hash = "95c2cc75c9ab7a3bda78f574b7bbf404";
 
 export default node;

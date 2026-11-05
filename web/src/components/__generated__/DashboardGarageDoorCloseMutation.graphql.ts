@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7289e58d7e53595644b3ccf25b840627>>
+ * @generated SignedSource<<6dfd1140165e9b00245c3cf923981ceb>>
  * @lightSyntaxTransform
  */
 
@@ -8,13 +8,13 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
+export type HomeCommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardGarageDoorCloseMutation$variables = {
   id: string;
 };
 export type DashboardGarageDoorCloseMutation$data = {
-  readonly garageDoor: {
-    readonly close: CommandOutcome;
+  readonly homeGarageDoor: {
+    readonly close: HomeCommandOutcome;
   };
 };
 export type DashboardGarageDoorCloseMutation = {
@@ -40,9 +40,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "GarageDoorMutation",
+    "concreteType": "HomeGarageDoorMutation",
     "kind": "LinkedField",
-    "name": "garageDoor",
+    "name": "homeGarageDoor",
     "plural": false,
     "selections": [
       {
@@ -74,16 +74,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "2f7290ee43c825796f50403cbfce46ac",
+    "cacheID": "0b50726bd4b186e96096ec01d81eaf0c",
     "id": null,
     "metadata": {},
     "name": "DashboardGarageDoorCloseMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardGarageDoorCloseMutation(\n  $id: IdOrAlias!\n) {\n  garageDoor(id: $id) {\n    close\n  }\n}\n"
+    "text": "mutation DashboardGarageDoorCloseMutation(\n  $id: IdOrAlias!\n) {\n  homeGarageDoor(id: $id) {\n    close\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "24552b247c37cc7924b54b47a15ec0ed";
+(node as any).hash = "ef841f5a112f8ce976ea95cd8228fd18";
 
 export default node;

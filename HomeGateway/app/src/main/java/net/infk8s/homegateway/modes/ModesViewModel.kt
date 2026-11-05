@@ -14,8 +14,8 @@ import kotlinx.coroutines.launch
 import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.graphql.ModesQuery
 import net.infk8s.homegateway.graphql.SetModeMutation
-import net.infk8s.homegateway.graphql.type.LightTarget
-import net.infk8s.homegateway.graphql.type.Mode
+import net.infk8s.homegateway.graphql.type.HomeLightTarget
+import net.infk8s.homegateway.graphql.type.HomeMode
 import net.infk8s.homegateway.ui.parseInstant
 
 data class VacationActionUi(val at: Instant?, val on: Boolean, val slot: Int, val onFraction: Double)
@@ -25,7 +25,7 @@ data class VacationLightUi(
     val deviceId: String?,
     val name: String,
     val coverage: Int,
-    val currentTarget: LightTarget,
+    val currentTarget: HomeLightTarget,
     val actions: List<VacationActionUi>,
 )
 
@@ -40,7 +40,7 @@ data class VacationUi(
 sealed interface ModesUiState {
     data object Loading : ModesUiState
     data class Error(val message: String) : ModesUiState
-    data class Loaded(val active: Mode, val vacation: VacationUi?) : ModesUiState
+    data class Loaded(val active: HomeMode, val vacation: VacationUi?) : ModesUiState
 }
 
 class ModesViewModel(application: Application) : AndroidViewModel(application) {
@@ -53,7 +53,7 @@ class ModesViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { load() }
     }
 
-    fun select(mode: Mode) {
+    fun select(mode: HomeMode) {
         val current = _state.value as? ModesUiState.Loaded ?: return
         if (current.active == mode) {
             return
@@ -84,7 +84,7 @@ class ModesViewModel(application: Application) : AndroidViewModel(application) {
             val data = response.data
                 ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load modes")
 
-            _state.value = ModesUiState.Loaded(data.mode.active, data.mode.node.onVacationMode?.toUi())
+            _state.value = ModesUiState.Loaded(data.homeMode.active, data.homeMode.node.onHomeVacationMode?.toUi())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -96,7 +96,7 @@ class ModesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun ModesQuery.OnVacationMode.toUi() = VacationUi(
+    private fun ModesQuery.OnHomeVacationMode.toUi() = VacationUi(
         enabled = enabled,
         window = window,
         jitter = jitter,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4de5824230d004c2cff476be779aa52d>>
+ * @generated SignedSource<<ee6bf49ab9ebe67a94c4d38baabdf779>>
  * @lightSyntaxTransform
  */
 
@@ -13,7 +13,7 @@ export type LuaPlaygroundPageExecuteMutation$variables = {
   script: string;
 };
 export type LuaPlaygroundPageExecuteMutation$data = {
-  readonly executeLua: any;
+  readonly homeExecuteLua: any;
 };
 export type LuaPlaygroundPageExecuteMutation = {
   response: LuaPlaygroundPageExecuteMutation$data;
@@ -47,7 +47,7 @@ v2 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "executeLua",
+    "name": "homeExecuteLua",
     "storageKey": null
   }
 ];
@@ -75,16 +75,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "af65ff299fc5cf788174d34b52c3b498",
+    "cacheID": "4a79448a5baacb54663b7271f4fe3c49",
     "id": null,
     "metadata": {},
     "name": "LuaPlaygroundPageExecuteMutation",
     "operationKind": "mutation",
-    "text": "mutation LuaPlaygroundPageExecuteMutation(\n  $script: String!\n  $dryRun: Boolean\n) {\n  executeLua(script: $script, dryRun: $dryRun)\n}\n"
+    "text": "mutation LuaPlaygroundPageExecuteMutation(\n  $script: String!\n  $dryRun: Boolean\n) {\n  homeExecuteLua(script: $script, dryRun: $dryRun)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "427bb99f4f4a5082d7f568fa5059aff1";
+(node as any).hash = "0a772cc277f77e99c4170f9e5910aaa8";
 
 export default node;

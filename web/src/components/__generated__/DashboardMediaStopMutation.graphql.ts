@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<03862329eadf68ce856bcf945fc5dcd6>>
+ * @generated SignedSource<<f38397ee9774ef766a75a32f096b7db6>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type DashboardMediaStopMutation$variables = {
   id: string;
 };
 export type DashboardMediaStopMutation$data = {
-  readonly mediaPlayer: {
+  readonly homeMediaPlayer: {
     readonly stop: boolean;
   };
 };
@@ -39,9 +39,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "MediaPlayerMutation",
+    "concreteType": "HomeMediaPlayerMutation",
     "kind": "LinkedField",
-    "name": "mediaPlayer",
+    "name": "homeMediaPlayer",
     "plural": false,
     "selections": [
       {
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "b2e1707e05876963771a3cf10efa9558",
+    "cacheID": "da4b8fd915e91cca1f8e6989baf71d94",
     "id": null,
     "metadata": {},
     "name": "DashboardMediaStopMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardMediaStopMutation(\n  $id: IdOrAlias!\n) {\n  mediaPlayer(id: $id) {\n    stop\n  }\n}\n"
+    "text": "mutation DashboardMediaStopMutation(\n  $id: IdOrAlias!\n) {\n  homeMediaPlayer(id: $id) {\n    stop\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fa889cad8d030b7bdeb80272b4417a7f";
+(node as any).hash = "96233dba9f336d890a1fdbe8a18958d0";
 
 export default node;

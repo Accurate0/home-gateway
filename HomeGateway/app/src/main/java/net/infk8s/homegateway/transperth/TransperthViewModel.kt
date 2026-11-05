@@ -30,13 +30,13 @@ class TransperthViewModel(application: Application) : AndroidViewModel(applicati
         val data = response.data
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load departures")
 
-        _state.value = TransperthUiState.Loaded(data.transperth.routes.map { it.toUi() })
+        _state.value = TransperthUiState.Loaded(data.homeTransperth.routes.map { it.toUi() })
     }
 
     private suspend fun listen() {
         apollo.subscription(TransperthUpdatesSubscription()).toFlow()
             .collect { response ->
-                if (response.data?.events?.onTransperthUpdate != null) {
+                if (response.data?.homeEvents?.onHomeTransperthUpdate != null) {
                     load()
                 }
             }

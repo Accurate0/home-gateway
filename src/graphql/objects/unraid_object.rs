@@ -7,7 +7,7 @@ use crate::repo::unraid::StoredUnraidSnapshot;
 
 pub struct UnraidObject(pub StoredUnraidSnapshot);
 
-#[Object(name = "Unraid")]
+#[Object(name = "HomeUnraid")]
 impl UnraidObject {
     async fn recorded_at(&self) -> DateTime<Utc> {
         self.0.recorded_at

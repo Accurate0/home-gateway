@@ -7,6 +7,7 @@ use crate::repo::workflow::WorkflowRunStepRow;
 use crate::workflows::mode::Mode;
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWorkflowRun")]
 #[graphql(complex)]
 pub struct WorkflowRun {
     pub id: async_graphql::ID,
@@ -37,6 +38,7 @@ impl WorkflowRun {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWorkflowRunStep")]
 pub struct WorkflowRunStep {
     pub seq: i32,
     pub depth: i32,
@@ -66,6 +68,7 @@ impl From<WorkflowRunStepRow> for WorkflowRunStep {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWorkflowStatus")]
 pub struct WorkflowStatus {
     pub id: String,
     pub slug: String,

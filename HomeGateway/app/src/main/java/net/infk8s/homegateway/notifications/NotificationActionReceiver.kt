@@ -16,7 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.graphql.RunWorkflowMutation
-import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
+import net.infk8s.homegateway.graphql.type.HomeNotificationInteractionKind
 
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -63,14 +63,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         .build()
                 )
 
-                report(context, notificationId, NotificationInteractionKind.SNOOZED)
+                report(context, notificationId, HomeNotificationInteractionKind.SNOOZED)
             }
 
-            KIND_DISMISS -> report(context, notificationId, NotificationInteractionKind.DISMISSED)
+            KIND_DISMISS -> report(context, notificationId, HomeNotificationInteractionKind.DISMISSED)
 
-            KIND_ACKNOWLEDGE -> report(context, notificationId, NotificationInteractionKind.ACKNOWLEDGED)
+            KIND_ACKNOWLEDGE -> report(context, notificationId, HomeNotificationInteractionKind.ACKNOWLEDGED)
 
-            KIND_SWIPED -> report(context, notificationId, NotificationInteractionKind.SWIPED)
+            KIND_SWIPED -> report(context, notificationId, HomeNotificationInteractionKind.SWIPED)
 
             else -> Unit
         }
@@ -88,7 +88,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun report(context: Context, notificationId: String?, kind: NotificationInteractionKind) {
+    private fun report(context: Context, notificationId: String?, kind: HomeNotificationInteractionKind) {
         if (notificationId == null) return
 
         launchAsync { NotificationInteractions.record(context.gateway.apollo, notificationId, kind) }

@@ -35,7 +35,7 @@ class HomeAssistantViewModel(application: Application) : AndroidViewModel(applic
                 response.errors?.firstOrNull()?.message ?: "Failed to load Home Assistant entities",
             )
 
-        data.homeAssistant.entities.forEach { entity ->
+        data.homeHomeAssistant.entities.forEach { entity ->
             val time = parseInstant(entity.time) ?: return@forEach
             upsert(HomeAssistantEntityUi(entity.entityId, entity.state, time))
         }
@@ -46,7 +46,7 @@ class HomeAssistantViewModel(application: Application) : AndroidViewModel(applic
     private suspend fun subscribe() {
         apollo.subscription(HomeAssistantUpdatesSubscription()).toFlow()
             .collect { response ->
-                val update = response.data?.events?.onHomeAssistantUpdate ?: return@collect
+                val update = response.data?.homeEvents?.onHomeHomeAssistantUpdate ?: return@collect
 
                 upsert(HomeAssistantEntityUi(update.entityId, update.state, Instant.now()))
                 publish()

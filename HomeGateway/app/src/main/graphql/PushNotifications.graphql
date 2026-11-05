@@ -1,5 +1,5 @@
 query PushNotifications {
-  pushNotifications(limit: 50) {
+  homePushNotifications(limit: 50) {
     id
     title
     body

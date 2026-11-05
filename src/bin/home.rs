@@ -344,25 +344,25 @@ struct CurlArgs {
 }
 
 const SEND_PUSH_MUTATION: &str =
-    "mutation($input: SendPushNotificationInput!) { sendPushNotification(input: $input) }";
+    "mutation($input: HomeSendPushNotificationInput!) { homeSendPushNotification(input: $input) }";
 
 const CURL_AUTH_HEADER_VARIABLE: &str = "HG_CURL_AUTH_HEADER";
 
-const WHOAMI_QUERY: &str = "query { auth { id name scopes } }";
+const WHOAMI_QUERY: &str = "query { homeAuth { id name scopes } }";
 
 const ENTITIES_QUERY: &str = r#"
 query {
-  entities {
+  homeEntities {
     __typename
-    ... on LightEntity { id name category room on }
-    ... on DoorEntity { id name category room open }
-    ... on GarageDoorEntity { id name category room open }
-    ... on AirPurifierEntity { id name category room on }
-    ... on PresenceEntity { id name category room }
-    ... on EnvironmentEntity { id name category room }
-    ... on EinkDisplayEntity { id name category room }
-    ... on RobotVacuumEntity { id name category room }
-    ... on MediaPlayerEntity { id name category room }
+    ... on HomeLightEntity { id name category room on }
+    ... on HomeDoorEntity { id name category room open }
+    ... on HomeGarageDoorEntity { id name category room open }
+    ... on HomeAirPurifierEntity { id name category room on }
+    ... on HomePresenceEntity { id name category room }
+    ... on HomeEnvironmentEntity { id name category room }
+    ... on HomeEinkDisplayEntity { id name category room }
+    ... on HomeRobotVacuumEntity { id name category room }
+    ... on HomeMediaPlayerEntity { id name category room }
   }
 }
 "#;
@@ -394,7 +394,7 @@ async fn login(cli: &Cli) -> Result<()> {
 
     let client = Client::new(&cli.base_url, None, None).await?;
     let data = client.graphql(WHOAMI_QUERY, json!({})).await?;
-    print_whoami(&data["auth"], cli.json)
+    print_whoami(&data["homeAuth"], cli.json)
 }
 
 fn logout() -> Result<()> {
@@ -416,7 +416,7 @@ async fn run(cli: &Cli) -> Result<()> {
         }
         Command::Whoami => {
             let data = client.graphql(WHOAMI_QUERY, json!({})).await?;
-            print_whoami(&data["auth"], cli.json)
+            print_whoami(&data["homeAuth"], cli.json)
         }
         Command::Ls(args) => list_entities(&client, args, cli.json).await,
         Command::Light(command) => light(&client, command, cli.json).await,
@@ -465,10 +465,14 @@ async fn adhoc(client: &Client, command: &AdhocCommand, as_json: bool) -> Result
                 .await?;
 
             if as_json {
-                return print_json(&data["adhocTasks"]);
+                return print_json(&data["homeAdhocTasks"]);
             }
 
-            for task in data["adhocTasks"].as_array().cloned().unwrap_or_default() {
+            for task in data["homeAdhocTasks"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+            {
                 let status = if task["pending"].as_bool().unwrap_or(false) {
                     "pending"
                 } else {
@@ -499,10 +503,10 @@ async fn adhoc(client: &Client, command: &AdhocCommand, as_json: bool) -> Result
                 .await?;
 
             if as_json {
-                return print_json(&data["adhocCronTasks"]);
+                return print_json(&data["homeAdhocCronTasks"]);
             }
 
-            for task in data["adhocCronTasks"]
+            for task in data["homeAdhocCronTasks"]
                 .as_array()
                 .cloned()
                 .unwrap_or_default()
@@ -554,7 +558,7 @@ async fn synergy_gaps(client: &Client, since: i64, interval: i64, as_json: bool)
         )
         .await?;
 
-    let gaps = &data["energy"]["gaps"];
+    let gaps = &data["homeEnergy"]["gaps"];
 
     if as_json {
         return print_json(gaps);
@@ -617,7 +621,7 @@ async fn weather(client: &Client, location: &str, as_json: bool) -> Result<()> {
         )
         .await?;
 
-    let days = &data["weather"]["forecast"]["days"];
+    let days = &data["homeWeather"]["forecast"]["days"];
 
     if as_json {
         return print_json(days);
@@ -645,12 +649,12 @@ async fn weather(client: &Client, location: &str, as_json: bool) -> Result<()> {
 async fn solar(client: &Client, as_json: bool) -> Result<()> {
     let data = client
         .graphql(
-            "query { solar { current { currentProductionWh todayProductionKwh yesterdayProductionKwh monthProductionKwh allTimeProductionKwh } } }",
+            "query { homeSolar { current { currentProductionWh todayProductionKwh yesterdayProductionKwh monthProductionKwh allTimeProductionKwh } } }",
             json!({}),
         )
         .await?;
 
-    let current = &data["solar"]["current"];
+    let current = &data["homeSolar"]["current"];
 
     if as_json {
         return print_json(current);
@@ -674,12 +678,12 @@ fn since_timestamp(seconds: i64) -> String {
 async fn energy(client: &Client, since: i64, as_json: bool) -> Result<()> {
     let data = client
         .graphql(
-            "query($since: DateTime!) { energy { history(input: { since: $since }) { time used solarExported } } }",
+            "query($since: DateTime!) { homeEnergy { history(input: { since: $since }) { time used solarExported } } }",
             json!({ "since": since_timestamp(since) }),
         )
         .await?;
 
-    let history = &data["energy"]["history"];
+    let history = &data["homeEnergy"]["history"];
 
     if as_json {
         return print_json(history);
@@ -710,12 +714,12 @@ async fn energy(client: &Client, since: i64, as_json: bool) -> Result<()> {
 async fn purifier_history(client: &Client, device: &str, since: i64, as_json: bool) -> Result<()> {
     let data = client
         .graphql(
-            "query($id: IdOrAlias!, $since: DateTime!) { airPurifier(id: $id) { history(since: $since) { time on mode pm25 } } }",
+            "query($id: IdOrAlias!, $since: DateTime!) { homeAirPurifier(id: $id) { history(since: $since) { time on mode pm25 } } }",
             json!({ "id": device, "since": since_timestamp(since) }),
         )
         .await?;
 
-    let history = &data["airPurifier"]["history"];
+    let history = &data["homeAirPurifier"]["history"];
 
     if as_json {
         return print_json(history);
@@ -758,7 +762,7 @@ async fn transperth(client: &Client, route: Option<&str>, as_json: bool) -> Resu
                 )
                 .await?;
 
-            match &data["transperth"]["route"] {
+            match &data["homeTransperth"]["route"] {
                 Value::Null => anyhow::bail!("no route with id {id}"),
                 found => vec![found.clone()],
             }
@@ -771,7 +775,7 @@ async fn transperth(client: &Client, route: Option<&str>, as_json: bool) -> Resu
                 )
                 .await?;
 
-            data["transperth"]["routes"]
+            data["homeTransperth"]["routes"]
                 .as_array()
                 .cloned()
                 .unwrap_or_default()
@@ -823,12 +827,12 @@ async fn fuel(
 ) -> Result<()> {
     let data = client
         .graphql(
-            "query($postcode: Int, $limit: Int) { fuelwatch(postcode: $postcode) { sites(limit: $limit) { siteId name brand suburb price priceTomorrow } } }",
+            "query($postcode: Int, $limit: Int) { homeFuelwatch(postcode: $postcode) { sites(limit: $limit) { siteId name brand suburb price priceTomorrow } } }",
             json!({ "postcode": postcode, "limit": limit }),
         )
         .await?;
 
-    let sites = &data["fuelwatch"]["sites"];
+    let sites = &data["homeFuelwatch"]["sites"];
 
     if as_json {
         return print_json(sites);
@@ -864,7 +868,7 @@ async fn unraid(client: &Client, as_json: bool) -> Result<()> {
         .graphql(
             r#"
             query {
-              unraid {
+              homeUnraid {
                 recordedAt
                 array { state usagePercent kilobytesUsed kilobytesTotal parityStatus parityProgress }
                 disks { name kind status temperature usagePercent errors spinning }
@@ -875,7 +879,7 @@ async fn unraid(client: &Client, as_json: bool) -> Result<()> {
         )
         .await?;
 
-    let unraid = &data["unraid"];
+    let unraid = &data["homeUnraid"];
 
     if as_json {
         return print_json(unraid);
@@ -927,7 +931,7 @@ async fn unraid_disk(client: &Client, disk: &str, since: i64, as_json: bool) -> 
         .graphql(
             r#"
             query($disk: String!, $since: DateTime!) {
-              unraid {
+              homeUnraid {
                 disk(name: $disk) {
                   name
                   history(since: $since) { time status temperature usagePercent errors spinning }
@@ -939,7 +943,7 @@ async fn unraid_disk(client: &Client, disk: &str, since: i64, as_json: bool) -> 
         )
         .await?;
 
-    let disk_data = &data["unraid"]["disk"];
+    let disk_data = &data["homeUnraid"]["disk"];
 
     if as_json {
         return print_json(disk_data);
@@ -986,7 +990,7 @@ fn print_whoami(auth: &Value, as_json: bool) -> Result<()> {
 
 async fn list_entities(client: &Client, args: &LsArgs, as_json: bool) -> Result<()> {
     let data = client.graphql(ENTITIES_QUERY, json!({})).await?;
-    let entities = data["entities"].as_array().cloned().unwrap_or_default();
+    let entities = data["homeEntities"].as_array().cloned().unwrap_or_default();
 
     let entities: Vec<Value> = match args.category {
         Some(category) => entities
@@ -1088,7 +1092,7 @@ async fn light(client: &Client, command: &LightCommand, as_json: bool) -> Result
         LightCommand::On { id } => {
             client
                 .graphql(
-                    "mutation($id: String!) { light(id: $id) { on } }",
+                    "mutation($id: String!) { homeLight(id: $id) { on } }",
                     json!({ "id": id }),
                 )
                 .await?
@@ -1096,7 +1100,7 @@ async fn light(client: &Client, command: &LightCommand, as_json: bool) -> Result
         LightCommand::Off { id } => {
             client
                 .graphql(
-                    "mutation($id: String!) { light(id: $id) { off } }",
+                    "mutation($id: String!) { homeLight(id: $id) { off } }",
                     json!({ "id": id }),
                 )
                 .await?
@@ -1104,7 +1108,7 @@ async fn light(client: &Client, command: &LightCommand, as_json: bool) -> Result
         LightCommand::Toggle { id } => {
             client
                 .graphql(
-                    "mutation($id: String!) { light(id: $id) { toggle } }",
+                    "mutation($id: String!) { homeLight(id: $id) { toggle } }",
                     json!({ "id": id }),
                 )
                 .await?
@@ -1116,12 +1120,12 @@ async fn light(client: &Client, command: &LightCommand, as_json: bool) -> Result
     };
 
     if as_json {
-        return print_json(&data["light"]);
+        return print_json(&data["homeLight"]);
     }
 
     match command {
         LightCommand::Set(_) => {
-            let applied = data["light"]
+            let applied = data["homeLight"]
                 .as_object()
                 .map(|fields| fields.keys().cloned().collect::<Vec<_>>())
                 .unwrap_or_default();
@@ -1139,16 +1143,19 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
         WorkflowCommand::List => {
             let data = client
                 .graphql(
-                    "query { workflows { slug name group tags enabled configEnabled dryRun reusable } }",
+                    "query { homeWorkflows { slug name group tags enabled configEnabled dryRun reusable } }",
                     json!({}),
                 )
                 .await?;
 
             if as_json {
-                return print_json(&data["workflows"]);
+                return print_json(&data["homeWorkflows"]);
             }
 
-            let workflows = data["workflows"].as_array().cloned().unwrap_or_default();
+            let workflows = data["homeWorkflows"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
             for workflow in &workflows {
                 let enabled = if workflow["enabled"].as_bool().unwrap_or(false) {
                     "enabled"
@@ -1174,7 +1181,7 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
         WorkflowCommand::Run { slug, inputs } => {
             let data = client
                 .graphql(
-                    "mutation($slug: String!, $inputs: JSON) { runWorkflow(slug: $slug, inputs: $inputs) }",
+                    "mutation($slug: String!, $inputs: JSON) { homeRunWorkflow(slug: $slug, inputs: $inputs) }",
                     json!({ "slug": slug, "inputs": input_map(inputs) }),
                 )
                 .await?;
@@ -1208,12 +1215,12 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
         WorkflowCommand::Runs { slug, limit } => {
             let data = client
                 .graphql(
-                    "query($slug: String, $limit: Int) { workflowRuns(slug: $slug, limit: $limit) { id slug name outcome dryRun durationMs error startedAt } }",
+                    "query($slug: String, $limit: Int) { homeWorkflowRuns(slug: $slug, limit: $limit) { id slug name outcome dryRun durationMs error startedAt } }",
                     json!({ "slug": slug, "limit": limit }),
                 )
                 .await?;
 
-            print_json(&data["workflowRuns"])
+            print_json(&data["homeWorkflowRuns"])
         }
     }
 }
@@ -1221,7 +1228,7 @@ async fn workflow(client: &Client, command: &WorkflowCommand, as_json: bool) -> 
 async fn set_enabled(client: &Client, slug: &str, enabled: bool, as_json: bool) -> Result<()> {
     let data = client
         .graphql(
-            "mutation($slug: String!, $enabled: Boolean!) { setWorkflowEnabled(slug: $slug, enabled: $enabled) }",
+            "mutation($slug: String!, $enabled: Boolean!) { homeSetWorkflowEnabled(slug: $slug, enabled: $enabled) }",
             json!({ "slug": slug, "enabled": enabled }),
         )
         .await?;
@@ -1239,16 +1246,16 @@ async fn mode(client: &Client, command: &ModeCommand, as_json: bool) -> Result<(
     match command {
         ModeCommand::Show => {
             let data = client
-                .graphql("query { mode { active } }", json!({}))
+                .graphql("query { homeMode { active } }", json!({}))
                 .await?;
 
             if as_json {
-                return print_json(&data["mode"]["active"]);
+                return print_json(&data["homeMode"]["active"]);
             }
 
             println!(
                 "{}",
-                data["mode"]["active"]
+                data["homeMode"]["active"]
                     .as_str()
                     .unwrap_or_default()
                     .to_lowercase()
@@ -1259,18 +1266,21 @@ async fn mode(client: &Client, command: &ModeCommand, as_json: bool) -> Result<(
         ModeCommand::Set { mode } => {
             let data = client
                 .graphql(
-                    "mutation($mode: Mode!) { setMode(mode: $mode) }",
+                    "mutation($mode: HomeMode!) { homeSetMode(mode: $mode) }",
                     json!({ "mode": mode.to_uppercase() }),
                 )
                 .await?;
 
             if as_json {
-                return print_json(&data["setMode"]);
+                return print_json(&data["homeSetMode"]);
             }
 
             println!(
                 "mode is now {}",
-                data["setMode"].as_str().unwrap_or_default().to_lowercase()
+                data["homeSetMode"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_lowercase()
             );
 
             Ok(())
@@ -1474,16 +1484,16 @@ async fn push(client: &Client, command: &PushCommand, as_json: bool) -> Result<(
         PushCommand::List { limit } => {
             let data = client
                 .graphql(
-                    "query($limit: Int) { pushNotifications(limit: $limit) { id tag title body category sendCount acknowledgedAt createdAt } }",
+                    "query($limit: Int) { homePushNotifications(limit: $limit) { id tag title body category sendCount acknowledgedAt createdAt } }",
                     json!({ "limit": limit }),
                 )
                 .await?;
 
             if as_json {
-                return print_json(&data["pushNotifications"]);
+                return print_json(&data["homePushNotifications"]);
             }
 
-            for notification in data["pushNotifications"]
+            for notification in data["homePushNotifications"]
                 .as_array()
                 .cloned()
                 .unwrap_or_default()
@@ -1555,13 +1565,13 @@ async fn lua(client: &Client, command: &LuaCommand, as_json: bool) -> Result<()>
     print_lua_result(&result, as_json)
 }
 
-const LUA_API_QUERY: &str = "{ luaApi { globals { name } namespaces { name fields { name } functions { name signature } } } }";
+const LUA_API_QUERY: &str = "{ homeLuaApi { globals { name } namespaces { name fields { name } functions { name signature } } } }";
 
 async fn lua_repl(client: &Client, args: &LuaReplArgs) -> Result<()> {
     let api = client.graphql(LUA_API_QUERY, json!({})).await?;
 
     let mut editor = rustyline::Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new()?;
-    editor.set_helper(Some(LuaCompleter::from_api(&api["luaApi"])));
+    editor.set_helper(Some(LuaCompleter::from_api(&api["homeLuaApi"])));
     let history = credentials::path()?.with_file_name("lua_history");
 
     if let Some(dir) = history.parent() {

@@ -37,7 +37,7 @@ impl RobotVacuumMutation {
     }
 }
 
-#[Object]
+#[Object(name = "HomeRobotVacuumMutation")]
 impl RobotVacuumMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, ScopeAction::Write)))]
     async fn start(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<bool> {

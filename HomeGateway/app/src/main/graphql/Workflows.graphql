@@ -1,5 +1,5 @@
 query Workflows {
-  workflows {
+  homeWorkflows {
     id
     slug
     name
@@ -12,15 +12,15 @@ query Workflows {
 }
 
 mutation SetWorkflowEnabled($slug: String!, $enabled: Boolean!) {
-  setWorkflowEnabled(slug: $slug, enabled: $enabled)
+  homeSetWorkflowEnabled(slug: $slug, enabled: $enabled)
 }
 
 mutation DryRunWorkflow($slug: String!) {
-  runWorkflow(slug: $slug, dryRun: true)
+  homeRunWorkflow(slug: $slug, dryRun: true)
 }
 
 query WorkflowRuns($slug: String) {
-  workflowRuns(slug: $slug, limit: 100) {
+  homeWorkflowRuns(slug: $slug, limit: 100) {
     id
     eventId
     slug
@@ -34,7 +34,7 @@ query WorkflowRuns($slug: String) {
 }
 
 query WorkflowRunTrace($eventId: UUID!) {
-  workflowRuns(eventId: $eventId) {
+  homeWorkflowRuns(eventId: $eventId) {
     id
     trigger
     steps {

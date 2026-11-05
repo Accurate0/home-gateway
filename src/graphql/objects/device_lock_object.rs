@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use crate::repo::device_lock::{DeviceLock, DeviceLockSource};
 
 #[derive(SimpleObject)]
-#[graphql(name = "DeviceLock")]
+#[graphql(name = "HomeDeviceLock")]
 pub struct DeviceLockObject {
     pub source: DeviceLockSource,
     pub locked_at: DateTime<Utc>,

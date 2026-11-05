@@ -6,11 +6,10 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct EnergyQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeEnergyQuery")]
 impl EnergyQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Energy, Action::Read)))]
-    async fn energy(
+    async fn home_energy(
         &self,
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<EnergyObject> {

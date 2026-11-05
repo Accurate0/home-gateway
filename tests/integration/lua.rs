@@ -547,7 +547,7 @@ async fn the_graphql_mutation_executes_a_script() {
     let parsed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
 
     assert_eq!(
-        parsed["data"]["executeLua"],
+        parsed["data"]["homeExecuteLua"],
         serde_json::json!(42),
         "unexpected graphql response: {parsed}"
     );

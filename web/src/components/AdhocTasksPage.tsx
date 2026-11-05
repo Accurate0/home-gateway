@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const AdhocTasksQuery = graphql`
   query AdhocTasksPageQuery {
-    adhocCronTasks {
+    homeAdhocCronTasks {
       id
       name
       schedule
@@ -19,7 +19,7 @@ const AdhocTasksQuery = graphql`
       rowsAffected
       outcome
     }
-    adhocTasks {
+    homeAdhocTasks {
       id
       ordinal
       name
@@ -34,13 +34,13 @@ const AdhocTasksQuery = graphql`
 
 const RunCronMutation = graphql`
   mutation AdhocTasksPageRunCronMutation($name: String!) {
-    runAdhocCronTask(name: $name)
+    homeRunAdhocCronTask(name: $name)
   }
 `;
 
 const RunPendingMutation = graphql`
   mutation AdhocTasksPageRunPendingMutation {
-    runPendingAdhocTasks
+    homeRunPendingAdhocTasks
   }
 `;
 
@@ -111,13 +111,13 @@ export default function AdhocTasksPage() {
           Scheduled
         </h2>
 
-        {data.adhocCronTasks.length === 0 ? (
+        {data.homeAdhocCronTasks.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             No cron tasks registered.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {data.adhocCronTasks.map((task) => (
+            {data.homeAdhocCronTasks.map((task) => (
               <div
                 key={task.id}
                 className="bg-card border-border flex items-center justify-between gap-4 rounded-2xl border p-4"
@@ -194,13 +194,13 @@ export default function AdhocTasksPage() {
           </button>
         </div>
 
-        {data.adhocTasks.length === 0 ? (
+        {data.homeAdhocTasks.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             No one-shot tasks registered.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {data.adhocTasks.map((task) => (
+            {data.homeAdhocTasks.map((task) => (
               <div
                 key={task.id}
                 className="bg-card border-border flex items-center justify-between gap-4 rounded-2xl border p-4"

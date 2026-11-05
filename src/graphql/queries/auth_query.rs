@@ -5,10 +5,12 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct AuthQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeAuthQuery")]
 impl AuthQuery {
-    async fn auth(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<AuthObject> {
+    async fn home_auth(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> async_graphql::Result<AuthObject> {
         let auth = ctx.data::<AuthContext>()?;
 
         Ok(AuthObject {

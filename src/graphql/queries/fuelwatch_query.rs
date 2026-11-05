@@ -6,11 +6,10 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct FuelWatchQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeFuelWatchQuery")]
 impl FuelWatchQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::FuelWatch, Action::Read)))]
-    async fn fuelwatch(
+    async fn home_fuelwatch(
         &self,
         _ctx: &async_graphql::Context<'_>,
         postcode: Option<i32>,

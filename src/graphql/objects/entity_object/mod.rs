@@ -59,6 +59,7 @@ pub(super) async fn last_seen_for(
 /// so categorising a kind never requires a frontend change. Variants are declared
 /// in display order — see [`EntityCategory::ORDERED`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Enum)]
+#[graphql(name = "HomeEntityCategory")]
 pub enum EntityCategory {
     Lights,
     Doors,
@@ -100,6 +101,7 @@ impl std::fmt::Display for EntityCategory {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeEntitySection")]
 pub struct EntitySection {
     pub category: EntityCategory,
     pub title: String,
@@ -118,6 +120,7 @@ impl EntitySection {
 }
 
 #[derive(Union)]
+#[graphql(name = "HomeEntity")]
 pub enum Entity {
     Light(LightEntity),
     Environment(EnvironmentEntity),

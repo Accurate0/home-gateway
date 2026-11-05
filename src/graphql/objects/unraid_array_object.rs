@@ -7,7 +7,7 @@ use crate::repo::RepoRegistry;
 
 pub struct UnraidArrayObject(pub ArraySnapshot);
 
-#[Object(name = "UnraidArray")]
+#[Object(name = "HomeUnraidArray")]
 impl UnraidArrayObject {
     async fn state(&self) -> String {
         self.0.state.to_string()

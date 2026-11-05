@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::lua::LuaClass;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[graphql(name = "HomeFuelSite")]
 #[lua(output)]
 pub struct FuelSite {
     pub site_id: i32,

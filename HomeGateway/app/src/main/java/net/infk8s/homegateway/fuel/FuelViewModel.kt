@@ -29,13 +29,13 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
         val data = response.data
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load fuel prices")
 
-        _state.value = FuelUiState.Loaded(data.fuelwatch.sites.map { it.toUi() })
+        _state.value = FuelUiState.Loaded(data.homeFuelwatch.sites.map { it.toUi() })
     }
 
     private suspend fun listen() {
         apollo.subscription(FuelWatchUpdatesSubscription()).toFlow()
             .collect { response ->
-                if (response.data?.events?.onFuelWatchUpdate != null) {
+                if (response.data?.homeEvents?.onHomeFuelWatchUpdate != null) {
                     load()
                 }
             }

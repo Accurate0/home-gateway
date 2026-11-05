@@ -1,58 +1,58 @@
 subscription Events {
-  events(filter: "*") {
+  homeEvents(filter: "*") {
     __typename
-    ... on LightUpdate {
+    ... on HomeLightUpdate {
       id
       on
     }
-    ... on DoorUpdate {
+    ... on HomeDoorUpdate {
       id
       open
     }
-    ... on GarageDoorUpdate {
+    ... on HomeGarageDoorUpdate {
       id
       garageState: state
     }
-    ... on AirPurifierUpdate {
+    ... on HomeAirPurifierUpdate {
       id
       on
       purifierMode: mode
       purifierSpeed: speed
       displayOn: display
     }
-    ... on DeviceLockUpdate {
+    ... on HomeDeviceLockUpdate {
       id
       locked
       source
       expiresAt
     }
-    ... on PresenceUpdate {
+    ... on HomePresenceUpdate {
       id
       present
     }
-    ... on EnvironmentUpdate {
+    ... on HomeEnvironmentUpdate {
       id
       readings {
         metric
         value
       }
     }
-    ... on PlantUpdate {
+    ... on HomePlantUpdate {
       id
       soilMoisture
     }
-    ... on MediaPlayerUpdate {
+    ... on HomeMediaPlayerUpdate {
       id
       appName
       mediaTitle
       mediaSeriesTitle
       state
     }
-    ... on DeviceConnectionUpdate {
+    ... on HomeDeviceConnectionUpdate {
       deviceId
       connected
     }
-    ... on CommandFailedUpdate {
+    ... on HomeCommandFailedUpdate {
       id
       kind
       attempts

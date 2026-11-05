@@ -8,7 +8,7 @@ import { Switch } from "./ui/switch";
 
 const WorkflowsQuery = graphql`
   query WorkflowsPageQuery {
-    workflows {
+    homeWorkflows {
       id
       slug
       name
@@ -24,17 +24,17 @@ const WorkflowsQuery = graphql`
 
 const SetEnabledMutation = graphql`
   mutation WorkflowsPageSetEnabledMutation($slug: String!, $enabled: Boolean!) {
-    setWorkflowEnabled(slug: $slug, enabled: $enabled)
+    homeSetWorkflowEnabled(slug: $slug, enabled: $enabled)
   }
 `;
 
 const DryRunMutation = graphql`
   mutation WorkflowsPageDryRunMutation($slug: String!) {
-    runWorkflow(slug: $slug, dryRun: true)
+    homeRunWorkflow(slug: $slug, dryRun: true)
   }
 `;
 
-type Workflow = WorkflowsPageQuery["response"]["workflows"][number];
+type Workflow = WorkflowsPageQuery["response"]["homeWorkflows"][number];
 
 export default function WorkflowsPage() {
   const data = useLazyLoadQuery<WorkflowsPageQuery>(WorkflowsQuery, {});
@@ -51,7 +51,7 @@ export default function WorkflowsPage() {
     commitDryRun({
       variables: { slug: w.slug },
       onCompleted: (response) => {
-        void navigate(`/runs?run=${encodeURIComponent(response.runWorkflow)}`);
+        void navigate(`/runs?run=${encodeURIComponent(response.homeRunWorkflow)}`);
       },
       onError: (error) => setDryRunError(`${w.name}: ${error.message}`),
     });
@@ -59,11 +59,11 @@ export default function WorkflowsPage() {
 
   const workflows = useMemo(
     () =>
-      data.workflows.map((w) => ({
+      data.homeWorkflows.map((w) => ({
         ...w,
         enabled: overrides.get(w.slug) ?? w.enabled,
       })),
-    [data.workflows, overrides],
+    [data.homeWorkflows, overrides],
   );
 
   const groups = useMemo(() => {

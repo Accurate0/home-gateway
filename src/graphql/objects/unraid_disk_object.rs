@@ -7,7 +7,7 @@ use crate::repo::RepoRegistry;
 
 pub struct UnraidDiskObject(pub DiskSnapshot);
 
-#[Object(name = "UnraidDisk")]
+#[Object(name = "HomeUnraidDisk")]
 impl UnraidDiskObject {
     async fn name(&self) -> &str {
         &self.0.name

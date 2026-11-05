@@ -2,6 +2,7 @@ use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
+#[graphql(name = "HomeSolarCurrentStatisticsAverages")]
 #[serde(rename_all = "camelCase")]
 pub struct SolarCurrentStatisticsAverages {
     pub last_15_mins: Option<f64>,
@@ -10,12 +11,14 @@ pub struct SolarCurrentStatisticsAverages {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
+#[graphql(name = "HomeSolarCurrentStatistics")]
 #[serde(rename_all = "camelCase")]
 pub struct SolarCurrentStatistics {
     pub averages: SolarCurrentStatisticsAverages,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
+#[graphql(name = "HomeSolarCurrentResponse")]
 #[serde(rename_all = "camelCase")]
 pub struct SolarCurrentResponse {
     pub current_production_wh: f64,
@@ -29,6 +32,7 @@ pub struct SolarCurrentResponse {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
+#[graphql(name = "HomeGenerationHistory")]
 #[serde(rename_all = "camelCase")]
 pub struct GenerationHistory {
     pub wh: f64,

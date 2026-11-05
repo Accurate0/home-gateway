@@ -3,6 +3,7 @@ use async_graphql::SimpleObject;
 use crate::lua::description::{ApiAlias, ApiClass, ApiDescription, ApiField, ApiFunction};
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLuaApiObject")]
 pub struct LuaApiObject {
     pub namespaces: Vec<LuaNamespaceObject>,
     pub globals: Vec<LuaFieldObject>,
@@ -12,6 +13,7 @@ pub struct LuaApiObject {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLuaNamespaceObject")]
 pub struct LuaNamespaceObject {
     pub name: String,
     pub fields: Vec<LuaFieldObject>,
@@ -19,6 +21,7 @@ pub struct LuaNamespaceObject {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLuaFunctionObject")]
 pub struct LuaFunctionObject {
     pub name: String,
     pub params: Vec<LuaFieldObject>,
@@ -28,6 +31,7 @@ pub struct LuaFunctionObject {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLuaFieldObject")]
 pub struct LuaFieldObject {
     pub name: String,
     pub r#type: String,
@@ -36,12 +40,14 @@ pub struct LuaFieldObject {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLuaClassObject")]
 pub struct LuaClassObject {
     pub name: String,
     pub fields: Vec<LuaFieldObject>,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLuaAliasObject")]
 pub struct LuaAliasObject {
     pub name: String,
     pub r#type: String,

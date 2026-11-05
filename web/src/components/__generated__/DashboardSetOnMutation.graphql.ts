@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b62f255e89e3b6a1eeeea07e2f3b6063>>
+ * @generated SignedSource<<f62c5b7649f207149c9e7004c1ecba25>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type DashboardSetOnMutation$variables = {
   id: string;
 };
 export type DashboardSetOnMutation$data = {
-  readonly light: {
+  readonly homeLight: {
     readonly on: boolean;
   };
 };
@@ -39,9 +39,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "LightMutation",
+    "concreteType": "HomeLightMutation",
     "kind": "LinkedField",
-    "name": "light",
+    "name": "homeLight",
     "plural": false,
     "selections": [
       {
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "6fc71d3e1bd1e77eb6c6c31c13c1123e",
+    "cacheID": "0da39b27f21362330bafb65966c9be56",
     "id": null,
     "metadata": {},
     "name": "DashboardSetOnMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardSetOnMutation(\n  $id: IdOrAlias!\n) {\n  light(id: $id) {\n    on\n  }\n}\n"
+    "text": "mutation DashboardSetOnMutation(\n  $id: IdOrAlias!\n) {\n  homeLight(id: $id) {\n    on\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "77ae4baead144d7ec1091b50ac957c58";
+(node as any).hash = "c4fdc3b43dc1bae0895129bb82832883";
 
 export default node;

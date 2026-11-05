@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c5d0775b4de408bb7314546bd858d1fc>>
+ * @generated SignedSource<<d9dffd1a745d8d82350460b8d09498ff>>
  * @lightSyntaxTransform
  */
 
@@ -36,7 +36,7 @@ const node: ReaderFragment = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "Forecast",
+      "concreteType": "HomeForecast",
       "kind": "LinkedField",
       "name": "forecast",
       "plural": false,
@@ -44,7 +44,7 @@ const node: ReaderFragment = {
         {
           "alias": null,
           "args": null,
-          "concreteType": "ForecastDetails",
+          "concreteType": "HomeForecastDetails",
           "kind": "LinkedField",
           "name": "days",
           "plural": true,
@@ -98,10 +98,10 @@ const node: ReaderFragment = {
       "storageKey": null
     }
   ],
-  "type": "WeatherObject",
+  "type": "HomeWeatherObject",
   "abstractKey": null
 };
 
-(node as any).hash = "18a399ca3236bf4a97ad5fe822b71e19";
+(node as any).hash = "01bd53701abc7c5fd827ba18b394dde2";
 
 export default node;

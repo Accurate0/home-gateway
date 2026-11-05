@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::lua::LuaClass;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[graphql(name = "HomeForecastDetails")]
 #[lua(name = "ForecastDay", output)]
 pub struct ForecastDetails {
     pub date_time: String,
@@ -40,6 +41,7 @@ impl ForecastDetails {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[graphql(name = "HomeForecastHour")]
 #[lua(output)]
 pub struct ForecastHour {
     pub date_time: String,
@@ -50,6 +52,7 @@ pub struct ForecastHour {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject, LuaClass)]
+#[graphql(name = "HomeForecast")]
 #[lua(output)]
 pub struct Forecast {
     pub days: Vec<ForecastDetails>,

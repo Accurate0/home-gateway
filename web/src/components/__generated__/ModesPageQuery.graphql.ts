@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7a08fe2e31c995ba1db53491c8bb9f28>>
+ * @generated SignedSource<<69d343cbf112bf3d8ae7bdd40e6d0015>>
  * @lightSyntaxTransform
  */
 
@@ -8,12 +8,12 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type LightTarget = "LEAVE_ALONE" | "OFF" | "ON" | "%future added value";
-export type Mode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
+export type HomeLightTarget = "LEAVE_ALONE" | "OFF" | "ON" | "%future added value";
+export type HomeMode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
 export type ModesPageQuery$variables = Record<PropertyKey, never>;
 export type ModesPageQuery$data = {
-  readonly mode: {
-    readonly active: Mode;
+  readonly homeMode: {
+    readonly active: HomeMode;
     readonly node: {
       readonly enabled?: boolean;
       readonly jitter?: string;
@@ -26,12 +26,12 @@ export type ModesPageQuery$data = {
         }>;
         readonly address: string;
         readonly coverage: number;
-        readonly currentTarget: LightTarget;
+        readonly currentTarget: HomeLightTarget;
         readonly deviceId: string | null | undefined;
         readonly name: string;
       }>;
       readonly minObservations?: number;
-      readonly mode: Mode;
+      readonly mode: HomeMode;
       readonly window?: string;
     };
   };
@@ -97,7 +97,7 @@ v3 = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "VacationLight",
+      "concreteType": "HomeVacationLight",
       "kind": "LinkedField",
       "name": "lights",
       "plural": true,
@@ -140,7 +140,7 @@ v3 = {
         {
           "alias": null,
           "args": null,
-          "concreteType": "VacationAction",
+          "concreteType": "HomeVacationAction",
           "kind": "LinkedField",
           "name": "actions",
           "plural": true,
@@ -180,7 +180,7 @@ v3 = {
       "storageKey": null
     }
   ],
-  "type": "VacationMode",
+  "type": "HomeVacationMode",
   "abstractKey": null
 };
 return {
@@ -193,9 +193,9 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "ModeStatus",
+        "concreteType": "HomeModeStatus",
         "kind": "LinkedField",
-        "name": "mode",
+        "name": "homeMode",
         "plural": false,
         "selections": [
           (v0/*:: as any*/),
@@ -228,9 +228,9 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "ModeStatus",
+        "concreteType": "HomeModeStatus",
         "kind": "LinkedField",
-        "name": "mode",
+        "name": "homeMode",
         "plural": false,
         "selections": [
           (v0/*:: as any*/),
@@ -260,16 +260,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "3a31b007c500145425a23b4107cc7d12",
+    "cacheID": "0292fbd25efc5d49cece26bc47b5186d",
     "id": null,
     "metadata": {},
     "name": "ModesPageQuery",
     "operationKind": "query",
-    "text": "query ModesPageQuery {\n  mode {\n    active\n    node(mode: VACATION) {\n      __typename\n      mode\n      ... on VacationMode {\n        enabled\n        window\n        jitter\n        minObservations\n        lights {\n          address\n          deviceId\n          name\n          coverage\n          currentTarget\n          actions {\n            at\n            on\n            slot\n            onFraction\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query ModesPageQuery {\n  homeMode {\n    active\n    node(mode: VACATION) {\n      __typename\n      mode\n      ... on HomeVacationMode {\n        enabled\n        window\n        jitter\n        minObservations\n        lights {\n          address\n          deviceId\n          name\n          coverage\n          currentTarget\n          actions {\n            at\n            on\n            slot\n            onFraction\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "32fe6a0a495fb78d34ea85da4c19e373";
+(node as any).hash = "7254b6e7fb8014a7b9204cc034a198f3";
 
 export default node;

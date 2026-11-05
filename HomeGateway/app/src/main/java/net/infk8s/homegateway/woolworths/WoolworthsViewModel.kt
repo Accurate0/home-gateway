@@ -47,14 +47,14 @@ class WoolworthsViewModel(application: Application) : AndroidViewModel(applicati
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load products")
 
         _state.value = WoolworthsUiState.Loaded(
-            data.woolworths.products.map { WoolworthsProductUi(it.productId, it.name, it.price) },
+            data.homeWoolworths.products.map { WoolworthsProductUi(it.productId, it.name, it.price) },
         )
     }
 
     private suspend fun listen() {
         apollo.subscription(WoolworthsUpdatesSubscription()).toFlow()
             .collect { response ->
-                val update = response.data?.events?.onWoolworthsUpdate ?: return@collect
+                val update = response.data?.homeEvents?.onHomeWoolworthsUpdate ?: return@collect
 
                 load()
                 if (update.productId in _histories.value) {
@@ -69,7 +69,7 @@ class WoolworthsViewModel(application: Application) : AndroidViewModel(applicati
             val data = response.data
                 ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load price history")
 
-            val points = historyPoints(data.woolworths.priceHistory, { it.time }, { it.price })
+            val points = historyPoints(data.homeWoolworths.priceHistory, { it.time }, { it.price })
             _histories.value += productId to points
         } catch (e: CancellationException) {
             throw e

@@ -25,7 +25,7 @@ impl GarageDoorMutation {
     }
 }
 
-#[Object]
+#[Object(name = "HomeGarageDoorMutation")]
 impl GarageDoorMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::GarageDoor, ScopeAction::Write)))]
     async fn open(&self) -> async_graphql::Result<CommandOutcome> {

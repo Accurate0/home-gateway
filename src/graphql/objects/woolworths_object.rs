@@ -6,6 +6,7 @@ use itertools::Itertools;
 pub struct WoolworthsObject {}
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWoolworthsProducts")]
 #[graphql(rename_fields = "camelCase")]
 pub struct WoolworthsProducts {
     pub product_id: i64,
@@ -14,12 +15,14 @@ pub struct WoolworthsProducts {
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeWoolworthsPriceHistoryInput")]
 pub struct WoolworthsPriceHistoryInput {
     pub product_id: i64,
     pub since: DateTime<Utc>,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWoolworthsPricePoint")]
 #[graphql(rename_fields = "camelCase")]
 pub struct WoolworthsPricePoint {
     pub product_id: i64,
@@ -28,7 +31,7 @@ pub struct WoolworthsPricePoint {
     pub time: DateTime<Utc>,
 }
 
-#[Object]
+#[Object(name = "HomeWoolworthsObject")]
 impl WoolworthsObject {
     pub async fn products(
         &self,

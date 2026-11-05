@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9997d283290d9615040358e683e52213>>
+ * @generated SignedSource<<fb3dbe0307b929513979637825dffccd>>
  * @lightSyntaxTransform
  */
 
@@ -10,8 +10,8 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type HomeAssistantPageSubscription$variables = Record<PropertyKey, never>;
 export type HomeAssistantPageSubscription$data = {
-  readonly events: {
-    readonly __typename: "HomeAssistantUpdate";
+  readonly homeEvents: {
+    readonly __typename: "HomeHomeAssistantUpdate";
     readonly entityId: string;
     readonly eventId: any;
     readonly id: string;
@@ -75,7 +75,7 @@ v3 = {
       "storageKey": null
     }
   ],
-  "type": "HomeAssistantUpdate",
+  "type": "HomeHomeAssistantUpdate",
   "abstractKey": null
 },
 v4 = [
@@ -93,13 +93,13 @@ return {
         "args": (v0/*:: as any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "events",
+        "name": "homeEvents",
         "plural": false,
         "selections": [
           (v1/*:: as any*/),
           (v3/*:: as any*/)
         ],
-        "storageKey": "events(filter:\"home_assistant:*\")"
+        "storageKey": "homeEvents(filter:\"home_assistant:*\")"
       }
     ],
     "type": "Subscription",
@@ -116,7 +116,7 @@ return {
         "args": (v0/*:: as any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "events",
+        "name": "homeEvents",
         "plural": false,
         "selections": [
           (v1/*:: as any*/),
@@ -124,97 +124,97 @@ return {
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "AirPurifierUpdate",
+            "type": "HomeAirPurifierUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "CommandFailedUpdate",
+            "type": "HomeCommandFailedUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "DeviceBatteryUpdate",
+            "type": "HomeDeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "DeviceConnectionUpdate",
+            "type": "HomeDeviceConnectionUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "DeviceLockUpdate",
+            "type": "HomeDeviceLockUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "DoorUpdate",
+            "type": "HomeDoorUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "EnvironmentUpdate",
+            "type": "HomeEnvironmentUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "GarageDoorUpdate",
+            "type": "HomeGarageDoorUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "JellyfinUpdate",
+            "type": "HomeJellyfinUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "LightUpdate",
+            "type": "HomeLightUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "MediaPlayerUpdate",
+            "type": "HomeMediaPlayerUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "PlantUpdate",
+            "type": "HomePlantUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v4/*:: as any*/),
-            "type": "PresenceUpdate",
+            "type": "HomePresenceUpdate",
             "abstractKey": null
           }
         ],
-        "storageKey": "events(filter:\"home_assistant:*\")"
+        "storageKey": "homeEvents(filter:\"home_assistant:*\")"
       }
     ]
   },
   "params": {
-    "cacheID": "e65750b9de9a2fec45c7b751faaab9a7",
+    "cacheID": "9247c7a6b470bc7e277bf2ae1c15b900",
     "id": null,
     "metadata": {},
     "name": "HomeAssistantPageSubscription",
     "operationKind": "subscription",
-    "text": "subscription HomeAssistantPageSubscription {\n  events(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on AirPurifierUpdate {\n      id\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on DeviceLockUpdate {\n      id\n    }\n    ... on DoorUpdate {\n      id\n    }\n    ... on EnvironmentUpdate {\n      id\n    }\n    ... on GarageDoorUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n    ... on LightUpdate {\n      id\n    }\n    ... on MediaPlayerUpdate {\n      id\n    }\n    ... on PlantUpdate {\n      id\n    }\n    ... on PresenceUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription HomeAssistantPageSubscription {\n  homeEvents(filter: \"home_assistant:*\") {\n    __typename\n    ... on HomeHomeAssistantUpdate {\n      id\n      eventId\n      state\n      entityId\n    }\n    ... on HomeAirPurifierUpdate {\n      id\n    }\n    ... on HomeCommandFailedUpdate {\n      id\n    }\n    ... on HomeDeviceBatteryUpdate {\n      id\n    }\n    ... on HomeDeviceConnectionUpdate {\n      id\n    }\n    ... on HomeDeviceLockUpdate {\n      id\n    }\n    ... on HomeDoorUpdate {\n      id\n    }\n    ... on HomeEnvironmentUpdate {\n      id\n    }\n    ... on HomeGarageDoorUpdate {\n      id\n    }\n    ... on HomeJellyfinUpdate {\n      id\n    }\n    ... on HomeLightUpdate {\n      id\n    }\n    ... on HomeMediaPlayerUpdate {\n      id\n    }\n    ... on HomePlantUpdate {\n      id\n    }\n    ... on HomePresenceUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1e2fec4706b604497b4becbe8e7fe88e";
+(node as any).hash = "047bf4fe6d191d9ae39ea9bdf4609e49";
 
 export default node;

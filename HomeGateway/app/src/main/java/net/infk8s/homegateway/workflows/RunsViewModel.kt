@@ -99,7 +99,7 @@ class RunsViewModel(application: Application) : AndroidViewModel(application) {
                 val data = response.data
                     ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load trace")
 
-                data.workflowRuns.firstOrNull { it.id == run.id }
+                data.homeWorkflowRuns.firstOrNull { it.id == run.id }
                     ?.let { RunTraceState.Loaded(it.toUi()) }
                     ?: RunTraceState.Missing
             } catch (e: CancellationException) {
@@ -118,7 +118,7 @@ class RunsViewModel(application: Application) : AndroidViewModel(application) {
         val data = response.data
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load runs")
 
-        data.workflowRuns.map { it.toUi() }.also { _state.value = RunsUiState.Loaded(it) }
+        data.homeWorkflowRuns.map { it.toUi() }.also { _state.value = RunsUiState.Loaded(it) }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
@@ -130,7 +130,7 @@ class RunsViewModel(application: Application) : AndroidViewModel(application) {
         null
     }
 
-    private fun WorkflowRunsQuery.WorkflowRun.toUi() = RunUi(
+    private fun WorkflowRunsQuery.HomeWorkflowRun.toUi() = RunUi(
         id = id,
         eventId = eventId,
         slug = slug,
@@ -142,7 +142,7 @@ class RunsViewModel(application: Application) : AndroidViewModel(application) {
         startedAt = parseInstant(startedAt),
     )
 
-    private fun WorkflowRunTraceQuery.WorkflowRun.toUi() = RunTraceUi(
+    private fun WorkflowRunTraceQuery.HomeWorkflowRun.toUi() = RunTraceUi(
         steps = steps.map {
             RunStepUi(
                 seq = it.seq,

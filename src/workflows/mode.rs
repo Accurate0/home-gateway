@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
     async_graphql::Enum,
     schemars::JsonSchema,
 )]
+#[graphql(name = "HomeMode")]
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
     #[default]

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::repo::jellyfin::JellyfinSessionRow;
 
 #[derive(SimpleObject)]
-#[graphql(name = "JellyfinSession", complex, rename_fields = "camelCase")]
+#[graphql(name = "HomeJellyfinSession", complex, rename_fields = "camelCase")]
 pub struct JellyfinSessionObject {
     pub event_id: Uuid,
     pub session_id: String,

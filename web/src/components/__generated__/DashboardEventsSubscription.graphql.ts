@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f4579f838cb2b8749036b6dffca60768>>
+ * @generated SignedSource<<734b2730265530a211be3e0c5b6a8fed>>
  * @lightSyntaxTransform
  */
 
@@ -8,32 +8,32 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
-export type DeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
-export type GarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
+export type HomeAirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
+export type HomeDeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
+export type HomeGarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
 export type DashboardEventsSubscription$variables = Record<PropertyKey, never>;
 export type DashboardEventsSubscription$data = {
-  readonly events: {
-    readonly __typename: "AirPurifierUpdate";
+  readonly homeEvents: {
+    readonly __typename: "HomeAirPurifierUpdate";
     readonly displayOn: boolean | null | undefined;
     readonly id: string;
     readonly name: string;
     readonly on: boolean;
-    readonly purifierMode: AirPurifierMode | null | undefined;
+    readonly purifierMode: HomeAirPurifierMode | null | undefined;
     readonly purifierSpeed: number | null | undefined;
   } | {
-    readonly __typename: "DeviceLockUpdate";
+    readonly __typename: "HomeDeviceLockUpdate";
     readonly expiresAt: any | null | undefined;
     readonly id: string;
-    readonly lockSource: DeviceLockSource | null | undefined;
+    readonly lockSource: HomeDeviceLockSource | null | undefined;
     readonly locked: boolean;
   } | {
-    readonly __typename: "DoorUpdate";
+    readonly __typename: "HomeDoorUpdate";
     readonly id: string;
     readonly name: string;
     readonly open: boolean;
   } | {
-    readonly __typename: "EnvironmentUpdate";
+    readonly __typename: "HomeEnvironmentUpdate";
     readonly id: string;
     readonly name: string;
     readonly readings: ReadonlyArray<{
@@ -41,17 +41,17 @@ export type DashboardEventsSubscription$data = {
       readonly value: number;
     }>;
   } | {
-    readonly __typename: "GarageDoorUpdate";
-    readonly garageState: GarageDoorState;
+    readonly __typename: "HomeGarageDoorUpdate";
+    readonly garageState: HomeGarageDoorState;
     readonly id: string;
     readonly name: string;
   } | {
-    readonly __typename: "LightUpdate";
+    readonly __typename: "HomeLightUpdate";
     readonly id: string;
     readonly name: string;
     readonly on: boolean;
   } | {
-    readonly __typename: "MediaPlayerUpdate";
+    readonly __typename: "HomeMediaPlayerUpdate";
     readonly appName: string | null | undefined;
     readonly artworkUrl: string | null | undefined;
     readonly durationSeconds: number | null | undefined;
@@ -68,12 +68,12 @@ export type DashboardEventsSubscription$data = {
     readonly state: string;
     readonly volumeLevel: number | null | undefined;
   } | {
-    readonly __typename: "PlantUpdate";
+    readonly __typename: "HomePlantUpdate";
     readonly id: string;
     readonly name: string;
     readonly soilMoisture: number;
   } | {
-    readonly __typename: "PresenceUpdate";
+    readonly __typename: "HomePresenceUpdate";
     readonly id: string;
     readonly name: string;
     readonly present: boolean;
@@ -131,7 +131,7 @@ v5 = {
     (v3/*:: as any*/),
     (v4/*:: as any*/)
   ],
-  "type": "LightUpdate",
+  "type": "HomeLightUpdate",
   "abstractKey": null
 },
 v6 = {
@@ -147,7 +147,7 @@ v6 = {
       "storageKey": null
     }
   ],
-  "type": "DoorUpdate",
+  "type": "HomeDoorUpdate",
   "abstractKey": null
 },
 v7 = {
@@ -163,7 +163,7 @@ v7 = {
       "storageKey": null
     }
   ],
-  "type": "GarageDoorUpdate",
+  "type": "HomeGarageDoorUpdate",
   "abstractKey": null
 },
 v8 = {
@@ -194,7 +194,7 @@ v8 = {
       "storageKey": null
     }
   ],
-  "type": "AirPurifierUpdate",
+  "type": "HomeAirPurifierUpdate",
   "abstractKey": null
 },
 v9 = {
@@ -223,7 +223,7 @@ v9 = {
       "storageKey": null
     }
   ],
-  "type": "DeviceLockUpdate",
+  "type": "HomeDeviceLockUpdate",
   "abstractKey": null
 },
 v10 = {
@@ -239,7 +239,7 @@ v10 = {
       "storageKey": null
     }
   ],
-  "type": "PresenceUpdate",
+  "type": "HomePresenceUpdate",
   "abstractKey": null
 },
 v11 = {
@@ -250,7 +250,7 @@ v11 = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "MetricReading",
+      "concreteType": "HomeMetricReading",
       "kind": "LinkedField",
       "name": "readings",
       "plural": true,
@@ -273,7 +273,7 @@ v11 = {
       "storageKey": null
     }
   ],
-  "type": "EnvironmentUpdate",
+  "type": "HomeEnvironmentUpdate",
   "abstractKey": null
 },
 v12 = {
@@ -289,7 +289,7 @@ v12 = {
       "storageKey": null
     }
   ],
-  "type": "PlantUpdate",
+  "type": "HomePlantUpdate",
   "abstractKey": null
 },
 v13 = {
@@ -389,7 +389,7 @@ v13 = {
       "storageKey": null
     }
   ],
-  "type": "MediaPlayerUpdate",
+  "type": "HomeMediaPlayerUpdate",
   "abstractKey": null
 },
 v14 = [
@@ -407,7 +407,7 @@ return {
         "args": (v0/*:: as any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "events",
+        "name": "homeEvents",
         "plural": false,
         "selections": [
           (v1/*:: as any*/),
@@ -421,7 +421,7 @@ return {
           (v12/*:: as any*/),
           (v13/*:: as any*/)
         ],
-        "storageKey": "events(filter:\"*\")"
+        "storageKey": "homeEvents(filter:\"*\")"
       }
     ],
     "type": "Subscription",
@@ -438,7 +438,7 @@ return {
         "args": (v0/*:: as any*/),
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "events",
+        "name": "homeEvents",
         "plural": false,
         "selections": [
           (v1/*:: as any*/),
@@ -454,49 +454,49 @@ return {
           {
             "kind": "InlineFragment",
             "selections": (v14/*:: as any*/),
-            "type": "CommandFailedUpdate",
+            "type": "HomeCommandFailedUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v14/*:: as any*/),
-            "type": "DeviceBatteryUpdate",
+            "type": "HomeDeviceBatteryUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v14/*:: as any*/),
-            "type": "DeviceConnectionUpdate",
+            "type": "HomeDeviceConnectionUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v14/*:: as any*/),
-            "type": "HomeAssistantUpdate",
+            "type": "HomeHomeAssistantUpdate",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
             "selections": (v14/*:: as any*/),
-            "type": "JellyfinUpdate",
+            "type": "HomeJellyfinUpdate",
             "abstractKey": null
           }
         ],
-        "storageKey": "events(filter:\"*\")"
+        "storageKey": "homeEvents(filter:\"*\")"
       }
     ]
   },
   "params": {
-    "cacheID": "3ca5105f6b2b76a3e77b6134c35971ac",
+    "cacheID": "245957ba0dd5a065ecdf2e860f447076",
     "id": null,
     "metadata": {},
     "name": "DashboardEventsSubscription",
     "operationKind": "subscription",
-    "text": "subscription DashboardEventsSubscription {\n  events(filter: \"*\") {\n    __typename\n    ... on LightUpdate {\n      id\n      name\n      on\n    }\n    ... on DoorUpdate {\n      id\n      name\n      open\n    }\n    ... on GarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on AirPurifierUpdate {\n      id\n      name\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      displayOn: display\n    }\n    ... on DeviceLockUpdate {\n      id\n      locked\n      lockSource: source\n      expiresAt\n    }\n    ... on PresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on EnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on PlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on MediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on CommandFailedUpdate {\n      id\n    }\n    ... on DeviceBatteryUpdate {\n      id\n    }\n    ... on DeviceConnectionUpdate {\n      id\n    }\n    ... on HomeAssistantUpdate {\n      id\n    }\n    ... on JellyfinUpdate {\n      id\n    }\n  }\n}\n"
+    "text": "subscription DashboardEventsSubscription {\n  homeEvents(filter: \"*\") {\n    __typename\n    ... on HomeLightUpdate {\n      id\n      name\n      on\n    }\n    ... on HomeDoorUpdate {\n      id\n      name\n      open\n    }\n    ... on HomeGarageDoorUpdate {\n      id\n      name\n      garageState: state\n    }\n    ... on HomeAirPurifierUpdate {\n      id\n      name\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      displayOn: display\n    }\n    ... on HomeDeviceLockUpdate {\n      id\n      locked\n      lockSource: source\n      expiresAt\n    }\n    ... on HomePresenceUpdate {\n      id\n      name\n      present\n    }\n    ... on HomeEnvironmentUpdate {\n      id\n      name\n      readings {\n        metric\n        value\n      }\n    }\n    ... on HomePlantUpdate {\n      id\n      name\n      soilMoisture\n    }\n    ... on HomeMediaPlayerUpdate {\n      id\n      name\n      room\n      state: entityState\n      appName\n      source\n      mediaTitle\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      volumeLevel\n      muted\n      artworkUrl\n    }\n    ... on HomeCommandFailedUpdate {\n      id\n    }\n    ... on HomeDeviceBatteryUpdate {\n      id\n    }\n    ... on HomeDeviceConnectionUpdate {\n      id\n    }\n    ... on HomeHomeAssistantUpdate {\n      id\n    }\n    ... on HomeJellyfinUpdate {\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e032ca958b0f2f340fe27e86cfb9f2fb";
+(node as any).hash = "6e51c251999b80ad4e63b8195d2af26c";
 
 export default node;

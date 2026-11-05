@@ -12,6 +12,7 @@ use sqlx::{Pool, Postgres};
     async_graphql::Enum,
     strum::Display,
 )]
+#[graphql(name = "HomeDeviceLockSource")]
 #[sqlx(type_name = "device_lock_source", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]

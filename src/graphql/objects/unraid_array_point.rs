@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use crate::repo::unraid::UnraidArrayHistoryRow;
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeUnraidArrayPoint")]
 pub struct UnraidArrayPoint {
     pub time: DateTime<Utc>,
     pub kilobytes_used: i64,

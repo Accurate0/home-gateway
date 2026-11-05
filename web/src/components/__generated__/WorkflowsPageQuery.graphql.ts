@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<081704832c1a94000d6e4f5dc8ff9f50>>
+ * @generated SignedSource<<6e51236ac9ba3a406ca633e607fc2b5e>>
  * @lightSyntaxTransform
  */
 
@@ -8,16 +8,16 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type Mode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
+export type HomeMode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
 export type WorkflowsPageQuery$variables = Record<PropertyKey, never>;
 export type WorkflowsPageQuery$data = {
-  readonly workflows: ReadonlyArray<{
+  readonly homeWorkflows: ReadonlyArray<{
     readonly configEnabled: boolean;
     readonly dryRun: boolean;
     readonly enabled: boolean;
     readonly group: string;
     readonly id: string;
-    readonly modes: ReadonlyArray<Mode>;
+    readonly modes: ReadonlyArray<HomeMode>;
     readonly name: string;
     readonly reusable: boolean;
     readonly slug: string;
@@ -33,9 +33,9 @@ var v0 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "WorkflowStatus",
+    "concreteType": "HomeWorkflowStatus",
     "kind": "LinkedField",
-    "name": "workflows",
+    "name": "homeWorkflows",
     "plural": true,
     "selections": [
       {
@@ -123,16 +123,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "d09031b9363f1db4280df45d94197d44",
+    "cacheID": "d0f34f7b6b8abc0c3f92d2959c9dc1a5",
     "id": null,
     "metadata": {},
     "name": "WorkflowsPageQuery",
     "operationKind": "query",
-    "text": "query WorkflowsPageQuery {\n  workflows {\n    id\n    slug\n    name\n    group\n    enabled\n    configEnabled\n    dryRun\n    reusable\n    modes\n  }\n}\n"
+    "text": "query WorkflowsPageQuery {\n  homeWorkflows {\n    id\n    slug\n    name\n    group\n    enabled\n    configEnabled\n    dryRun\n    reusable\n    modes\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5dd48f5bb7e8ec9b54603070983fe8d0";
+(node as any).hash = "1ad0a283f38e53381ee4bfba8ea49f35";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<eec9fd4dead2249f09dd0bdc58afafad>>
+ * @generated SignedSource<<a920883d841965f5d6e9ea715be65397>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type AdhocTasksPageRunCronMutation$variables = {
   name: string;
 };
 export type AdhocTasksPageRunCronMutation$data = {
-  readonly runAdhocCronTask: boolean;
+  readonly homeRunAdhocCronTask: boolean;
 };
 export type AdhocTasksPageRunCronMutation = {
   response: AdhocTasksPageRunCronMutation$data;
@@ -38,7 +38,7 @@ v1 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "runAdhocCronTask",
+    "name": "homeRunAdhocCronTask",
     "storageKey": null
   }
 ];
@@ -60,16 +60,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "c65a8dce40d8cc1714abb5ebb4133f80",
+    "cacheID": "ae0acf2e4613c665c9aa160ff581c7c0",
     "id": null,
     "metadata": {},
     "name": "AdhocTasksPageRunCronMutation",
     "operationKind": "mutation",
-    "text": "mutation AdhocTasksPageRunCronMutation(\n  $name: String!\n) {\n  runAdhocCronTask(name: $name)\n}\n"
+    "text": "mutation AdhocTasksPageRunCronMutation(\n  $name: String!\n) {\n  homeRunAdhocCronTask(name: $name)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "04499c50252143305e2501662fb97801";
+(node as any).hash = "e6bc155d1197082d2054bf5825c2128b";
 
 export default node;

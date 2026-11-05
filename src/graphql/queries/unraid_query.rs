@@ -8,11 +8,10 @@ use crate::repo::RepoRegistry;
 #[derive(Default)]
 pub struct UnraidQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeUnraidQuery")]
 impl UnraidQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Unraid, Action::Read)))]
-    async fn unraid(
+    async fn home_unraid(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Option<UnraidObject>> {

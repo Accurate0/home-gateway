@@ -7,11 +7,12 @@ use sqlx::{Pool, Postgres};
 pub struct SolarObject {}
 
 #[derive(InputObject)]
+#[graphql(name = "HomeSolarHistoryInput")]
 pub struct SolarHistoryInput {
     pub since: DateTime<Utc>,
 }
 
-#[Object]
+#[Object(name = "HomeSolarObject")]
 impl SolarObject {
     pub async fn current(
         &self,

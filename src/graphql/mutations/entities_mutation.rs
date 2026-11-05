@@ -14,10 +14,9 @@ use crate::graphql::mutations::robot_vacuum_mutation::RobotVacuumMutation;
 #[derive(Default)]
 pub struct EntitiesMutation;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeEntitiesMutation")]
 impl EntitiesMutation {
-    async fn light(
+    async fn home_light(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -31,7 +30,7 @@ impl EntitiesMutation {
         })
     }
 
-    async fn robot_vacuum(
+    async fn home_robot_vacuum(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -48,7 +47,7 @@ impl EntitiesMutation {
         )))
     }
 
-    async fn garage_door(
+    async fn home_garage_door(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -65,7 +64,7 @@ impl EntitiesMutation {
         Ok(GarageDoorMutation::new(address))
     }
 
-    async fn air_purifier(
+    async fn home_air_purifier(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -82,7 +81,7 @@ impl EntitiesMutation {
         Ok(AirPurifierMutation::new(address))
     }
 
-    async fn device_lock(
+    async fn home_device_lock(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -101,7 +100,7 @@ impl EntitiesMutation {
         Ok(DeviceLockMutation::new(device.id.clone()))
     }
 
-    async fn media_player(
+    async fn home_media_player(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -118,7 +117,7 @@ impl EntitiesMutation {
         Ok(MediaPlayerMutation::new(settings))
     }
 
-    async fn eink_display(
+    async fn home_eink_display(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use crate::graphql::objects::notification_interaction_kind::NotificationInteractionKind;
 
 #[derive(SimpleObject)]
-#[graphql(name = "PushNotificationInteraction")]
+#[graphql(name = "HomePushNotificationInteraction")]
 pub struct PushNotificationInteractionObject {
     pub kind: NotificationInteractionKind,
     pub at: DateTime<Utc>,

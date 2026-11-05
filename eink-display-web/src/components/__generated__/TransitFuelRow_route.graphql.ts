@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b90f6b200aa1fd658cd7192b4bde1887>>
+ * @generated SignedSource<<0528f7e3777548ef84f1cef1ddccb40e>>
  * @lightSyntaxTransform
  */
 
@@ -50,7 +50,7 @@ const node: ReaderFragment = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "DepartureObject",
+      "concreteType": "HomeDepartureObject",
       "kind": "LinkedField",
       "name": "departures",
       "plural": true,
@@ -101,10 +101,10 @@ const node: ReaderFragment = {
       "storageKey": null
     }
   ],
-  "type": "RouteDeparturesObject",
+  "type": "HomeRouteDeparturesObject",
   "abstractKey": null
 };
 
-(node as any).hash = "c9725711c1bbbec7f8d26d0763c966bc";
+(node as any).hash = "bc22bb74bb2f905bfbf7ad9788217ae3";
 
 export default node;

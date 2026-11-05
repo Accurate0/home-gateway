@@ -1,101 +1,101 @@
 mutation LightOn($id: IdOrAlias!) {
-  light(id: $id) {
+  homeLight(id: $id) {
     on
   }
 }
 
 mutation LightOff($id: IdOrAlias!) {
-  light(id: $id) {
+  homeLight(id: $id) {
     off
   }
 }
 
 mutation LightSetBrightness($id: IdOrAlias!, $value: Int!) {
-  light(id: $id) {
+  homeLight(id: $id) {
     setBrightness(input: { value: $value })
   }
 }
 
 mutation LightSetColourTemperature($id: IdOrAlias!, $value: Int!) {
-  light(id: $id) {
+  homeLight(id: $id) {
     setColourTemperature(input: { value: $value })
   }
 }
 
 mutation MediaPlayPause($id: IdOrAlias!) {
-  mediaPlayer(id: $id) {
+  homeMediaPlayer(id: $id) {
     playPause
   }
 }
 
 mutation MediaStop($id: IdOrAlias!) {
-  mediaPlayer(id: $id) {
+  homeMediaPlayer(id: $id) {
     stop
   }
 }
 
 mutation VacuumStart($id: IdOrAlias!) {
-  robotVacuum(id: $id) {
+  homeRobotVacuum(id: $id) {
     start
   }
 }
 
 mutation VacuumStop($id: IdOrAlias!) {
-  robotVacuum(id: $id) {
+  homeRobotVacuum(id: $id) {
     stop
   }
 }
 
 mutation VacuumDock($id: IdOrAlias!) {
-  robotVacuum(id: $id) {
+  homeRobotVacuum(id: $id) {
     dock
   }
 }
 
 mutation GarageDoorOpen($id: IdOrAlias!) {
-  garageDoor(id: $id) {
+  homeGarageDoor(id: $id) {
     open
   }
 }
 
 mutation GarageDoorClose($id: IdOrAlias!) {
-  garageDoor(id: $id) {
+  homeGarageDoor(id: $id) {
     close
   }
 }
 
 mutation AirPurifierTurnOn($id: IdOrAlias!) {
-  airPurifier(id: $id) {
+  homeAirPurifier(id: $id) {
     turnOn
   }
 }
 
 mutation AirPurifierTurnOff($id: IdOrAlias!) {
-  airPurifier(id: $id) {
+  homeAirPurifier(id: $id) {
     turnOff
   }
 }
 
-mutation AirPurifierSetMode($id: IdOrAlias!, $mode: AirPurifierMode!) {
-  airPurifier(id: $id) {
+mutation AirPurifierSetMode($id: IdOrAlias!, $mode: HomeAirPurifierMode!) {
+  homeAirPurifier(id: $id) {
     setMode(mode: $mode)
   }
 }
 
 mutation AirPurifierSetSpeed($id: IdOrAlias!, $speed: Int!) {
-  airPurifier(id: $id) {
+  homeAirPurifier(id: $id) {
     setSpeed(speed: $speed)
   }
 }
 
 mutation AirPurifierSetDisplay($id: IdOrAlias!, $on: Boolean!) {
-  airPurifier(id: $id) {
+  homeAirPurifier(id: $id) {
     setDisplay(on: $on)
   }
 }
 
 mutation DeviceLock($id: IdOrAlias!, $durationSeconds: Int) {
-  deviceLock(id: $id) {
+  homeDeviceLock(id: $id) {
     lock(durationSeconds: $durationSeconds) {
       source
       expiresAt
@@ -104,25 +104,25 @@ mutation DeviceLock($id: IdOrAlias!, $durationSeconds: Int) {
 }
 
 mutation DeviceUnlock($id: IdOrAlias!) {
-  deviceLock(id: $id) {
+  homeDeviceLock(id: $id) {
     unlock
   }
 }
 
 mutation EinkTakeScreenshot($id: IdOrAlias!) {
-  einkDisplay(id: $id) {
+  homeEinkDisplay(id: $id) {
     takeScreenshot
   }
 }
 
 mutation LightSetColour($id: IdOrAlias!, $hex: String!) {
-  light(id: $id) {
+  homeLight(id: $id) {
     setColour(input: { hex: $hex })
   }
 }
 
 mutation LightColourTemperatureMove($id: IdOrAlias!, $value: Int!) {
-  light(id: $id) {
+  homeLight(id: $id) {
     colourTemperatureMove(input: { value: $value })
   }
 }

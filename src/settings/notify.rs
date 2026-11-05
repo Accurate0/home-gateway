@@ -85,7 +85,7 @@ pub struct NotifyAcknowledge {
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, async_graphql::Enum)]
 #[serde(rename_all = "snake_case")]
-#[graphql(name = "PushNotificationCategory")]
+#[graphql(name = "HomePushNotificationCategory")]
 pub enum NotifyCategory {
     Alarm,
     Door,

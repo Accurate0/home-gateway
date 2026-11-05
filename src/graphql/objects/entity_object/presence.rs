@@ -45,7 +45,7 @@ impl PresenceEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomePresenceEntity")]
 impl PresenceEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Presence

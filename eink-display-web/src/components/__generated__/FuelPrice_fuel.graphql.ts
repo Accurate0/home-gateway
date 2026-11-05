@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6ac5cc00d8b689360be3053634eb6051>>
+ * @generated SignedSource<<1d313cbb6ffacf104a9978ee58021bbe>>
  * @lightSyntaxTransform
  */
 
@@ -31,7 +31,7 @@ const node: ReaderFragment = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "FuelSite",
+      "concreteType": "HomeFuelSite",
       "kind": "LinkedField",
       "name": "cheapest",
       "plural": false,
@@ -61,10 +61,10 @@ const node: ReaderFragment = {
       "storageKey": null
     }
   ],
-  "type": "FuelWatchObject",
+  "type": "HomeFuelWatchObject",
   "abstractKey": null
 };
 
-(node as any).hash = "e9cfea03ac2fd4951db74659fb2f3aa8";
+(node as any).hash = "6032e995d52fb7ae9da6ea79c68f537f";
 
 export default node;

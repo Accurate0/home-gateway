@@ -9,7 +9,7 @@ pub struct WeatherObject {
     pub location: String,
 }
 
-#[Object]
+#[Object(name = "HomeWeatherObject")]
 impl WeatherObject {
     pub async fn forecast(
         &self,

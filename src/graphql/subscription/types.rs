@@ -11,6 +11,7 @@ use crate::repo::garage_door::GarageDoorState;
 use crate::workflows::mode::Mode;
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomePresenceUpdate")]
 pub struct PresenceUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
@@ -23,6 +24,7 @@ pub struct PresenceUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeDoorUpdate")]
 pub struct DoorUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
@@ -35,6 +37,7 @@ pub struct DoorUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeGarageDoorUpdate")]
 pub struct GarageDoorUpdate {
     pub event_id: Uuid,
     pub id: ID,
@@ -43,6 +46,7 @@ pub struct GarageDoorUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeAirPurifierUpdate")]
 pub struct AirPurifierUpdate {
     pub event_id: Uuid,
     pub id: ID,
@@ -55,6 +59,7 @@ pub struct AirPurifierUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeSwitchUpdate")]
 pub struct SwitchUpdate {
     pub event_id: Uuid,
     pub device: String,
@@ -62,12 +67,14 @@ pub struct SwitchUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeMetricReading")]
 pub struct MetricReading {
     pub metric: String,
     pub value: f64,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeEnvironmentUpdate")]
 pub struct EnvironmentUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
@@ -80,6 +87,7 @@ pub struct EnvironmentUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomePlantUpdate")]
 pub struct PlantUpdate {
     pub event_id: Uuid,
     pub id: ID,
@@ -89,12 +97,14 @@ pub struct PlantUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeCronUpdate")]
 pub struct CronUpdate {
     pub event_id: Uuid,
     pub name: String,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeCustomUpdate")]
 pub struct CustomUpdate {
     pub event_id: Uuid,
     pub source: String,
@@ -103,12 +113,14 @@ pub struct CustomUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeSunUpdate")]
 pub struct SunUpdate {
     pub event_id: Uuid,
     pub transition: String,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeLightUpdate")]
 pub struct LightUpdate {
     pub event_id: Uuid,
     /// Config slug, matching the `id` from the `entities` query.
@@ -126,6 +138,7 @@ pub struct LightUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeUnifiUpdate")]
 pub struct UnifiUpdate {
     pub event_id: Uuid,
     pub mac_address: String,
@@ -134,6 +147,7 @@ pub struct UnifiUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeModeUpdate")]
 pub struct ModeUpdate {
     pub event_id: Uuid,
     pub mode: Mode,
@@ -141,6 +155,7 @@ pub struct ModeUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeHomeAssistantUpdate")]
 #[graphql(complex)]
 pub struct HomeAssistantUpdate {
     pub event_id: Uuid,
@@ -156,6 +171,7 @@ impl HomeAssistantUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWoolworthsUpdate")]
 pub struct WoolworthsUpdate {
     pub event_id: Uuid,
     pub product_id: i64,
@@ -165,12 +181,14 @@ pub struct WoolworthsUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeSolarUpdate")]
 pub struct SolarUpdate {
     pub event_id: Uuid,
     pub current_wh: f64,
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWeatherReadingUpdate")]
 pub struct WeatherReadingUpdate {
     pub metric: String,
     pub day: Option<String>,
@@ -178,6 +196,7 @@ pub struct WeatherReadingUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeWeatherUpdate")]
 pub struct WeatherUpdate {
     pub event_id: Uuid,
     pub source: String,
@@ -185,7 +204,7 @@ pub struct WeatherUpdate {
 }
 
 #[derive(SimpleObject)]
-#[graphql(name = "UnraidUpdate")]
+#[graphql(name = "HomeUnraidUpdate")]
 pub struct UnraidEventUpdate {
     pub event_id: Uuid,
     pub subject: String,
@@ -202,6 +221,7 @@ pub struct UnraidEventUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeFuelWatchUpdate")]
 pub struct FuelWatchUpdate {
     pub event_id: Uuid,
     pub change: String,
@@ -215,6 +235,7 @@ pub struct FuelWatchUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeTransperthUpdate")]
 pub struct TransperthUpdate {
     pub event_id: Uuid,
     pub route_id: String,
@@ -228,6 +249,7 @@ pub struct TransperthUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeCommandFailedUpdate")]
 pub struct CommandFailedUpdate {
     pub event_id: Uuid,
     pub id: ID,
@@ -241,6 +263,7 @@ pub struct CommandFailedUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeDeviceBatteryUpdate")]
 #[graphql(complex)]
 pub struct DeviceBatteryUpdate {
     pub event_id: Uuid,
@@ -264,6 +287,7 @@ impl DeviceBatteryUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeDeviceConnectionUpdate")]
 #[graphql(complex)]
 pub struct DeviceConnectionUpdate {
     pub event_id: Uuid,
@@ -281,6 +305,7 @@ impl DeviceConnectionUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeDeviceLockUpdate")]
 #[graphql(complex)]
 pub struct DeviceLockUpdate {
     pub event_id: Uuid,
@@ -298,6 +323,7 @@ impl DeviceLockUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeJellyfinUpdate")]
 #[graphql(complex)]
 pub struct JellyfinUpdate {
     pub event_id: Uuid,
@@ -325,6 +351,7 @@ impl JellyfinUpdate {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeMediaPlayerUpdate")]
 #[graphql(complex)]
 pub struct MediaPlayerUpdate {
     pub event_id: Uuid,
@@ -356,6 +383,7 @@ impl MediaPlayerUpdate {
 
 // TODO: friendly names for zigbee devices
 #[derive(Union)]
+#[graphql(name = "HomeEventUpdate")]
 pub enum EventUpdate {
     Presence(PresenceUpdate),
     Door(DoorUpdate),

@@ -7,7 +7,7 @@ use crate::integrations::transperth::{RouteDepartures, Transperth};
 
 pub struct TransperthObject;
 
-#[Object]
+#[Object(name = "HomeTransperthObject")]
 impl TransperthObject {
     async fn routes(
         &self,
@@ -38,6 +38,7 @@ impl TransperthObject {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeRouteDeparturesObject")]
 #[graphql(rename_fields = "camelCase")]
 pub struct RouteDeparturesObject {
     pub id: String,
@@ -49,6 +50,7 @@ pub struct RouteDeparturesObject {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeDepartureObject")]
 #[graphql(rename_fields = "camelCase")]
 pub struct DepartureObject {
     pub line: String,

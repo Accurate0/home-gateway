@@ -3,8 +3,8 @@ package net.infk8s.homegateway.dashboard
 import androidx.annotation.DrawableRes
 import java.time.Instant
 import net.infk8s.homegateway.graphql.EntityUi
-import net.infk8s.homegateway.graphql.type.AirPurifierMode
-import net.infk8s.homegateway.graphql.type.GarageDoorState
+import net.infk8s.homegateway.graphql.type.HomeAirPurifierMode
+import net.infk8s.homegateway.graphql.type.HomeGarageDoorState
 import net.infk8s.homegateway.ui.theme.StateTone
 
 data class TilePill(val label: String, val active: Boolean?)
@@ -12,7 +12,7 @@ data class TilePill(val label: String, val active: Boolean?)
 fun EntityUi.activeTone(): StateTone? = when (this) {
     is EntityUi.Light -> StateTone.LIGHT.takeIf { on == true }
     is EntityUi.Door -> StateTone.OPEN.takeIf { open == true }
-    is EntityUi.GarageDoor -> StateTone.OPEN.takeIf { state != null && state != GarageDoorState.CLOSED }
+    is EntityUi.GarageDoor -> StateTone.OPEN.takeIf { state != null && state != HomeGarageDoorState.CLOSED }
     is EntityUi.Presence -> StateTone.PRESENT.takeIf { present == true }
     is EntityUi.AirPurifier -> StateTone.INFO.takeIf { on == true }
     is EntityUi.Environment, is EntityUi.Plant, is EntityUi.EinkDisplay,
@@ -68,7 +68,7 @@ fun EntityUi.pill(): TilePill? = when (this) {
     }
     is EntityUi.GarageDoor -> TilePill(
         state?.rawValue?.lowercase() ?: "unknown",
-        state?.let { it != GarageDoorState.CLOSED },
+        state?.let { it != HomeGarageDoorState.CLOSED },
     )
     is EntityUi.MediaPlayer -> TilePill(if (playing) "playing" else "paused", playing)
     is EntityUi.RobotVacuum -> TilePill(status ?: "unknown", status?.let { true })
@@ -86,9 +86,9 @@ fun EntityUi.battery(): Double? = when (this) {
 }
 
 fun EntityUi.AirPurifier.modeLabel(): String? = when (mode) {
-    AirPurifierMode.MANUAL -> speed?.let { "speed $it" } ?: "manual"
-    AirPurifierMode.SLEEP -> "sleep"
-    AirPurifierMode.AUTO -> "auto"
+    HomeAirPurifierMode.MANUAL -> speed?.let { "speed $it" } ?: "manual"
+    HomeAirPurifierMode.SLEEP -> "sleep"
+    HomeAirPurifierMode.AUTO -> "auto"
     else -> null
 }
 
@@ -102,8 +102,8 @@ fun EntityUi.primaryCommand(): EntityCommand? = when (this) {
     is EntityUi.Light -> if (on == true) EntityCommand.LIGHT_OFF else EntityCommand.LIGHT_ON
 
     is EntityUi.GarageDoor -> when (state) {
-        GarageDoorState.OPEN, GarageDoorState.OPENING -> EntityCommand.GARAGE_CLOSE
-        GarageDoorState.CLOSED, GarageDoorState.CLOSING -> EntityCommand.GARAGE_OPEN
+        HomeGarageDoorState.OPEN, HomeGarageDoorState.OPENING -> EntityCommand.GARAGE_CLOSE
+        HomeGarageDoorState.CLOSED, HomeGarageDoorState.CLOSING -> EntityCommand.GARAGE_OPEN
         else -> null
     }
 

@@ -27,6 +27,7 @@ use crate::eink::wake::{self, WakeContext, WakeReport};
 pub use crate::eink::panel::PartialWindow;
 
 #[derive(Debug, Serialize, Deserialize, async_graphql::SimpleObject)]
+#[graphql(name = "HomeEpdConfig")]
 #[graphql(rename_fields = "camelCase")]
 pub struct EpdConfig {
     pub refresh_interval_mins: Option<u32>,

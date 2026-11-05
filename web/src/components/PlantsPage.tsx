@@ -21,9 +21,9 @@ import { cn } from "@/lib/utils";
 
 const PlantQuery = graphql`
   query PlantsPageQuery($since: DateTime!) {
-    entities {
+    homeEntities {
       __typename
-      ... on PlantEntity {
+      ... on HomePlantEntity {
         id
         name
         room
@@ -210,8 +210,8 @@ function PlantChart({
   const data = usePreloadedQuery<PlantsPageQuery>(PlantQuery, queryRef);
 
   const series = useMemo(
-    () => toSeries(data.entities as readonly EntityRow[]),
-    [data.entities],
+    () => toSeries(data.homeEntities as readonly EntityRow[]),
+    [data.homeEntities],
   );
   const visible = useMemo(() => series.filter((s) => !hidden.has(s.id)), [series, hidden]);
   const rows = useMemo(() => toChartRows(visible), [visible]);

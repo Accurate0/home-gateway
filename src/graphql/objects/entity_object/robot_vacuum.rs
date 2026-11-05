@@ -8,6 +8,7 @@ use crate::graphql::dataloader::robot_vacuum_state::{
 use crate::integrations::mqtt::MqttProtocol;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
+#[graphql(name = "HomeRobotVacuumKind")]
 pub enum RobotVacuumKind {
     Roborock,
     Valetudo,
@@ -62,7 +63,7 @@ impl RobotVacuumEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeRobotVacuumEntity")]
 impl RobotVacuumEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Vacuums

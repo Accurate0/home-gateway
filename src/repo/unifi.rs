@@ -13,6 +13,7 @@ use sqlx::{Pool, Postgres};
     Eq,
     Copy,
 )]
+#[graphql(name = "HomeUnifiState")]
 #[sqlx(type_name = "unifi_state", rename_all = "lowercase")]
 pub enum UnifiState {
     Connected,

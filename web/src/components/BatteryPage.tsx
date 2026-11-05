@@ -20,9 +20,9 @@ import { cn } from "@/lib/utils";
 
 const BatteryQuery = graphql`
   query BatteryPageQuery($since: DateTime!) {
-    entities {
+    homeEntities {
       __typename
-      ... on LightEntity {
+      ... on HomeLightEntity {
         id
         name
         room
@@ -33,7 +33,7 @@ const BatteryQuery = graphql`
           }
         }
       }
-      ... on DoorEntity {
+      ... on HomeDoorEntity {
         id
         name
         room
@@ -44,7 +44,7 @@ const BatteryQuery = graphql`
           }
         }
       }
-      ... on PresenceEntity {
+      ... on HomePresenceEntity {
         id
         name
         room
@@ -55,7 +55,7 @@ const BatteryQuery = graphql`
           }
         }
       }
-      ... on EnvironmentEntity {
+      ... on HomeEnvironmentEntity {
         id
         name
         room
@@ -66,7 +66,7 @@ const BatteryQuery = graphql`
           }
         }
       }
-      ... on EinkDisplayEntity {
+      ... on HomeEinkDisplayEntity {
         id
         name
         room
@@ -77,7 +77,7 @@ const BatteryQuery = graphql`
           }
         }
       }
-      ... on RobotVacuumEntity {
+      ... on HomeRobotVacuumEntity {
         id
         name
         room
@@ -88,7 +88,7 @@ const BatteryQuery = graphql`
           }
         }
       }
-      ... on GarageDoorEntity {
+      ... on HomeGarageDoorEntity {
         id
         name
         room
@@ -271,8 +271,8 @@ function BatteryChart({
   const data = usePreloadedQuery<BatteryPageQuery>(BatteryQuery, queryRef);
 
   const series = useMemo(
-    () => toSeries(data.entities as readonly EntityRow[]),
-    [data.entities],
+    () => toSeries(data.homeEntities as readonly EntityRow[]),
+    [data.homeEntities],
   );
   const visible = useMemo(() => series.filter((s) => !hidden.has(s.id)), [series, hidden]);
   const rows = useMemo(() => toChartRows(visible), [visible]);

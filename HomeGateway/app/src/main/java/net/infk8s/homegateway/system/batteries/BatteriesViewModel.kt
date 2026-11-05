@@ -19,38 +19,38 @@ class BatteriesViewModel(application: Application) : HistoryViewModel(applicatio
         val data = response.data
             ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load batteries")
 
-        return data.entities
+        return data.homeEntities
             .mapNotNull { it.toSeries() }
             .filter { it.points.isNotEmpty() }
             .sortedWith(compareBy({ it.current }, { it.name }))
     }
 
-    private fun BatteryHistoryQuery.Entity.toSeries(): HistorySeries? = when {
-        onLightEntity != null -> onLightEntity.run {
+    private fun BatteryHistoryQuery.HomeEntity.toSeries(): HistorySeries? = when {
+        onHomeLightEntity != null -> onHomeLightEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 
-        onDoorEntity != null -> onDoorEntity.run {
+        onHomeDoorEntity != null -> onHomeDoorEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 
-        onPresenceEntity != null -> onPresenceEntity.run {
+        onHomePresenceEntity != null -> onHomePresenceEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 
-        onEnvironmentEntity != null -> onEnvironmentEntity.run {
+        onHomeEnvironmentEntity != null -> onHomeEnvironmentEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 
-        onEinkDisplayEntity != null -> onEinkDisplayEntity.run {
+        onHomeEinkDisplayEntity != null -> onHomeEinkDisplayEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 
-        onRobotVacuumEntity != null -> onRobotVacuumEntity.run {
+        onHomeRobotVacuumEntity != null -> onHomeRobotVacuumEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 
-        onGarageDoorEntity != null -> onGarageDoorEntity.run {
+        onHomeGarageDoorEntity != null -> onHomeGarageDoorEntity.run {
             series(id, name, room, historyPoints(battery?.history.orEmpty(), { it.time }, { it.batteryPercentage }))
         }
 

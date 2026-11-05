@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.infk8s.homegateway.gateway
 import net.infk8s.homegateway.graphql.PushNotificationsQuery
-import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
-import net.infk8s.homegateway.graphql.type.PushNotificationActionKind
+import net.infk8s.homegateway.graphql.type.HomeNotificationInteractionKind
+import net.infk8s.homegateway.graphql.type.HomePushNotificationActionKind
 
 data class NotificationUi(
     val id: String,
@@ -24,7 +24,7 @@ data class NotificationUi(
     val nextReminderAt: String?,
     val acknowledgedAt: String?,
     val createdAt: String,
-    val interactions: List<NotificationInteractionKind>,
+    val interactions: List<HomeNotificationInteractionKind>,
 )
 
 sealed interface NotificationsUiState {
@@ -45,7 +45,7 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
 
     fun acknowledge(id: String) {
         viewModelScope.launch {
-            NotificationInteractions.record(apollo, id, NotificationInteractionKind.ACKNOWLEDGED)
+            NotificationInteractions.record(apollo, id, HomeNotificationInteractionKind.ACKNOWLEDGED)
             load()
         }
     }
@@ -58,7 +58,7 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
                     response.errors?.firstOrNull()?.message ?: "Failed to load notifications",
                 )
 
-            _state.value = NotificationsUiState.Loaded(data.pushNotifications.map { it.toUi() })
+            _state.value = NotificationsUiState.Loaded(data.homePushNotifications.map { it.toUi() })
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -70,12 +70,12 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    private fun PushNotificationsQuery.PushNotification.toUi() = NotificationUi(
+    private fun PushNotificationsQuery.HomePushNotification.toUi() = NotificationUi(
         id = id.toString(),
         title = title,
         body = body,
         category = category,
-        acknowledgeable = actions.any { it.kind == PushNotificationActionKind.ACKNOWLEDGE },
+        acknowledgeable = actions.any { it.kind == HomePushNotificationActionKind.ACKNOWLEDGE },
         sendCount = sendCount,
         nextReminderAt = nextReminderAt?.toString(),
         acknowledgedAt = acknowledgedAt?.toString(),

@@ -12,6 +12,7 @@ use crate::{
 };
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeBatteryPoint")]
 #[graphql(rename_fields = "camelCase", complex)]
 pub struct BatteryPoint {
     pub battery_voltage: Option<f64>,
@@ -52,7 +53,7 @@ impl DeviceBattery {
     }
 }
 
-#[Object(rename_fields = "camelCase")]
+#[Object(name = "HomeDeviceBattery", rename_fields = "camelCase")]
 impl DeviceBattery {
     async fn kind(&self) -> &str {
         &self.kind

@@ -10,6 +10,7 @@ use crate::settings::enabled_state::EnabledState;
 use crate::timedelta_format::{humanize, time_delta_from_str};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
+#[graphql(name = "HomeEinkMode")]
 #[serde(rename_all = "snake_case")]
 pub enum EinkMode {
     Dashboard,
@@ -18,6 +19,7 @@ pub enum EinkMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
+#[graphql(name = "HomeOrientation")]
 #[serde(rename_all = "snake_case")]
 pub enum Orientation {
     Portrait,
@@ -107,6 +109,7 @@ pub struct DashboardView {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema, async_graphql::Enum)]
+#[graphql(name = "HomeRedditTimespan")]
 #[serde(rename_all = "snake_case")]
 pub enum RedditTimespan {
     Hour,

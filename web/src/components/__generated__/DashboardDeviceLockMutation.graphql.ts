@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b94a8dcaf2682103c2f871604d278e39>>
+ * @generated SignedSource<<679c6c7dd5461cb5356c9455e9a3b607>>
  * @lightSyntaxTransform
  */
 
@@ -8,16 +8,16 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type DeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
+export type HomeDeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
 export type DashboardDeviceLockMutation$variables = {
   durationSeconds?: number | null | undefined;
   id: string;
 };
 export type DashboardDeviceLockMutation$data = {
-  readonly deviceLock: {
+  readonly homeDeviceLock: {
     readonly lock: {
       readonly expiresAt: any | null | undefined;
-      readonly source: DeviceLockSource;
+      readonly source: HomeDeviceLockSource;
     };
   };
 };
@@ -47,9 +47,9 @@ v2 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "DeviceLockMutation",
+    "concreteType": "HomeDeviceLockMutation",
     "kind": "LinkedField",
-    "name": "deviceLock",
+    "name": "homeDeviceLock",
     "plural": false,
     "selections": [
       {
@@ -61,7 +61,7 @@ v2 = [
             "variableName": "durationSeconds"
           }
         ],
-        "concreteType": "DeviceLock",
+        "concreteType": "HomeDeviceLock",
         "kind": "LinkedField",
         "name": "lock",
         "plural": false,
@@ -111,16 +111,16 @@ return {
     "selections": (v2/*:: as any*/)
   },
   "params": {
-    "cacheID": "36f173b229b70e172f9e6c592b72bc81",
+    "cacheID": "ac4553594e94e90bafacff32c5f1537b",
     "id": null,
     "metadata": {},
     "name": "DashboardDeviceLockMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardDeviceLockMutation(\n  $id: IdOrAlias!\n  $durationSeconds: Int\n) {\n  deviceLock(id: $id) {\n    lock(durationSeconds: $durationSeconds) {\n      source\n      expiresAt\n    }\n  }\n}\n"
+    "text": "mutation DashboardDeviceLockMutation(\n  $id: IdOrAlias!\n  $durationSeconds: Int\n) {\n  homeDeviceLock(id: $id) {\n    lock(durationSeconds: $durationSeconds) {\n      source\n      expiresAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4c17db246168a43f5ae7796850014d83";
+(node as any).hash = "cb545e81b3459b44fd33f8296688ee4c";
 
 export default node;

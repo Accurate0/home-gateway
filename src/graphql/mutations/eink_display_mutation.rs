@@ -9,7 +9,7 @@ pub struct EinkDisplayMutation {
     pub address: String,
 }
 
-#[Object]
+#[Object(name = "HomeEinkDisplayMutation")]
 impl EinkDisplayMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Epd, Action::Write)))]
     async fn take_screenshot(&self) -> async_graphql::Result<bool> {

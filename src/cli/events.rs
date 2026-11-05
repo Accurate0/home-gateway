@@ -12,34 +12,34 @@ const PROTOCOL: &str = "graphql-transport-ws";
 
 const EVENTS_SUBSCRIPTION: &str = r#"
 subscription($filter: String!) {
-  events(filter: $filter) {
+  homeEvents(filter: $filter) {
     __typename
-    ... on PresenceUpdate { id present }
-    ... on DoorUpdate { id open }
-    ... on GarageDoorUpdate { id name state }
-    ... on AirPurifierUpdate { id name on mode speed display }
-    ... on PlantUpdate { id name soilMoisture }
-    ... on DeviceConnectionUpdate { deviceId transport connected }
-    ... on DeviceLockUpdate { deviceId locked source expiresAt }
-    ... on LightUpdate { id on brightness colourTemperature }
-    ... on EnvironmentUpdate { id readings { metric value } }
-    ... on HomeAssistantUpdate { entityId state }
-    ... on UnifiUpdate { client connected }
-    ... on WoolworthsUpdate { name oldPrice newPrice }
-    ... on JellyfinUpdate { user state itemName seriesName }
-    ... on WeatherUpdate { source readings { metric day value } }
-    ... on FuelWatchUpdate { name change oldPrice newPrice }
-    ... on UnraidUpdate { subject change state previous metric value }
-    ... on TransperthUpdate { routeId departures nextHeadsign nextMinutesAway }
-    ... on SwitchUpdate { device action }
-    ... on ModeUpdate { mode previous }
-    ... on CronUpdate { name }
-    ... on SunUpdate { transition }
-    ... on DeviceBatteryUpdate { id kind batteryVoltage }
-    ... on CommandFailedUpdate { id kind attempts }
-    ... on CustomUpdate { source name payload }
-    ... on MediaPlayerUpdate { deviceId state }
-    ... on SolarUpdate { currentWh }
+    ... on HomePresenceUpdate { id present }
+    ... on HomeDoorUpdate { id open }
+    ... on HomeGarageDoorUpdate { id name state }
+    ... on HomeAirPurifierUpdate { id name on mode speed display }
+    ... on HomePlantUpdate { id name soilMoisture }
+    ... on HomeDeviceConnectionUpdate { deviceId transport connected }
+    ... on HomeDeviceLockUpdate { deviceId locked source expiresAt }
+    ... on HomeLightUpdate { id on brightness colourTemperature }
+    ... on HomeEnvironmentUpdate { id readings { metric value } }
+    ... on HomeHomeAssistantUpdate { entityId state }
+    ... on HomeUnifiUpdate { client connected }
+    ... on HomeWoolworthsUpdate { name oldPrice newPrice }
+    ... on HomeJellyfinUpdate { user state itemName seriesName }
+    ... on HomeWeatherUpdate { source readings { metric day value } }
+    ... on HomeFuelWatchUpdate { name change oldPrice newPrice }
+    ... on HomeUnraidUpdate { subject change state previous metric value }
+    ... on HomeTransperthUpdate { routeId departures nextHeadsign nextMinutesAway }
+    ... on HomeSwitchUpdate { device action }
+    ... on HomeModeUpdate { mode previous }
+    ... on HomeCronUpdate { name }
+    ... on HomeSunUpdate { transition }
+    ... on HomeDeviceBatteryUpdate { id kind batteryVoltage }
+    ... on HomeCommandFailedUpdate { id kind attempts }
+    ... on HomeCustomUpdate { source name payload }
+    ... on HomeMediaPlayerUpdate { deviceId state }
+    ... on HomeSolarUpdate { currentWh }
   }
 }
 "#;
@@ -108,7 +108,7 @@ pub async fn tail(client: &Client, filter: &str, as_json: bool) -> Result<()> {
                     anyhow::bail!("subscription failed: {}", messages.join("; "));
                 }
 
-                print_event(&frame["payload"]["data"]["events"], as_json)?
+                print_event(&frame["payload"]["data"]["homeEvents"], as_json)?
             }
             Some("ping") => send(&mut socket, json!({ "type": "pong" })).await?,
             Some("error") => anyhow::bail!("subscription rejected: {}", frame["payload"]),

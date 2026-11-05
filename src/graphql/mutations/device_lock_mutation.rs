@@ -16,7 +16,7 @@ impl DeviceLockMutation {
     }
 }
 
-#[Object]
+#[Object(name = "HomeDeviceLockMutation")]
 impl DeviceLockMutation {
     async fn lock(
         &self,

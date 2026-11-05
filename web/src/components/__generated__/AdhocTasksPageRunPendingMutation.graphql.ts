@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<462c1a67022a6273b61fc72f632f8273>>
+ * @generated SignedSource<<9e9551ee4f233145f85eaa1886d00f0d>>
  * @lightSyntaxTransform
  */
 
@@ -10,7 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type AdhocTasksPageRunPendingMutation$variables = Record<PropertyKey, never>;
 export type AdhocTasksPageRunPendingMutation$data = {
-  readonly runPendingAdhocTasks: boolean;
+  readonly homeRunPendingAdhocTasks: boolean;
 };
 export type AdhocTasksPageRunPendingMutation = {
   response: AdhocTasksPageRunPendingMutation$data;
@@ -23,7 +23,7 @@ var v0 = [
     "alias": null,
     "args": null,
     "kind": "ScalarField",
-    "name": "runPendingAdhocTasks",
+    "name": "homeRunPendingAdhocTasks",
     "storageKey": null
   }
 ];
@@ -45,16 +45,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "0ccfa6b342a398ac31318e5d3ef5bd01",
+    "cacheID": "6f824ca5a8077c94be264c9f86e3a0bb",
     "id": null,
     "metadata": {},
     "name": "AdhocTasksPageRunPendingMutation",
     "operationKind": "mutation",
-    "text": "mutation AdhocTasksPageRunPendingMutation {\n  runPendingAdhocTasks\n}\n"
+    "text": "mutation AdhocTasksPageRunPendingMutation {\n  homeRunPendingAdhocTasks\n}\n"
   }
 };
 })();
 
-(node as any).hash = "706fae935f3da27e016f837b39a0e6cd";
+(node as any).hash = "7d385c9be82572096323b5231b9bbef9";
 
 export default node;

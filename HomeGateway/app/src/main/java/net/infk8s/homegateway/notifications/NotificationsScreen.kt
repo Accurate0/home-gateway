@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
+import net.infk8s.homegateway.graphql.type.HomeNotificationInteractionKind
 
 @Composable
 fun NotificationsScreen(
@@ -139,7 +139,7 @@ private fun NotificationUi.status(): String = buildList {
     }
 
     interactions
-        .filterNot { it == NotificationInteractionKind.ACKNOWLEDGED }
+        .filterNot { it == HomeNotificationInteractionKind.ACKNOWLEDGED }
         .distinct()
         .forEach { add(it.rawValue.lowercase()) }
 }.joinToString(" · ")

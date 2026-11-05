@@ -1,7 +1,7 @@
 query PlantHistory($since: DateTime!) {
-  entities {
+  homeEntities {
     __typename
-    ... on PlantEntity {
+    ... on HomePlantEntity {
       id
       name
       room

@@ -36,7 +36,7 @@ impl GarageDoorEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeGarageDoorEntity")]
 impl GarageDoorEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Doors

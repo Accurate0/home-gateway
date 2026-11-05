@@ -2,7 +2,7 @@ use sqlx::{Pool, Postgres};
 
 use crate::device_registry::DeviceRegistry;
 use crate::event_bus::EventBus;
-use crate::graphql::{FinalSchema, FinalSchemaV2};
+use crate::graphql::FinalSchema;
 use crate::integrations::feature_flag::FeatureFlagClient;
 use crate::lua::LuaEngine;
 use crate::repo::RepoRegistry;
@@ -25,5 +25,4 @@ pub struct AppState {
     pub handles: HandleRegistry,
     pub lua: LuaEngine,
     pub schema: FinalSchema,
-    pub schema_v2: FinalSchemaV2,
 }

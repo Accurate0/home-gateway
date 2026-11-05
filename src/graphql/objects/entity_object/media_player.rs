@@ -36,7 +36,7 @@ impl MediaPlayerEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeMediaPlayerEntity")]
 impl MediaPlayerEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Media

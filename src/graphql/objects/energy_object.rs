@@ -5,11 +5,13 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 #[derive(InputObject)]
+#[graphql(name = "HomeEnergyHistoryInput")]
 pub struct EnergyHistoryInput {
     pub since: DateTime<Utc>,
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeEnergyGapsInput")]
 pub struct EnergyGapsInput {
     pub since: DateTime<Utc>,
     pub interval_seconds: i64,
@@ -18,6 +20,7 @@ pub struct EnergyGapsInput {
 pub struct EnergyObject {}
 
 #[derive(SimpleObject, Debug)]
+#[graphql(name = "HomeEnergyGap")]
 pub struct EnergyGap {
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
@@ -25,6 +28,7 @@ pub struct EnergyGap {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, SimpleObject, Debug)]
+#[graphql(name = "HomeEnergyConsumption")]
 #[serde(rename_all = "camelCase")]
 pub struct EnergyConsumption {
     pub id: Uuid,
@@ -33,7 +37,7 @@ pub struct EnergyConsumption {
     pub time: DateTime<Utc>,
 }
 
-#[Object]
+#[Object(name = "HomeEnergyObject")]
 impl EnergyObject {
     pub async fn history(
         &self,

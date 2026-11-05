@@ -11,11 +11,10 @@ use crate::state::AppState;
 #[derive(Default)]
 pub struct LuaMutation;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeLuaMutation")]
 impl LuaMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Lua, Action::Write)))]
-    async fn execute_lua(
+    async fn home_execute_lua(
         &self,
         ctx: &Context<'_>,
         script: String,

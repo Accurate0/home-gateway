@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cd0f3711c9d8334abd8b6f4b4a60707b>>
+ * @generated SignedSource<<0a3c246840b9f53599dceafa5e581cbb>>
  * @lightSyntaxTransform
  */
 
@@ -10,7 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type RunsPageQuery$variables = Record<PropertyKey, never>;
 export type RunsPageQuery$data = {
-  readonly workflowRuns: ReadonlyArray<{
+  readonly homeWorkflowRuns: ReadonlyArray<{
     readonly dryRun: boolean;
     readonly durationMs: number;
     readonly error: string | null | undefined;
@@ -38,9 +38,9 @@ var v0 = [
         "value": 100
       }
     ],
-    "concreteType": "WorkflowRun",
+    "concreteType": "HomeWorkflowRun",
     "kind": "LinkedField",
-    "name": "workflowRuns",
+    "name": "homeWorkflowRuns",
     "plural": true,
     "selections": [
       {
@@ -107,7 +107,7 @@ var v0 = [
         "storageKey": null
       }
     ],
-    "storageKey": "workflowRuns(limit:100)"
+    "storageKey": "homeWorkflowRuns(limit:100)"
   }
 ];
 return {
@@ -128,16 +128,16 @@ return {
     "selections": (v0/*:: as any*/)
   },
   "params": {
-    "cacheID": "c7245184af07a0847b789cb00c581585",
+    "cacheID": "49a38f7399722326e7678180211c46a3",
     "id": null,
     "metadata": {},
     "name": "RunsPageQuery",
     "operationKind": "query",
-    "text": "query RunsPageQuery {\n  workflowRuns(limit: 100) {\n    id\n    eventId\n    slug\n    name\n    outcome\n    dryRun\n    durationMs\n    error\n    startedAt\n  }\n}\n"
+    "text": "query RunsPageQuery {\n  homeWorkflowRuns(limit: 100) {\n    id\n    eventId\n    slug\n    name\n    outcome\n    dryRun\n    durationMs\n    error\n    startedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2a5fe6f3a800cc9f1f81c58a4b27a9ed";
+(node as any).hash = "a234b608da8714ab703f34734949379f";
 
 export default node;

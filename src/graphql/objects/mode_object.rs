@@ -12,6 +12,7 @@ use crate::vacation::{build_days, coverage, target_at};
 use crate::workflows::mode::Mode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, async_graphql::Enum)]
+#[graphql(name = "HomeLightTarget")]
 pub enum LightTarget {
     On,
     Off,
@@ -19,6 +20,7 @@ pub enum LightTarget {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeVacationAction")]
 pub struct VacationAction {
     pub at: DateTime<Utc>,
     pub on: bool,
@@ -27,6 +29,7 @@ pub struct VacationAction {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeVacationLight")]
 pub struct VacationLight {
     pub address: String,
     pub device_id: Option<String>,
@@ -40,7 +43,7 @@ pub struct VacationMode {
     pub mode: Mode,
 }
 
-#[Object]
+#[Object(name = "HomeVacationMode")]
 impl VacationMode {
     async fn mode(&self) -> Mode {
         self.mode
@@ -128,7 +131,7 @@ pub struct PlainMode {
     pub mode: Mode,
 }
 
-#[Object]
+#[Object(name = "HomePlainMode")]
 impl PlainMode {
     async fn mode(&self) -> Mode {
         self.mode
@@ -136,7 +139,7 @@ impl PlainMode {
 }
 
 #[derive(Interface)]
-#[graphql(name = "ModeState", field(name = "mode", ty = "Mode"))]
+#[graphql(name = "HomeModeState", field(name = "mode", ty = "Mode"))]
 pub enum ModeObject {
     Vacation(VacationMode),
     Plain(PlainMode),

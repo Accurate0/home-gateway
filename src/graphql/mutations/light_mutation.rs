@@ -21,33 +21,39 @@ pub struct LightMutation {
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeSetBrightnessInput")]
 pub struct SetBrightnessInput {
     pub value: u64,
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeBrightnessMoveInput")]
 pub struct BrightnessMoveInput {
     pub value: i64,
     pub on_off: bool,
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeColourTemperatureMoveInput")]
 pub struct ColourTemperatureMoveInput {
     pub value: i64,
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeSetColourTemperatureInput")]
 pub struct SetColourTemperatureInput {
     /// Colour temperature in mireds (1000000/kelvin), clamped to the light model's `ranges.colour_temp`.
     pub value: u64,
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeSetColourInput")]
 pub struct SetColourInput {
     pub hex: String,
 }
 
 #[derive(InputObject)]
+#[graphql(name = "HomeLightSetInput")]
 pub struct LightSetInput {
     pub on: Option<bool>,
     pub brightness: Option<u64>,
@@ -118,7 +124,7 @@ async fn await_confirmation(
     tokio::time::timeout(timeout, wait).await.ok().flatten()
 }
 
-#[Object]
+#[Object(name = "HomeLightMutation")]
 impl LightMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Write)))]
     async fn set(

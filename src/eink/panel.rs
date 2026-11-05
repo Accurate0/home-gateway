@@ -15,6 +15,7 @@ pub const PACKED_FRAME_SIZE: usize = PACKED_ROW_BYTES * PACKED_FRAME_HEIGHT;
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, async_graphql::SimpleObject,
 )]
+#[graphql(name = "HomePartialWindow")]
 #[graphql(rename_fields = "camelCase")]
 pub struct PartialWindow {
     pub x: u32,

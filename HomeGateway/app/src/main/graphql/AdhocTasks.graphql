@@ -1,5 +1,5 @@
 query AdhocTasks {
-  adhocCronTasks {
+  homeAdhocCronTasks {
     id
     name
     schedule
@@ -10,7 +10,7 @@ query AdhocTasks {
     rowsAffected
     outcome
   }
-  adhocTasks {
+  homeAdhocTasks {
     id
     ordinal
     name
@@ -23,9 +23,9 @@ query AdhocTasks {
 }
 
 mutation RunAdhocCronTask($name: String!) {
-  runAdhocCronTask(name: $name)
+  homeRunAdhocCronTask(name: $name)
 }
 
 mutation RunPendingAdhocTasks {
-  runPendingAdhocTasks
+  homeRunPendingAdhocTasks
 }

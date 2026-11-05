@@ -5,7 +5,7 @@ import { fromToday } from "../lib/time";
 import { HIGH_UV, INK, PAPER, RED, TYPE } from "../theme";
 
 const ForecastFragment = graphql`
-  fragment ForecastCard_weather on WeatherObject {
+  fragment ForecastCard_weather on HomeWeatherObject {
     forecast {
       days {
         dateTime

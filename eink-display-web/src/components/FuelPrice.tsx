@@ -3,7 +3,7 @@ import type { FuelPrice_fuel$key } from "./__generated__/FuelPrice_fuel.graphql"
 import { INK, TYPE } from "../theme";
 
 const FuelFragment = graphql`
-  fragment FuelPrice_fuel on FuelWatchObject {
+  fragment FuelPrice_fuel on HomeFuelWatchObject {
     cheapest {
       name
       suburb

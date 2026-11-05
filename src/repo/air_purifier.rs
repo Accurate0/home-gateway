@@ -16,6 +16,7 @@ use uuid::Uuid;
     schemars::JsonSchema,
     strum::Display,
 )]
+#[graphql(name = "HomeAirPurifierMode")]
 #[sqlx(type_name = "air_purifier_mode", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]

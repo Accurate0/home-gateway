@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e14de0acd1b3a39537499d123772aadf>>
+ * @generated SignedSource<<c21162d402f7bd32ad854beec37ab8b6>>
  * @lightSyntaxTransform
  */
 
@@ -13,7 +13,7 @@ export type DashboardSetBrightnessMutation$variables = {
   value: number;
 };
 export type DashboardSetBrightnessMutation$data = {
-  readonly light: {
+  readonly homeLight: {
     readonly setBrightness: boolean;
   };
 };
@@ -45,9 +45,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "LightMutation",
+    "concreteType": "HomeLightMutation",
     "kind": "LinkedField",
-    "name": "light",
+    "name": "homeLight",
     "plural": false,
     "selections": [
       {
@@ -91,16 +91,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "ff0a705a85c34194f4439578ba783c13",
+    "cacheID": "d273d3d349c49a9a9ed5e70cb4fcafda",
     "id": null,
     "metadata": {},
     "name": "DashboardSetBrightnessMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardSetBrightnessMutation(\n  $id: IdOrAlias!\n  $value: Int!\n) {\n  light(id: $id) {\n    setBrightness(input: {value: $value})\n  }\n}\n"
+    "text": "mutation DashboardSetBrightnessMutation(\n  $id: IdOrAlias!\n  $value: Int!\n) {\n  homeLight(id: $id) {\n    setBrightness(input: {value: $value})\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4e384bcfe78475ef821bff90252e5549";
+(node as any).hash = "74bbbae6e17a94f904e93cd4a8bc82ac";
 
 export default node;

@@ -5,7 +5,7 @@ use crate::repo::RepoRegistry;
 
 pub struct JellyfinObject;
 
-#[Object]
+#[Object(name = "HomeJellyfinObject")]
 impl JellyfinObject {
     async fn now_playing(
         &self,

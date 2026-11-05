@@ -55,7 +55,7 @@ class WorkflowsViewModel(application: Application) : AndroidViewModel(applicatio
                         response.errors?.firstOrNull()?.message ?: "Failed to load workflows",
                     )
 
-                publish(data.workflows.map { it.toUi() })
+                publish(data.homeWorkflows.map { it.toUi() })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -99,7 +99,7 @@ class WorkflowsViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             try {
                 val response = apollo.mutation(DryRunWorkflowMutation(workflow.slug)).execute()
-                val eventId = response.data?.runWorkflow?.toString()
+                val eventId = response.data?.homeRunWorkflow?.toString()
                     ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "dry run failed")
 
                 onStarted(eventId)
@@ -131,7 +131,7 @@ class WorkflowsViewModel(application: Application) : AndroidViewModel(applicatio
         _state.value = WorkflowsUiState.Loaded(groups, updated.count { it.enabled }, updated.size)
     }
 
-    private fun WorkflowsQuery.Workflow.toUi() = WorkflowUi(
+    private fun WorkflowsQuery.HomeWorkflow.toUi() = WorkflowUi(
         slug = slug,
         name = name,
         group = group,

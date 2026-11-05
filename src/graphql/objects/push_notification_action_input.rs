@@ -5,7 +5,7 @@ use crate::notify::actions::{PushAction, PushActionKind};
 use crate::settings::SettingsContainer;
 
 #[derive(InputObject)]
-#[graphql(name = "PushNotificationActionInput")]
+#[graphql(name = "HomePushNotificationActionInput")]
 pub struct PushNotificationActionInput {
     pub label: String,
     pub kind: PushNotificationActionKind,

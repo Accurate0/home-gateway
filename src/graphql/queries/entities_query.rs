@@ -15,8 +15,7 @@ use crate::repo::RepoRegistry;
 #[derive(Default)]
 pub struct EntitiesQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeEntitiesQuery")]
 impl EntitiesQuery {
     /// Every configured entity and its current state. Entity types the caller
     /// lacks a `graphql:<type>:read` scope for are silently omitted — this query
@@ -24,12 +23,12 @@ impl EntitiesQuery {
     /// The dashboard sections, in display order, with their titles. Categorising
     /// a device kind is a backend concern — the frontend renders whatever order
     /// and titles this returns.
-    async fn entity_sections(&self) -> Vec<EntitySection> {
+    async fn home_entity_sections(&self) -> Vec<EntitySection> {
         EntitySection::ordered()
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Device, Action::Read)))]
-    async fn device_connections(
+    async fn home_device_connections(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<DeviceConnectionObject>> {
@@ -50,7 +49,7 @@ impl EntitiesQuery {
             .collect())
     }
 
-    async fn entities(
+    async fn home_entities(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<Entity>> {
@@ -159,7 +158,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::MediaPlayer, Action::Read)))]
-    async fn media_player(
+    async fn home_media_player(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -171,7 +170,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Light, Action::Read)))]
-    async fn light(
+    async fn home_light(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -183,7 +182,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Door, Action::Read)))]
-    async fn door(
+    async fn home_door(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -195,7 +194,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Presence, Action::Read)))]
-    async fn presence(
+    async fn home_presence(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -207,7 +206,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Environment, Action::Read)))]
-    async fn environment(
+    async fn home_environment(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -219,7 +218,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Plant, Action::Read)))]
-    async fn plant(
+    async fn home_plant(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -231,7 +230,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Epd, Action::Read)))]
-    async fn eink_display(
+    async fn home_eink_display(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -244,7 +243,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::RobotVacuum, Action::Read)))]
-    async fn robot_vacuum(
+    async fn home_robot_vacuum(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -256,7 +255,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::GarageDoor, Action::Read)))]
-    async fn garage_door(
+    async fn home_garage_door(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,
@@ -268,7 +267,7 @@ impl EntitiesQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AirPurifier, Action::Read)))]
-    async fn air_purifier(
+    async fn home_air_purifier(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: IdOrAlias,

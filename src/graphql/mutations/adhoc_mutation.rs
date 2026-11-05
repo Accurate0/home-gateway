@@ -9,18 +9,17 @@ use crate::graphql::guard::ScopeGuard;
 #[derive(Default)]
 pub struct AdhocMutation;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeAdhocMutation")]
 impl AdhocMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Write)))]
-    async fn run_pending_adhoc_tasks(&self) -> async_graphql::Result<bool> {
+    async fn home_run_pending_adhoc_tasks(&self) -> async_graphql::Result<bool> {
         rpc::cast(AdhocTaskActor::NAME, AdhocTaskActorMessage::RunPending)?;
 
         Ok(true)
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Write)))]
-    async fn run_adhoc_cron_task(&self, name: String) -> async_graphql::Result<bool> {
+    async fn home_run_adhoc_cron_task(&self, name: String) -> async_graphql::Result<bool> {
         let Some(task) = cron_registry().into_iter().find(|task| task.name() == name) else {
             return Err(async_graphql::Error::new(format!(
                 "unknown adhoc cron task: {name}"

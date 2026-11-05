@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const TraceQuery = graphql`
   query RunTraceQuery($eventId: UUID!) {
-    workflowRuns(eventId: $eventId) {
+    homeWorkflowRuns(eventId: $eventId) {
       id
       trigger
       steps {
@@ -60,7 +60,7 @@ export default function RunTrace({
     { fetchPolicy: "store-or-network" },
   );
 
-  const run = data.workflowRuns.find((r) => r.id === runId);
+  const run = data.homeWorkflowRuns.find((r) => r.id === runId);
 
   if (!run) {
     return <p className="text-muted-foreground text-xs">Trace not found.</p>;

@@ -1,5 +1,5 @@
 query TransperthRoutes {
-  transperth {
+  homeTransperth {
     routes {
       id
       origin
@@ -20,9 +20,9 @@ query TransperthRoutes {
 }
 
 subscription TransperthUpdates {
-  events(filter: "transperth:*") {
+  homeEvents(filter: "transperth:*") {
     __typename
-    ... on TransperthUpdate {
+    ... on HomeTransperthUpdate {
       routeId
     }
   }

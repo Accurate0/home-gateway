@@ -1,5 +1,5 @@
 query FuelSites {
-  fuelwatch {
+  homeFuelwatch {
     sites(limit: 20) {
       siteId
       name
@@ -15,9 +15,9 @@ query FuelSites {
 }
 
 subscription FuelWatchUpdates {
-  events(filter: "fuelwatch:*") {
+  homeEvents(filter: "fuelwatch:*") {
     __typename
-    ... on FuelWatchUpdate {
+    ... on HomeFuelWatchUpdate {
       siteId
     }
   }

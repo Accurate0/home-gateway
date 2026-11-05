@@ -12,11 +12,11 @@ import { CONTENT_H, ROW } from "./theme";
 
 const AppQuery = graphql`
   query AppQuery($location: String!, $since: DateTime!, $transitRoute: String!) {
-    weather(input: { location: $location }) {
+    homeWeather(input: { location: $location }) {
       ...ClimateBand_weather
       ...ForecastCard_weather
     }
-    solar {
+    homeSolar {
       current {
         todayProductionKwh
         uvLevel
@@ -29,23 +29,23 @@ const AppQuery = graphql`
       }
       ...SolarChart_solar @arguments(since: $since)
     }
-    transperth {
+    homeTransperth {
       route(id: $transitRoute) {
         ...TransitFuelRow_route
       }
     }
-    fuelwatch {
+    homeFuelwatch {
       ...FuelPrice_fuel
     }
-    outdoor: environment(id: "env-outdoor") {
+    outdoor: homeEnvironment(id: "env-outdoor") {
       temperature
       humidity
     }
-    hallwayPanel: einkDisplay(id: "hallway-epd") {
+    hallwayPanel: homeEinkDisplay(id: "hallway-epd") {
       name
       batteryPercentage
     }
-    livingRoomPanel: einkDisplay(id: "living-room-epd") {
+    livingRoomPanel: homeEinkDisplay(id: "living-room-epd") {
       name
       batteryPercentage
     }
@@ -67,22 +67,22 @@ export default function App() {
     transitRoute: TRANSIT_ROUTE,
   });
 
-  const current = data.solar?.current;
+  const current = data.homeSolar?.current;
   const weatherOnly = view === "weather";
 
   return (
     <Frame>
       <Header updatedAt={formatUpdatedAt(new Date())} stale={false} />
 
-      <ClimateBand outdoor={data.outdoor} weatherRef={data.weather} />
+      <ClimateBand outdoor={data.outdoor} weatherRef={data.homeWeather} />
 
       {!weatherOnly && (
-        <TransitFuelRow routeRef={data.transperth?.route} fuelRef={data.fuelwatch} />
+        <TransitFuelRow routeRef={data.homeTransperth?.route} fuelRef={data.homeFuelwatch} />
       )}
 
-      {!weatherOnly && data.solar && (
+      {!weatherOnly && data.homeSolar && (
         <SolarSection
-          solarRef={data.solar}
+          solarRef={data.homeSolar}
           last15Mins={current?.statistics?.averages?.last15Mins}
           last1Hour={current?.statistics?.averages?.last1Hour}
           uvLevel={current?.uvLevel}
@@ -90,9 +90,9 @@ export default function App() {
         />
       )}
 
-      {data.weather && (
+      {data.homeWeather && (
         <ForecastCard
-          weatherRef={data.weather}
+          weatherRef={data.homeWeather}
           height={weatherOnly ? WEATHER_FORECAST_H : ROW.forecast}
         />
       )}

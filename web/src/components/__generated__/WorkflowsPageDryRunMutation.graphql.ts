@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0c1b90e86d23305da5dfe16194f62b15>>
+ * @generated SignedSource<<3fc987bbc1dec32cb50d774c218a5f39>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type WorkflowsPageDryRunMutation$variables = {
   slug: string;
 };
 export type WorkflowsPageDryRunMutation$data = {
-  readonly runWorkflow: any;
+  readonly homeRunWorkflow: any;
 };
 export type WorkflowsPageDryRunMutation = {
   response: WorkflowsPageDryRunMutation$data;
@@ -43,7 +43,7 @@ v1 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "runWorkflow",
+    "name": "homeRunWorkflow",
     "storageKey": null
   }
 ];
@@ -65,16 +65,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "948282717f1fe239020aed6e21d21020",
+    "cacheID": "c6c21d682d1cd089a48e4ef286ef449b",
     "id": null,
     "metadata": {},
     "name": "WorkflowsPageDryRunMutation",
     "operationKind": "mutation",
-    "text": "mutation WorkflowsPageDryRunMutation(\n  $slug: String!\n) {\n  runWorkflow(slug: $slug, dryRun: true)\n}\n"
+    "text": "mutation WorkflowsPageDryRunMutation(\n  $slug: String!\n) {\n  homeRunWorkflow(slug: $slug, dryRun: true)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9e7389d2abdc28006467ff7a4e71791e";
+(node as any).hash = "75e15439b5185234ea5dbdeef2471d73";
 
 export default node;

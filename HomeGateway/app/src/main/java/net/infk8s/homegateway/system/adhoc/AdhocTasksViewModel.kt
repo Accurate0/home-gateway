@@ -77,8 +77,8 @@ class AdhocTasksViewModel(application: Application) : AndroidViewModel(applicati
                 ?: throw IllegalStateException(response.errors?.firstOrNull()?.message ?: "Failed to load adhoc tasks")
 
             _state.value = AdhocTasksUiState.Loaded(
-                cron = data.adhocCronTasks.map { it.toUi() },
-                tasks = data.adhocTasks.map { it.toUi() }.sortedBy { it.ordinal },
+                cron = data.homeAdhocCronTasks.map { it.toUi() },
+                tasks = data.homeAdhocTasks.map { it.toUi() }.sortedBy { it.ordinal },
             )
         } catch (e: CancellationException) {
             throw e
@@ -91,7 +91,7 @@ class AdhocTasksViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun AdhocTasksQuery.AdhocCronTask.toUi() = AdhocCronTaskUi(
+    private fun AdhocTasksQuery.HomeAdhocCronTask.toUi() = AdhocCronTaskUi(
         id = id,
         name = name,
         schedule = schedule,
@@ -103,7 +103,7 @@ class AdhocTasksViewModel(application: Application) : AndroidViewModel(applicati
         outcome = outcome,
     )
 
-    private fun AdhocTasksQuery.AdhocTask.toUi() = AdhocTaskUi(
+    private fun AdhocTasksQuery.HomeAdhocTask.toUi() = AdhocTaskUi(
         id = id,
         ordinal = ordinal,
         name = name,

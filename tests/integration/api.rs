@@ -231,13 +231,13 @@ async fn temperature_readings_are_queryable_over_graphql() {
     let (status, body) = client
         .graphql(
             Some(&key),
-            r#"{ environment(id: "test-environment") { id aliases name temperature humidity } }"#,
+            r#"{ homeEnvironment(id: "test-environment") { id aliases name temperature humidity } }"#,
         )
         .await;
 
     assert_eq!(status, StatusCode::OK, "graphql errors: {body}");
 
-    let environment = &body["data"]["environment"];
+    let environment = &body["data"]["homeEnvironment"];
 
     assert_eq!(environment["id"], "env-test-1", "got {body}");
     assert_eq!(
@@ -269,8 +269,8 @@ async fn battery_is_only_exposed_for_devices_with_the_battery_role() {
         .graphql(
             Some(&key),
             r#"{
-                door(id: "test-door") { battery { kind percentage } }
-                presence(id: "test-presence") { battery { kind percentage } }
+                homeDoor(id: "test-door") { battery { kind percentage } }
+                homePresence(id: "test-presence") { battery { kind percentage } }
             }"#,
         )
         .await;
@@ -279,12 +279,12 @@ async fn battery_is_only_exposed_for_devices_with_the_battery_role() {
     assert_eq!(body["errors"], serde_json::Value::Null, "got {body}");
 
     assert_eq!(
-        body["data"]["door"]["battery"],
+        body["data"]["homeDoor"]["battery"],
         serde_json::json!({ "kind": "battery", "percentage": 91.0 }),
         "got {body}"
     );
     assert_eq!(
-        body["data"]["presence"]["battery"],
+        body["data"]["homePresence"]["battery"],
         serde_json::Value::Null,
         "got {body}"
     );
@@ -298,7 +298,7 @@ async fn an_unknown_device_reference_is_a_graphql_error() {
     let key = mint_key(&harness, "test-reader", &["**:*"]).await;
 
     let (status, body) = client
-        .graphql(Some(&key), r#"{ environment(id: "nope") { id } }"#)
+        .graphql(Some(&key), r#"{ homeEnvironment(id: "nope") { id } }"#)
         .await;
 
     assert_eq!(status, StatusCode::OK);
@@ -318,7 +318,7 @@ async fn an_insufficient_scope_is_denied() {
     let (status, body) = client
         .graphql(
             Some(&key),
-            r#"{ environment(id: "test-environment") { id } }"#,
+            r#"{ homeEnvironment(id: "test-environment") { id } }"#,
         )
         .await;
 
@@ -346,13 +346,13 @@ async fn a_dry_run_is_traced_and_queryable_over_graphql() {
     let (status, body) = client
         .graphql(
             Some(&key),
-            r#"mutation { runWorkflow(slug: "test-lamp-on", dryRun: true) }"#,
+            r#"mutation { homeRunWorkflow(slug: "test-lamp-on", dryRun: true) }"#,
         )
         .await;
 
     assert_eq!(status, StatusCode::OK, "graphql errors: {body}");
 
-    let event_id = body["data"]["runWorkflow"]
+    let event_id = body["data"]["homeRunWorkflow"]
         .as_str()
         .unwrap_or_else(|| panic!("expected an event id, got {body}"))
         .to_owned();
@@ -367,7 +367,7 @@ async fn a_dry_run_is_traced_and_queryable_over_graphql() {
         || async {
             let (_, body) = client.graphql(Some(&key), &query).await;
 
-            body["data"]["workflowRuns"]
+            body["data"]["homeWorkflowRuns"]
                 .as_array()
                 .and_then(|runs| runs.first().cloned())
         },

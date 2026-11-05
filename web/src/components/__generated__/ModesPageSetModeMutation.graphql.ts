@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e587d9abf09b36fb0e9838d76e705a36>>
+ * @generated SignedSource<<f79a5ab8a44c5b565e65c8f3c664bd62>>
  * @lightSyntaxTransform
  */
 
@@ -8,12 +8,12 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type Mode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
+export type HomeMode = "AWAY" | "GUEST" | "HOME" | "VACATION" | "%future added value";
 export type ModesPageSetModeMutation$variables = {
-  mode: Mode;
+  mode: HomeMode;
 };
 export type ModesPageSetModeMutation$data = {
-  readonly setMode: Mode;
+  readonly homeSetMode: HomeMode;
 };
 export type ModesPageSetModeMutation = {
   response: ModesPageSetModeMutation$data;
@@ -39,7 +39,7 @@ v1 = [
       }
     ],
     "kind": "ScalarField",
-    "name": "setMode",
+    "name": "homeSetMode",
     "storageKey": null
   }
 ];
@@ -61,16 +61,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "181b036b7842c29344203a22bc9b8646",
+    "cacheID": "9445d0f11fe9cf1ece89a6b2e07dead0",
     "id": null,
     "metadata": {},
     "name": "ModesPageSetModeMutation",
     "operationKind": "mutation",
-    "text": "mutation ModesPageSetModeMutation(\n  $mode: Mode!\n) {\n  setMode(mode: $mode)\n}\n"
+    "text": "mutation ModesPageSetModeMutation(\n  $mode: HomeMode!\n) {\n  homeSetMode(mode: $mode)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3dff2f4b11dd50d42fb6f082a075a2d2";
+(node as any).hash = "9a8ae860a2d562f14673e4315f9349ae";
 
 export default node;

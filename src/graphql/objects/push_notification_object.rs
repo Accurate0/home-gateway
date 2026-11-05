@@ -6,7 +6,7 @@ use crate::graphql::objects::push_notification_action_object::PushNotificationAc
 use crate::graphql::objects::push_notification_interaction_object::PushNotificationInteractionObject;
 
 #[derive(SimpleObject)]
-#[graphql(name = "PushNotification")]
+#[graphql(name = "HomePushNotification")]
 pub struct PushNotificationObject {
     pub id: Uuid,
     pub tag: String,

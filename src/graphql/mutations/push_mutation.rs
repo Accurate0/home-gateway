@@ -17,11 +17,10 @@ use crate::settings::{
 #[derive(Default)]
 pub struct PushMutation;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomePushMutation")]
 impl PushMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Push, Action::Write)))]
-    async fn send_push_notification(
+    async fn home_send_push_notification(
         &self,
         ctx: &async_graphql::Context<'_>,
         input: SendPushNotificationInput,
@@ -72,7 +71,7 @@ impl PushMutation {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Push, Action::Write)))]
-    async fn record_notification_interaction(
+    async fn home_record_notification_interaction(
         &self,
         ctx: &async_graphql::Context<'_>,
         id: Uuid,

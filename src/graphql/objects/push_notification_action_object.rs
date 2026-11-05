@@ -4,7 +4,7 @@ use crate::graphql::objects::push_notification_action_kind::PushNotificationActi
 use crate::notify::actions::{PushAction, PushActionKind};
 
 #[derive(SimpleObject)]
-#[graphql(name = "PushNotificationAction")]
+#[graphql(name = "HomePushNotificationAction")]
 pub struct PushNotificationActionObject {
     pub label: String,
     pub kind: PushNotificationActionKind,

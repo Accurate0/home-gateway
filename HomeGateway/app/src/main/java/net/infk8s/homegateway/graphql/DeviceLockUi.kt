@@ -2,9 +2,9 @@ package net.infk8s.homegateway.graphql
 
 import java.time.Duration
 import java.time.Instant
-import net.infk8s.homegateway.graphql.type.DeviceLockSource
+import net.infk8s.homegateway.graphql.type.HomeDeviceLockSource
 
-data class DeviceLockUi(val source: DeviceLockSource, val expiresAt: Instant?) {
+data class DeviceLockUi(val source: HomeDeviceLockSource, val expiresAt: Instant?) {
     fun activeAt(now: Instant): Boolean = expiresAt == null || expiresAt.isAfter(now)
 
     fun sourceLabel(): String = source.rawValue.lowercase().replaceFirstChar { it.uppercase() }

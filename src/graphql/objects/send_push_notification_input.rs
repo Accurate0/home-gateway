@@ -5,7 +5,7 @@ use crate::graphql::objects::push_notification_action_input::PushNotificationAct
 use crate::settings::NotifyCategory;
 
 #[derive(InputObject)]
-#[graphql(name = "SendPushNotificationInput")]
+#[graphql(name = "HomeSendPushNotificationInput")]
 pub struct SendPushNotificationInput {
     pub title: String,
     pub body: String,

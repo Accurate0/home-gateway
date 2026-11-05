@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const RunsQuery = graphql`
   query RunsPageQuery {
-    workflowRuns(limit: 100) {
+    homeWorkflowRuns(limit: 100) {
       id
       eventId
       slug
@@ -46,7 +46,7 @@ export default function RunsPage() {
   const [toggled, setToggled] = useState<Set<string>>(new Set());
 
   const pendingRun = pendingEventId
-    ? data.workflowRuns.find((r) => r.eventId === pendingEventId)
+    ? data.homeWorkflowRuns.find((r) => r.eventId === pendingEventId)
     : undefined;
 
   useEffect(() => {
@@ -76,14 +76,14 @@ export default function RunsPage() {
   const runs = useMemo(
     () =>
       filter
-        ? data.workflowRuns.filter((r) => r.slug === filter)
-        : data.workflowRuns,
-    [data.workflowRuns, filter],
+        ? data.homeWorkflowRuns.filter((r) => r.slug === filter)
+        : data.homeWorkflowRuns,
+    [data.homeWorkflowRuns, filter],
   );
 
   const slugs = useMemo(
-    () => [...new Set(data.workflowRuns.map((r) => r.slug))].sort(),
-    [data.workflowRuns],
+    () => [...new Set(data.homeWorkflowRuns.map((r) => r.slug))].sort(),
+    [data.homeWorkflowRuns],
   );
 
   return (

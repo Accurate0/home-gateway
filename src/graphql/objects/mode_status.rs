@@ -7,7 +7,7 @@ pub struct ModeStatus {
     pub active: Mode,
 }
 
-#[Object]
+#[Object(name = "HomeModeStatus")]
 impl ModeStatus {
     async fn active(&self) -> Mode {
         self.active

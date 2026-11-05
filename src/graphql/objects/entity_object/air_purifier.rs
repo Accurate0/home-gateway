@@ -17,6 +17,7 @@ const CADR_METRIC: &str = "cadr";
 const MAX_HISTORY_WINDOW: TimeDelta = TimeDelta::days(90);
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeAirPurifierPoint")]
 #[graphql(rename_fields = "camelCase")]
 pub struct AirPurifierPoint {
     pub on: bool,
@@ -77,7 +78,7 @@ impl Lockable for AirPurifierEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeAirPurifierEntity")]
 impl AirPurifierEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Environment

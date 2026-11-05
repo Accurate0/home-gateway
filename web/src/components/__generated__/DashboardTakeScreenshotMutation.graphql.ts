@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7bce2eb09f3dde25e19c17ac8e9d2939>>
+ * @generated SignedSource<<9ad3e869366be59fcdbd32fe2eafd725>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type DashboardTakeScreenshotMutation$variables = {
   id: string;
 };
 export type DashboardTakeScreenshotMutation$data = {
-  readonly einkDisplay: {
+  readonly homeEinkDisplay: {
     readonly takeScreenshot: boolean;
   };
 };
@@ -39,9 +39,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "EinkDisplayMutation",
+    "concreteType": "HomeEinkDisplayMutation",
     "kind": "LinkedField",
-    "name": "einkDisplay",
+    "name": "homeEinkDisplay",
     "plural": false,
     "selections": [
       {
@@ -73,16 +73,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "ea8d0cb22f0b37f0e15af1762ba5e90c",
+    "cacheID": "d064ad8f24af8a41fed8bc9c12e70413",
     "id": null,
     "metadata": {},
     "name": "DashboardTakeScreenshotMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardTakeScreenshotMutation(\n  $id: IdOrAlias!\n) {\n  einkDisplay(id: $id) {\n    takeScreenshot\n  }\n}\n"
+    "text": "mutation DashboardTakeScreenshotMutation(\n  $id: IdOrAlias!\n) {\n  homeEinkDisplay(id: $id) {\n    takeScreenshot\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "003416817e0f566950fe064314b64252";
+(node as any).hash = "ce71512061274c563785dfecaf675887";
 
 export default node;

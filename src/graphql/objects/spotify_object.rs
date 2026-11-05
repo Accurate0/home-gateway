@@ -1,13 +1,13 @@
 use async_graphql::SimpleObject;
 
 #[derive(SimpleObject)]
-#[graphql(name = "Artist", unresolvable = "name")]
+#[graphql(name = "SpotifyArtist", unresolvable = "name")]
 pub struct SpotifyArtist {
     pub name: String,
 }
 
 #[derive(SimpleObject)]
-#[graphql(name = "Item", unresolvable = "uri")]
+#[graphql(name = "SpotifyItem", unresolvable = "uri")]
 pub struct SpotifyItem {
     pub uri: String,
 }

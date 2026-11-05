@@ -4,6 +4,7 @@ use crate::graphql::objects::weather_object::WeatherObject;
 use async_graphql::{InputObject, Object};
 
 #[derive(InputObject)]
+#[graphql(name = "HomeWeatherInput")]
 pub struct WeatherInput {
     pub location: String,
 }
@@ -11,11 +12,10 @@ pub struct WeatherInput {
 #[derive(Default)]
 pub struct WeatherQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeWeatherQuery")]
 impl WeatherQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Weather, Action::Read)))]
-    async fn weather(
+    async fn home_weather(
         &self,
         _ctx: &async_graphql::Context<'_>,
         input: WeatherInput,

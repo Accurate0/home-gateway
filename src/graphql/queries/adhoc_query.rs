@@ -13,11 +13,10 @@ use crate::settings::SettingsContainer;
 #[derive(Default)]
 pub struct AdhocQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeAdhocQuery")]
 impl AdhocQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Read)))]
-    async fn adhoc_cron_tasks(
+    async fn home_adhoc_cron_tasks(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<AdhocCronTaskStatus>> {
@@ -53,7 +52,7 @@ impl AdhocQuery {
     }
 
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AdhocTask, Action::Read)))]
-    async fn adhoc_tasks(
+    async fn home_adhoc_tasks(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<Vec<AdhocTaskStatus>> {

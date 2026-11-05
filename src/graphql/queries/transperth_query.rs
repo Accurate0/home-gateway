@@ -6,11 +6,10 @@ use async_graphql::Object;
 #[derive(Default)]
 pub struct TransperthQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeTransperthQuery")]
 impl TransperthQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Transperth, Action::Read)))]
-    async fn transperth(
+    async fn home_transperth(
         &self,
         _ctx: &async_graphql::Context<'_>,
     ) -> async_graphql::Result<TransperthObject> {

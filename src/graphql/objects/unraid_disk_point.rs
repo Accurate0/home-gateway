@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use crate::repo::unraid::UnraidDiskHistoryRow;
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeUnraidDiskPoint")]
 pub struct UnraidDiskPoint {
     pub time: DateTime<Utc>,
     pub status: Option<String>,

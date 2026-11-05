@@ -3,12 +3,12 @@ package net.infk8s.homegateway.notifications
 import android.util.Log
 import com.apollographql.apollo.ApolloClient
 import net.infk8s.homegateway.graphql.RecordNotificationInteractionMutation
-import net.infk8s.homegateway.graphql.type.NotificationInteractionKind
+import net.infk8s.homegateway.graphql.type.HomeNotificationInteractionKind
 
 object NotificationInteractions {
     private const val TAG = "NotificationInteractions"
 
-    suspend fun record(apollo: ApolloClient, notificationId: String, kind: NotificationInteractionKind) {
+    suspend fun record(apollo: ApolloClient, notificationId: String, kind: HomeNotificationInteractionKind) {
         try {
             val response = apollo
                 .mutation(RecordNotificationInteractionMutation(notificationId, kind))

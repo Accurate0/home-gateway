@@ -29,8 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.infk8s.homegateway.graphql.type.LightTarget
-import net.infk8s.homegateway.graphql.type.Mode
+import net.infk8s.homegateway.graphql.type.HomeLightTarget
+import net.infk8s.homegateway.graphql.type.HomeMode
 import net.infk8s.homegateway.ui.OutlinedPill
 import net.infk8s.homegateway.ui.Panel
 import net.infk8s.homegateway.ui.clock
@@ -40,7 +40,7 @@ import net.infk8s.homegateway.ui.theme.StateTone
 @Composable
 fun ModesScreen(
     state: ModesUiState,
-    onSelect: (Mode) -> Unit,
+    onSelect: (HomeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
@@ -68,7 +68,7 @@ fun ModesScreen(
 }
 
 @Composable
-private fun HouseMode(active: Mode, onSelect: (Mode) -> Unit) {
+private fun HouseMode(active: HomeMode, onSelect: (HomeMode) -> Unit) {
     Panel(Modifier.fillMaxWidth()) {
         Text("House mode", style = MaterialTheme.typography.titleSmall)
         Text(
@@ -92,7 +92,7 @@ private fun HouseMode(active: Mode, onSelect: (Mode) -> Unit) {
 }
 
 @Composable
-private fun VacationHeader(active: Mode, vacation: VacationUi) {
+private fun VacationHeader(active: HomeMode, vacation: VacationUi) {
     Column(Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -102,7 +102,7 @@ private fun VacationHeader(active: Mode, vacation: VacationUi) {
                 letterSpacing = 1.5.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (active == Mode.VACATION) {
+            if (active == HomeMode.VACATION) {
                 OutlinedPill(
                     "replaying",
                     color = StateTone.LIGHT.accent,
@@ -173,15 +173,15 @@ private fun VacationLight(light: VacationLightUi) {
 }
 
 @Composable
-private fun TargetPill(target: LightTarget) {
+private fun TargetPill(target: HomeLightTarget) {
     val label = when (target) {
-        LightTarget.ON -> "on"
-        LightTarget.OFF -> "off"
-        LightTarget.LEAVE_ALONE -> "left alone"
+        HomeLightTarget.ON -> "on"
+        HomeLightTarget.OFF -> "off"
+        HomeLightTarget.LEAVE_ALONE -> "left alone"
         else -> target.rawValue.lowercase()
     }
 
-    if (target == LightTarget.ON) {
+    if (target == HomeLightTarget.ON) {
         OutlinedPill("now $label", color = StateTone.LIGHT.accent, borderColor = StateTone.LIGHT.accent.copy(alpha = 0.4f))
     } else {
         OutlinedPill("now $label")
@@ -221,8 +221,8 @@ private fun ActionChip(action: VacationActionUi) {
     }
 }
 
-private fun Mode.label(): String = rawValue.lowercase().replaceFirstChar { it.uppercase() }
+private fun HomeMode.label(): String = rawValue.lowercase().replaceFirstChar { it.uppercase() }
 
-private val MODES = listOf(Mode.HOME, Mode.AWAY, Mode.VACATION, Mode.GUEST)
+private val MODES = listOf(HomeMode.HOME, HomeMode.AWAY, HomeMode.VACATION, HomeMode.GUEST)
 
 private const val SLOTS_PER_DAY = 48

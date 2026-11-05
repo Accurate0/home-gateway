@@ -3,7 +3,7 @@ use async_graphql::SimpleObject;
 use crate::repo::light::LightState;
 
 #[derive(SimpleObject)]
-#[graphql(name = "LightState")]
+#[graphql(name = "HomeLightState")]
 pub struct LightStateObject {
     pub on: bool,
     /// Current brightness on the light model's `ranges.brightness` scale, when the light reports one.

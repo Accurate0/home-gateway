@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e47c574ab435098179ac4e1a1f4ca1db>>
+ * @generated SignedSource<<8f500cdbe085f7b28dbbc2737e8ac353>>
  * @lightSyntaxTransform
  */
 
@@ -8,14 +8,14 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
+export type HomeCommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardAirPurifierSetSpeedMutation$variables = {
   id: string;
   speed: number;
 };
 export type DashboardAirPurifierSetSpeedMutation$data = {
-  readonly airPurifier: {
-    readonly setSpeed: CommandOutcome;
+  readonly homeAirPurifier: {
+    readonly setSpeed: HomeCommandOutcome;
   };
 };
 export type DashboardAirPurifierSetSpeedMutation = {
@@ -46,9 +46,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "AirPurifierMutation",
+    "concreteType": "HomeAirPurifierMutation",
     "kind": "LinkedField",
-    "name": "airPurifier",
+    "name": "homeAirPurifier",
     "plural": false,
     "selections": [
       {
@@ -86,16 +86,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "6be23c45c9d8604ecf7c72146c6bfb04",
+    "cacheID": "9396a6a577cd885876fe0abd4fe93786",
     "id": null,
     "metadata": {},
     "name": "DashboardAirPurifierSetSpeedMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardAirPurifierSetSpeedMutation(\n  $id: IdOrAlias!\n  $speed: Int!\n) {\n  airPurifier(id: $id) {\n    setSpeed(speed: $speed)\n  }\n}\n"
+    "text": "mutation DashboardAirPurifierSetSpeedMutation(\n  $id: IdOrAlias!\n  $speed: Int!\n) {\n  homeAirPurifier(id: $id) {\n    setSpeed(speed: $speed)\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ffe46835531307022e92e259e96f04c9";
+(node as any).hash = "b92327ecfdf22a7db5601a149bf915a1";
 
 export default node;

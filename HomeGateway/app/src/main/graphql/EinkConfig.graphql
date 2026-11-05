@@ -1,5 +1,5 @@
 query EinkConfig($id: IdOrAlias!) {
-  einkDisplay(id: $id) {
+  homeEinkDisplay(id: $id) {
     deviceConfig {
       refreshIntervalMins
       imageUrl

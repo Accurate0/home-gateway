@@ -1,5 +1,5 @@
 query DeviceConnections {
-  deviceConnections {
+  homeDeviceConnections {
     deviceId
     connected
   }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<58fc213ccc84944b17b7b240f5b9594c>>
+ * @generated SignedSource<<8d039349f861c161ec58c2dfca967bb8>>
  * @lightSyntaxTransform
  */
 
@@ -10,7 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type LuaPlaygroundPageApiQuery$variables = Record<PropertyKey, never>;
 export type LuaPlaygroundPageApiQuery$data = {
-  readonly luaApi: {
+  readonly homeLuaApi: {
     readonly aliases: ReadonlyArray<{
       readonly name: string;
       readonly type: string;
@@ -95,7 +95,7 @@ v2 = [
 v3 = {
   "alias": null,
   "args": null,
-  "concreteType": "LuaFieldObject",
+  "concreteType": "HomeLuaFieldObject",
   "kind": "LinkedField",
   "name": "fields",
   "plural": true,
@@ -106,9 +106,9 @@ v4 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "LuaApiObject",
+    "concreteType": "HomeLuaApiObject",
     "kind": "LinkedField",
-    "name": "luaApi",
+    "name": "homeLuaApi",
     "plural": false,
     "selections": [
       {
@@ -121,7 +121,7 @@ v4 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "LuaFieldObject",
+        "concreteType": "HomeLuaFieldObject",
         "kind": "LinkedField",
         "name": "globals",
         "plural": true,
@@ -131,7 +131,7 @@ v4 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "LuaAliasObject",
+        "concreteType": "HomeLuaAliasObject",
         "kind": "LinkedField",
         "name": "aliases",
         "plural": true,
@@ -144,7 +144,7 @@ v4 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "LuaClassObject",
+        "concreteType": "HomeLuaClassObject",
         "kind": "LinkedField",
         "name": "classes",
         "plural": true,
@@ -157,7 +157,7 @@ v4 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "LuaNamespaceObject",
+        "concreteType": "HomeLuaNamespaceObject",
         "kind": "LinkedField",
         "name": "namespaces",
         "plural": true,
@@ -167,7 +167,7 @@ v4 = [
           {
             "alias": null,
             "args": null,
-            "concreteType": "LuaFunctionObject",
+            "concreteType": "HomeLuaFunctionObject",
             "kind": "LinkedField",
             "name": "functions",
             "plural": true,
@@ -197,7 +197,7 @@ v4 = [
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "LuaFieldObject",
+                "concreteType": "HomeLuaFieldObject",
                 "kind": "LinkedField",
                 "name": "params",
                 "plural": true,
@@ -232,16 +232,16 @@ return {
     "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "9235e41dc955ab30b8bc78232055fbd7",
+    "cacheID": "591dce5c4fbb6b3f915cf36161f2dd64",
     "id": null,
     "metadata": {},
     "name": "LuaPlaygroundPageApiQuery",
     "operationKind": "query",
-    "text": "query LuaPlaygroundPageApiQuery {\n  luaApi {\n    definitions\n    globals {\n      name\n      type\n      optional\n      declaration\n    }\n    aliases {\n      name\n      type\n    }\n    classes {\n      name\n      fields {\n        name\n        type\n        optional\n        declaration\n      }\n    }\n    namespaces {\n      name\n      fields {\n        name\n        type\n        optional\n        declaration\n      }\n      functions {\n        name\n        returns\n        scope\n        signature\n        params {\n          name\n          type\n          optional\n          declaration\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query LuaPlaygroundPageApiQuery {\n  homeLuaApi {\n    definitions\n    globals {\n      name\n      type\n      optional\n      declaration\n    }\n    aliases {\n      name\n      type\n    }\n    classes {\n      name\n      fields {\n        name\n        type\n        optional\n        declaration\n      }\n    }\n    namespaces {\n      name\n      fields {\n        name\n        type\n        optional\n        declaration\n      }\n      functions {\n        name\n        returns\n        scope\n        signature\n        params {\n          name\n          type\n          optional\n          declaration\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cc0dde76300f0e136109febff5cca46f";
+(node as any).hash = "7d245fa435e9448da566e367aa9d2fd2";
 
 export default node;

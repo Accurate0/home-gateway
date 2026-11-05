@@ -22,6 +22,7 @@ pub trait Lockable: Sync {
 
 #[derive(Interface)]
 #[graphql(
+    name = "HomeLockableEntity",
     field(name = "id", ty = "&str"),
     field(name = "lock", ty = "Option<DeviceLockObject>")
 )]

@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils";
 
 const ModesQuery = graphql`
   query ModesPageQuery {
-    mode {
+    homeMode {
       active
       node(mode: VACATION) {
         mode
-        ... on VacationMode {
+        ... on HomeVacationMode {
           enabled
           window
           jitter
@@ -36,8 +36,8 @@ const ModesQuery = graphql`
 `;
 
 const SetModeMutation = graphql`
-  mutation ModesPageSetModeMutation($mode: Mode!) {
-    setMode(mode: $mode)
+  mutation ModesPageSetModeMutation($mode: HomeMode!) {
+    homeSetMode(mode: $mode)
   }
 `;
 
@@ -88,8 +88,8 @@ export default function ModesPage() {
   const [override, setOverride] = useState<ModeValue | null>(null);
   const [commit] = useMutation<ModesPageSetModeMutation>(SetModeMutation);
 
-  const active = override ?? data.mode.active;
-  const vacation = data.mode.node;
+  const active = override ?? data.homeMode.active;
+  const vacation = data.homeMode.node;
   const lights = vacation.lights ?? [];
 
   const select = (mode: ModeValue) => {

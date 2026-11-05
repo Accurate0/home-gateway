@@ -21,10 +21,10 @@ class EntitySource(private val apollo: ApolloClient) {
             Log.w(TAG, "entities query returned field errors: ${response.errors}")
         }
 
-        val entities = data.entities.mapNotNull { it.toUi() }
+        val entities = data.homeEntities.mapNotNull { it.toUi() }
         // Section order and titles are a backend concern: render whatever it returns,
         // then append any category it didn't describe so nothing silently disappears.
-        val described = data.entitySections.map { CategoryUi(it.category, it.title) }
+        val described = data.homeEntitySections.map { CategoryUi(it.category, it.title) }
         val undescribed = entities
             .map { it.category }
             .distinct()

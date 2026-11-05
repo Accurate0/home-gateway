@@ -2,6 +2,7 @@ use async_graphql::SimpleObject;
 use chrono::{DateTime, Utc};
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeAdhocCronTaskStatus")]
 pub struct AdhocCronTaskStatus {
     pub id: String,
     pub name: String,
@@ -15,6 +16,7 @@ pub struct AdhocCronTaskStatus {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomeAdhocTaskStatus")]
 pub struct AdhocTaskStatus {
     pub id: String,
     pub ordinal: i64,

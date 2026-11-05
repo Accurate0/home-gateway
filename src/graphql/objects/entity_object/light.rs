@@ -65,7 +65,7 @@ impl LightEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeLightEntity")]
 impl LightEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Lights
@@ -153,6 +153,7 @@ impl LightEntity {
 }
 
 #[derive(SimpleObject)]
+#[graphql(name = "HomePendingCommand")]
 pub struct PendingCommand {
     pub requested_at: DateTime<Utc>,
     pub attempts: i32,

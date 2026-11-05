@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<81271c04f0638c01b4fa00473715d38f>>
+ * @generated SignedSource<<965ddf12f54a9f82c0638d270346d605>>
  * @lightSyntaxTransform
  */
 
@@ -8,13 +8,13 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
+export type HomeCommandOutcome = "LOCKED" | "SENT" | "UNCHANGED" | "%future added value";
 export type DashboardAirPurifierTurnOffMutation$variables = {
   id: string;
 };
 export type DashboardAirPurifierTurnOffMutation$data = {
-  readonly airPurifier: {
-    readonly turnOff: CommandOutcome;
+  readonly homeAirPurifier: {
+    readonly turnOff: HomeCommandOutcome;
   };
 };
 export type DashboardAirPurifierTurnOffMutation = {
@@ -40,9 +40,9 @@ v1 = [
         "variableName": "id"
       }
     ],
-    "concreteType": "AirPurifierMutation",
+    "concreteType": "HomeAirPurifierMutation",
     "kind": "LinkedField",
-    "name": "airPurifier",
+    "name": "homeAirPurifier",
     "plural": false,
     "selections": [
       {
@@ -74,16 +74,16 @@ return {
     "selections": (v1/*:: as any*/)
   },
   "params": {
-    "cacheID": "03ab4d00a92bab67a57f6606d8c4e61b",
+    "cacheID": "7e2e82aa8e90bc8543215443972b7a5f",
     "id": null,
     "metadata": {},
     "name": "DashboardAirPurifierTurnOffMutation",
     "operationKind": "mutation",
-    "text": "mutation DashboardAirPurifierTurnOffMutation(\n  $id: IdOrAlias!\n) {\n  airPurifier(id: $id) {\n    turnOff\n  }\n}\n"
+    "text": "mutation DashboardAirPurifierTurnOffMutation(\n  $id: IdOrAlias!\n) {\n  homeAirPurifier(id: $id) {\n    turnOff\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e4cd956dc8d0999253257ca1ec53e8cc";
+(node as any).hash = "a88663eb59b3cf94efdc3066a6011370";
 
 export default node;

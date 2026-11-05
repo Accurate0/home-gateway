@@ -10,11 +10,10 @@ use crate::state::AppState;
 #[derive(Default)]
 pub struct LuaQuery;
 
-#[home_gateway_macros::prefixed("home")]
-#[Object]
+#[Object(name = "HomeLuaQuery")]
 impl LuaQuery {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::Lua, Action::Read)))]
-    async fn lua_api(&self, ctx: &Context<'_>) -> async_graphql::Result<LuaApiObject> {
+    async fn home_lua_api(&self, ctx: &Context<'_>) -> async_graphql::Result<LuaApiObject> {
         let state = ctx.data::<AppState>()?;
         let home_assistant = state.handles.contains::<HomeAssistant>();
 

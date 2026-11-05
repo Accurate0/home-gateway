@@ -1,7 +1,7 @@
 query BatteryHistory($since: DateTime!) {
-  entities {
+  homeEntities {
     __typename
-    ... on LightEntity {
+    ... on HomeLightEntity {
       id
       name
       room
@@ -12,7 +12,7 @@ query BatteryHistory($since: DateTime!) {
         }
       }
     }
-    ... on DoorEntity {
+    ... on HomeDoorEntity {
       id
       name
       room
@@ -23,7 +23,7 @@ query BatteryHistory($since: DateTime!) {
         }
       }
     }
-    ... on PresenceEntity {
+    ... on HomePresenceEntity {
       id
       name
       room
@@ -34,7 +34,7 @@ query BatteryHistory($since: DateTime!) {
         }
       }
     }
-    ... on EnvironmentEntity {
+    ... on HomeEnvironmentEntity {
       id
       name
       room
@@ -45,7 +45,7 @@ query BatteryHistory($since: DateTime!) {
         }
       }
     }
-    ... on EinkDisplayEntity {
+    ... on HomeEinkDisplayEntity {
       id
       name
       room
@@ -56,7 +56,7 @@ query BatteryHistory($since: DateTime!) {
         }
       }
     }
-    ... on RobotVacuumEntity {
+    ... on HomeRobotVacuumEntity {
       id
       name
       room
@@ -67,7 +67,7 @@ query BatteryHistory($since: DateTime!) {
         }
       }
     }
-    ... on GarageDoorEntity {
+    ... on HomeGarageDoorEntity {
       id
       name
       room

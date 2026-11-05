@@ -26,7 +26,7 @@ impl AirPurifierMutation {
     }
 }
 
-#[Object]
+#[Object(name = "HomeAirPurifierMutation")]
 impl AirPurifierMutation {
     #[graphql(guard = ScopeGuard(Scope::new(Resource::AirPurifier, ScopeAction::Write)))]
     async fn turn_on(&self) -> async_graphql::Result<CommandOutcome> {

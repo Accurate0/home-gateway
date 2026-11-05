@@ -15,6 +15,7 @@ use uuid::Uuid;
     Eq,
     Copy,
 )]
+#[graphql(name = "HomeDoorState")]
 #[sqlx(type_name = "door_state", rename_all = "lowercase")]
 pub enum DoorState {
     Open,

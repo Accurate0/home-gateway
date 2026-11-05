@@ -3,6 +3,7 @@ use async_graphql::Enum;
 use crate::notify::interaction::NotificationInteraction;
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug)]
+#[graphql(name = "HomeNotificationInteractionKind")]
 pub enum NotificationInteractionKind {
     Acknowledged,
     Opened,

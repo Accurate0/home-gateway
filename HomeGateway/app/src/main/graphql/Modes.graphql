@@ -1,9 +1,9 @@
 query Modes {
-  mode {
+  homeMode {
     active
     node(mode: VACATION) {
       mode
-      ... on VacationMode {
+      ... on HomeVacationMode {
         enabled
         window
         jitter
@@ -26,6 +26,6 @@ query Modes {
   }
 }
 
-mutation SetMode($mode: Mode!) {
-  setMode(mode: $mode)
+mutation SetMode($mode: HomeMode!) {
+  homeSetMode(mode: $mode)
 }

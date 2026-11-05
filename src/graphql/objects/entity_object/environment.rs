@@ -51,7 +51,7 @@ impl EnvironmentEntity {
     }
 }
 
-#[Object]
+#[Object(name = "HomeEnvironmentEntity")]
 impl EnvironmentEntity {
     async fn category(&self) -> super::EntityCategory {
         super::EntityCategory::Environment

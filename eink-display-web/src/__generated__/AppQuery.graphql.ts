@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3462845e677c38c378c03306d6278731>>
+ * @generated SignedSource<<00e8830b9294f307af7e0720dafae6d8>>
  * @lightSyntaxTransform
  */
 
@@ -15,22 +15,14 @@ export type AppQuery$variables = {
   transitRoute: string;
 };
 export type AppQuery$data = {
-  readonly fuelwatch: {
-    readonly " $fragmentSpreads": FragmentRefs<"FuelPrice_fuel">;
-  };
   readonly hallwayPanel: {
     readonly batteryPercentage: number | null | undefined;
     readonly name: string;
   };
-  readonly livingRoomPanel: {
-    readonly batteryPercentage: number | null | undefined;
-    readonly name: string;
+  readonly homeFuelwatch: {
+    readonly " $fragmentSpreads": FragmentRefs<"FuelPrice_fuel">;
   };
-  readonly outdoor: {
-    readonly humidity: number | null | undefined;
-    readonly temperature: number | null | undefined;
-  };
-  readonly solar: {
+  readonly homeSolar: {
     readonly current: {
       readonly statistics: {
         readonly averages: {
@@ -43,13 +35,21 @@ export type AppQuery$data = {
     };
     readonly " $fragmentSpreads": FragmentRefs<"SolarChart_solar">;
   };
-  readonly transperth: {
+  readonly homeTransperth: {
     readonly route: {
       readonly " $fragmentSpreads": FragmentRefs<"TransitFuelRow_route">;
     } | null | undefined;
   };
-  readonly weather: {
+  readonly homeWeather: {
     readonly " $fragmentSpreads": FragmentRefs<"ClimateBand_weather" | "ForecastCard_weather">;
+  };
+  readonly livingRoomPanel: {
+    readonly batteryPercentage: number | null | undefined;
+    readonly name: string;
+  };
+  readonly outdoor: {
+    readonly humidity: number | null | undefined;
+    readonly temperature: number | null | undefined;
   };
 };
 export type AppQuery = {
@@ -98,7 +98,7 @@ v2 = {
 v3 = {
   "alias": null,
   "args": null,
-  "concreteType": "SolarCurrentResponse",
+  "concreteType": "HomeSolarCurrentResponse",
   "kind": "LinkedField",
   "name": "current",
   "plural": false,
@@ -114,7 +114,7 @@ v3 = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "SolarCurrentStatistics",
+      "concreteType": "HomeSolarCurrentStatistics",
       "kind": "LinkedField",
       "name": "statistics",
       "plural": false,
@@ -122,7 +122,7 @@ v3 = {
         {
           "alias": null,
           "args": null,
-          "concreteType": "SolarCurrentStatisticsAverages",
+          "concreteType": "HomeSolarCurrentStatisticsAverages",
           "kind": "LinkedField",
           "name": "averages",
           "plural": false,
@@ -173,9 +173,9 @@ v6 = {
       "value": "env-outdoor"
     }
   ],
-  "concreteType": "EnvironmentEntity",
+  "concreteType": "HomeEnvironmentEntity",
   "kind": "LinkedField",
-  "name": "environment",
+  "name": "homeEnvironment",
   "plural": false,
   "selections": [
     {
@@ -193,7 +193,7 @@ v6 = {
       "storageKey": null
     }
   ],
-  "storageKey": "environment(id:\"env-outdoor\")"
+  "storageKey": "homeEnvironment(id:\"env-outdoor\")"
 },
 v7 = {
   "alias": null,
@@ -221,12 +221,12 @@ v9 = {
       "value": "hallway-epd"
     }
   ],
-  "concreteType": "EinkDisplayEntity",
+  "concreteType": "HomeEinkDisplayEntity",
   "kind": "LinkedField",
-  "name": "einkDisplay",
+  "name": "homeEinkDisplay",
   "plural": false,
   "selections": (v8/*:: as any*/),
-  "storageKey": "einkDisplay(id:\"hallway-epd\")"
+  "storageKey": "homeEinkDisplay(id:\"hallway-epd\")"
 },
 v10 = {
   "alias": "livingRoomPanel",
@@ -237,12 +237,12 @@ v10 = {
       "value": "living-room-epd"
     }
   ],
-  "concreteType": "EinkDisplayEntity",
+  "concreteType": "HomeEinkDisplayEntity",
   "kind": "LinkedField",
-  "name": "einkDisplay",
+  "name": "homeEinkDisplay",
   "plural": false,
   "selections": (v8/*:: as any*/),
-  "storageKey": "einkDisplay(id:\"living-room-epd\")"
+  "storageKey": "homeEinkDisplay(id:\"living-room-epd\")"
 };
 return {
   "fragment": {
@@ -254,9 +254,9 @@ return {
       {
         "alias": null,
         "args": (v1/*:: as any*/),
-        "concreteType": "WeatherObject",
+        "concreteType": "HomeWeatherObject",
         "kind": "LinkedField",
-        "name": "weather",
+        "name": "homeWeather",
         "plural": false,
         "selections": [
           {
@@ -275,9 +275,9 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "SolarObject",
+        "concreteType": "HomeSolarObject",
         "kind": "LinkedField",
-        "name": "solar",
+        "name": "homeSolar",
         "plural": false,
         "selections": [
           (v3/*:: as any*/),
@@ -292,15 +292,15 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "TransperthObject",
+        "concreteType": "HomeTransperthObject",
         "kind": "LinkedField",
-        "name": "transperth",
+        "name": "homeTransperth",
         "plural": false,
         "selections": [
           {
             "alias": null,
             "args": (v5/*:: as any*/),
-            "concreteType": "RouteDeparturesObject",
+            "concreteType": "HomeRouteDeparturesObject",
             "kind": "LinkedField",
             "name": "route",
             "plural": false,
@@ -319,9 +319,9 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "FuelWatchObject",
+        "concreteType": "HomeFuelWatchObject",
         "kind": "LinkedField",
-        "name": "fuelwatch",
+        "name": "homeFuelwatch",
         "plural": false,
         "selections": [
           {
@@ -348,15 +348,15 @@ return {
       {
         "alias": null,
         "args": (v1/*:: as any*/),
-        "concreteType": "WeatherObject",
+        "concreteType": "HomeWeatherObject",
         "kind": "LinkedField",
-        "name": "weather",
+        "name": "homeWeather",
         "plural": false,
         "selections": [
           {
             "alias": null,
             "args": null,
-            "concreteType": "Forecast",
+            "concreteType": "HomeForecast",
             "kind": "LinkedField",
             "name": "forecast",
             "plural": false,
@@ -364,7 +364,7 @@ return {
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "ForecastDetails",
+                "concreteType": "HomeForecastDetails",
                 "kind": "LinkedField",
                 "name": "days",
                 "plural": true,
@@ -423,9 +423,9 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "SolarObject",
+        "concreteType": "HomeSolarObject",
         "kind": "LinkedField",
-        "name": "solar",
+        "name": "homeSolar",
         "plural": false,
         "selections": [
           (v3/*:: as any*/),
@@ -438,7 +438,7 @@ return {
                 "name": "input"
               }
             ],
-            "concreteType": "GenerationHistory",
+            "concreteType": "HomeGenerationHistory",
             "kind": "LinkedField",
             "name": "history",
             "plural": true,
@@ -474,15 +474,15 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "TransperthObject",
+        "concreteType": "HomeTransperthObject",
         "kind": "LinkedField",
-        "name": "transperth",
+        "name": "homeTransperth",
         "plural": false,
         "selections": [
           {
             "alias": null,
             "args": (v5/*:: as any*/),
-            "concreteType": "RouteDeparturesObject",
+            "concreteType": "HomeRouteDeparturesObject",
             "kind": "LinkedField",
             "name": "route",
             "plural": false,
@@ -504,7 +504,7 @@ return {
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "DepartureObject",
+                "concreteType": "HomeDepartureObject",
                 "kind": "LinkedField",
                 "name": "departures",
                 "plural": true,
@@ -563,15 +563,15 @@ return {
       {
         "alias": null,
         "args": null,
-        "concreteType": "FuelWatchObject",
+        "concreteType": "HomeFuelWatchObject",
         "kind": "LinkedField",
-        "name": "fuelwatch",
+        "name": "homeFuelwatch",
         "plural": false,
         "selections": [
           {
             "alias": null,
             "args": null,
-            "concreteType": "FuelSite",
+            "concreteType": "HomeFuelSite",
             "kind": "LinkedField",
             "name": "cheapest",
             "plural": false,
@@ -603,16 +603,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "7020e962e1d6e61e3fd661f4a860df47",
+    "cacheID": "7938cc5e2255dff433963ce5ce7a6370",
     "id": null,
     "metadata": {},
     "name": "AppQuery",
     "operationKind": "query",
-    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  weather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  solar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  transperth {\n    route(id: $transitRoute) {\n      ...TransitFuelRow_route\n    }\n  }\n  fuelwatch {\n    ...FuelPrice_fuel\n  }\n  outdoor: environment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: einkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: einkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on WeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment FuelPrice_fuel on FuelWatchObject {\n  cheapest {\n    name\n    suburb\n    price\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on SolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n\nfragment TransitFuelRow_route on RouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n"
+    "text": "query AppQuery(\n  $location: String!\n  $since: DateTime!\n  $transitRoute: String!\n) {\n  homeWeather(input: {location: $location}) {\n    ...ClimateBand_weather\n    ...ForecastCard_weather\n  }\n  homeSolar {\n    current {\n      todayProductionKwh\n      uvLevel\n      statistics {\n        averages {\n          last15Mins\n          last1Hour\n        }\n      }\n    }\n    ...SolarChart_solar_2xCj2c\n  }\n  homeTransperth {\n    route(id: $transitRoute) {\n      ...TransitFuelRow_route\n    }\n  }\n  homeFuelwatch {\n    ...FuelPrice_fuel\n  }\n  outdoor: homeEnvironment(id: \"env-outdoor\") {\n    temperature\n    humidity\n  }\n  hallwayPanel: homeEinkDisplay(id: \"hallway-epd\") {\n    name\n    batteryPercentage\n  }\n  livingRoomPanel: homeEinkDisplay(id: \"living-room-epd\") {\n    name\n    batteryPercentage\n  }\n}\n\nfragment ClimateBand_weather on HomeWeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment ForecastCard_weather on HomeWeatherObject {\n  forecast {\n    days {\n      dateTime\n      code\n      description\n      min\n      max\n      uv\n    }\n  }\n}\n\nfragment FuelPrice_fuel on HomeFuelWatchObject {\n  cheapest {\n    name\n    suburb\n    price\n  }\n}\n\nfragment SolarChart_solar_2xCj2c on HomeSolarObject {\n  history(input: {since: $since}) {\n    wh\n    at\n    timestamp\n    uvLevel\n  }\n}\n\nfragment TransitFuelRow_route on HomeRouteDeparturesObject {\n  origin\n  destination\n  departures {\n    line\n    platform\n    scheduledDeparture\n    delayMinutes\n    minutesAway\n    live\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1a9a0cf45c0c875b8dfce66f4c74b055";
+(node as any).hash = "33c17ae1db20e3639800112c4a5c818d";
 
 export default node;

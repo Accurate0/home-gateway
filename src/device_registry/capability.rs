@@ -4,6 +4,7 @@ use serde::Deserialize;
 use crate::settings::Metric;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, async_graphql::Enum, JsonSchema)]
+#[graphql(name = "HomeCapability")]
 #[serde(rename_all = "snake_case")]
 pub enum Capability {
     Brightness,

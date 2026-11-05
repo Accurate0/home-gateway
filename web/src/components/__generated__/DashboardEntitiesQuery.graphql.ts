@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ccd262f04a7e537a78ba469ecc734bc9>>
+ * @generated SignedSource<<e0d5f54853a3c14ac19942da7d44dcce>>
  * @lightSyntaxTransform
  */
 
@@ -8,18 +8,18 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type AirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
-export type Capability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PM_25" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "VOC_INDEX" | "%future added value";
-export type DeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
-export type EinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
-export type EinkMode = "DASHBOARD" | "IMMICH" | "REDDIT" | "%future added value";
-export type EntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PLANTS" | "PRESENCE" | "VACUUMS" | "%future added value";
-export type GarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
-export type Orientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
-export type RobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
+export type HomeAirPurifierMode = "AUTO" | "MANUAL" | "SLEEP" | "%future added value";
+export type HomeCapability = "BRIGHTNESS" | "COLOUR_TEMP" | "HUMIDITY" | "LUX" | "PM_25" | "PRESSURE" | "RGB" | "TEMPERATURE" | "UV_INDEX" | "VOC_INDEX" | "%future added value";
+export type HomeDeviceLockSource = "MANUAL" | "PHYSICAL" | "%future added value";
+export type HomeEinkDisplayKind = "EINK_DISPLAY_FIRMWARE" | "TRMNL" | "%future added value";
+export type HomeEinkMode = "DASHBOARD" | "IMMICH" | "REDDIT" | "%future added value";
+export type HomeEntityCategory = "DISPLAYS" | "DOORS" | "ENVIRONMENT" | "LIGHTS" | "MEDIA" | "PLANTS" | "PRESENCE" | "VACUUMS" | "%future added value";
+export type HomeGarageDoorState = "CLOSED" | "CLOSING" | "OPEN" | "OPENING" | "%future added value";
+export type HomeOrientation = "LANDSCAPE" | "PORTRAIT" | "%future added value";
+export type HomeRobotVacuumKind = "ROBOROCK" | "VALETUDO" | "%future added value";
 export type DashboardEntitiesQuery$variables = Record<PropertyKey, never>;
 export type DashboardEntitiesQuery$data = {
-  readonly entities: ReadonlyArray<{
+  readonly homeEntities: ReadonlyArray<{
     readonly __typename: string;
     readonly appName?: string | null | undefined;
     readonly aqi?: number | null | undefined;
@@ -30,13 +30,13 @@ export type DashboardEntitiesQuery$data = {
     readonly batteryPercentage?: number | null | undefined;
     readonly batteryVoltage?: number | null | undefined;
     readonly cadr?: number | null | undefined;
-    readonly capabilities?: ReadonlyArray<Capability>;
-    readonly category?: EntityCategory;
+    readonly capabilities?: ReadonlyArray<HomeCapability>;
+    readonly category?: HomeEntityCategory;
     readonly cleanCount?: number | null | undefined;
     readonly config?: {
       readonly immichAlbum: string | null | undefined;
-      readonly mode: EinkMode;
-      readonly orientation: Orientation;
+      readonly mode: HomeEinkMode;
+      readonly orientation: HomeOrientation;
       readonly refresh: string;
       readonly settle: string | null | undefined;
       readonly sleepEnd: string | null | undefined;
@@ -47,18 +47,18 @@ export type DashboardEntitiesQuery$data = {
     readonly currentRoom?: string | null | undefined;
     readonly displayOn?: boolean | null | undefined;
     readonly durationSeconds?: number | null | undefined;
-    readonly einkKind?: EinkDisplayKind;
+    readonly einkKind?: HomeEinkDisplayKind;
     readonly episode?: number | null | undefined;
     readonly fanSpeed?: string | null | undefined;
     readonly filterLife?: number | null | undefined;
-    readonly garageState?: GarageDoorState | null | undefined;
+    readonly garageState?: HomeGarageDoorState | null | undefined;
     readonly humidity?: number | null | undefined;
     readonly id?: string;
-    readonly kind?: RobotVacuumKind;
+    readonly kind?: HomeRobotVacuumKind;
     readonly lastSeen?: any | null | undefined;
     readonly lock?: {
       readonly expiresAt: any | null | undefined;
-      readonly source: DeviceLockSource;
+      readonly source: HomeDeviceLockSource;
     } | null | undefined;
     readonly lux?: number | null | undefined;
     readonly mediaArtist?: string | null | undefined;
@@ -73,7 +73,7 @@ export type DashboardEntitiesQuery$data = {
     readonly present?: boolean | null | undefined;
     readonly pressure?: number | null | undefined;
     readonly progress?: number | null | undefined;
-    readonly purifierMode?: AirPurifierMode | null | undefined;
+    readonly purifierMode?: HomeAirPurifierMode | null | undefined;
     readonly purifierPm25?: number | null | undefined;
     readonly purifierSpeed?: number | null | undefined;
     readonly room?: string | null | undefined;
@@ -88,8 +88,8 @@ export type DashboardEntitiesQuery$data = {
     readonly vocIndex?: number | null | undefined;
     readonly volumeLevel?: number | null | undefined;
   }>;
-  readonly entitySections: ReadonlyArray<{
-    readonly category: EntityCategory;
+  readonly homeEntitySections: ReadonlyArray<{
+    readonly category: HomeEntityCategory;
     readonly title: string;
   }>;
 };
@@ -173,9 +173,9 @@ v10 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "EntitySection",
+    "concreteType": "HomeEntitySection",
     "kind": "LinkedField",
-    "name": "entitySections",
+    "name": "homeEntitySections",
     "plural": true,
     "selections": [
       (v0/*:: as any*/),
@@ -194,7 +194,7 @@ v10 = [
     "args": null,
     "concreteType": null,
     "kind": "LinkedField",
-    "name": "entities",
+    "name": "homeEntities",
     "plural": true,
     "selections": [
       {
@@ -215,7 +215,7 @@ v10 = [
           (v5/*:: as any*/),
           (v6/*:: as any*/)
         ],
-        "type": "LightEntity",
+        "type": "HomeLightEntity",
         "abstractKey": null
       },
       {
@@ -234,7 +234,7 @@ v10 = [
           },
           (v6/*:: as any*/)
         ],
-        "type": "DoorEntity",
+        "type": "HomeDoorEntity",
         "abstractKey": null
       },
       {
@@ -253,7 +253,7 @@ v10 = [
           },
           (v6/*:: as any*/)
         ],
-        "type": "PresenceEntity",
+        "type": "HomePresenceEntity",
         "abstractKey": null
       },
       {
@@ -316,7 +316,7 @@ v10 = [
           (v7/*:: as any*/),
           (v6/*:: as any*/)
         ],
-        "type": "EnvironmentEntity",
+        "type": "HomeEnvironmentEntity",
         "abstractKey": null
       },
       {
@@ -336,7 +336,7 @@ v10 = [
           (v7/*:: as any*/),
           (v6/*:: as any*/)
         ],
-        "type": "PlantEntity",
+        "type": "HomePlantEntity",
         "abstractKey": null
       },
       {
@@ -365,7 +365,7 @@ v10 = [
           {
             "alias": null,
             "args": null,
-            "concreteType": "EinkDisplayConfig",
+            "concreteType": "HomeEinkDisplayConfig",
             "kind": "LinkedField",
             "name": "config",
             "plural": false,
@@ -430,7 +430,7 @@ v10 = [
             "storageKey": null
           }
         ],
-        "type": "EinkDisplayEntity",
+        "type": "HomeEinkDisplayEntity",
         "abstractKey": null
       },
       {
@@ -534,7 +534,7 @@ v10 = [
           },
           (v6/*:: as any*/)
         ],
-        "type": "MediaPlayerEntity",
+        "type": "HomeMediaPlayerEntity",
         "abstractKey": null
       },
       {
@@ -554,7 +554,7 @@ v10 = [
           {
             "alias": null,
             "args": null,
-            "concreteType": "DeviceBattery",
+            "concreteType": "HomeDeviceBattery",
             "kind": "LinkedField",
             "name": "battery",
             "plural": false,
@@ -571,7 +571,7 @@ v10 = [
           },
           (v6/*:: as any*/)
         ],
-        "type": "GarageDoorEntity",
+        "type": "HomeGarageDoorEntity",
         "abstractKey": null
       },
       {
@@ -633,7 +633,7 @@ v10 = [
           },
           (v6/*:: as any*/)
         ],
-        "type": "AirPurifierEntity",
+        "type": "HomeAirPurifierEntity",
         "abstractKey": null
       },
       {
@@ -642,7 +642,7 @@ v10 = [
           {
             "alias": null,
             "args": null,
-            "concreteType": "DeviceLock",
+            "concreteType": "HomeDeviceLock",
             "kind": "LinkedField",
             "name": "lock",
             "plural": false,
@@ -659,8 +659,8 @@ v10 = [
             "storageKey": null
           }
         ],
-        "type": "LockableEntity",
-        "abstractKey": "__isLockableEntity"
+        "type": "HomeLockableEntity",
+        "abstractKey": "__isHomeLockableEntity"
       },
       {
         "kind": "InlineFragment",
@@ -715,7 +715,7 @@ v10 = [
           },
           (v6/*:: as any*/)
         ],
-        "type": "RobotVacuumEntity",
+        "type": "HomeRobotVacuumEntity",
         "abstractKey": null
       }
     ],
@@ -740,16 +740,16 @@ return {
     "selections": (v10/*:: as any*/)
   },
   "params": {
-    "cacheID": "76acd3637c4e54cb189ba9c1c87b39f9",
+    "cacheID": "6b8d8278ee5934e96001b058bfc214da",
     "id": null,
     "metadata": {},
     "name": "DashboardEntitiesQuery",
     "operationKind": "query",
-    "text": "query DashboardEntitiesQuery {\n  entitySections {\n    category\n    title\n  }\n  entities {\n    __typename\n    ... on LightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on DoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on PresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on EnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      pm25\n      vocIndex\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on PlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on EinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        immichAlbum\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on MediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on GarageDoorEntity {\n      category\n      id\n      name\n      room\n      garageState: state\n      battery {\n        percentage\n      }\n      lastSeen\n    }\n    ... on AirPurifierEntity {\n      category\n      id\n      name\n      room\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      purifierPm25: pm25\n      aqi\n      cadr\n      filterLife\n      displayOn: display\n      lastSeen\n    }\n    ... on LockableEntity {\n      __isLockableEntity: __typename\n      lock {\n        source\n        expiresAt\n      }\n    }\n    ... on RobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
+    "text": "query DashboardEntitiesQuery {\n  homeEntitySections {\n    category\n    title\n  }\n  homeEntities {\n    __typename\n    ... on HomeLightEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      on\n      lastSeen\n    }\n    ... on HomeDoorEntity {\n      category\n      id\n      name\n      room\n      open\n      lastSeen\n    }\n    ... on HomePresenceEntity {\n      category\n      id\n      name\n      room\n      present\n      lastSeen\n    }\n    ... on HomeEnvironmentEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      temperature\n      humidity\n      pressure\n      pm25\n      vocIndex\n      lux\n      uvIndex\n      time\n      lastSeen\n    }\n    ... on HomePlantEntity {\n      category\n      id\n      name\n      room\n      soilMoisture\n      time\n      lastSeen\n    }\n    ... on HomeEinkDisplayEntity {\n      category\n      id\n      name\n      einkKind: kind\n      room\n      batteryVoltage\n      batteryPercentage\n      lastSeen\n      config {\n        mode\n        view\n        immichAlbum\n        orientation\n        refresh\n        settle\n        sleepStart\n        sleepEnd\n      }\n    }\n    ... on HomeMediaPlayerEntity {\n      category\n      id\n      name\n      room\n      state\n      appName\n      source\n      mediaTitle\n      mediaArtist\n      mediaSeriesTitle\n      season\n      episode\n      positionSeconds\n      durationSeconds\n      progress\n      volumeLevel\n      muted\n      artworkUrl\n      lastSeen\n    }\n    ... on HomeGarageDoorEntity {\n      category\n      id\n      name\n      room\n      garageState: state\n      battery {\n        percentage\n      }\n      lastSeen\n    }\n    ... on HomeAirPurifierEntity {\n      category\n      id\n      name\n      room\n      on\n      purifierMode: mode\n      purifierSpeed: speed\n      purifierPm25: pm25\n      aqi\n      cadr\n      filterLife\n      displayOn: display\n      lastSeen\n    }\n    ... on HomeLockableEntity {\n      __isHomeLockableEntity: __typename\n      lock {\n        source\n        expiresAt\n      }\n    }\n    ... on HomeRobotVacuumEntity {\n      category\n      id\n      name\n      room\n      capabilities\n      kind\n      status\n      batteryPercentage\n      currentRoom\n      fanSpeed\n      currentCleanArea\n      cleanCount\n      lastSeen\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4b6984e9d3f421bcd2c5e8adf2e5e7bb";
+(node as any).hash = "994ac596e4584791f8d1c1829b7eea3c";
 
 export default node;

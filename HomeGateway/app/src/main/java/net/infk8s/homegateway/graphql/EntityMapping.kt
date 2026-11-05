@@ -1,123 +1,123 @@
 package net.infk8s.homegateway.graphql
 
-import net.infk8s.homegateway.graphql.type.Capability
+import net.infk8s.homegateway.graphql.type.HomeCapability
 import net.infk8s.homegateway.ui.parseInstant
 
-fun EntitiesQuery.Entity.toUi(): EntityUi? = when {
-    onLightEntity != null ->
+fun EntitiesQuery.HomeEntity.toUi(): EntityUi? = when {
+    onHomeLightEntity != null ->
         EntityUi.Light(
-            id = onLightEntity.id,
-            name = onLightEntity.name,
-            room = onLightEntity.room,
-            category = onLightEntity.category,
-            on = onLightEntity.on,
-            dimmable = onLightEntity.capabilities.any { it == Capability.BRIGHTNESS },
-            tunable = onLightEntity.capabilities.any { it == Capability.COLOUR_TEMP },
-            colour = onLightEntity.capabilities.any { it == Capability.RGB },
+            id = onHomeLightEntity.id,
+            name = onHomeLightEntity.name,
+            room = onHomeLightEntity.room,
+            category = onHomeLightEntity.category,
+            on = onHomeLightEntity.on,
+            dimmable = onHomeLightEntity.capabilities.any { it == HomeCapability.BRIGHTNESS },
+            tunable = onHomeLightEntity.capabilities.any { it == HomeCapability.COLOUR_TEMP },
+            colour = onHomeLightEntity.capabilities.any { it == HomeCapability.RGB },
         )
 
-    onDoorEntity != null ->
+    onHomeDoorEntity != null ->
         EntityUi.Door(
-            id = onDoorEntity.id,
-            name = onDoorEntity.name,
-            room = onDoorEntity.room,
-            category = onDoorEntity.category,
-            open = onDoorEntity.open,
+            id = onHomeDoorEntity.id,
+            name = onHomeDoorEntity.name,
+            room = onHomeDoorEntity.room,
+            category = onHomeDoorEntity.category,
+            open = onHomeDoorEntity.open,
         )
 
-    onGarageDoorEntity != null ->
+    onHomeGarageDoorEntity != null ->
         EntityUi.GarageDoor(
-            id = onGarageDoorEntity.id,
-            name = onGarageDoorEntity.name,
-            room = onGarageDoorEntity.room,
-            category = onGarageDoorEntity.category,
-            state = onGarageDoorEntity.garageState,
-            batteryPercentage = onGarageDoorEntity.battery?.percentage,
+            id = onHomeGarageDoorEntity.id,
+            name = onHomeGarageDoorEntity.name,
+            room = onHomeGarageDoorEntity.room,
+            category = onHomeGarageDoorEntity.category,
+            state = onHomeGarageDoorEntity.garageState,
+            batteryPercentage = onHomeGarageDoorEntity.battery?.percentage,
         )
 
-    onAirPurifierEntity != null ->
+    onHomeAirPurifierEntity != null ->
         EntityUi.AirPurifier(
-            id = onAirPurifierEntity.id,
-            name = onAirPurifierEntity.name,
-            room = onAirPurifierEntity.room,
-            category = onAirPurifierEntity.category,
-            on = onAirPurifierEntity.on,
-            mode = onAirPurifierEntity.purifierMode,
-            speed = onAirPurifierEntity.purifierSpeed,
-            pm25 = onAirPurifierEntity.purifierPm25,
-            aqi = onAirPurifierEntity.aqi,
-            cadr = onAirPurifierEntity.cadr,
-            filterLife = onAirPurifierEntity.filterLife,
-            displayOn = onAirPurifierEntity.displayOn,
-            lock = onLockableEntity?.lock?.let { DeviceLockUi(it.source, parseInstant(it.expiresAt)) },
+            id = onHomeAirPurifierEntity.id,
+            name = onHomeAirPurifierEntity.name,
+            room = onHomeAirPurifierEntity.room,
+            category = onHomeAirPurifierEntity.category,
+            on = onHomeAirPurifierEntity.on,
+            mode = onHomeAirPurifierEntity.purifierMode,
+            speed = onHomeAirPurifierEntity.purifierSpeed,
+            pm25 = onHomeAirPurifierEntity.purifierPm25,
+            aqi = onHomeAirPurifierEntity.aqi,
+            cadr = onHomeAirPurifierEntity.cadr,
+            filterLife = onHomeAirPurifierEntity.filterLife,
+            displayOn = onHomeAirPurifierEntity.displayOn,
+            lock = onHomeLockableEntity?.lock?.let { DeviceLockUi(it.source, parseInstant(it.expiresAt)) },
         )
 
-    onPresenceEntity != null ->
+    onHomePresenceEntity != null ->
         EntityUi.Presence(
-            id = onPresenceEntity.id,
-            name = onPresenceEntity.name,
-            room = onPresenceEntity.room,
-            category = onPresenceEntity.category,
-            present = onPresenceEntity.present,
+            id = onHomePresenceEntity.id,
+            name = onHomePresenceEntity.name,
+            room = onHomePresenceEntity.room,
+            category = onHomePresenceEntity.category,
+            present = onHomePresenceEntity.present,
         )
 
-    onEnvironmentEntity != null ->
+    onHomeEnvironmentEntity != null ->
         EntityUi.Environment(
-            id = onEnvironmentEntity.id,
-            name = onEnvironmentEntity.name,
-            room = onEnvironmentEntity.room,
-            category = onEnvironmentEntity.category,
-            temperature = onEnvironmentEntity.temperature,
-            humidity = onEnvironmentEntity.humidity,
-            pressure = onEnvironmentEntity.pressure,
-            lux = onEnvironmentEntity.lux,
-            uvIndex = onEnvironmentEntity.uvIndex,
-            pm25 = onEnvironmentEntity.pm25,
-            vocIndex = onEnvironmentEntity.vocIndex,
-            lastSeen = parseInstant(onEnvironmentEntity.lastSeen),
+            id = onHomeEnvironmentEntity.id,
+            name = onHomeEnvironmentEntity.name,
+            room = onHomeEnvironmentEntity.room,
+            category = onHomeEnvironmentEntity.category,
+            temperature = onHomeEnvironmentEntity.temperature,
+            humidity = onHomeEnvironmentEntity.humidity,
+            pressure = onHomeEnvironmentEntity.pressure,
+            lux = onHomeEnvironmentEntity.lux,
+            uvIndex = onHomeEnvironmentEntity.uvIndex,
+            pm25 = onHomeEnvironmentEntity.pm25,
+            vocIndex = onHomeEnvironmentEntity.vocIndex,
+            lastSeen = parseInstant(onHomeEnvironmentEntity.lastSeen),
         )
 
-    onPlantEntity != null ->
+    onHomePlantEntity != null ->
         EntityUi.Plant(
-            id = onPlantEntity.id,
-            name = onPlantEntity.name,
-            room = onPlantEntity.room,
-            category = onPlantEntity.category,
-            soilMoisture = onPlantEntity.soilMoisture,
-            batteryPercentage = onPlantEntity.battery?.percentage,
+            id = onHomePlantEntity.id,
+            name = onHomePlantEntity.name,
+            room = onHomePlantEntity.room,
+            category = onHomePlantEntity.category,
+            soilMoisture = onHomePlantEntity.soilMoisture,
+            batteryPercentage = onHomePlantEntity.battery?.percentage,
         )
 
-    onEinkDisplayEntity != null ->
+    onHomeEinkDisplayEntity != null ->
         EntityUi.EinkDisplay(
-            id = onEinkDisplayEntity.id,
-            name = onEinkDisplayEntity.name,
-            room = onEinkDisplayEntity.room,
-            category = onEinkDisplayEntity.category,
-            batteryPercentage = onEinkDisplayEntity.batteryPercentage,
-            isCharging = onEinkDisplayEntity.isCharging,
+            id = onHomeEinkDisplayEntity.id,
+            name = onHomeEinkDisplayEntity.name,
+            room = onHomeEinkDisplayEntity.room,
+            category = onHomeEinkDisplayEntity.category,
+            batteryPercentage = onHomeEinkDisplayEntity.batteryPercentage,
+            isCharging = onHomeEinkDisplayEntity.isCharging,
         )
 
-    onRobotVacuumEntity != null ->
+    onHomeRobotVacuumEntity != null ->
         EntityUi.RobotVacuum(
-            id = onRobotVacuumEntity.id,
-            name = onRobotVacuumEntity.name,
-            room = onRobotVacuumEntity.room,
-            category = onRobotVacuumEntity.category,
-            status = onRobotVacuumEntity.status,
-            batteryPercentage = onRobotVacuumEntity.batteryPercentage,
-            currentRoom = onRobotVacuumEntity.currentRoom,
+            id = onHomeRobotVacuumEntity.id,
+            name = onHomeRobotVacuumEntity.name,
+            room = onHomeRobotVacuumEntity.room,
+            category = onHomeRobotVacuumEntity.category,
+            status = onHomeRobotVacuumEntity.status,
+            batteryPercentage = onHomeRobotVacuumEntity.batteryPercentage,
+            currentRoom = onHomeRobotVacuumEntity.currentRoom,
         )
 
-    onMediaPlayerEntity != null ->
+    onHomeMediaPlayerEntity != null ->
         EntityUi.MediaPlayer(
-            id = onMediaPlayerEntity.id,
-            name = onMediaPlayerEntity.name,
-            room = onMediaPlayerEntity.room,
-            category = onMediaPlayerEntity.category,
-            playing = onMediaPlayerEntity.playing,
-            appName = onMediaPlayerEntity.appName,
-            mediaTitle = onMediaPlayerEntity.mediaTitle,
-            mediaSeriesTitle = onMediaPlayerEntity.mediaSeriesTitle,
+            id = onHomeMediaPlayerEntity.id,
+            name = onHomeMediaPlayerEntity.name,
+            room = onHomeMediaPlayerEntity.room,
+            category = onHomeMediaPlayerEntity.category,
+            playing = onHomeMediaPlayerEntity.playing,
+            appName = onHomeMediaPlayerEntity.appName,
+            mediaTitle = onHomeMediaPlayerEntity.mediaTitle,
+            mediaSeriesTitle = onHomeMediaPlayerEntity.mediaSeriesTitle,
         )
 
     else -> null
