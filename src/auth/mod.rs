@@ -23,6 +23,7 @@ pub use oauth::OAuthValidator;
 use std::net::IpAddr;
 
 use axum::{
+    Json,
     extract::{FromRequestParts, Request, State},
     middleware::Next,
     response::{IntoResponse, Response},
@@ -139,11 +140,24 @@ pub async fn auth_middleware(
 ) -> Response {
     let lockout = state.handles.expect::<AuthManager>().lockout();
     let ip = client_ip(req.headers(), req.extensions());
+    // gRPC clients read the status, and a JSON body would be parsed as a grpc-web frame.
+    let grpc = req
+        .headers()
+        .get(http::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("application/grpc"));
+    let reject = |status: StatusCode| {
+        if grpc {
+            status.into_response()
+        } else {
+            auth_error(status)
+        }
+    };
 
     if let Some(ip) = ip
         && lockout.is_locked(ip).await
     {
-        return StatusCode::TOO_MANY_REQUESTS.into_response();
+        return reject(StatusCode::TOO_MANY_REQUESTS);
     }
 
     let credentials = Credentials::from_headers(req.headers());
@@ -153,8 +167,28 @@ pub async fn auth_middleware(
             req.extensions_mut().insert(auth);
             next.run(req).await
         }
-        Err(status) => status.into_response(),
+        Err(status) => reject(status),
     }
+}
+
+/// A GraphQL-shaped JSON body, so the graph router can pass the reason on instead of reporting
+/// an empty subgraph response.
+pub fn auth_error(status: StatusCode) -> Response {
+    let code = match status {
+        StatusCode::UNAUTHORIZED => "UNAUTHENTICATED",
+        StatusCode::FORBIDDEN => "FORBIDDEN",
+        StatusCode::TOO_MANY_REQUESTS => "TOO_MANY_REQUESTS",
+        _ => "INTERNAL_SERVER_ERROR",
+    };
+    let message = status
+        .canonical_reason()
+        .unwrap_or("authentication failed")
+        .to_lowercase();
+    let body = serde_json::json!({
+        "errors": [{ "message": message, "extensions": { "code": code } }]
+    });
+
+    (status, Json(body)).into_response()
 }
 
 impl<S> FromRequestParts<S> for AuthContext
@@ -169,5 +203,27 @@ where
             .get::<AuthContext>()
             .cloned()
             .ok_or(StatusCode::UNAUTHORIZED)
+    }
+}
+
+#[cfg(test)]
+mod auth_error_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn auth_errors_are_graphql_json() {
+        let response = auth_error(StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            response.headers()[http::header::CONTENT_TYPE],
+            "application/json"
+        );
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["errors"][0]["message"], "unauthorized");
+        assert_eq!(body["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
     }
 }

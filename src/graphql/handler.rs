@@ -53,7 +53,7 @@ pub async fn graphql_ws_handler(
     if let Some(ip) = ip
         && lockout.is_locked(ip).await
     {
-        return StatusCode::TOO_MANY_REQUESTS.into_response();
+        return crate::auth::auth_error(StatusCode::TOO_MANY_REQUESTS);
     }
 
     upgrade
