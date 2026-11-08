@@ -62,7 +62,7 @@ jobs:
   deploy:
     needs:
       - build
-    uses: Accurate0/workflows/.github/workflows/deploy-app-k8s-v2.yaml@ac9012a26474aa89e9ab8f6926d64ca34c9dc36c # main
+    uses: Accurate0/workflows/.github/workflows/deploy-app-k8s-v2.yaml@b7d115dba45a9c6f629f18d1d506d3c07df3d46e # main
     with:
       service-name: home-web
       images: ghcr.io/accurate0/home-gateway-web
