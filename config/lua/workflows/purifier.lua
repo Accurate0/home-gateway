@@ -40,4 +40,27 @@ function purifier.morning(settings)
 	set_display(settings.device, true)
 end
 
+function purifier.off_once_today(settings)
+	local key = "purifier_off_once:" .. settings.device
+	local today = time.now().date
+
+	if state.get(key) == today then
+		gw.log(settings.device .. " was already turned off today")
+		return
+	end
+
+	workflow.step("off", function()
+		local current = air_purifier.state(settings.device)
+
+		if current ~= nil and current.on == false then
+			gw.log(settings.device .. " is already off")
+			return
+		end
+
+		air_purifier.command(settings.device, { command = "turn_off" })
+	end, settings.device)
+
+	state.set(key, today)
+end
+
 return purifier

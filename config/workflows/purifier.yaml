@@ -53,3 +53,17 @@
         - device: bedroom-purifier
           name: Bedroom Purifier
           below: 10
+
+- name: Bedroom purifier off on living room motion
+  slug: bedroom-purifier-off-living-room
+  group: Bedroom
+  tags: [bedroom, bedroom-purifier]
+  on: { type: presence, sensor: livingroom-motion, present: true }
+  when: { type: time_of_day, after: "07:00:00", before: "12:00:00" }
+  modes: [home, away, guest]
+  run:
+    - type: lua
+      call: purifier.off_once_today
+      returns: {}
+      args:
+        - device: bedroom-purifier

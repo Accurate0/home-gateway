@@ -6,6 +6,8 @@ local AUTO = { PURIFIER, { command = "set_mode", mode = "auto" } }
 local SLEEP = { PURIFIER, { command = "set_mode", mode = "sleep" } }
 local DISPLAY_ON = { PURIFIER, { command = "set_display", on = true } }
 local DISPLAY_OFF = { PURIFIER, { command = "set_display", on = false } }
+local OFF = { PURIFIER, { command = "turn_off" } }
+local OFF_KEY = "purifier_off_once:" .. PURIFIER
 
 local function stub(current)
 	workflow = {
@@ -20,6 +22,27 @@ local function stub(current)
 		end,
 		command = test.spy(),
 	}
+end
+
+local function stub_today(stored)
+	local values = { [OFF_KEY] = stored }
+
+	time = {
+		now = function()
+			return { date = "2026-11-15" }
+		end,
+	}
+
+	state = {
+		get = function(key)
+			return values[key]
+		end,
+		set = function(key, value)
+			values[key] = value
+		end,
+	}
+
+	return values
 end
 
 ---@type LuaTestSuite
@@ -118,5 +141,43 @@ return {
 		purifier.morning({ device = PURIFIER })
 
 		test.eq(air_purifier.command.calls, {})
+	end,
+
+	["off_once_today turns off a running purifier and remembers the day"] = function()
+		stub({ on = true, mode = "auto" })
+		local values = stub_today(nil)
+
+		purifier.off_once_today({ device = PURIFIER })
+
+		test.eq(air_purifier.command.calls, { OFF })
+		test.eq(values[OFF_KEY], "2026-11-15")
+	end,
+
+	["off_once_today does nothing a second time the same day"] = function()
+		stub({ on = true, mode = "auto" })
+		stub_today("2026-11-15")
+
+		purifier.off_once_today({ device = PURIFIER })
+
+		test.eq(air_purifier.command.calls, {})
+	end,
+
+	["off_once_today runs again on a new day"] = function()
+		stub({ on = true, mode = "auto" })
+		stub_today("2026-11-14")
+
+		purifier.off_once_today({ device = PURIFIER })
+
+		test.eq(air_purifier.command.calls, { OFF })
+	end,
+
+	["off_once_today skips a purifier that is already off"] = function()
+		stub({ on = false })
+		local values = stub_today(nil)
+
+		purifier.off_once_today({ device = PURIFIER })
+
+		test.eq(air_purifier.command.calls, {})
+		test.eq(values[OFF_KEY], "2026-11-15")
 	end,
 }
