@@ -25,7 +25,7 @@ jobs:
         with:
           buildtargets: esp32s3
           ldproxy: true
-          github-token: ${{ secrets.GH_API_TOKEN }}
+          github-token: ${{ secrets.READONLY_GH_TOKEN }}
 
       - name: Cache esp-idf
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
