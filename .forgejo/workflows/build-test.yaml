@@ -45,7 +45,7 @@ jobs:
     name: test
     runs-on: docker
     env:
-      DATABASE_URL: postgres://postgres:test@localhost:5432/home
+      POSTGRES_CONTAINER: home-gateway-postgres-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install build dependencies
@@ -61,20 +61,24 @@ jobs:
 
       - name: Start the database
         run: |
-          docker run -d --name postgres \
-            -p 5432:5432 \
+          docker rm -f "$POSTGRES_CONTAINER" 2>/dev/null || true
+          docker run -d --name "$POSTGRES_CONTAINER" \
+            -p 5432 \
             -e POSTGRES_PASSWORD=test \
             -e POSTGRES_DB=home \
             home-gateway-postgres:ci \
             postgres -c shared_preload_libraries=timescaledb
 
+          port=$(docker port "$POSTGRES_CONTAINER" 5432/tcp | head -1 | sed 's/.*://')
+          echo "DATABASE_URL=postgres://postgres:test@localhost:${port}/home" >> "$GITHUB_ENV"
+
           for _ in $(seq 1 60); do
-            docker exec postgres pg_isready -U postgres && exit 0
+            docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres && exit 0
             sleep 2
           done
 
           echo "database did not become ready" >&2
-          docker logs postgres >&2
+          docker logs "$POSTGRES_CONTAINER" >&2
           exit 1
 
       - name: Check the offline query cache matches the schema
@@ -86,3 +90,7 @@ jobs:
           cargo sqlx prepare --check -- --all-targets
 
       - run: cargo test --workspace
+
+      - name: Remove the database
+        if: always()
+        run: docker rm -f "$POSTGRES_CONTAINER" || true
