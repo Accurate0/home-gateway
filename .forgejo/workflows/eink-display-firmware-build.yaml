@@ -21,12 +21,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: https://github.com/esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7
+      - uses: https://github.com/esp-rs/xtensa-toolchain@7e0506d8fb6bb8b1e0c7f543d97d4edebaf33d22 # main
         with:
           buildtargets: esp32s3
           ldproxy: true
-        env:
-          GITHUB_TOKEN: ""
+          github-token: ${{ secrets.GH_API_TOKEN }}
 
       - name: Cache esp-idf
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
