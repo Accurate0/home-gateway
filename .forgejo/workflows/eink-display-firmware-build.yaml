@@ -21,7 +21,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7
+      - uses: https://github.com/esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7
         with:
           buildtargets: esp32s3
           ldproxy: true
@@ -54,7 +54,7 @@ jobs:
         run: apt-get update && apt-get install -y protobuf-compiler
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@5885714d0a40a14b2535c6ffc051fd8e49aa9665 # v1.27.0
+        uses: https://github.com/cargo-bins/cargo-binstall@5885714d0a40a14b2535c6ffc051fd8e49aa9665 # v1.27.0
 
       - name: Install cargo-espflash
         run: cargo binstall --no-confirm --locked cargo-espflash
