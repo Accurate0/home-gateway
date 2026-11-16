@@ -10,7 +10,7 @@ on:
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
       - "package.json"
-      - ".github/workflows/eink-display-web-build.yml"
+      - ".forgejo/workflows/eink-display-web-build.yaml"
   workflow_dispatch:
 
 jobs:
@@ -39,14 +39,19 @@ jobs:
         env:
           VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_SECRET }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-2
+      - name: Install AWS CLI
+        run: |
+          command -v aws && exit 0
+          curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
+          unzip -q awscliv2.zip
+          ./aws/install
+          rm -rf aws awscliv2.zip
 
       - name: Publish index.html
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ap-southeast-2
         run: |
           aws s3 cp eink-display-web/dist/index.html \
             s3://home-gateway-bucket/eink-display/web/index.html \

@@ -11,7 +11,7 @@ on:
       - pnpm-workspace.yaml
       - pnpm-lock.yaml
       - package.json
-      - .github/workflows/branch-build-eink-display-web.yml
+      - .forgejo/workflows/branch-build-eink-display-web.yaml
 
 jobs:
   build:

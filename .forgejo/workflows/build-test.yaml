@@ -17,7 +17,7 @@ on:
       - Cargo.toml
       - Cargo.lock
       - Dockerfile.postgres
-      - .github/workflows/build-test.yml
+      - .forgejo/workflows/build-test.yaml
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,13 +26,13 @@ env:
 jobs:
   lint:
     name: fmt + clippy
-    runs-on: ubuntu-latest
+    runs-on: docker
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install build dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y pkg-config libssl-dev cmake gcc nasm \
+          apt-get update -y
+          apt-get install -y pkg-config libssl-dev cmake gcc nasm \
             protobuf-compiler libprotobuf-dev libde265-dev
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
@@ -43,30 +43,21 @@ jobs:
 
   test:
     name: test
-    runs-on: ubuntu-latest
+    runs-on: docker
     env:
       DATABASE_URL: postgres://postgres:test@localhost:5432/home
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install build dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y pkg-config libssl-dev cmake gcc nasm \
+          apt-get update -y
+          apt-get install -y pkg-config libssl-dev cmake gcc nasm \
             protobuf-compiler libprotobuf-dev libde265-dev
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Build the TimescaleDB image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
-        with:
-          context: .
-          file: Dockerfile.postgres
-          push: false
-          load: true
-          tags: home-gateway-postgres:ci
-          cache-from: type=gha,scope=home-gateway-postgres
-          cache-to: type=gha,scope=home-gateway-postgres,mode=max
+        run: docker build -f Dockerfile.postgres -t home-gateway-postgres:ci .
 
       - name: Start the database
         run: |

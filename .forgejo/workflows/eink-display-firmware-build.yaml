@@ -7,12 +7,12 @@ on:
     paths:
       - "eink-display-firmware/**"
       - "proto/eink/**"
-      - ".github/workflows/eink-display-firmware-build.yml"
+      - ".forgejo/workflows/eink-display-firmware-build.yaml"
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: docker
 
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -51,7 +51,7 @@ jobs:
             ${{ runner.os }}-firmware-cargo-
 
       - name: Install protoc
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+        run: apt-get update && apt-get install -y protobuf-compiler
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@5885714d0a40a14b2535c6ffc051fd8e49aa9665 # v1.27.0
@@ -78,14 +78,19 @@ jobs:
           WIFI_SSID: ${{ secrets.WIFI_SSID }}
           WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-2
+      - name: Install AWS CLI
+        run: |
+          command -v aws && exit 0
+          curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
+          unzip -q awscliv2.zip
+          ./aws/install
+          rm -rf aws awscliv2.zip
 
       - name: Publish firmware
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ap-southeast-2
         run: |
           aws s3 cp \
             eink-display-firmware/firmware_${{ steps.version.outputs.version }}.bin \
@@ -97,6 +102,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install jq and yq
+        run: |
+          apt-get update && apt-get install -y jq
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.48.1/yq_linux_amd64 -o /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
       - name: Configure Git
         run: |
           git config --global user.name "ci-image-updater"
@@ -104,7 +115,7 @@ jobs:
 
       - name: Clone Config Repo
         env:
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
+          FORGEJO_TOKEN: ${{ secrets.CI_IMAGE_UPDATER_TOKEN }}
         run: |
           git clone https://x-access-token:${FORGEJO_TOKEN}@git.anurag.sh/anurag/home-gateway.git config-repo
 
@@ -124,7 +135,7 @@ jobs:
       - name: Commit and Raise PR
         env:
           VERSION: ${{ needs.build.outputs.version }}
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_CI_IMAGE_UPDATER }}
+          FORGEJO_TOKEN: ${{ secrets.CI_IMAGE_UPDATER_TOKEN }}
         run: |
           cd config-repo
           PR_BRANCH="ci/update-eink-firmware-${VERSION}"
