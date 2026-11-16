@@ -67,7 +67,7 @@ jobs:
         run: |
           CARGO_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')
           echo "version=v${CARGO_VERSION}-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
-        working-directory: eink-display-firmware
+        working-directory: ${{ github.workspace }}/eink-display-firmware
 
       - name: Build and save flashable image
         run: |
@@ -75,7 +75,7 @@ jobs:
             --release \
             --chip esp32s3 \
             firmware_${{ steps.version.outputs.version }}.bin
-        working-directory: eink-display-firmware
+        working-directory: ${{ github.workspace }}/eink-display-firmware
         env:
           HOME_GATEWAY_API_KEY: ${{ secrets.HOME_GATEWAY_API_KEY }}
           WIFI_SSID: ${{ secrets.WIFI_SSID }}
