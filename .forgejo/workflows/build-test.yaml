@@ -38,6 +38,8 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: https://github.com/Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          cache-on-failure: true
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -46,6 +48,7 @@ jobs:
     runs-on: docker
     env:
       POSTGRES_CONTAINER: home-gateway-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install build dependencies
@@ -55,6 +58,8 @@ jobs:
             protobuf-compiler libprotobuf-dev libde265-dev
       - uses: https://github.com/dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
       - uses: https://github.com/Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          cache-on-failure: true
 
       - name: Build the TimescaleDB image
         run: docker build -f Dockerfile.postgres -t home-gateway-postgres:ci .
