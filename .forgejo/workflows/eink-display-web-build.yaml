@@ -37,7 +37,7 @@ jobs:
       - name: Build
         run: pnpm --filter eink-display-web build
         env:
-          VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_SECRET }}
+          VITE_GRAPHQL_API_KEY: ${{ secrets.HOME_GATEWAY_API_KEY }}
 
       - name: Install AWS CLI
         run: |
