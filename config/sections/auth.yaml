@@ -34,6 +34,14 @@ oauth:
 api_keys:
   - name: eink-display-living-room
     scopes: ["epd:read"]
+  - name: eink-display-web
+    scopes:
+      - "epd:read"
+      - "weather:read"
+      - "solar:read"
+      - "transperth:read"
+      - "fuelwatch:read"
+      - "environment:read"
   - name: unifi-ingest
     scopes: ["ingest.unifi:write"]
   - name: home-gateway-app
