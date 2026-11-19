@@ -49,7 +49,7 @@ jobs:
     env:
       POSTGRES_CONTAINER: home-gateway-postgres-${{ github.run_id }}-${{ github.run_attempt }}
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
-      CARGO_BUILD_JOBS: "2"
+      CARGO_BUILD_JOBS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install build dependencies
