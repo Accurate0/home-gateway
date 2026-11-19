@@ -64,6 +64,8 @@ pub struct Harness {
 
 impl Harness {
     pub async fn start() -> Self {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
         // S3 builds its credentials from the environment and the eink manager
         // holds one, so give it something to find.
         unsafe {
