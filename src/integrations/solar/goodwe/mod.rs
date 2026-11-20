@@ -244,21 +244,35 @@ impl GoodWeSemsAPI {
         let serial_number = self.inverter_serial_number(login).await?;
 
         let flow_path = format!("{STATION_FLOW_PATH}?stationId={}", self.powerstation_id);
-        let telecounting_path = format!(
-            "{}?deviceType=INVERTER&pwId={}",
-            TELECOUNTING_TEMPLATE.replace("{serial_number}", &serial_number),
-            self.powerstation_id
-        );
+        let telecounting_path = |groups: &str| {
+            format!(
+                "{}?deviceType=INVERTER&pwId={}&{groups}",
+                TELECOUNTING_TEMPLATE.replace("{serial_number}", &serial_number),
+                self.powerstation_id
+            )
+        };
+        let telecounting = |groups: &str| {
+            let path = telecounting_path(groups);
+            async move {
+                self.get::<Vec<TelecountingGroup>>(
+                    login,
+                    "telecounting",
+                    &path,
+                    TELECOUNTING_TEMPLATE,
+                )
+                .await
+            }
+        };
 
-        let (flow, telecounting) = tokio::try_join!(
+        let (flow, today, month, lifetime) = tokio::try_join!(
             self.get::<StationFlow>(login, "station flow", &flow_path, STATION_FLOW_PATH),
-            self.get::<Vec<TelecountingGroup>>(
-                login,
-                "telecounting",
-                &telecounting_path,
-                TELECOUNTING_TEMPLATE
-            ),
+            telecounting("groups=telecounting_real&groups=telecounting_today"),
+            telecounting("groups=telecounting_month"),
+            telecounting("groups=telecounting_lifetime"),
         )?;
+
+        let telecounting: Vec<TelecountingGroup> =
+            today.into_iter().chain(month).chain(lifetime).collect();
 
         let current_kw = flow
             .p_ac
