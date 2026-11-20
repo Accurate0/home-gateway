@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT prev AS \"start!\", time AS \"end!\" FROM ( SELECT time, lag(time) OVER (ORDER BY time) AS prev FROM solar_data_tsdb WHERE time > now() - interval '30 days' ) t WHERE time - prev > $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "start!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "end!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "solar_data_tsdb",
+            "name": "time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Interval"
+      ]
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "da0523cc2bf7da955b896c6c89973c0098d74faf997c69a593969b19522627ce"
+}

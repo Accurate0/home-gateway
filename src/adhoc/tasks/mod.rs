@@ -1,6 +1,7 @@
 use super::seal::SealedTask;
 
 pub mod backfill_semsplus_solar;
+pub mod backfill_solar_gaps;
 pub mod backfill_solar_kpis;
 pub mod convert_api_key_scopes;
 pub mod rekey_device_ids;
@@ -11,5 +12,6 @@ pub fn all() -> Vec<SealedTask> {
         SealedTask::locked(&backfill_solar_kpis::BackfillSolarKpis),
         SealedTask::unlocked(&rekey_device_ids::RekeyDeviceIds),
         SealedTask::locked(&backfill_semsplus_solar::BackfillSemsplusSolar),
+        SealedTask::locked(&backfill_solar_gaps::BackfillSolarGaps),
     ]
 }
