@@ -21,16 +21,3 @@ jobs:
       directory: .
       image-name: home-gateway-web
       dockerfile: web/Dockerfile
-
-  deploy:
-    needs:
-      - build
-    uses: anurag/workflows/.forgejo/workflows/deploy-image.yaml@main
-    with:
-      service-name: home-web
-      images: registry.anurag.sh/containers/home-gateway-web
-      manifests-path: projects/home-gateway
-      values-file: projects/home-gateway/image.values.yaml
-      tag: ${{ github.sha }}
-    secrets:
-      CI_IMAGE_UPDATER_TOKEN: ${{ secrets.CI_IMAGE_UPDATER_TOKEN }}

@@ -26,16 +26,3 @@ jobs:
         BINARY_NAME=home-gateway
     secrets:
       SECRET_BUILD_ARGS: HOME_GATEWAY_API_SECRET=${{ secrets.HOME_GATEWAY_API_SECRET }}
-
-  deploy:
-    needs:
-      - build
-    uses: anurag/workflows/.forgejo/workflows/deploy-image.yaml@main
-    with:
-      service-name: home-gateway
-      images: registry.anurag.sh/containers/home-gateway
-      manifests-path: projects/home-gateway
-      values-file: projects/home-gateway/image.values.yaml
-      tag: ${{ github.sha }}
-    secrets:
-      CI_IMAGE_UPDATER_TOKEN: ${{ secrets.CI_IMAGE_UPDATER_TOKEN }}
