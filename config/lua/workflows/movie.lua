@@ -17,7 +17,20 @@ local function lights_off()
 	end)
 end
 
+local function dark(settings)
+	if sun.is("night", settings.sunset_offset) then
+		return true
+	end
+
+	gw.log("daytime, leaving the lamps off")
+	return false
+end
+
 local function paused(settings)
+	if not dark(settings) then
+		return
+	end
+
 	workflow.step("pause_light", function()
 		light.set(FLOOR_LAMP, { state = "SET_BRIGHTNESS", value = settings.pause_brightness })
 	end, FLOOR_LAMP)
@@ -27,6 +40,10 @@ local function stopped(settings)
 	workflow.step("occupancy", function()
 		workflow.set_enabled(OCCUPANCY_TAG, "ENABLED")
 	end, OCCUPANCY_TAG)
+
+	if not dark(settings) then
+		return
+	end
 
 	workflow.step("fade_up", function()
 		if not light.is_on(FLOOR_LAMP) then

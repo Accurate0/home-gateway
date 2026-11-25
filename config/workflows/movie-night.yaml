@@ -16,3 +16,4 @@
       args:
         - pause_brightness: 190
           fade_rate: 13
+          sunset_offset: -30m
