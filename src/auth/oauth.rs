@@ -272,6 +272,10 @@ impl OAuthValidator {
             .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
             .unwrap_or_default();
 
+        self.scopes_for_groups(&groups)
+    }
+
+    pub fn scopes_for_groups(&self, groups: &[&str]) -> Vec<String> {
         let mut seen = HashSet::new();
         groups
             .iter()

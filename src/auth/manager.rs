@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use axum::http::StatusCode;
 
-use super::{AuthContext, GeneratedKey, OAuthValidator};
+use super::{AuthContext, GeneratedKey, OAuthValidator, PassportVerifier};
 
 #[derive(Clone)]
 pub struct AuthManager {
@@ -20,12 +20,14 @@ pub struct AuthManager {
     touched: MemoryCache<Uuid, ()>,
     lockout: AuthLockout,
     oauth: Option<Arc<OAuthValidator>>,
+    passport: Option<PassportVerifier>,
 }
 
 impl AuthManager {
     pub fn new(
         keys: ApiKeyRepo,
         oauth: Option<Arc<OAuthValidator>>,
+        passport: Option<PassportVerifier>,
         settings: &AuthSettings,
     ) -> Self {
         let cache = MemoryCache::builder("api_keys")
@@ -50,6 +52,7 @@ impl AuthManager {
             touched,
             lockout: AuthLockout::new(&settings.lockout),
             oauth,
+            passport,
         }
     }
 
@@ -66,6 +69,34 @@ impl AuthManager {
         let oauth = self.oauth.as_ref()?;
 
         let validated = oauth.validate(token).await;
+
+        tracing::Span::current().record("valid", validated.is_ok());
+
+        Some(validated)
+    }
+
+    #[tracing::instrument(
+        name = "auth.validate_passport",
+        skip_all,
+        fields(valid = tracing::field::Empty)
+    )]
+    pub async fn validate_passport(&self, token: &str) -> Option<Result<AuthContext, StatusCode>> {
+        let passport = self.passport.as_ref()?;
+
+        let validated = passport.verify(token).await.and_then(|identity| {
+            let groups: Vec<&str> = identity.groups.iter().map(String::as_str).collect();
+            let scopes = self
+                .oauth
+                .as_ref()
+                .map(|oauth| oauth.scopes_for_groups(&groups))
+                .unwrap_or_default();
+            if scopes.is_empty() {
+                return Err(StatusCode::FORBIDDEN);
+            }
+
+            let name = identity.username.or(Some(identity.subject));
+            Ok(AuthContext::from_scopes(None, name, &scopes))
+        });
 
         tracing::Span::current().record("valid", validated.is_ok());
 

@@ -12,6 +12,7 @@ async fn manager() -> AuthManager {
     AuthManager::new(
         ApiKeyRepo::new(fresh_database().await.pool),
         None,
+        None,
         &AuthSettings {
             api_key_cache: CacheSettings {
                 capacity: 1024,

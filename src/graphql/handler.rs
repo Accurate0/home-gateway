@@ -13,6 +13,18 @@ use crate::{
     state::AppState,
 };
 
+// the graph router sends its fetch headers, the passport among them, as the init payload
+fn passport_from_payload(payload: &Value) -> Option<String> {
+    payload
+        .as_object()?
+        .iter()
+        .find(|(key, _)| key.eq_ignore_ascii_case(crate::auth::PASSPORT_HEADER))
+        .and_then(|(_, value)| value.as_str())
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .map(str::to_owned)
+}
+
 fn token_from_payload(payload: &Value) -> Option<String> {
     for key in [
         "X-Api-Key",
@@ -62,7 +74,11 @@ pub async fn graphql_ws_handler(
             GraphQLWebSocket::new(stream, schema, protocol)
                 .on_connection_init(move |payload| async move {
                     let token = token_from_payload(&payload);
-                    let credentials = Credentials::from_token(token.as_deref());
+                    let passport = passport_from_payload(&payload);
+                    let credentials = Credentials {
+                        passport: passport.as_deref(),
+                        ..Credentials::from_token(token.as_deref())
+                    };
 
                     let auth = resolve_auth(credentials, ip, &state)
                         .await

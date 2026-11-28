@@ -195,6 +195,18 @@ pub async fn build(storage: &Storage) -> anyhow::Result<Handles> {
         })
         .transpose()?;
 
+    let passport = match std::env::var("SUBGRAPH_AUTH") {
+        Ok(json) => {
+            let config = json
+                .parse::<crate::auth::PassportConfig>()
+                .map_err(|e| anyhow::anyhow!(e))?;
+            let verifier = crate::auth::PassportVerifier::new(config);
+            tokio::spawn(verifier.clone().run());
+            Some(verifier)
+        }
+        Err(_) => None,
+    };
+
     let registry = HandleRegistry::builder()
         .insert(mqtt_client)
         .insert(s3)
@@ -209,6 +221,7 @@ pub async fn build(storage: &Storage) -> anyhow::Result<Handles> {
         .insert(AuthManager::new(
             ApiKeyRepo::new(pool.clone()),
             oauth,
+            passport,
             &settings.auth,
         ))
         .insert(willyweather)

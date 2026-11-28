@@ -8,6 +8,7 @@ pub mod lockout;
 pub mod manager;
 pub mod missing_scope;
 pub mod oauth;
+pub mod passport;
 pub mod scope;
 
 pub use client_ip::{ClientIp, client_ip};
@@ -19,6 +20,7 @@ pub use lockout::AuthLockout;
 pub use manager::AuthManager;
 pub use missing_scope::MissingScope;
 pub use oauth::OAuthValidator;
+pub use passport::{PASSPORT_HEADER, PassportConfig, PassportVerifier};
 
 use std::net::IpAddr;
 
@@ -91,6 +93,17 @@ async fn resolve_credentials(
 ) -> Result<AuthContext, StatusCode> {
     if dev_bypass_enabled() {
         return Ok(AuthContext::full_access());
+    }
+
+    // the graph router admitted the caller and signed for this subgraph
+    if let Some(passport) = credentials.passport
+        && let Some(result) = state
+            .handles
+            .expect::<AuthManager>()
+            .validate_passport(passport)
+            .await
+    {
+        return result;
     }
 
     if let Some(api_key) = credentials.api_key

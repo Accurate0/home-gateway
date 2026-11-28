@@ -1,6 +1,7 @@
 use http::HeaderMap;
 
 pub struct Credentials<'a> {
+    pub passport: Option<&'a str>,
     pub api_key: Option<&'a str>,
     pub bearer: Option<&'a str>,
 }
@@ -20,13 +21,24 @@ impl<'a> Credentials<'a> {
             .map(str::trim)
             .filter(|token| !token.is_empty());
 
-        Self { api_key, bearer }
+        let passport = headers
+            .get(super::PASSPORT_HEADER)
+            .and_then(|value| value.to_str().ok())
+            .map(str::trim)
+            .filter(|token| !token.is_empty());
+
+        Self {
+            passport,
+            api_key,
+            bearer,
+        }
     }
 
     pub fn from_token(token: Option<&'a str>) -> Self {
         let token = token.map(str::trim).filter(|token| !token.is_empty());
 
         Self {
+            passport: None,
             api_key: token,
             bearer: token.filter(|token| token.contains('.')),
         }

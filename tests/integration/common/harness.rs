@@ -116,6 +116,7 @@ impl Harness {
             .insert(AuthManager::new(
                 ApiKeyRepo::new(db.clone()),
                 None,
+                None,
                 &settings.auth,
             ))
             .insert(
